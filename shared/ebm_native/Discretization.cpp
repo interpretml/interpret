@@ -287,12 +287,16 @@ INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
 
    const FloatEbmType avg = std::min(sideDistance / cSide, (totalDistance - sideDistance) / (cRanges - cSide));
    if(2 <= cSide) {
-      const FloatEbmType avgOther = std::min(sideDistance / (cSide - 1), (totalDistance - sideDistance) / (cRanges - cSide + 1));
+      const size_t denominator1 = cSide - size_t { 1 };
+      const size_t denominator2 = cRanges - cSide + size_t { 1 };
+      const FloatEbmType avgOther = std::min(sideDistance / static_cast<FloatEbmType>(denominator1), (totalDistance - sideDistance) / static_cast<FloatEbmType>(denominator2));
       EBM_ASSERT(avgOther <= avg * 1.00001);
    }
 
    if(2 <= cRanges - cSide) {
-      const FloatEbmType avgOther = std::min(sideDistance / (cSide + 1), (totalDistance - sideDistance) / (cRanges - cSide - 1));
+      const size_t denominator1 = cSide + size_t { 1 };
+      const size_t denominator2 = cRanges - cSide - size_t { 1 };
+      const FloatEbmType avgOther = std::min(sideDistance / static_cast<FloatEbmType>(denominator1), (totalDistance - sideDistance) / static_cast<FloatEbmType>(denominator2));
       EBM_ASSERT(avgOther <= avg * 1.00001);
    }
 
@@ -617,7 +621,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType StringToFloatWithFixup(
       return ret;
    }
 
-   if(0 == memcmp(str, strRehydrate, iIdenticalCharsRequired)) {
+   if(0 == memcmp(str, strRehydrate, iIdenticalCharsRequired * sizeof(*str))) {
       return ret;
    }
 
@@ -630,73 +634,83 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType StringToFloatWithFixup(
    return ret;
 }
 
-static bool StringToFloatChopped(
+// VERIFIED 2020-09
+INLINE_RELEASE_UNTEMPLATED static bool StringToFloatChopped(
    const char * const pStr,
-   size_t iTruncateMantissaTextDigitsAfter,
+   size_t iTruncateMantissaTextDigitsAfterFirstDigit,
    FloatEbmType & lowChopOut,
    FloatEbmType & highChopOut
 ) noexcept {
+   // the lowChopOut returned can be equal to highChopOut if pStr is an overflow
+
+   // when iTruncateMantissaTextDigitsAfterFirstDigit is zero we chop anything after the first digit, so 
+   // 3.456789*10^4 -> 3*10^4 when iTruncateMantissaTextDigitsAfterFirstDigit == 0
+   // 3.456789*10^4 -> 3.4*10^4 when iTruncateMantissaTextDigitsAfterFirstDigit == 1
+
    EBM_ASSERT(nullptr != pStr);
+   EBM_ASSERT('+' == pStr[0]);
    // don't pass us a non-truncated string, since we should handle anything that gets to that level differently
-   EBM_ASSERT(iTruncateMantissaTextDigitsAfter < k_cDigitsAfterPeriod);
+   EBM_ASSERT(iTruncateMantissaTextDigitsAfterFirstDigit < k_cDigitsAfterPeriod);
 
    char strTruncated[k_cCharsFloatPrint];
 
-   iTruncateMantissaTextDigitsAfter = size_t { 0 } < iTruncateMantissaTextDigitsAfter ?
-      size_t { 1 } + iTruncateMantissaTextDigitsAfter : iTruncateMantissaTextDigitsAfter;
+   // eg: "+9.1234567890123456e-301"
+   size_t iTruncateTextAfter = size_t { 0 } == iTruncateMantissaTextDigitsAfterFirstDigit ? 
+      size_t { 2 } : iTruncateMantissaTextDigitsAfterFirstDigit + size_t { 3 };
+      
+   memcpy(strTruncated, pStr, iTruncateTextAfter * sizeof(*pStr));
+   strcpy(&strTruncated[iTruncateTextAfter], &pStr[k_iExp]);
 
-   iTruncateMantissaTextDigitsAfter += size_t { 2 }; // add one for the sign character and one for the first character
+   lowChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);
 
-   memcpy(strTruncated, pStr, iTruncateMantissaTextDigitsAfter);
-   strcpy(&strTruncated[iTruncateMantissaTextDigitsAfter], &pStr[k_iExp]);
-
-   EBM_ASSERT('+' == pStr[0]);
-   lowChopOut = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
-
-   char * pIncrement = &strTruncated[iTruncateMantissaTextDigitsAfter - size_t { 1 }];
+   char * pDigit = &strTruncated[iTruncateTextAfter - size_t { 1 }];
    char ch;
-   if(size_t { 2 } == iTruncateMantissaTextDigitsAfter) {
+   if(size_t { 2 } == iTruncateTextAfter) {
       goto start_at_top;
    }
    while(true) {
-      ch = *pIncrement;
+      ch = *pDigit;
       if('.' == ch) {
-         --pIncrement;
+         --pDigit;
       start_at_top:;
-         ch = *pIncrement;
+         EBM_ASSERT(strTruncated + size_t { 1 } == pDigit);
+         ch = *pDigit;
          if('9' == ch) {
             // oh, great.  now we need to increment our exponential
-            int exponent = GetExponent(pStr) + 1;
-            *pIncrement = '1';
-            *(pIncrement + 1) = 'e';
+            int exponent = GetExponent(pStr) + int { 1 };
+            *pDigit = '1';
+            *(pDigit + size_t { 1 }) = 'e';
 
             constexpr static char g_pPrintfLongInt[] = "%+d";
             // for the size -> one for the '+' or '-' sign, k_cExponentTextDigits for the digits, 1 for null terminator
             int cCharsWithoutNullTerminator = snprintf(
-               pIncrement + size_t { 2 },
+               pDigit + size_t { 2 },
                size_t { 1 } + k_cExponentTextDigits + size_t { 1 },
                g_pPrintfLongInt,
                exponent
             );
-            if(cCharsWithoutNullTerminator <= int { 0 } || 
+            if(cCharsWithoutNullTerminator <= int { 1 } || 
                int { size_t { 1 } + k_cExponentTextDigits } < cCharsWithoutNullTerminator) 
             {
                return true;
             }
+            // we don't have all those '9' characters anymore to check.  we just need the 1
+            iTruncateTextAfter = size_t { 2 };
          } else {
-            *pIncrement = ch + 1;
+            EBM_ASSERT('0' <= ch && ch <= '8');
+            *pDigit = ch + char { 1 };
          }
          break;
-      }
-      if('9' == ch) {
-         *pIncrement = '0';
+      } else if('9' == ch) {
+         *pDigit = '0';
+         --pDigit;
       } else {
-         *pIncrement = ch + 1;
+         EBM_ASSERT('0' <= ch && ch <= '8');
+         *pDigit = ch + char { 1 };
          break;
       }
-      --pIncrement;
    }
-   highChopOut = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
+   highChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);
    return false;
 }
 
@@ -1196,10 +1210,10 @@ static void BuildNeighbourhoodPlan(
       distanceLowLowFloat = static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowFloat;
       distanceHighLowFloat = static_cast<FloatEbmType>(iValHighChoice) - iValAspirationalLowFloat;
 
-      const FloatEbmType lowLowBoundFloat = 
-         static_cast<FloatEbmType>(iValLowChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin));
-      const FloatEbmType highLowBoundFloat = 
-         static_cast<FloatEbmType>(iValHighChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin));
+      const ptrdiff_t lowLowBoundPtrdiff = iValLowChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin);
+      const FloatEbmType lowLowBoundFloat = static_cast<FloatEbmType>(lowLowBoundPtrdiff);
+      const ptrdiff_t highLowBoundPtrdiff = iValHighChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin);
+      const FloatEbmType highLowBoundFloat = static_cast<FloatEbmType>(highLowBoundPtrdiff);
       if(UNLIKELY(k_valNotLegal == iValHigh)) {
          // given all our indexes and counts refer to an existing array with more than 4 bytes, 
          // they should not be able to overflow when adding any of these numbers
@@ -1291,7 +1305,8 @@ static void BuildNeighbourhoodPlan(
          if(UNLIKELY(k_valNotLegal == iValHigh)) {
             distanceHigh = iValAspirationalHighFloat - static_cast<FloatEbmType>(iValHighChoice);
          } else {
-            distanceHigh = static_cast<FloatEbmType>(iValHigh - iValHighChoice);
+            const ptrdiff_t distanceHighPtrdiff = static_cast<ptrdiff_t>(iValHigh) - iValHighChoice;
+            distanceHigh = static_cast<FloatEbmType>(distanceHighPtrdiff);
          }
          const FloatEbmType avgLengthHighHigh = distanceHigh / cRangesHighHigh;
          const FloatEbmType avgLengthHighLow = distanceHighLowFloat / cRangesHighLow;
@@ -1317,7 +1332,8 @@ static void BuildNeighbourhoodPlan(
          if(UNLIKELY(k_valNotLegal == iValHigh)) {
             distanceHigh = iValAspirationalHighFloat - static_cast<FloatEbmType>(iValLowChoice);
          } else {
-            distanceHigh = static_cast<FloatEbmType>(iValHigh - iValLowChoice);
+            const ptrdiff_t distanceHighPtrdiff = static_cast<ptrdiff_t>(iValHigh) - iValLowChoice;
+            distanceHigh = static_cast<FloatEbmType>(distanceHighPtrdiff);
          }
          const FloatEbmType avgLengthLowHigh = distanceHigh / cRangesLowHigh;
          const FloatEbmType avgLengthLowLow = distanceLowLowFloat / cRangesLowLow;
@@ -2786,7 +2802,7 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
    do {
       --pHigh;
 
-      // surprisingly, this works if cSamples, since low becomes high, and the reverse and they should
+      // surprisingly, this works if 2 == cSamples, since low becomes high, and the reverse and they should
       // have identical agreement or disagreement, so we don't need to check above
       EBM_ASSERT(size_t { 2 } == cSamples && pLow == 1 + pHigh || pLow <= pHigh);
 
@@ -2813,8 +2829,51 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
       ++pLow;
    } while(LIKELY(pLow < pHigh));
 
-   // ok, we weren't able to find any differences in identical value spacing.  Probably all values are unique
-   // let's try next to use the absolute value of the values
+   // ok, we weren't able to find any differences in identical value spacing.  It's very very very likely that
+   // every value is unique, otherwise the data would have to be very symmetric for some reason.
+   // To figure out our symmetric direction we need to use the values in the data now.  It's hard to envision
+   // a way to always determine consistent direction when the user could transform the data in the following ways:
+   //   - take the negative
+   //   - shift the values by addition
+   //   - 1/X
+   //   - log(X)
+   //   - combinations of these
+   //   - an infinite number of other possible transforms
+   //
+   // But, one thing we can usually bet on is that values at the center of the array are more likley to be closer 
+   // together in value than the values at the extreme ends.  If we start from the center and look for differences
+   // in value then we're likely to get a more consistent result than using the wild swings in value at the tails.
+   // We use the difference between the center and the values at each point and terminate when one side or the
+   // other diverges from the center by more than a noise like amount.
+
+   if(size_t { 2 } < cSamples) {
+      pHigh = aSingleFeatureValues + (cSamples >> 1);
+      pLow = pHigh - (size_t { 1 } & (cSamples - size_t { 1 }));
+
+      // pHigh and pLow might be aliased pointers.  If we have an odd number of values then there is one center
+      const FloatEbmType valCenterHigh = *pHigh;
+      const FloatEbmType valCenterLow = *pLow;
+
+      do {
+         ++pHigh;
+         --pLow;
+
+         const FloatEbmType valHigh = *pHigh;
+         const FloatEbmType valLow = *pLow;
+
+         const FloatEbmType distanceHigh = valHigh - valCenterHigh;
+         const FloatEbmType distanceLow = valCenterLow - valLow;
+
+         // our distance high and distance low might be integers, so don't use base 10 decimals which might
+         // lead to collisions
+         if(distanceLow < distanceHigh * FloatEbmType { 0.9999248297572194127975024574325 }) {
+            return true;
+         }
+         if(distanceHigh < distanceLow * FloatEbmType { 0.9999248297572194127975024574325 }) {
+            return false;
+         }
+      } while(aSingleFeatureValues != pLow);
+   }
    pLow = aSingleFeatureValues;
    pHigh = pTop;
    do {
@@ -2832,13 +2891,14 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
       // we can exit if they are equal, since their absolute value would be equal
    } while(LIKELY(pLow < pHigh));
 
-   // if all our values are identical, then we shouldn't have gotten any cuts, and we shouldn't have gotten here
-   EBM_ASSERT(*aSingleFeatureValues != *pTop);
+   // if all our values are identical, then we shouldn't have gotten any cuts, so we shouldn't have gotten here
+   EBM_ASSERT(*aSingleFeatureValues < *pTop);
 
-   // if all else fails, just return the order of the first and last items, which unless all values are identical
-   // are required to be different.  If all values are the same then it won't matter anyways since there will be no
-   // cuts
-   return *aSingleFeatureValues < *pTop;
+   // the data is perfectly symmetric centered arround zero.  Something like "-2 -1 0 1 2" would do this.  There is
+   // no way for us to tell when it's been reversed even in theory.  Let's return a consistent value of false.  
+   // This value is XORed with a random value later anyways, so there's no direction bias in returning either 
+   // true or false here.
+   return false;
 }
 
 // VERIFIED 08-2020
@@ -3767,20 +3827,179 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
-         std::sort(apValueCutTops, ppValueCutTop);
-
          EBM_ASSERT(apValueCutTops <= ppValueCutTop);
          const size_t cCutPointsRet = ppValueCutTop - apValueCutTops;
 
-         FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveOut;
-         const FloatEbmType ** ppValueCutTops2 = apValueCutTops;
-         do {
-            const FloatEbmType * const pCut = *ppValueCutTops2;
-            const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - size_t { 1 }), *pCut);
-            *pCutPointsLowerBoundInclusive = cut;
-            ++pCutPointsLowerBoundInclusive;
-            ++ppValueCutTops2;
-         } while(ppValueCutTops2 != ppValueCutTop);
+         // it's possible, although extremely unlikely, that due to floating point issues that should only
+         // occur with huge double indexes, we were not able to find the legal cut point, so check for zero
+         if(LIKELY(size_t { 0 } != cCutPointsRet)) {
+            // the pointers are guaranteed to be in same order as the cut values
+            std::sort(apValueCutTops, ppValueCutTop);
+
+            FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveOut;
+            const FloatEbmType * const * ppValueCutTop2 = apValueCutTops;
+            do {
+               const FloatEbmType * const pCut = *ppValueCutTop2;
+               EBM_ASSERT(featureValues < pCut);
+               EBM_ASSERT(pCut < featureValues + cSamples);
+               const FloatEbmType valHigh = *pCut;
+               EBM_ASSERT(!isnan(valHigh));
+               EBM_ASSERT(!isinf(valHigh));
+               const FloatEbmType valLow = *(pCut - size_t { 1 });
+               EBM_ASSERT(!isnan(valLow));
+               EBM_ASSERT(!isinf(valLow));
+               const FloatEbmType cut = GetInterpretableCutPointFloat(valLow, valHigh);
+               EBM_ASSERT(cutPointsLowerBoundInclusiveOut == pCutPointsLowerBoundInclusive || *(pCutPointsLowerBoundInclusive - size_t { 1 }) < cut);
+               *pCutPointsLowerBoundInclusive = cut;
+               ++pCutPointsLowerBoundInclusive;
+               ++ppValueCutTop2;
+            } while(ppValueCutTop != ppValueCutTop2);
+
+            // if you have 1 cut point, then you get a graph with some mass on the left, some mass on the right
+            // and the cut point, and that's great.  We don't need to improve on that.  Our one cut points provides
+            // the most information possible and it's displayable on a graph.
+            // eg: "0.01 0.01 | 100 100" -> put the cut point at 1 and we can show both logit sides without
+            // indicating the min/max values of 0.001 and 1000
+            //
+            // if you have 2 cut points, then the graph will have 3 regions, and we can scale the graph so that
+            // 1/3 of the mass in on the left, 1/3 is in the scaled center, and 1/3 is on the right.  Whatever cuts
+            // we get provide the most amount of information possible, and it's graphable.
+            // eg: "0.01 0.01 | 1 1 | 100 100" -> put the cut points at 0.1 and 10 and the graph can range
+            // from 0.1 to 10 with some space on the tails to show the logits for the "-infinity -> 0.1" bin
+            // and the "10 -> +infinity" bin.
+            //
+            // if we have 3 cut points, then we could get into graphing issues if one of the ranges was so big
+            // that it dwarfed the other two in size.  We can't do anything about this if one of the interior
+            // ranges is huge, but often times the huge range is at the extreme ends of the graph and if the
+            // value on the interior side is smaller then we have some ability to pick the cut point.
+            // eg: "1 1 | 2 2 | 3 3 | infinity infinity".  The cut points can legally be:
+            //         1.5   2.5   3.5
+            // but if the values were instead:
+            // eg: "1 1 | 2 2 | 3 3 | 3.2 3.2".  The cut points can't exceed 3.2, so we'd use:
+            //         1.5   2.5   3.1
+            //
+            // Our algorithm finds 3.5 and 3.1 and picks the minimum, and the same on the low side, but there we
+            // take the maximum.
+            //
+            // In the above example, our graph must at minimum show the data from 2 -> 3, and in fact we'll want
+            // to not put our cuts right outside 2 and 3, so we want to move a reasonable distance away from those
+            // ends to the 1.5 and 3.5 positions to put our cuts, and since the "-infinity -> 1.5" bin and
+            // "3.5 -> +infinity" bins have logits, we also want some space on the graph to show those logits
+            // so we probably want our graph to show something like the space 0 -> 5, although this can be
+            // chosen by the graphing function.
+            //
+            // It's tempting to want to use the interior cuts to determine the outer cuts:
+            // eg: "-infinity -infinity | 2 2 | 3 3 | 4 4 | +infinity +infinity"
+            //                         1.5   2.5   3.5   4.5
+            // We might want to use 2.5 and 3.5 to determine that the cuts progress with distnaces of 1, and
+            // extrapolate 2.5 - 1 = 1.5 and 3.5 + 1 = 4.5, but we can't really do that because we might instead have
+            // something like this where the extrapolation will put us below the highLow value
+            // eg: "-infinity -infinity | 2 2 | 3 3 | 9 9 | +infinity +infinity"
+            // So we need to use the 9 value and extend from there.
+            //
+            // In the examples above, we've chosen point values, but we could easily have the following situation:
+            // 0.6 1.4 | 1.6 2.4 | 2.6 3.4 | 3.6 4.4 | 4.6 5.4
+            //        1.5       2.5       3.5       4.5
+            // which illustrates that in general the cut points can be very close to their neighbouring values.
+            // so in the examples farther above we had a spacing of 0.5 units from the interior values to the
+            // exterior cuts (1.5 -> 2) and (3 -> 3.5), but here we have separations of 0.1 (1.4 -> 1.5) and
+            // "4.4 -> 4.5".  
+            // 
+            // We're only choosing to override the averaged cut value when the outer value is a huge way off
+            // so we probably want to be conservative about how much we're override this and not put the
+            // new cut point too close to our lowHigh or highLow values.  If we start from a pointalism point
+            // of view that all the interior values are bunched onto discrete values like "2 2", and we assume
+            // half of the distance between a value and it's cut occurs on the lower and higher side, it gives
+            // us a kind of worse case reasonable scenario to deal with.  So starting from:
+            // "-infinity -infinity | 2 2 | 3 3 | 4 4 | +infinity +infinity"
+            //                     1.5   2.5   3.5   4.5
+            // We get the minimum graph range by taking the 4 and the 2 and substracting for 2.
+            // Then we assume that half of the bin on the upper side of the 2 is within that range and
+            // the lower side of the 4 is within that range, and we know that there is a range bounding 3,
+            // so we have 0.5 + 1 + 0.5 ranges total = 2.
+            // So our cut density is 2 / 2 = 1 cut per range.
+            // and we extend by half a bin downwards from the 2, which gives (2 - 1 / 2) = 1.5
+            // and we extend by half a bin upwards from the 4, which gives (4 + 1 / 2) = 4.5
+
+            if(LIKELY(size_t { 3 } <= cCutPointsRet)) {
+               const FloatEbmType * const pScaleHighHigh = *(ppValueCutTop - size_t { 1 });
+               EBM_ASSERT(featureValues + size_t { 2 } < pScaleHighHigh);
+               EBM_ASSERT(pScaleHighHigh < featureValues + cSamples);
+               const FloatEbmType * const pScaleHighLow = pScaleHighHigh - size_t { 1 };
+               EBM_ASSERT(featureValues + size_t { 1 } < pScaleHighLow);
+               EBM_ASSERT(pScaleHighLow < featureValues + cSamples - size_t { 1 });
+               const FloatEbmType scaleHighLow = *pScaleHighLow;
+               EBM_ASSERT(!isnan(scaleHighLow));
+               EBM_ASSERT(!isinf(scaleHighLow));
+               const FloatEbmType * pScaleLowHigh = *apValueCutTops;
+               EBM_ASSERT(featureValues < pScaleLowHigh);
+               EBM_ASSERT(pScaleLowHigh < featureValues + cSamples - size_t { 2 });
+               const FloatEbmType scaleLowHigh = *pScaleLowHigh;
+               EBM_ASSERT(!isnan(scaleLowHigh));
+               EBM_ASSERT(!isinf(scaleLowHigh));
+               EBM_ASSERT(scaleLowHigh < scaleHighLow);
+               // this is the inescapable scale of our graph, from the value right above the lowest cut to the value 
+               // right below the highest cut
+               const FloatEbmType scaleMin = scaleHighLow - scaleLowHigh;
+               EBM_ASSERT(!isnan(scaleMin));
+               EBM_ASSERT(!isinf(scaleMin));
+               // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
+               EBM_ASSERT(FloatEbmType { 0 } < scaleMin);
+
+               // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
+               // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
+               // 1.5% on the right)
+
+               const size_t cCutPointsLimited = size_t { 32 } < cCutPointsRet ? size_t { 32 } : cCutPointsRet;
+
+               // the leftmost and rightmost cuts can legally be right outside of the bounds between scaleHighLow and
+               // scaleLowHigh, so we subtract these two cuts, leaving us the number of ranges between the two end
+               // points.  Half a range on the bottom, N - 1 ranges in the middle, and half a range on the top
+               // Dividing by that number of ranges gives us the average range width.  We don't want to get the final
+               // cut though from the previous inner cut.  We want to move outwards from the scaleHighLow and
+               // scaleLowHigh values, which should be half a cut inwards (not exactly but in spirit), so we
+               // divide by two, which is the same as multiplying the divisor by 2, which is the right shift below
+               const size_t denominator = (cCutPointsLimited - size_t { 2 }) << 1;
+               EBM_ASSERT(size_t { 0 } < denominator);
+               const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
+
+               EBM_ASSERT(!isnan(movementFromEnds));
+               EBM_ASSERT(!isinf(movementFromEnds));
+               EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
+
+               const FloatEbmType lowCutFullPrecisionMin = scaleLowHigh - movementFromEnds;
+               EBM_ASSERT(!isnan(lowCutFullPrecisionMin));
+               EBM_ASSERT(lowCutFullPrecisionMin < std::numeric_limits<FloatEbmType>::max());
+               const FloatEbmType highCutFullPrecisionMax = scaleHighLow + movementFromEnds;
+               EBM_ASSERT(!isnan(highCutFullPrecisionMax));
+               EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < highCutFullPrecisionMax);
+
+               // TODO : correct lowCutFullPrecisionMax and highCutFullPrecisionMax so that it's different enough
+               // from scaleLowHigh and scaleHighLow
+               const FloatEbmType lowCutMin = lowCutFullPrecisionMin;
+               const FloatEbmType highCutMax = highCutFullPrecisionMax;
+
+               const FloatEbmType lowCutExisting = *cutPointsLowerBoundInclusiveOut;
+               EBM_ASSERT(!isnan(lowCutExisting));
+               EBM_ASSERT(!isinf(lowCutExisting));
+               const FloatEbmType highCutExisting = *(pCutPointsLowerBoundInclusive - size_t { 1 });
+               EBM_ASSERT(!isnan(highCutExisting));
+               EBM_ASSERT(!isinf(highCutExisting));
+
+               if(lowCutExisting < lowCutMin) {
+                  // lowCutMin can legally be -infinity, but then we wouldn't get here then
+                  EBM_ASSERT(!isnan(lowCutMin));
+                  EBM_ASSERT(!isinf(lowCutMin));
+                  *cutPointsLowerBoundInclusiveOut = lowCutMin;
+               }
+               if(highCutMax < highCutExisting) {
+                  // highCutMax can legally be +infinity, but then we wouldn't get here then
+                  EBM_ASSERT(!isnan(highCutMax));
+                  EBM_ASSERT(!isinf(highCutMax));
+                  *(pCutPointsLowerBoundInclusive - size_t { 1 }) = highCutMax;
+               }
+            }
+         }
 
          // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
          // specified, and that value came to us as an IntEbmType

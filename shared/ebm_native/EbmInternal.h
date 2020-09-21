@@ -521,7 +521,7 @@ INLINE_ALWAYS FloatEbmType EbmExp(FloatEbmType val) {
 
    // here's annohter implementation in AVX-512 (with a table)-> http://www.ecs.umass.edu/arith-2018/pdf/arith25_18.pdf
 
-   val = FloatEbmType { 1 } + val / FloatEbmType { 512 };
+   val = FloatEbmType { 1 } + val * (FloatEbmType { 1 } / FloatEbmType { 512 });
    val *= val;
    val *= val;
    val *= val;

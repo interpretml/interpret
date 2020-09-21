@@ -1009,7 +1009,8 @@ TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per
    featureValues[0] = 0;
    for(size_t iRange = 0; iRange < cInteriorRanges; ++iRange) {
       for(size_t i = 1 + cItemsPerRange * iRange; i < 1 + (cItemsPerRange * (iRange + 1)); ++i) {
-         featureValues[i] = static_cast<FloatEbmType>(iRange + 1);
+         const size_t iRangePlusOne = iRange + size_t { 1 };
+         featureValues[i] = static_cast<FloatEbmType>(iRangePlusOne);
       }
       expectedCutPoints.push_back(FloatEbmType { 0.5 } + static_cast<FloatEbmType>(iRange));
    }
@@ -1018,9 +1019,11 @@ TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per
    featureValues[cInteriorRanges * cItemsPerRange + 1] = static_cast<FloatEbmType>(1 + cInteriorRanges);
    featureValues[cInteriorRanges * cItemsPerRange + 2] = static_cast<FloatEbmType>(1 + cInteriorRanges);
 
-   if(1 == cRemoveCuts) {
+   static bool bOne = 1 == cRemoveCuts;
+   static bool bTwo = 2 == cRemoveCuts;
+   if(bOne) {
       expectedCutPoints.erase(expectedCutPoints.begin());
-   } else if(2 == cRemoveCuts) {
+   } else if(bTwo) {
       expectedCutPoints.erase(expectedCutPoints.begin());
       expectedCutPoints.erase(expectedCutPoints.end() - 1);
    } else {
@@ -1181,7 +1184,12 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
             const size_t iCut = static_cast<size_t>(std::round(cutPointForward - FloatEbmType { 1.5 }));
             const size_t iSymetricCut = iShiftToMiddle + iCut;
             assert(iSymetricCut < cCutHistogram);
-            ++cutHistogram[iSymetricCut];
+            if(iSymetricCut < cCutHistogram) {
+               ++cutHistogram[iSymetricCut];
+            } else {
+               // this shouldn't happen, but the compiler is giving a warning because it can't predict iSymetricCut
+               assert(false);
+            }
          }
       }
    }
@@ -1229,8 +1237,9 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       const size_t cCutPoints = randomStream.Next(cCutPointsMax - cCutPointsMin + 1) + cCutPointsMin;
       const IntEbmType countSamplesPerBinMin = randomStream.Next(countSamplesPerBinMinMax - countSamplesPerBinMinMin + 1) + countSamplesPerBinMinMin;
 
+      const size_t denominator = cCutPoints + size_t { 1 };
       const size_t cLongBinLength = static_cast<size_t>(
-         std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cCutPoints + 1)));
+         std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(denominator)));
 
       memset(featureValues, 0, sizeof(featureValues));
 
@@ -1255,7 +1264,8 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       }
       for(size_t iSample = 0; iSample < cSamples; ++iSample) {
          if(0 == featureValues[iSample]) {
-            featureValues[iSample] = static_cast<FloatEbmType>(randomStream.Next(randomValMax) + 1);
+            const size_t randomPlusOne = randomStream.Next(randomValMax) + size_t { 1 };
+            featureValues[iSample] = static_cast<FloatEbmType>(randomPlusOne);
          }
       }
 
@@ -1283,7 +1293,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          countPositiveInfinityExpected
       );
 
-      memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * countSamples);
+      memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * cSamples);
 
       IntEbmType countCutPointsForward = static_cast<IntEbmType>(cCutPoints);
       IntEbmType ret = GenerateQuantileCutPoints(
