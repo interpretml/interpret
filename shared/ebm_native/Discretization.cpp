@@ -828,6 +828,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
 
          if(StringToFloatChopped(strAvg, size_t { 0 }, lowChop, highChop)) {
             // TODO: something
+            exit(1);
          }
          // TODO: handle lowChop and/or highChop being out of bounds
 
@@ -852,14 +853,17 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
 
             if(StringToFloatChopped(strLow, i, lowLow, lowHigh)) {
                // TODO: something
+               exit(1);
             }
             // TODO: handle lowLow and/or lowHigh being out of bounds
             if(StringToFloatChopped(strAvg, i, avgLow, avgHigh)) {
                // TODO: something
+               exit(1);
             }
             // TODO: handle avgLow and/or avgHigh being out of bounds
             if(StringToFloatChopped(strHigh, i, highLow, highHigh)) {
                // TODO: something
+               exit(1);
             }
             // TODO: handle highLow and/or highHigh being out of bounds
 
@@ -3843,11 +3847,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                EBM_ASSERT(featureValues < pCut);
                EBM_ASSERT(pCut < featureValues + cSamples);
                const FloatEbmType valHigh = *pCut;
-               EBM_ASSERT(!isnan(valHigh));
-               EBM_ASSERT(!isinf(valHigh));
+               EBM_ASSERT(!std::isnan(valHigh));
+               EBM_ASSERT(!std::isinf(valHigh));
                const FloatEbmType valLow = *(pCut - size_t { 1 });
-               EBM_ASSERT(!isnan(valLow));
-               EBM_ASSERT(!isinf(valLow));
+               EBM_ASSERT(!std::isnan(valLow));
+               EBM_ASSERT(!std::isinf(valLow));
                const FloatEbmType cut = GetInterpretableCutPointFloat(valLow, valHigh);
                EBM_ASSERT(cutPointsLowerBoundInclusiveOut == pCutPointsLowerBoundInclusive || *(pCutPointsLowerBoundInclusive - size_t { 1 }) < cut);
                *pCutPointsLowerBoundInclusive = cut;
@@ -3929,20 +3933,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                EBM_ASSERT(featureValues + size_t { 1 } < pScaleHighLow);
                EBM_ASSERT(pScaleHighLow < featureValues + cSamples - size_t { 1 });
                const FloatEbmType scaleHighLow = *pScaleHighLow;
-               EBM_ASSERT(!isnan(scaleHighLow));
-               EBM_ASSERT(!isinf(scaleHighLow));
+               EBM_ASSERT(!std::isnan(scaleHighLow));
+               EBM_ASSERT(!std::isinf(scaleHighLow));
                const FloatEbmType * pScaleLowHigh = *apValueCutTops;
                EBM_ASSERT(featureValues < pScaleLowHigh);
                EBM_ASSERT(pScaleLowHigh < featureValues + cSamples - size_t { 2 });
                const FloatEbmType scaleLowHigh = *pScaleLowHigh;
-               EBM_ASSERT(!isnan(scaleLowHigh));
-               EBM_ASSERT(!isinf(scaleLowHigh));
+               EBM_ASSERT(!std::isnan(scaleLowHigh));
+               EBM_ASSERT(!std::isinf(scaleLowHigh));
                EBM_ASSERT(scaleLowHigh < scaleHighLow);
                // this is the inescapable scale of our graph, from the value right above the lowest cut to the value 
                // right below the highest cut
                const FloatEbmType scaleMin = scaleHighLow - scaleLowHigh;
-               EBM_ASSERT(!isnan(scaleMin));
-               EBM_ASSERT(!isinf(scaleMin));
+               EBM_ASSERT(!std::isnan(scaleMin));
+               EBM_ASSERT(!std::isinf(scaleMin));
                // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
                EBM_ASSERT(FloatEbmType { 0 } < scaleMin);
 
@@ -3963,15 +3967,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                EBM_ASSERT(size_t { 0 } < denominator);
                const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
 
-               EBM_ASSERT(!isnan(movementFromEnds));
-               EBM_ASSERT(!isinf(movementFromEnds));
+               EBM_ASSERT(!std::isnan(movementFromEnds));
+               EBM_ASSERT(!std::isinf(movementFromEnds));
                EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
 
                const FloatEbmType lowCutFullPrecisionMin = scaleLowHigh - movementFromEnds;
-               EBM_ASSERT(!isnan(lowCutFullPrecisionMin));
+               EBM_ASSERT(!std::isnan(lowCutFullPrecisionMin));
                EBM_ASSERT(lowCutFullPrecisionMin < std::numeric_limits<FloatEbmType>::max());
                const FloatEbmType highCutFullPrecisionMax = scaleHighLow + movementFromEnds;
-               EBM_ASSERT(!isnan(highCutFullPrecisionMax));
+               EBM_ASSERT(!std::isnan(highCutFullPrecisionMax));
                EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < highCutFullPrecisionMax);
 
                // TODO : correct lowCutFullPrecisionMax and highCutFullPrecisionMax so that it's different enough
@@ -3980,22 +3984,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                const FloatEbmType highCutMax = highCutFullPrecisionMax;
 
                const FloatEbmType lowCutExisting = *cutPointsLowerBoundInclusiveOut;
-               EBM_ASSERT(!isnan(lowCutExisting));
-               EBM_ASSERT(!isinf(lowCutExisting));
+               EBM_ASSERT(!std::isnan(lowCutExisting));
+               EBM_ASSERT(!std::isinf(lowCutExisting));
                const FloatEbmType highCutExisting = *(pCutPointsLowerBoundInclusive - size_t { 1 });
-               EBM_ASSERT(!isnan(highCutExisting));
-               EBM_ASSERT(!isinf(highCutExisting));
+               EBM_ASSERT(!std::isnan(highCutExisting));
+               EBM_ASSERT(!std::isinf(highCutExisting));
 
                if(lowCutExisting < lowCutMin) {
                   // lowCutMin can legally be -infinity, but then we wouldn't get here then
-                  EBM_ASSERT(!isnan(lowCutMin));
-                  EBM_ASSERT(!isinf(lowCutMin));
+                  EBM_ASSERT(!std::isnan(lowCutMin));
+                  EBM_ASSERT(!std::isinf(lowCutMin));
                   *cutPointsLowerBoundInclusiveOut = lowCutMin;
                }
                if(highCutMax < highCutExisting) {
                   // highCutMax can legally be +infinity, but then we wouldn't get here then
-                  EBM_ASSERT(!isnan(highCutMax));
-                  EBM_ASSERT(!isinf(highCutMax));
+                  EBM_ASSERT(!std::isnan(highCutMax));
+                  EBM_ASSERT(!std::isinf(highCutMax));
                   *(pCutPointsLowerBoundInclusive - size_t { 1 }) = highCutMax;
                }
             }
