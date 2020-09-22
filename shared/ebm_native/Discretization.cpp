@@ -338,9 +338,6 @@ static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
    EBM_ASSERT(!std::isinf(low));
    EBM_ASSERT(!std::isinf(high));
 
-   EBM_ASSERT(FloatEbmType { 0 } <= low);
-   EBM_ASSERT(FloatEbmType { 0 } < high);
-
    EBM_ASSERT(low < high); // if two numbers were equal, we wouldn't put a cut point between them
 
    static_assert(std::numeric_limits<FloatEbmType>::is_iec559,
@@ -407,101 +404,48 @@ static FloatEbmType GeometricMeanPositives(const FloatEbmType low, const FloatEb
    EBM_ASSERT(!std::isinf(low));
    EBM_ASSERT(!std::isinf(high));
 
-   EBM_ASSERT(FloatEbmType { 0 } <= low);
+   // we handle zeros outside of this function
+   EBM_ASSERT(FloatEbmType { 0 } < low);
    EBM_ASSERT(FloatEbmType { 0 } < high);
 
    EBM_ASSERT(low < high);
 
-   FloatEbmType result;
-   if(PREDICTABLE(FloatEbmType { 0 } == low)) {
-      // the geometric mean involving a zero would be zero, but that's not really helpful, and since our low
-      // value needs to be the zero, we can't return zero since we use lower bound inclusivity, so we need to return
-      // something else.  Using the arithmetic mean in this case seems appropriate, and it seems like it would
-      // be an "interpretable" result by the user.  To get this we just divide high by 2, since low is zero.
+   // in a reasonable world, with both low and high being non-zero, non-nan, non-infinity, and 
+   // positive values before calling log, log should return a non-overflowing or non-underflowing 
+   // value since all floating point values from -min to +max for floats give us reasonable log values.  
+   // Since our logs should average to a number that is between them, the exp value should result in a value 
+   // between them in almost all cases, so it shouldn't overflow or underflow either.  BUT, with floating
+   // point jitter, we might get any of these scenarios.  This is a real corner case that we can presume
+   // is very very very rare.
 
-      result = high * FloatEbmType { 0.5 };
-      EBM_ASSERT(!std::isnan(result));
-      EBM_ASSERT(!std::isinf(result)); // even in a pathalogic processor I don't see how this would get +-infinity
-      // high was positive, and it's hard to see how even a bad floating point implementation would make this negative.
-      EBM_ASSERT(FloatEbmType { 0 } <= result);
-      if(UNLIKELY(FloatEbmType { 0 } == result)) {
-         // if high is very small, underflow is possible.  In that case high must be very close to zero, so
-         // we can just return high.  We can't return zero since with lower bound inclusivity that would put zero
-         // in the wrong bin
-         result = high;
-      }
-   } else {
-      result = low * high;
-      EBM_ASSERT(!std::isnan(result)); // even a pathological implementation shouln't return NaN for this
-      EBM_ASSERT(FloatEbmType { 0 } <= result); // even a pathological implementation shouln't return a negative number
+   FloatEbmType result = std::exp((std::log(low) + std::log(high)) * FloatEbmType { 0.5 });
 
-      // comparing to max is a good way to check for +infinity without using infinity, which can be problematic on
-      // some compilers with some compiler settings.  Using <= helps avoid optimization away because the compiler
-      // might assume that nothing is larger than max if it thinks there's no +infinity.  If we reach exactly max, then
-      // no harm in computing via exp and log
-      if(UNLIKELY(UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= result) || 
-         UNLIKELY(result <= 1048576 * std::numeric_limits<FloatEbmType>::min()))) 
-      {
-         // if we overflow, which is certainly possible with multiplication, use an exponential approach.  If we 
-         // underflow to zero, or get close to it to the point we'd be losing precision, use an exponential approach.
+   // IEEE 754 doesn't give us a lot of guarantees about log and exp.  They don't have have "correct rounding"
+   // guarantees, unlike basic operators, so we could obtain results outside of our bounds, or perhaps
+   // even overflow or underflow in a way that would lead to infinities.  I can't think of a way to get NaN
+   // but who knows what's happening inside log, which would get NaN for zero and in a bad implementation
+   // perhaps might return that for subnormal floats.
+   //
+   // If our result is not between low and high, then low and high should be very close and we can use the
+   // arithmatic mean.  In the spirit of not trusting log and exp, we'll check for bad outputs and 
+   // switch to arithmatic mean.  In the case that we have nan or +-infinity, we aren't guaranteed that
+   // low and high are close, so we can't really use an approach were we move small epsilon values in 
+   // our floats, so the artithmetic mean is really our only viable falllback in that case.
+   //
+   // Even in the fully compliant IEEE 754 case, result could be equal to low, so we do need to handle that
+   // since we can't return the low value given we use lower bound inclusivity for cut points
 
-         EBM_ASSERT(FloatEbmType { 0 } < low);
-         EBM_ASSERT(FloatEbmType { 0 } < high);
-
-         // in a reasonable world, with both low and high being non-zero, non-nan, non-infinity, and 
-         // positive values before calling log, log should return a non-overflowing or non-underflowing 
-         // value since all floating point values from -min to +max for floats give us reasonable log values.  
-         // Since our logs should average to a number that is between them, the exp value should result in a value 
-         // between them in almost all cases, so it shouldn't overflow or underflow either.  BUT, with floating
-         // point jitter, we might get any of these scenarios.  This is a real corner case that we can presume
-         // is very very very rare.
-
-         // there is no way that the result of log is going to overflow, so we add before multiplying by 0.5 
-         // since multiplication is more expensive.
-
-         result = std::exp((std::log(low) + std::log(high)) * FloatEbmType { 0.5 });
-
-         // IEEE 754 doesn't give us a lot of guarantees about log and exp.  They don't have have "correct rounding"
-         // guarantees, unlike basic operators, so we could obtain results outside of our bounds, or perhaps
-         // even overflow or underflow in a way that would lead to infinities.  I can't think of a way to get NaN
-         // but who knows what's happening inside log, which would get NaN for zero and in a bad implementation
-         // perhaps might return that for subnormal floats.
-         //
-         // If our result is not between low and high, then low and high should be very close and we can use the
-         // arithmatic mean.  In the spirit of not trusting log and exp, we'll check for bad outputs and 
-         // switch to arithmatic mean.  In the case that we have nan or +-infinity, we aren't guaranteed that
-         // low and high are close, so we can't really use an approach were we move small epsilon values in 
-         // our floats, so the artithmetic mean is really our only viable falllback in that case.
-         //
-         // Even in the fully compliant IEEE 754 case, result could be equal to low, so we do need to handle that
-         // since we can't return the low value given we use lower bound inclusivity for cut points
-
-         // checking the bounds also checks for +-infinity
-         if(std::isnan(result) || result <= low || high < result) {
-            result = ArithmeticMean(low, high);
-         }
-      } else {
-         // multiplying two positive numbers or two negative numbers should never be negative, 
-         // even in a pathalogical floating point implemenation
-         EBM_ASSERT(FloatEbmType { 0 } <= result);
-         result = std::sqrt(result);
-         // even a pathological implementation shouln't return NaN for this
-         EBM_ASSERT(!std::isnan(result));
-         // no positive number should generate an infinity for sqrt in a reasonable implementation
-         EBM_ASSERT(!std::isinf(result));
-
-         // floating point jitter might have put us outside our bounds, but if that were to happen we'd be required
-         // to have very very close low and high results.  In that case we can just use the arithmetic mean.
-         if(UNLIKELY(UNLIKELY(result <= low) || UNLIKELY(high < result))) {
-            result = ArithmeticMean(low, high);
-         }
-      }
+   // checking the bounds also checks for +-infinity
+   if(std::isnan(result) || result <= low || high < result) {
+      result = ArithmeticMean(low, high);
    }
    return result;
 }
 
 // VERIFIED 2020-09
 static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
+   EBM_ASSERT(!std::isnan(val));
+   EBM_ASSERT(!std::isinf(val));
    EBM_ASSERT(FloatEbmType { 0 } <= val);
    EBM_ASSERT(nullptr != str);
 
@@ -714,6 +658,7 @@ INLINE_RELEASE_UNTEMPLATED static bool StringToFloatChopped(
    return false;
 }
 
+// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
    FloatEbmType low, 
    FloatEbmType high
@@ -736,114 +681,185 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
    // if our numbers pass the asserts above, all combinations of low and high values can get a legal cut point, 
    // since we can always return the high value given that our binning is lower bound inclusive
 
+   FloatEbmType lowChop;
+   FloatEbmType highChop;
+   char strAvg[k_cCharsFloatPrint];
+   FloatEbmType ret;
+
    bool bNegative = false;
-   if(low <= FloatEbmType { 0 }) {
-      if(FloatEbmType { 0 } == low) {
-         // TODO : SOMETHING
-      } else {
+   if(UNLIKELY(low <= FloatEbmType { 0 })) {
+      if(UNLIKELY(FloatEbmType { 0 } == low)) {
+         EBM_ASSERT(FloatEbmType { 0 } < high);
+         // half of any number should give us something with sufficient distance.  For instance probably the worse
+         // number would be something like 1.999999999999*10^1 where the division by two might round up to
+         // 1.000000000000*10^1.  In that case though, we'll find that 1*10^1 is closest to the average, and we'll
+         // choose that instead of the much farther away 2.000*10^1
 
-         if(FloatEbmType { 0 } <= high) {
-            if(FloatEbmType { 0 } == high) {
-               // TODO : SOMETHING
+         const FloatEbmType avg = high * FloatEbmType { 0.5 };
+         EBM_ASSERT(!std::isnan(avg));
+         EBM_ASSERT(!std::isinf(avg));
+         EBM_ASSERT(FloatEbmType { 0 } <= avg);
+         ret = high;
+         // check for underflow
+         if(LIKELY(FloatEbmType { 0 } != avg)) {
+            ret = avg;
+            if(LIKELY(!FloatToString(ret, strAvg)) && LIKELY(!StringToFloatChopped(strAvg, 0, lowChop, highChop))) {
+               EBM_ASSERT(!std::isnan(lowChop));
+               EBM_ASSERT(!std::isinf(lowChop));
+               // it's possible we could have chopped off digits such that we round down to zero
+               EBM_ASSERT(FloatEbmType { 0 } <= lowChop);
+               EBM_ASSERT(lowChop <= ret);
+               // check for underflow from digit chopping.  If this happens avg/high must be pretty close to zero
+               if(LIKELY(FloatEbmType { 0 } != lowChop)) {
+                  EBM_ASSERT(!std::isnan(highChop));
+                  EBM_ASSERT(!std::isinf(highChop));
+                  EBM_ASSERT(FloatEbmType { 0 } < highChop);
+                  EBM_ASSERT(ret <= highChop);
+
+                  const FloatEbmType highDistance = highChop - ret;
+                  EBM_ASSERT(!std::isnan(highDistance));
+                  EBM_ASSERT(!std::isinf(highDistance));
+                  EBM_ASSERT(FloatEbmType { 0 } <= highDistance);
+                  const FloatEbmType lowDistance = ret - lowChop;
+                  EBM_ASSERT(!std::isnan(lowDistance));
+                  EBM_ASSERT(!std::isinf(lowDistance));
+                  EBM_ASSERT(FloatEbmType { 0 } <= lowDistance);
+
+                  ret = UNPREDICTABLE(highDistance <= lowDistance) ? highChop : lowChop;
+               }
             }
-
-            // if low is negative and high is zero or positive, a natural cut point is zero.  Also, this solves the issue
-            // that we can't take the geometric mean of mixed positive/negative numbers.  This works since we use 
-            // lower bound inclusivity, so a cut point of 0 will include the number 0 in the upper bin.  Normally we try 
-            // to avoid putting a cut directly on one of the numbers, but in the case of zero it seems appropriate.
-            return FloatEbmType { 0 };
          }
-         const FloatEbmType tmpLow = low;
-         low = -high;
-         high = -tmpLow;
-         bNegative = true;
+
+         EBM_ASSERT(!std::isnan(ret));
+         EBM_ASSERT(!std::isinf(ret));
+         EBM_ASSERT(low < ret);
+         EBM_ASSERT(ret <= high);
+
+         return ret;
       }
+
+      if(UNLIKELY(FloatEbmType { 0 } <= high)) {
+         // if low is negative and high is zero or positive, a natural cut point is zero.  Also, this solves the issue
+         // that we can't take the geometric mean of mixed positive/negative numbers.  This works since we use 
+         // lower bound inclusivity, so a cut point of 0 will include the number 0 in the upper bin.  Normally we try 
+         // to avoid putting a cut directly on one of the numbers, but in the case of zero it seems appropriate.
+         ret = FloatEbmType { 0 };
+         if(UNLIKELY(FloatEbmType { 0 } == high)) {
+            // half of any number should give us something with sufficient distance.  For instance probably the worse
+            // number would be something like 1.999999999999*10^1 where the division by two might round up to
+            // 1.000000000000*10^1.  In that case though, we'll find that 1*10^1 is closest to the average, and we'll
+            // choose that instead of the much farther away 2.000*10^1
+
+            ret = low * FloatEbmType { -0.5 };
+            EBM_ASSERT(!std::isnan(ret));
+            EBM_ASSERT(!std::isinf(ret));
+            EBM_ASSERT(FloatEbmType { 0 } <= ret);
+
+            if(LIKELY(!FloatToString(ret, strAvg)) && LIKELY(!StringToFloatChopped(strAvg, 0, lowChop, highChop))) {
+               EBM_ASSERT(!std::isnan(lowChop));
+               EBM_ASSERT(!std::isinf(lowChop));
+               // it's possible we could have chopped off digits such that we round down to zero
+               EBM_ASSERT(FloatEbmType { 0 } <= lowChop);
+               EBM_ASSERT(lowChop <= ret);
+
+               EBM_ASSERT(!std::isnan(highChop));
+               EBM_ASSERT(!std::isinf(highChop));
+               EBM_ASSERT(FloatEbmType { 0 } < highChop);
+               EBM_ASSERT(ret <= highChop);
+
+               const FloatEbmType highDistance = highChop - ret;
+               EBM_ASSERT(!std::isnan(highDistance));
+               EBM_ASSERT(!std::isinf(highDistance));
+               EBM_ASSERT(FloatEbmType { 0 } <= highDistance);
+               const FloatEbmType lowDistance = ret - lowChop;
+               EBM_ASSERT(!std::isnan(lowDistance));
+               EBM_ASSERT(!std::isinf(lowDistance));
+               EBM_ASSERT(FloatEbmType { 0 } <= lowDistance);
+
+               ret = UNPREDICTABLE(highDistance <= lowDistance) ? highChop : lowChop;
+            }
+            ret = -ret;
+         }
+
+         EBM_ASSERT(!std::isnan(ret));
+         EBM_ASSERT(!std::isinf(ret));
+         EBM_ASSERT(low < ret);
+         EBM_ASSERT(ret <= high);
+
+         return ret;
+      }
+
+      const FloatEbmType tmpLow = low;
+      low = -high;
+      high = -tmpLow;
+      bNegative = true;
    } else {
       EBM_ASSERT(FloatEbmType { 0 } < high);
    }
 
-   EBM_ASSERT(FloatEbmType { 0 } <= low);
+   EBM_ASSERT(FloatEbmType { 0 } < low);
    EBM_ASSERT(FloatEbmType { 0 } < high);
+   EBM_ASSERT(low < high);
    EBM_ASSERT(low < std::numeric_limits<FloatEbmType>::max());
    EBM_ASSERT(high <= std::numeric_limits<FloatEbmType>::max());
 
-   char strLow[k_cCharsFloatPrint];
+   // divide by high since it's guaranteed to be bigger than low, so we can't blow up to infinity
+   const FloatEbmType ratio = low / high;
+   EBM_ASSERT(!std::isnan(ratio));
+   EBM_ASSERT(!std::isinf(ratio));
+   EBM_ASSERT(ratio <= FloatEbmType { 1 });
+   EBM_ASSERT(FloatEbmType { 0 } <= ratio);
 
-   FloatEbmType lowChop;
-   FloatEbmType highChop;
+   // don't transition on a perfect 1000 ratio from arithmetic to geometric mean since many of our numbers
+   // are probably going to be whole numbers and we don't want floating point inexactness to dictate the
+   // transition, so choose a number just slightly lower than 1000, in this case 996.18959224497322090157279627358
+   if(ratio < FloatEbmType { 0.001003824982498 }) {
+      ret = GeometricMeanPositives(low, high);
+      EBM_ASSERT(!std::isnan(ret));
+      EBM_ASSERT(!std::isinf(ret));
+      EBM_ASSERT(low < ret);
+      EBM_ASSERT(ret <= high);
 
-   FloatEbmType ret = high; // our fallback is high
-   if(std::numeric_limits<FloatEbmType>::max() == high) {
-      // ignore the high value since it's clearly not a natural number.  We should focus on putting the cut
-      // close to the low value which should have more meaning
+      if(LIKELY(LIKELY(!FloatToString(ret, strAvg)) && 
+         LIKELY(!StringToFloatChopped(strAvg, size_t { 0 }, lowChop, highChop)))) 
+      {
+         // avg / low == high / avg (approximately) since it's the geometric mean
+         // the lowChop or highChop side that is closest to the average will be farthest away
+         // from it's corresponding low/high value
+         // since we don't want infinties, we divide the smaller number by the bigger one
+         // the smallest number means it has the longest distance from the low/high value, hense it's closer
+         // to the average
 
-      if(FloatToString(low, strLow)) {
-         goto done;
+         EBM_ASSERT(low < lowChop);
+         const FloatEbmType lowRatio = low / lowChop;
+         EBM_ASSERT(!std::isnan(lowRatio));
+         EBM_ASSERT(!std::isinf(lowRatio));
+         EBM_ASSERT(lowRatio <= FloatEbmType { 1 });
+         EBM_ASSERT(FloatEbmType { 0 } <= lowRatio);
+
+         EBM_ASSERT(highChop < high);
+         const FloatEbmType highRatio = highChop / high;
+         EBM_ASSERT(!std::isnan(highRatio));
+         EBM_ASSERT(!std::isinf(highRatio));
+         EBM_ASSERT(highRatio <= FloatEbmType { 1 });
+         EBM_ASSERT(FloatEbmType { 0 } <= highRatio);
+
+         ret = UNPREDICTABLE(lowRatio <= highRatio) ? lowChop : highChop;
       }
-
-      StringToFloatChopped(strLow, size_t { 0 }, lowChop, ret);
-      // ignore the return since we previously set ret to high
-
-      EBM_ASSERT(ret <= high); // it's hard to be above std::numeric_limits<FloatEbmType>::max()
-      if(ret <= low) {
-         ret = high;
-      }
-
-      goto done;
    } else {
-      char strAvg[k_cCharsFloatPrint];
+      ret = ArithmeticMean(low, high);
+      EBM_ASSERT(!std::isnan(ret));
+      EBM_ASSERT(!std::isinf(ret));
+      EBM_ASSERT(low < ret);
+      EBM_ASSERT(ret <= high);
+
+      char strLow[k_cCharsFloatPrint];
       char strHigh[k_cCharsFloatPrint];
-
-      if(FloatToString(low, strLow)) {
-         goto done;
-      }
-      if(FloatToString(high, strHigh)) {
-         goto done;
-      }
-      int lowExp = GetExponent(strLow);
-      int highExp = GetExponent(strHigh);
-
-      EBM_ASSERT(lowExp <= highExp);
-
-      FloatEbmType avg;
-      if(lowExp + 2 <= highExp) {
-         avg = GeometricMeanPositives(low, high);
-      } else {
-         avg = ArithmeticMean(low, high);
-      }
-      EBM_ASSERT(!std::isnan(avg));
-      EBM_ASSERT(!std::isinf(avg));
-      EBM_ASSERT(low < avg);
-      EBM_ASSERT(avg <= high);
-
-      if(FloatToString(avg, strAvg)) {
-         goto done;
-      }
-
-      // TODO: instead of using a difference in the number of digits, use a proportial measurement that needs to
-      // be 100 higher.  
-      if(lowExp + 2 <= highExp) {
-         EBM_ASSERT(low < avg);
-         EBM_ASSERT(avg < high);
-
-         if(StringToFloatChopped(strAvg, size_t { 0 }, lowChop, highChop)) {
-            // TODO: something
-            exit(1);
-         }
-         // TODO: handle lowChop and/or highChop being out of bounds
-
-         // TODO : handle low == 0.  We probalby want to invert these divisions, or change them to multiplications
-         const FloatEbmType highRatio = high / lowChop;
-         const FloatEbmType lowRatio = highChop / low;
-
-         if(highRatio <= lowRatio) {
-            ret = lowChop;
-         } else {
-            ret = highChop;
-         }
-         goto done;
-      } else {
-         for(size_t i = 0; i < k_cDigitsAfterPeriod; ++i) {
+      if(LIKELY(LIKELY(!FloatToString(low, strLow)) && 
+         LIKELY(!FloatToString(high, strHigh)) && LIKELY(!FloatToString(ret, strAvg)))) 
+      {
+         size_t iTruncateMantissa = size_t { 0 };
+         do {
             FloatEbmType lowLow;
             FloatEbmType lowHigh;
             FloatEbmType avgLow;
@@ -851,51 +867,44 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
             FloatEbmType highLow;
             FloatEbmType highHigh;
 
-            if(StringToFloatChopped(strLow, i, lowLow, lowHigh)) {
-               // TODO: something
-               exit(1);
+            if(UNLIKELY(StringToFloatChopped(strLow, iTruncateMantissa, lowLow, lowHigh))) {
+               break;
             }
-            // TODO: handle lowLow and/or lowHigh being out of bounds
-            if(StringToFloatChopped(strAvg, i, avgLow, avgHigh)) {
-               // TODO: something
-               exit(1);
+            if(UNLIKELY(StringToFloatChopped(strAvg, iTruncateMantissa, avgLow, avgHigh))) {
+               break;
             }
-            // TODO: handle avgLow and/or avgHigh being out of bounds
-            if(StringToFloatChopped(strHigh, i, highLow, highHigh)) {
-               // TODO: something
-               exit(1);
+            if(UNLIKELY(StringToFloatChopped(strHigh, iTruncateMantissa, highLow, highHigh))) {
+               break;
             }
-            // TODO: handle highLow and/or highHigh being out of bounds
 
             if(lowHigh < avgLow && avgLow < highLow && low < avgLow && avgLow <= high) {
                // avgLow is a possibility
                if(lowHigh < avgHigh && avgHigh < highLow && low < avgHigh && avgHigh <= high) {
                   // avgHigh is a possibility
-                  FloatEbmType lowDistance = high - avgLow;
-                  FloatEbmType highDistance = avgHigh - low;
-                  if(highDistance < lowDistance) {
+                  const FloatEbmType lowDistanceToAverage = ret - avgLow;
+                  const FloatEbmType highDistanceToAverage = avgHigh - ret;
+                  EBM_ASSERT(-0.000001 < lowDistanceToAverage);
+                  EBM_ASSERT(-0.000001 < highDistanceToAverage);
+                  if(UNPREDICTABLE(highDistanceToAverage < lowDistanceToAverage)) {
                      ret = avgHigh;
-                     goto done;
+                     break;
                   }
                }
                ret = avgLow;
-               goto done;
+               break;
             } else {
                if(lowHigh < avgHigh && avgHigh < highLow && low < avgHigh && avgHigh <= high) {
-                  // avgHigh is a possibility
+                  // avgHigh works!
                   ret = avgHigh;
-                  goto done;
+                  break;
                }
             }
-         }
 
-         // this was already checked to be valid
-         ret = avg;
+            ++iTruncateMantissa;
+         } while(k_cDigitsAfterPeriod != iTruncateMantissa);
       }
    }
-
-done:;
-   if(bNegative) {
+   if(PREDICTABLE(bNegative)) {
       ret = -ret;
    }
    return ret;

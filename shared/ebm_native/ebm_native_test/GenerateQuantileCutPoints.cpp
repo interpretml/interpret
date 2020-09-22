@@ -250,7 +250,7 @@ TEST_CASE("GenerateQuantileCutPoints, positive and +infinity") {
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 11, std::numeric_limits<FloatEbmType>::infinity() };
-   const std::vector<FloatEbmType> expectedCutPoints { 20 };
+   const std::vector<FloatEbmType> expectedCutPoints { 4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -267,7 +267,7 @@ TEST_CASE("GenerateQuantileCutPoints, positive and +max") {
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 11, std::numeric_limits<FloatEbmType>::max() };
-   const std::vector<FloatEbmType> expectedCutPoints { 20 };
+   const std::vector<FloatEbmType> expectedCutPoints { 4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -297,11 +297,11 @@ TEST_CASE("GenerateQuantileCutPoints, one and +max minus one tick backwards") {
 }
 
 TEST_CASE("GenerateQuantileCutPoints, zero and +max") {
-   constexpr bool bTestReverse = false; // the reverse is gives us zero because we have negative and positive numbers
+   constexpr bool bTestReverse = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 0, std::numeric_limits<FloatEbmType>::max() };
-   const std::vector<FloatEbmType> expectedCutPoints { 1 };
+   const std::vector<FloatEbmType> expectedCutPoints { 9e+307 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -335,7 +335,7 @@ TEST_CASE("GenerateQuantileCutPoints, negative and -infinity") {
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -11, -std::numeric_limits<FloatEbmType>::infinity() };
-   const std::vector<FloatEbmType> expectedCutPoints { -20 };
+   const std::vector<FloatEbmType> expectedCutPoints { -4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -352,7 +352,7 @@ TEST_CASE("GenerateQuantileCutPoints, negative and lowest") {
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -11, std::numeric_limits<FloatEbmType>::lowest() };
-   const std::vector<FloatEbmType> expectedCutPoints { -20 };
+   const std::vector<FloatEbmType> expectedCutPoints { -4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -382,11 +382,11 @@ TEST_CASE("GenerateQuantileCutPoints, -1 and lowest plus one tick backwards") {
 }
 
 TEST_CASE("GenerateQuantileCutPoints, zero and lowest") {
-   constexpr bool bTestReverse = false; // the reverse is gives us zero because we have negative and positive numbers
+   constexpr bool bTestReverse = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 0, std::numeric_limits<FloatEbmType>::lowest() };
-   const std::vector<FloatEbmType> expectedCutPoints { 0 };
+   const std::vector<FloatEbmType> expectedCutPoints { -9e+307 };
 
    TestQuantileBinning(
       testCaseHidden,
