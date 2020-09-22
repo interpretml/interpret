@@ -328,7 +328,10 @@ INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
 }
 
 // VERIFIED 2020-09
-static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType high) noexcept {
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType ArithmeticMean(
+   const FloatEbmType low, 
+   const FloatEbmType high
+) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
    EBM_ASSERT(!std::isnan(low));
    EBM_ASSERT(!std::isnan(high));
@@ -395,7 +398,7 @@ static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
 }
 
 // VERIFIED 2020-09
-static FloatEbmType GeometricMeanPositives(const FloatEbmType low, const FloatEbmType high) noexcept {
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType GeometricMeanPositives(const FloatEbmType low, const FloatEbmType high) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
    EBM_ASSERT(!std::isnan(low));
    EBM_ASSERT(!std::isnan(high));
@@ -527,7 +530,12 @@ INLINE_RELEASE_UNTEMPLATED static long GetExponent(const char * const str) noexc
 }
 
 // VERIFIED 2020-09
-INLINE_ALWAYS static FloatEbmType StringToFloat(const char * const str) noexcept {
+static FloatEbmType StringToFloatWithFixup(
+   const char * const str, 
+   const size_t iIdenticalCharsRequired
+) noexcept {
+   char strRehydrate[k_cCharsFloatPrint];
+
    // we only convert str values that we've verified to conform, OR chopped versions of these which we know to be legal
    // If the chopped representations underflow (possible on chopping to lower) or 
    // overflow (possible when we increment from the lower chopped value), then strtod gives 
@@ -540,27 +548,17 @@ INLINE_ALWAYS static FloatEbmType StringToFloat(const char * const str) noexcept
    // +-infinity for at least some implementations.  We can't really take a ratio from those numbers, so convert
    // this to the lowest and max values
 
-   FloatEbmType val = strtod(str, nullptr);
+   FloatEbmType ret = strtod(str, nullptr);
 
    // this is a check for -infinity/-HUGE_VAL, without the -infinity value since some compilers make that illegal
    // even so far as to make isinf always FALSE with some compiler flags
    // include the equals case so that the compiler is less likely to optimize that out
-   val = val <= std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
+   ret = ret <= std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : ret;
    // this is a check for +infinity/HUGE_VAL, without the +infinity value since some compilers make that illegal
    // even so far as to make isinf always FALSE with some compiler flags
    // include the equals case so that the compiler is less likely to optimize that out
-   val = std::numeric_limits<FloatEbmType>::max() <= val ? std::numeric_limits<FloatEbmType>::max() : val;
+   ret = std::numeric_limits<FloatEbmType>::max() <= ret ? std::numeric_limits<FloatEbmType>::max() : ret;
 
-   return val;
-}
-
-// VERIFIED 2020-09
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType StringToFloatWithFixup(
-   const char * const str, 
-   const size_t iIdenticalCharsRequired
-) noexcept {
-   char strRehydrate[k_cCharsFloatPrint];
-   FloatEbmType ret = StringToFloat(str);
    if(FloatToString(ret, strRehydrate)) {
       return ret;
    }
@@ -579,11 +577,11 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType StringToFloatWithFixup(
 }
 
 // VERIFIED 2020-09
-INLINE_RELEASE_UNTEMPLATED static bool StringToFloatChopped(
+static bool StringToFloatChopped(
    const char * const pStr,
    size_t iTruncateMantissaTextDigitsAfterFirstDigit,
-   FloatEbmType & lowChopOut,
-   FloatEbmType & highChopOut
+   FloatEbmType * const pLowChopOut,
+   FloatEbmType * const pHighChopOut
 ) noexcept {
    // the lowChopOut returned can be equal to highChopOut if pStr is an overflow
 
@@ -605,61 +603,64 @@ INLINE_RELEASE_UNTEMPLATED static bool StringToFloatChopped(
    memcpy(strTruncated, pStr, iTruncateTextAfter * sizeof(*pStr));
    strcpy(&strTruncated[iTruncateTextAfter], &pStr[k_iExp]);
 
-   lowChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);
-
-   char * pDigit = &strTruncated[iTruncateTextAfter - size_t { 1 }];
-   char ch;
-   if(size_t { 2 } == iTruncateTextAfter) {
-      goto start_at_top;
+   if(PREDICTABLE(nullptr != pLowChopOut)) {
+      *pLowChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);
    }
-   while(true) {
-      ch = *pDigit;
-      if('.' == ch) {
-         --pDigit;
-      start_at_top:;
-         EBM_ASSERT(strTruncated + size_t { 1 } == pDigit);
+   if(PREDICTABLE(nullptr != pHighChopOut)) {
+      char * pDigit = &strTruncated[iTruncateTextAfter - size_t { 1 }];
+      char ch;
+      if(size_t { 2 } == iTruncateTextAfter) {
+         goto start_at_top;
+      }
+      while(true) {
          ch = *pDigit;
-         if('9' == ch) {
-            // oh, great.  now we need to increment our exponential
-            int exponent = GetExponent(pStr) + int { 1 };
-            *pDigit = '1';
-            *(pDigit + size_t { 1 }) = 'e';
+         if('.' == ch) {
+            --pDigit;
+         start_at_top:;
+            EBM_ASSERT(strTruncated + size_t { 1 } == pDigit);
+            ch = *pDigit;
+            if('9' == ch) {
+               // oh, great.  now we need to increment our exponential
+               int exponent = GetExponent(pStr) + int { 1 };
+               *pDigit = '1';
+               *(pDigit + size_t { 1 }) = 'e';
 
-            constexpr static char g_pPrintfLongInt[] = "%+d";
-            // for the size -> one for the '+' or '-' sign, k_cExponentTextDigits for the digits, 1 for null terminator
-            int cCharsWithoutNullTerminator = snprintf(
-               pDigit + size_t { 2 },
-               size_t { 1 } + k_cExponentTextDigits + size_t { 1 },
-               g_pPrintfLongInt,
-               exponent
-            );
-            if(cCharsWithoutNullTerminator <= int { 1 } || 
-               int { size_t { 1 } + k_cExponentTextDigits } < cCharsWithoutNullTerminator) 
-            {
-               return true;
+               constexpr static char g_pPrintfLongInt[] = "%+d";
+               // for the size -> one for the '+' or '-' sign, k_cExponentTextDigits for the digits, 1 for null terminator
+               int cCharsWithoutNullTerminator = snprintf(
+                  pDigit + size_t { 2 },
+                  size_t { 1 } + k_cExponentTextDigits + size_t { 1 },
+                  g_pPrintfLongInt,
+                  exponent
+               );
+               if(cCharsWithoutNullTerminator <= int { 1 } ||
+                  int { size_t { 1 } + k_cExponentTextDigits } < cCharsWithoutNullTerminator) 
+               {
+                  return true;
+               }
+               // we don't have all those '9' characters anymore to check.  we just need the 1
+               iTruncateTextAfter = size_t { 2 };
+            } else {
+               EBM_ASSERT('0' <= ch && ch <= '8');
+               *pDigit = ch + char { 1 };
             }
-            // we don't have all those '9' characters anymore to check.  we just need the 1
-            iTruncateTextAfter = size_t { 2 };
+            break;
+         } else if('9' == ch) {
+            *pDigit = '0';
+            --pDigit;
          } else {
             EBM_ASSERT('0' <= ch && ch <= '8');
             *pDigit = ch + char { 1 };
+            break;
          }
-         break;
-      } else if('9' == ch) {
-         *pDigit = '0';
-         --pDigit;
-      } else {
-         EBM_ASSERT('0' <= ch && ch <= '8');
-         *pDigit = ch + char { 1 };
-         break;
       }
+      *pHighChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);
    }
-   highChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);
    return false;
 }
 
 // VERIFIED 2020-09
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
+static FloatEbmType GetInterpretableCutPointFloat(
    FloatEbmType low, 
    FloatEbmType high
 ) noexcept {
@@ -703,7 +704,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
          // check for underflow
          if(LIKELY(FloatEbmType { 0 } != avg)) {
             ret = avg;
-            if(LIKELY(!FloatToString(ret, strAvg)) && LIKELY(!StringToFloatChopped(strAvg, 0, lowChop, highChop))) {
+            if(LIKELY(!FloatToString(ret, strAvg)) && LIKELY(!StringToFloatChopped(strAvg, 0, &lowChop, &highChop))) {
                EBM_ASSERT(!std::isnan(lowChop));
                EBM_ASSERT(!std::isinf(lowChop));
                // it's possible we could have chopped off digits such that we round down to zero
@@ -755,7 +756,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
             EBM_ASSERT(!std::isinf(ret));
             EBM_ASSERT(FloatEbmType { 0 } <= ret);
 
-            if(LIKELY(!FloatToString(ret, strAvg)) && LIKELY(!StringToFloatChopped(strAvg, 0, lowChop, highChop))) {
+            if(LIKELY(!FloatToString(ret, strAvg)) && LIKELY(!StringToFloatChopped(strAvg, 0, &lowChop, &highChop))) {
                EBM_ASSERT(!std::isnan(lowChop));
                EBM_ASSERT(!std::isinf(lowChop));
                // it's possible we could have chopped off digits such that we round down to zero
@@ -821,7 +822,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
       EBM_ASSERT(ret <= high);
 
       if(LIKELY(LIKELY(!FloatToString(ret, strAvg)) && 
-         LIKELY(!StringToFloatChopped(strAvg, size_t { 0 }, lowChop, highChop)))) 
+         LIKELY(!StringToFloatChopped(strAvg, size_t { 0 }, &lowChop, &highChop)))) 
       {
          // avg / low == high / avg (approximately) since it's the geometric mean
          // the lowChop or highChop side that is closest to the average will be farthest away
@@ -860,20 +861,18 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
       {
          size_t iTruncateMantissa = size_t { 0 };
          do {
-            FloatEbmType lowLow;
             FloatEbmType lowHigh;
             FloatEbmType avgLow;
             FloatEbmType avgHigh;
             FloatEbmType highLow;
-            FloatEbmType highHigh;
 
-            if(UNLIKELY(StringToFloatChopped(strLow, iTruncateMantissa, lowLow, lowHigh))) {
+            if(UNLIKELY(StringToFloatChopped(strLow, iTruncateMantissa, nullptr, &lowHigh))) {
                break;
             }
-            if(UNLIKELY(StringToFloatChopped(strAvg, iTruncateMantissa, avgLow, avgHigh))) {
+            if(UNLIKELY(StringToFloatChopped(strAvg, iTruncateMantissa, &avgLow, &avgHigh))) {
                break;
             }
-            if(UNLIKELY(StringToFloatChopped(strHigh, iTruncateMantissa, highLow, highHigh))) {
+            if(UNLIKELY(StringToFloatChopped(strHigh, iTruncateMantissa, &highLow, nullptr))) {
                break;
             }
 
@@ -935,7 +934,7 @@ INLINE_RELEASE_UNTEMPLATED static void IronCuts() noexcept {
 }
 
 // VERIFIED 2020-09
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType CalculatePriority(
+static FloatEbmType CalculatePriority(
    const FloatEbmType iValLowerFloat,
    const FloatEbmType iValHigherFloat,
    const CutPoint * const pCutCur
@@ -2684,7 +2683,7 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
 
 // VERIFIED 08-2020
 template<typename T>
-INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
+static void FillTiebreakers(
    const bool bSymmetryReversal,
    RandomStream * const pRandomStream,
    const size_t cItems,
