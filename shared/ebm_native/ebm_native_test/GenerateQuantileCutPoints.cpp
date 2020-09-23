@@ -64,6 +64,7 @@ void GetExpectedStats(
 void TestQuantileBinning(
    TestCaseHidden & testCaseHidden,
    const bool bTestReverse,
+   const bool bSmart,
    const size_t cCutPointsMax,
    const size_t cSamplesPerBinMin,
    const std::vector<FloatEbmType> featureValues,
@@ -107,6 +108,7 @@ void TestQuantileBinning(
       featureValues1.size(),
       0 == featureValues1.size() ? nullptr : &featureValues1[0],
       countSamplesPerBinMin,
+      bSmart ? EBM_TRUE : EBM_FALSE,
       k_randomSeed,
       &countCutPoints,
       &cutPointsLowerBoundInclusive[1],
@@ -145,6 +147,7 @@ void TestQuantileBinning(
          featureValues2.size(),
          0 == featureValues2.size() ? nullptr : &featureValues2[0],
          countSamplesPerBinMin,
+         bSmart ? EBM_TRUE : EBM_FALSE,
          k_randomSeed,
          &countCutPoints,
          &cutPointsLowerBoundInclusive[1],
@@ -179,6 +182,7 @@ void TestQuantileBinning(
 
 TEST_CASE("GenerateQuantileCutPoints, 0 samples") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { };
@@ -187,6 +191,7 @@ TEST_CASE("GenerateQuantileCutPoints, 0 samples") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -196,6 +201,7 @@ TEST_CASE("GenerateQuantileCutPoints, 0 samples") {
 
 TEST_CASE("GenerateQuantileCutPoints, only missing") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::quiet_NaN(), std::numeric_limits<FloatEbmType>::signaling_NaN() };
@@ -204,6 +210,7 @@ TEST_CASE("GenerateQuantileCutPoints, only missing") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -213,6 +220,7 @@ TEST_CASE("GenerateQuantileCutPoints, only missing") {
 
 TEST_CASE("GenerateQuantileCutPoints, zero cuts") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 0;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 1, 2 };
@@ -221,6 +229,7 @@ TEST_CASE("GenerateQuantileCutPoints, zero cuts") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -230,6 +239,7 @@ TEST_CASE("GenerateQuantileCutPoints, zero cuts") {
 
 TEST_CASE("GenerateQuantileCutPoints, too small") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 5 };
@@ -238,6 +248,7 @@ TEST_CASE("GenerateQuantileCutPoints, too small") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -247,6 +258,7 @@ TEST_CASE("GenerateQuantileCutPoints, too small") {
 
 TEST_CASE("GenerateQuantileCutPoints, positive and +infinity") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 11, std::numeric_limits<FloatEbmType>::infinity() };
@@ -255,6 +267,7 @@ TEST_CASE("GenerateQuantileCutPoints, positive and +infinity") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -264,6 +277,7 @@ TEST_CASE("GenerateQuantileCutPoints, positive and +infinity") {
 
 TEST_CASE("GenerateQuantileCutPoints, positive and +max") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 11, std::numeric_limits<FloatEbmType>::max() };
@@ -272,6 +286,7 @@ TEST_CASE("GenerateQuantileCutPoints, positive and +max") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -281,6 +296,7 @@ TEST_CASE("GenerateQuantileCutPoints, positive and +max") {
 
 TEST_CASE("GenerateQuantileCutPoints, one and +max minus one tick backwards") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { FloatEbmType { 1 }, std::nextafter(std::numeric_limits<FloatEbmType>::max(), FloatEbmType { 0 }) };
@@ -289,6 +305,7 @@ TEST_CASE("GenerateQuantileCutPoints, one and +max minus one tick backwards") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -298,6 +315,7 @@ TEST_CASE("GenerateQuantileCutPoints, one and +max minus one tick backwards") {
 
 TEST_CASE("GenerateQuantileCutPoints, zero and +max") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 0, std::numeric_limits<FloatEbmType>::max() };
@@ -306,6 +324,7 @@ TEST_CASE("GenerateQuantileCutPoints, zero and +max") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -315,6 +334,7 @@ TEST_CASE("GenerateQuantileCutPoints, zero and +max") {
 
 TEST_CASE("GenerateQuantileCutPoints, negative and +max") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -11, std::numeric_limits<FloatEbmType>::max() };
@@ -323,6 +343,7 @@ TEST_CASE("GenerateQuantileCutPoints, negative and +max") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -332,6 +353,7 @@ TEST_CASE("GenerateQuantileCutPoints, negative and +max") {
 
 TEST_CASE("GenerateQuantileCutPoints, negative and -infinity") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -11, -std::numeric_limits<FloatEbmType>::infinity() };
@@ -340,6 +362,7 @@ TEST_CASE("GenerateQuantileCutPoints, negative and -infinity") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -349,6 +372,7 @@ TEST_CASE("GenerateQuantileCutPoints, negative and -infinity") {
 
 TEST_CASE("GenerateQuantileCutPoints, negative and lowest") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -11, std::numeric_limits<FloatEbmType>::lowest() };
@@ -357,6 +381,7 @@ TEST_CASE("GenerateQuantileCutPoints, negative and lowest") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -366,6 +391,7 @@ TEST_CASE("GenerateQuantileCutPoints, negative and lowest") {
 
 TEST_CASE("GenerateQuantileCutPoints, -1 and lowest plus one tick backwards") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { FloatEbmType { -1 }, std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }) };
@@ -374,6 +400,7 @@ TEST_CASE("GenerateQuantileCutPoints, -1 and lowest plus one tick backwards") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -383,6 +410,7 @@ TEST_CASE("GenerateQuantileCutPoints, -1 and lowest plus one tick backwards") {
 
 TEST_CASE("GenerateQuantileCutPoints, zero and lowest") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 0, std::numeric_limits<FloatEbmType>::lowest() };
@@ -391,6 +419,7 @@ TEST_CASE("GenerateQuantileCutPoints, zero and lowest") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -400,6 +429,7 @@ TEST_CASE("GenerateQuantileCutPoints, zero and lowest") {
 
 TEST_CASE("GenerateQuantileCutPoints, positive and lowest") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 11, std::numeric_limits<FloatEbmType>::lowest() };
@@ -408,6 +438,7 @@ TEST_CASE("GenerateQuantileCutPoints, positive and lowest") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -417,6 +448,7 @@ TEST_CASE("GenerateQuantileCutPoints, positive and lowest") {
 
 TEST_CASE("GenerateQuantileCutPoints, splitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 0, 1, 2, 3 };
@@ -425,6 +457,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -434,6 +467,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, splitable (first interior check not splitable)") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 3;
    const std::vector<FloatEbmType> featureValues { 0, 1, 5, 5, 7, 8, 9 };
@@ -442,6 +476,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable (first interior check not splita
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -451,6 +486,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable (first interior check not splita
 
 TEST_CASE("GenerateQuantileCutPoints, splitable except middle isn't available") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 3;
    const std::vector<FloatEbmType> featureValues { 0, 1, 5, 5, 8, 9 };
@@ -459,6 +495,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable except middle isn't available") 
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -468,6 +505,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable except middle isn't available") 
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 5, 5, 5, 5 };
@@ -476,6 +514,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -485,6 +524,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 5, 5, 5 };
@@ -493,6 +533,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -502,6 +543,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+right") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 5, 5, 5, 9 };
@@ -510,6 +552,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+right") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -519,6 +562,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+right") {
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+right") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 5, 5, 9 };
@@ -527,6 +571,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+right") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -536,6 +581,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+right") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 4, 4, 6, 6 };
@@ -544,6 +590,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -553,6 +600,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 4, 4, 6, 6, 6 };
@@ -561,6 +609,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+unsplitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -570,6 +619,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 4, 4, 6, 6, 6, 9 };
@@ -578,6 +628,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable+right") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -587,6 +638,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable+right") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 4, 4, 4, 5, 6, 6 };
@@ -595,6 +647,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -604,6 +657,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+mid+unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 4, 4, 5, 6, 6 };
@@ -612,6 +666,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+mid+unsplitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -621,6 +676,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+mid+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable+right") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 4, 4, 5, 6, 6, 9 };
@@ -629,6 +685,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable+right") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -638,6 +695,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable+right") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 5, 5, 7, 8 };
@@ -646,6 +704,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -655,6 +714,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 5, 5, 5, 7, 8 };
@@ -663,6 +723,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -672,6 +733,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5 };
@@ -680,6 +742,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -689,6 +752,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 2, 3, 5, 5, 7 };
@@ -697,6 +761,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+right") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -706,6 +771,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+right") {
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5, 7, 8 };
@@ -714,6 +780,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -723,6 +790,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 2, 2, 4, 6, 8, 8 };
@@ -731,6 +799,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -740,6 +809,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 2, 2, 4, 5, 6, 8, 8 };
@@ -748,6 +818,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -757,6 +828,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 2, 2, 2, 4, 6, 8, 8, 9 };
@@ -765,6 +837,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+right") 
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -774,6 +847,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+right") 
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 2, 2, 4, 6, 8, 8, 9 };
@@ -782,6 +856,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+rig
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -791,6 +866,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+rig
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+splitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 1, 2, 3, 5, 5, 7, 8 };
@@ -799,6 +875,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+splitabl
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -808,6 +885,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+splitabl
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 0, 1, 1, 2, 3, 5, 5, 5, 7, 8 };
@@ -816,6 +894,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+spl
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -825,6 +904,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+spl
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitable") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5, 7, 8, 9, 9 };
@@ -833,6 +913,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -842,6 +923,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5, 5, 7, 8, 9, 9, 10 };
@@ -850,6 +932,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -859,6 +942,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable+unsplitable+splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
@@ -867,6 +951,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+spl
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -876,6 +961,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+spl
 
 TEST_CASE("GenerateQuantileCutPoints, infinities") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 
@@ -895,6 +981,7 @@ TEST_CASE("GenerateQuantileCutPoints, infinities") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -912,6 +999,7 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
    // you still end up with one or more SplittingRanges that can't have a cut if you don't take the ceiling.
 
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 26;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
@@ -922,6 +1010,7 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -931,6 +1020,7 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
 
 TEST_CASE("GenerateQuantileCutPoints, reversibility, 2") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -1, 1 };
@@ -939,6 +1029,7 @@ TEST_CASE("GenerateQuantileCutPoints, reversibility, 2") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -948,6 +1039,7 @@ TEST_CASE("GenerateQuantileCutPoints, reversibility, 2") {
 
 TEST_CASE("GenerateQuantileCutPoints, reversibility, 3") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -2, 1, 2 };
@@ -956,6 +1048,7 @@ TEST_CASE("GenerateQuantileCutPoints, reversibility, 3") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -965,6 +1058,7 @@ TEST_CASE("GenerateQuantileCutPoints, reversibility, 3") {
 
 TEST_CASE("GenerateQuantileCutPoints, reversibility") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -2, -1, 1, 2 };
@@ -973,6 +1067,7 @@ TEST_CASE("GenerateQuantileCutPoints, reversibility") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -982,6 +1077,7 @@ TEST_CASE("GenerateQuantileCutPoints, reversibility") {
 
 TEST_CASE("GenerateQuantileCutPoints, imbalanced") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -3, -1, 2, 3 };
@@ -990,6 +1086,7 @@ TEST_CASE("GenerateQuantileCutPoints, imbalanced") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -999,6 +1096,7 @@ TEST_CASE("GenerateQuantileCutPoints, imbalanced") {
 
 TEST_CASE("GenerateQuantileCutPoints, extreme tails") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::lowest(), 1, 2, 3, std::numeric_limits<FloatEbmType>::max() };
@@ -1007,6 +1105,7 @@ TEST_CASE("GenerateQuantileCutPoints, extreme tails") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -1016,6 +1115,7 @@ TEST_CASE("GenerateQuantileCutPoints, extreme tails") {
 
 TEST_CASE("GenerateQuantileCutPoints, far tails") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { -1, 1, 2, 3, 5 };
@@ -1024,6 +1124,7 @@ TEST_CASE("GenerateQuantileCutPoints, far tails") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -1033,6 +1134,7 @@ TEST_CASE("GenerateQuantileCutPoints, far tails") {
 
 TEST_CASE("GenerateQuantileCutPoints, close tails") {
    constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
    constexpr size_t cCutPointsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<FloatEbmType> featureValues { 0.9, 1, 2, 3, 3.1 };
@@ -1041,6 +1143,26 @@ TEST_CASE("GenerateQuantileCutPoints, close tails") {
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
+      cCutPointsMax,
+      cSamplesPerBinMin,
+      featureValues,
+      expectedCutPoints
+   );
+}
+
+TEST_CASE("GenerateQuantileCutPoints, non-smart") {
+   constexpr bool bTestReverse = true;
+   constexpr bool bSmart = false;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::lowest(), 0, 1000, 10000000, std::numeric_limits<FloatEbmType>::max() };
+   const std::vector<FloatEbmType> expectedCutPoints { -8.9884656743115785e+307, 500, 5000500, 8.9884656743115785e+307 };
+
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -1081,6 +1203,7 @@ TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per
       assert(0 == cRemoveCuts);
    }
 
+   constexpr bool bSmart = true;
    constexpr bool bTestReverse = true;
    constexpr size_t cCutPointsMax = cInteriorRanges + 1 - cRemoveCuts;
    constexpr size_t cSamplesPerBinMin = 1;
@@ -1088,6 +1211,7 @@ TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
+      bSmart,
       cCutPointsMax,
       cSamplesPerBinMin,
       featureValues,
@@ -1101,6 +1225,7 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
       exit(1);
    }
 
+   constexpr bool bSmart = true;
    constexpr IntEbmType countSamplesPerBinMin = 1;
    constexpr IntEbmType countSamples = 100;
    FloatEbmType featureValues[countSamples]; // preserve these for debugging purposes
@@ -1157,6 +1282,7 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
             countSamples,
             featureValuesForward,
             countSamplesPerBinMin,
+            bSmart ? EBM_TRUE : EBM_FALSE,
             k_randomSeed + iIteration,
             &countCutPointsForward,
             cutPointsLowerBoundInclusiveForward,
@@ -1194,6 +1320,7 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
             countSamples,
             featureValuesReversed,
             countSamplesPerBinMin,
+            bSmart ? EBM_TRUE : EBM_FALSE,
             k_randomSeed + iIteration,
             &countCutPointsReversed,
             cutPointsLowerBoundInclusiveReversed,
@@ -1267,6 +1394,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       exit(1);
    }
 
+   constexpr bool bSmart = true;
    constexpr size_t cSamplesMin = 1;
    constexpr size_t cSamplesMax = 250;
    constexpr size_t cCutPointsMin = 1;
@@ -1351,6 +1479,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          countSamples,
          featureValuesForward,
          countSamplesPerBinMin,
+         bSmart ? EBM_TRUE : EBM_FALSE,
          k_randomSeed + iIteration,
          &countCutPointsForward,
          cutPointsLowerBoundInclusiveForward,
@@ -1376,6 +1505,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          countSamples,
          featureValuesReversed,
          countSamplesPerBinMin,
+         bSmart ? EBM_TRUE : EBM_FALSE,
          k_randomSeed + iIteration,
          &countCutPointsReversed,
          cutPointsLowerBoundInclusiveReversed,

@@ -912,14 +912,18 @@ static FloatEbmType GetInterpretableCutPointFloat(
 // VERIFIED 2020-09
 static FloatEbmType GetInterpretableEndpoint(
    const FloatEbmType center,
-   const FloatEbmType distance
+   const FloatEbmType movementFromEnds
 ) noexcept {
    // TODO : add logs or asserts here when we find a condition we didn't think was possible, but that occurs
 
    EBM_ASSERT(!std::isnan(center));
-   EBM_ASSERT(!std::isnan(distance));
-   EBM_ASSERT(!std::isinf(distance));
-   EBM_ASSERT(FloatEbmType { 0 } <= distance);
+   EBM_ASSERT(!std::isnan(movementFromEnds));
+   EBM_ASSERT(!std::isinf(movementFromEnds));
+   EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
+
+   constexpr FloatEbmType k_percentageDeviationFromEndpoint = FloatEbmType { 0.25 };
+
+   const FloatEbmType distance = k_percentageDeviationFromEndpoint * movementFromEnds;
 
    FloatEbmType ret = center;
    // if the center is +-infinity then we'll always be farter away than the end cut points which can't be +-infinity
@@ -3328,6 +3332,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
+   IntEbmType isSmart,
    IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,
@@ -3359,6 +3364,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
+      "isSmart=%s, "
       "randomSeed=%" IntEbmTypePrintf ", "
       "countCutPointsInOut=%p, "
       "cutPointsLowerBoundInclusiveOut=%p, "
@@ -3371,6 +3377,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       countSamples,
       static_cast<void *>(featureValues),
       countSamplesPerBinMin,
+      ObtainTruth(isSmart),
       randomSeed,
       static_cast<void *>(countCutPointsInOut),
       static_cast<void *>(cutPointsLowerBoundInclusiveOut),
@@ -3929,165 +3936,183 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
             FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveOut;
             const FloatEbmType * const * ppValueCutTop2 = apValueCutTops;
-            do {
-               const FloatEbmType * const pCut = *ppValueCutTop2;
-               EBM_ASSERT(featureValues < pCut);
-               EBM_ASSERT(pCut < featureValues + cSamples);
-               const FloatEbmType valHigh = *pCut;
-               EBM_ASSERT(!std::isnan(valHigh));
-               EBM_ASSERT(!std::isinf(valHigh));
-               const FloatEbmType valLow = *(pCut - size_t { 1 });
-               EBM_ASSERT(!std::isnan(valLow));
-               EBM_ASSERT(!std::isinf(valLow));
-               const FloatEbmType cut = GetInterpretableCutPointFloat(valLow, valHigh);
-               EBM_ASSERT(cutPointsLowerBoundInclusiveOut == pCutPointsLowerBoundInclusive || *(pCutPointsLowerBoundInclusive - size_t { 1 }) < cut);
-               *pCutPointsLowerBoundInclusive = cut;
-               ++pCutPointsLowerBoundInclusive;
-               ++ppValueCutTop2;
-            } while(ppValueCutTop != ppValueCutTop2);
 
-            // if you have 1 cut point, then you get a graph with some mass on the left, some mass on the right
-            // and the cut point, and that's great.  We don't need to improve on that.  Our one cut points provides
-            // the most information possible and it's displayable on a graph.
-            // eg: "0.01 0.01 | 100 100" -> put the cut point at 1 and we can show both logit sides without
-            // indicating the min/max values of 0.001 and 1000
-            //
-            // if you have 2 cut points, then the graph will have 3 regions, and we can scale the graph so that
-            // 1/3 of the mass in on the left, 1/3 is in the scaled center, and 1/3 is on the right.  Whatever cuts
-            // we get provide the most amount of information possible, and it's graphable.
-            // eg: "0.01 0.01 | 1 1 | 100 100" -> put the cut points at 0.1 and 10 and the graph can range
-            // from 0.1 to 10 with some space on the tails to show the logits for the "-infinity -> 0.1" bin
-            // and the "10 -> +infinity" bin.
-            //
-            // if we have 3 cut points, then we could get into graphing issues if one of the ranges was so big
-            // that it dwarfed the other two in size.  We can't do anything about this if one of the interior
-            // ranges is huge, but often times the huge range is at the extreme ends of the graph and if the
-            // value on the interior side is smaller then we have some ability to pick the cut point.
-            // eg: "1 1 | 2 2 | 3 3 | infinity infinity".  The cut points can legally be:
-            //         1.5   2.5   3.5
-            // but if the values were instead:
-            // eg: "1 1 | 2 2 | 3 3 | 3.2 3.2".  The cut points can't exceed 3.2, so we'd use:
-            //         1.5   2.5   3.1
-            //
-            // Our algorithm finds 3.5 and 3.1 and picks the minimum, and the same on the low side, but there we
-            // take the maximum.
-            //
-            // In the above example, our graph must at minimum show the data from 2 -> 3, and in fact we'll want
-            // to not put our cuts right outside 2 and 3, so we want to move a reasonable distance away from those
-            // ends to the 1.5 and 3.5 positions to put our cuts, and since the "-infinity -> 1.5" bin and
-            // "3.5 -> +infinity" bins have logits, we also want some space on the graph to show those logits
-            // so we probably want our graph to show something like the space 0 -> 5, although this can be
-            // chosen by the graphing function.
-            //
-            // It's tempting to want to use the interior cuts to determine the outer cuts:
-            // eg: "-infinity -infinity | 2 2 | 3 3 | 4 4 | +infinity +infinity"
-            //                         1.5   2.5   3.5   4.5
-            // We might want to use 2.5 and 3.5 to determine that the cuts progress with distnaces of 1, and
-            // extrapolate 2.5 - 1 = 1.5 and 3.5 + 1 = 4.5, but we can't really do that because we might instead have
-            // something like this where the extrapolation will put us below the highLow value
-            // eg: "-infinity -infinity | 2 2 | 3 3 | 9 9 | +infinity +infinity"
-            // So we need to use the 9 value and extend from there.
-            //
-            // In the examples above, we've chosen point values, but we could easily have the following situation:
-            // 0.6 1.4 | 1.6 2.4 | 2.6 3.4 | 3.6 4.4 | 4.6 5.4
-            //        1.5       2.5       3.5       4.5
-            // which illustrates that in general the cut points can be very close to their neighbouring values.
-            // so in the examples farther above we had a spacing of 0.5 units from the interior values to the
-            // exterior cuts (1.5 -> 2) and (3 -> 3.5), but here we have separations of 0.1 (1.4 -> 1.5) and
-            // "4.4 -> 4.5".  
-            // 
-            // We're only choosing to override the averaged cut value when the outer value is a huge way off
-            // so we probably want to be conservative about how much we're override this and not put the
-            // new cut point too close to our lowHigh or highLow values.  If we start from a pointalism point
-            // of view that all the interior values are bunched onto discrete values like "2 2", and we assume
-            // half of the distance between a value and it's cut occurs on the lower and higher side, it gives
-            // us a kind of worse case reasonable scenario to deal with.  So starting from:
-            // "-infinity -infinity | 2 2 | 3 3 | 4 4 | +infinity +infinity"
-            //                     1.5   2.5   3.5   4.5
-            // We get the minimum graph range by taking the 4 and the 2 and substracting for 2.
-            // Then we assume that half of the bin on the upper side of the 2 is within that range and
-            // the lower side of the 4 is within that range, and we know that there is a range bounding 3,
-            // so we have 0.5 + 1 + 0.5 ranges total = 2.
-            // So our cut density is 2 / 2 = 1 cut per range.
-            // and we extend by half a bin downwards from the 2, which gives (2 - 1 / 2) = 1.5
-            // and we extend by half a bin upwards from the 4, which gives (4 + 1 / 2) = 4.5
+            if(EBM_FALSE == isSmart) {
+               do {
+                  const FloatEbmType * const pCut = *ppValueCutTop2;
+                  EBM_ASSERT(featureValues < pCut);
+                  EBM_ASSERT(pCut < featureValues + cSamples);
+                  const FloatEbmType valHigh = *pCut;
+                  EBM_ASSERT(!std::isnan(valHigh));
+                  EBM_ASSERT(!std::isinf(valHigh));
+                  const FloatEbmType valLow = *(pCut - size_t { 1 });
+                  EBM_ASSERT(!std::isnan(valLow));
+                  EBM_ASSERT(!std::isinf(valLow));
+                  const FloatEbmType cut = ArithmeticMean(valLow, valHigh);
+                  EBM_ASSERT(cutPointsLowerBoundInclusiveOut == pCutPointsLowerBoundInclusive || *(pCutPointsLowerBoundInclusive - size_t { 1 }) < cut);
+                  *pCutPointsLowerBoundInclusive = cut;
+                  ++pCutPointsLowerBoundInclusive;
+                  ++ppValueCutTop2;
+               } while(ppValueCutTop != ppValueCutTop2);
+            } else {
+               do {
+                  const FloatEbmType * const pCut = *ppValueCutTop2;
+                  EBM_ASSERT(featureValues < pCut);
+                  EBM_ASSERT(pCut < featureValues + cSamples);
+                  const FloatEbmType valHigh = *pCut;
+                  EBM_ASSERT(!std::isnan(valHigh));
+                  EBM_ASSERT(!std::isinf(valHigh));
+                  const FloatEbmType valLow = *(pCut - size_t { 1 });
+                  EBM_ASSERT(!std::isnan(valLow));
+                  EBM_ASSERT(!std::isinf(valLow));
+                  const FloatEbmType cut = GetInterpretableCutPointFloat(valLow, valHigh);
+                  EBM_ASSERT(cutPointsLowerBoundInclusiveOut == pCutPointsLowerBoundInclusive || *(pCutPointsLowerBoundInclusive - size_t { 1 }) < cut);
+                  *pCutPointsLowerBoundInclusive = cut;
+                  ++pCutPointsLowerBoundInclusive;
+                  ++ppValueCutTop2;
+               } while(ppValueCutTop != ppValueCutTop2);
 
-            if(LIKELY(size_t { 3 } <= cCutPointsRet)) {
-               const FloatEbmType * const pScaleHighHigh = *(ppValueCutTop - size_t { 1 });
-               EBM_ASSERT(featureValues + size_t { 2 } < pScaleHighHigh);
-               EBM_ASSERT(pScaleHighHigh < featureValues + cSamples);
-               const FloatEbmType * const pScaleHighLow = pScaleHighHigh - size_t { 1 };
-               EBM_ASSERT(featureValues + size_t { 1 } < pScaleHighLow);
-               EBM_ASSERT(pScaleHighLow < featureValues + cSamples - size_t { 1 });
-               const FloatEbmType scaleHighLow = *pScaleHighLow;
-               EBM_ASSERT(!std::isnan(scaleHighLow));
-               EBM_ASSERT(!std::isinf(scaleHighLow));
-               const FloatEbmType * pScaleLowHigh = *apValueCutTops;
-               EBM_ASSERT(featureValues < pScaleLowHigh);
-               EBM_ASSERT(pScaleLowHigh < featureValues + cSamples - size_t { 2 });
-               const FloatEbmType scaleLowHigh = *pScaleLowHigh;
-               EBM_ASSERT(!std::isnan(scaleLowHigh));
-               EBM_ASSERT(!std::isinf(scaleLowHigh));
-               EBM_ASSERT(scaleLowHigh < scaleHighLow);
-               // this is the inescapable scale of our graph, from the value right above the lowest cut to the value 
-               // right below the highest cut
-               const FloatEbmType scaleMin = scaleHighLow - scaleLowHigh;
-               EBM_ASSERT(!std::isnan(scaleMin));
-               EBM_ASSERT(!std::isinf(scaleMin));
-               // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
-               EBM_ASSERT(FloatEbmType { 0 } < scaleMin);
+               // if you have 1 cut point, then you get a graph with some mass on the left, some mass on the right
+               // and the cut point, and that's great.  We don't need to improve on that.  Our one cut points provides
+               // the most information possible and it's displayable on a graph.
+               // eg: "0.01 0.01 | 100 100" -> put the cut point at 1 and we can show both logit sides without
+               // indicating the min/max values of 0.001 and 1000
+               //
+               // if you have 2 cut points, then the graph will have 3 regions, and we can scale the graph so that
+               // 1/3 of the mass in on the left, 1/3 is in the scaled center, and 1/3 is on the right.  Whatever cuts
+               // we get provide the most amount of information possible, and it's graphable.
+               // eg: "0.01 0.01 | 1 1 | 100 100" -> put the cut points at 0.1 and 10 and the graph can range
+               // from 0.1 to 10 with some space on the tails to show the logits for the "-infinity -> 0.1" bin
+               // and the "10 -> +infinity" bin.
+               //
+               // if we have 3 cut points, then we could get into graphing issues if one of the ranges was so big
+               // that it dwarfed the other two in size.  We can't do anything about this if one of the interior
+               // ranges is huge, but often times the huge range is at the extreme ends of the graph and if the
+               // value on the interior side is smaller then we have some ability to pick the cut point.
+               // eg: "1 1 | 2 2 | 3 3 | infinity infinity".  The cut points can legally be:
+               //         1.5   2.5   3.5
+               // but if the values were instead:
+               // eg: "1 1 | 2 2 | 3 3 | 3.2 3.2".  The cut points can't exceed 3.2, so we'd use:
+               //         1.5   2.5   3.1
+               //
+               // Our algorithm finds 3.5 and 3.1 and picks the minimum, and the same on the low side, but there we
+               // take the maximum.
+               //
+               // In the above example, our graph must at minimum show the data from 2 -> 3, and in fact we'll want
+               // to not put our cuts right outside 2 and 3, so we want to move a reasonable distance away from those
+               // ends to the 1.5 and 3.5 positions to put our cuts, and since the "-infinity -> 1.5" bin and
+               // "3.5 -> +infinity" bins have logits, we also want some space on the graph to show those logits
+               // so we probably want our graph to show something like the space 0 -> 5, although this can be
+               // chosen by the graphing function.
+               //
+               // It's tempting to want to use the interior cuts to determine the outer cuts:
+               // eg: "-infinity -infinity | 2 2 | 3 3 | 4 4 | +infinity +infinity"
+               //                         1.5   2.5   3.5   4.5
+               // We might want to use 2.5 and 3.5 to determine that the cuts progress with distnaces of 1, and
+               // extrapolate 2.5 - 1 = 1.5 and 3.5 + 1 = 4.5, but we can't really do that because we might instead have
+               // something like this where the extrapolation will put us below the highLow value
+               // eg: "-infinity -infinity | 2 2 | 3 3 | 9 9 | +infinity +infinity"
+               // So we need to use the 9 value and extend from there.
+               //
+               // In the examples above, we've chosen point values, but we could easily have the following situation:
+               // 0.6 1.4 | 1.6 2.4 | 2.6 3.4 | 3.6 4.4 | 4.6 5.4
+               //        1.5       2.5       3.5       4.5
+               // which illustrates that in general the cut points can be very close to their neighbouring values.
+               // so in the examples farther above we had a spacing of 0.5 units from the interior values to the
+               // exterior cuts (1.5 -> 2) and (3 -> 3.5), but here we have separations of 0.1 (1.4 -> 1.5) and
+               // "4.4 -> 4.5".  
+               // 
+               // We're only choosing to override the averaged cut value when the outer value is a huge way off
+               // so we probably want to be conservative about how much we're override this and not put the
+               // new cut point too close to our lowHigh or highLow values.  If we start from a pointalism point
+               // of view that all the interior values are bunched onto discrete values like "2 2", and we assume
+               // half of the distance between a value and it's cut occurs on the lower and higher side, it gives
+               // us a kind of worse case reasonable scenario to deal with.  So starting from:
+               // "-infinity -infinity | 2 2 | 3 3 | 4 4 | +infinity +infinity"
+               //                     1.5   2.5   3.5   4.5
+               // We get the minimum graph range by taking the 4 and the 2 and substracting for 2.
+               // Then we assume that half of the bin on the upper side of the 2 is within that range and
+               // the lower side of the 4 is within that range, and we know that there is a range bounding 3,
+               // so we have 0.5 + 1 + 0.5 ranges total = 2.
+               // So our cut density is 2 / 2 = 1 cut per range.
+               // and we extend by half a bin downwards from the 2, which gives (2 - 1 / 2) = 1.5
+               // and we extend by half a bin upwards from the 4, which gives (4 + 1 / 2) = 4.5
 
-               // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
-               // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
-               // 1.5% on the right)
+               if(LIKELY(size_t { 3 } <= cCutPointsRet)) {
+                  const FloatEbmType * const pScaleHighHigh = *(ppValueCutTop - size_t { 1 });
+                  EBM_ASSERT(featureValues + size_t { 2 } < pScaleHighHigh);
+                  EBM_ASSERT(pScaleHighHigh < featureValues + cSamples);
+                  const FloatEbmType * const pScaleHighLow = pScaleHighHigh - size_t { 1 };
+                  EBM_ASSERT(featureValues + size_t { 1 } < pScaleHighLow);
+                  EBM_ASSERT(pScaleHighLow < featureValues + cSamples - size_t { 1 });
+                  const FloatEbmType scaleHighLow = *pScaleHighLow;
+                  EBM_ASSERT(!std::isnan(scaleHighLow));
+                  EBM_ASSERT(!std::isinf(scaleHighLow));
+                  const FloatEbmType * pScaleLowHigh = *apValueCutTops;
+                  EBM_ASSERT(featureValues < pScaleLowHigh);
+                  EBM_ASSERT(pScaleLowHigh < featureValues + cSamples - size_t { 2 });
+                  const FloatEbmType scaleLowHigh = *pScaleLowHigh;
+                  EBM_ASSERT(!std::isnan(scaleLowHigh));
+                  EBM_ASSERT(!std::isinf(scaleLowHigh));
+                  EBM_ASSERT(scaleLowHigh < scaleHighLow);
+                  // this is the inescapable scale of our graph, from the value right above the lowest cut to the value 
+                  // right below the highest cut
+                  const FloatEbmType scaleMin = scaleHighLow - scaleLowHigh;
+                  EBM_ASSERT(!std::isnan(scaleMin));
+                  EBM_ASSERT(!std::isinf(scaleMin));
+                  // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
+                  EBM_ASSERT(FloatEbmType { 0 } < scaleMin);
 
-               const size_t cCutPointsLimited = size_t { 32 } < cCutPointsRet ? size_t { 32 } : cCutPointsRet;
+                  // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
+                  // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
+                  // 1.5% on the right)
 
-               // the leftmost and rightmost cuts can legally be right outside of the bounds between scaleHighLow and
-               // scaleLowHigh, so we subtract these two cuts, leaving us the number of ranges between the two end
-               // points.  Half a range on the bottom, N - 1 ranges in the middle, and half a range on the top
-               // Dividing by that number of ranges gives us the average range width.  We don't want to get the final
-               // cut though from the previous inner cut.  We want to move outwards from the scaleHighLow and
-               // scaleLowHigh values, which should be half a cut inwards (not exactly but in spirit), so we
-               // divide by two, which is the same as multiplying the divisor by 2, which is the right shift below
-               const size_t denominator = (cCutPointsLimited - size_t { 2 }) << 1;
-               EBM_ASSERT(size_t { 0 } < denominator);
-               const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
+                  const size_t cCutPointsLimited = size_t { 32 } < cCutPointsRet ? size_t { 32 } : cCutPointsRet;
 
-               EBM_ASSERT(!std::isnan(movementFromEnds));
-               EBM_ASSERT(!std::isinf(movementFromEnds));
-               EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
+                  // the leftmost and rightmost cuts can legally be right outside of the bounds between scaleHighLow and
+                  // scaleLowHigh, so we subtract these two cuts, leaving us the number of ranges between the two end
+                  // points.  Half a range on the bottom, N - 1 ranges in the middle, and half a range on the top
+                  // Dividing by that number of ranges gives us the average range width.  We don't want to get the final
+                  // cut though from the previous inner cut.  We want to move outwards from the scaleHighLow and
+                  // scaleLowHigh values, which should be half a cut inwards (not exactly but in spirit), so we
+                  // divide by two, which is the same as multiplying the divisor by 2, which is the right shift below
+                  const size_t denominator = (cCutPointsLimited - size_t { 2 }) << 1;
+                  EBM_ASSERT(size_t { 0 } < denominator);
+                  const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
 
-               const FloatEbmType lowCutFullPrecisionMin = scaleLowHigh - movementFromEnds;
-               EBM_ASSERT(!std::isnan(lowCutFullPrecisionMin));
-               EBM_ASSERT(lowCutFullPrecisionMin < std::numeric_limits<FloatEbmType>::max());
-               const FloatEbmType highCutFullPrecisionMax = scaleHighLow + movementFromEnds;
-               EBM_ASSERT(!std::isnan(highCutFullPrecisionMax));
-               EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < highCutFullPrecisionMax);
+                  EBM_ASSERT(!std::isnan(movementFromEnds));
+                  EBM_ASSERT(!std::isinf(movementFromEnds));
+                  EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
 
-               const FloatEbmType lowCutMin = 
-                  GetInterpretableEndpoint(lowCutFullPrecisionMin, movementFromEnds * FloatEbmType { 0.25 });
-               const FloatEbmType highCutMax =
-                  GetInterpretableEndpoint(highCutFullPrecisionMax, movementFromEnds * FloatEbmType { 0.25 });
+                  const FloatEbmType lowCutFullPrecisionMin = scaleLowHigh - movementFromEnds;
+                  EBM_ASSERT(!std::isnan(lowCutFullPrecisionMin));
+                  EBM_ASSERT(lowCutFullPrecisionMin < std::numeric_limits<FloatEbmType>::max());
+                  const FloatEbmType highCutFullPrecisionMax = scaleHighLow + movementFromEnds;
+                  EBM_ASSERT(!std::isnan(highCutFullPrecisionMax));
+                  EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < highCutFullPrecisionMax);
 
-               const FloatEbmType lowCutExisting = *cutPointsLowerBoundInclusiveOut;
-               EBM_ASSERT(!std::isnan(lowCutExisting));
-               EBM_ASSERT(!std::isinf(lowCutExisting));
-               const FloatEbmType highCutExisting = *(pCutPointsLowerBoundInclusive - size_t { 1 });
-               EBM_ASSERT(!std::isnan(highCutExisting));
-               EBM_ASSERT(!std::isinf(highCutExisting));
+                  const FloatEbmType lowCutMin = GetInterpretableEndpoint(lowCutFullPrecisionMin, movementFromEnds);
+                  const FloatEbmType highCutMax = GetInterpretableEndpoint(highCutFullPrecisionMax, movementFromEnds);
 
-               if(lowCutExisting < lowCutMin) {
-                  // lowCutMin can legally be -infinity, but then we wouldn't get here then
-                  EBM_ASSERT(!std::isnan(lowCutMin));
-                  EBM_ASSERT(!std::isinf(lowCutMin));
-                  *cutPointsLowerBoundInclusiveOut = lowCutMin;
-               }
-               if(highCutMax < highCutExisting) {
-                  // highCutMax can legally be +infinity, but then we wouldn't get here then
-                  EBM_ASSERT(!std::isnan(highCutMax));
-                  EBM_ASSERT(!std::isinf(highCutMax));
-                  *(pCutPointsLowerBoundInclusive - size_t { 1 }) = highCutMax;
+                  const FloatEbmType lowCutExisting = *cutPointsLowerBoundInclusiveOut;
+                  EBM_ASSERT(!std::isnan(lowCutExisting));
+                  EBM_ASSERT(!std::isinf(lowCutExisting));
+                  const FloatEbmType highCutExisting = *(pCutPointsLowerBoundInclusive - size_t { 1 });
+                  EBM_ASSERT(!std::isnan(highCutExisting));
+                  EBM_ASSERT(!std::isinf(highCutExisting));
+
+                  if(lowCutExisting < lowCutMin) {
+                     // lowCutMin can legally be -infinity, but then we wouldn't get here then
+                     EBM_ASSERT(!std::isnan(lowCutMin));
+                     EBM_ASSERT(!std::isinf(lowCutMin));
+                     *cutPointsLowerBoundInclusiveOut = lowCutMin;
+                  }
+                  if(highCutMax < highCutExisting) {
+                     // highCutMax can legally be +infinity, but then we wouldn't get here then
+                     EBM_ASSERT(!std::isnan(highCutMax));
+                     EBM_ASSERT(!std::isinf(highCutMax));
+                     *(pCutPointsLowerBoundInclusive - size_t { 1 }) = highCutMax;
+                  }
                }
             }
          }

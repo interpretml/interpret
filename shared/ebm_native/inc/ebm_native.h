@@ -410,6 +410,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
+   IntEbmType isSmart,
    IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,

@@ -13,6 +13,14 @@
 extern const char g_trueString[];
 extern const char g_falseString[];
 
+constexpr INLINE_ALWAYS const char * ObtainTruth(const bool b) {
+   return b ? g_trueString : g_falseString;
+}
+
+constexpr INLINE_ALWAYS const char * ObtainTruth(const IntEbmType isTrue) {
+   return EBM_FALSE != isTrue ? g_trueString : g_falseString;
+}
+
 extern signed char g_traceLevel;
 
 extern void InteralLogWithArguments(const signed char traceLevel, const char * const pOriginalMessage, ...);
