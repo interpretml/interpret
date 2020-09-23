@@ -36,6 +36,7 @@
 #include "RandomStream.h"
 
 // TODO: Next steps:
+// - separate this into different files: Discretization.cpp, Binning.cpp, and InterpretableNumerics.cpp
 // 1) Ok, once we're sure the algorithm isn't completely off base, let's add automated tests for almost every path we
 //    can put a breakpoint on below or that we can think is important
 // 2) Do a complete review top to bottom review of this entire file.  Which is just the GenerateQuantileCutPoints 
@@ -47,6 +48,16 @@
 // 5) Run tests against the 200 datasets to see if we degraded performance in any detectable way
 // 6) Put out a version in python with all of these changes.  Wait a few months
 // 7) Come back later and improve on this algorithm per the TODOs in this file
+
+               //   - add log notes to the interpretable cut points on errors
+               //   - REVIEW ALL THE CUT POINTS IN TESTS..DO they all look good and consistent
+
+// python
+//quantile
+//quantile_smart
+//equal_width
+//equal_width_smart
+
 
 
 // Some general definitions:
@@ -61,18 +72,20 @@
 //    if we had the values [1, 2, 3, 4] and one CutPoint, a reasonable cutPoint would be 2.5.
 //  - cut range - the values between two CutPoint
 
+// TODO: increase the k_cutExploreDistance, and also increase our testing length to compensate
+constexpr size_t k_cutExploreDistance = 20;
+constexpr FloatEbmType k_percentageDeviationFromEndpointForInterpretableNumbers = FloatEbmType { 0.25 };
 // 1073741824 is 2^30.  Using a power of two with no detail in the mantissa might help multiplication
-// VERIFIED 2020-09
 constexpr FloatEbmType tweakIncrement = std::numeric_limits<FloatEbmType>::epsilon() * FloatEbmType { 1073741824 };
+
+
 INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultiplePositive(const size_t iTweak) noexcept {
    return FloatEbmType { 1 } + tweakIncrement * static_cast<FloatEbmType>(iTweak);
 }
-// VERIFIED 2020-09
 INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultipleNegative(const size_t iTweak) noexcept {
    return FloatEbmType { 1 } - tweakIncrement * static_cast<FloatEbmType>(iTweak);
 }
 
-// VERIFIED 2020-09
 INLINE_ALWAYS constexpr static size_t CountBase10CharactersAbs(int n) noexcept {
    // this works for negative numbers too
    return int { 0 } == n / int { 10 } ? size_t { 1 } : size_t { 1 } + CountBase10CharactersAbs(n / int { 10 });
@@ -108,14 +121,12 @@ constexpr size_t k_cExponentTextDigits =
 constexpr size_t k_iExp = size_t { 3 } + k_cDigitsAfterPeriod;
 constexpr size_t k_cCharsFloatPrint = k_iExp + size_t { 2 } + k_cExponentTextDigits + size_t { 1 };
 
-// TODO: increase the k_cutExploreDistance, and also increase our testing length to compensate
-// TODO: change k_cutExploreDistance to 1, and try some other distances in between just to stress the algorithm a bit more
-constexpr size_t k_cutExploreDistance = 20;
 constexpr ptrdiff_t k_movementDoneCut = std::numeric_limits<ptrdiff_t>::lowest();
 constexpr FloatEbmType k_priorityNoCutsPossible = std::numeric_limits<FloatEbmType>::lowest();
 constexpr size_t k_valNotLegal = std::numeric_limits<size_t>::max();
 
-// VERIFIED 2020-09
+constexpr FloatEbmType k_illegalAvgCuttableRangeWidthAfterAddingOneCut = std::numeric_limits<FloatEbmType>::lowest();
+
 struct NeighbourJump final {
 
    NeighbourJump() = default; // preserve our POD status
@@ -133,7 +144,6 @@ static_assert(std::is_trivial<NeighbourJump>::value,
 static_assert(std::is_pod<NeighbourJump>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-// VERIFIED 2020-09
 struct CutPoint final {
    CutPoint() = default; // preserve our POD status
    ~CutPoint() = default; // preserve our POD status
@@ -174,10 +184,6 @@ static_assert(std::is_trivial<CutPoint>::value,
 static_assert(std::is_pod<CutPoint>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-// there is no legal negative value, so having this negative value provides us a safe priority for the queue
-constexpr FloatEbmType k_illegalAvgCuttableRangeWidthAfterAddingOneCut = std::numeric_limits<FloatEbmType>::lowest();
-
-// VERIFIED 2020-09
 struct CuttingRange final {
 
    // we divide the space into long segments of uncuttable equal values separated by spaces where we can put
@@ -223,8 +229,6 @@ static_assert(std::is_trivial<CuttingRange>::value,
 static_assert(std::is_pod<CuttingRange>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-
-// VERIFIED 2020-08
 class CompareCuttingRange final {
 public:
    INLINE_ALWAYS bool operator() (const CuttingRange * const & lhs, const CuttingRange * const & rhs) const noexcept {
@@ -240,7 +244,6 @@ public:
    }
 };
 
-// VERIFIED 2020-08
 class CompareCutPoint final {
 public:
    // TODO : check how efficient this is.  Is there a faster way to to this
@@ -257,7 +260,6 @@ public:
    }
 };
 
-// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
    const FloatEbmType sideDistance, 
    const FloatEbmType totalDistance, 
@@ -327,7 +329,6 @@ INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
    return cSide;
 }
 
-// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType ArithmeticMean(
    const FloatEbmType low, 
    const FloatEbmType high
@@ -397,7 +398,6 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType ArithmeticMean(
    return avg;
 }
 
-// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType GeometricMeanPositives(const FloatEbmType low, const FloatEbmType high) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
    EBM_ASSERT(!std::isnan(low));
@@ -445,7 +445,6 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GeometricMeanPositives(const Floa
    return result;
 }
 
-// VERIFIED 2020-09
 static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
    EBM_ASSERT(!std::isnan(val));
    EBM_ASSERT(!std::isinf(val));
@@ -523,13 +522,11 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
    return false;
 }
 
-// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED static long GetExponent(const char * const str) noexcept {
    // we previously checked that this converted to a long in FloatToString
    return strtol(&str[k_iExp + size_t { 1 }], nullptr, int { 10 });
 }
 
-// VERIFIED 2020-09
 static FloatEbmType StringToFloatWithFixup(
    const char * const str, 
    const size_t iIdenticalCharsRequired
@@ -576,7 +573,6 @@ static FloatEbmType StringToFloatWithFixup(
    return ret;
 }
 
-// VERIFIED 2020-09
 static bool StringToFloatChopped(
    const char * const pStr,
    size_t iTruncateMantissaTextDigitsAfterFirstDigit,
@@ -659,7 +655,6 @@ static bool StringToFloatChopped(
    return false;
 }
 
-// VERIFIED 2020-09
 static FloatEbmType GetInterpretableCutPointFloat(
    FloatEbmType low, 
    FloatEbmType high
@@ -909,7 +904,6 @@ static FloatEbmType GetInterpretableCutPointFloat(
    return ret;
 }
 
-// VERIFIED 2020-09
 static FloatEbmType GetInterpretableEndpoint(
    const FloatEbmType center,
    const FloatEbmType movementFromEnds
@@ -921,9 +915,7 @@ static FloatEbmType GetInterpretableEndpoint(
    EBM_ASSERT(!std::isinf(movementFromEnds));
    EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
 
-   constexpr FloatEbmType k_percentageDeviationFromEndpoint = FloatEbmType { 0.25 };
-
-   const FloatEbmType distance = k_percentageDeviationFromEndpoint * movementFromEnds;
+   const FloatEbmType distance = k_percentageDeviationFromEndpointForInterpretableNumbers * movementFromEnds;
 
    FloatEbmType ret = center;
    // if the center is +-infinity then we'll always be farter away than the end cut points which can't be +-infinity
@@ -992,7 +984,6 @@ static FloatEbmType GetInterpretableEndpoint(
    return ret;
 }
 
-// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED static void IronCuts() noexcept {
    // - TODO: POST-HEALING
    //   Our cutting algorithm is greedy and some of the early decisions might not have been optimal.  
@@ -1016,7 +1007,6 @@ INLINE_RELEASE_UNTEMPLATED static void IronCuts() noexcept {
    //     moves along
 }
 
-// VERIFIED 2020-09
 static FloatEbmType CalculatePriority(
    const FloatEbmType iValLowerFloat,
    const FloatEbmType iValHigherFloat,
@@ -1113,7 +1103,6 @@ static FloatEbmType CalculatePriority(
    return priority;
 }
 
-// VERIFIED 2020-09
 static void BuildNeighbourhoodPlan(
    const size_t cSamples,
    const bool bSymmetryReversal,
@@ -1525,7 +1514,6 @@ static void BuildNeighbourhoodPlan(
    EBM_ASSERT(!pCutCur->IsCut());
 }
 
-// VERIFIED 2020-09
 static bool CutCuttingRange(
    std::set<CutPoint *, CompareCutPoint> * const pBestCutPoints,
 
@@ -2209,7 +2197,6 @@ static bool CutCuttingRange(
    return false;
 }
 
-// VERIFIED 2020-09
 static bool TreeSearchCutSegment(
    std::set<CutPoint *, CompareCutPoint> * pBestCutPoints,
 
@@ -2403,7 +2390,6 @@ static bool TreeSearchCutSegment(
    );
 }
 
-// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED static bool TradeCutSegment(
    std::set<CutPoint *, CompareCutPoint> * const pBestCutPoints,
 
@@ -2445,7 +2431,6 @@ INLINE_RELEASE_UNTEMPLATED static bool TradeCutSegment(
    );
 }
 
-// VERIFIED 2020-08
 INLINE_RELEASE_UNTEMPLATED static size_t DetermineRangesMax(
    const size_t cSamplesInSubset,
    const FloatEbmType * const pValues,
@@ -2513,7 +2498,6 @@ INLINE_RELEASE_UNTEMPLATED static size_t DetermineRangesMax(
    return cRanges;
 }
 
-// VERIFIED 2020-09
 static bool AddCutToRanges(
    std::set<CuttingRange *, CompareCuttingRange> & queue
 ) {
@@ -2556,8 +2540,6 @@ static bool AddCutToRanges(
    return false;
 }
 
-
-// VERIFIED 2020-08
 static void StuffCutsIntoCuttingRanges(
    std::set<CuttingRange *, CompareCuttingRange> & queue,
    const size_t cCuttingRanges,
@@ -2667,7 +2649,6 @@ static void StuffCutsIntoCuttingRanges(
    }
 }
 
-// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeNeighbours(
    const size_t cSamples,
    FloatEbmType * const aSingleFeatureValues,
@@ -2707,7 +2688,6 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeNeighbours(
    pCuttingRange->m_cUncuttableHighValues = cUncuttableSubsequentItems;
 }
 
-// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
    const size_t cSamples,
    FloatEbmType * const aSingleFeatureValues,
@@ -2764,7 +2744,6 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
    }
 }
 
-// VERIFIED 08-2020
 template<typename T>
 static void FillTiebreakers(
    const bool bSymmetryReversal,
@@ -2874,7 +2853,6 @@ static void FillTiebreakers(
    }
 }
 
-// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
    const size_t cSamples,
    const FloatEbmType * const aSingleFeatureValues
@@ -2996,7 +2974,6 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
    return false;
 }
 
-// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
    const size_t cSamples, 
    const FloatEbmType * const aValues, 
@@ -3042,7 +3019,6 @@ INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
    }
 }
 
-// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static size_t CountCuttingRanges(
    const size_t cSamples,
    const FloatEbmType * const aSingleFeatureValues,
@@ -3101,7 +3077,6 @@ INLINE_RELEASE_UNTEMPLATED static size_t CountCuttingRanges(
    }
 }
 
-// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static size_t GetUncuttableRangeLengthMin(
    const size_t cSamples, 
    const size_t cBinsMax, 
@@ -3174,7 +3149,6 @@ INLINE_RELEASE_UNTEMPLATED static size_t GetUncuttableRangeLengthMin(
    return cUncuttableRangeLengthMin;
 }
 
-// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static size_t PossiblyRemoveCutForMissing(
    const bool bMissingPresent,
    size_t cCutPointsMax
@@ -3205,7 +3179,6 @@ INLINE_RELEASE_UNTEMPLATED static size_t PossiblyRemoveCutForMissing(
    return cCutPointsMax;
 }
 
-// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static size_t RemoveMissingValuesAndReplaceInfinities(
    size_t cSamples,
    FloatEbmType * const aValues,
@@ -3327,7 +3300,6 @@ INLINE_RELEASE_UNTEMPLATED static size_t RemoveMissingValuesAndReplaceInfinities
 static int g_cLogEnterGenerateQuantileCutPointsParametersMessages = 25;
 static int g_cLogExitGenerateQuantileCutPointsParametersMessages = 25;
 
-// VERIFIED 08-2020
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
@@ -4338,7 +4310,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
 static int g_cLogEnterDiscretizeParametersMessages = 25;
 static int g_cLogExitDiscretizeParametersMessages = 25;
 
-// VERIFIED 08-2020
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
@@ -5082,23 +5053,17 @@ exit_with_log:;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
-   IntEbmType * countCutPoints,
+   IntEbmType countCutPoints,
    FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType countMissingValues,
-   FloatEbmType minNonInfinityValue,
-   IntEbmType countNegativeInfinity,
-   FloatEbmType maxNonInfinityValue,
-   IntEbmType countPositiveInfinity,
+   FloatEbmType minValue,
+   FloatEbmType maxValue,
    FloatEbmType * lowBoundOut,
    FloatEbmType * highBoundOut
 ) {
    UNUSED(countCutPoints);
    UNUSED(cutPointsLowerBoundInclusive);
-   UNUSED(countMissingValues);
-   UNUSED(minNonInfinityValue);
-   UNUSED(countNegativeInfinity);
-   UNUSED(maxNonInfinityValue);
-   UNUSED(countPositiveInfinity);
+   UNUSED(minValue);
+   UNUSED(maxValue);
    UNUSED(lowBoundOut);
    UNUSED(highBoundOut);
 

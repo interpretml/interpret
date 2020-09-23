@@ -408,7 +408,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
    IntEbmType countSamples,
-   FloatEbmType * featureValues,
+   FloatEbmType * featureValues, /* featureValues are modified (sorted) */
    IntEbmType countSamplesPerBinMin,
    IntEbmType isSmart,
    IntEbmType randomSeed,
@@ -422,7 +422,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
    IntEbmType countSamples,
-   FloatEbmType * featureValues,
+   FloatEbmType * featureValues, /* featureValues are modified (sorted) */
    IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,
@@ -434,7 +434,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
    IntEbmType countSamples,
-   FloatEbmType * featureValues,
+   FloatEbmType * featureValues, /* featureValues are modified (sorted) */
    IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,
@@ -444,6 +444,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    FloatEbmType * maxNonInfinityValueOut,
    IntEbmType * countPositiveInfinityOut
 );
+
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
@@ -451,17 +452,16 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discre
    const FloatEbmType * cutPointsLowerBoundInclusive,
    IntEbmType * discretizedOut
 );
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
-   IntEbmType * countCutPoints,
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
+   IntEbmType countCutPoints,
    FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType countMissingValues,
-   FloatEbmType minNonInfinityValue,
-   IntEbmType countNegativeInfinity,
-   FloatEbmType maxNonInfinityValue,
-   IntEbmType countPositiveInfinity,
+   FloatEbmType minValue,
+   FloatEbmType maxValue,
    FloatEbmType * lowBoundOut,
    FloatEbmType * highBoundOut
 );
+
 
 // TODO PK Implement the following for memory efficiency and speed of initialization :
 //   - NOTE: FOR RawArray ->  import multiprocessing ++ from multiprocessing import RawArray ++ RawArray(ct.c_ubyte, memory_size) ++ ct.POINTER(ct.c_ubyte)
