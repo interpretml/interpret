@@ -3,8 +3,8 @@
 ![License](https://img.shields.io/github/license/microsoft/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
-![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/293/master.svg?style=flat-square)
-![Coverage](https://img.shields.io/azure-devops/coverage/ms/interpret/293/master.svg?style=flat-square)
+![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/293/develop.svg?style=flat-square)
+![Coverage](https://img.shields.io/azure-devops/coverage/ms/interpret/293/develop.svg?style=flat-square)
 ![Maintenance](https://img.shields.io/maintenance/yes/2020?style=flat-square)
 <br/>
 > ### In the beginning machines learned in darkness, and data scientists struggled in the void to explain them. 
