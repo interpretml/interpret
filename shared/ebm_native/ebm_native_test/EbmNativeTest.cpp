@@ -1034,8 +1034,8 @@ extern void DisplayCuts(
    FloatEbmType * featureValues,
    IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
-   IntEbmType countCutPoints,
-   FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType countBinCuts,
+   FloatEbmType * binCutsLowerBoundInclusive,
    IntEbmType isMissingPresent,
    FloatEbmType minValue,
    FloatEbmType maxValue
@@ -1045,7 +1045,7 @@ extern void DisplayCuts(
    UNUSED(maxValue);
 
    size_t cBinsMax = static_cast<size_t>(countBinsMax);
-   size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   size_t cBinCuts = static_cast<size_t>(countBinCuts);
 
    std::vector<FloatEbmType> samples(featureValues, featureValues + countSamples);
    samples.erase(std::remove_if(samples.begin(), samples.end(),
@@ -1060,7 +1060,7 @@ extern void DisplayCuts(
    size_t iCut = 0;
    size_t cInBin = 0;
    for(auto val: samples) {
-      while(iCut < cCutPoints && cutPointsLowerBoundInclusive[iCut] <= val) {
+      while(iCut < cBinCuts && binCutsLowerBoundInclusive[iCut] <= val) {
          std::cout << "| " << cInBin << std::endl;
          cInBin = 0;
          ++iCut;

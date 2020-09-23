@@ -13,9 +13,9 @@
       InitializeInteractionRegression;
       CalculateInteractionScore;
       FreeInteraction;
-      GenerateQuantileCutPoints;
-      GenerateImprovedEqualWidthCutPoints;
-      GenerateEqualWidthCutPoints;
+      GenerateQuantileBinCuts;
+      GenerateSmartEqualWidthBinCuts;
+      GenerateEqualWidthBinCuts;
       Discretize;
    local: *;
 };

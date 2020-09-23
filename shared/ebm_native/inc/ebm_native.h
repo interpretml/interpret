@@ -406,38 +406,38 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
    PEbmInteraction ebmInteraction
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileBinCuts(
    IntEbmType countSamples,
    FloatEbmType * featureValues, /* featureValues are modified (sorted) */
    IntEbmType countSamplesPerBinMin,
    IntEbmType isSmart,
    IntEbmType randomSeed,
-   IntEbmType * countCutPointsInOut,
-   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * countBinCutsInOut,
+   FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
    FloatEbmType * minNonInfinityValueOut,
    IntEbmType * countNegativeInfinityOut,
    FloatEbmType * maxNonInfinityValueOut,
    IntEbmType * countPositiveInfinityOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateSmartEqualWidthBinCuts(
    IntEbmType countSamples,
    FloatEbmType * featureValues, /* featureValues are modified (sorted) */
    IntEbmType randomSeed,
-   IntEbmType * countCutPointsInOut,
-   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * countBinCutsInOut,
+   FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
    FloatEbmType * minNonInfinityValueOut,
    IntEbmType * countNegativeInfinityOut,
    FloatEbmType * maxNonInfinityValueOut,
    IntEbmType * countPositiveInfinityOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthBinCuts(
    IntEbmType countSamples,
    FloatEbmType * featureValues, /* featureValues are modified (sorted) */
    IntEbmType randomSeed,
-   IntEbmType * countCutPointsInOut,
-   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * countBinCutsInOut,
+   FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
    FloatEbmType * minNonInfinityValueOut,
    IntEbmType * countNegativeInfinityOut,
@@ -448,14 +448,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
-   IntEbmType countCutPoints,
-   const FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType countBinCuts,
+   const FloatEbmType * binCutsLowerBoundInclusive,
    IntEbmType * discretizedOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
-   IntEbmType countCutPoints,
-   FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType countBinCuts,
+   FloatEbmType * binCutsLowerBoundInclusive,
    FloatEbmType minValue,
    FloatEbmType maxValue,
    FloatEbmType * lowBoundOut,

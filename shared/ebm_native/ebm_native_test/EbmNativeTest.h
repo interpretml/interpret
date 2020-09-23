@@ -10,7 +10,7 @@
 enum class TestPriority {
    RandomNumberEquivalency,
    Discretize,
-   GenerateQuantileCutPoints,
+   GenerateQuantileBinCuts,
    BoostingUnusualInputs,
    InteractionUnusualInputs,
    Rehydration,
@@ -309,8 +309,8 @@ void DisplayCuts(
    FloatEbmType * featureValues,
    IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
-   IntEbmType countCutPoints,
-   FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType countBinCuts,
+   FloatEbmType * binCutsLowerBoundInclusive,
    IntEbmType isMissingPresent,
    FloatEbmType minValue,
    FloatEbmType maxValue

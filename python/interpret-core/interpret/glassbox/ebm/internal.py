@@ -97,9 +97,9 @@ class Native:
             ct.c_longlong,
             # double * featureValues
             ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countCutPoints
+            # int64_t countBinCuts
             ct.c_longlong,
-            # double * cutPointsLowerBoundInclusive
+            # double * binCutsLowerBoundInclusive
             ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * discretizedOut
             ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
