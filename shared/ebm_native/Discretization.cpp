@@ -910,6 +910,85 @@ static FloatEbmType GetInterpretableCutPointFloat(
 }
 
 // VERIFIED 2020-09
+static FloatEbmType GetInterpretableEndpoint(
+   const FloatEbmType center,
+   const FloatEbmType distance
+) noexcept {
+   // TODO : add logs or asserts here when we find a condition we didn't think was possible, but that occurs
+
+   EBM_ASSERT(!std::isnan(center));
+   EBM_ASSERT(!std::isnan(distance));
+   EBM_ASSERT(!std::isinf(distance));
+   EBM_ASSERT(FloatEbmType { 0 } <= distance);
+
+   FloatEbmType ret = center;
+   // if the center is +-infinity then we'll always be farter away than the end cut points which can't be +-infinity
+   // so return +-infinity so that our alternative cut point is rejected
+   if(LIKELY(!std::isinf(ret))) {
+      bool bNegative = false;
+      if(PREDICTABLE(center < FloatEbmType { 0 })) {
+         ret = -ret;
+         bNegative = true;
+      }
+
+      const FloatEbmType lowBound = ret - distance;
+      // lowBound can be a negative number, but can't be +-infinity
+      EBM_ASSERT(!std::isnan(lowBound));
+      EBM_ASSERT(!std::isinf(lowBound));
+
+      const FloatEbmType highBound = ret + distance;
+      // highBound can be +infinity, but can't be negative
+      EBM_ASSERT(!std::isnan(highBound));
+      EBM_ASSERT(0 <= highBound);
+
+      char str[k_cCharsFloatPrint];
+      if(LIKELY(!FloatToString(ret, str))) {
+         size_t iTruncateMantissa = size_t { 0 };
+         do {
+            FloatEbmType lowChop;
+            FloatEbmType highChop;
+
+            if(UNLIKELY(StringToFloatChopped(str, iTruncateMantissa, &lowChop, &highChop))) {
+               break;
+            }
+
+            // these comparisons works even if lowBound is negative or highBound is +infinity
+            EBM_ASSERT(!std::isinf(lowChop));
+            EBM_ASSERT(!std::isinf(highChop));
+            if(lowBound <= lowChop && lowChop <= highBound) {
+               // lowChop is a possibility
+               if(lowBound <= highChop && highChop <= highBound) {
+                  // highChop is a possibility
+                  const FloatEbmType lowDistanceToAverage = ret - lowChop;
+                  const FloatEbmType highDistanceToAverage = highChop - ret;
+                  EBM_ASSERT(-0.000001 < lowDistanceToAverage);
+                  EBM_ASSERT(-0.000001 < highDistanceToAverage);
+                  if(UNPREDICTABLE(highDistanceToAverage < lowDistanceToAverage)) {
+                     ret = highChop;
+                     break;
+                  }
+               }
+               ret = lowChop;
+               break;
+            } else {
+               if(lowBound <= highChop && highChop <= highBound) {
+                  // highChop works!
+                  ret = highChop;
+                  break;
+               }
+            }
+
+            ++iTruncateMantissa;
+         } while(k_cDigitsAfterPeriod != iTruncateMantissa);
+      }
+      if(bNegative) {
+         ret = -ret;
+      }
+   }
+   return ret;
+}
+
+// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED static void IronCuts() noexcept {
    // - TODO: POST-HEALING
    //   Our cutting algorithm is greedy and some of the early decisions might not have been optimal.  
@@ -3986,10 +4065,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                EBM_ASSERT(!std::isnan(highCutFullPrecisionMax));
                EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < highCutFullPrecisionMax);
 
-               // TODO : correct lowCutFullPrecisionMax and highCutFullPrecisionMax so that it's different enough
-               // from scaleLowHigh and scaleHighLow
-               const FloatEbmType lowCutMin = lowCutFullPrecisionMin;
-               const FloatEbmType highCutMax = highCutFullPrecisionMax;
+               const FloatEbmType lowCutMin = 
+                  GetInterpretableEndpoint(lowCutFullPrecisionMin, movementFromEnds * FloatEbmType { 0.25 });
+               const FloatEbmType highCutMax =
+                  GetInterpretableEndpoint(highCutFullPrecisionMax, movementFromEnds * FloatEbmType { 0.25 });
 
                const FloatEbmType lowCutExisting = *cutPointsLowerBoundInclusiveOut;
                EBM_ASSERT(!std::isnan(lowCutExisting));
