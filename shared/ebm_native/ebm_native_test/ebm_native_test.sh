@@ -25,6 +25,17 @@ fi
 
 compile_all=""
 compile_all="$compile_all \"$src_path/EbmNativeTest.cpp\""
+
+compile_all="$compile_all \"$src_path/BitPackingExtremes.cpp\""
+compile_all="$compile_all \"$src_path/BoostingUnusualInputs.cpp\""
+compile_all="$compile_all \"$src_path/Discretize.cpp\""
+compile_all="$compile_all \"$src_path/GenerateQuantileBinCuts.cpp\""
+compile_all="$compile_all \"$src_path/GenerateUniformBinCuts.cpp\""
+compile_all="$compile_all \"$src_path/GenerateWinsorizedBinCuts.cpp\""
+compile_all="$compile_all \"$src_path/InteractionUnusualInputs.cpp\""
+compile_all="$compile_all \"$src_path/RandomInterface.cpp\""
+compile_all="$compile_all \"$src_path/RandomNumberEquivalency.cpp\""
+compile_all="$compile_all \"$src_path/Rehydration.cpp\""
 compile_all="$compile_all -I\"$src_path\""
 compile_all="$compile_all -I\"$root_path/shared/ebm_native/inc\""
 compile_all="$compile_all -std=c++11 -march=core2"

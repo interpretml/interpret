@@ -7,6 +7,16 @@
     <ClCompile Include="PrecompiledHeaderEbmNativeTest.cpp">
       <Filter>non_tests</Filter>
     </ClCompile>
+    <ClCompile Include="BitPackingExtremes.cpp" />
+    <ClCompile Include="BoostingUnusualInputs.cpp" />
+    <ClCompile Include="Discretize.cpp" />
+    <ClCompile Include="InteractionUnusualInputs.cpp" />
+    <ClCompile Include="RandomNumberEquivalency.cpp" />
+    <ClCompile Include="Rehydration.cpp" />
+    <ClCompile Include="GenerateQuantileBinCuts.cpp" />
+    <ClCompile Include="GenerateWinsorizedBinCuts.cpp" />
+    <ClCompile Include="GenerateUniformBinCuts.cpp" />
+    <ClCompile Include="RandomInterface.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EbmNativeTest.h">

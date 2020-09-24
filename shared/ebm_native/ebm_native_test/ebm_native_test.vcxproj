@@ -234,7 +234,9 @@ EXIT /B 0
     <ClCompile Include="BitPackingExtremes.cpp" />
     <ClCompile Include="BoostingUnusualInputs.cpp" />
     <ClCompile Include="Discretize.cpp" />
-    <ClCompile Include="GenerateQuantileCutPoints.cpp" />
+    <ClCompile Include="GenerateQuantileBinCuts.cpp" />
+    <ClCompile Include="GenerateUniformBinCuts.cpp" />
+    <ClCompile Include="GenerateWinsorizedBinCuts.cpp" />
     <ClCompile Include="InteractionUnusualInputs.cpp" />
     <ClCompile Include="PrecompiledHeaderEbmNativeTest.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -243,6 +245,7 @@ EXIT /B 0
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="EbmNativeTest.cpp" />
+    <ClCompile Include="RandomInterface.cpp" />
     <ClCompile Include="RandomNumberEquivalency.cpp" />
     <ClCompile Include="Rehydration.cpp" />
   </ItemGroup>

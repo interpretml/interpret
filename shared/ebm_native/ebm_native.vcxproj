@@ -330,6 +330,7 @@ EXIT /B 0
     <ClCompile Include="GrowDecisionTree.cpp" />
     <ClCompile Include="InitializeResiduals.cpp" />
     <ClCompile Include="InterpretableNumerics.cpp" />
+    <ClCompile Include="RandomExternal.cpp" />
     <ClCompile Include="SegmentedTensor.cpp" />
     <ClCompile Include="SumHistogramBuckets.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />

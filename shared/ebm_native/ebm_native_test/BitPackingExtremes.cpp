@@ -9,7 +9,6 @@
 
 static const TestPriority k_filePriority = TestPriority::BitPackingExtremes;
 
-
 TEST_CASE("Test data bit packing extremes, boosting, regression") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
       IntEbmType exponential = static_cast<IntEbmType>(std::pow(2, exponentialBins));

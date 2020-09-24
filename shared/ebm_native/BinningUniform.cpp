@@ -11,6 +11,15 @@
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 
+extern size_t RemoveMissingValuesAndReplaceInfinities(
+   size_t cSamples,
+   FloatEbmType * const aValues,
+   FloatEbmType * const pMinNonInfinityValueOut,
+   IntEbmType * const pCountNegativeInfinityOut,
+   FloatEbmType * const pMaxNonInfinityValueOut,
+   IntEbmType * const pCountPositiveInfinityOut
+) noexcept;
+
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateUniformBinCuts(
    IntEbmType countSamples,
    FloatEbmType * featureValues,

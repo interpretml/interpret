@@ -460,6 +460,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Sugges
    FloatEbmType * highBoundOut
 );
 
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(IntEbmType randomSeed);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
+   IntEbmType randomSeed,
+   IntEbmType countSamples,
+   IntEbmType countIncluded,
+   IntEbmType * isIncludedOut
+);
 
 // TODO PK Implement the following for memory efficiency and speed of initialization :
 //   - NOTE: FOR RawArray ->  import multiprocessing ++ from multiprocessing import RawArray ++ RawArray(ct.c_ubyte, memory_size) ++ ct.POINTER(ct.c_ubyte)
