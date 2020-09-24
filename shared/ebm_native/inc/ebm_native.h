@@ -423,7 +423,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateWinsorizedBinCuts(
    IntEbmType countSamples,
    FloatEbmType * featureValues, /* featureValues are modified (sorted) */
-   IntEbmType randomSeed,
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -435,7 +434,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateUniformBinCuts(
    IntEbmType countSamples,
    FloatEbmType * featureValues, /* featureValues are modified (sorted) */
-   IntEbmType randomSeed,
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,

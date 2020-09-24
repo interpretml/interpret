@@ -10,7 +10,6 @@
 #include <cmath> // std::round
 #include <vector> // std::vector (used in std::priority_queue)
 #include <queue> // std::priority_queue
-#include <stdio.h> // snprintf
 #include <set> // std::set
 #include <string.h> // strchr, memmove
 
@@ -18,6 +17,9 @@
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h"
+
+//#define LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
+//#define LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
 
 // TODO: increase the k_cutExploreDistance, and also increase our testing length to compensate
 constexpr size_t k_cutExploreDistance = 20;

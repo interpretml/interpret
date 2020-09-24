@@ -4,30 +4,17 @@
 
 #include "PrecompiledHeader.h"
 
-//#define LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
-//#define LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
-
 // TODO: use noexcept throughout our codebase (exception extern "C" functions) !  The compiler can optimize functions better if it knows there are no exceptions
 // TODO: review all the C++ library calls, including things like std::abs and verify that none of them throw exceptions, otherwise use the C versions that provide this guarantee
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
-#include <algorithm> // std::sort
-#include <cmath> // std::round
-#include <vector> // std::vector (used in std::priority_queue)
-#include <queue> // std::priority_queue
-#include <stdio.h> // snprintf
-#include <set> // std::set
-#include <string.h> // strchr, memmove
 
 #include "ebm_native.h"
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "RandomStream.h"
 
 // TODO: Next steps:
-// 1) Ok, once we're sure the algorithm isn't completely off base, let's add automated tests for almost every path we
-//    can put a breakpoint on below or that we can think is important
 // 4) expose everything in python and clean up the preprocessor stuff there and make the cut points per
 //    additive_term all work, look at how this changes the visualization objects, and continue along the path of 
 //    implementing the python changes we agreed on including generational binning, etc..

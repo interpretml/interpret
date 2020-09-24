@@ -6,18 +6,11 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
-#include <algorithm> // std::sort
-#include <cmath> // std::round
-#include <vector> // std::vector (used in std::priority_queue)
-#include <queue> // std::priority_queue
-#include <stdio.h> // snprintf
-#include <set> // std::set
 #include <string.h> // strchr, memmove
 
 #include "ebm_native.h"
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "RandomStream.h"
 
 constexpr FloatEbmType k_percentageDeviationFromEndpointForInterpretableNumbers = FloatEbmType { 0.25 };
 
