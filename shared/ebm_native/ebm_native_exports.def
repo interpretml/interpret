@@ -16,6 +16,6 @@ EXPORTS
   CalculateInteractionScore
   FreeInteraction
   GenerateQuantileBinCuts
-  GenerateSmartEqualWidthBinCuts
-  GenerateEqualWidthBinCuts
+  GenerateWinsorizedBinCuts
+  GenerateUniformBinCuts
   Discretize

@@ -589,6 +589,8 @@ public:
 
       // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == binnedActualValue.  We expect 0 to be the 
       //   default target, so we should flip the value of trainingLogOddsPrediction so that we don't need to negate it for the default 0 case
+      // TODO: we can probably remove the negation on 1 == binnedActualValue via : return  binned_actual_value - 1 + (1 / (np.exp(training_log_odds_prediction) + 1)) 
+      // once we've moved to sorted training data
       // exp will return the same type that it is given, either float or double
       const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } +
          EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); 

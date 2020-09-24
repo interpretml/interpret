@@ -41,7 +41,7 @@
 //    can put a breakpoint on below or that we can think is important
 // 2) Do a complete review top to bottom review of this entire file.  Which is just the GenerateQuantileBinCuts 
 //    system, and the the Discretize function.  Don't expand our already complex functionality unless necessary
-// 3) Implement GenerateSmartEqualWidthBinCuts and GenerateEqualWidthBinCuts
+// 3) Implement GenerateWinsorizedBinCuts and GenerateUniformBinCuts
 // 4) expose everything in python and clean up the preprocessor stuff there and make the cut points per
 //    additive_term all work, look at how this changes the visualization objects, and continue along the path of 
 //    implementing the python changes we agreed on including generational binning, etc..
@@ -52,11 +52,11 @@
                //   - add log notes to the interpretable cut points on errors
                //   - REVIEW ALL THE CUT POINTS IN TESTS..DO they all look good and consistent
 
-// python
+// python binning types
 //quantile
-//quantile_smart
-//equal_width
-//equal_width_smart
+//quantile_humanized
+//uniform
+//winsorized
 
 
 
@@ -3304,7 +3304,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
-   IntEbmType isSmart,
+   IntEbmType isHumanized,
    IntEbmType randomSeed,
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
@@ -3336,7 +3336,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
-      "isSmart=%s, "
+      "isHumanized=%s, "
       "randomSeed=%" IntEbmTypePrintf ", "
       "countBinCutsInOut=%p, "
       "binCutsLowerBoundInclusiveOut=%p, "
@@ -3349,7 +3349,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       countSamples,
       static_cast<void *>(featureValues),
       countSamplesPerBinMin,
-      ObtainTruth(isSmart),
+      ObtainTruth(isHumanized),
       randomSeed,
       static_cast<void *>(countBinCutsInOut),
       static_cast<void *>(binCutsLowerBoundInclusiveOut),
@@ -3909,7 +3909,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             FloatEbmType * pBinCutsLowerBoundInclusive = binCutsLowerBoundInclusiveOut;
             const FloatEbmType * const * ppValueCutTop2 = apValueCutTops;
 
-            if(EBM_FALSE == isSmart) {
+            if(EBM_FALSE == isHumanized) {
                do {
                   const FloatEbmType * const pCut = *ppValueCutTop2;
                   EBM_ASSERT(featureValues < pCut);
@@ -4146,7 +4146,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    return ret;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateSmartEqualWidthBinCuts(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateWinsorizedBinCuts(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType randomSeed,
@@ -4174,7 +4174,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateS
    return IntEbmType { 1 };
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthBinCuts(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateUniformBinCuts(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType randomSeed,
