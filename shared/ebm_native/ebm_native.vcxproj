@@ -317,6 +317,9 @@ EXIT /B 0
     <ClCompile Include="ApplyModelUpdateValidation.cpp" />
     <ClCompile Include="BinBoosting.cpp" />
     <ClCompile Include="BinInteraction.cpp" />
+    <ClCompile Include="BinningQuantile.cpp" />
+    <ClCompile Include="BinningUniform.cpp" />
+    <ClCompile Include="BinningWinsorized.cpp" />
     <ClCompile Include="CachedThreadResourcesBoosting.cpp" />
     <ClCompile Include="CachedThreadResourcesInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
@@ -326,6 +329,7 @@ EXIT /B 0
     <ClCompile Include="GenerateModelFeatureGroupUpdate.cpp" />
     <ClCompile Include="GrowDecisionTree.cpp" />
     <ClCompile Include="InitializeResiduals.cpp" />
+    <ClCompile Include="InterpretableNumerics.cpp" />
     <ClCompile Include="SegmentedTensor.cpp" />
     <ClCompile Include="SumHistogramBuckets.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />

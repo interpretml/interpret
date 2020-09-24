@@ -83,7 +83,7 @@ TEST_CASE("Discretize, increasing lengths") {
          CHECK(singleFeatureDiscretized[11 * iCutPoint + 1] == static_cast<IntEbmType>(cBinCuts) + IntEbmType { 1 });
 
          CHECK(singleFeatureDiscretized[11 * iCutPoint + 2] == IntEbmType { 0 });
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 3] == size_t { 0 } == cBinCuts ? IntEbmType { 0 } : IntEbmType { 1 });
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 3] == (size_t { 0 } == cBinCuts ? IntEbmType { 0 } : IntEbmType { 1 }));
 
          CHECK(singleFeatureDiscretized[11 * iCutPoint + 4] == static_cast<IntEbmType>(std::min(iCutPoint, cBinCuts)));
          CHECK(singleFeatureDiscretized[11 * iCutPoint + 5] == static_cast<IntEbmType>(std::min(iCutPoint + 1, cBinCuts)));
