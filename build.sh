@@ -88,7 +88,7 @@ compile_all="$compile_all \"$src_path/TensorTotalsBuild.cpp\""
 compile_all="$compile_all -I\"$src_path\""
 compile_all="$compile_all -I\"$src_path/inc\""
 compile_all="$compile_all -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11"
-compile_all="$compile_all -fvisibility=hidden -fvisibility-inlines-hidden -ffast-math -fno-finite-math-only -march=core2 -DEBM_NATIVE_EXPORTS -fpic"
+compile_all="$compile_all -fvisibility=hidden -fvisibility-inlines-hidden -fno-math-errno -fno-trapping-math -march=core2 -DEBM_NATIVE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
