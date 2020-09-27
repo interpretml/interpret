@@ -2530,7 +2530,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    IntEbmType countPositiveInfinityRet;
    IntEbmType ret;
 
-   // if there is only 1 bin, then there can be no cut points, and no point doing any more work here
    if(UNLIKELY(nullptr == countBinCutsInOut)) {
       LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts nullptr == countBinCutsInOut");
       countBinCutsRet = IntEbmType { 0 };
@@ -2542,6 +2541,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       ret = IntEbmType { 1 };
    } else {
       if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
+         // if there's 1 sample, then we can't split it, but we'd still want to determine the min, max, etc
+         // so continue processing
+
          countBinCutsRet = IntEbmType { 0 };
          countMissingValuesRet = IntEbmType { 0 };
          minNonInfinityValueRet = FloatEbmType { 0 };
@@ -2615,12 +2617,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          EBM_ASSERT(IsNumberConvertable<IntEbmType>(cMissingValues));
          countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
-         if(UNLIKELY(size_t { 0 } == cSamples)) {
+         if(UNLIKELY(cSamples <= size_t { 1 })) {
+            // we can't really split 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
+            // or if there was only 1 non-missing value
             countBinCutsRet = IntEbmType { 0 };
-            EBM_ASSERT(FloatEbmType { 0 } == minNonInfinityValueRet);
-            EBM_ASSERT(IntEbmType { 0 } == countNegativeInfinityRet);
-            EBM_ASSERT(FloatEbmType { 0 } == maxNonInfinityValueRet);
-            EBM_ASSERT(IntEbmType { 0 } == countPositiveInfinityRet);
             ret = IntEbmType { 0 };
             goto exit_with_log;
          }
@@ -2696,11 +2696,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          );
          EBM_ASSERT(size_t { 1 } <= cBinCutsMax); // we won't eliminate to less than 1, and we had at least 1 before
 
+         // we need to be able to index both the binCutsLowerBoundInclusiveOut AND we also allocate an array
+         // of pointers below of FloatEbmType * to index into featureValues 
+         if(UNLIKELY(IsMultiplyError(cBinCutsMax, std::max(sizeof(*binCutsLowerBoundInclusiveOut), sizeof(FloatEbmType *))))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts IsMultiplyError(cBinCutsMax, std::max(sizeof(*binCutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)))");
+            countBinCutsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+
          std::sort(featureValues, featureValues + cSamples);
 
          EBM_ASSERT(cBinCutsMax < cSamples); // so we can add 1 to cBinCutsMax safely
          const size_t cUncuttableRangeLengthMin = 
-            GetUncuttableRangeLengthMin(cSamples, cBinCutsMax + 1, cSamplesPerBinMin);
+            GetUncuttableRangeLengthMin(cSamples, cBinCutsMax + size_t { 1 }, cSamplesPerBinMin);
          EBM_ASSERT(size_t { 1 } <= cUncuttableRangeLengthMin);
 
          const size_t cCuttingRanges = CountCuttingRanges(
@@ -2730,12 +2739,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          }
          const size_t cBytesNeighbourJumps = cSamples * sizeof(NeighbourJump);
 
-         if(UNLIKELY(IsMultiplyError(cBinCutsMax, sizeof(FloatEbmType *)))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts IsMultiplyError(cBinCutsMax, sizeof(FloatEbmType *))");
-            countBinCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
-            goto exit_with_log;
-         }
+         // we checked that this multiplication wouldn't overflow above
+         EBM_ASSERT(!IsMultiplyError(cBinCutsMax, sizeof(FloatEbmType *)));
          const size_t cBytesValueCutPointers = cBinCutsMax * sizeof(FloatEbmType *);
 
          // we limit the cBinCutsMax to no more than cSamples - 1.  cSamples can't be anywhere close to

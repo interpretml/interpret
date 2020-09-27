@@ -14,24 +14,11 @@
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 
-// TODO: Next steps:
-// 4) expose everything in python and clean up the preprocessor stuff there and make the cut points per
-//    additive_term all work, look at how this changes the visualization objects, and continue along the path of 
-//    implementing the python changes we agreed on including generational binning, etc..
-// 5) Run tests against the 200 datasets to see if we degraded performance in any detectable way
-// 6) Put out a version in python with all of these changes.  Wait a few months
-// 7) Come back later and improve on this algorithm per the TODOs in this file
-
-//   - add log notes to the interpretable cut points on errors
-//   - REVIEW ALL THE CUT POINTS IN TESTS..DO they all look good and consistent
-
 // python binning types
 //quantile
 //quantile_humanized
 //uniform
 //winsorized
-
-
 
 // Plan:
 //   - when making predictions, in the great majority of cases, we should serially determine the logits of each

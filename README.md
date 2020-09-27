@@ -19,7 +19,7 @@ Interpretability is essential for:
 - Regulatory compliance - Does my model satisfy legal requirements?
 - High-risk applications - Healthcare, finance, judicial, ...
 
-![](https://github.com/interpretml/assets/blob/master/interpret-highlight.gif)
+![](http://interpret.ml/interpret-highlight.gif)
 
 # Installation
 

@@ -21,10 +21,18 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(
    IntEbmType * const pCountPositiveInfinityOut
 ) noexcept;
 
+extern FloatEbmType ArithmeticMean(
+   const FloatEbmType low,
+   const FloatEbmType high
+) noexcept;
+
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
 static int g_cLogEnterGenerateWinsorizedBinCutsParametersMessages = 25;
 static int g_cLogExitGenerateWinsorizedBinCutsParametersMessages = 25;
 
+// TODO: this function doesn't currently allocate anything, so if that continues we can eliminate the return
+// value and just return void.  We might someday though want to allocate a copy of binCutsLowerBoundInclusiveOut
+// that we'd sort.  Let's see how the python code progresses before deciding this
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateWinsorizedBinCuts(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
@@ -62,7 +70,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
       static_cast<void *>(countPositiveInfinityOut)
    );
 
-   IntEbmType countBinCutsRet;
+   IntEbmType countBinCutsRet = IntEbmType { 0 };
    IntEbmType countMissingValuesRet;
    FloatEbmType minNonInfinityValueRet;
    IntEbmType countNegativeInfinityRet;
@@ -70,10 +78,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
    IntEbmType countPositiveInfinityRet;
    IntEbmType ret;
 
-   // if there is only 1 bin, then there can be no cut points, and no point doing any more work here
    if(UNLIKELY(nullptr == countBinCutsInOut)) {
       LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == countBinCutsInOut");
-      countBinCutsRet = IntEbmType { 0 };
       countMissingValuesRet = IntEbmType { 0 };
       minNonInfinityValueRet = FloatEbmType { 0 };
       countNegativeInfinityRet = IntEbmType { 0 };
@@ -82,7 +88,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
       ret = IntEbmType { 1 };
    } else {
       if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
-         countBinCutsRet = IntEbmType { 0 };
+         // if there's 1 sample, then we can't split it, but we'd still want to determine the min, max, etc
+         // so continue processing
+
          countMissingValuesRet = IntEbmType { 0 };
          minNonInfinityValueRet = FloatEbmType { 0 };
          countNegativeInfinityRet = IntEbmType { 0 };
@@ -94,10 +102,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
             ret = IntEbmType { 1 };
          }
       } else {
-         if(UNLIKELY(nullptr == featureValues)) {
-            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == featureValues");
+         if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedBinCuts !IsNumberConvertable<size_t>(countSamples)");
 
-            countBinCutsRet = IntEbmType { 0 };
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
             countNegativeInfinityRet = IntEbmType { 0 };
@@ -107,10 +114,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
             goto exit_with_log;
          }
 
-         if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedBinCuts !IsNumberConvertable<size_t>(countSamples)");
+         if(UNLIKELY(nullptr == featureValues)) {
+            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == featureValues");
 
-            countBinCutsRet = IntEbmType { 0 };
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
             countNegativeInfinityRet = IntEbmType { 0 };
@@ -125,7 +131,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
          if(UNLIKELY(IsMultiplyError(sizeof(*featureValues), cSamplesIncludingMissingValues))) {
             LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countSamples was too large to fit into featureValues");
 
-            countBinCutsRet = IntEbmType { 0 };
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
             countNegativeInfinityRet = IntEbmType { 0 };
@@ -155,170 +160,260 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
          EBM_ASSERT(IsNumberConvertable<IntEbmType>(cMissingValues));
          countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
-         if(UNLIKELY(size_t { 0 } == cSamples)) {
-            countBinCutsRet = IntEbmType { 0 };
-            EBM_ASSERT(FloatEbmType { 0 } == minNonInfinityValueRet);
-            EBM_ASSERT(IntEbmType { 0 } == countNegativeInfinityRet);
-            EBM_ASSERT(FloatEbmType { 0 } == maxNonInfinityValueRet);
-            EBM_ASSERT(IntEbmType { 0 } == countPositiveInfinityRet);
-            ret = IntEbmType { 0 };
-            goto exit_with_log;
-         }
+         // we can't really split 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
+         // or if there was only 1 non-missing value
+         if(LIKELY(size_t { 1 } < cSamples)) {
+            EBM_ASSERT(nullptr != countBinCutsInOut);
+            const IntEbmType countBinCuts = *countBinCutsInOut;
 
-         EBM_ASSERT(nullptr != countBinCutsInOut);
-         const IntEbmType countBinCuts = *countBinCutsInOut;
-
-         if(UNLIKELY(countBinCuts <= IntEbmType { 0 })) {
-            countBinCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 0 };
-            if(UNLIKELY(countBinCuts < IntEbmType { 0 })) {
-               LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countBinCuts can't be negative.");
-               ret = IntEbmType { 1 };
-            }
-            goto exit_with_log;
-         }
-
-         if(UNLIKELY(!IsNumberConvertable<size_t>(countBinCuts))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedBinCuts !IsNumberConvertable<size_t>(countBinCuts)");
-
-            countBinCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
-            goto exit_with_log;
-         }
-
-         if(UNLIKELY(nullptr == binCutsLowerBoundInclusiveOut)) {
-            // if we have a potential bin cut, then binCutsLowerBoundInclusiveOut shouldn't be nullptr
-            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == binCutsLowerBoundInclusiveOut");
-
-            countBinCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
-
-            goto exit_with_log;
-         }
-
-         // our +infinity values have been turned into max_float and -infinity values have been turned into 
-         // lowest_float because we can't have a cut between max_float and +infinity without using a +infinity
-         // cut value since we use lower bound inclusivity.  Other than +-infinity, if our dataset isn't completely
-         // uniform we just need to find a single cut between values and we can divide the space up between
-         // uniform bins between those values.
-
-         std::sort(featureValues, featureValues + cSamples);
-
-         const size_t cBinCuts = static_cast<size_t>(countBinCuts);
-         const size_t cBins = cBinCuts + size_t { 1 };
-         const size_t cStepInwards = (cSamples - size_t { 1 }) / cBins;
-
-         // position ourselves at low-high and move inwards
-         const FloatEbmType * pLow = &featureValues[cStepInwards];
-         // position ourselves at high-low and move inwards
-         const FloatEbmType * pHigh = &featureValues[cSamples - cStepInwards - size_t { 1 }];
-
-         FloatEbmType lowVal = *pLow;
-         FloatEbmType highVal = *pHigh;
-         FloatEbmType valCur;
-
-         if(lowVal == highVal) {
-            // we need to go outwards since there are no cuts inwards.  We just need a single cut in order
-            // to make this work since we can subdivide the space between the cuts
-
-            const FloatEbmType minValue = UNPREDICTABLE(0 == countNegativeInfinityRet) ? 
-               minNonInfinityValueRet : std::numeric_limits<FloatEbmType>::lowest();
-            const FloatEbmType maxValue = UNPREDICTABLE(0 == countPositiveInfinityRet) ?
-               maxNonInfinityValueRet : std::numeric_limits<FloatEbmType>::max();
-
-            if(minValue != lowVal) {
-               // there's a transition somehwere on the low side, so let's find it
-               ++pLow;
-               do {
-                  --pLow;
-                  valCur = *pLow;
-               } while(lowVal != valCur);
-               lowVal = valCur;
-            }
-            if(maxValue != highVal) {
-               // there's a transition somehwere on the high side, so let's find it
-               --pHigh;
-               do {
-                  ++pHigh;
-                  valCur = *pHigh;
-               } while(highVal != valCur);
-               highVal = valCur;
-            }
-            if(lowVal == highVal) {
-               // there are no cuts at all
-               countBinCutsRet = IntEbmType { 0 };
+            if(UNLIKELY(countBinCuts <= IntEbmType { 0 })) {
                ret = IntEbmType { 0 };
+               if(UNLIKELY(countBinCuts < IntEbmType { 0 })) {
+                  LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countBinCuts can't be negative.");
+                  ret = IntEbmType { 1 };
+               }
                goto exit_with_log;
             }
 
-            // move upwards from the min since we 
-            lowVal = std::nextafter(lowVal, std::numeric_limits<FloatEbmType>::max());
-         } else {
-            // because lowVal != highVal, we know there's a transition that'll exit our loops somewhere in between
+            if(UNLIKELY(!IsNumberConvertable<size_t>(countBinCuts))) {
+               LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedBinCuts !IsNumberConvertable<size_t>(countBinCuts)");
 
-            do {
-               ++pLow;
-               valCur = *pLow;
-            } while(lowVal != valCur);
-            lowVal = valCur;
+               ret = IntEbmType { 1 };
+               goto exit_with_log;
+            }
+            const size_t cBinCuts = static_cast<size_t>(countBinCuts);
 
-            do {
-               --pHigh;
-               valCur = *pHigh;
-            } while(highVal != valCur);
-            highVal = valCur;
+            if(UNLIKELY(IsMultiplyError(sizeof(*binCutsLowerBoundInclusiveOut), cBinCuts))) {
+               LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countBinCuts was too large to fit into binCutsLowerBoundInclusiveOut");
 
-            if(highVal < lowVal) {
-               // there was only a single transition between our points, and now our low is on the high side
-               // and our high is on the low side, so flip them
-
-               highVal = lowVal;
-               lowVal = valCur;
+               ret = IntEbmType { 1 };
+               goto exit_with_log;
             }
 
-            // move one up from the highVal since if we put a cut exactly there the high-low value will
-            // be included in the highest bin, and we don't want that
-            // winsorized binning doesn't have the ability to create humanized cut numbers, so going one up
-            // isn't a big deal here, and even if the high value is an integer like 5, one up from that will
-            // basically round to 5 in the UI but we'll get a number here that's just slighly higher
-            //
-            // This won't work if max_float == highVal, but it'll be fine since in that case nextafter will
-            // just keep the max_float and we'll have a cut with max_float on the upper bin
-            highVal = std::nextafter(highVal, std::numeric_limits<FloatEbmType>::max());
-         }
+            if(UNLIKELY(nullptr == binCutsLowerBoundInclusiveOut)) {
+               // if we have a potential bin cut, then binCutsLowerBoundInclusiveOut shouldn't be nullptr
+               LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == binCutsLowerBoundInclusiveOut");
 
-         FloatEbmType * pBinCutsLowerBoundInclusive = binCutsLowerBoundInclusiveOut;
-         const FloatEbmType stepValue = (highVal - lowVal) / static_cast<FloatEbmType>(cBins);
-         FloatEbmType cutPrev = lowVal;
-         size_t iCut = size_t { 1 };
-         *pBinCutsLowerBoundInclusive = lowVal;
-         ++pBinCutsLowerBoundInclusive;
-         do {
-            const FloatEbmType cut = lowVal + stepValue * iCut;
-            if(cut != cutPrev) {
-               // just in case we have floating point inexactness that puts us above the highValue we need to stop
-               if(highVal <= cut) {
-                  break;
+               ret = IntEbmType { 1 };
+               goto exit_with_log;
+            }
+
+            // our +infinity values have been turned into max_float and -infinity values have been turned into 
+            // lowest_float because we can't have a cut between max_float and +infinity without using a +infinity
+            // cut value since we use lower bound inclusivity.  Other than +-infinity, if our dataset isn't completely
+            // uniform we just need to find a single cut between values and we can divide the space up between
+            // uniform bins between those values.
+
+            std::sort(featureValues, featureValues + cSamples);
+
+            if(UNLIKELY(size_t { 1 } == cBinCuts)) {
+               // if we're only given 1 cut, then we need do so something special since we can't have an upper and
+               // lower cut from which to range between.  We want to find the best central cut and use that
+
+               // if all of the samples are positive infinity then minValue is max, otherwise if there are any
+               // negative infinities, then the min will be lowest.  Same for the max, but in reverse.
+               const FloatEbmType minValue = UNPREDICTABLE(cSamples == static_cast<size_t>(countPositiveInfinityRet)) ? 
+                  std::numeric_limits<FloatEbmType>::max() : 
+                  (UNPREDICTABLE(0 == countNegativeInfinityRet) ?
+                  minNonInfinityValueRet : std::numeric_limits<FloatEbmType>::lowest());
+               const FloatEbmType maxValue = UNPREDICTABLE(cSamples == static_cast<size_t>(countNegativeInfinityRet)) ?
+                  std::numeric_limits<FloatEbmType>::lowest() :
+                  (UNPREDICTABLE(0 == countPositiveInfinityRet) ?
+                  maxNonInfinityValueRet : std::numeric_limits<FloatEbmType>::max());
+
+               // if this fails there are no transitions at all, so we can't have a cut
+               if(LIKELY(minValue != maxValue)) {
+                  const size_t iCenterHigh = cSamples >> 1;
+                  // put the low on the high side so that in our first loop we decrement it to it's actual position
+                  const FloatEbmType * pLow = &featureValues[iCenterHigh];
+                  const FloatEbmType * pHigh = pLow - (size_t { 1 } & (cSamples - size_t { 1 }));
+
+                  FloatEbmType lowCur;
+                  FloatEbmType highCur;
+                  do {
+                     --pLow;
+                     ++pHigh;
+
+                     EBM_ASSERT(featureValues <= pLow && pLow < featureValues + cSamples);
+                     lowCur = *pLow;
+                     EBM_ASSERT(featureValues <= pHigh && pHigh < featureValues + cSamples);
+                     highCur = *pHigh;
+                     // since minValue != maxValue per above, we know there is a transition SOMEWHERE, which will exit us
+                  } while(LIKELY(lowCur == highCur));
+                  EBM_ASSERT(lowCur < highCur);
+
+                  // if both lowCur and highCur have changed, we'll get the average value between them, but that'll
+                  // put the centerVal either on the low or high bin dependent on the values.  Unlike quantile binning, 
+                  // winsorized binning is senitive to the values and not invariant to operations, so this is fine
+
+                  const FloatEbmType avg = ArithmeticMean(lowCur, highCur);
+                  *binCutsLowerBoundInclusiveOut = avg;
+                  countBinCutsRet = IntEbmType { 1 };
                }
-               *pBinCutsLowerBoundInclusive = cut;
-               ++pBinCutsLowerBoundInclusive;
-               cutPrev = cut;
+            } else {
+               // we check that cBinCuts can be multiplied with sizeof(*binCutsLowerBoundInclusiveOut), and since
+               // there is no way an element of binCutsLowerBoundInclusiveOut is as small as 1 byte, we should
+               // be able to add one to cBinCuts
+               EBM_ASSERT(!IsAddError(cBinCuts, size_t { 1 }));
+               const size_t cBins = cBinCuts + size_t { 1 };
+               EBM_ASSERT(size_t { 1 } < cSamples);
+               const size_t iOuterBound = (cSamples - size_t { 1 }) / cBins;
+               EBM_ASSERT(iOuterBound < cSamples);
+
+               // position ourselves at low-high and move inwards
+               const FloatEbmType * pLow = &featureValues[iOuterBound];
+               // position ourselves at high-low and move inwards
+               const FloatEbmType * pHigh = &featureValues[cSamples - iOuterBound - size_t { 1 }];
+
+               EBM_ASSERT(featureValues <= pLow && pLow < featureValues + cSamples);
+               EBM_ASSERT(featureValues <= pHigh && pHigh < featureValues + cSamples);
+
+               const FloatEbmType lowOuterVal = *pLow;
+               const FloatEbmType highOuterVal = *pHigh;
+
+               if(UNLIKELY(lowOuterVal == highOuterVal)) {
+                  const FloatEbmType centerVal = lowOuterVal;
+
+                  // if all of the samples are positive infinity then minValue is max, otherwise if there are any
+                  // negative infinities, then the min will be lowest.  Same for the max, but in reverse.
+                  const FloatEbmType minValue = UNPREDICTABLE(cSamples == static_cast<size_t>(countPositiveInfinityRet)) ?
+                     std::numeric_limits<FloatEbmType>::max() :
+                     (UNPREDICTABLE(0 == countNegativeInfinityRet) ?
+                     minNonInfinityValueRet : std::numeric_limits<FloatEbmType>::lowest());
+                  const FloatEbmType maxValue = UNPREDICTABLE(cSamples == static_cast<size_t>(countNegativeInfinityRet)) ?
+                     std::numeric_limits<FloatEbmType>::lowest() :
+                     (UNPREDICTABLE(0 == countPositiveInfinityRet) ?
+                     maxNonInfinityValueRet : std::numeric_limits<FloatEbmType>::max());
+
+                  FloatEbmType * pBinCutsLowerBoundInclusive = binCutsLowerBoundInclusiveOut;
+                  if(PREDICTABLE(minValue != centerVal)) {
+                     // there's a transition somewhere on the low side
+                     EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() != centerVal);
+                     EBM_ASSERT(minValue < centerVal);
+
+                     FloatEbmType valCur;
+                     do {
+                        --pLow;
+                        EBM_ASSERT(featureValues <= pLow && pLow < featureValues + cSamples);
+                        valCur = *pLow;
+                     } while(centerVal == valCur);
+                     EBM_ASSERT(valCur < centerVal);
+
+                     const FloatEbmType avg = ArithmeticMean(valCur, centerVal);
+                     *pBinCutsLowerBoundInclusive = avg;
+                     ++pBinCutsLowerBoundInclusive;
+                     ++countBinCutsRet;
+                  }
+                  if(PREDICTABLE(maxValue != centerVal)) {
+                     // there's a transition somewhere on the high side
+                     EBM_ASSERT(std::numeric_limits<FloatEbmType>::max() != centerVal);
+                     EBM_ASSERT(centerVal < maxValue);
+
+                     FloatEbmType valCur;
+                     do {
+                        ++pHigh;
+                        EBM_ASSERT(featureValues <= pHigh && pHigh < featureValues + cSamples);
+                        valCur = *pHigh;
+                     } while(centerVal == valCur);
+                     EBM_ASSERT(centerVal < valCur);
+
+                     const FloatEbmType avg = ArithmeticMean(centerVal, valCur);
+                     *pBinCutsLowerBoundInclusive = avg;
+                     ++countBinCutsRet;
+                  }
+               } else {
+                  // because lowVal != highVal, we know there's a transition that'll exit our loops somewhere in between
+
+                  FloatEbmType lowInnerVal;
+                  do {
+                     ++pLow;
+                     EBM_ASSERT(featureValues <= pLow && pLow < featureValues + cSamples);
+                     lowInnerVal = *pLow;
+                  } while(lowOuterVal == lowInnerVal);
+                  EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() != lowInnerVal);
+
+                  if(lowInnerVal == highOuterVal) {
+                     // there was just a single transition between our two outer values.  This doesn't really give
+                     // us anything to wrap, so let's just return a single cut point in the middle of the transition
+                     // space
+
+                     const FloatEbmType avg = ArithmeticMean(lowOuterVal, highOuterVal);
+                     *binCutsLowerBoundInclusiveOut = avg;
+                     countBinCutsRet = IntEbmType { 1 };
+                  } else {
+                     FloatEbmType highInnerVal;
+                     do {
+                        --pHigh;
+                        EBM_ASSERT(featureValues <= pHigh && pHigh < featureValues + cSamples);
+                        highInnerVal = *pHigh;
+                     } while(highOuterVal == highInnerVal);
+                     EBM_ASSERT(std::numeric_limits<FloatEbmType>::max() != highInnerVal);
+
+                     if(lowInnerVal == highInnerVal) {
+                        // there's just one long run of values in the center.  We don't really want to wrap any
+                        // number this tightly, so let's put down two cut points in the spaces on either side
+
+                        const FloatEbmType centerVal = lowInnerVal;
+
+                        const FloatEbmType avg1 = ArithmeticMean(lowOuterVal, centerVal);
+                        binCutsLowerBoundInclusiveOut[0] = avg1;
+
+                        const FloatEbmType avg2 = ArithmeticMean(centerVal, highOuterVal);
+                        binCutsLowerBoundInclusiveOut[1] = avg2;
+
+                        countBinCutsRet = IntEbmType { 2 };
+                     } else {
+                        // move one up from the highVal since if we put a cut exactly there the high-low value will
+                        // be included in the highest bin, and we don't want that
+                        // winsorized binning doesn't have the ability to create humanized cut numbers, so going one tick up
+                        // isn't a big deal here, and even if the high value is an integer like 5, one up from that will
+                        // basically round to 5 in the UI but we'll get a number here that's just slighly higher
+
+                        highInnerVal = std::nextafter(highInnerVal, std::numeric_limits<FloatEbmType>::max());
+
+                        EBM_ASSERT(lowInnerVal < highInnerVal);
+                        EBM_ASSERT(size_t { 2 } <= cBinCuts); // we can put down the low and high ones at least
+
+                        FloatEbmType * pBinCutsLowerBoundInclusive = binCutsLowerBoundInclusiveOut;
+                        *pBinCutsLowerBoundInclusive = lowInnerVal;
+                        ++pBinCutsLowerBoundInclusive;
+
+                        if(size_t { 2 } < cBinCuts) {
+                           FloatEbmType cutPrev = lowInnerVal;
+                           const size_t cInternalRanges = cBinCuts - size_t { 1 };
+                           const FloatEbmType stepValue = (highInnerVal - lowInnerVal) / static_cast<FloatEbmType>(cInternalRanges);
+                           size_t iCut = size_t { 1 };
+                           do {
+                              const FloatEbmType cut = lowInnerVal + stepValue * static_cast<FloatEbmType>(iCut);
+                              // just in case we have floating point inexactness that puts us above the highValue we need to stop
+                              if(UNLIKELY(highInnerVal <= cut)) {
+                                 break;
+                              }
+                              if(LIKELY(cut != cutPrev)) {
+                                 *pBinCutsLowerBoundInclusive = cut;
+                                 ++pBinCutsLowerBoundInclusive;
+                                 cutPrev = cut;
+                              }
+                              ++iCut;
+                           } while(cInternalRanges != iCut);
+                        }
+
+                        // write the last one manually without resorting to a formula
+                        // we don't allow our loop above to write out the highVal, so we're guarnateed that we can write it here
+                        *pBinCutsLowerBoundInclusive = highInnerVal;
+
+                        EBM_ASSERT(binCutsLowerBoundInclusiveOut < pBinCutsLowerBoundInclusive);
+                        const size_t cBinCutsRet = pBinCutsLowerBoundInclusive - binCutsLowerBoundInclusiveOut + size_t { 1 };
+
+                        // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
+                        // specified, and that value came to us as an IntEbmType
+                        countBinCutsRet = static_cast<IntEbmType>(cBinCutsRet);
+                        EBM_ASSERT(countBinCutsRet <= countBinCuts);
+                     }
+                  }
+               }
             }
-            ++iCut;
-         } while(cBinCuts - 1 != iCut);
-
-         // write the last one manually without resorting to a formula
-         // we don't allow our loop above to write out the highVal, so we're guarnateed that we can write it here
-         *pBinCutsLowerBoundInclusive = highVal;
-
-         EBM_ASSERT(binCutsLowerBoundInclusiveOut <= pBinCutsLowerBoundInclusive);
-         const size_t cBinCutsRet = pBinCutsLowerBoundInclusive - binCutsLowerBoundInclusiveOut + size_t { 1 };
-
-         // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
-         // specified, and that value came to us as an IntEbmType
-         countBinCutsRet = static_cast<IntEbmType>(cBinCutsRet);
-         EBM_ASSERT(countBinCutsRet <= countBinCuts);
-
+         }
          ret = IntEbmType { 0 };
       }
 
