@@ -83,7 +83,7 @@ extras = {
     ],
     # Testing
     "testing": [
-        "pytest>=4.3.0",
+        "pytest>=4.3.0,<=6.0.2",
         "pytest-runner>=4.4",
         "pytest-xdist>=1.29",
         "nbconvert>=5.4.1",
