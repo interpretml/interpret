@@ -431,9 +431,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    FloatEbmType * maxNonInfinityValueOut,
    IntEbmType * countPositiveInfinityOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateUniformBinCuts(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION GenerateUniformBinCuts(
    IntEbmType countSamples,
-   FloatEbmType * featureValues, /* featureValues are modified (sorted) */
+   const FloatEbmType * featureValues, /* featureValues are modified (sorted) */
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,

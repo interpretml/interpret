@@ -769,10 +769,10 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(
          do {
             val = *pCopyFrom;
             if(PREDICTABLE(!std::isnan(val))) {
-               if(PREDICTABLE(std::numeric_limits<FloatEbmType>::max() < val)) {
+               if(PREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val)) {
                   val = std::numeric_limits<FloatEbmType>::max();
                   ++cPositiveInfinity;
-               } else if(PREDICTABLE(val < std::numeric_limits<FloatEbmType>::lowest())) {
+               } else if(PREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val)) {
                   val = std::numeric_limits<FloatEbmType>::lowest();
                   ++cNegativeInfinity;
                } else {
@@ -791,10 +791,10 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(
          cSamples = cSamplesWithoutMissing;
          break;
       }
-      if(PREDICTABLE(std::numeric_limits<FloatEbmType>::max() < val)) {
+      if(PREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val)) {
          *pCopyFrom = std::numeric_limits<FloatEbmType>::max();
          ++cPositiveInfinity;
-      } else if(PREDICTABLE(val < std::numeric_limits<FloatEbmType>::lowest())) {
+      } else if(PREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val)) {
          *pCopyFrom = std::numeric_limits<FloatEbmType>::lowest();
          ++cNegativeInfinity;
       } else {

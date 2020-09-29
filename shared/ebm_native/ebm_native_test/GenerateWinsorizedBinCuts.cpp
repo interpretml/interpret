@@ -131,7 +131,6 @@ TEST_CASE("GenerateWinsorizedBinCuts, one item") {
    }
 }
 
-
 TEST_CASE("GenerateWinsorizedBinCuts, zero cuts") {
    IntEbmType countBinCuts = 0;
 
@@ -612,7 +611,7 @@ TEST_CASE("GenerateWinsorizedBinCuts, one cut, +infinity") {
    }
 }
 
-TEST_CASE("GenerateWinsorizedBinCuts, one cut, +infinity and +infinity") {
+TEST_CASE("GenerateWinsorizedBinCuts, one cut, -infinity and +infinity") {
    IntEbmType countBinCuts = 1;
 
    std::vector<FloatEbmType> featureValues { -std::numeric_limits<FloatEbmType>::infinity(), std::numeric_limits<FloatEbmType>::infinity() };
@@ -1002,6 +1001,194 @@ TEST_CASE("GenerateWinsorizedBinCuts, four cuts") {
    CHECK(0 == countNegativeInfinity);
    CHECK(10 == maxNonInfinityValue);
    CHECK(0 == countPositiveInfinity);
+
+   size_t cBinCuts = static_cast<size_t>(countBinCuts);
+   CHECK(expectedBinCuts.size() == cBinCuts);
+   if(expectedBinCuts.size() == cBinCuts) {
+      for(size_t i = 0; i < cBinCuts; ++i) {
+         CHECK_APPROX(expectedBinCuts[i], binCutsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateWinsorizedBinCuts, one cut, -infinity, lowest, max, and +infinity") {
+   IntEbmType countBinCuts = 1;
+
+   std::vector<FloatEbmType> featureValues {
+      -std::numeric_limits<FloatEbmType>::infinity(),
+      std::numeric_limits<FloatEbmType>::lowest(),
+      std::numeric_limits<FloatEbmType>::max(),
+      std::numeric_limits<FloatEbmType>::infinity()
+   };
+   const std::vector<FloatEbmType> expectedBinCuts { 0 };
+
+   IntEbmType countMissingValues;
+   FloatEbmType minNonInfinityValue;
+   IntEbmType countNegativeInfinity;
+   FloatEbmType maxNonInfinityValue;
+   IntEbmType countPositiveInfinity;
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+
+   IntEbmType ret = GenerateWinsorizedBinCuts(
+      featureValues.size(),
+      0 == featureValues.size() ? nullptr : &featureValues[0],
+      &countBinCuts,
+      &binCutsLowerBoundInclusive[0],
+      &countMissingValues,
+      &minNonInfinityValue,
+      &countNegativeInfinity,
+      &maxNonInfinityValue,
+      &countPositiveInfinity
+   );
+   CHECK(0 == ret);
+   CHECK(0 == countMissingValues);
+   CHECK(std::numeric_limits<FloatEbmType>::lowest() == minNonInfinityValue);
+   CHECK(1 == countNegativeInfinity);
+   CHECK(std::numeric_limits<FloatEbmType>::max() == maxNonInfinityValue);
+   CHECK(1 == countPositiveInfinity);
+
+   size_t cBinCuts = static_cast<size_t>(countBinCuts);
+   CHECK(expectedBinCuts.size() == cBinCuts);
+   if(expectedBinCuts.size() == cBinCuts) {
+      for(size_t i = 0; i < cBinCuts; ++i) {
+         CHECK_APPROX(expectedBinCuts[i], binCutsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateWinsorizedBinCuts, one cut, -infinity, lowest + 1, max - 1, and +infinity") {
+   IntEbmType countBinCuts = 1;
+
+   std::vector<FloatEbmType> featureValues {
+      -std::numeric_limits<FloatEbmType>::infinity(),
+      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), 0),
+      std::nextafter(std::numeric_limits<FloatEbmType>::max(), 0),
+      std::numeric_limits<FloatEbmType>::infinity()
+   };
+   const std::vector<FloatEbmType> expectedBinCuts { 0 };
+
+   IntEbmType countMissingValues;
+   FloatEbmType minNonInfinityValue;
+   IntEbmType countNegativeInfinity;
+   FloatEbmType maxNonInfinityValue;
+   IntEbmType countPositiveInfinity;
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+
+   IntEbmType ret = GenerateWinsorizedBinCuts(
+      featureValues.size(),
+      0 == featureValues.size() ? nullptr : &featureValues[0],
+      &countBinCuts,
+      &binCutsLowerBoundInclusive[0],
+      &countMissingValues,
+      &minNonInfinityValue,
+      &countNegativeInfinity,
+      &maxNonInfinityValue,
+      &countPositiveInfinity
+   );
+   CHECK(0 == ret);
+   CHECK(0 == countMissingValues);
+   CHECK(std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), 0)
+      == minNonInfinityValue);
+   CHECK(1 == countNegativeInfinity);
+   CHECK(std::nextafter(std::numeric_limits<FloatEbmType>::max(), 0)
+      == maxNonInfinityValue);
+   CHECK(1 == countPositiveInfinity);
+
+   size_t cBinCuts = static_cast<size_t>(countBinCuts);
+   CHECK(expectedBinCuts.size() == cBinCuts);
+   if(expectedBinCuts.size() == cBinCuts) {
+      for(size_t i = 0; i < cBinCuts; ++i) {
+         CHECK_APPROX(expectedBinCuts[i], binCutsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateWinsorizedBinCuts, 3 cuts, -infinity, lowest, max, and +infinity") {
+   IntEbmType countBinCuts = 3;
+
+   std::vector<FloatEbmType> featureValues { 
+      -std::numeric_limits<FloatEbmType>::infinity(), 
+      std::numeric_limits<FloatEbmType>::lowest(), 
+      std::numeric_limits<FloatEbmType>::max(),
+      std::numeric_limits<FloatEbmType>::infinity()
+   };
+   const std::vector<FloatEbmType> expectedBinCuts { 0 };
+
+   IntEbmType countMissingValues;
+   FloatEbmType minNonInfinityValue;
+   IntEbmType countNegativeInfinity;
+   FloatEbmType maxNonInfinityValue;
+   IntEbmType countPositiveInfinity;
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+
+   IntEbmType ret = GenerateWinsorizedBinCuts(
+      featureValues.size(),
+      0 == featureValues.size() ? nullptr : &featureValues[0],
+      &countBinCuts,
+      &binCutsLowerBoundInclusive[0],
+      &countMissingValues,
+      &minNonInfinityValue,
+      &countNegativeInfinity,
+      &maxNonInfinityValue,
+      &countPositiveInfinity
+   );
+   CHECK(0 == ret);
+   CHECK(0 == countMissingValues);
+   CHECK(std::numeric_limits<FloatEbmType>::lowest() == minNonInfinityValue);
+   CHECK(1 == countNegativeInfinity);
+   CHECK(std::numeric_limits<FloatEbmType>::max() == maxNonInfinityValue);
+   CHECK(1 == countPositiveInfinity);
+
+   size_t cBinCuts = static_cast<size_t>(countBinCuts);
+   CHECK(expectedBinCuts.size() == cBinCuts);
+   if(expectedBinCuts.size() == cBinCuts) {
+      for(size_t i = 0; i < cBinCuts; ++i) {
+         CHECK_APPROX(expectedBinCuts[i], binCutsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateWinsorizedBinCuts, 3 cuts, -infinity, lowest + 1, max - 1, and +infinity") {
+   IntEbmType countBinCuts = 3;
+
+   std::vector<FloatEbmType> featureValues {
+      -std::numeric_limits<FloatEbmType>::infinity(),
+      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), 0),
+      std::nextafter(std::numeric_limits<FloatEbmType>::max(), 0),
+      std::numeric_limits<FloatEbmType>::infinity()
+   };
+   const std::vector<FloatEbmType> expectedBinCuts { 
+      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), 0), 
+      0,
+      std::numeric_limits<FloatEbmType>::max()
+   };
+
+   IntEbmType countMissingValues;
+   FloatEbmType minNonInfinityValue;
+   IntEbmType countNegativeInfinity;
+   FloatEbmType maxNonInfinityValue;
+   IntEbmType countPositiveInfinity;
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+
+   IntEbmType ret = GenerateWinsorizedBinCuts(
+      featureValues.size(),
+      0 == featureValues.size() ? nullptr : &featureValues[0],
+      &countBinCuts,
+      &binCutsLowerBoundInclusive[0],
+      &countMissingValues,
+      &minNonInfinityValue,
+      &countNegativeInfinity,
+      &maxNonInfinityValue,
+      &countPositiveInfinity
+   );
+   CHECK(0 == ret);
+   CHECK(0 == countMissingValues);
+   CHECK(std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), 0)
+      == minNonInfinityValue);
+   CHECK(1 == countNegativeInfinity);
+   CHECK(std::nextafter(std::numeric_limits<FloatEbmType>::max(), 0)
+      == maxNonInfinityValue);
+   CHECK(1 == countPositiveInfinity);
 
    size_t cBinCuts = static_cast<size_t>(countBinCuts);
    CHECK(expectedBinCuts.size() == cBinCuts);

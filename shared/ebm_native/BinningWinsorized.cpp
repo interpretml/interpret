@@ -410,27 +410,54 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                         ++pBinCutsLowerBoundInclusive;
 
                         if(size_t { 2 } < cBinCuts) {
-                           FloatEbmType cutPrev = lowInnerVal;
-                           const size_t cInternalRanges = cBinCuts - size_t { 1 };
-                           const FloatEbmType stepValue = 
-                              (highInnerVal - lowInnerVal) / static_cast<FloatEbmType>(cInternalRanges);
-                           size_t iCut = size_t { 1 };
-                           do {
-                              const FloatEbmType cut = lowInnerVal + stepValue * static_cast<FloatEbmType>(iCut);
-                              // just in case we have floating point inexactness that puts us above the highValue we need to stop
-                              if(UNLIKELY(highInnerVal <= cut)) {
-                                 break;
-                              }
-                              if(LIKELY(cut != cutPrev)) {
-                                 EBM_ASSERT(binCutsLowerBoundInclusiveOut < pBinCutsLowerBoundInclusive &&
-                                    pBinCutsLowerBoundInclusive < binCutsLowerBoundInclusiveOut + cBinCuts - size_t { 1 });
+                           while(true) {
+                              const size_t cInternalRanges = cBinCuts - size_t { 1 };
+                              const FloatEbmType cInternalRangesFloat = static_cast<FloatEbmType>(cInternalRanges);
+                              FloatEbmType stepValue = (highInnerVal - lowInnerVal) / cInternalRangesFloat;
+                              if(std::isinf(stepValue)) {
+                                 // cInternalRangesFloat should be 3 or higher, which should be enough to avoid any numeracy issues
+                                 // that might cause us to overflow again
+                                 stepValue = highInnerVal / cInternalRangesFloat - lowInnerVal / cInternalRangesFloat;
+                                 if(std::isinf(stepValue)) {
+                                    // this is probably impossible if correct rounding is guarnateed, but floats have bad guarantees
 
-                                 *pBinCutsLowerBoundInclusive = cut;
-                                 ++pBinCutsLowerBoundInclusive;
-                                 cutPrev = cut;
+                                    // if you have 2 internal bins it would be close to an overflow on the subtraction 
+                                    // of the divided values.  With 3 bins it isn't obvious to me how you'd get an
+                                    // overflow after dividing it up in to separate divisions.  So, let's assume
+                                    // that 2 == cBins, so we can just take the average and report one cut
+                                    const FloatEbmType cut = ArithmeticMean(lowInnerVal, highInnerVal);
+                                    // we always write out a cut at highInnerVal below, and we wouldn't want to do that
+                                    // twice if we got back highInnerVal here, but we can only get here with huge
+                                    // separations, so it shouldn't be possible to get something even close to 
+                                    // highInnerVal
+                                    EBM_ASSERT(highInnerVal != cut);
+                                    *pBinCutsLowerBoundInclusive = cut;
+                                    ++pBinCutsLowerBoundInclusive;
+                                    break;
+                                 }
                               }
-                              ++iCut;
-                           } while(cInternalRanges != iCut);
+                              FloatEbmType cutPrev = lowInnerVal;
+                              size_t iCut = size_t { 1 };
+                              do {
+                                 const FloatEbmType cut = lowInnerVal + stepValue * static_cast<FloatEbmType>(iCut);
+                                 // just in case we have floating point inexactness that puts us above the 
+                                 // highValue we need to stop
+                                 if(UNLIKELY(highInnerVal <= cut)) {
+                                    break;
+                                 }
+                                 if(LIKELY(cutPrev != cut)) {
+                                    EBM_ASSERT(cutPrev < cut);
+                                    EBM_ASSERT(binCutsLowerBoundInclusiveOut < pBinCutsLowerBoundInclusive &&
+                                       pBinCutsLowerBoundInclusive < binCutsLowerBoundInclusiveOut + cBinCuts - size_t { 1 });
+
+                                    *pBinCutsLowerBoundInclusive = cut;
+                                    ++pBinCutsLowerBoundInclusive;
+                                    cutPrev = cut;
+                                 }
+                                 ++iCut;
+                              } while(cInternalRanges != iCut);
+                              break;
+                           }
                         }
 
                         EBM_ASSERT(binCutsLowerBoundInclusiveOut < pBinCutsLowerBoundInclusive &&
