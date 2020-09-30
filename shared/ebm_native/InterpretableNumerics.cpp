@@ -822,7 +822,7 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countBinCuts,
-   FloatEbmType * binCutsLowerBoundInclusive,
+   const FloatEbmType * binCutsLowerBoundInclusive,
    FloatEbmType minValue,
    FloatEbmType maxValue,
    FloatEbmType * lowBoundOut,

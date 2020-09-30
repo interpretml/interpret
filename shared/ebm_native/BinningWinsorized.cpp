@@ -30,12 +30,9 @@ extern FloatEbmType ArithmeticMean(
 static int g_cLogEnterGenerateWinsorizedBinCutsParametersMessages = 25;
 static int g_cLogExitGenerateWinsorizedBinCutsParametersMessages = 25;
 
-// TODO: this function doesn't currently allocate anything, so if that continues we can eliminate the return
-// value and just return void.  We might someday though want to allocate a copy of binCutsLowerBoundInclusiveOut
-// that we'd sort.  Let's see how the python code progresses before deciding this
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateWinsorizedBinCuts(
    IntEbmType countSamples,
-   FloatEbmType * featureValues,
+   const FloatEbmType * featureValues,
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -60,7 +57,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
       "countPositiveInfinityOut=%p"
       ,
       countSamples,
-      static_cast<void *>(featureValues),
+      static_cast<const void *>(featureValues),
       static_cast<void *>(countBinCutsInOut),
       static_cast<void *>(binCutsLowerBoundInclusiveOut),
       static_cast<void *>(countMissingValuesOut),
@@ -128,8 +125,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
          const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
 
-         if(UNLIKELY(IsMultiplyError(sizeof(*featureValues), cSamplesIncludingMissingValues))) {
-            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countSamples was too large to fit into featureValues");
+         FloatEbmType * const aFeatureValues = EbmMalloc<FloatEbmType>(cSamplesIncludingMissingValues);
+         if(UNLIKELY(nullptr == aFeatureValues)) {
+            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == aFeatureValues");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -139,6 +137,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
             ret = IntEbmType { 1 };
             goto exit_with_log;
          }
+         const size_t cBytesFeatureValues = sizeof(*featureValues) * cSamplesIncludingMissingValues;
+         memcpy(aFeatureValues, featureValues, cBytesFeatureValues);
 
          // if there are +infinity values in the data we won't be able to separate them
          // from max_float values without having a cut at infinity since we use lower bound inclusivity
@@ -146,7 +146,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
          // the -infinity side turning those into lowest_float.  
          const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(
             cSamplesIncludingMissingValues,
-            featureValues,
+            aFeatureValues,
             &minNonInfinityValueRet,
             &countNegativeInfinityRet,
             &maxNonInfinityValueRet,
@@ -167,6 +167,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
             const IntEbmType countBinCuts = *countBinCutsInOut;
 
             if(UNLIKELY(countBinCuts <= IntEbmType { 0 })) {
+               free(aFeatureValues);
                ret = IntEbmType { 0 };
                if(UNLIKELY(countBinCuts < IntEbmType { 0 })) {
                   LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countBinCuts can't be negative.");
@@ -177,7 +178,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
             if(UNLIKELY(!IsNumberConvertable<size_t>(countBinCuts))) {
                LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedBinCuts !IsNumberConvertable<size_t>(countBinCuts)");
-
+               free(aFeatureValues);
                ret = IntEbmType { 1 };
                goto exit_with_log;
             }
@@ -185,7 +186,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
             if(UNLIKELY(IsMultiplyError(sizeof(*binCutsLowerBoundInclusiveOut), cBinCuts))) {
                LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countBinCuts was too large to fit into binCutsLowerBoundInclusiveOut");
-
+               free(aFeatureValues);
                ret = IntEbmType { 1 };
                goto exit_with_log;
             }
@@ -193,7 +194,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
             if(UNLIKELY(nullptr == binCutsLowerBoundInclusiveOut)) {
                // if we have a potential bin cut, then binCutsLowerBoundInclusiveOut shouldn't be nullptr
                LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == binCutsLowerBoundInclusiveOut");
-
+               free(aFeatureValues);
                ret = IntEbmType { 1 };
                goto exit_with_log;
             }
@@ -204,14 +205,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
             // uniform we just need to find a single cut between values and we can divide the space up between
             // uniform bins between those values.
 
-            std::sort(featureValues, featureValues + cSamples);
+            std::sort(aFeatureValues, aFeatureValues + cSamples);
 
             if(UNLIKELY(size_t { 1 } == cBinCuts)) {
                // if we're only given 1 cut, then we need do so something special since we can't have an upper and
                // lower cut from which to range between.  We want to find the best central cut and use that
 
-               const FloatEbmType minValue = featureValues[0];
-               const FloatEbmType maxValue = featureValues[cSamples - size_t { 1 }];
+               const FloatEbmType minValue = aFeatureValues[0];
+               const FloatEbmType maxValue = aFeatureValues[cSamples - size_t { 1 }];
 
 #ifndef NDEBUG
                // if all of the samples are positive infinity then minValue is max, otherwise if there are any
@@ -233,7 +234,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                if(LIKELY(minValue != maxValue)) {
                   const size_t iCenterHigh = cSamples >> 1;
                   // put the low on the high side so that in our first loop we decrement it to it's actual position
-                  const FloatEbmType * pLow = &featureValues[iCenterHigh];
+                  const FloatEbmType * pLow = &aFeatureValues[iCenterHigh];
                   const FloatEbmType * pHigh = pLow - (size_t { 1 } & (cSamples - size_t { 1 }));
 
                   FloatEbmType lowCur;
@@ -242,9 +243,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                      --pLow;
                      ++pHigh;
 
-                     EBM_ASSERT(featureValues <= pLow && pLow < featureValues + cSamples);
+                     EBM_ASSERT(aFeatureValues <= pLow && pLow < aFeatureValues + cSamples);
                      lowCur = *pLow;
-                     EBM_ASSERT(featureValues <= pHigh && pHigh < featureValues + cSamples);
+                     EBM_ASSERT(aFeatureValues <= pHigh && pHigh < aFeatureValues + cSamples);
                      highCur = *pHigh;
                      // since minValue != maxValue per above, we know there is a transition SOMEWHERE, which will exit us
                   } while(LIKELY(lowCur == highCur));
@@ -269,12 +270,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                EBM_ASSERT(iOuterBound < cSamples);
 
                // position ourselves at low-high and move inwards
-               const FloatEbmType * pLow = &featureValues[iOuterBound];
+               const FloatEbmType * pLow = &aFeatureValues[iOuterBound];
                // position ourselves at high-low and move inwards
-               const FloatEbmType * pHigh = &featureValues[cSamples - iOuterBound - size_t { 1 }];
+               const FloatEbmType * pHigh = &aFeatureValues[cSamples - iOuterBound - size_t { 1 }];
 
-               EBM_ASSERT(featureValues <= pLow && pLow < featureValues + cSamples);
-               EBM_ASSERT(featureValues <= pHigh && pHigh < featureValues + cSamples);
+               EBM_ASSERT(aFeatureValues <= pLow && pLow < aFeatureValues + cSamples);
+               EBM_ASSERT(aFeatureValues <= pHigh && pHigh < aFeatureValues + cSamples);
 
                const FloatEbmType lowOuterVal = *pLow;
                const FloatEbmType highOuterVal = *pHigh;
@@ -288,8 +289,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
                   const FloatEbmType centerVal = lowOuterVal;
 
-                  const FloatEbmType minValue = featureValues[0];
-                  const FloatEbmType maxValue = featureValues[cSamples - size_t { 1 }];
+                  const FloatEbmType minValue = aFeatureValues[0];
+                  const FloatEbmType maxValue = aFeatureValues[cSamples - size_t { 1 }];
 
 #ifndef NDEBUG
                   // if all of the samples are positive infinity then minValue is max, otherwise if there are any
@@ -316,7 +317,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                      FloatEbmType valCur;
                      do {
                         --pLow;
-                        EBM_ASSERT(featureValues <= pLow && pLow < featureValues + cSamples);
+                        EBM_ASSERT(aFeatureValues <= pLow && pLow < aFeatureValues + cSamples);
                         valCur = *pLow;
                      } while(centerVal == valCur);
                      EBM_ASSERT(valCur < centerVal);
@@ -334,7 +335,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                      FloatEbmType valCur;
                      do {
                         ++pHigh;
-                        EBM_ASSERT(featureValues <= pHigh && pHigh < featureValues + cSamples);
+                        EBM_ASSERT(aFeatureValues <= pHigh && pHigh < aFeatureValues + cSamples);
                         valCur = *pHigh;
                      } while(centerVal == valCur);
                      EBM_ASSERT(centerVal < valCur);
@@ -349,7 +350,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                   FloatEbmType lowInnerVal;
                   do {
                      ++pLow;
-                     EBM_ASSERT(featureValues <= pLow && pLow < featureValues + cSamples);
+                     EBM_ASSERT(aFeatureValues <= pLow && pLow < aFeatureValues + cSamples);
                      lowInnerVal = *pLow;
                   } while(lowOuterVal == lowInnerVal);
                   EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < lowInnerVal);
@@ -369,7 +370,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                      FloatEbmType highInnerVal;
                      do {
                         --pHigh;
-                        EBM_ASSERT(featureValues <= pHigh && pHigh < featureValues + cSamples);
+                        EBM_ASSERT(aFeatureValues <= pHigh && pHigh < aFeatureValues + cSamples);
                         highInnerVal = *pHigh;
                      } while(highOuterVal == highInnerVal);
                      EBM_ASSERT(highInnerVal < std::numeric_limits<FloatEbmType>::max());
@@ -479,6 +480,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                }
             }
          }
+         free(aFeatureValues);
          ret = IntEbmType { 0 };
       }
 

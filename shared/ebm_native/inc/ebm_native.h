@@ -408,7 +408,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileBinCuts(
    IntEbmType countSamples,
-   FloatEbmType * featureValues, /* featureValues are modified (sorted) */
+   const FloatEbmType * featureValues, /* featureValues are modified (sorted) */
    IntEbmType countSamplesPerBinMin,
    IntEbmType isHumanized,
    IntEbmType randomSeed,
@@ -422,7 +422,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateWinsorizedBinCuts(
    IntEbmType countSamples,
-   FloatEbmType * featureValues, /* featureValues are modified (sorted) */
+   const FloatEbmType * featureValues, /* featureValues are modified (sorted) */
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -453,7 +453,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discre
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countBinCuts,
-   FloatEbmType * binCutsLowerBoundInclusive,
+   const FloatEbmType * binCutsLowerBoundInclusive,
    FloatEbmType minValue,
    FloatEbmType maxValue,
    FloatEbmType * lowBoundOut,

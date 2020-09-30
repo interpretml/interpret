@@ -2478,7 +2478,7 @@ static int g_cLogExitGenerateQuantileBinCutsParametersMessages = 25;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileBinCuts(
    IntEbmType countSamples,
-   FloatEbmType * featureValues,
+   const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
    IntEbmType isHumanized,
    IntEbmType randomSeed,
@@ -2509,7 +2509,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       "countPositiveInfinityOut=%p"
       ,
       countSamples,
-      static_cast<void *>(featureValues),
+      static_cast<const void *>(featureValues),
       countSamplesPerBinMin,
       ObtainTruth(isHumanized),
       randomSeed,
@@ -2584,8 +2584,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
 
-         if(UNLIKELY(IsMultiplyError(sizeof(*featureValues), cSamplesIncludingMissingValues))) {
-            LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts countSamples was too large to fit into featureValues");
+         FloatEbmType * const aFeatureValues = EbmMalloc<FloatEbmType>(cSamplesIncludingMissingValues);
+         if(UNLIKELY(nullptr == aFeatureValues)) {
+            LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts nullptr == aFeatureValues");
 
             countBinCutsRet = IntEbmType { 0 };
             countMissingValuesRet = IntEbmType { 0 };
@@ -2596,6 +2597,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             ret = IntEbmType { 1 };
             goto exit_with_log;
          }
+         const size_t cBytesFeatureValues = sizeof(*featureValues) * cSamplesIncludingMissingValues;
+         memcpy(aFeatureValues, featureValues, cBytesFeatureValues);
 
          // if there are +infinity values in the data we won't be able to separate them
          // from max_float values without having a cut at infinity since we use lower bound inclusivity
@@ -2603,7 +2606,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          // the -infinity side turning those into lowest_float.  
          const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(
             cSamplesIncludingMissingValues, 
-            featureValues,
+            aFeatureValues,
             &minNonInfinityValueRet,
             &countNegativeInfinityRet,
             &maxNonInfinityValueRet,
@@ -2618,6 +2621,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
          if(UNLIKELY(cSamples <= size_t { 1 })) {
+            free(aFeatureValues);
             // we can't really split 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
             // or if there was only 1 non-missing value
             countBinCutsRet = IntEbmType { 0 };
@@ -2629,6 +2633,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const IntEbmType countBinCuts = *countBinCutsInOut;
 
          if(UNLIKELY(countBinCuts <= IntEbmType { 0 })) {
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 0 };
             if(UNLIKELY(countBinCuts < IntEbmType { 0 })) {
@@ -2642,6 +2647,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             // if we have a potential bin cut, then binCutsLowerBoundInclusiveOut shouldn't be nullptr
             LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts nullptr == binCutsLowerBoundInclusiveOut");
 
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
 
@@ -2661,6 +2667,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             // in order to make any cuts.  Anything less and we should just return now.
             // We also use this as a comparison to ensure that countSamplesPerBinMin is convertible to a size_t
 
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 0 };
             goto exit_with_log;
@@ -2697,15 +2704,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          EBM_ASSERT(size_t { 1 } <= cBinCutsMax); // we won't eliminate to less than 1, and we had at least 1 before
 
          // we need to be able to index both the binCutsLowerBoundInclusiveOut AND we also allocate an array
-         // of pointers below of FloatEbmType * to index into featureValues 
+         // of pointers below of FloatEbmType * to index into aFeatureValues 
          if(UNLIKELY(IsMultiplyError(cBinCutsMax, std::max(sizeof(*binCutsLowerBoundInclusiveOut), sizeof(FloatEbmType *))))) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts IsMultiplyError(cBinCutsMax, std::max(sizeof(*binCutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)))");
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
          }
 
-         std::sort(featureValues, featureValues + cSamples);
+         std::sort(aFeatureValues, aFeatureValues + cSamples);
 
          EBM_ASSERT(cBinCutsMax < cSamples); // so we can add 1 to cBinCutsMax safely
          const size_t cUncuttableRangeLengthMin = 
@@ -2714,7 +2722,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          const size_t cCuttingRanges = CountCuttingRanges(
             cSamples, 
-            featureValues, 
+            aFeatureValues,
             cUncuttableRangeLengthMin, 
             cSamplesPerBinMin
          );
@@ -2726,6 +2734,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          // cSamples is a size_t
          EBM_ASSERT(cCuttingRanges <= cBinCutsMax + size_t { 1 });
          if(UNLIKELY(size_t { 0 } == cCuttingRanges)) {
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 0 };
             goto exit_with_log;
@@ -2733,6 +2742,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          if(UNLIKELY(IsMultiplyError(cSamples, sizeof(NeighbourJump)))) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts IsMultiplyError(cSamples, sizeof(NeighbourJump))");
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
@@ -2744,7 +2754,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const size_t cBytesValueCutPointers = cBinCutsMax * sizeof(FloatEbmType *);
 
          // we limit the cBinCutsMax to no more than cSamples - 1.  cSamples can't be anywhere close to
-         // the maximum size_t though since the caller must have allocated cSamples floats in featureValues, and
+         // the maximum size_t though since the caller must have allocated cSamples floats in aFeatureValues, and
          // there are no float types that are 1 byte, and we checked that this didn't overflow, so we should be good
          // to add 2 to the cBinCutsMax value
          EBM_ASSERT(cBinCutsMax <= std::numeric_limits<size_t>::max() - size_t { 2 });
@@ -2752,6 +2762,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const size_t cBinCutsWithEndpointsMax = cBinCutsMax + size_t { 2 };
          if(UNLIKELY(IsMultiplyError(cBinCutsWithEndpointsMax, sizeof(CutPoint)))) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts IsMultiplyError(cBinCutsWithEndpointsMax, sizeof(CutPoint))");
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
@@ -2760,6 +2771,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          if(UNLIKELY(IsMultiplyError(cCuttingRanges, sizeof(CuttingRange)))) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts IsMultiplyError(cCuttingRanges, sizeof(CuttingRange))");
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
@@ -2772,6 +2784,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          if(UNLIKELY(IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))");
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
@@ -2780,6 +2793,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          if(UNLIKELY(IsAddError(cBytesToBinCuts, cBytesBinCuts))) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts IsAddError(cBytesToBinCuts, cBytesBinCuts))");
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
@@ -2788,6 +2802,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          if(UNLIKELY(IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))");
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
@@ -2797,6 +2812,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          char * const pMem = static_cast<char *>(malloc(cBytesToEnd));
          if(UNLIKELY(nullptr == pMem)) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts nullptr == pMem");
+            free(aFeatureValues);
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
@@ -2807,19 +2823,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          CutPoint * const aBinCuts = reinterpret_cast<CutPoint *>(pMem + cBytesToBinCuts);
          CuttingRange * const aCuttingRange = reinterpret_cast<CuttingRange *>(pMem + cBytesToCuttingRange);
 
-         ConstructJumps(cSamples, featureValues, aNeighbourJumps);
+         ConstructJumps(cSamples, aFeatureValues, aNeighbourJumps);
 
          // we always XOR (with != for bools) a random number with bSymmetryReversal, so there is no need to
          // XOR bSymmetryReversal with a random number here
-         const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, featureValues);
+         const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, aFeatureValues);
 
          RandomStream randomStream;
          randomStream.Initialize(randomSeed);
 
          FillTiebreakers(bSymmetryReversal, &randomStream, cCuttingRanges, aCuttingRange);
 
-         FillCuttingRangeBasics(cSamples, featureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
-         FillCuttingRangeNeighbours(cSamples, featureValues, cCuttingRanges, aCuttingRange);
+         FillCuttingRangeBasics(cSamples, aFeatureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
+         FillCuttingRangeNeighbours(cSamples, aFeatureValues, cCuttingRanges, aCuttingRange);
 
          const FloatEbmType ** ppValueCutTop = apValueCutTops;
          try {
@@ -2847,7 +2863,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   pCuttingRange->m_uniqueTiebreaker,
                   pCuttingRange->m_cRangesAssigned,
                   pCuttingRange->m_cCuttableValues,
-                  static_cast<size_t>(pCuttingRange->m_pCuttableValuesFirst - featureValues),
+                  static_cast<size_t>(pCuttingRange->m_pCuttableValuesFirst - aFeatureValues),
                   pCuttingRange->m_cUncuttableHighValues,
                   pCuttingRange->m_cUncuttableLowValues,
                   pCuttingRange->m_cRangesMax,
@@ -2896,7 +2912,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      cSamples,
                      bSymmetryReversal,
                      cSamplesPerBinMin,
-                     pCuttingRange->m_pCuttableValuesFirst - featureValues,
+                     pCuttingRange->m_pCuttableValuesFirst - aFeatureValues,
                      pCuttingRange->m_cCuttableValues,
                      aNeighbourJumps,
                      cRanges,
@@ -2906,6 +2922,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      // any error messages should have been written to the log inside TradeCutSegment
 
                      free(pMem);
+                     free(aFeatureValues);
 
                      countBinCutsRet = IntEbmType { 0 };
                      ret = IntEbmType { 1 };
@@ -2918,8 +2935,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
                      const FloatEbmType * const pCut = pCuttableValuesStart;
-                     EBM_ASSERT(featureValues < pCut);
-                     EBM_ASSERT(pCut < featureValues + countSamples);
+                     EBM_ASSERT(aFeatureValues < pCut);
+                     EBM_ASSERT(pCut < aFeatureValues + countSamples);
                      *ppValueCutTop = pCut;
                      ++ppValueCutTop;
                   }
@@ -2930,8 +2947,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      const size_t iVal = pCutPoint->m_iVal;
                      if(LIKELY(k_valNotLegal != iVal)) {
                         const FloatEbmType * const pCut = pCuttableValuesStart + iVal;
-                        EBM_ASSERT(featureValues < pCut);
-                        EBM_ASSERT(pCut < featureValues + countSamples);
+                        EBM_ASSERT(aFeatureValues < pCut);
+                        EBM_ASSERT(pCut < aFeatureValues + countSamples);
                         EBM_ASSERT(pCuttingRange->m_pCuttableValuesFirst < pCut);
                         EBM_ASSERT(pCut < pCuttingRange->m_pCuttableValuesFirst + pCuttingRange->m_cCuttableValues);
                         *ppValueCutTop = pCut;
@@ -2946,8 +2963,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      // otherwise put in the cut
                      const FloatEbmType * const pCut =
                         pCuttableValuesStart + pCuttingRange->m_cCuttableValues;
-                     EBM_ASSERT(featureValues < pCut);
-                     EBM_ASSERT(pCut < featureValues + countSamples);
+                     EBM_ASSERT(aFeatureValues < pCut);
+                     EBM_ASSERT(pCut < aFeatureValues + countSamples);
                      *ppValueCutTop = pCut;
                      ++ppValueCutTop;
                   }
@@ -2960,8 +2977,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
                      const FloatEbmType * const pCut = pCuttingRange->m_pCuttableValuesFirst;
-                     EBM_ASSERT(featureValues < pCut);
-                     EBM_ASSERT(pCut < featureValues + countSamples);
+                     EBM_ASSERT(aFeatureValues < pCut);
+                     EBM_ASSERT(pCut < aFeatureValues + countSamples);
                      *ppValueCutTop = pCut;
                      ++ppValueCutTop;
                   }
@@ -2970,8 +2987,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      // otherwise put in the cut
                      const FloatEbmType * const pCut =
                         pCuttingRange->m_pCuttableValuesFirst + pCuttingRange->m_cCuttableValues;
-                     EBM_ASSERT(featureValues < pCut);
-                     EBM_ASSERT(pCut < featureValues + countSamples);
+                     EBM_ASSERT(aFeatureValues < pCut);
+                     EBM_ASSERT(pCut < aFeatureValues + countSamples);
                      *ppValueCutTop = pCut;
                      ++ppValueCutTop;
                   }
@@ -2997,7 +3014,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      const FloatEbmType * pCut = pCuttingRange->m_pCuttableValuesFirst;
                      const size_t cCuttableItems = pCuttingRange->m_cCuttableValues;
                         
-                     const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - featureValues;
+                     const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - aFeatureValues;
                      const size_t iCenterOfRange = iRangeFirst + (cCuttableItems >> 1);
 
                      // unlike in BuildNeighbourhoodPlan, we don't need to worry about the scenario that
@@ -3051,8 +3068,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                            }
                         }
                      }
-                     pCut = featureValues + iResult;
-                     EBM_ASSERT(featureValues < pCut);
+                     pCut = aFeatureValues + iResult;
+                     EBM_ASSERT(aFeatureValues < pCut);
                      *ppValueCutTop = pCut;
                      ++ppValueCutTop;
                   }
@@ -3062,6 +3079,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileBinCuts exception");
 
             free(pMem);
+            free(aFeatureValues);
 
             countBinCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -3083,8 +3101,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             if(EBM_FALSE == isHumanized) {
                do {
                   const FloatEbmType * const pCut = *ppValueCutTop2;
-                  EBM_ASSERT(featureValues < pCut);
-                  EBM_ASSERT(pCut < featureValues + cSamples);
+                  EBM_ASSERT(aFeatureValues < pCut);
+                  EBM_ASSERT(pCut < aFeatureValues + cSamples);
                   const FloatEbmType valHigh = *pCut;
                   EBM_ASSERT(!std::isnan(valHigh));
                   EBM_ASSERT(!std::isinf(valHigh));
@@ -3100,8 +3118,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             } else {
                do {
                   const FloatEbmType * const pCut = *ppValueCutTop2;
-                  EBM_ASSERT(featureValues < pCut);
-                  EBM_ASSERT(pCut < featureValues + cSamples);
+                  EBM_ASSERT(aFeatureValues < pCut);
+                  EBM_ASSERT(pCut < aFeatureValues + cSamples);
                   const FloatEbmType valHigh = *pCut;
                   EBM_ASSERT(!std::isnan(valHigh));
                   EBM_ASSERT(!std::isinf(valHigh));
@@ -3183,17 +3201,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
                if(LIKELY(size_t { 3 } <= cBinCutsRet)) {
                   const FloatEbmType * const pScaleHighHigh = *(ppValueCutTop - size_t { 1 });
-                  EBM_ASSERT(featureValues + size_t { 2 } < pScaleHighHigh);
-                  EBM_ASSERT(pScaleHighHigh < featureValues + cSamples);
+                  EBM_ASSERT(aFeatureValues + size_t { 2 } < pScaleHighHigh);
+                  EBM_ASSERT(pScaleHighHigh < aFeatureValues + cSamples);
                   const FloatEbmType * const pScaleHighLow = pScaleHighHigh - size_t { 1 };
-                  EBM_ASSERT(featureValues + size_t { 1 } < pScaleHighLow);
-                  EBM_ASSERT(pScaleHighLow < featureValues + cSamples - size_t { 1 });
+                  EBM_ASSERT(aFeatureValues + size_t { 1 } < pScaleHighLow);
+                  EBM_ASSERT(pScaleHighLow < aFeatureValues + cSamples - size_t { 1 });
                   const FloatEbmType scaleHighLow = *pScaleHighLow;
                   EBM_ASSERT(!std::isnan(scaleHighLow));
                   EBM_ASSERT(!std::isinf(scaleHighLow));
                   const FloatEbmType * pScaleLowHigh = *apValueCutTops;
-                  EBM_ASSERT(featureValues < pScaleLowHigh);
-                  EBM_ASSERT(pScaleLowHigh < featureValues + cSamples - size_t { 2 });
+                  EBM_ASSERT(aFeatureValues < pScaleLowHigh);
+                  EBM_ASSERT(pScaleLowHigh < aFeatureValues + cSamples - size_t { 2 });
                   const FloatEbmType scaleLowHigh = *pScaleLowHigh;
                   EBM_ASSERT(!std::isnan(scaleLowHigh));
                   EBM_ASSERT(!std::isinf(scaleLowHigh));
@@ -3266,6 +3284,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          EBM_ASSERT(countBinCutsRet <= countBinCuts);
 
          free(pMem);
+         free(aFeatureValues);
 
          ret = IntEbmType { 0 };
       }
