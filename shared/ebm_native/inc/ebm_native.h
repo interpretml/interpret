@@ -463,8 +463,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Sugges
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(IntEbmType randomSeed);
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
    IntEbmType randomSeed,
-   IntEbmType countSamples,
    IntEbmType countIncluded,
+   IntEbmType countSamples,
    IntEbmType * isIncludedOut
 );
 

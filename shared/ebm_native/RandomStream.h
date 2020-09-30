@@ -93,6 +93,34 @@ public:
       m_stateSeedConst = other.m_stateSeedConst;
    }
 
+   INLINE_ALWAYS IntEbmType NextEbmInt() {
+      static_assert(std::numeric_limits<IntEbmType>::lowest() < IntEbmType { 0 },
+         "IntEbmType must be signed");
+
+      // this is meant to result in a positive value that is of the negation of 
+      // std::numeric_limits<IntEbmType>::lowest(), so -std::numeric_limits<IntEbmType>::lowest().
+      // but the pitfall is that for numbers expressed in twos complement, there is one more
+      // negative number than there are positive numbers, so we subtract one (adding to a negated number), then add 
+      // one to keep the numbers in bounds.  If the compiler is using some non-twos complement
+      // representation, then we'll get a compile error in the static_asserts below or in the initialization
+      // of uint64_t below
+      constexpr uint64_t negativeOfLowest = 
+         uint64_t { -(std::numeric_limits<IntEbmType>::lowest() + IntEbmType { 1 }) } + uint64_t { 1 };
+
+      static_assert(uint64_t { std::numeric_limits<IntEbmType>::max() } ==
+         negativeOfLowest - uint64_t { 1 }, "max must == lowestInUnsigned - 1");
+
+      const uint64_t randomNumber = static_cast<uint64_t>(Rand64());
+      // adding negativeOfLowest and then adding lowest are a no-op as far as affecting the value of randomNumber
+      // but since adding randomNumber + negativeOfLowest (two unsigned values) is legal in C++, and since we'll
+      // always end up with a value that can be expressed as an IntEbmType after that addition we don't have
+      // and undefined behavior here.  The compiler should be smart enough to eliminate this operation.
+      const IntEbmType ret = randomNumber < negativeOfLowest ? static_cast<IntEbmType>(randomNumber) :
+         static_cast<IntEbmType>(randomNumber + negativeOfLowest) + std::numeric_limits<IntEbmType>::lowest();
+
+      return ret;
+   }
+
    INLINE_ALWAYS bool Next() {
       return uint_fast32_t { 0 } != (uint_fast32_t { 1 } & Rand32());
    }
