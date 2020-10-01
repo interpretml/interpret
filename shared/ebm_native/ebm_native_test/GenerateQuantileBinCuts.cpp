@@ -1170,6 +1170,64 @@ TEST_CASE("GenerateQuantileBinCuts, non-smart") {
    );
 }
 
+TEST_CASE("GenerateQuantileBinCuts, overflow interpretable ends") {
+   constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
+   constexpr size_t cBinCutsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues {
+      std::numeric_limits<FloatEbmType>::lowest(),
+      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }),
+      std::nextafter(std::numeric_limits<FloatEbmType>::max(), FloatEbmType { 0 }),
+      std::numeric_limits<FloatEbmType>::max()
+   };
+
+   const std::vector<FloatEbmType> expectedBinCuts {
+      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }),
+      0,
+      std::numeric_limits<FloatEbmType>::max()
+   };
+
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      bSmart,
+      cBinCutsMax,
+      cSamplesPerBinMin,
+      featureValues,
+      expectedBinCuts
+   );
+}
+
+TEST_CASE("GenerateQuantileBinCuts, maximum non-overflow interpretable ends") {
+   constexpr bool bTestReverse = true;
+   constexpr bool bSmart = true;
+   constexpr size_t cBinCutsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues {
+      std::numeric_limits<FloatEbmType>::lowest(),
+      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }),
+      std::numeric_limits<FloatEbmType>::max() - std::nextafter(std::numeric_limits<FloatEbmType>::max(), FloatEbmType { 0 }),
+      std::numeric_limits<FloatEbmType>::max()
+   };
+
+   const std::vector<FloatEbmType> expectedBinCuts {
+      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }),
+      0,
+      2.0000000000000001e+300
+   };
+
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      bSmart,
+      cBinCutsMax,
+      cSamplesPerBinMin,
+      featureValues,
+      expectedBinCuts
+   );
+}
+
 TEST_CASE("GenerateQuantileBinCuts, stress test the guarantee of one split per SplittingRange, by 2") {
    constexpr IntEbmType countSamplesPerBinMin = 1;
    constexpr size_t cItemsPerRange = 10;

@@ -3218,9 +3218,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   EBM_ASSERT(scaleLowHigh < scaleHighLow);
                   // this is the inescapable scale of our graph, from the value right above the lowest cut to the value 
                   // right below the highest cut
+
                   const FloatEbmType scaleMin = scaleHighLow - scaleLowHigh;
+                  // scaleMin can be +infinity if scaleHighLow is max and scaleLowHigh is lowest.  We can handle it.
                   EBM_ASSERT(!std::isnan(scaleMin));
-                  EBM_ASSERT(!std::isinf(scaleMin));
                   // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
                   EBM_ASSERT(FloatEbmType { 0 } < scaleMin);
 
@@ -3237,30 +3238,25 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   // cut though from the previous inner cut.  We want to move outwards from the scaleHighLow and
                   // scaleLowHigh values, which should be half a cut inwards (not exactly but in spirit), so we
                   // divide by two, which is the same as multiplying the divisor by 2, which is the right shift below
+                  EBM_ASSERT(IntEbmType { 3 } <= countBinCuts);
                   const size_t denominator = (cBinCutsLimited - size_t { 2 }) << 1;
                   EBM_ASSERT(size_t { 0 } < denominator);
                   const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
-
+                  // movementFromEnds can be +infinity if scaleMin is infinity. We can handle it.
                   EBM_ASSERT(!std::isnan(movementFromEnds));
-                  EBM_ASSERT(!std::isinf(movementFromEnds));
-                  EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
+                  EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds); // underflow is possible
 
                   const FloatEbmType lowCutFullPrecisionMin = scaleLowHigh - movementFromEnds;
+                  // lowCutFullPrecisionMin can be -infinity if movementFromEnds is +infinity.  We can handle it.
                   EBM_ASSERT(!std::isnan(lowCutFullPrecisionMin));
                   EBM_ASSERT(lowCutFullPrecisionMin < std::numeric_limits<FloatEbmType>::max());
-                  const FloatEbmType highCutFullPrecisionMax = scaleHighLow + movementFromEnds;
-                  EBM_ASSERT(!std::isnan(highCutFullPrecisionMax));
-                  EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < highCutFullPrecisionMax);
-
+                  // GetInterpretableEndpoint can accept -infinity, but it'll return -infinity in that case
                   const FloatEbmType lowCutMin = GetInterpretableEndpoint(lowCutFullPrecisionMin, movementFromEnds);
-                  const FloatEbmType highCutMax = GetInterpretableEndpoint(highCutFullPrecisionMax, movementFromEnds);
+                  // lowCutMin can legally be -infinity and we handle this scenario below
 
                   const FloatEbmType lowCutExisting = *binCutsLowerBoundInclusiveOut;
                   EBM_ASSERT(!std::isnan(lowCutExisting));
                   EBM_ASSERT(!std::isinf(lowCutExisting));
-                  const FloatEbmType highCutExisting = *(pBinCutsLowerBoundInclusive - size_t { 1 });
-                  EBM_ASSERT(!std::isnan(highCutExisting));
-                  EBM_ASSERT(!std::isinf(highCutExisting));
 
                   if(lowCutExisting < lowCutMin) {
                      // lowCutMin can legally be -infinity, but then we wouldn't get here then
@@ -3268,6 +3264,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      EBM_ASSERT(!std::isinf(lowCutMin));
                      *binCutsLowerBoundInclusiveOut = lowCutMin;
                   }
+
+                  const FloatEbmType highCutFullPrecisionMax = scaleHighLow + movementFromEnds;
+                  // highCutFullPrecisionMax can be +infinity if movementFromEnds is +infinity.  We can handle it.
+                  EBM_ASSERT(!std::isnan(highCutFullPrecisionMax));
+                  EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < highCutFullPrecisionMax);
+                  // GetInterpretableEndpoint can accept infinity, but it'll return infinity in that case
+                  const FloatEbmType highCutMax = GetInterpretableEndpoint(highCutFullPrecisionMax, movementFromEnds);
+                  // highCutMax can legally be +infinity and we handle this scenario below
+
+                  const FloatEbmType highCutExisting = *(pBinCutsLowerBoundInclusive - size_t { 1 });
+                  EBM_ASSERT(!std::isnan(highCutExisting));
+                  EBM_ASSERT(!std::isinf(highCutExisting));
+
                   if(highCutMax < highCutExisting) {
                      // highCutMax can legally be +infinity, but then we wouldn't get here then
                      EBM_ASSERT(!std::isnan(highCutMax));

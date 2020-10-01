@@ -10,6 +10,7 @@
 enum class TestPriority {
    RandomInterface,
    RandomNumberEquivalency,
+   SuggestGraphBounds,
    Discretize,
    GenerateUniformBinCuts,
    GenerateWinsorizedBinCuts,

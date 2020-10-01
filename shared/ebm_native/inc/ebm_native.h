@@ -451,13 +451,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discre
    IntEbmType * discretizedOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countBinCuts,
-   const FloatEbmType * binCutsLowerBoundInclusive,
+   FloatEbmType lowestBinCut,
+   FloatEbmType highestBinCut,
    FloatEbmType minValue,
    FloatEbmType maxValue,
-   FloatEbmType * lowBoundOut,
-   FloatEbmType * highBoundOut
+   FloatEbmType * lowGraphBoundOut,
+   FloatEbmType * highGraphBoundOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(IntEbmType randomSeed);

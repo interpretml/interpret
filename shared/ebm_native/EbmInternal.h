@@ -205,6 +205,18 @@ INLINE_ALWAYS const T * ArrayToPointer(const T * a) {
    return a;
 }
 
+// TODO : replace all std::min and std::max and similar comparions that get the min/max with this function
+// unlike std::min, our version has explicit noexcept semantics
+template<typename T>
+constexpr INLINE_ALWAYS bool EbmMin(T v1, T v2) noexcept {
+   return UNPREDICTABLE(v1 < v2) ? v1 : v2;
+}
+// unlike std::max, our version has explicit noexcept semantics
+template<typename T>
+constexpr INLINE_ALWAYS bool EbmMax(T v1, T v2) noexcept {
+   return UNPREDICTABLE(v1 < v2) ? v2 : v1;
+}
+
 WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 template<typename TTo, typename TFrom>

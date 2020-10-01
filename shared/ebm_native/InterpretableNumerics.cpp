@@ -629,32 +629,43 @@ extern FloatEbmType GetInterpretableEndpoint(
 ) noexcept {
    // TODO : add logs or asserts here when we find a condition we didn't think was possible, but that occurs
 
+   // center can be -infinity OR +infinity
+   // movementFromEnds can be +infinity
+
    EBM_ASSERT(!std::isnan(center));
    EBM_ASSERT(!std::isnan(movementFromEnds));
-   EBM_ASSERT(!std::isinf(movementFromEnds));
    EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
-
-   const FloatEbmType distance = k_percentageDeviationFromEndpointForInterpretableNumbers * movementFromEnds;
 
    FloatEbmType ret = center;
    // if the center is +-infinity then we'll always be farter away than the end cut points which can't be +-infinity
    // so return +-infinity so that our alternative cut point is rejected
    if(LIKELY(!std::isinf(ret))) {
+      // we use movementFromEnds to compute center, so if movementFromEnd was an infinity, then center would be
+      // an infinity value.  We filter out infinity values for center above though, so movementFromEnds can't be
+      // infinity here, even though the 
+      EBM_ASSERT(!std::isinf(movementFromEnds));
+
+      const FloatEbmType distance = k_percentageDeviationFromEndpointForInterpretableNumbers * movementFromEnds;
+      EBM_ASSERT(!std::isnan(distance));
+      EBM_ASSERT(!std::isinf(distance));
+      EBM_ASSERT(FloatEbmType { 0 } <= distance);
+
       bool bNegative = false;
-      if(PREDICTABLE(center < FloatEbmType { 0 })) {
+      if(PREDICTABLE(ret < FloatEbmType { 0 })) {
          ret = -ret;
          bNegative = true;
       }
 
       const FloatEbmType lowBound = ret - distance;
-      // lowBound can be a negative number, but can't be +-infinity
       EBM_ASSERT(!std::isnan(lowBound));
+      // lowBound can be a negative number, but can't be +-infinity because we subtract from a positive number
+      // and we use IEEE 754
       EBM_ASSERT(!std::isinf(lowBound));
 
       const FloatEbmType highBound = ret + distance;
       // highBound can be +infinity, but can't be negative
       EBM_ASSERT(!std::isnan(highBound));
-      EBM_ASSERT(0 <= highBound);
+      EBM_ASSERT(FloatEbmType { 0 } <= highBound);
 
       char str[k_cCharsFloatPrint];
       if(LIKELY(!FloatToString(ret, str))) {
@@ -820,22 +831,212 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(
    return cSamples;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countBinCuts,
-   const FloatEbmType * binCutsLowerBoundInclusive,
+   FloatEbmType lowestBinCut,
+   FloatEbmType highestBinCut,
    FloatEbmType minValue,
    FloatEbmType maxValue,
-   FloatEbmType * lowBoundOut,
-   FloatEbmType * highBoundOut
+   FloatEbmType * lowGraphBoundOut,
+   FloatEbmType * highGraphBoundOut
 ) {
-   UNUSED(countBinCuts);
-   UNUSED(binCutsLowerBoundInclusive);
-   UNUSED(minValue);
-   UNUSED(maxValue);
-   UNUSED(lowBoundOut);
-   UNUSED(highBoundOut);
+   if(nullptr == lowGraphBoundOut) {
+      LOG_0(TraceLevelWarning, "ERROR SuggestGraphBounds nullptr == lowGraphBoundOut");
+      return;
+   }
+   if(nullptr == highGraphBoundOut) {
+      LOG_0(TraceLevelWarning, "ERROR SuggestGraphBounds nullptr == highGraphBoundOut");
+      return;
+   }
 
-   // TODO : COMPLETE
+   FloatEbmType lowGraphBound;
+   FloatEbmType highGraphBound;
+   if(countBinCuts <= IntEbmType { 0 }) {
+      if(countBinCuts < IntEbmType { 0 }) {
+         LOG_0(TraceLevelWarning, "ERROR SuggestGraphBounds countBinCuts < IntEbmType { 0 }");
+         lowGraphBound = FloatEbmType { 0 };
+         highGraphBound = FloatEbmType { 0 };
+      } else {
+      use_just_min_max:;
 
-   return IntEbmType { 1 };
+         if(std::isnan(minValue) || -std::numeric_limits<FloatEbmType>::infinity() == minValue) {
+            minValue = std::numeric_limits<FloatEbmType>::lowest();
+         } else if(std::numeric_limits<FloatEbmType>::infinity() == minValue) {
+            minValue = std::numeric_limits<FloatEbmType>::max();
+         }
+
+         if(std::isnan(maxValue) || std::numeric_limits<FloatEbmType>::infinity() == maxValue) {
+            maxValue = std::numeric_limits<FloatEbmType>::max();
+         } else if(-std::numeric_limits<FloatEbmType>::infinity() == maxValue) {
+            maxValue = std::numeric_limits<FloatEbmType>::lowest();
+         }
+
+         if(maxValue < minValue) {
+            // silly caller, these should be reversed
+            LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < minValue");
+            const FloatEbmType tmp = minValue;
+            minValue = maxValue;
+            maxValue = tmp;
+         }
+
+         // if countBinCuts was zero, we can ignore lowestBinCut and highestBinCut since they have no meaning.
+         // Since there are no cuts, don't turn these into interpretable values.  We show 
+         // the most information on the graph by showing the true bounds on the graph.
+         lowGraphBound = minValue;
+         highGraphBound = maxValue;
+      }
+   } else if(IntEbmType { 1 } == countBinCuts) {
+      if(std::isnan(lowestBinCut)) {
+         LOG_0(TraceLevelWarning, "WARNING SuggestGraphBounds std::isnan(lowestBinCut)");
+         goto use_just_min_max;
+      }
+      if(std::isnan(highestBinCut)) {
+         LOG_0(TraceLevelWarning, "WARNING SuggestGraphBounds std::isnan(highestBinCut)");
+         goto use_just_min_max;
+      }
+      if(lowestBinCut != highestBinCut) {
+         // if there's only one cut then the lowestBinCut should be the same as the highestBinCut.  If they aren't
+         // the same, then there's a serious problem and we can't really know which to trust, so ignore them
+         LOG_0(TraceLevelError, 
+            "ERROR SuggestGraphBounds when 1 == countBinCuts, then lowestBinCut and highestBinCut should be identical");
+         goto use_just_min_max;
+      }
+      const FloatEbmType center = lowestBinCut;
+      if(maxValue < minValue) {
+         // silly caller, these should be reversed
+         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < minValue");
+         const FloatEbmType tmp = minValue;
+         minValue = maxValue;
+         maxValue = tmp;
+      }
+      if(maxValue < center || center < minValue) {
+         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < center || center < minValue");
+         // hmmm.. the center value isn't between highGraphBound and highGraphBound, so they don't really make sense. Ignore them
+         // and just use the full range (which also alerts the user to something odd).
+         lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
+         highGraphBound = std::numeric_limits<FloatEbmType>::max();
+      } else {
+         EBM_ASSERT(-std::numeric_limits<FloatEbmType>::infinity() != maxValue);
+         EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != minValue);
+
+         if(-std::numeric_limits<FloatEbmType>::infinity() == minValue) {
+            minValue = std::numeric_limits<FloatEbmType>::lowest();
+         }
+         if(std::numeric_limits<FloatEbmType>::infinity() == maxValue) {
+            maxValue = std::numeric_limits<FloatEbmType>::max();
+         }
+
+         // since there's just 1 cut, don't turn these into interpretable values.  We show 
+         // the most information on the graph by showing the true bounds on the graph.
+         const FloatEbmType lowDiff = center - minValue;
+         EBM_ASSERT(!std::isnan(lowDiff));
+         EBM_ASSERT(FloatEbmType { 0 } <= lowDiff);
+         const FloatEbmType highDiff = maxValue - center;
+         EBM_ASSERT(!std::isnan(highDiff));
+         EBM_ASSERT(FloatEbmType { 0 } <= highDiff);
+
+         if(std::isinf(lowDiff) || std::isinf(highDiff)) {
+            // the range is so big that once we extend it both sides will be at infinity, so put them both at the max
+            lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
+            highGraphBound = std::numeric_limits<FloatEbmType>::max();
+         } else {
+            if(lowDiff < highDiff) {
+               highGraphBound = maxValue;
+               // highGraphBound is farther from our single cut than the lowGraphBound, so let's make it symmetric to the highGraphBound
+               // so that lowGraphBound can be shown on the graph
+               lowGraphBound = center - highDiff;
+               EBM_ASSERT(!std::isnan(lowGraphBound));
+               if(-std::numeric_limits<FloatEbmType>::infinity() == lowGraphBound) {
+                  lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
+               }
+            } else {
+               lowGraphBound = minValue;
+               // lowGraphBound is farther from our single cut than the highGraphBound, so let's make it symmetric to the lowGraphBound
+               // so that highGraphBound can be shown on the graph
+               highGraphBound = center + lowDiff;
+               EBM_ASSERT(!std::isnan(highGraphBound));
+               if(std::numeric_limits<FloatEbmType>::infinity() == highGraphBound) {
+                  highGraphBound = std::numeric_limits<FloatEbmType>::max();
+               }
+            }
+         }
+      }
+   } else {
+      // ignore the min and max value.  We have complexity in our graph with multiple cuts so we want to focus on that
+      // part.  
+
+      if(std::isnan(lowestBinCut) || -std::numeric_limits<FloatEbmType>::infinity() == lowestBinCut) {
+         lowestBinCut = std::numeric_limits<FloatEbmType>::lowest();
+      } else if(std::numeric_limits<FloatEbmType>::infinity() == lowestBinCut) {
+         lowestBinCut = std::numeric_limits<FloatEbmType>::max();
+      }
+
+      if(std::isnan(highestBinCut) || std::numeric_limits<FloatEbmType>::infinity() == highestBinCut) {
+         highestBinCut = std::numeric_limits<FloatEbmType>::max();
+      } else if(-std::numeric_limits<FloatEbmType>::infinity() == highestBinCut) {
+         highestBinCut = std::numeric_limits<FloatEbmType>::lowest();
+      }
+
+      if(highestBinCut < lowestBinCut) {
+         // silly caller, these should be reversed
+         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds highestBinCut < lowestBinCut");
+         const FloatEbmType tmp = lowestBinCut;
+         lowestBinCut = highestBinCut;
+         highestBinCut = tmp;
+      }
+
+      lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
+      highGraphBound = std::numeric_limits<FloatEbmType>::max();
+
+      const FloatEbmType scaleMin = highestBinCut - lowestBinCut;
+      // scaleMin can be +infinity if highestBinCut is max and lowestBinCut is lowest.  We can handle it.
+      EBM_ASSERT(!std::isnan(scaleMin));
+      // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
+      EBM_ASSERT(FloatEbmType { 0 } <= scaleMin);
+
+      // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
+      // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
+      // 1.5% on the right)
+
+      const size_t cBinCutsLimited = static_cast<size_t>(IntEbmType { 32 } < countBinCuts ? IntEbmType { 32 } : countBinCuts);
+
+      // the leftmost and rightmost cuts can legally be right outside of the bounds between scaleHighLow and
+      // scaleLowHigh, so we subtract these two cuts, leaving us the number of ranges between the two end
+      // points.  Half a range on the bottom, N - 1 ranges in the middle, and half a range on the top
+      // Dividing by that number of ranges gives us the average range width.  We don't want to get the final
+      // cut though from the previous inner cut.  We want to move outwards from the scaleHighLow and
+      // scaleLowHigh values, which should be half a cut inwards (not exactly but in spirit), so we
+      // divide by two, which is the same as multiplying the divisor by 2, which is the right shift below
+      EBM_ASSERT(IntEbmType { 2 } <= countBinCuts); // if there's just one cut then suggest bounds surrounding it
+      const size_t denominator = (cBinCutsLimited - size_t { 1 }) << 1;
+      EBM_ASSERT(size_t { 0 } < denominator);
+      const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
+      // movementFromEnds can be +infinity if scaleMin is infinity. We can handle it.
+      EBM_ASSERT(!std::isnan(movementFromEnds));
+      EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
+
+      lowestBinCut = lowestBinCut - movementFromEnds;
+      // lowestBinCut can be -infinity if movementFromEnds is +infinity.  We can handle it.
+      EBM_ASSERT(!std::isnan(lowestBinCut));
+      EBM_ASSERT(lowestBinCut <= std::numeric_limits<FloatEbmType>::max());
+      // GetInterpretableEndpoint can accept -infinity, but it'll return -infinity in that case
+      lowGraphBound = GetInterpretableEndpoint(lowestBinCut, movementFromEnds);
+      // lowGraphBound can legally be -infinity and we handle this scenario below
+      if(-std::numeric_limits<FloatEbmType>::infinity() == lowGraphBound) {
+         lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
+      }
+
+      highestBinCut = highestBinCut + movementFromEnds;
+      // highestBinCut can be +infinity if movementFromEnds is +infinity.  We can handle it.
+      EBM_ASSERT(!std::isnan(highestBinCut));
+      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() <= highestBinCut);
+      // GetInterpretableEndpoint can accept infinity, but it'll return infinity in that case
+      highGraphBound = GetInterpretableEndpoint(highestBinCut, movementFromEnds);
+      // highGraphBound can legally be +infinity and we handle this scenario below
+      if(std::numeric_limits<FloatEbmType>::infinity() == highGraphBound) {
+         highGraphBound = std::numeric_limits<FloatEbmType>::max();
+      }
+   }
+   *lowGraphBoundOut = lowGraphBound;
+   *highGraphBoundOut = highGraphBound;
 }
