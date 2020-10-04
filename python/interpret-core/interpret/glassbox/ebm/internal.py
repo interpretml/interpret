@@ -86,11 +86,126 @@ class Native:
             self._LogFuncType
         ]
         self.lib.SetLogMessageFunction.restype = None
+
         self.lib.SetTraceLevel.argtypes = [
             # signed char traceLevel
             ct.c_char
         ]
         self.lib.SetTraceLevel.restype = None
+
+
+        self.lib.GenerateRandomNumber.argtypes = [
+            # int64_t randomSeed
+            ct.c_longlong,
+            # int64_t stageRandomizationMix
+            ct.c_longlong,
+        ]
+        self.lib.GenerateRandomNumber.restype = ct.c_longlong
+
+        self.lib.SamplingWithoutReplacement.argtypes = [
+            # int64_t randomSeed
+            ct.c_longlong,
+            # int64_t countIncluded
+            ct.c_longlong,
+            # int64_t countSamples
+            ct.c_longlong,
+            # int64_t * isIncludedOut
+            ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
+        ]
+        self.lib.SamplingWithoutReplacement.restype = None
+
+
+        self.lib.GenerateQuantileBinCuts.argtypes = [
+            # int64_t countSamples
+            ct.c_longlong,
+            # double * featureValues
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t countSamplesPerBinMin
+            ct.c_longlong,
+            # int64_t isHumanized
+            ct.c_longlong,
+            # int64_t randomSeed
+            ct.c_longlong,
+            # int64_t * countBinCutsInOut
+            ct.POINTER(ct.c_longlong),
+            # double * binCutsLowerBoundInclusiveOut
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t * countMissingValuesOut
+            ct.POINTER(ct.c_longlong),
+            # double * minNonInfinityValueOut
+            ct.POINTER(ct.c_double),
+            # int64_t * countNegativeInfinityOut
+            ct.POINTER(ct.c_longlong),
+            # double * maxNonInfinityValueOut
+            ct.POINTER(ct.c_double),
+            # int64_t * countPositiveInfinityOut
+            ct.POINTER(ct.c_longlong),
+        ]
+        self.lib.GenerateQuantileBinCuts.restype = ct.c_longlong
+
+        self.lib.GenerateUniformBinCuts.argtypes = [
+            # int64_t countSamples
+            ct.c_longlong,
+            # double * featureValues
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t * countBinCutsInOut
+            ct.POINTER(ct.c_longlong),
+            # double * binCutsLowerBoundInclusiveOut
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t * countMissingValuesOut
+            ct.POINTER(ct.c_longlong),
+            # double * minNonInfinityValueOut
+            ct.POINTER(ct.c_double),
+            # int64_t * countNegativeInfinityOut
+            ct.POINTER(ct.c_longlong),
+            # double * maxNonInfinityValueOut
+            ct.POINTER(ct.c_double),
+            # int64_t * countPositiveInfinityOut
+            ct.POINTER(ct.c_longlong),
+        ]
+        self.lib.GenerateUniformBinCuts.restype = None
+
+        self.lib.GenerateWinsorizedBinCuts.argtypes = [
+            # int64_t countSamples
+            ct.c_longlong,
+            # double * featureValues
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t * countBinCutsInOut
+            ct.POINTER(ct.c_longlong),
+            # double * binCutsLowerBoundInclusiveOut
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t * countMissingValuesOut
+            ct.POINTER(ct.c_longlong),
+            # double * minNonInfinityValueOut
+            ct.POINTER(ct.c_double),
+            # int64_t * countNegativeInfinityOut
+            ct.POINTER(ct.c_longlong),
+            # double * maxNonInfinityValueOut
+            ct.POINTER(ct.c_double),
+            # int64_t * countPositiveInfinityOut
+            ct.POINTER(ct.c_longlong),
+        ]
+        self.lib.GenerateWinsorizedBinCuts.restype = ct.c_longlong
+
+
+        self.lib.SuggestGraphBounds.argtypes = [
+            # int64_t countBinCuts
+            ct.c_longlong,
+            # double lowestBinCut
+            ct.c_double,
+            # double highestBinCut
+            ct.c_double,
+            # double minValue
+            ct.c_double,
+            # double maxValue
+            ct.c_double,
+            # double * lowGraphBoundOut
+            ct.POINTER(ct.c_double),
+            # double * highGraphBoundOut
+            ct.POINTER(ct.c_double),
+        ]
+        self.lib.SuggestGraphBounds.restype = None
+
 
         self.lib.Discretize.argtypes = [
             # int64_t countSamples
@@ -105,6 +220,7 @@ class Native:
             ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self.lib.Discretize.restype = ct.c_longlong
+
 
         self.lib.InitializeBoostingClassification.argtypes = [
             # int64_t countTargetClasses
@@ -237,6 +353,7 @@ class Native:
             ct.c_void_p
         ]
         self.lib.FreeBoosting.restype = None
+
 
         self.lib.InitializeInteractionClassification.argtypes = [
             # int64_t countTargetClasses
