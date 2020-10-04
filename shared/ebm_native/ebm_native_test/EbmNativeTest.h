@@ -8,8 +8,7 @@
 #define UNUSED(x) (void)(x)
 
 enum class TestPriority {
-   RandomInterface,
-   RandomNumberEquivalency,
+   RandomNumbers,
    SuggestGraphBounds,
    Discretize,
    GenerateUniformBinCuts,

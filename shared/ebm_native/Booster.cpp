@@ -490,7 +490,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
       return nullptr;
    }
 
-   pBooster->m_randomStream.Initialize(randomSeed);
+   pBooster->m_randomStream.Initialize(randomSeed, k_boosterRandomizationMix);
 
    EBM_ASSERT(nullptr == pBooster->m_apSamplingSets);
    if(0 != cTrainingSamples) {

@@ -22,7 +22,8 @@ TEST_CASE("GenerateUniformBinCuts, 0 samples") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -61,7 +62,8 @@ TEST_CASE("GenerateUniformBinCuts, only missing") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -100,7 +102,8 @@ TEST_CASE("GenerateUniformBinCuts, one cut, -infinity") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -139,7 +142,8 @@ TEST_CASE("GenerateUniformBinCuts, one cut, +infinity") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -178,7 +182,8 @@ TEST_CASE("GenerateUniformBinCuts, one cut, -infinity and +infinity") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -217,7 +222,8 @@ TEST_CASE("GenerateUniformBinCuts, one item") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -256,7 +262,8 @@ TEST_CASE("GenerateUniformBinCuts, zero cuts") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -295,7 +302,8 @@ TEST_CASE("GenerateUniformBinCuts, identical values") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -334,7 +342,8 @@ TEST_CASE("GenerateUniformBinCuts, underflow") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -373,7 +382,8 @@ TEST_CASE("GenerateUniformBinCuts, normal") {
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -417,7 +427,8 @@ TEST_CASE("GenerateUniformBinCuts, 1 cut, -infinity, lowest, max, and +infinity"
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),
@@ -461,7 +472,8 @@ TEST_CASE("GenerateUniformBinCuts, 1 cut, -infinity, lowest + 1, max - 1, and +i
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
-   std::vector<FloatEbmType> binCutsLowerBoundInclusive(0 == countBinCuts ? 1 : countBinCuts, illegalVal);
+   std::vector<FloatEbmType> binCutsLowerBoundInclusive(
+      0 == countBinCuts ? size_t { 1 } : static_cast<size_t>(countBinCuts), illegalVal);
 
    GenerateUniformBinCuts(
       featureValues.size(),

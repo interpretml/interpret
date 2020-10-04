@@ -12,6 +12,13 @@
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h"
 
+// TODO: set these to random values.  We expose our random number generator, so to ensure that we get
+// different random number streams from what our caller will get, we want to mix in these values
+// in case our caller happens to mistakenly forget to provide a mix in value
+constexpr IntEbmType k_quantileRandomizationMix = IntEbmType { 0 };
+constexpr IntEbmType k_boosterRandomizationMix = IntEbmType { 0 };
+constexpr IntEbmType k_samplingWithoutReplacementRandomizationMix = IntEbmType { 0 };
+
 class RandomStream final {
    // If the RandomStream object is stored inside a class/struct, and used inside a hotspot loop, to get the best 
    // performance copy this structure to the stack before using it, and then copy it back to the struct/class 
@@ -72,6 +79,8 @@ class RandomStream final {
       return (top << 32) | bottom;
    }
 
+   void Initialize(const uint64_t seed);
+
 public:
 
    RandomStream() = default; // preserve our POD status
@@ -79,12 +88,10 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   void Initialize(const uint64_t seed);
-
-   INLINE_ALWAYS void Initialize(const IntEbmType seed) {
+   INLINE_ALWAYS void Initialize(const IntEbmType seed, const IntEbmType stageRandomizationMix) {
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is 2^64 + seed if seed is negative
-      Initialize(static_cast<uint64_t>(seed));
+      Initialize(static_cast<uint64_t>(seed) ^ static_cast<uint64_t>(stageRandomizationMix));
    }
 
    INLINE_ALWAYS void Initialize(const RandomStream & other) {

@@ -246,7 +246,6 @@ EXIT /B 0
     </ClCompile>
     <ClCompile Include="EbmNativeTest.cpp" />
     <ClCompile Include="RandomInterface.cpp" />
-    <ClCompile Include="RandomNumberEquivalency.cpp" />
     <ClCompile Include="Rehydration.cpp" />
     <ClCompile Include="SuggestGraphBounds.cpp" />
   </ItemGroup>

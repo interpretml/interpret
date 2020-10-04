@@ -461,7 +461,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SuggestGraph
    FloatEbmType * highGraphBoundOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(IntEbmType randomSeed);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
+   IntEbmType randomSeed,
+   IntEbmType stageRandomizationMix
+);
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
    IntEbmType randomSeed,
    IntEbmType countIncluded,

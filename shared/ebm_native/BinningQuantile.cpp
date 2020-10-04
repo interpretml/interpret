@@ -2830,7 +2830,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, aFeatureValues);
 
          RandomStream randomStream;
-         randomStream.Initialize(randomSeed);
+         randomStream.Initialize(randomSeed, k_quantileRandomizationMix);
 
          FillTiebreakers(bSymmetryReversal, &randomStream, cCuttingRanges, aCuttingRange);
 
