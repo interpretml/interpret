@@ -208,9 +208,9 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, min -inf") {
 
    constexpr IntEbmType countBinCuts = 1;
    constexpr FloatEbmType minValue = -std::numeric_limits<FloatEbmType>::infinity();
-   constexpr FloatEbmType lowestBinCut = std::numeric_limits<FloatEbmType>::lowest() + 1e300;
-   constexpr FloatEbmType highestBinCut = std::numeric_limits<FloatEbmType>::lowest() + 1e300;
-   constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::lowest() + 1.5e300;
+   constexpr FloatEbmType lowestBinCut = std::numeric_limits<FloatEbmType>::lowest() + FloatEbmType { 1e300 };
+   constexpr FloatEbmType highestBinCut = std::numeric_limits<FloatEbmType>::lowest() + FloatEbmType { 1e300 };
+   constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::lowest() + FloatEbmType { 1.5e300 };
 
    SuggestGraphBounds(
       countBinCuts,
@@ -223,7 +223,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, min -inf") {
    );
 
    CHECK(std::numeric_limits<FloatEbmType>::lowest() == lowGraphBound);
-   CHECK(std::numeric_limits<FloatEbmType>::lowest() + 2e300 == highGraphBound);
+   CHECK_APPROX(highGraphBound, std::numeric_limits<FloatEbmType>::lowest() + FloatEbmType { 2 } * FloatEbmType { 1e300 });
 }
 
 TEST_CASE("SuggestGraphBounds, 1 cuts, max +inf") {
@@ -246,7 +246,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, max +inf") {
       &highGraphBound
    );
 
-   CHECK(std::numeric_limits<FloatEbmType>::max() - 2e300 == lowGraphBound);
+   CHECK_APPROX(lowGraphBound, std::numeric_limits<FloatEbmType>::max() - 2e300);
    CHECK(std::numeric_limits<FloatEbmType>::max() == highGraphBound);
 }
 
@@ -342,7 +342,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow high") {
       &highGraphBound
    );
 
-   CHECK(std::numeric_limits<FloatEbmType>::max() - 1e307 == lowGraphBound);
+   CHECK_APPROX(lowGraphBound, std::numeric_limits<FloatEbmType>::max() - 1e307);
    CHECK(std::numeric_limits<FloatEbmType>::max() == highGraphBound);
 }
 
@@ -367,7 +367,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow low") {
    );
 
    CHECK(std::numeric_limits<FloatEbmType>::lowest() == lowGraphBound);
-   CHECK(std::numeric_limits<FloatEbmType>::lowest() + 1e307 == highGraphBound);
+   CHECK_APPROX(highGraphBound, std::numeric_limits<FloatEbmType>::lowest() + 1e307);
 }
 
 TEST_CASE("SuggestGraphBounds, 2 cuts") {
