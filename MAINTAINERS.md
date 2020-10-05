@@ -7,3 +7,4 @@ This document lists the Maintainers of Project InterpretML. Maintainers may be a
 | Paul Koch | Microsoft |
 | Rich Caruana | Microsoft |
 | Harsha Nori |  |
+| Samuel Jenkins |  |
