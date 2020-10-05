@@ -507,7 +507,7 @@ We also build on top of many great packages. Please check them out!
 # Videos
 
 - [The Science Behind InterpretML: Explainable Boosting Machine](https://www.youtube.com/watch?v=MREiHgHgl0k)
-- [How to Explain Models with IntepretML Deep Dive](https://www.youtube.com/watch?v=WwBeKMQ0-I8)
+- [How to Explain Models with InterpretML Deep Dive](https://www.youtube.com/watch?v=WwBeKMQ0-I8)
 
 # External links
 
