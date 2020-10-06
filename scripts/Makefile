@@ -22,7 +22,6 @@ else
 	COPY ?= cp
 	TOUCH ?= touch
 endif
-rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
 docker: prepare-docker
 	$(DOCKER) run --rm -it -v $(ROOTDIR):$(DOCKER_MNT_PATH) -v $(DOCKER_VOL_NAME):$(DOCKER_CWD) \
