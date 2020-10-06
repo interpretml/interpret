@@ -7,6 +7,7 @@ DOCKER_MNT_PATH ?= /mnt/interpret
 DOCKER_CWD ?= /usr/staging/interpret
 
 PYTHON ?= python
+PIP ?= pip
 NPM ?= npm
 ifeq ($(OS),Windows_NT)
 	BUILD_NATIVE ?= $(ROOTDIR)/build.bat
@@ -60,6 +61,13 @@ clean:
 	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/js/dist"
 	-$(DOCKER) volume rm $(DOCKER_VOL_NAME)
 	-$(DOCKER) image rm $(DOCKER_IMG_NAME)
+
+install: build
+	-$(PIP) uninstall -y interpret
+	-$(PIP) uninstall -y interpret-core
+	cd $(ROOTDIR)/python/interpret-core && $(PIP) install -e .
+	cd $(ROOTDIR)/python/interpret && $(PIP) install -e .
+
 
 build: build-python
 
