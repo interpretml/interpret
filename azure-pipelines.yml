@@ -240,6 +240,9 @@ jobs:
       LinuxPython38:
         python.version: '3.8'
         image.name: '${{ variables.ubuntu_image }}'
+      LinuxPython39:
+        python.version: '3.9'
+        image.name: '${{ variables.ubuntu_image }}'
       WindowsPython36:
         python.version: '3.6'
         image.name: '${{ variables.windows_image }}'
@@ -250,6 +253,9 @@ jobs:
       # WindowsPython38:
       #   python.version: '3.8'
       #   image.name: '${{ variables.windows_image }}'
+      WindowsPython39:
+        python.version: '3.9'
+        image.name: '${{ variables.windows_image }}'
       MacPython36:
         python.version: '3.6'
         image.name: '${{ variables.mac_image }}'
@@ -259,7 +265,10 @@ jobs:
       MacPython38:
         python.version: '3.8'
         image.name: '${{ variables.mac_image }}'
-    maxParallel: 9
+      MacPython39:
+        python.version: '3.9'
+        image.name: '${{ variables.mac_image }}'
+    maxParallel: 12
   pool:
     vmImage: '$(image.name)'
   variables:
