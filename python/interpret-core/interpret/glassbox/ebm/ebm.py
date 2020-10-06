@@ -1359,7 +1359,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         learning_rate=0.01,
         validation_size=0.15,
         early_stopping_rounds=50,
-        early_stopping_tolerance=0,
+        early_stopping_tolerance=1e-4,
         max_rounds=5000,
         # Trees
         max_leaves=3,
@@ -1493,7 +1493,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         learning_rate=0.01,
         validation_size=0.15,
         early_stopping_rounds=50,
-        early_stopping_tolerance=0,
+        early_stopping_tolerance=1e-4,
         max_rounds=5000,
         # Trees
         max_leaves=3,
