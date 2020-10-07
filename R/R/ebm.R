@@ -40,6 +40,8 @@ create_main_feature_groups <- function(features) {
    return(feature_groups)
 }
 
+#TODO: implement ebm_regress
+
 ebm_classify <- function(
    X, 
    y, 
