@@ -6,8 +6,37 @@ NATIVEDIR=../../shared/ebm_native
 
 CXX_STD = CXX11
 PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -DEBM_NATIVE_R
-# TODO test adding the following flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
-# -fvisibility-inlines-hidden -g0 -O3 -ffast-math -fno-finite-math-only
+# TODO test adding the g++/clang flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
 PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 
-OBJECTS = interpret_R.o $(NATIVEDIR)/DataSetByFeature.o $(NATIVEDIR)/DataSetByFeatureGroup.o $(NATIVEDIR)/InteractionDetection.o $(NATIVEDIR)/Logging.o $(NATIVEDIR)/SamplingSet.o $(NATIVEDIR)/Boosting.o
+OBJECTS = interpret_R.o \
+   $(NATIVEDIR)/ApplyModelUpdate.o \
+   $(NATIVEDIR)/ApplyModelUpdateTraining.o \
+   $(NATIVEDIR)/ApplyModelUpdateValidation.o \
+   $(NATIVEDIR)/BinBoosting.o \
+   $(NATIVEDIR)/BinInteraction.o \
+   $(NATIVEDIR)/BinningQuantile.o \
+   $(NATIVEDIR)/BinningUniform.o \
+   $(NATIVEDIR)/BinningWinsorized.o \
+   $(NATIVEDIR)/Booster.o \
+   $(NATIVEDIR)/CalculateInteractionScore.o \
+   $(NATIVEDIR)/CachedThreadResourcesBoosting.o \
+   $(NATIVEDIR)/CachedThreadResourcesInteraction.o \
+   $(NATIVEDIR)/DataSetBoosting.o \
+   $(NATIVEDIR)/DataSetInteraction.o \
+   $(NATIVEDIR)/Discretization.o \
+   $(NATIVEDIR)/FeatureGroup.o \
+   $(NATIVEDIR)/FindBestBoostingSplitsPairs.o \
+   $(NATIVEDIR)/FindBestInteractionGainPairs.o \
+   $(NATIVEDIR)/GenerateModelFeatureGroupUpdate.o \
+   $(NATIVEDIR)/GrowDecisionTree.o \
+   $(NATIVEDIR)/InitializeResiduals.o \
+   $(NATIVEDIR)/InteractionDetection.o \
+   $(NATIVEDIR)/InterpretableNumerics.o \
+   $(NATIVEDIR)/Logging.o \
+   $(NATIVEDIR)/RandomExternal.o \
+   $(NATIVEDIR)/RandomStream.o \
+   $(NATIVEDIR)/SamplingSet.o \
+   $(NATIVEDIR)/SegmentedTensor.o \
+   $(NATIVEDIR)/SumHistogramBuckets.o \
+   $(NATIVEDIR)/TensorTotalsBuild.o 

@@ -3,10 +3,15 @@
 // Author: Paul Koch <code@koch.ninja>
 
 #include <cmath> // std::isnan, std::isinf
+#include <limits> // std::numeric_limits
+#include <cstring> // memcpy, strcmp
+#include <algorithm> // std::min, std::max
 
 #include "ebm_native.h"
-#include "EbmBoostingState.h"
-#include "EbmInteractionState.h"
+#include "EbmInternal.h"
+#include "Logging.h"
+#include "Booster.h"
+#include "InteractionDetection.h"
 
 #include <Rinternals.h>
 #include <R_ext/Visibility.h>
@@ -19,7 +24,7 @@
 //   bypass the regular return mechanisms.  We need to use R_tryCatch (which is older than R_UnwindProtect) to not leak memory that we allocate 
 //   before calling the R error or warning functions
 
-EBM_INLINE bool IsSingleDoubleVector(const SEXP sexp) {
+INLINE_ALWAYS bool IsSingleDoubleVector(const SEXP sexp) {
    if(REALSXP != TYPEOF(sexp)) {
       return false;
    }
@@ -29,7 +34,7 @@ EBM_INLINE bool IsSingleDoubleVector(const SEXP sexp) {
    return true;
 }
 
-EBM_INLINE bool IsSingleIntVector(const SEXP sexp) {
+INLINE_ALWAYS bool IsSingleIntVector(const SEXP sexp) {
    if(INTSXP != TYPEOF(sexp)) {
       return false;
    }
@@ -39,7 +44,7 @@ EBM_INLINE bool IsSingleIntVector(const SEXP sexp) {
    return true;
 }
 
-EBM_INLINE bool IsDoubleToIntEbmTypeIndexValid(const double val) {
+INLINE_ALWAYS bool IsDoubleToIntEbmTypeIndexValid(const double val) {
    if(std::isnan(val)) {
       return false;
    }
@@ -449,7 +454,7 @@ SEXP InitializeBoostingClassification_R(
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsNumberConvertable<ptrdiff_t, size_t>(cTargetClasses)");
       return R_NilValue;
    }
-   const size_t cVectorLength = GetVectorLengthFlat(static_cast<ptrdiff_t>(cTargetClasses));
+   const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
    EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
@@ -598,7 +603,8 @@ SEXP InitializeBoostingClassification_R(
       aValidationTargets, 
       aValidationPredictorScores, 
       countInnerBagsLocal, 
-      randomSeedLocal
+      randomSeedLocal,
+      nullptr
    );
 
    if(nullptr == pEbmBoosting) {
@@ -777,7 +783,8 @@ SEXP InitializeBoostingRegression_R(
       aValidationTargets, 
       aValidationPredictorScores, 
       countInnerBagsLocal, 
-      randomSeedLocal
+      randomSeedLocal,
+      nullptr
    );
 
    if(nullptr == pEbmBoosting) {
@@ -886,8 +893,8 @@ SEXP BoostingStep_R(
          return R_NilValue;
       }
       size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
-      if(cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountSamples()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountSamples()");
+      if(cTrainingWeights != pEbmBoosting->GetTrainingSet()->GetCountSamples()) {
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pEbmBoosting->GetTrainingSet()->GetCountSamples()");
          return R_NilValue;
       }
       pTrainingWeights = REAL(trainingWeights);
@@ -902,8 +909,8 @@ SEXP BoostingStep_R(
          return R_NilValue;
       }
       size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
-      if(cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountSamples()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountSamples()");
+      if(cValidationWeights != pEbmBoosting->GetValidationSet()->GetCountSamples()) {
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pEbmBoosting->GetValidationSet()->GetCountSamples()");
          return R_NilValue;
       }
       pValidationWeights = REAL(validationWeights);
@@ -958,8 +965,8 @@ SEXP GetBestModelFeatureGroup_R(
    }
    IntEbmType iFeatureGroup = static_cast<IntEbmType>(doubleIndex);
    // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
-   if(pEbmBoosting->m_cFeatureGroups <= static_cast<size_t>(iFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R pEbmBoosting->m_cFeatureGroups <= static_cast<size_t>(iFeatureGroup)");
+   if(pEbmBoosting->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R pEbmBoosting->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)");
       return R_NilValue;
    }
 
@@ -974,14 +981,14 @@ SEXP GetBestModelFeatureGroup_R(
       LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
       return ret;
    }
-   size_t cValues = GetVectorLengthFlat(pEbmBoosting->m_runtimeLearningTypeOrCountTargetClasses);
-   const FeatureGroup * const pFeatureGroup = pEbmBoosting->m_apFeatureGroups[static_cast<size_t>(iFeatureGroup)];
-   const size_t cFeatures = pFeatureGroup->m_cFeatures;
+   size_t cValues = GetVectorLength(pEbmBoosting->GetRuntimeLearningTypeOrCountTargetClasses());
+   const FeatureGroup * const pFeatureGroup = pEbmBoosting->GetFeatureGroups()[static_cast<size_t>(iFeatureGroup)];
+   const size_t cFeatures = pFeatureGroup->GetCountFeatures();
    if(0 != cFeatures) {
-      const FeatureGroup::FeatureGroupEntry * pFeatureGroupEntry = &pFeatureGroup->m_FeatureGroupEntry[0];
-      const FeatureGroup::FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
+      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->m_cBins;
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cValues *= cBins;
          ++pFeatureGroupEntry;
@@ -1025,8 +1032,8 @@ SEXP GetCurrentModelFeatureGroup_R(
    }
    IntEbmType iFeatureGroup = static_cast<IntEbmType>(doubleIndex);
    // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
-   if(pEbmBoosting->m_cFeatureGroups <= static_cast<size_t>(iFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R pEbmBoosting->m_cFeatureGroups <= static_cast<size_t>(iFeatureGroup)");
+   if(pEbmBoosting->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R pEbmBoosting->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)");
       return R_NilValue;
    }
 
@@ -1041,14 +1048,14 @@ SEXP GetCurrentModelFeatureGroup_R(
       LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
       return ret;
    }
-   size_t cValues = GetVectorLengthFlat(pEbmBoosting->m_runtimeLearningTypeOrCountTargetClasses);
-   const FeatureGroup * const pFeatureGroup = pEbmBoosting->m_apFeatureGroups[static_cast<size_t>(iFeatureGroup)];
-   const size_t cFeatures = pFeatureGroup->m_cFeatures;
+   size_t cValues = GetVectorLength(pEbmBoosting->GetRuntimeLearningTypeOrCountTargetClasses());
+   const FeatureGroup * const pFeatureGroup = pEbmBoosting->GetFeatureGroups()[static_cast<size_t>(iFeatureGroup)];
+   const size_t cFeatures = pFeatureGroup->GetCountFeatures();
    if(0 != cFeatures) {
-      const FeatureGroup::FeatureGroupEntry * pFeatureGroupEntry = &pFeatureGroup->m_FeatureGroupEntry[0];
-      const FeatureGroup::FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
+      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->m_cBins;
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cValues *= cBins;
          ++pFeatureGroupEntry;
@@ -1099,7 +1106,7 @@ SEXP InitializeInteractionClassification_R(
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R !IsNumberConvertable<ptrdiff_t, size_t>(cTargetClasses)");
       return R_NilValue;
    }
-   const size_t cVectorLength = GetVectorLengthFlat(static_cast<ptrdiff_t>(cTargetClasses));
+   const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
    EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
@@ -1155,7 +1162,8 @@ SEXP InitializeInteractionClassification_R(
       countSamples, 
       aBinnedData, 
       aTargets, 
-      aPredictorScores
+      aPredictorScores,
+      nullptr
    );
 
    if(nullptr == pEbmInteraction) {
@@ -1225,7 +1233,15 @@ SEXP InitializeInteractionRegression_R(
       return R_NilValue;
    }
 
-   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(countFeatures, aFeatures, countSamples, aBinnedData, aTargets, aPredictorScores);
+   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(
+      countFeatures, 
+      aFeatures, 
+      countSamples, 
+      aBinnedData, 
+      aTargets, 
+      aPredictorScores,
+      nullptr
+   );
 
    if(nullptr == pEbmInteraction) {
       return R_NilValue;
@@ -1242,9 +1258,9 @@ SEXP InitializeInteractionRegression_R(
 
 SEXP CalculateInteractionScore_R(
    SEXP ebmInteraction,
-   SEXP featureIndexes
-   SEXP countSamplesRequiredForChildSplitMin,
-   ) {
+   SEXP featureIndexes,
+   SEXP countSamplesRequiredForChildSplitMin
+) {
    EBM_ASSERT(nullptr != ebmInteraction); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
