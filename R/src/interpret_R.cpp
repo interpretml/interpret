@@ -423,6 +423,78 @@ bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const Flo
    return false;
 }
 
+SEXP Discretize_R(
+   SEXP featureValues,
+   SEXP binCutsLowerBoundInclusive,
+   SEXP discretizedOut
+) {
+   EBM_ASSERT(nullptr != featureValues);
+   EBM_ASSERT(nullptr != binCutsLowerBoundInclusive);
+   EBM_ASSERT(nullptr != discretizedOut);
+
+   const FloatEbmType * aFeatureValues = nullptr;
+   size_t cFeatureValues;
+   if(ConvertDoublesToDoubles(featureValues, &cFeatureValues, &aFeatureValues)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cFeatureValues)); // ConvertDoublesToDoubles checks this
+
+   const FloatEbmType * aBinCutsLowerBoundInclusive = nullptr;
+   size_t cBinCuts;
+   if(ConvertDoublesToDoubles(binCutsLowerBoundInclusive, &cBinCuts, &aBinCutsLowerBoundInclusive)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cBinCuts)); // ConvertDoublesToDoubles checks this
+
+   if(REALSXP != TYPEOF(discretizedOut)) {
+      LOG_0(TraceLevelError, "ERROR Discretize_R REALSXP != TYPEOF(discretizedOut)");
+      return R_NilValue;
+   }
+   const R_xlen_t countDiscretizedOutR = xlength(discretizedOut);
+   if(!IsNumberConvertable<size_t>(countDiscretizedOutR)) {
+      LOG_0(TraceLevelError, "ERROR Discretize_R !IsNumberConvertable<size_t>(countDiscretizedOutR)");
+      return R_NilValue;
+   }
+   const size_t cDiscretizedOut = static_cast<size_t>(countDiscretizedOutR);
+   if(cDiscretizedOut != cFeatureValues) {
+      LOG_0(TraceLevelError, "ERROR Discretize_R cDiscretizedOut != cFeatureValues");
+      return R_NilValue;
+   }
+
+   if(0 != cFeatureValues) {
+      IntEbmType * const aDiscretized = reinterpret_cast<IntEbmType *>(R_alloc(cFeatureValues, static_cast<int>(sizeof(IntEbmType))));
+
+      if(0 != Discretize(
+         static_cast<IntEbmType>(cFeatureValues),
+         aFeatureValues,
+         static_cast<IntEbmType>(cBinCuts),
+         aBinCutsLowerBoundInclusive,
+         aDiscretized
+      )) {
+         // we've already logged any errors
+         return R_NilValue;
+      }
+
+      double * pDiscretizedOut = REAL(discretizedOut);
+      const IntEbmType * pDiscretized = aDiscretized;
+      const IntEbmType * const pDiscretizedEnd = aDiscretized + cFeatureValues;
+      do {
+         const IntEbmType val = *pDiscretized;
+         *pDiscretizedOut = static_cast<double>(val);
+         ++pDiscretizedOut;
+         ++pDiscretized;
+      } while(pDiscretizedEnd != pDiscretized);
+   }
+
+   // this return isn't useful beyond that it's not R_NilValue, which would signify error
+   SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   REAL(ret)[0] = static_cast<double>(cFeatureValues);
+   UNPROTECT(1);
+   return ret;
+}
+
 SEXP GenerateQuantileBinCuts_R(
    SEXP featureValues,
    SEXP countSamplesPerBinMin,
@@ -1430,6 +1502,7 @@ SEXP FreeInteraction_R(
 
 static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 5 },
+   { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "InitializeBoostingClassification_R", (DL_FUNC)&InitializeBoostingClassification_R, 12 },
    { "InitializeBoostingRegression_R", (DL_FUNC)& InitializeBoostingRegression_R, 11 },
    { "BoostingStep_R", (DL_FUNC)& BoostingStep_R, 7 },

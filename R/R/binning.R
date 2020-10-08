@@ -15,3 +15,16 @@ generate_quantile_bin_cuts <- function(feature_values, count_samples_per_bin_min
    }
    return(bin_cuts)
 }
+
+discretize <- function(feature_values, bin_cuts_lower_bound_inclusive, discretized_out) {
+   feature_values <- as.double(feature_values)
+   bin_cuts_lower_bound_inclusive <- as.double(bin_cuts_lower_bound_inclusive)
+   stopifnot(is.double(discretized_out))
+   stopifnot(length(discretized_out) == length(feature_values))
+
+   result <- .Call(Discretize_R, feature_values, bin_cuts_lower_bound_inclusive, discretized_out)
+   if(is.null(result)) {
+      stop("error in GenerateQuantileBinCuts_R")
+   }
+   return(NULL)
+}
