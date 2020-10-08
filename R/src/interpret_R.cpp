@@ -185,8 +185,12 @@ EbmNativeFeature * ConvertFeatures(const SEXP features, size_t * const pcFeature
                return nullptr;
             }
 
-            int hasMissing = LOGICAL(val)[0];
-            pFeature->hasMissing = 0 != hasMissing ? 1 : 0;
+            const Rboolean hasMissing = static_cast<Rboolean>(LOGICAL(val)[0]);
+            if(Rboolean::FALSE != hasMissing && Rboolean::TRUE != hasMissing) {
+               LOG_0(TraceLevelError, "ERROR ConvertFeatures Rboolean::FALSE != hasMissing && Rboolean::TRUE != hasMissing");
+               return nullptr;
+            }
+            pFeature->hasMissing = Rboolean::FALSE != hasMissing ? EBM_TRUE : EBM_FALSE;
             bHasMissingFound = true;
          } else if(0 == strcmp("feature_type", pName)) {
             if(bFeatureTypeFound) {
@@ -423,78 +427,6 @@ bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const Flo
    return false;
 }
 
-SEXP Discretize_R(
-   SEXP featureValues,
-   SEXP binCutsLowerBoundInclusive,
-   SEXP discretizedOut
-) {
-   EBM_ASSERT(nullptr != featureValues);
-   EBM_ASSERT(nullptr != binCutsLowerBoundInclusive);
-   EBM_ASSERT(nullptr != discretizedOut);
-
-   const FloatEbmType * aFeatureValues = nullptr;
-   size_t cFeatureValues;
-   if(ConvertDoublesToDoubles(featureValues, &cFeatureValues, &aFeatureValues)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cFeatureValues)); // ConvertDoublesToDoubles checks this
-
-   const FloatEbmType * aBinCutsLowerBoundInclusive = nullptr;
-   size_t cBinCuts;
-   if(ConvertDoublesToDoubles(binCutsLowerBoundInclusive, &cBinCuts, &aBinCutsLowerBoundInclusive)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cBinCuts)); // ConvertDoublesToDoubles checks this
-
-   if(REALSXP != TYPEOF(discretizedOut)) {
-      LOG_0(TraceLevelError, "ERROR Discretize_R REALSXP != TYPEOF(discretizedOut)");
-      return R_NilValue;
-   }
-   const R_xlen_t countDiscretizedOutR = xlength(discretizedOut);
-   if(!IsNumberConvertable<size_t>(countDiscretizedOutR)) {
-      LOG_0(TraceLevelError, "ERROR Discretize_R !IsNumberConvertable<size_t>(countDiscretizedOutR)");
-      return R_NilValue;
-   }
-   const size_t cDiscretizedOut = static_cast<size_t>(countDiscretizedOutR);
-   if(cDiscretizedOut != cFeatureValues) {
-      LOG_0(TraceLevelError, "ERROR Discretize_R cDiscretizedOut != cFeatureValues");
-      return R_NilValue;
-   }
-
-   if(0 != cFeatureValues) {
-      IntEbmType * const aDiscretized = reinterpret_cast<IntEbmType *>(R_alloc(cFeatureValues, static_cast<int>(sizeof(IntEbmType))));
-
-      if(0 != Discretize(
-         static_cast<IntEbmType>(cFeatureValues),
-         aFeatureValues,
-         static_cast<IntEbmType>(cBinCuts),
-         aBinCutsLowerBoundInclusive,
-         aDiscretized
-      )) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-
-      double * pDiscretizedOut = REAL(discretizedOut);
-      const IntEbmType * pDiscretized = aDiscretized;
-      const IntEbmType * const pDiscretizedEnd = aDiscretized + cFeatureValues;
-      do {
-         const IntEbmType val = *pDiscretized;
-         *pDiscretizedOut = static_cast<double>(val);
-         ++pDiscretizedOut;
-         ++pDiscretized;
-      } while(pDiscretizedEnd != pDiscretized);
-   }
-
-   // this return isn't useful beyond that it's not R_NilValue, which would signify error
-   SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(cFeatureValues);
-   UNPROTECT(1);
-   return ret;
-}
-
 SEXP GenerateQuantileBinCuts_R(
    SEXP featureValues,
    SEXP countSamplesPerBinMin,
@@ -531,16 +463,20 @@ SEXP GenerateQuantileBinCuts_R(
       LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleBoolVector(isHumanized)");
       return R_NilValue;
    }
-   const bool bHumanized = !!LOGICAL(isHumanized)[0];
+
+   const Rboolean isHumanizedR = static_cast<Rboolean>(LOGICAL(isHumanized)[0]);
+   if(Rboolean::FALSE != isHumanizedR && Rboolean::TRUE != isHumanizedR) {
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R Rboolean::FALSE != isHumanizedR && Rboolean::TRUE != isHumanizedR");
+      return R_NilValue;
+   }
+   const bool bHumanized = Rboolean::FALSE != isHumanizedR;
 
    if(!IsSingleIntVector(randomSeed)) {
       LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
-
    // TODO: we need to change our interfaces to use 32 bit signed seeds.  Also, this conversion below from
    // an unsigned int to a signed IntEbmType is undefined or implementation defined I think
-
    // we don't care if the seed is clipped or doesn't fit, or whatever.  
    // Casting to unsigned avoids undefined behavior issues with casting between signed values.  
    const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
@@ -589,6 +525,166 @@ SEXP GenerateQuantileBinCuts_R(
       UNPROTECT(1);
       return ret;
    }
+}
+
+SEXP Discretize_R(
+   SEXP featureValues,
+   SEXP binCutsLowerBoundInclusive,
+   SEXP discretizedOut
+) {
+   EBM_ASSERT(nullptr != featureValues);
+   EBM_ASSERT(nullptr != binCutsLowerBoundInclusive);
+   EBM_ASSERT(nullptr != discretizedOut);
+
+   const FloatEbmType * aFeatureValues = nullptr;
+   size_t cFeatureValues;
+   if(ConvertDoublesToDoubles(featureValues, &cFeatureValues, &aFeatureValues)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cFeatureValues)); // ConvertDoublesToDoubles checks this
+
+   const FloatEbmType * aBinCutsLowerBoundInclusive = nullptr;
+   size_t cBinCuts;
+   if(ConvertDoublesToDoubles(binCutsLowerBoundInclusive, &cBinCuts, &aBinCutsLowerBoundInclusive)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cBinCuts)); // ConvertDoublesToDoubles checks this
+
+   if(REALSXP != TYPEOF(discretizedOut)) {
+      LOG_0(TraceLevelError, "ERROR Discretize_R REALSXP != TYPEOF(discretizedOut)");
+      return R_NilValue;
+   }
+   const R_xlen_t countDiscretizedOutR = xlength(discretizedOut);
+   if(!IsNumberConvertable<size_t>(countDiscretizedOutR)) {
+      LOG_0(TraceLevelError, "ERROR Discretize_R !IsNumberConvertable<size_t>(countDiscretizedOutR)");
+      return R_NilValue;
+   }
+   const size_t cDiscretizedOut = static_cast<size_t>(countDiscretizedOutR);
+   if(cFeatureValues != cDiscretizedOut) {
+      LOG_0(TraceLevelError, "ERROR Discretize_R cFeatureValues != cDiscretizedOut");
+      return R_NilValue;
+   }
+
+   if(0 != cFeatureValues) {
+      IntEbmType * const aDiscretized = 
+         reinterpret_cast<IntEbmType *>(R_alloc(cFeatureValues, static_cast<int>(sizeof(IntEbmType))));
+
+      if(0 != Discretize(
+         static_cast<IntEbmType>(cFeatureValues),
+         aFeatureValues,
+         static_cast<IntEbmType>(cBinCuts),
+         aBinCutsLowerBoundInclusive,
+         aDiscretized
+      )) {
+         // we've already logged any errors
+         return R_NilValue;
+      }
+
+      double * pDiscretizedOut = REAL(discretizedOut);
+      const IntEbmType * pDiscretized = aDiscretized;
+      const IntEbmType * const pDiscretizedEnd = aDiscretized + cFeatureValues;
+      do {
+         const IntEbmType val = *pDiscretized;
+         *pDiscretizedOut = static_cast<double>(val);
+         ++pDiscretizedOut;
+         ++pDiscretized;
+      } while(pDiscretizedEnd != pDiscretized);
+   }
+
+   // this return isn't useful beyond that it's not R_NilValue, which would signify error
+   SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   REAL(ret)[0] = static_cast<double>(cFeatureValues);
+   UNPROTECT(1);
+   return ret;
+}
+
+SEXP SamplingWithoutReplacement_R(
+   SEXP randomSeed,
+   SEXP countIncluded,
+   SEXP countSamples,
+   SEXP isIncludedOut
+) {
+   EBM_ASSERT(nullptr != randomSeed);
+   EBM_ASSERT(nullptr != countIncluded);
+   EBM_ASSERT(nullptr != countSamples);
+   EBM_ASSERT(nullptr != isIncludedOut);
+
+   if(!IsSingleIntVector(randomSeed)) {
+      LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R !IsSingleIntVector(randomSeed)");
+      return R_NilValue;
+   }
+   // TODO: we need to change our interfaces to use 32 bit signed seeds.  Also, this conversion below from
+   // an unsigned int to a signed IntEbmType is undefined or implementation defined I think
+   const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
+
+   if(!IsSingleDoubleVector(countIncluded)) {
+      LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R !IsSingleDoubleVector(countIncluded)");
+      return R_NilValue;
+   }
+   const double countIncludedDouble = REAL(countIncluded)[0];
+   if(!IsDoubleToIntEbmTypeIndexValid(countIncludedDouble)) {
+      LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R !IsDoubleToIntEbmTypeIndexValid(countIncludedDouble)");
+      return R_NilValue;
+   }
+   IntEbmType countIncludedIntEbmType = static_cast<IntEbmType>(countIncludedDouble);
+   EBM_ASSERT(IsNumberConvertable<size_t>(countIncludedIntEbmType)); // IsDoubleToIntEbmTypeIndexValid checks this
+
+   if(!IsSingleDoubleVector(countSamples)) {
+      LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R !IsSingleDoubleVector(countSamples)");
+      return R_NilValue;
+   }
+   const double countSamplesDouble = REAL(countSamples)[0];
+   if(!IsDoubleToIntEbmTypeIndexValid(countSamplesDouble)) {
+      LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R !IsDoubleToIntEbmTypeIndexValid(countSamplesDouble)");
+      return R_NilValue;
+   }
+   IntEbmType countSamplesIntEbmType = static_cast<IntEbmType>(countSamplesDouble);
+   EBM_ASSERT(IsNumberConvertable<size_t>(countSamplesIntEbmType)); // IsDoubleToIntEbmTypeIndexValid checks this
+
+   if(LGLSXP != TYPEOF(isIncludedOut)) {
+      LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R LGLSXP != TYPEOF(isIncludedOut)");
+      return R_NilValue;
+   }
+   const R_xlen_t isIncludedOutR = xlength(isIncludedOut);
+   if(!IsNumberConvertable<size_t>(isIncludedOutR)) {
+      LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R !IsNumberConvertable<size_t>(isIncludedOutR)");
+      return R_NilValue;
+   }
+   const size_t cIsIncludedOut = static_cast<size_t>(isIncludedOutR);
+   if(static_cast<size_t>(countSamplesIntEbmType) != cIsIncludedOut) {
+      LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R static_cast<size_t>(countSamplesIntEbmType) != cIsIncludedOut");
+      return R_NilValue;
+   }
+
+   if(0 != cIsIncludedOut) {
+      IntEbmType * const aIsIncluded =
+         reinterpret_cast<IntEbmType *>(R_alloc(cIsIncludedOut, static_cast<int>(sizeof(IntEbmType))));
+
+      SamplingWithoutReplacement(
+         randomSeedLocal,
+         countIncludedIntEbmType,
+         countSamplesIntEbmType,
+         aIsIncluded
+      );
+
+      int * pIsIncludedOut = LOGICAL(isIncludedOut);
+      const IntEbmType * pIsIncluded = aIsIncluded;
+      const IntEbmType * const pIsIncludedEnd = aIsIncluded + cIsIncludedOut;
+      do {
+         const IntEbmType val = *pIsIncluded;
+         *pIsIncludedOut = static_cast<int>(EBM_FALSE != val ? Rboolean::TRUE : Rboolean::FALSE);
+         ++pIsIncludedOut;
+         ++pIsIncluded;
+      } while(pIsIncludedEnd != pIsIncluded);
+   }
+
+   // this return isn't useful beyond that it's not R_NilValue, which would signify error
+   SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   REAL(ret)[0] = static_cast<double>(cIsIncludedOut);
+   UNPROTECT(1);
+   return ret;
 }
 
 SEXP InitializeBoostingClassification_R(
@@ -762,6 +858,8 @@ SEXP InitializeBoostingClassification_R(
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
+   // TODO: we need to change our interfaces to use 32 bit signed seeds.  Also, this conversion below from
+   // an unsigned int to a signed IntEbmType is undefined or implementation defined I think
    // we don't care if the seed is clipped or doesn't fit, or whatever.  
    // Casting to unsigned avoids undefined behavior issues with casting between signed values.  
    const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
@@ -943,6 +1041,8 @@ SEXP InitializeBoostingRegression_R(
       LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
+   // TODO: we need to change our interfaces to use 32 bit signed seeds.  Also, this conversion below from
+   // an unsigned int to a signed IntEbmType is undefined or implementation defined I think
    // we don't care if the seed is clipped or doesn't fit, or whatever.  
    // Casting to unsigned avoids undefined behavior issues with casting between signed values.  
    const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
@@ -1503,6 +1603,7 @@ SEXP FreeInteraction_R(
 static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 5 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
+   { "SamplingWithoutReplacement_R", (DL_FUNC)&SamplingWithoutReplacement_R, 4 },
    { "InitializeBoostingClassification_R", (DL_FUNC)&InitializeBoostingClassification_R, 12 },
    { "InitializeBoostingRegression_R", (DL_FUNC)& InitializeBoostingRegression_R, 11 },
    { "BoostingStep_R", (DL_FUNC)& BoostingStep_R, 7 },

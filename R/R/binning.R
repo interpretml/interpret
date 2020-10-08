@@ -20,7 +20,7 @@ discretize <- function(feature_values, bin_cuts_lower_bound_inclusive, discretiz
    feature_values <- as.double(feature_values)
    bin_cuts_lower_bound_inclusive <- as.double(bin_cuts_lower_bound_inclusive)
    stopifnot(is.double(discretized_out))
-   stopifnot(length(discretized_out) == length(feature_values))
+   stopifnot(length(feature_values) == length(discretized_out))
 
    result <- .Call(Discretize_R, feature_values, bin_cuts_lower_bound_inclusive, discretized_out)
    if(is.null(result)) {
