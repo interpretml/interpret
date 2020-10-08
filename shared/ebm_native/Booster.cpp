@@ -163,7 +163,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
    const void * const aValidationTargets, 
    const IntEbmType * const aValidationBinnedData, 
    const FloatEbmType * const aValidationPredictorScores,
-   const IntEbmType randomSeed
+   const SeedEbmType randomSeed
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
@@ -490,7 +490,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
       return nullptr;
    }
 
-   pBooster->m_randomStream.Initialize(randomSeed, k_boosterRandomizationMix);
+   pBooster->m_randomStream.InitializeUnsigned(randomSeed, k_boosterRandomizationMix);
 
    EBM_ASSERT(nullptr == pBooster->m_apSamplingSets);
    if(0 != cTrainingSamples) {
@@ -549,7 +549,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 static EbmBoostingState * AllocateBoosting(
-   const IntEbmType randomSeed, 
+   const SeedEbmType randomSeed,
    const IntEbmType countFeatures, 
    const EbmNativeFeature * const features, 
    const IntEbmType countFeatureGroups, 
@@ -712,14 +712,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    const IntEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   IntEbmType randomSeed,
+   SeedEbmType randomSeed,
    const FloatEbmType * optionalTempParams
 ) {
    LOG_N(TraceLevelInfo, "Entered InitializeBoostingClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
       ", features=%p, countFeatureGroups=%" IntEbmTypePrintf ", featureGroups=%p, featureGroupIndexes=%p, countTrainingSamples=%" 
       IntEbmTypePrintf ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationSamples=%" 
       IntEbmTypePrintf ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" 
-      IntEbmTypePrintf ", randomSeed=%" IntEbmTypePrintf ", optionalTempParams=%p",
+      IntEbmTypePrintf ", randomSeed=%" SeedEbmTypePrintf ", optionalTempParams=%p",
       countTargetClasses, 
       countFeatures, 
       static_cast<const void *>(features), 
@@ -789,14 +789,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    const FloatEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   IntEbmType randomSeed,
+   SeedEbmType randomSeed,
    const FloatEbmType * optionalTempParams
 ) {
    LOG_N(TraceLevelInfo, "Entered InitializeBoostingRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countFeatureGroups=%" 
       IntEbmTypePrintf ", featureGroups=%p, featureGroupIndexes=%p, countTrainingSamples=%" IntEbmTypePrintf 
       ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationSamples=%" IntEbmTypePrintf 
       ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" IntEbmTypePrintf 
-      ", randomSeed=%" IntEbmTypePrintf ", optionalTempParams=%p",
+      ", randomSeed=%" SeedEbmTypePrintf ", optionalTempParams=%p",
       countFeatures, 
       static_cast<const void *>(features), 
       countFeatureGroups, 

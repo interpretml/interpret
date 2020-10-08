@@ -393,7 +393,7 @@ class BaseCoreEBM:
         # a single np.float64 for regression, so we do the same
         if self.model_type == "classification":
             self.intercept_ = np.zeros(
-                EBMUtils.get_count_scores_c(self.n_classes_),
+                NativeHelper.get_count_scores_c(self.n_classes_),
                 dtype=np.float64,
                 order="C",
             )
@@ -703,6 +703,8 @@ class BaseEBM(BaseEstimator):
         X = self.preprocessor_.transform(X)
 
         estimators = []
+        seed = EBMUtils.normalize_initial_random_seed(self.random_state)
+
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
@@ -716,6 +718,7 @@ class BaseEBM(BaseEstimator):
                     "Multiclass with interactions currently not supported."
                 )
             for i in range(self.outer_bags):
+                seed=NativeHelper.generate_random_number(seed, 1416147523)
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="classification",
@@ -734,13 +737,14 @@ class BaseEBM(BaseEstimator):
                     max_leaves=self.max_leaves,
                     min_samples_leaf=self.min_samples_leaf,
                     # Overall
-                    random_state=self.random_state + i,
+                    random_state=seed
                 )
                 estimators.append(estimator)
         else:
             n_classes = -1
             y = y.astype(np.float64, casting="unsafe", copy=False)
             for i in range(self.outer_bags):
+                seed=NativeHelper.generate_random_number(seed, 1416147523)
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="regression",
@@ -759,7 +763,7 @@ class BaseEBM(BaseEstimator):
                     max_leaves=self.max_leaves,
                     min_samples_leaf=self.min_samples_leaf,
                     # Overall
-                    random_state=self.random_state + i,
+                    random_state=seed,
                 )
                 estimators.append(estimator)
 
@@ -769,7 +773,7 @@ class BaseEBM(BaseEstimator):
         # a single float64 for regression, so we do the same
         if is_classifier(self):
             self.intercept_ = np.zeros(
-                EBMUtils.get_count_scores_c(n_classes), dtype=np.float64, order="C",
+                NativeHelper.get_count_scores_c(n_classes), dtype=np.float64, order="C",
             )
         else:
             self.intercept_ = np.float64(0)

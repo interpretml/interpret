@@ -11,7 +11,6 @@ import struct
 import logging
 from contextlib import closing
 
-from .utils import EBMUtils
 
 log = logging.getLogger(__name__)
 
@@ -50,17 +49,17 @@ class Native:
     class EbmNativeFeature(ct.Structure):
         _fields_ = [
             # FeatureType featureType;
-            ("featureType", ct.c_longlong),
+            ("featureType", ct.c_int64),
             # bool hasMissing;
-            ("hasMissing", ct.c_longlong),
+            ("hasMissing", ct.c_int64),
             # int64_t countBins;
-            ("countBins", ct.c_longlong),
+            ("countBins", ct.c_int64),
         ]
 
     class EbmNativeFeatureGroup(ct.Structure):
         _fields_ = [
             # int64_t countFeaturesInGroup;
-            ("countFeaturesInGroup", ct.c_longlong)
+            ("countFeaturesInGroup", ct.c_int64)
         ]
 
     # const signed char TraceLevelOff = 0;
@@ -95,102 +94,102 @@ class Native:
 
 
         self.lib.GenerateRandomNumber.argtypes = [
-            # int64_t randomSeed
-            ct.c_longlong,
+            # int32_t randomSeed
+            ct.c_int32,
             # int64_t stageRandomizationMix
-            ct.c_longlong,
+            ct.c_int32,
         ]
-        self.lib.GenerateRandomNumber.restype = ct.c_longlong
+        self.lib.GenerateRandomNumber.restype = ct.c_int32
 
         self.lib.SamplingWithoutReplacement.argtypes = [
-            # int64_t randomSeed
-            ct.c_longlong,
+            # int32_t randomSeed
+            ct.c_int32,
             # int64_t countIncluded
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t countSamples
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t * isIncludedOut
-            ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self.lib.SamplingWithoutReplacement.restype = None
 
 
         self.lib.GenerateQuantileBinCuts.argtypes = [
             # int64_t countSamples
-            ct.c_longlong,
+            ct.c_int64,
             # double * featureValues
-            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countSamplesPerBinMin
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t isHumanized
-            ct.c_longlong,
-            # int64_t randomSeed
-            ct.c_longlong,
+            ct.c_int64,
+            # int32_t randomSeed
+            ct.c_int32,
             # int64_t * countBinCutsInOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
             # double * binCutsLowerBoundInclusiveOut
-            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * countMissingValuesOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
             # double * minNonInfinityValueOut
             ct.POINTER(ct.c_double),
             # int64_t * countNegativeInfinityOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
             # double * maxNonInfinityValueOut
             ct.POINTER(ct.c_double),
             # int64_t * countPositiveInfinityOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
         ]
-        self.lib.GenerateQuantileBinCuts.restype = ct.c_longlong
+        self.lib.GenerateQuantileBinCuts.restype = ct.c_int64
 
         self.lib.GenerateUniformBinCuts.argtypes = [
             # int64_t countSamples
-            ct.c_longlong,
+            ct.c_int64,
             # double * featureValues
-            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * countBinCutsInOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
             # double * binCutsLowerBoundInclusiveOut
-            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * countMissingValuesOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
             # double * minNonInfinityValueOut
             ct.POINTER(ct.c_double),
             # int64_t * countNegativeInfinityOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
             # double * maxNonInfinityValueOut
             ct.POINTER(ct.c_double),
             # int64_t * countPositiveInfinityOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
         ]
         self.lib.GenerateUniformBinCuts.restype = None
 
         self.lib.GenerateWinsorizedBinCuts.argtypes = [
             # int64_t countSamples
-            ct.c_longlong,
+            ct.c_int64,
             # double * featureValues
-            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * countBinCutsInOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
             # double * binCutsLowerBoundInclusiveOut
-            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * countMissingValuesOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
             # double * minNonInfinityValueOut
             ct.POINTER(ct.c_double),
             # int64_t * countNegativeInfinityOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
             # double * maxNonInfinityValueOut
             ct.POINTER(ct.c_double),
             # int64_t * countPositiveInfinityOut
-            ct.POINTER(ct.c_longlong),
+            ct.POINTER(ct.c_int64),
         ]
-        self.lib.GenerateWinsorizedBinCuts.restype = ct.c_longlong
+        self.lib.GenerateWinsorizedBinCuts.restype = ct.c_int64
 
 
         self.lib.SuggestGraphBounds.argtypes = [
             # int64_t countBinCuts
-            ct.c_longlong,
+            ct.c_int64,
             # double lowestBinCut
             ct.c_double,
             # double highestBinCut
@@ -209,54 +208,54 @@ class Native:
 
         self.lib.Discretize.argtypes = [
             # int64_t countSamples
-            ct.c_longlong,
+            ct.c_int64,
             # double * featureValues
-            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countBinCuts
-            ct.c_longlong,
+            ct.c_int64,
             # double * binCutsLowerBoundInclusive
-            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * discretizedOut
-            ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
-        self.lib.Discretize.restype = ct.c_longlong
+        self.lib.Discretize.restype = ct.c_int64
 
 
         self.lib.InitializeBoostingClassification.argtypes = [
             # int64_t countTargetClasses
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t countFeatures
-            ct.c_longlong,
+            ct.c_int64,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
             # int64_t countFeatureGroups
-            ct.c_longlong,
+            ct.c_int64,
             # EbmNativeFeatureGroup * featureGroups
             ct.POINTER(self.EbmNativeFeatureGroup),
             # int64_t * featureGroupIndexes
-            ndpointer(dtype=np.int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countTrainingSamples
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t * trainingBinnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # int64_t * trainingTargets
-            ndpointer(dtype=np.int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # double * trainingPredictorScores
             # scores can either be 1 or 2 dimensional
-            ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
             # int64_t countValidationSamples
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t * validationBinnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # int64_t * validationTargets
-            ndpointer(dtype=np.int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # double * validationPredictorScores
             # scores can either be 1 or 2 dimensional
-            ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
             # int64_t countInnerBags
-            ct.c_longlong,
-            # int64_t randomSeed
-            ct.c_longlong,
+            ct.c_int64,
+            # int32_t randomSeed
+            ct.c_int32,
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
@@ -264,35 +263,35 @@ class Native:
 
         self.lib.InitializeBoostingRegression.argtypes = [
             # int64_t countFeatures
-            ct.c_longlong,
+            ct.c_int64,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
             # int64_t countFeatureGroups
-            ct.c_longlong,
+            ct.c_int64,
             # EbmNativeFeatureGroup * featureGroups
             ct.POINTER(self.EbmNativeFeatureGroup),
             # int64_t * featureGroupIndexes
-            ndpointer(dtype=np.int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countTrainingSamples
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t * trainingBinnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * trainingTargets
-            ndpointer(dtype=np.float64, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1),
             # double * trainingPredictorScores
-            ndpointer(dtype=np.float64, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1),
             # int64_t countValidationSamples
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t * validationBinnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * validationTargets
-            ndpointer(dtype=np.float64, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1),
             # double * validationPredictorScores
-            ndpointer(dtype=np.float64, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1),
             # int64_t countInnerBags
-            ct.c_longlong,
-            # int64_t randomSeed
-            ct.c_longlong,
+            ct.c_int64,
+            # int32_t randomSeed
+            ct.c_int32,
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
@@ -302,18 +301,18 @@ class Native:
             # void * ebmBoosting
             ct.c_void_p,
             # int64_t indexFeatureGroup
-            ct.c_longlong,
+            ct.c_int64,
             # double learningRate
             ct.c_double,
             # int64_t countTreeSplitsMax
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t countSamplesRequiredForChildSplitMin
-            ct.c_longlong,
+            ct.c_int64,
             # double * trainingWeights
-            # ndpointer(dtype=np.float64, ndim=1),
+            # ndpointer(dtype=ct.c_double, ndim=1),
             ct.c_void_p,
             # double * validationWeights
-            # ndpointer(dtype=np.float64, ndim=1),
+            # ndpointer(dtype=ct.c_double, ndim=1),
             ct.c_void_p,
             # double * gainOut
             ct.POINTER(ct.c_double),
@@ -324,19 +323,19 @@ class Native:
             # void * ebmBoosting
             ct.c_void_p,
             # int64_t indexFeatureGroup
-            ct.c_longlong,
+            ct.c_int64,
             # double * modelFeatureGroupUpdateTensor
-            ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
             # double * validationMetricOut
             ct.POINTER(ct.c_double),
         ]
-        self.lib.ApplyModelFeatureGroupUpdate.restype = ct.c_longlong
+        self.lib.ApplyModelFeatureGroupUpdate.restype = ct.c_int64
 
         self.lib.GetBestModelFeatureGroup.argtypes = [
             # void * ebmBoosting
             ct.c_void_p,
             # int64_t indexFeatureGroup
-            ct.c_longlong,
+            ct.c_int64,
         ]
         self.lib.GetBestModelFeatureGroup.restype = ct.POINTER(ct.c_double)
 
@@ -344,7 +343,7 @@ class Native:
             # void * ebmBoosting
             ct.c_void_p,
             # int64_t indexFeatureGroup
-            ct.c_longlong,
+            ct.c_int64,
         ]
         self.lib.GetCurrentModelFeatureGroup.restype = ct.POINTER(ct.c_double)
 
@@ -357,20 +356,20 @@ class Native:
 
         self.lib.InitializeInteractionClassification.argtypes = [
             # int64_t countTargetClasses
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t countFeatures
-            ct.c_longlong,
+            ct.c_int64,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
             # int64_t countSamples
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t * binnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # int64_t * targets
-            ndpointer(dtype=np.int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # double * predictorScores
             # scores can either be 1 or 2 dimensional
-            ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
@@ -378,17 +377,17 @@ class Native:
 
         self.lib.InitializeInteractionRegression.argtypes = [
             # int64_t countFeatures
-            ct.c_longlong,
+            ct.c_int64,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
             # int64_t countSamples
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t * binnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * targets
-            ndpointer(dtype=np.float64, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1),
             # double * predictorScores
-            ndpointer(dtype=np.float64, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1),
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
@@ -398,15 +397,15 @@ class Native:
             # void * ebmInteraction
             ct.c_void_p,
             # int64_t countFeaturesInGroup
-            ct.c_longlong,
+            ct.c_int64,
             # int64_t * featureIndexes
-            ndpointer(dtype=np.int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countSamplesRequiredForChildSplitMin
-            ct.c_longlong,
+            ct.c_int64,
             # double * interactionScoreOut
             ct.POINTER(ct.c_double),
         ]
-        self.lib.CalculateInteractionScore.restype = ct.c_longlong
+        self.lib.CalculateInteractionScore.restype = ct.c_int64
 
         self.lib.FreeInteraction.argtypes = [
             # void * ebmInteraction
@@ -548,20 +547,14 @@ class Native:
         # Create C form of feature_groups
 
         feature_group_indexes = []
-        feature_groups_ar = (
-            Native.EbmNativeFeatureGroup * len(feature_groups)
-        )()
+        feature_groups_ar = (Native.EbmNativeFeatureGroup * len(feature_groups))()
         for idx, features_in_group in enumerate(feature_groups):
-            feature_groups_ar[idx].countFeaturesInGroup = len(
-                features_in_group
-            )
+            feature_groups_ar[idx].countFeaturesInGroup = len(features_in_group)
 
             for feature_idx in features_in_group:
                 feature_group_indexes.append(feature_idx)
 
-        feature_group_indexes = np.array(
-            feature_group_indexes, dtype=np.int64
-        )
+        feature_group_indexes = np.array(feature_group_indexes, dtype=ct.c_int64)
 
         return feature_groups_ar, feature_group_indexes
 
@@ -672,11 +665,9 @@ class NativeEBMBoosting:
             feature_group_indexes,
         ) = Native.convert_feature_groups_to_c(feature_groups)
 
-        n_scores = EBMUtils.get_count_scores_c(n_classes)
+        n_scores = NativeHelper.get_count_scores_c(n_classes)
         if scores_train is None:
-            scores_train = np.zeros(
-                len(y_train) * n_scores, dtype=np.float64, order="C"
-            )
+            scores_train = np.zeros(len(y_train) * n_scores, dtype=ct.c_double, order="C")
         else:
             if scores_train.shape[0] != len(y_train):  # pragma: no cover
                 raise ValueError(
@@ -698,7 +689,7 @@ class NativeEBMBoosting:
                     )
 
         if scores_val is None:
-            scores_val = np.zeros(len(y_val) * n_scores, dtype=np.float64, order="C")
+            scores_val = np.zeros(len(y_val) * n_scores, dtype=ct.c_double, order="C")
         else:
             if scores_val.shape[0] != len(y_val):  # pragma: no cover
                 raise ValueError(
@@ -820,7 +811,7 @@ class NativeEBMBoosting:
             shape = self._get_feature_group_shape(feature_group_index)
             # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureGroupUpdate
             model_update_tensor = Native.make_ndarray(
-                model_update_tensor_pointer, shape, dtype=np.double, copy_data=False
+                model_update_tensor_pointer, shape, dtype=ct.c_double, copy_data=False
             )
 
             return_code = self._native.lib.ApplyModelFeatureGroupUpdate(
@@ -849,7 +840,7 @@ class NativeEBMBoosting:
         dimensions = list(reversed(dimensions))
 
         # Array returned for multiclass is one higher dimension
-        n_scores = EBMUtils.get_count_scores_c(self._n_classes)
+        n_scores = NativeHelper.get_count_scores_c(self._n_classes)
         if n_scores > 1:
             dimensions.append(n_scores)
 
@@ -892,7 +883,7 @@ class NativeEBMBoosting:
 
         shape = self._get_feature_group_shape(feature_group_index)
 
-        array = Native.make_ndarray(array_p, shape, dtype=np.double)
+        array = Native.make_ndarray(array_p, shape, dtype=ct.c_double)
         if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
@@ -945,7 +936,7 @@ class NativeEBMBoosting:
 
         shape = self._get_feature_group_shape(feature_group_index)
 
-        array = Native.make_ndarray(array_p, shape, dtype=np.double)
+        array = Native.make_ndarray(array_p, shape, dtype=ct.c_double)
         if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
@@ -1018,9 +1009,9 @@ class NativeEBMInteraction:
         # Store args
         feature_array = Native.convert_features_to_c(features)
 
-        n_scores = EBMUtils.get_count_scores_c(n_classes)
+        n_scores = NativeHelper.get_count_scores_c(n_classes)
         if scores is None:  # pragma: no cover
-            scores = np.zeros(len(y) * n_scores, dtype=np.float64, order="C")
+            scores = np.zeros(len(y) * n_scores, dtype=ct.c_double, order="C")
         else:
             if scores.shape[0] != len(y):  # pragma: no cover
                 raise ValueError(
@@ -1092,7 +1083,7 @@ class NativeEBMInteraction:
         return_code = self._native.lib.CalculateInteractionScore(
             self._interaction_pointer,
             len(feature_index_tuple),
-            np.array(feature_index_tuple, dtype=np.int64),
+            np.array(feature_index_tuple, dtype=ct.c_int64),
             min_samples_leaf,
             ct.byref(score),
         )
@@ -1104,6 +1095,20 @@ class NativeEBMInteraction:
 
 
 class NativeHelper:
+
+    @staticmethod
+    def get_count_scores_c(n_classes):
+        # this should reflect how the C code represents scores
+        return 1 if n_classes <= 2 else n_classes
+
+    @staticmethod
+    def generate_random_number(
+        random_seed,
+        stage_randomization_mix
+    ):
+        native = Native.get_native_singleton()
+        return native.lib.GenerateRandomNumber(random_seed, stage_randomization_mix)
+
     @staticmethod
     def cyclic_gradient_boost(
         model_type,

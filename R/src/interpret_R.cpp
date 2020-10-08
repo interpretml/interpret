@@ -475,11 +475,7 @@ SEXP GenerateQuantileBinCuts_R(
       LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
-   // TODO: we need to change our interfaces to use 32 bit signed seeds.  Also, this conversion below from
-   // an unsigned int to a signed IntEbmType is undefined or implementation defined I think
-   // we don't care if the seed is clipped or doesn't fit, or whatever.  
-   // Casting to unsigned avoids undefined behavior issues with casting between signed values.  
-   const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
+   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    if(!IsSingleDoubleVector(countBinCuts)) {
       LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleDoubleVector(countBinCuts)");
@@ -615,9 +611,7 @@ SEXP SamplingWithoutReplacement_R(
       LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
-   // TODO: we need to change our interfaces to use 32 bit signed seeds.  Also, this conversion below from
-   // an unsigned int to a signed IntEbmType is undefined or implementation defined I think
-   const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
+   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    if(!IsSingleDoubleVector(countIncluded)) {
       LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement_R !IsSingleDoubleVector(countIncluded)");
@@ -858,11 +852,7 @@ SEXP InitializeBoostingClassification_R(
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
-   // TODO: we need to change our interfaces to use 32 bit signed seeds.  Also, this conversion below from
-   // an unsigned int to a signed IntEbmType is undefined or implementation defined I think
-   // we don't care if the seed is clipped or doesn't fit, or whatever.  
-   // Casting to unsigned avoids undefined behavior issues with casting between signed values.  
-   const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
+   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
       static_cast<IntEbmType>(cTargetClasses), 
@@ -1041,11 +1031,7 @@ SEXP InitializeBoostingRegression_R(
       LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
-   // TODO: we need to change our interfaces to use 32 bit signed seeds.  Also, this conversion below from
-   // an unsigned int to a signed IntEbmType is undefined or implementation defined I think
-   // we don't care if the seed is clipped or doesn't fit, or whatever.  
-   // Casting to unsigned avoids undefined behavior issues with casting between signed values.  
-   const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
+   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    PEbmBoosting pEbmBoosting = InitializeBoostingRegression(
       countFeatures, 

@@ -175,7 +175,7 @@ public:
       const void * const aValidationTargets, 
       const IntEbmType * const aValidationBinnedData, 
       const FloatEbmType * const aValidationPredictorScores,
-      const IntEbmType randomSeed
+      const SeedEbmType randomSeed
    );
 };
 static_assert(std::is_standard_layout<EbmBoostingState>::value,

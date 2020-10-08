@@ -11,28 +11,28 @@
 static const TestPriority k_filePriority = TestPriority::RandomNumbers;
 
 TEST_CASE("GenerateRandomNumber, 0 0") {
-   IntEbmType ret = GenerateRandomNumber(0, 0);
-   CHECK(6689584010395485840 == ret);
+   SeedEbmType ret = GenerateRandomNumber(0, 0);
+   CHECK(1557540150 == ret);
 }
 
 TEST_CASE("GenerateRandomNumber, 1 3 (it gives us a negative return value)") {
-   IntEbmType ret = GenerateRandomNumber(1, 3);
-   CHECK(-7665494278583557961 == ret);
+   SeedEbmType ret = GenerateRandomNumber(1, 3);
+   CHECK(-1784761967 == ret);
 }
 
 TEST_CASE("GenerateRandomNumber, -1 0") {
-   IntEbmType ret = GenerateRandomNumber(-1, 0);
-   CHECK(1020161130959650823 == ret);
+   SeedEbmType ret = GenerateRandomNumber(-1, 0);
+   CHECK(237524772 == ret);
 }
 
 TEST_CASE("GenerateRandomNumber, max") {
-   IntEbmType ret = GenerateRandomNumber(std::numeric_limits<IntEbmType>::max(), 0);
-   CHECK(1413621321926136738 == ret);
+   SeedEbmType ret = GenerateRandomNumber(std::numeric_limits<SeedEbmType>::max(), 0);
+   CHECK(1266972904 == ret);
 }
 
 TEST_CASE("GenerateRandomNumber, lowest") {
-   IntEbmType ret = GenerateRandomNumber(std::numeric_limits<IntEbmType>::lowest(), 0);
-   CHECK(3582286234797358975 == ret);
+   SeedEbmType ret = GenerateRandomNumber(std::numeric_limits<SeedEbmType>::lowest(), 0);
+   CHECK(879100963 == ret);
 }
 
 TEST_CASE("SamplingWithoutReplacement, stress test") {
@@ -44,8 +44,8 @@ TEST_CASE("SamplingWithoutReplacement, stress test") {
       exit(1);
    }
 
-   IntEbmType randomSeed = k_randomSeed;
-   IntEbmType stageRandomizationMix = IntEbmType { 34298572345 };
+   SeedEbmType randomSeed = k_randomSeed;
+   SeedEbmType stageRandomizationMix = SeedEbmType { 34298572 };
 
    for(IntEbmType iRun = 0; iRun < 10000; ++iRun) {
       size_t cRandomSamples = randomStream.Next(cSamples + 1);

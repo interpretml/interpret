@@ -18,6 +18,27 @@ log = logging.getLogger(__name__)
 
 # TODO: Clean up
 class EBMUtils:
+    @staticmethod
+    def normalize_initial_random_seed(seed):  # pragma: no cover
+        # Some languages do not support 64-bit values.  Other languages do not support unsigned integers.
+        # Almost all languages support signed 32-bit integers, so we standardize on that for our 
+        # random number seed values.  If the caller passes us a number that doesn't fit into a 
+        # 32-bit signed integer, we convert it.  This conversion doesn't need to generate completely 
+        # uniform results provided they are reasonably uniform, since this is just the seed.
+        # 
+        # We use a simple conversion because we use the same method in multiple languages, 
+        # and we need to keep the results identical between them, so simplicity is key.
+        # 
+        # The result of the modulo operator is not standardized accross languages for 
+        # negative numbers, so take the negative before the modulo if the number is negative.
+        # https://torstencurdt.com/tech/posts/modulo-of-negative-numbers
+
+        if 2147483647 <= seed:
+            seed = seed % 2147483647
+        if seed <= -2147483647:
+            seed = -((-seed) % 2147483647)
+        return seed
+
     # NOTE: Interval / cut conversions are future work. Not registered for code coverage.
     @staticmethod
     def convert_to_intervals(cuts):  # pragma: no cover
@@ -67,11 +88,6 @@ class EBMUtils:
         return cuts
 
     @staticmethod
-    def get_count_scores_c(n_classes):
-        # this should reflect how the C code represents scores
-        return 1 if n_classes <= 2 else n_classes
-
-    @staticmethod
     def ebm_train_test_split(
         X, y, test_size, random_state, is_classification, is_train=True
     ):
@@ -93,11 +109,13 @@ class EBMUtils:
                     )
                     test_size = y_uniq
 
+            # PaulK NOTE: sklearn train_test_split doesn't accept negative random_states
+            # we can remove the conversion to just positive values when we transition to C++
             X_train, X_val, y_train, y_val = train_test_split(
                 X,
                 y,
                 test_size=test_size,
-                random_state=random_state,
+                random_state=(random_state - (-2147483648)) if random_state < 0 else random_state,
                 stratify=y if is_classification else None,
             )
         else:  # pragma: no cover

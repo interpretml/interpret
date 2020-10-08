@@ -87,14 +87,18 @@ typedef struct _EbmInteraction {
    char unused;
 } * PEbmInteraction;
 
+#ifndef PRId32
+// this should really be defined, but some compilers aren't compliant
+#define PRId32 "d"
+#endif // PRId32
 #ifndef PRId64
 // this should really be defined, but some compilers aren't compliant
 #define PRId64 "lld"
-#endif
+#endif // PRId64
 #ifndef PRIu64
 // this should really be defined, but some compilers aren't compliant
 #define PRIu64 "llu"
-#endif
+#endif // PRIu64
 
 typedef double FloatEbmType;
 // this needs to be in "le" format, since we internally use that format to generate "interpretable" 
@@ -104,12 +108,14 @@ typedef int64_t IntEbmType;
 #define IntEbmTypePrintf PRId64
 typedef uint64_t UIntEbmType;
 #define UIntEbmTypePrintf PRIu64
+typedef int32_t SeedEbmType;
+#define SeedEbmTypePrintf PRId32
 
-const IntEbmType EBM_FALSE = 0;
-const IntEbmType EBM_TRUE = 1;
+#define EBM_FALSE          ((IntEbmType)0)
+#define EBM_TRUE           ((IntEbmType)1)
 
-const IntEbmType FeatureTypeOrdinal = 0;
-const IntEbmType FeatureTypeNominal = 1;
+#define FeatureTypeOrdinal ((IntEbmType)0)
+#define FeatureTypeNominal ((IntEbmType)1)
 
 typedef struct _EbmNativeFeature {
    // enums and bools aren't standardized accross languages, so use IntEbmType values
@@ -124,11 +130,17 @@ typedef struct _EbmNativeFeatureGroup {
 } EbmNativeFeatureGroup;
 
 // SetLogMessageFunction does not need to be called if the level is left at TraceLevelOff
-const signed char TraceLevelOff = 0; // no messages will be output
-const signed char TraceLevelError = 1; // invalid inputs to the C library or assert failure before exit
-const signed char TraceLevelWarning = 2; // out of memory or other conditions we can't continue after
-const signed char TraceLevelInfo = 3; // odd inputs like features with 1 value or empty feature groups
-const signed char TraceLevelVerbose = 4; // function calls, logging that helps us trace execution in the library
+
+ // no messages will be output
+#define TraceLevelOff      ((signed char)0)
+// invalid inputs to the C library or assert failure before exit
+#define TraceLevelError    ((signed char)1)
+// out of memory or other conditions we can't continue after
+#define TraceLevelWarning  ((signed char)2)
+// odd inputs like features with 1 value or empty feature groups
+#define TraceLevelInfo     ((signed char)3)
+// function calls, logging that helps us trace execution in the library
+#define TraceLevelVerbose  ((signed char)4)
 
 // all our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_NATIVE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);
@@ -300,12 +312,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLeve
 //       in the waiting function).  We would drop anything that exceeds the circular buffer.  This allows us to have
 //       threaded code inside non-threaded languages.
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
-   IntEbmType randomSeed,
-   IntEbmType stageRandomizationMix
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
+   SeedEbmType randomSeed,
+   SeedEbmType stageRandomizationMix
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
-   IntEbmType randomSeed,
+   SeedEbmType randomSeed,
    IntEbmType countIncluded,
    IntEbmType countSamples,
    IntEbmType * isIncludedOut
@@ -316,7 +328,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
    IntEbmType isHumanized,
-   IntEbmType randomSeed,
+   SeedEbmType randomSeed,
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -382,7 +394,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    const IntEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   IntEbmType randomSeed,
+   SeedEbmType randomSeed,
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
@@ -400,7 +412,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    const FloatEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   IntEbmType randomSeed,
+   SeedEbmType randomSeed,
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(

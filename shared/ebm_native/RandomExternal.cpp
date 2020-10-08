@@ -8,15 +8,15 @@
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "RandomStream.h"
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
-   IntEbmType randomSeed,
-   IntEbmType stageRandomizationMix
+EBM_NATIVE_IMPORT_EXPORT_BODY SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
+   SeedEbmType randomSeed,
+   SeedEbmType stageRandomizationMix
 ) {
    RandomStream randomStream;
    // this is a bit inefficient in that we go through a complete regeneration of the internal state,
    // but it gives us a simple interface
-   randomStream.Initialize(randomSeed, stageRandomizationMix);
-   IntEbmType ret = randomStream.NextEbmInt();
+   randomStream.InitializeSigned(randomSeed, stageRandomizationMix);
+   SeedEbmType ret = randomStream.NextSeed();
    return ret;
 }
 
@@ -25,7 +25,7 @@ static int g_cLogEnterSamplingWithoutReplacementParametersMessages = 5;
 static int g_cLogExitSamplingWithoutReplacementParametersMessages = 5;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
-   IntEbmType randomSeed,
+   SeedEbmType randomSeed,
    IntEbmType countIncluded,
    IntEbmType countSamples,
    IntEbmType * isIncludedOut
@@ -35,7 +35,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SamplingWithout
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered SamplingWithoutReplacement: "
-      "randomSeed=%" IntEbmTypePrintf ", "
+      "randomSeed=%" SeedEbmTypePrintf ", "
       "countIncluded=%" IntEbmTypePrintf ", "
       "countSamples=%" IntEbmTypePrintf ", "
       "isIncludedOut=%p"
@@ -81,7 +81,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SamplingWithout
    size_t cIncludedRemaining = static_cast<size_t>(countIncluded);
 
    RandomStream randomStream;
-   randomStream.Initialize(randomSeed, k_samplingWithoutReplacementRandomizationMix);
+   randomStream.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
 
    IntEbmType * pbIncluded = isIncludedOut;
    do {

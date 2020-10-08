@@ -6,7 +6,7 @@
 .vs/
 enc_temp_folder/
 *.user
-/TestResults/
+TestResults/
 
 # Visual Studio Code
 .vscode/

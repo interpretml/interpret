@@ -15,9 +15,9 @@
 // TODO: set these to random values.  We expose our random number generator, so to ensure that we get
 // different random number streams from what our caller will get, we want to mix in these values
 // in case our caller happens to mistakenly forget to provide a mix in value
-constexpr IntEbmType k_quantileRandomizationMix = IntEbmType { 0 };
-constexpr IntEbmType k_boosterRandomizationMix = IntEbmType { 0 };
-constexpr IntEbmType k_samplingWithoutReplacementRandomizationMix = IntEbmType { 0 };
+constexpr uint64_t k_quantileRandomizationMix = uint64_t { 0 };
+constexpr uint64_t k_boosterRandomizationMix = uint64_t { 0 };
+constexpr uint64_t k_samplingWithoutReplacementRandomizationMix = uint64_t { 0 };
 
 class RandomStream final {
    // If the RandomStream object is stored inside a class/struct, and used inside a hotspot loop, to get the best 
@@ -88,10 +88,16 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void Initialize(const IntEbmType seed, const IntEbmType stageRandomizationMix) {
+   INLINE_ALWAYS void InitializeSigned(const SeedEbmType seed, const SeedEbmType stageRandomizationMix) {
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is 2^64 + seed if seed is negative
       Initialize(static_cast<uint64_t>(seed) ^ static_cast<uint64_t>(stageRandomizationMix));
+   }
+
+   INLINE_ALWAYS void InitializeUnsigned(const SeedEbmType seed, const uint64_t stageRandomizationMix) {
+      // the C++ standard guarantees that the unsigned result of this 
+      // conversion is 2^64 + seed if seed is negative
+      Initialize(static_cast<uint64_t>(seed) ^ stageRandomizationMix);
    }
 
    INLINE_ALWAYS void Initialize(const RandomStream & other) {
@@ -100,30 +106,30 @@ public:
       m_stateSeedConst = other.m_stateSeedConst;
    }
 
-   INLINE_ALWAYS IntEbmType NextEbmInt() {
-      static_assert(std::numeric_limits<IntEbmType>::lowest() < IntEbmType { 0 },
-         "IntEbmType must be signed");
+   INLINE_ALWAYS SeedEbmType NextSeed() {
+      static_assert(std::numeric_limits<SeedEbmType>::lowest() < SeedEbmType { 0 },
+         "SeedEbmType must be signed");
 
       // this is meant to result in a positive value that is of the negation of 
-      // std::numeric_limits<IntEbmType>::lowest(), so -std::numeric_limits<IntEbmType>::lowest().
+      // std::numeric_limits<SeedEbmType>::lowest(), so -std::numeric_limits<SeedEbmType>::lowest().
       // but the pitfall is that for numbers expressed in twos complement, there is one more
       // negative number than there are positive numbers, so we subtract one (adding to a negated number), then add 
       // one to keep the numbers in bounds.  If the compiler is using some non-twos complement
       // representation, then we'll get a compile error in the static_asserts below or in the initialization
-      // of uint64_t below
-      constexpr uint64_t negativeOfLowest = 
-         uint64_t { -(std::numeric_limits<IntEbmType>::lowest() + IntEbmType { 1 }) } + uint64_t { 1 };
+      // of uint32_t below
+      constexpr uint32_t negativeOfLowest = 
+         uint32_t { -(std::numeric_limits<SeedEbmType>::lowest() + SeedEbmType { 1 }) } + uint32_t { 1 };
 
-      static_assert(uint64_t { std::numeric_limits<IntEbmType>::max() } ==
-         negativeOfLowest - uint64_t { 1 }, "max must == lowestInUnsigned - 1");
+      static_assert(uint32_t { std::numeric_limits<SeedEbmType>::max() } ==
+         negativeOfLowest - uint32_t { 1 }, "max must == lowestInUnsigned - 1");
 
-      const uint64_t randomNumber = static_cast<uint64_t>(Rand64());
+      const uint32_t randomNumber = static_cast<uint32_t>(Rand32());
       // adding negativeOfLowest and then adding lowest are a no-op as far as affecting the value of randomNumber
       // but since adding randomNumber + negativeOfLowest (two unsigned values) is legal in C++, and since we'll
-      // always end up with a value that can be expressed as an IntEbmType after that addition we don't have
+      // always end up with a value that can be expressed as an SeedEbmType after that addition we don't have
       // and undefined behavior here.  The compiler should be smart enough to eliminate this operation.
-      const IntEbmType ret = randomNumber < negativeOfLowest ? static_cast<IntEbmType>(randomNumber) :
-         static_cast<IntEbmType>(randomNumber + negativeOfLowest) + std::numeric_limits<IntEbmType>::lowest();
+      const SeedEbmType ret = randomNumber < negativeOfLowest ? static_cast<SeedEbmType>(randomNumber) :
+         static_cast<SeedEbmType>(randomNumber + negativeOfLowest) + std::numeric_limits<SeedEbmType>::lowest();
 
       return ret;
    }

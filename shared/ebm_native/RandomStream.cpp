@@ -80,14 +80,14 @@ uint_fast64_t RandomStream::GetOneTimePadConversion(uint_fast64_t seed) {
    static_assert(CountBitsRequiredPositiveMax<uint64_t>() ==
       sizeof(k_oneTimePadRandomSeed) / sizeof(k_oneTimePadRandomSeed[0]),
       "the one time pad must have the same length as the number of bits"
-      );
+   );
    EBM_ASSERT(seed == static_cast<uint_fast64_t>(static_cast<uint64_t>(seed)));
 
    // this number generates a perfectly valid converted seed in a single pass if the user passes us a seed of zero
    uint_fast64_t result = uint_fast64_t { 0x6b79a38fd52c4e71 };
    const uint_fast64_t * pRandom = k_oneTimePadRandomSeed;
    do {
-      if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } &seed))) {
+      if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } & seed))) {
          result ^= *pRandom;
       }
       ++pRandom;

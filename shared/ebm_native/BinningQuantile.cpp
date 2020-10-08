@@ -2481,7 +2481,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
    IntEbmType isHumanized,
-   IntEbmType randomSeed,
+   SeedEbmType randomSeed,
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -2499,7 +2499,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       "featureValues=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
       "isHumanized=%s, "
-      "randomSeed=%" IntEbmTypePrintf ", "
+      "randomSeed=%" SeedEbmTypePrintf ", "
       "countBinCutsInOut=%p, "
       "binCutsLowerBoundInclusiveOut=%p, "
       "countMissingValuesOut=%p, "
@@ -2830,7 +2830,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, aFeatureValues);
 
          RandomStream randomStream;
-         randomStream.Initialize(randomSeed, k_quantileRandomizationMix);
+         randomStream.InitializeUnsigned(randomSeed, k_quantileRandomizationMix);
 
          FillTiebreakers(bSymmetryReversal, &randomStream, cCuttingRanges, aCuttingRange);
 
