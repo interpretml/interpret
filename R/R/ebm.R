@@ -57,69 +57,82 @@ ebm_classify <- function(
    min_samples_leaf = 2,
    random_state = 42
 ) {
+   min_samples_bin = 5
+   humanized = FALSE # TODO this should be it's own binning type 'quantile_humanized' eventually
+
    random_state = normalize_initial_random_seed(random_state)
-
+   
    col_names = colnames(X)
-
-   bin_edges <- vector(mode = "list") #, ncol(X))
+   bin_edges <- vector(mode = "list")
    for(col_name in col_names) {
-      bin_edges[[col_name]] <- generate_quantile_bin_cuts(random_state, X[[col_name]], 5, FALSE, max_bins)
-      # WARNING: discretized is modified in-place
+      bin_edges[[col_name]] <- generate_quantile_bin_cuts(random_state, X[[col_name]], min_samples_bin, humanized, max_bins)
       discretized <- vector(mode = "numeric", length = length(y))
+      # WARNING: discretized is modified in-place
       discretize(X[[col_name]], bin_edges[[col_name]], discretized)
       X[[col_name]] <- discretized
    }
    features <- lapply(col_names, function(col_name) { ebm_feature(n_bins = length(bin_edges[[col_name]]) + 1) })
    feature_groups <- create_main_feature_groups(features)
 
-   validation_size = ceiling(length(y) * validation_size)
-
-   seed = random_state
-   
-   seed = generate_random_number(seed, 1416147523)
-   is_included <- vector(mode = "logical", length = length(y))
-   sampling_without_replacement(seed, validation_size, length(y), is_included)
-
-   X_train = X[!is_included,]
-   y_train = y[!is_included]
-   X_val = X[is_included,]
-   y_val = y[is_included] 
-
-   X_train_vec <- vector(mode = "numeric") # , ncol(X_train) * nrow(X_train)
-   for(col_name in col_names) X_train_vec[(length(X_train_vec) + 1):(length(X_train_vec) + length(X_train[[col_name]]))] <- X_train[[col_name]]
-
-   X_val_vec <- vector(mode = "numeric") # , ncol(X_val) * nrow(X_val)
-   for(col_name in col_names) X_val_vec[(length(X_val_vec) + 1):(length(X_val_vec) + length(X_val[[col_name]]))] <- X_val[[col_name]]
-
-   n_classes = 2
-   num_scores <- get_count_scores_c(n_classes) # only binary classification for now
-   scores_train <- numeric(num_scores * length(y_train))
-   scores_val <- numeric(num_scores * length(y_val))
-
-   result_list = cyclic_gradient_boost(
-      "classification",
-      n_classes,
-      features,
-      feature_groups,
-      X_train_vec,
-      y_train,
-      scores_train,
-      X_val_vec,
-      y_val,
-      scores_val,
-      inner_bags,
-      random_state,
-      learning_rate,
-      max_leaves - 1, 
-      min_samples_leaf, 
-      max_rounds,
-      early_stopping_rounds
-   )
    model <- vector(mode = "list")
-   for(i in seq_along(col_names)) {
-      model[[col_names[[i]]]] <- result_list$model_update[[i]]
+   for(col_name in col_names) {
+      model[[col_name]] <- vector(mode = "numeric", length = length(bin_edges[[col_name]]) + 1)
    }
 
+   validation_size = ceiling(length(y) * validation_size)
+   seed = random_state
+   is_included <- vector(mode = "logical", length = length(y))
+   for(i in 1:outer_bags) {
+      seed = generate_random_number(seed, 1416147523)
+      # WARNING: is_included is modified in-place
+      sampling_without_replacement(seed, validation_size, length(y), is_included)
+
+      X_train = X[!is_included,]
+      y_train = y[!is_included]
+      X_val = X[is_included,]
+      y_val = y[is_included] 
+
+      X_train_vec <- vector(mode = "numeric") # , ncol(X_train) * nrow(X_train)
+      for(col_name in col_names) {
+         X_train_vec[(length(X_train_vec) + 1):(length(X_train_vec) + length(y_train))] <- X_train[[col_name]]
+      }
+
+      X_val_vec <- vector(mode = "numeric") # , ncol(X_val) * nrow(X_val)
+      for(col_name in col_names) {
+         X_val_vec[(length(X_val_vec) + 1):(length(X_val_vec) + length(y_val))] <- X_val[[col_name]]
+      }
+
+      n_classes = 2 # only binary classification for now
+      num_scores <- get_count_scores_c(n_classes)
+      scores_train <- numeric(num_scores * length(y_train))
+      scores_val <- numeric(num_scores * length(y_val))
+
+      result_list = cyclic_gradient_boost(
+         "classification",
+         n_classes,
+         features,
+         feature_groups,
+         X_train_vec,
+         y_train,
+         scores_train,
+         X_val_vec,
+         y_val,
+         scores_val,
+         inner_bags,
+         random_state,
+         learning_rate,
+         max_leaves - 1, 
+         min_samples_leaf, 
+         max_rounds,
+         early_stopping_rounds
+      )
+      for(j in seq_along(col_names)) {
+         model[[col_names[[j]]]] <- model[[col_names[[j]]]] + result_list$model_update[[j]]
+      }
+   }
+   for(col_name in col_names) {
+      model[[col_name]] <- model[[col_name]] / outer_bags
+   }
    return(list(bin_edges = bin_edges, model = model))
 }
 
