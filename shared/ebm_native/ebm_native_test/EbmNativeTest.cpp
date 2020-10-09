@@ -46,11 +46,11 @@ extern void FAILED(TestCaseHidden * const pTestCaseHidden) {
    pTestCaseHidden->m_bPassed = false;
 }
 
-void EBM_NATIVE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
+void EBM_NATIVE_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
    UNUSED(traceLevel);
    // don't display the message, but we want to test all our messages, so have them call us here
    strlen(message); // test that the string memory is accessible
-//   printf("%d - %s\n", traceLevel, message);
+//   printf("%" TraceEbmTypePrintf " - %s\n", traceLevel, message);
 }
 
 static int g_countEqualityFailures = 0;

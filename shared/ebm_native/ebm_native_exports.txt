@@ -1,6 +1,7 @@
 {
    global: 
-      SetLogMessageFunction;SetTraceLevel;
+      SetLogMessageFunction;
+      SetTraceLevel;
       InitializeBoostingClassification;
       InitializeBoostingRegression;
       GenerateModelFeatureGroupUpdate;

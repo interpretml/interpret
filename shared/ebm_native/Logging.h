@@ -21,10 +21,10 @@ constexpr INLINE_ALWAYS const char * ObtainTruth(const IntEbmType isTrue) {
    return EBM_FALSE != isTrue ? g_trueString : g_falseString;
 }
 
-extern signed char g_traceLevel;
+extern TraceEbmType g_traceLevel;
 
-extern void InteralLogWithArguments(const signed char traceLevel, const char * const pOriginalMessage, ...);
-extern void InteralLogWithoutArguments(const signed char traceLevel, const char * const pOriginalMessage);
+extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage, ...);
+extern void InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage);
 extern void LogAssertFailure(
    const unsigned long long lineNumber,
    const char * const fileName,
@@ -64,7 +64,7 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
 // we use LOG__ prefixes for any variables that we define to avoid collisions with any code we get inserted into
 #define LOG_0(traceLevel, pLogMessage) \
    do { \
-      constexpr signed char LOG__traceLevel = (traceLevel); \
+      constexpr TraceEbmType LOG__traceLevel = (traceLevel); \
       static_assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG_0(traceLevel, pLogMessage, ...)"); \
       static_assert(LOG__traceLevel <= TraceLevelVerbose, "traceLevel can't be higher than TraceLevelVerbose for call to LOG_0(traceLevel, pLogMessage, ...)"); \
       if(UNLIKELY(LOG__traceLevel <= g_traceLevel)) { \
@@ -75,7 +75,7 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
 
 #define LOG_N(traceLevel, pLogMessage, ...) \
    do { \
-      constexpr signed char LOG__traceLevel = (traceLevel); \
+      constexpr TraceEbmType LOG__traceLevel = (traceLevel); \
       static_assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG_N(traceLevel, pLogMessage, ...)"); \
       static_assert(LOG__traceLevel <= TraceLevelVerbose, \
          "traceLevel can't be higher than TraceLevelVerbose for call to LOG_N(traceLevel, pLogMessage, ...)"); \
@@ -87,22 +87,22 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
 
 #define LOG_COUNTED_0(pLogCountDecrement, traceLevelBefore, traceLevelAfter, pLogMessage) \
    do { \
-      constexpr signed char LOG__traceLevelBefore = (traceLevelBefore); \
+      constexpr TraceEbmType LOG__traceLevelBefore = (traceLevelBefore); \
       static_assert(TraceLevelOff < LOG__traceLevelBefore, \
          "traceLevelBefore can't be TraceLevelOff or lower for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelBefore <= TraceLevelVerbose, \
          "traceLevelBefore can't be higher than TraceLevelVerbose for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
-      constexpr signed char LOG__traceLevelAfter = (traceLevelAfter); \
+      constexpr TraceEbmType LOG__traceLevelAfter = (traceLevelAfter); \
       static_assert(TraceLevelOff < LOG__traceLevelAfter, \
          "traceLevelAfter can't be TraceLevelOff or lower for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelAfter <= TraceLevelVerbose, \
          "traceLevelAfter can't be higher than TraceLevelVerbose for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelBefore < LOG__traceLevelAfter, \
          "We only support increasing the required trace level after N iterations. It doesn't make sense to have equal values, otherwise just use LOG_0(..)"); \
-      const signed char LOG__traceLevel = g_traceLevel; \
+      const TraceEbmType LOG__traceLevel = g_traceLevel; \
       if(UNLIKELY(LOG__traceLevelBefore <= LOG__traceLevel)) { \
          do { \
-            signed char LOG__traceLevelLogging; \
+            TraceEbmType LOG__traceLevelLogging; \
             if(LIKELY(LOG__traceLevel < LOG__traceLevelAfter)) { \
                int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
                const int LOG__logCount = *LOG__pLogCountDecrement - int { 1 }; \
@@ -122,22 +122,22 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
 
 #define LOG_COUNTED_N(pLogCountDecrement, traceLevelBefore, traceLevelAfter, pLogMessage, ...) \
    do { \
-      constexpr signed char LOG__traceLevelBefore = (traceLevelBefore); \
+      constexpr TraceEbmType LOG__traceLevelBefore = (traceLevelBefore); \
       static_assert(TraceLevelOff < LOG__traceLevelBefore, \
          "traceLevelBefore can't be TraceLevelOff or lower for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelBefore <= TraceLevelVerbose, \
          "traceLevelBefore can't be higher than TraceLevelVerbose for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
-      constexpr signed char LOG__traceLevelAfter = (traceLevelAfter); \
+      constexpr TraceEbmType LOG__traceLevelAfter = (traceLevelAfter); \
       static_assert(TraceLevelOff < LOG__traceLevelAfter, \
          "traceLevelAfter can't be TraceLevelOff or lower for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelAfter <= TraceLevelVerbose, \
          "traceLevelAfter can't be higher than TraceLevelVerbose for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelBefore < LOG__traceLevelAfter, \
          "We only support increasing the required trace level after N iterations and it doesn't make sense to have equal values, otherwise just use LOG_N(...)"); \
-      const signed char LOG__traceLevel = g_traceLevel; \
+      const TraceEbmType LOG__traceLevel = g_traceLevel; \
       if(UNLIKELY(LOG__traceLevelBefore <= LOG__traceLevel)) { \
          do { \
-            signed char LOG__traceLevelLogging; \
+            TraceEbmType LOG__traceLevelLogging; \
             if(LIKELY(LOG__traceLevel < LOG__traceLevelAfter)) { \
                int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
                const int LOG__logCount = *LOG__pLogCountDecrement - int { 1 }; \

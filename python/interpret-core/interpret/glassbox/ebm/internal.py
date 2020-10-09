@@ -62,18 +62,18 @@ class Native:
             ("countFeaturesInGroup", ct.c_int64)
         ]
 
-    # const signed char TraceLevelOff = 0;
+    # const int32_t TraceLevelOff = 0;
     TraceLevelOff = 0
-    # const signed char TraceLevelError = 1;
+    # const int32_t TraceLevelError = 1;
     TraceLevelError = 1
-    # const signed char TraceLevelWarning = 2;
+    # const int32_t TraceLevelWarning = 2;
     TraceLevelWarning = 2
-    # const signed char TraceLevelInfo = 3;
+    # const int32_t TraceLevelInfo = 3;
     TraceLevelInfo = 3
-    # const signed char TraceLevelVerbose = 4;
+    # const int32_t TraceLevelVerbose = 4;
     TraceLevelVerbose = 4
 
-    _LogFuncType = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
+    _LogFuncType = ct.CFUNCTYPE(None, ct.c_int32, ct.c_char_p)
 
     def __init__(self):
         pass
@@ -81,14 +81,14 @@ class Native:
     def _harden_function_signatures(self):
         """ Adds types to function signatures. """
         self.lib.SetLogMessageFunction.argtypes = [
-            # void (* fn)(signed char traceLevel, const char * message) logMessageFunction
+            # void (* fn)(int32 traceLevel, const char * message) logMessageFunction
             self._LogFuncType
         ]
         self.lib.SetLogMessageFunction.restype = None
 
         self.lib.SetTraceLevel.argtypes = [
-            # signed char traceLevel
-            ct.c_char
+            # int32 traceLevel
+            ct.c_int32
         ]
         self.lib.SetTraceLevel.restype = None
 
@@ -417,7 +417,6 @@ class Native:
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
         def native_log(trace_level, message):  # pragma: no cover
             try:
-                trace_level = int(trace_level[0])
                 message = message.decode("ascii")
 
                 if trace_level == self.TraceLevelError:
@@ -456,7 +455,7 @@ class Native:
         self._typed_log_func = self._LogFuncType(native_log)
 
         self.lib.SetLogMessageFunction(self._typed_log_func)
-        self.lib.SetTraceLevel(ct.c_char(level_dict[level]))
+        self.lib.SetTraceLevel(level_dict[level])
 
     @staticmethod
     def _get_ebm_lib_path(debug=False):

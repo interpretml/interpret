@@ -130,25 +130,27 @@ typedef struct _EbmNativeFeatureGroup {
 } EbmNativeFeatureGroup;
 
 // SetLogMessageFunction does not need to be called if the level is left at TraceLevelOff
+typedef int32_t TraceEbmType;
+#define TraceEbmTypePrintf PRId32
 
  // no messages will be output
-#define TraceLevelOff      ((signed char)0)
+#define TraceLevelOff      ((TraceEbmType)0)
 // invalid inputs to the C library or assert failure before exit
-#define TraceLevelError    ((signed char)1)
+#define TraceLevelError    ((TraceEbmType)1)
 // out of memory or other conditions we can't continue after
-#define TraceLevelWarning  ((signed char)2)
+#define TraceLevelWarning  ((TraceEbmType)2)
 // odd inputs like features with 1 value or empty feature groups
-#define TraceLevelInfo     ((signed char)3)
+#define TraceLevelInfo     ((TraceEbmType)3)
 // function calls, logging that helps us trace execution in the library
-#define TraceLevelVerbose  ((signed char)4)
+#define TraceLevelVerbose  ((TraceEbmType)4)
 
 // all our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
-typedef void (EBM_NATIVE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);
+typedef void (EBM_NATIVE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(TraceEbmType traceLevel, const char * message);
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(
    LOG_MESSAGE_FUNCTION logMessageFunction
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel);
 
 // BINARY VS MULTICLASS AND LOGIT REDUCTION
 // - I initially considered storing our model files as negated logits [storing them as (0 - mathematical_logit)], but that's a bad choice because:

@@ -18,7 +18,7 @@ const char g_falseString[] = "false";
 constexpr static char g_assertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
 constexpr static char g_pLoggingParameterError[] = "Error in vsnprintf parameters for logging.";
 
-signed char g_traceLevel = TraceLevelOff;
+TraceEbmType g_traceLevel = TraceLevelOff;
 static LOG_MESSAGE_FUNCTION g_pLogMessageFunc = nullptr;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
@@ -27,7 +27,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFu
    g_pLogMessageFunc = logMessageFunction;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel) {
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel) {
    assert(TraceLevelOff <= traceLevel);
    assert(traceLevel <= TraceLevelVerbose);
    assert(nullptr != g_pLogMessageFunc); /* "call SetLogMessageFunction before calling SetTraceLevel" */
@@ -36,7 +36,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(s
 
 WARNING_PUSH
 WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
-extern void InteralLogWithArguments(const signed char traceLevel, const char * const pOriginalMessage, ...) {
+extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage, ...) {
    assert(nullptr != g_pLogMessageFunc);
 
    // this function is here largely to clip the stack memory needed for messageSpace.  If we put the below functionality directly into a MACRO or an 
@@ -65,7 +65,7 @@ extern void InteralLogWithArguments(const signed char traceLevel, const char * c
 }
 WARNING_POP
 
-extern void InteralLogWithoutArguments(const signed char traceLevel, const char * const pOriginalMessage) {
+extern void InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage) {
    assert(nullptr != g_pLogMessageFunc);
    (*g_pLogMessageFunc)(traceLevel, pOriginalMessage);
 }
