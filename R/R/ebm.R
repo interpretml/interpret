@@ -45,32 +45,45 @@ create_main_feature_groups <- function(features) {
 ebm_classify <- function(
    X, 
    y, 
-   num_outer_bags = 16, 
-   validation_size = 0.15, 
-   max_epochs = 2000, 
-   num_early_stopping_run_length = 50, 
+   max_bins = 255,
+   outer_bags = 16, 
+   inner_bags = 0,
    learning_rate = 0.01, 
-   max_tree_splits = 2, 
-   min_samples_for_split = 2, 
+   validation_size = 0.15, 
+   early_stopping_rounds = 50, 
+   early_stopping_tolerance = 1e-4,
+   max_rounds = 5000, 
+   max_leaves = 3,
+   min_samples_leaf = 2,
    random_state = 42
 ) {
+   random_state = normalize_initial_random_seed(random_state)
+
    col_names = colnames(X)
 
    bin_edges <- vector(mode = "list") #, ncol(X))
-   # TODO: I know this binning is buggy.  Review
-   for(col_name in col_names) bin_edges[[col_name]] <- unique(quantile(X[[col_name]], seq(0,1, 1.0 / 256)))
-   for(col_name in col_names) bin_edges[[col_name]] <- bin_edges[[col_name]][2:(length(bin_edges[[col_name]])-1)]
-   for(col_name in col_names) X[[col_name]] <- as.integer(findInterval(X[[col_name]], bin_edges[[col_name]]))
+   for(col_name in col_names) {
+      bin_edges[[col_name]] <- generate_quantile_bin_cuts(random_state, X[[col_name]], 5, FALSE, max_bins)
+      # WARNING: discretized is modified in-place
+      discretized <- vector(mode = "numeric", length = length(y))
+      discretize(X[[col_name]], bin_edges[[col_name]], discretized)
+      X[[col_name]] <- discretized
+   }
    features <- lapply(col_names, function(col_name) { ebm_feature(n_bins = length(bin_edges[[col_name]]) + 1) })
    feature_groups <- create_main_feature_groups(features)
-   
-   set.seed(random_state)
-   val_indexes = sample(1:length(y), ceiling(length(y) * validation_size))
 
-   X_train = X[-val_indexes,]
-   y_train = y[-val_indexes]
-   X_val = X[val_indexes,]
-   y_val = y[val_indexes] 
+   validation_size = ceiling(length(y) * validation_size)
+
+   seed = random_state
+   
+   seed = generate_random_number(seed, 1416147523)
+   is_included <- vector(mode = "logical", length = length(y))
+   sampling_without_replacement(seed, validation_size, length(y), is_included)
+
+   X_train = X[!is_included,]
+   y_train = y[!is_included]
+   X_val = X[is_included,]
+   y_val = y[is_included] 
 
    X_train_vec <- vector(mode = "numeric") # , ncol(X_train) * nrow(X_train)
    for(col_name in col_names) X_train_vec[(length(X_train_vec) + 1):(length(X_train_vec) + length(X_train[[col_name]]))] <- X_train[[col_name]]
@@ -94,13 +107,13 @@ ebm_classify <- function(
       X_val_vec,
       y_val,
       scores_val,
-      0,
+      inner_bags,
       random_state,
       learning_rate,
-      max_tree_splits, 
-      min_samples_for_split, 
-      max_epochs,
-      num_early_stopping_run_length
+      max_leaves - 1, 
+      min_samples_leaf, 
+      max_rounds,
+      early_stopping_rounds
    )
    model <- vector(mode = "list")
    for(i in seq_along(col_names)) {

@@ -1,5 +1,3 @@
 export(ebm_classify)
 export(ebm_predict_proba)
 useDynLib(interpret, .registration = TRUE)
-
-importFrom("stats", "quantile")

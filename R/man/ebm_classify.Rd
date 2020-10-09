@@ -8,26 +8,32 @@
 ebm_classify(
   X, 
   y, 
-  num_outer_bags = 16, 
-  validation_size = 0.15, 
-  max_epochs = 2000, 
-  num_early_stopping_run_length = 50, 
+  max_bins = 255,
+  outer_bags = 16, 
+  inner_bags = 0,
   learning_rate = 0.01, 
-  max_tree_splits = 2, 
-  min_samples_for_split = 2, 
+  validation_size = 0.15, 
+  early_stopping_rounds = 50, 
+  early_stopping_tolerance = 1e-4,
+  max_rounds = 5000, 
+  max_leaves = 3,
+  min_samples_leaf = 2,
   random_state = 42
 )
 }
 \arguments{
   \item{X}{features}
   \item{y}{targets}
-  \item{num_outer_bags}{number of outer bags}
-  \item{validation_size}{amount of data to use for validation}
-  \item{max_epochs}{number of boosting rounds}
-  \item{num_early_stopping_run_length}{how many rounds without improvement before we quit}
+  \item{max_bins}{number of bins to create}
+  \item{outer_bags}{number of outer bags}
+  \item{inner_bags}{number of inner bags}
   \item{learning_rate}{learning rate}
-  \item{max_tree_splits}{how many splits allowed}
-  \item{min_samples_for_split}{number of samples required for a split}
+  \item{validation_size}{amount of data to use for validation}
+  \item{early_stopping_rounds}{how many rounds without improvement before we quit}
+  \item{early_stopping_tolerance}{how much does the round need to improve by to be considered as an advacement}
+  \item{max_rounds}{number of boosting rounds}
+  \item{max_leaves}{how many leaves allowed}
+  \item{min_samples_leaf}{number of samples required for a split}
   \item{random_state}{random seed}
 }
 \value{

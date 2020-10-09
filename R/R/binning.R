@@ -21,7 +21,11 @@ discretize <- function(feature_values, bin_cuts_lower_bound_inclusive, discretiz
    bin_cuts_lower_bound_inclusive <- as.double(bin_cuts_lower_bound_inclusive)
    stopifnot(is.double(discretized_out))
    stopifnot(length(feature_values) == length(discretized_out))
-
+   
+   # WARNING, discretized_out is modified in place, which breaks R norms, but is legal to do per:
+   # 5.9.10 Named objects and copying [https://cran.r-project.org/doc/manuals/R-exts.html#Named-objects-and-copying]
+   # we modify discretized_out to avoid extra allocations in the future where we might allocate a large vector
+   # and fill it in prior to passing it into our InitializeBoosting functions
    result <- .Call(Discretize_R, feature_values, bin_cuts_lower_bound_inclusive, discretized_out)
    if(is.null(result)) {
       stop("error in GenerateQuantileBinCuts_R")
