@@ -633,6 +633,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          m_validationPredictionScores.resize(cVectorLength * m_validationClassificationTargets.size());
       }
       m_pEbmBoosting = InitializeBoostingClassification(
+         k_randomSeed,
          m_learningTypeOrCountTargetClasses,
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
@@ -648,7 +649,6 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0],
          0 == m_validationClassificationTargets.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
-         k_randomSeed,
          nullptr
       );
    } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
@@ -659,6 +659,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          m_validationPredictionScores.resize(cVectorLength * m_validationRegressionTargets.size());
       }
       m_pEbmBoosting = InitializeBoostingRegression(
+         k_randomSeed,
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
          m_featureGroups.size(),
@@ -673,7 +674,6 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0],
          0 == m_validationRegressionTargets.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
-         k_randomSeed,
          nullptr
       );
    } else {

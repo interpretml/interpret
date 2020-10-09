@@ -428,17 +428,23 @@ bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const Flo
 }
 
 SEXP GenerateQuantileBinCuts_R(
+   SEXP randomSeed,
    SEXP featureValues,
    SEXP countSamplesPerBinMin,
    SEXP isHumanized,
-   SEXP randomSeed,
    SEXP countBinCuts
 ) {
+   EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != featureValues);
    EBM_ASSERT(nullptr != countSamplesPerBinMin);
    EBM_ASSERT(nullptr != isHumanized);
-   EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != countBinCuts);
+
+   if(!IsSingleIntVector(randomSeed)) {
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleIntVector(randomSeed)");
+      return R_NilValue;
+   }
+   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    const FloatEbmType * aFeatureValues = nullptr;
    size_t cFeatureValues;
@@ -471,12 +477,6 @@ SEXP GenerateQuantileBinCuts_R(
    }
    const bool bHumanized = Rboolean::FALSE != isHumanizedR;
 
-   if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleIntVector(randomSeed)");
-      return R_NilValue;
-   }
-   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
-
    if(!IsSingleDoubleVector(countBinCuts)) {
       LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleDoubleVector(countBinCuts)");
       return R_NilValue;
@@ -494,11 +494,11 @@ SEXP GenerateQuantileBinCuts_R(
    // R_alloc doesn't return nullptr, so we don't need to check aItems
 
    const IntEbmType ret = GenerateQuantileBinCuts(
+      randomSeedLocal,
       static_cast<IntEbmType>(cFeatureValues),
       aFeatureValues,
       countSamplesPerBinMinIntEbmType,
       bHumanized ? EBM_TRUE : EBM_FALSE,
-      randomSeedLocal,
       &countBinCutsIntEbmType,
       binCutsLowerBoundInclusive,
       nullptr,
@@ -682,6 +682,7 @@ SEXP SamplingWithoutReplacement_R(
 }
 
 SEXP InitializeBoostingClassification_R(
+   SEXP randomSeed,
    SEXP countTargetClasses,
    SEXP features,
    SEXP featureGroups,
@@ -692,9 +693,9 @@ SEXP InitializeBoostingClassification_R(
    SEXP validationBinnedData,
    SEXP validationTargets,
    SEXP validationPredictorScores,
-   SEXP countInnerBags,
-   SEXP randomSeed
+   SEXP countInnerBags
 ) {
+   EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != countTargetClasses);
    EBM_ASSERT(nullptr != features);
    EBM_ASSERT(nullptr != featureGroups);
@@ -706,7 +707,12 @@ SEXP InitializeBoostingClassification_R(
    EBM_ASSERT(nullptr != validationTargets);
    EBM_ASSERT(nullptr != validationPredictorScores);
    EBM_ASSERT(nullptr != countInnerBags);
-   EBM_ASSERT(nullptr != randomSeed);
+
+   if(!IsSingleIntVector(randomSeed)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleIntVector(randomSeed)");
+      return R_NilValue;
+   }
+   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    if(!IsSingleDoubleVector(countTargetClasses)) {
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleDoubleVector(countTargetClasses)");
@@ -848,14 +854,9 @@ SEXP InitializeBoostingClassification_R(
    }
    IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
-   if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleIntVector(randomSeed)");
-      return R_NilValue;
-   }
-   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
-
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
-      static_cast<IntEbmType>(cTargetClasses), 
+      randomSeedLocal,
+      static_cast<IntEbmType>(cTargetClasses),
       countFeatures, 
       aFeatures, 
       countFeatureGroups, 
@@ -870,7 +871,6 @@ SEXP InitializeBoostingClassification_R(
       aValidationTargets, 
       aValidationPredictorScores, 
       countInnerBagsLocal, 
-      randomSeedLocal,
       nullptr
    );
 
@@ -888,6 +888,7 @@ SEXP InitializeBoostingClassification_R(
 }
 
 SEXP InitializeBoostingRegression_R(
+   SEXP randomSeed,
    SEXP features,
    SEXP featureGroups,
    SEXP featureGroupIndexes,
@@ -897,9 +898,9 @@ SEXP InitializeBoostingRegression_R(
    SEXP validationBinnedData,
    SEXP validationTargets,
    SEXP validationPredictorScores,
-   SEXP countInnerBags,
-   SEXP randomSeed
+   SEXP countInnerBags
 ) {
+   EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != features);
    EBM_ASSERT(nullptr != featureGroups);
    EBM_ASSERT(nullptr != featureGroupIndexes);
@@ -910,7 +911,12 @@ SEXP InitializeBoostingRegression_R(
    EBM_ASSERT(nullptr != validationTargets);
    EBM_ASSERT(nullptr != validationPredictorScores);
    EBM_ASSERT(nullptr != countInnerBags);
-   EBM_ASSERT(nullptr != randomSeed);
+
+   if(!IsSingleIntVector(randomSeed)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsSingleIntVector(randomSeed)");
+      return R_NilValue;
+   }
+   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    size_t cFeatures;
    EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
@@ -1027,14 +1033,9 @@ SEXP InitializeBoostingRegression_R(
    }
    IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
-   if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsSingleIntVector(randomSeed)");
-      return R_NilValue;
-   }
-   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
-
    PEbmBoosting pEbmBoosting = InitializeBoostingRegression(
-      countFeatures, 
+      randomSeedLocal,
+      countFeatures,
       aFeatures, 
       countFeatureGroups, 
       aFeatureGroups, 
@@ -1048,7 +1049,6 @@ SEXP InitializeBoostingRegression_R(
       aValidationTargets, 
       aValidationPredictorScores, 
       countInnerBagsLocal, 
-      randomSeedLocal,
       nullptr
    );
 

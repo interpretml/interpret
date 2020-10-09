@@ -115,6 +115,8 @@ class Native:
 
 
         self.lib.GenerateQuantileBinCuts.argtypes = [
+            # int32_t randomSeed
+            ct.c_int32,
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
@@ -123,8 +125,6 @@ class Native:
             ct.c_int64,
             # int64_t isHumanized
             ct.c_int64,
-            # int32_t randomSeed
-            ct.c_int32,
             # int64_t * countBinCutsInOut
             ct.POINTER(ct.c_int64),
             # double * binCutsLowerBoundInclusiveOut
@@ -222,6 +222,8 @@ class Native:
 
 
         self.lib.InitializeBoostingClassification.argtypes = [
+            # int32_t randomSeed
+            ct.c_int32,
             # int64_t countTargetClasses
             ct.c_int64,
             # int64_t countFeatures
@@ -254,14 +256,14 @@ class Native:
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
             # int64_t countInnerBags
             ct.c_int64,
-            # int32_t randomSeed
-            ct.c_int32,
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
         self.lib.InitializeBoostingClassification.restype = ct.c_void_p
 
         self.lib.InitializeBoostingRegression.argtypes = [
+            # int32_t randomSeed
+            ct.c_int32,
             # int64_t countFeatures
             ct.c_int64,
             # EbmNativeFeature * features
@@ -290,8 +292,6 @@ class Native:
             ndpointer(dtype=ct.c_double, ndim=1),
             # int64_t countInnerBags
             ct.c_int64,
-            # int32_t randomSeed
-            ct.c_int32,
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
@@ -717,6 +717,7 @@ class NativeEBMBoosting:
         # Allocate external resources
         if model_type == "classification":
             self._booster_pointer = self._native.lib.InitializeBoostingClassification(
+                random_state,
                 n_classes,
                 len(feature_array),
                 feature_array,
@@ -732,13 +733,13 @@ class NativeEBMBoosting:
                 y_val,
                 scores_val,
                 n_inner_bags,
-                random_state,
                 optional_temp_params,
             )
             if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingClassification")
         elif model_type == "regression":
             self._booster_pointer = self._native.lib.InitializeBoostingRegression(
+                random_state,
                 len(feature_array),
                 feature_array,
                 len(feature_groups_array),
@@ -753,7 +754,6 @@ class NativeEBMBoosting:
                 y_val,
                 scores_val,
                 n_inner_bags,
-                random_state,
                 optional_temp_params,
             )
             if not self._booster_pointer:  # pragma: no cover

@@ -147,6 +147,7 @@ void EbmBoostingState::Free(EbmBoostingState * const pBoostingState) {
 }
 
 EbmBoostingState * EbmBoostingState::Allocate(
+   const SeedEbmType randomSeed,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cFeatures,
    const size_t cFeatureGroups,
@@ -162,8 +163,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
    const size_t cValidationSamples, 
    const void * const aValidationTargets, 
    const IntEbmType * const aValidationBinnedData, 
-   const FloatEbmType * const aValidationPredictorScores,
-   const SeedEbmType randomSeed
+   const FloatEbmType * const aValidationPredictorScores
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
@@ -671,6 +671,7 @@ static EbmBoostingState * AllocateBoosting(
    }
 
    EbmBoostingState * const pEbmBoostingState = EbmBoostingState::Allocate(
+      randomSeed,
       runtimeLearningTypeOrCountTargetClasses,
       cFeatures,
       cFeatureGroups,
@@ -686,8 +687,7 @@ static EbmBoostingState * AllocateBoosting(
       cValidationSamples,
       validationTargets,
       validationBinnedData,
-      validationPredictorScores,
-      randomSeed
+      validationPredictorScores
    );
    if(UNLIKELY(nullptr == pEbmBoostingState)) {
       LOG_0(TraceLevelWarning, "WARNING AllocateBoosting pEbmBoostingState->Initialize");
@@ -697,6 +697,7 @@ static EbmBoostingState * AllocateBoosting(
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
+   SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
@@ -712,15 +713,31 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    const IntEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   SeedEbmType randomSeed,
    const FloatEbmType * optionalTempParams
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeBoostingClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
-      ", features=%p, countFeatureGroups=%" IntEbmTypePrintf ", featureGroups=%p, featureGroupIndexes=%p, countTrainingSamples=%" 
-      IntEbmTypePrintf ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationSamples=%" 
-      IntEbmTypePrintf ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" 
-      IntEbmTypePrintf ", randomSeed=%" SeedEbmTypePrintf ", optionalTempParams=%p",
-      countTargetClasses, 
+   LOG_N(
+      TraceLevelInfo, 
+      "Entered InitializeBoostingClassification: "
+      "randomSeed=%" SeedEbmTypePrintf ", "
+      "countTargetClasses=%" IntEbmTypePrintf ", "
+      "countFeatures=%" IntEbmTypePrintf ", "
+      "features=%p, "
+      "countFeatureGroups=%" IntEbmTypePrintf ", "
+      "featureGroups=%p, "
+      "featureGroupIndexes=%p, "
+      "countTrainingSamples=%" IntEbmTypePrintf ", "
+      "trainingBinnedData=%p, "
+      "trainingTargets=%p, "
+      "trainingPredictorScores=%p, "
+      "countValidationSamples=%" IntEbmTypePrintf ", "
+      "validationBinnedData=%p, "
+      "validationTargets=%p, "
+      "validationPredictorScores=%p, "
+      "countInnerBags=%" IntEbmTypePrintf ", "
+      "optionalTempParams=%p"
+      ,
+      randomSeed,
+      countTargetClasses,
       countFeatures, 
       static_cast<const void *>(features), 
       countFeatureGroups, 
@@ -735,7 +752,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       static_cast<const void *>(validationTargets), 
       static_cast<const void *>(validationPredictorScores), 
       countInnerBags, 
-      randomSeed,
       static_cast<const void *>(optionalTempParams)
       );
    if(countTargetClasses < 0) {
@@ -775,6 +791,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
+   SeedEbmType randomSeed,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
    IntEbmType countFeatureGroups,
@@ -789,15 +806,30 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    const FloatEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   SeedEbmType randomSeed,
    const FloatEbmType * optionalTempParams
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeBoostingRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countFeatureGroups=%" 
-      IntEbmTypePrintf ", featureGroups=%p, featureGroupIndexes=%p, countTrainingSamples=%" IntEbmTypePrintf 
-      ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationSamples=%" IntEbmTypePrintf 
-      ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" IntEbmTypePrintf 
-      ", randomSeed=%" SeedEbmTypePrintf ", optionalTempParams=%p",
-      countFeatures, 
+   LOG_N(
+      TraceLevelInfo, 
+      "Entered InitializeBoostingRegression: "
+      "randomSeed=%" SeedEbmTypePrintf ", "
+      "countFeatures=%" IntEbmTypePrintf ", "
+      "features=%p, "
+      "countFeatureGroups=%" IntEbmTypePrintf ", "
+      "featureGroups=%p, "
+      "featureGroupIndexes=%p, "
+      "countTrainingSamples=%" IntEbmTypePrintf ", "
+      "trainingBinnedData=%p, "
+      "trainingTargets=%p, "
+      "trainingPredictorScores=%p, "
+      "countValidationSamples=%" IntEbmTypePrintf ", "
+      "validationBinnedData=%p, "
+      "validationTargets=%p, "
+      "validationPredictorScores=%p, "
+      "countInnerBags=%" IntEbmTypePrintf ", "
+      "optionalTempParams=%p"
+      ,
+      randomSeed,
+      countFeatures,
       static_cast<const void *>(features), 
       countFeatureGroups, 
       static_cast<const void *>(featureGroups), 
@@ -811,7 +843,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       static_cast<const void *>(validationTargets), 
       static_cast<const void *>(validationPredictorScores), 
       countInnerBags, 
-      randomSeed,
       static_cast<const void *>(optionalTempParams)
    );
    const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateBoosting(

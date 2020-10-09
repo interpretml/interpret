@@ -32,6 +32,7 @@ convert_feature_groups_to_c <- function(feature_groups) {
 }
 
 initialize_boosting_classification <- function(
+   random_seed,
    n_classes, 
    features, 
    feature_groups, 
@@ -42,9 +43,9 @@ initialize_boosting_classification <- function(
    validation_binned_data, 
    validation_targets, 
    validation_predictor_scores, 
-   n_inner_bags, 
-   random_seed
+   n_inner_bags
 ) {
+   random_seed <- as.integer(random_seed)
    n_classes <- as.double(n_classes)
    features <- as.list(features)
    feature_groups <- as.list(feature_groups)
@@ -60,10 +61,10 @@ initialize_boosting_classification <- function(
       validation_predictor_scores <- as.double(validation_predictor_scores)
    }
    n_inner_bags <- as.integer(n_inner_bags)
-   random_seed <- as.integer(random_seed)
 
    ebm_boosting <- .Call(
       InitializeBoostingClassification_R, 
+      random_seed,
       n_classes, 
       features, 
       feature_groups, 
@@ -74,8 +75,7 @@ initialize_boosting_classification <- function(
       validation_binned_data, 
       validation_targets, 
       validation_predictor_scores, 
-      n_inner_bags, 
-      random_seed
+      n_inner_bags
    )
    if(is.null(ebm_boosting)) {
       stop("Out of memory in InitializeBoostingClassification")
@@ -84,6 +84,7 @@ initialize_boosting_classification <- function(
 }
 
 initialize_boosting_regression <- function(
+   random_seed,
    features, 
    feature_groups, 
    feature_group_indexes, 
@@ -93,9 +94,9 @@ initialize_boosting_regression <- function(
    validation_binned_data, 
    validation_targets, 
    validation_predictor_scores, 
-   n_inner_bags, 
-   random_seed
+   n_inner_bags
 ) {
+   random_seed <- as.integer(random_seed)
    features <- as.list(features)
    feature_groups <- as.list(feature_groups)
    feature_group_indexes <- as.double(feature_group_indexes)
@@ -110,10 +111,10 @@ initialize_boosting_regression <- function(
       validation_predictor_scores <- as.double(validation_predictor_scores)
    }
    n_inner_bags <- as.integer(n_inner_bags)
-   random_seed <- as.integer(random_seed)
 
    ebm_boosting <- .Call(
       InitializeBoostingRegression_R, 
+      random_seed,
       features, 
       feature_groups, 
       feature_group_indexes, 
@@ -123,8 +124,7 @@ initialize_boosting_regression <- function(
       validation_binned_data, 
       validation_targets, 
       validation_predictor_scores, 
-      n_inner_bags, 
-      random_seed
+      n_inner_bags
    )
    if(is.null(ebm_boosting)) {
       stop("Out of memory in InitializeBoostingRegression")
@@ -230,6 +230,7 @@ native_ebm_boosting <- function(
 
    if(model_type == "classification") {
       booster_pointer <- initialize_boosting_classification(
+         random_state,
          n_classes, 
          features, 
          c_structs$feature_groups_c, 
@@ -240,11 +241,11 @@ native_ebm_boosting <- function(
          X_val, 
          y_val, 
          scores_val, 
-         n_inner_bags, 
-         random_state
+         n_inner_bags
       )
    } else if(model_type == "regression") {
       booster_pointer <- initialize_boosting_regression(
+         random_state,
          features, 
          c_structs$feature_groups_c, 
          c_structs$feature_group_indexes, 
@@ -254,8 +255,7 @@ native_ebm_boosting <- function(
          X_val, 
          y_val, 
          scores_val, 
-         n_inner_bags, 
-         random_state
+         n_inner_bags
       )
    } else {
       stop("Unrecognized model_type")

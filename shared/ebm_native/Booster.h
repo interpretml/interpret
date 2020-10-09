@@ -159,6 +159,7 @@ public:
    static void Free(EbmBoostingState * const pBoostingState);
 
    static EbmBoostingState * Allocate(
+      const SeedEbmType randomSeed,
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cFeatures,
       const size_t cFeatureGroups,
@@ -174,8 +175,7 @@ public:
       const size_t cValidationSamples, 
       const void * const aValidationTargets, 
       const IntEbmType * const aValidationBinnedData, 
-      const FloatEbmType * const aValidationPredictorScores,
-      const SeedEbmType randomSeed
+      const FloatEbmType * const aValidationPredictorScores
    );
 };
 static_assert(std::is_standard_layout<EbmBoostingState>::value,

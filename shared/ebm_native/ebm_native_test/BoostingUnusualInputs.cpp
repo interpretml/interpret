@@ -14,6 +14,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
    groups->countFeaturesInGroup = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingRegression(
+      k_randomSeed,
       0,
       nullptr,
       1,
@@ -28,7 +29,6 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr,
       nullptr,
       0,
-      k_randomSeed,
       nullptr
    );
    const IntEbmType ret = BoostingStep(
@@ -50,6 +50,7 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
    groups->countFeaturesInGroup = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
+      k_randomSeed,
       2,
       0,
       nullptr,
@@ -65,7 +66,6 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr,
       nullptr,
       0,
-      k_randomSeed,
       nullptr
    );
    const IntEbmType ret = BoostingStep(
@@ -87,6 +87,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
    groups->countFeaturesInGroup = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
+      k_randomSeed,
       3,
       0,
       nullptr,
@@ -102,7 +103,6 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr,
       nullptr,
       0,
-      k_randomSeed,
       nullptr
    );
    const IntEbmType ret = BoostingStep(

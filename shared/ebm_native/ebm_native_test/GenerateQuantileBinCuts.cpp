@@ -105,11 +105,11 @@ void TestQuantileBinning(
 
    IntEbmType countBinCuts = countBinCutsMax;
    IntEbmType ret = GenerateQuantileBinCuts(
+      k_randomSeed,
       featureValues1.size(),
       0 == featureValues1.size() ? nullptr : &featureValues1[0],
       countSamplesPerBinMin,
       bSmart ? EBM_TRUE : EBM_FALSE,
-      k_randomSeed,
       &countBinCuts,
       &binCutsLowerBoundInclusive[1],
       &countMissingValues,
@@ -144,11 +144,11 @@ void TestQuantileBinning(
 
       countBinCuts = countBinCutsMax;
       ret = GenerateQuantileBinCuts(
+         k_randomSeed,
          featureValues2.size(),
          0 == featureValues2.size() ? nullptr : &featureValues2[0],
          countSamplesPerBinMin,
          bSmart ? EBM_TRUE : EBM_FALSE,
-         k_randomSeed,
          &countBinCuts,
          &binCutsLowerBoundInclusive[1],
          &countMissingValues,
@@ -1337,11 +1337,11 @@ TEST_CASE("GenerateQuantileBinCuts, randomized fairness check") {
 
          IntEbmType countBinCutsForward = static_cast<IntEbmType>(cBinCuts);
          IntEbmType ret = GenerateQuantileBinCuts(
+            k_randomSeed + iIteration,
             countSamples,
             featureValuesForward,
             countSamplesPerBinMin,
             bSmart ? EBM_TRUE : EBM_FALSE,
-            k_randomSeed + iIteration,
             &countBinCutsForward,
             binCutsLowerBoundInclusiveForward,
             &countMissingValues,
@@ -1375,11 +1375,11 @@ TEST_CASE("GenerateQuantileBinCuts, randomized fairness check") {
 
          IntEbmType countBinCutsReversed = static_cast<IntEbmType>(cBinCuts);
          ret = GenerateQuantileBinCuts(
+            k_randomSeed + iIteration,
             countSamples,
             featureValuesReversed,
             countSamplesPerBinMin,
             bSmart ? EBM_TRUE : EBM_FALSE,
-            k_randomSeed + iIteration,
             &countBinCutsReversed,
             binCutsLowerBoundInclusiveReversed,
             &countMissingValues,
@@ -1534,11 +1534,11 @@ TEST_CASE("GenerateQuantileBinCuts, chunky randomized check") {
 
       IntEbmType countBinCutsForward = static_cast<IntEbmType>(cBinCuts);
       IntEbmType ret = GenerateQuantileBinCuts(
+         k_randomSeed + static_cast<SeedEbmType>(iIteration),
          countSamples,
          featureValuesForward,
          countSamplesPerBinMin,
          bSmart ? EBM_TRUE : EBM_FALSE,
-         k_randomSeed + static_cast<SeedEbmType>(iIteration),
          &countBinCutsForward,
          binCutsLowerBoundInclusiveForward,
          &countMissingValues,
@@ -1560,11 +1560,11 @@ TEST_CASE("GenerateQuantileBinCuts, chunky randomized check") {
 
       IntEbmType countBinCutsReversed = static_cast<IntEbmType>(cBinCuts);
       ret = GenerateQuantileBinCuts(
+         k_randomSeed + static_cast<SeedEbmType>(iIteration),
          countSamples,
          featureValuesReversed,
          countSamplesPerBinMin,
          bSmart ? EBM_TRUE : EBM_FALSE,
-         k_randomSeed + static_cast<SeedEbmType>(iIteration),
          &countBinCutsReversed,
          binCutsLowerBoundInclusiveReversed,
          &countMissingValues,

@@ -2477,11 +2477,11 @@ static int g_cLogEnterGenerateQuantileBinCutsParametersMessages = 25;
 static int g_cLogExitGenerateQuantileBinCutsParametersMessages = 25;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileBinCuts(
+   SeedEbmType randomSeed,
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
    IntEbmType isHumanized,
-   SeedEbmType randomSeed,
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -2495,11 +2495,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered GenerateQuantileBinCuts: "
+      "randomSeed=%" SeedEbmTypePrintf ", "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
       "isHumanized=%s, "
-      "randomSeed=%" SeedEbmTypePrintf ", "
       "countBinCutsInOut=%p, "
       "binCutsLowerBoundInclusiveOut=%p, "
       "countMissingValuesOut=%p, "
@@ -2508,11 +2508,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       "maxNonInfinityValueOut=%p, "
       "countPositiveInfinityOut=%p"
       ,
+      randomSeed,
       countSamples,
       static_cast<const void *>(featureValues),
       countSamplesPerBinMin,
       ObtainTruth(isHumanized),
-      randomSeed,
       static_cast<void *>(countBinCutsInOut),
       static_cast<void *>(binCutsLowerBoundInclusiveOut),
       static_cast<void *>(countMissingValuesOut),
