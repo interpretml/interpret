@@ -427,6 +427,33 @@ bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const Flo
    return false;
 }
 
+SEXP GenerateRandomNumber_R(
+   SEXP randomSeed,
+   SEXP stageRandomizationMix
+) {
+   EBM_ASSERT(nullptr != randomSeed);
+   EBM_ASSERT(nullptr != stageRandomizationMix);
+
+   if(!IsSingleIntVector(randomSeed)) {
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleIntVector(randomSeed)");
+      return R_NilValue;
+   }
+   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
+
+   if(!IsSingleIntVector(stageRandomizationMix)) {
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleIntVector(stageRandomizationMix)");
+      return R_NilValue;
+   }
+   const SeedEbmType stageRandomizationMixLocal = INTEGER(stageRandomizationMix)[0];
+
+   const SeedEbmType retSeed = GenerateRandomNumber(randomSeedLocal, stageRandomizationMixLocal);
+
+   SEXP ret = PROTECT(allocVector(INTSXP, R_xlen_t { 1 }));
+   INTEGER(ret)[0] = retSeed;
+   UNPROTECT(1);
+   return ret;
+}
+
 SEXP GenerateQuantileBinCuts_R(
    SEXP randomSeed,
    SEXP featureValues,
@@ -1587,6 +1614,7 @@ SEXP FreeInteraction_R(
 }
 
 static const R_CallMethodDef g_exposedFunctions[] = {
+   { "GenerateRandomNumber_R", (DL_FUNC)&GenerateRandomNumber_R, 2 },
    { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 5 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "SamplingWithoutReplacement_R", (DL_FUNC)&SamplingWithoutReplacement_R, 4 },

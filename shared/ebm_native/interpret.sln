@@ -43,6 +43,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{71DB2E08-9023-4A
 		..\..\R\R\booster.R = ..\..\R\R\booster.R
 		..\..\R\R\ebm.R = ..\..\R\R\ebm.R
 		..\..\R\R\interaction_detection.R = ..\..\R\R\interaction_detection.R
+		..\..\R\R\random_numbers.R = ..\..\R\R\random_numbers.R
 		..\..\R\R\sampling.R = ..\..\R\R\sampling.R
 	EndProjectSection
 EndProject

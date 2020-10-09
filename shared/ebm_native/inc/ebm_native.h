@@ -318,12 +318,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION Gener
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
-   SeedEbmType randomSeed,
-   IntEbmType countIncluded,
-   IntEbmType countSamples,
-   IntEbmType * isIncludedOut
-);
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileBinCuts(
    SeedEbmType randomSeed,
@@ -378,6 +372,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discre
    IntEbmType countBinCuts,
    const FloatEbmType * binCutsLowerBoundInclusive,
    IntEbmType * discretizedOut
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
+   SeedEbmType randomSeed,
+   IntEbmType countIncluded,
+   IntEbmType countSamples,
+   IntEbmType * isIncludedOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
