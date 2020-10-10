@@ -30,7 +30,7 @@ ebm_classify(
   \item{learning_rate}{learning rate}
   \item{validation_size}{amount of data to use for validation}
   \item{early_stopping_rounds}{how many rounds without improvement before we quit}
-  \item{early_stopping_tolerance}{how much does the round need to improve by to be considered as an advacement}
+  \item{early_stopping_tolerance}{how much does the round need to improve by to be considered as an advancement}
   \item{max_rounds}{number of boosting rounds}
   \item{max_leaves}{how many leaves allowed}
   \item{min_samples_leaf}{number of samples required for a split}
@@ -40,9 +40,17 @@ ebm_classify(
   Returns an EBM model
 }
 \examples{
-  feature1 <- c(1,2,1,2,1,2,1,2)
-  feature2 <- c(1,2,1,2,1,2,1,2)
-  X <- data.frame(feature1, feature2)
-  y <- c(0,1,1,0,1,0,1,0)
-  model <- ebm_classify(X, y)
+  data(mtcars)
+  X <- subset(mtcars, select = -c(vs))
+  y <- mtcars$vs
+
+  set.seed(42)
+  data_sample <- sample(length(y), length(y) * 0.8)
+
+  X_train <- X[data_sample, ]
+  y_train <- y[data_sample]
+  X_test <- X[-data_sample, ]
+  y_test <- y[-data_sample]
+
+  ebm <- ebm_classify(X_train, y_train)
 }

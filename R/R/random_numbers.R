@@ -17,10 +17,10 @@ normalize_initial_random_seed <- function(seed) {
    # https://torstencurdt.com/tech/posts/modulo-of-negative-numbers
 
    if(2147483647 <= seed) {
-      seed = seed %% 2147483647
+      return(seed %% 2147483647)
    }
    if(seed <= -2147483647) {
-      seed = -((-seed) %% 2147483647)
+      return(-((-seed) %% 2147483647))
    }
    return(seed)
 }
@@ -35,4 +35,3 @@ generate_random_number <- function(random_seed, stage_randomization_mix) {
    }
    return(ret)
 }
-

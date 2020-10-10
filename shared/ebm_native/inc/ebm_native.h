@@ -434,6 +434,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyM
    const FloatEbmType * modelFeatureGroupUpdateTensor,
    FloatEbmType * validationMetricOut
 );
+// TODO: we can remove BoostingStep if we change R so that R passes us in a model_feature_group vector
+// and we fill that vector with the results from GenerateModelFeatureGroupUpdate
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
    IntEbmType indexFeatureGroup,

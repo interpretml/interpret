@@ -2,7 +2,7 @@
 \alias{ebm_predict_proba}
 \title{ebm_predict_proba}
 \description{
-  Predicts the probabilities of an EBM
+  Predicts probabilities using an EBM model
 }
 \usage{
 ebm_predict_proba(
@@ -15,14 +15,21 @@ ebm_predict_proba(
   \item{X}{features}
 }
 \value{
-  returns the probabilities for the predictions
+  returns the probabilities predicted
 }
 \examples{
-  feature1 <- c(1,2,1,2,1,2,1,2)
-  feature2 <- c(1,2,1,2,1,2,1,2)
-  X <- data.frame(feature1, feature2)
-  y <- c(0,1,1,0,1,0,1,0)
-  model <- ebm_classify(X, y)
+  data(mtcars)
+  X <- subset(mtcars, select = -c(vs))
+  y <- mtcars$vs
 
-  proba <- ebm_predict_proba(model, X)
+  set.seed(42)
+  data_sample <- sample(length(y), length(y) * 0.8)
+
+  X_train <- X[data_sample, ]
+  y_train <- y[data_sample]
+  X_test <- X[-data_sample, ]
+  y_test <- y[-data_sample]
+
+  ebm <- ebm_classify(X_train, y_train)
+  proba_test <- ebm_predict_proba(ebm, X_test)
 }

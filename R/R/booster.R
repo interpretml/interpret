@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-ebm_feature_group_c <- function(n_features = 1) {
+ebm_feature_group_c <- function(n_features) {
    n_features <- as.double(n_features)
    ret <- structure(list(n_features = n_features), class = "ebm_feature_group_c")
    return(ret)
@@ -14,8 +14,8 @@ convert_feature_groups_to_c <- function(feature_groups) {
       n_feature_indexes <- n_feature_indexes + length(feature_group$feature_indexes)
    }
 
-   feature_group_indexes <- vector(mode = "list", n_feature_indexes)
-   feature_groups_c <- vector(mode = "list", length(feature_groups))
+   feature_group_indexes <- vector("list", n_feature_indexes)
+   feature_groups_c <- vector("list", length(feature_groups))
    index_indexes <- 1
 
    for (index_feature_group in seq_along(feature_groups)) {
@@ -33,7 +33,7 @@ convert_feature_groups_to_c <- function(feature_groups) {
 
 initialize_boosting_classification <- function(
    random_seed,
-   n_classes, 
+   count_target_classes, 
    features, 
    feature_groups, 
    feature_group_indexes, 
@@ -43,10 +43,10 @@ initialize_boosting_classification <- function(
    validation_binned_data, 
    validation_targets, 
    validation_predictor_scores, 
-   n_inner_bags
+   count_inner_bags
 ) {
    random_seed <- as.integer(random_seed)
-   n_classes <- as.double(n_classes)
+   count_target_classes <- as.double(count_target_classes)
    features <- as.list(features)
    feature_groups <- as.list(feature_groups)
    feature_group_indexes <- as.double(feature_group_indexes)
@@ -60,12 +60,12 @@ initialize_boosting_classification <- function(
    if(!is.null(validation_predictor_scores)) {
       validation_predictor_scores <- as.double(validation_predictor_scores)
    }
-   n_inner_bags <- as.integer(n_inner_bags)
+   count_inner_bags <- as.integer(count_inner_bags)
 
-   ebm_boosting <- .Call(
+   booster_pointer <- .Call(
       InitializeBoostingClassification_R, 
       random_seed,
-      n_classes, 
+      count_target_classes, 
       features, 
       feature_groups, 
       feature_group_indexes, 
@@ -75,12 +75,12 @@ initialize_boosting_classification <- function(
       validation_binned_data, 
       validation_targets, 
       validation_predictor_scores, 
-      n_inner_bags
+      count_inner_bags
    )
-   if(is.null(ebm_boosting)) {
-      stop("Out of memory in InitializeBoostingClassification")
+   if(is.null(booster_pointer)) {
+      stop("Error in InitializeBoostingClassification")
    }
-   return(ebm_boosting)
+   return(booster_pointer)
 }
 
 initialize_boosting_regression <- function(
@@ -94,7 +94,7 @@ initialize_boosting_regression <- function(
    validation_binned_data, 
    validation_targets, 
    validation_predictor_scores, 
-   n_inner_bags
+   count_inner_bags
 ) {
    random_seed <- as.integer(random_seed)
    features <- as.list(features)
@@ -110,9 +110,9 @@ initialize_boosting_regression <- function(
    if(!is.null(validation_predictor_scores)) {
       validation_predictor_scores <- as.double(validation_predictor_scores)
    }
-   n_inner_bags <- as.integer(n_inner_bags)
+   count_inner_bags <- as.integer(count_inner_bags)
 
-   ebm_boosting <- .Call(
+   booster_pointer <- .Call(
       InitializeBoostingRegression_R, 
       random_seed,
       features, 
@@ -124,33 +124,33 @@ initialize_boosting_regression <- function(
       validation_binned_data, 
       validation_targets, 
       validation_predictor_scores, 
-      n_inner_bags
+      count_inner_bags
    )
-   if(is.null(ebm_boosting)) {
-      stop("Out of memory in InitializeBoostingRegression")
+   if(is.null(booster_pointer)) {
+      stop("Error in InitializeBoostingRegression")
    }
-   return(ebm_boosting)
+   return(booster_pointer)
 }
 
-native_ebm_boosting_free <- function(native_ebm_boosting) {
-   .Call(FreeBoosting_R, native_ebm_boosting$booster_pointer)
+free_boosting <- function(booster_pointer) {
+   .Call(FreeBoosting_R, booster_pointer)
    return(NULL)
 }
 
 boosting_step <- function(
-   ebm_boosting, 
+   booster_pointer, 
    index_feature_group, 
    learning_rate, 
-   n_tree_splits_max, 
-   n_samples_required_for_child_split_min, 
+   count_tree_splits_max, 
+   count_samples_required_for_child_split_min, 
    training_weights, 
    validation_weights
 ) {
-   stopifnot(class(ebm_boosting) == "externalptr")
+   stopifnot(class(booster_pointer) == "externalptr")
    index_feature_group <- as.double(index_feature_group)
    learning_rate <- as.double(learning_rate)
-   n_tree_splits_max <- as.double(n_tree_splits_max)
-   n_samples_required_for_child_split_min <- as.double(n_samples_required_for_child_split_min)
+   count_tree_splits_max <- as.double(count_tree_splits_max)
+   count_samples_required_for_child_split_min <- as.double(count_samples_required_for_child_split_min)
    if(!is.null(training_weights)) {
       training_weights <- as.double(training_weights)
    }
@@ -160,11 +160,11 @@ boosting_step <- function(
 
    validation_metric <- .Call(
       BoostingStep_R, 
-      ebm_boosting, 
+      booster_pointer, 
       index_feature_group, 
       learning_rate, 
-      n_tree_splits_max, 
-      n_samples_required_for_child_split_min, 
+      count_tree_splits_max, 
+      count_samples_required_for_child_split_min, 
       training_weights, 
       validation_weights
    )
@@ -174,22 +174,22 @@ boosting_step <- function(
    return(validation_metric)
 }
 
-get_best_model_feature_group <- function(ebm_boosting, index_feature_group) {
-   stopifnot(class(ebm_boosting) == "externalptr")
+get_best_model_feature_group <- function(booster_pointer, index_feature_group) {
+   stopifnot(class(booster_pointer) == "externalptr")
    index_feature_group <- as.double(index_feature_group)
 
-   model_feature_group_tensor <- .Call(GetBestModelFeatureGroup_R, ebm_boosting, index_feature_group)
+   model_feature_group_tensor <- .Call(GetBestModelFeatureGroup_R, booster_pointer, index_feature_group)
    if(is.null(model_feature_group_tensor)) {
       stop("error in GetBestModelFeatureGroup_R")
    }
    return(model_feature_group_tensor)
 }
 
-get_current_model_feature_group <- function(ebm_boosting, index_feature_group) {
-   stopifnot(class(ebm_boosting) == "externalptr")
+get_current_model_feature_group <- function(booster_pointer, index_feature_group) {
+   stopifnot(class(booster_pointer) == "externalptr")
    index_feature_group <- as.double(index_feature_group)
 
-   model_feature_group_tensor <- .Call(GetCurrentModelFeatureGroup_R, ebm_boosting, index_feature_group)
+   model_feature_group_tensor <- .Call(GetCurrentModelFeatureGroup_R, booster_pointer, index_feature_group)
    if(is.null(model_feature_group_tensor)) {
       stop("error in GetCurrentModelFeatureGroup_R")
    }
@@ -223,7 +223,7 @@ native_ebm_boosting <- function(
    X_val,
    y_val,
    scores_val,
-   n_inner_bags,
+   inner_bags,
    random_state
 ) {
    c_structs <- convert_feature_groups_to_c(feature_groups)
@@ -241,7 +241,7 @@ native_ebm_boosting <- function(
          X_val, 
          y_val, 
          scores_val, 
-         n_inner_bags
+         inner_bags
       )
    } else if(model_type == "regression") {
       booster_pointer <- initialize_boosting_regression(
@@ -255,7 +255,7 @@ native_ebm_boosting <- function(
          X_val, 
          y_val, 
          scores_val, 
-         n_inner_bags
+         inner_bags
       )
    } else {
       stop("Unrecognized model_type")
@@ -281,14 +281,14 @@ cyclic_gradient_boost <- function(
    X_val,
    y_val,
    scores_val,
-   n_inner_bags,
+   inner_bags,
    random_state,
    learning_rate,
-   n_tree_splits_max, 
-   n_samples_required_for_child_split_min, 
-   data_n_episodes,
-   early_stopping_run_length
-#   name
+   early_stopping_rounds, 
+   early_stopping_tolerance,
+   max_rounds, 
+   max_leaves,
+   min_samples_leaf
 ) {
    min_metric <- Inf
    episode_index <- 0
@@ -304,21 +304,21 @@ cyclic_gradient_boost <- function(
       X_val,
       y_val,
       scores_val,
-      n_inner_bags,
+      inner_bags,
       random_state
    )
    result_list <- tryCatch({
       no_change_run_length <- 0
       bp_metric <- Inf
 
-      for(episode_index in 1:data_n_episodes) {
+      for(episode_index in 1:max_rounds) {
          for(feature_group_index in seq_along(feature_groups)) {
             validation_metric <- boosting_step(
                ebm_booster$booster_pointer, 
                feature_group_index - 1, 
                learning_rate, 
-               n_tree_splits_max, 
-               n_samples_required_for_child_split_min, 
+               max_leaves - 1, 
+               min_samples_leaf, 
                NULL,
                NULL
             )
@@ -330,13 +330,13 @@ cyclic_gradient_boost <- function(
          if(no_change_run_length == 0) {
             bp_metric <- min_metric
          }
-         if(min_metric < bp_metric) {
+         if(min_metric + early_stopping_tolerance < bp_metric) {
             no_change_run_length <- 0
          } else {
             no_change_run_length <- no_change_run_length + 1
          }
 
-         if(early_stopping_run_length >= 0 && no_change_run_length >= early_stopping_run_length) {
+         if(early_stopping_rounds >= 0 && no_change_run_length >= early_stopping_rounds) {
             break
          }
       }
@@ -345,7 +345,7 @@ cyclic_gradient_boost <- function(
 
       return(list(model_update = model_update, min_metric = min_metric, episode_index = episode_index))
    }, finally = {
-      native_ebm_boosting_free(ebm_booster)
+      free_boosting(ebm_booster$booster_pointer)
    })
    return(result_list)
 }

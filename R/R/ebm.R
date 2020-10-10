@@ -35,9 +35,12 @@ ebm_feature_group <- function(feature_indexes) {
    return(ret)
 }
 
-create_main_feature_groups <- function(features) {
-   feature_groups <- lapply(seq_along(features), function(i) { ebm_feature_group(i) })
-   return(feature_groups)
+get_count_scores_c <- function(n_classes) {
+   if(n_classes <= 2) {
+      return (1)
+   } else {
+      return (n_classes)
+   }
 }
 
 #TODO: implement ebm_regress
@@ -57,83 +60,106 @@ ebm_classify <- function(
    min_samples_leaf = 2,
    random_state = 42
 ) {
-   min_samples_bin = 5
-   humanized = FALSE # TODO this should be it's own binning type 'quantile_humanized' eventually
+   min_samples_bin <- 5
+   humanized <- FALSE # TODO this should be it's own binning type 'quantile_humanized' eventually
 
-   random_state = normalize_initial_random_seed(random_state)
+   stopifnot(nrow(X) == length(y))
+   stopifnot(!any(is.na(X)))
+   stopifnot(!any(is.na(y)))
+   y <- as.logical(y) # for now we just support binary classification
+
+   random_state <- normalize_initial_random_seed(random_state)
    
-   col_names = colnames(X)
-   bin_edges <- vector(mode = "list")
-   for(col_name in col_names) {
-      bin_edges[[col_name]] <- generate_quantile_bin_cuts(random_state, X[[col_name]], min_samples_bin, humanized, max_bins)
-      discretized <- vector(mode = "numeric", length = length(y))
+   col_names <- colnames(X)
+   n_features <- length(col_names)
+   bin_cuts <- vector("list")
+   features <- vector("list")
+   # byrow = FALSE to ensure this matrix is column-major (FORTRAN ordered), which is the fastest memory ordering for us
+   X_binned <- matrix(nrow = nrow(X), ncol = ncol(X), byrow = FALSE)
+   discretized <- vector("numeric", length(y))
+   for(i_feature in 1:n_features) {
+      X_feature <- X[, i_feature] # if our originator X matrix is byrow, pay the transpose cost once
+      feature_bin_cuts <- generate_quantile_bin_cuts(
+         random_state, 
+         X_feature, 
+         min_samples_bin, 
+         humanized, 
+         max_bins
+      )
+      col_name <- col_names[i_feature]
+      bin_cuts[[col_name]] <- feature_bin_cuts
+      features[[col_name]] <- ebm_feature(n_bins = length(feature_bin_cuts) + 1)
       # WARNING: discretized is modified in-place
-      discretize(X[[col_name]], bin_edges[[col_name]], discretized)
-      X[[col_name]] <- discretized
+      discretize(X_feature, feature_bin_cuts, discretized)
+      X_binned[, i_feature] <- discretized
    }
-   features <- lapply(col_names, function(col_name) { ebm_feature(n_bins = length(bin_edges[[col_name]]) + 1) })
-   feature_groups <- create_main_feature_groups(features)
 
-   model <- vector(mode = "list")
+   # create the feature_groups for the mains
+   feature_groups <- lapply(1:n_features, function(i) { ebm_feature_group(i) })
+
+   additive_terms <- vector("list")
    for(col_name in col_names) {
-      model[[col_name]] <- vector(mode = "numeric", length = length(bin_edges[[col_name]]) + 1)
+      additive_terms[[col_name]] <- vector("numeric", length(bin_cuts[[col_name]]) + 1)
    }
 
-   validation_size = ceiling(length(y) * validation_size)
-   seed = random_state
-   is_included <- vector(mode = "logical", length = length(y))
-   for(i in 1:outer_bags) {
-      seed = generate_random_number(seed, 1416147523)
+   seed <- random_state
+   is_included <- vector("logical", length(y))
+
+   n_classes <- 2 # only binary classification for now
+   num_scores <- get_count_scores_c(n_classes)
+
+   validation_size <- ceiling(length(y) * validation_size)
+   train_size <- length(y) - validation_size
+
+   scores_train <- vector("numeric", num_scores * train_size)
+   scores_val <- vector("numeric", num_scores * validation_size)
+
+   for(i_outer_bag in 1:outer_bags) {
+      seed <- generate_random_number(seed, 1416147523)
       # WARNING: is_included is modified in-place
       sampling_without_replacement(seed, validation_size, length(y), is_included)
 
-      X_train = X[!is_included,]
-      y_train = y[!is_included]
-      X_val = X[is_included,]
-      y_val = y[is_included] 
+      X_train <- X_binned[!is_included, ]
+      y_train <- y[!is_included]
+      X_val <- X_binned[is_included, ]
+      y_val <- y[is_included] 
 
-      X_train_vec <- vector(mode = "numeric") # , ncol(X_train) * nrow(X_train)
-      for(col_name in col_names) {
-         X_train_vec[(length(X_train_vec) + 1):(length(X_train_vec) + length(y_train))] <- X_train[[col_name]]
-      }
-
-      X_val_vec <- vector(mode = "numeric") # , ncol(X_val) * nrow(X_val)
-      for(col_name in col_names) {
-         X_val_vec[(length(X_val_vec) + 1):(length(X_val_vec) + length(y_val))] <- X_val[[col_name]]
-      }
-
-      n_classes = 2 # only binary classification for now
-      num_scores <- get_count_scores_c(n_classes)
-      scores_train <- numeric(num_scores * length(y_train))
-      scores_val <- numeric(num_scores * length(y_val))
-
-      result_list = cyclic_gradient_boost(
+      result_list <- cyclic_gradient_boost(
          "classification",
          n_classes,
          features,
          feature_groups,
-         X_train_vec,
+         X_train,
          y_train,
          scores_train,
-         X_val_vec,
+         X_val,
          y_val,
          scores_val,
          inner_bags,
-         random_state,
+         seed,
          learning_rate,
-         max_leaves - 1, 
-         min_samples_leaf, 
+         early_stopping_rounds,
+         early_stopping_tolerance,
          max_rounds,
-         early_stopping_rounds
+         max_leaves, 
+         min_samples_leaf
       )
-      for(j in seq_along(col_names)) {
-         model[[col_names[[j]]]] <- model[[col_names[[j]]]] + result_list$model_update[[j]]
+      for(i_feature in 1:n_features) {
+         additive_terms[[col_names[i_feature]]] <- 
+            additive_terms[[col_names[i_feature]]] + result_list$model_update[[i_feature]]
       }
    }
    for(col_name in col_names) {
-      model[[col_name]] <- model[[col_name]] / outer_bags
+      additive_terms[[col_name]] <- additive_terms[[col_name]] / outer_bags
    }
-   return(list(bin_edges = bin_edges, model = model))
+
+   # TODO PK : we're going to need to modify this structure in the future to handle interaction terms by making
+   #           the additivie_terms by feature_group index instead of by feature name.  And also change the
+   #           bin_cuts to be per-feature_group as well to support stage fitting in the future
+   #           For now though, this is just a simple and nice way to present it since we just support mains
+
+   model <- structure(list(bin_cuts = bin_cuts, additive_terms = additive_terms), class = "ebm_model")
+   return(model)
 }
 
 convert_probability <- function(logit) {
@@ -142,24 +168,16 @@ convert_probability <- function(logit) {
   return(proba)
 }
 
-get_count_scores_c <- function(n_classes) {
-   if(n_classes <= 2) {
-      return (1)
-   } else {
-      return (n_classes)
-   }
-}
-
 ebm_predict_proba <- function (model, X) {
-   col_names = colnames(X)
-   X_binned <- vector(mode = "list") #, ncol(X))
-   for(col_name in col_names) X_binned[[col_name]] <- as.integer(findInterval(X[[col_name]], model$bin_edges[[col_name]]) + 1)
-
-   scores <- vector(mode = "numeric", nrow(X))
+   col_names <- colnames(X)
+   discretized <- vector("numeric", nrow(X))
+   scores <- vector("numeric", nrow(X))
    for(col_name in col_names) {
-      bin_vals <- model$model[[col_name]]
-      bin_indexes <- X_binned[[col_name]]
-      update_scores <- bin_vals[bin_indexes]
+      # WARNING: discretized is modified in-place
+      discretize(X[[col_name]], model$bin_cuts[[col_name]], discretized)
+
+      additive_terms <- model$additive_terms[[col_name]]
+      update_scores <- additive_terms[discretized + 1]
       scores <- scores + update_scores
    }
 

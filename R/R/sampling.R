@@ -15,7 +15,7 @@ sampling_without_replacement <- function(random_seed, count_included, count_samp
    # memory to fill in new samples.  This function is not meant to be used outside of this package
    result <- .Call(SamplingWithoutReplacement_R, random_seed, count_included, count_samples, is_included_out)
    if(is.null(result)) {
-      stop("error in GenerateQuantileBinCuts_R")
+      stop("error in SamplingWithoutReplacement_R")
    }
    return(NULL)
 }
