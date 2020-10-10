@@ -4,13 +4,14 @@
 
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
-from .internal import NativeHelper
+from .internal import NativeHelper, Native
 from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_local_selector
+import ctypes as ct
 
 import numpy as np
 from warnings import warn
@@ -125,7 +126,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
     """ Transformer that preprocesses data to be ready before EBM. """
 
     def __init__(
-        self, feature_names=None, feature_types=None, max_bins=255, binning="quantile",
+        self, feature_names=None, feature_types=None, max_bins=255, binning="quantile", random_state=42,
     ):
         """ Initializes EBM preprocessor.
 
@@ -134,11 +135,13 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             feature_types: Feature types as list, for example "continuous" or "categorical".
             max_bins: Max number of bins to process numeric features.
             binning: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
+            random_state: Random state for quantile binning.
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
         self.max_bins = max_bins
         self.binning = binning
+        self.random_state = random_state
 
     def fit(self, X):
         """ Fits transformer to provided samples.
@@ -165,6 +168,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         self.has_fitted_ = False
 
+        native = Native.get_native_singleton()
         schema = autogen_schema(
             X, feature_names=self.feature_names, feature_types=self.feature_types
         )
@@ -181,30 +185,83 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             if col_info["type"] == "continuous":
                 col_data = col_data.astype(float)
 
-                uniq_vals = set(col_data[~np.isnan(col_data)])
-                if len(uniq_vals) < self.max_bins:
-                    bins = list(sorted(uniq_vals))
-                else:
-                    if self.binning == "uniform":
-                        bins = self.max_bins
-                    elif self.binning == "quantile":
-                        bins = np.unique(
-                            np.quantile(
-                                col_data, q=np.linspace(0, 1, self.max_bins + 1)
-                            )
-                        )
-                    else:  # pragma: no cover
-                        raise ValueError("Unknown binning: '{}'.".format(self.binning))
+                random_state = ct.c_int32(self.random_state)
+                min_samples_bin = 1 # TODO: Expose
+                is_humanized = 0 # TODO: Expose
 
-                bin_counts, bin_edges = np.histogram(col_data, bins=bins)
+                count_bins = ct.c_int64(self.max_bins - 1) # call as ct.byref(count_bins)
+                bin_cuts = np.zeros(self.max_bins - 1, dtype=np.float64, order="C")
+                count_missing = ct.c_int64(0)
+                min_val = ct.c_double(0)
+                count_neg_inf = ct.c_int64(0)
+                max_val = ct.c_double(0)
+                count_inf = ct.c_int64(0)
+
+                if self.binning == "quantile":
+                    _ = native.lib.GenerateQuantileBinCuts(
+                        random_state,
+                        col_data.shape[0],
+                        col_data, 
+                        min_samples_bin,
+                        is_humanized,
+                        ct.byref(count_bins),
+                        bin_cuts,
+                        ct.byref(count_missing),
+                        ct.byref(min_val),
+                        ct.byref(count_neg_inf),
+                        ct.byref(max_val),
+                        ct.byref(count_inf)
+                    )
+
+                elif self.binning == "uniform":
+                    _ = native.lib.GenerateUniformBinCuts(
+                        col_data.shape[0],
+                        col_data, 
+                        ct.byref(count_bins),
+                        bin_cuts,
+                        ct.byref(count_missing),
+                        ct.byref(min_val),
+                        ct.byref(count_neg_inf),
+                        ct.byref(max_val),
+                        ct.byref(count_inf)
+                    )
+
+                bin_cuts = bin_cuts[:count_bins.value]
+                
+                discretized = np.zeros(col_data.shape[0], dtype=np.int64, order="C")
+                _ = native.lib.Discretize(
+                    col_data.shape[0],
+                    col_data,
+                    bin_cuts.shape[0],
+                    bin_cuts,
+                    discretized
+                )
+                _, bin_counts = np.unique(discretized, return_counts=True)
+
+                # uniq_vals = set(col_data[~np.isnan(col_data)])
+                # if len(uniq_vals) < self.max_bins:
+                #     bins = list(sorted(uniq_vals))
+                # else:
+                #     if self.binning == "uniform":
+                #         bins = self.max_bins
+                #     elif self.binning == "quantile":
+                #         bins = np.unique(
+                #             np.quantile(
+                #                 col_data, q=np.linspace(0, 1, self.max_bins + 1)
+                #             )
+                #         )
+                #     else:  # pragma: no cover
+                #         raise ValueError("Unknown binning: '{}'.".format(self.binning))
+
+                # bin_counts, bin_edges = np.histogram(col_data, bins=bins)
+                
+                self.col_bin_counts_[col_idx] = bin_counts
+                self.col_bin_edges_[col_idx] = np.concatenate(([np.min(col_data)],bin_cuts,[np.max(col_data)]))
 
                 hist_counts, hist_edges = np.histogram(col_data, bins="doane")
-                self.col_bin_counts_[col_idx] = bin_counts
-                self.col_bin_edges_[col_idx] = bin_edges
-
                 self.hist_edges_[col_idx] = hist_edges
                 self.hist_counts_[col_idx] = hist_counts
-                self.col_n_bins_[col_idx] = len(bin_edges)
+                self.col_n_bins_[col_idx] = len(bin_cuts) + 1
             elif col_info["type"] == "ordinal":
                 mapping = {val: indx for indx, val in enumerate(col_info["order"])}
                 self.col_mapping_[col_idx] = mapping
@@ -240,6 +297,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         missing_constant = -1
         unknown_constant = -2
 
+        native = Native.get_native_singleton()
         X_new = np.copy(X)
         for col_idx in range(X.shape[1]):
             col_type = self.col_types_[col_idx]
@@ -247,15 +305,26 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
             if col_type == "continuous":
                 col_data = col_data.astype(float)
-                bin_edges = self.col_bin_edges_[col_idx].copy()
+                bin_cuts = self.col_bin_edges_[col_idx][1:-1] # Strip min/max
+                
+                discretized = np.zeros(col_data.shape[0], dtype=np.int64, order="C")
+                _ = native.lib.Discretize(
+                    col_data.shape[0],
+                    col_data,
+                    bin_cuts.shape[0],
+                    bin_cuts,
+                    discretized
+                )
 
-                digitized = np.digitize(col_data, bin_edges, right=False)
-                digitized[digitized == 0] = 1
-                digitized -= 1
+                X_new[:, col_idx] = discretized
+
+                # digitized = np.digitize(col_data, bin_edges, right=False)
+                # digitized[digitized == 0] = 1
+                # digitized -= 1
 
                 # NOTE: NA handling done later.
                 # digitized[np.isnan(col_data)] = missing_constant
-                X_new[:, col_idx] = digitized
+                # X_new[:, col_idx] = digitized
             elif col_type == "ordinal":
                 mapping = self.col_mapping_[col_idx]
                 mapping[np.nan] = missing_constant
