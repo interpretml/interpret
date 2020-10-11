@@ -70,8 +70,12 @@ ebm_classify <- function(
 
    random_state <- normalize_initial_random_seed(random_state)
    
+   n_features <- ncol(X)
    col_names <- colnames(X)
-   n_features <- length(col_names)
+   if(is.null(col_names)) {
+      col_names <- 1:n_features
+   }
+
    bin_cuts <- vector("list")
    features <- vector("list")
    # byrow = FALSE to ensure this matrix is column-major (FORTRAN ordered), which is the fastest memory ordering for us
@@ -169,12 +173,21 @@ convert_probability <- function(logit) {
 }
 
 ebm_predict_proba <- function (model, X) {
+
+   n_features <- ncol(X)
    col_names <- colnames(X)
+   if(is.null(col_names)) {
+      col_names <- 1:n_features
+   }
+
    discretized <- vector("numeric", nrow(X))
    scores <- vector("numeric", nrow(X))
-   for(col_name in col_names) {
+   for(i_feature in 1:n_features) {
+      col_name <- col_names[[i_feature]]
+      X_feature <- X[, i_feature]
+
       # WARNING: discretized is modified in-place
-      discretize(X[[col_name]], model$bin_cuts[[col_name]], discretized)
+      discretize(X_feature, model$bin_cuts[[col_name]], discretized)
 
       additive_terms <- model$additive_terms[[col_name]]
       update_scores <- additive_terms[discretized + 1]
