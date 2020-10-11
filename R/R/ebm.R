@@ -18,6 +18,7 @@
 
 # we can test our package against many different systems with:
 # https://builder.r-hub.io
+# In particular, the "Oracle Developer Studio 12.6" is worth testing as that C++ compiler is picky, and CRAN tests it
 
 # S3 data structures
 
@@ -196,4 +197,32 @@ ebm_predict_proba <- function (model, X) {
 
    probabilities <- convert_probability(scores)
    return(probabilities)
+}
+
+ebm_show <- function (model, name) {
+   bin_cuts <- model$bin_cuts[[name]]
+   additive_terms <- model$additive_terms[[name]]
+
+   if(0 == length(bin_cuts)) {
+      # plot seems to overflow if the values are higher
+      low_val <- -1e307
+      high_val <- 1e307
+   } else if(1 == length(bin_cuts)) {
+      if(0 == bin_cuts[1]) {
+         low_val <- -1
+         high_val <- 1
+      } else {
+         low_val <- bin_cuts[1] * 0.9
+         high_val <- bin_cuts[1] * 1.1
+      }
+   } else {
+      dist <- 0.1 * (bin_cuts[length(bin_cuts)] - bin_cuts[1])
+      low_val <- bin_cuts[1] - dist
+      high_val <- bin_cuts[length(bin_cuts)] + dist
+   }
+
+   x <- append(append(low_val, rep(bin_cuts, each = 2)), high_val)
+   y <- rep(additive_terms, each = 2)
+
+   graphics::plot(x, y, type = "l", lty = 1, main = name, xlab="", ylab="score")
 }

@@ -35,6 +35,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "man", "man", "{B695C21B-DB5
 	ProjectSection(SolutionItems) = preProject
 		..\..\R\man\ebm_classify.Rd = ..\..\R\man\ebm_classify.Rd
 		..\..\R\man\ebm_predict_proba.Rd = ..\..\R\man\ebm_predict_proba.Rd
+		..\..\R\man\ebm_show.Rd = ..\..\R\man\ebm_show.Rd
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{71DB2E08-9023-4AB7-9961-C4635B88C1B8}"

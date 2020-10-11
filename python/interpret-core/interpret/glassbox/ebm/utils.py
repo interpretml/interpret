@@ -34,9 +34,9 @@ class EBMUtils:
         # https://torstencurdt.com/tech/posts/modulo-of-negative-numbers
 
         if 2147483647 <= seed:
-            seed = seed % 2147483647
+            return seed % 2147483647
         if seed <= -2147483647:
-            seed = -((-seed) % 2147483647)
+            return -((-seed) % 2147483647)
         return seed
 
     # NOTE: Interval / cut conversions are future work. Not registered for code coverage.

@@ -41,6 +41,7 @@ struct HistogramBucketVectorEntry<true> final : HistogramBucketVectorEntryBase {
    // classification version of the HistogramBucketVectorEntry class
 
 #ifndef __SUNPRO_CC
+
    // the Oracle Developer Studio compiler has what I think is a bug by making any class that includes 
    // HistogramBucketVectorEntry fields turn into non-trivial classes, so exclude the Oracle compiler
    // from these protections
@@ -49,7 +50,8 @@ struct HistogramBucketVectorEntry<true> final : HistogramBucketVectorEntryBase {
    ~HistogramBucketVectorEntry() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
-#endif //__SUNPRO_CC
+
+#endif // __SUNPRO_CC
 
    FloatEbmType m_sumResidualError;
    // TODO: for single features, we probably want to just do a single pass of the data and collect our m_sumDenominator during that sweep.  This is probably 
@@ -98,6 +100,7 @@ struct HistogramBucketVectorEntry<false> final : HistogramBucketVectorEntryBase 
    // regression version of the HistogramBucketVectorEntry class
 
 #ifndef __SUNPRO_CC
+
    // the Oracle Developer Studio compiler has what I think is a bug by making any class that includes 
    // HistogramBucketVectorEntry fields turn into non-trivial classes, so exclude the Oracle compiler
    // from these protections
@@ -107,7 +110,7 @@ struct HistogramBucketVectorEntry<false> final : HistogramBucketVectorEntryBase 
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-#endif //__SUNPRO_CC
+#endif // __SUNPRO_CC
 
    FloatEbmType m_sumResidualError;
 

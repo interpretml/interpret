@@ -77,7 +77,7 @@ struct TreeNodeData<true> {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-#endif __SUNPRO_CC
+#endif // __SUNPRO_CC
 
       // we can save precious L1 cache space by keeping only what we need
       BeforeExaminationForPossibleSplitting m_beforeExaminationForPossibleSplitting;
@@ -242,6 +242,7 @@ struct TreeNodeData<false> {
    union TreeNodeDataUnion final {
 
 #ifndef __SUNPRO_CC
+
       // the Oracle Developer Studio compiler has what I think is a bug by making any class that includes 
       // TreeNodeDataUnion fields turn into non-trivial classes, so exclude the Oracle compiler
       // from these protections
