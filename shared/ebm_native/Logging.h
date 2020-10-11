@@ -68,7 +68,7 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
       static_assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG_0(traceLevel, pLogMessage, ...)"); \
       static_assert(LOG__traceLevel <= TraceLevelVerbose, "traceLevel can't be higher than TraceLevelVerbose for call to LOG_0(traceLevel, pLogMessage, ...)"); \
       if(UNLIKELY(LOG__traceLevel <= g_traceLevel)) { \
-         constexpr static char LOG__originalMessage[] = (pLogMessage); \
+         constexpr static char LOG__originalMessage[] = pLogMessage; \
          InteralLogWithoutArguments(LOG__traceLevel, LOG__originalMessage); \
       } \
    } while(AlwaysFalse())
@@ -80,7 +80,7 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
       static_assert(LOG__traceLevel <= TraceLevelVerbose, \
          "traceLevel can't be higher than TraceLevelVerbose for call to LOG_N(traceLevel, pLogMessage, ...)"); \
       if(UNLIKELY(LOG__traceLevel <= g_traceLevel)) { \
-         constexpr static char LOG__originalMessage[] = (pLogMessage); \
+         constexpr static char LOG__originalMessage[] = pLogMessage; \
          InteralLogWithArguments(LOG__traceLevel, LOG__originalMessage, __VA_ARGS__); \
       } \
    } while(AlwaysFalse())
@@ -114,7 +114,7 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
             } else { \
                LOG__traceLevelLogging = LOG__traceLevelAfter; \
             }\
-            constexpr static char LOG__originalMessage[] = (pLogMessage); \
+            constexpr static char LOG__originalMessage[] = pLogMessage; \
             InteralLogWithoutArguments(LOG__traceLevelLogging, LOG__originalMessage); \
          } while(false); \
       } \
@@ -149,7 +149,7 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
             } else { \
                LOG__traceLevelLogging = LOG__traceLevelAfter; \
             }\
-            constexpr static char LOG__originalMessage[] = (pLogMessage); \
+            constexpr static char LOG__originalMessage[] = pLogMessage; \
             InteralLogWithArguments(LOG__traceLevelLogging, LOG__originalMessage, __VA_ARGS__); \
          } while(false); \
       } \
