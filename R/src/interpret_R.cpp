@@ -1264,13 +1264,14 @@ SEXP GetBestModelFeatureGroup_R(
 
    FloatEbmType * pModelFeatureGroupTensor = GetBestModelFeatureGroup(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureGroup);
    if(nullptr == pModelFeatureGroupTensor) {
+      LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
+
       // if nullptr == pModelFeatureGroupTensor then either:
       //    1) m_cFeatureGroups was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
       //       indexFeatureGroup, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), 
       //       which is legal, which we need to handle here
       SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
-      LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
       return ret;
    }
    size_t cValues = GetVectorLength(pEbmBoosting->GetRuntimeLearningTypeOrCountTargetClasses());
@@ -1331,13 +1332,14 @@ SEXP GetCurrentModelFeatureGroup_R(
 
    FloatEbmType * pModelFeatureGroupTensor = GetCurrentModelFeatureGroup(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureGroup);
    if(nullptr == pModelFeatureGroupTensor) {
+      LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
+
       // if nullptr == pModelFeatureGroupTensor then either:
       //    1) m_cFeatureGroups was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
       //       indexFeatureGroup, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, 
       //       which we need to handle here
       SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
-      LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
       return ret;
    }
    size_t cValues = GetVectorLength(pEbmBoosting->GetRuntimeLearningTypeOrCountTargetClasses());
