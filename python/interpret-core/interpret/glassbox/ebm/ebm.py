@@ -189,7 +189,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 min_samples_bin = 1 # TODO: Expose
                 is_humanized = 0 # TODO: Expose
 
-                count_bins = ct.c_int64(self.max_bins - 1) # call as ct.byref(count_bins)
+                count_bins = ct.c_int64(self.max_bins - 1)
                 bin_cuts = np.zeros(self.max_bins - 1, dtype=np.float64, order="C")
                 count_missing = ct.c_int64(0)
                 min_val = ct.c_double(0)
@@ -237,23 +237,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     discretized
                 )
                 _, bin_counts = np.unique(discretized, return_counts=True)
-
-                # uniq_vals = set(col_data[~np.isnan(col_data)])
-                # if len(uniq_vals) < self.max_bins:
-                #     bins = list(sorted(uniq_vals))
-                # else:
-                #     if self.binning == "uniform":
-                #         bins = self.max_bins
-                #     elif self.binning == "quantile":
-                #         bins = np.unique(
-                #             np.quantile(
-                #                 col_data, q=np.linspace(0, 1, self.max_bins + 1)
-                #             )
-                #         )
-                #     else:  # pragma: no cover
-                #         raise ValueError("Unknown binning: '{}'.".format(self.binning))
-
-                # bin_counts, bin_edges = np.histogram(col_data, bins=bins)
                 
                 self.col_bin_counts_[col_idx] = bin_counts
                 self.col_bin_edges_[col_idx] = np.concatenate(([np.min(col_data)],bin_cuts,[np.max(col_data)]))
@@ -318,13 +301,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
                 X_new[:, col_idx] = discretized
 
-                # digitized = np.digitize(col_data, bin_edges, right=False)
-                # digitized[digitized == 0] = 1
-                # digitized -= 1
-
-                # NOTE: NA handling done later.
-                # digitized[np.isnan(col_data)] = missing_constant
-                # X_new[:, col_idx] = digitized
             elif col_type == "ordinal":
                 mapping = self.col_mapping_[col_idx]
                 mapping[np.nan] = missing_constant
@@ -765,6 +741,7 @@ class BaseEBM(BaseEstimator):
             feature_types=self.feature_types,
             max_bins=self.max_bins,
             binning=self.binning,
+            random_state=self.random_state,
         )
         self.preprocessor_.fit(X)
 
