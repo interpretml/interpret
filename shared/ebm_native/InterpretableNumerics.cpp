@@ -320,7 +320,7 @@ static bool StringToFloatChopped(
       size_t { 2 } : iTruncateMantissaTextDigitsAfterFirstDigit + size_t { 3 };
 
    memcpy(strTruncated, pStr, iTruncateTextAfter * sizeof(*pStr));
-   strcpy(&strTruncated[iTruncateTextAfter], &pStr[k_iExp]);
+   strcpy_NO_WARNINGS(&strTruncated[iTruncateTextAfter], &pStr[k_iExp]);
 
    if(PREDICTABLE(nullptr != pLowChopOut)) {
       *pLowChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);
@@ -985,9 +985,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBou
          lowestBinCut = highestBinCut;
          highestBinCut = tmp;
       }
-
-      lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
-      highGraphBound = std::numeric_limits<FloatEbmType>::max();
 
       const FloatEbmType scaleMin = highestBinCut - lowestBinCut;
       // scaleMin can be +infinity if highestBinCut is max and lowestBinCut is lowest.  We can handle it.

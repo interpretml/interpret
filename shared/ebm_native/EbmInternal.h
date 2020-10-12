@@ -150,6 +150,11 @@
 INLINE_ALWAYS void StopClangAnalysis() ANALYZER_NORETURN {
 }
 
+INLINE_RELEASE_UNTEMPLATED char * strcpy_NO_WARNINGS(char * dest, const char * src) {
+   StopClangAnalysis();
+   return strcpy(dest, src);
+}
+
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type 
 //   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  
 //   Perhaps take the sqrt of the minimal change from 1?

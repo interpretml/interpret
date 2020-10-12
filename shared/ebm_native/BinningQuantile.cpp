@@ -3011,7 +3011,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      // the cut in the middle and only make the low/high decision to settle long-ish ranges
                      // in the center
 
-                     const FloatEbmType * pCut = pCuttingRange->m_pCuttableValuesFirst;
                      const size_t cCuttableItems = pCuttingRange->m_cCuttableValues;
                         
                      const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - aFeatureValues;
@@ -3068,7 +3067,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                            }
                         }
                      }
-                     pCut = aFeatureValues + iResult;
+                     const FloatEbmType * pCut = aFeatureValues + iResult;
                      EBM_ASSERT(aFeatureValues < pCut);
                      *ppValueCutTop = pCut;
                      ++ppValueCutTop;
