@@ -153,13 +153,18 @@ class EBMUtils:
         return features
 
     @staticmethod
-    def scores_by_feature_group(X, feature_groups, model):
+    def scores_by_feature_group(X, X_pair, feature_groups, model):
         for set_idx, feature_group in enumerate(feature_groups):
             tensor = model[set_idx]
 
             # Get the current column(s) to process
             feature_idxs = feature_group
-            sliced_X = X[feature_idxs, :]
+
+            if X_pair is not None:
+                sliced_X = X[feature_idxs, :] if len(feature_group) == 1 else X_pair[feature_idxs, :]
+            else:
+                sliced_X = X[feature_idxs, :]
+
 
             # Log and re-assign negative indexes to prevent slice failure
             unknowns = (sliced_X < 0)
@@ -190,21 +195,12 @@ class EBMUtils:
 
         np.copyto(score_vector, intercept)
 
-        # Main effect scores
+        # Generate prediction scores
         scores_gen = EBMUtils.scores_by_feature_group(
-            X, feature_groups, model
+            X, X_pair, feature_groups, model
         )
         for _, _, scores in scores_gen:
             score_vector += scores
-
-        # if X_pair is not None:
-        # # Pairwise Interaction scores
-        # scores_gen = EBMUtils.scores_by_feature_group(
-        #     X, feature_groups, model
-        # )
-        # for _, _, scores in scores_gen:
-        #     score_vector += scores
-
 
         if not np.all(np.isfinite(score_vector)):  # pragma: no cover
             msg = "Non-finite values present in log odds vector."
