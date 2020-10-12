@@ -683,6 +683,7 @@ class BaseEBM(BaseEstimator):
         # Preprocessor
         binning,
         max_bins,
+        max_interaction_bins,
     ):
         # NOTE: Per scikit-learn convention, we shouldn't attempt to sanity check these inputs here.  We just
         #       Store these values for future use.  Validate inputs in the fit or other functions.  More details in:
@@ -716,6 +717,7 @@ class BaseEBM(BaseEstimator):
         # Arguments for preprocessor
         self.binning = binning
         self.max_bins = max_bins
+        self.max_interaction_bins = max_interaction_bins
 
     def fit(self, X, y):  # noqa: C901
         """ Fits model to provided samples.
@@ -767,7 +769,7 @@ class BaseEBM(BaseEstimator):
         self.pair_preprocessor_ = EBMPreprocessor(
             feature_names=self.feature_names,
             feature_types=self.feature_types,
-            max_bins=32, # TODO: Expose
+            max_bins=self.max_interaction_bins,
             binning=self.binning,
             random_state=self.random_state,
         )
@@ -1448,6 +1450,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         feature_types=None,
         # Preprocessor
         max_bins=255,
+        max_interaction_bins=32,
         binning="quantile",
         # Stages
         mains="all",
@@ -1474,6 +1477,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
+            max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
             binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
@@ -1496,6 +1500,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             feature_types=feature_types,
             # Preprocessor
             max_bins=max_bins,
+            max_interaction_bins=max_interaction_bins,
             binning=binning,
             # Stages
             mains=mains,
@@ -1593,6 +1598,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         feature_types=None,
         # Preprocessor
         max_bins=255,
+        max_interaction_bins=32,
         binning="quantile",
         # Stages
         mains="all",
@@ -1618,7 +1624,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            max_bins: Max number of bins per feature for pre-processing stage.
+            max_bins: Max number of bins per feature for pre-processing stage on main effects.
+            max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
             binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
@@ -1641,6 +1648,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             feature_types=feature_types,
             # Preprocessor
             max_bins=max_bins,
+            max_interaction_bins=max_interaction_bins,
             binning=binning,
             # Stages
             mains=mains,
