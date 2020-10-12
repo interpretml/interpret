@@ -1259,8 +1259,8 @@ class BaseEBM(BaseEstimator):
 
                 data_dicts.append(data_dict)
             elif len(feature_indexes) == 2:
-                bin_labels_left = self.preprocessor_.get_bin_labels(feature_indexes[0])
-                bin_labels_right = self.preprocessor_.get_bin_labels(feature_indexes[1])
+                bin_labels_left = self.pair_preprocessor_.get_bin_labels(feature_indexes[0])
+                bin_labels_right = self.pair_preprocessor_.get_bin_labels(feature_indexes[1])
 
                 feature_dict = {
                     "type": "pairwise",
