@@ -417,13 +417,21 @@ class BaseCoreEBM:
         # Arguments for overall
         self.random_state = random_state
 
-    def fit_parallel(self, X, y, n_classes):
+    def fit_parallel(self, X, y, X_pair, n_classes):
         self.n_classes_ = n_classes
 
         # Split data into train/val
 
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
             X,
+            y,
+            test_size=self.validation_size,
+            random_state=self.random_state,
+            is_classification=self.model_type == "classification",
+        )
+
+        X_pair_train, X_pair_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+            X_pair,
             y,
             test_size=self.validation_size,
             random_state=self.random_state,
@@ -462,13 +470,13 @@ class BaseCoreEBM:
 
         # Build interaction terms, if required
         self.inter_indices_, self.inter_scores_ = self._build_interactions(
-            X_train, y_train
+            X_train, y_train, X_pair_train
         )
 
         self.inter_episode_idx_ = 0
         if len(self.inter_indices_) != 0:
             self._staged_fit_interactions(
-                X_train, y_train, X_val, y_val, self.inter_indices_
+                X_train, y_train, X_val, y_val, X_pair_train, X_pair_val, self.inter_indices_
             )
 
         return self
@@ -506,12 +514,12 @@ class BaseCoreEBM:
 
         return
 
-    def _build_interactions(self, X_train, y_train):
+    def _build_interactions(self, X_train, y_train, X_pair):
         if isinstance(self.interactions, int) and self.interactions != 0:
             log.info("Estimating with FAST")
 
             scores_train = EBMUtils.decision_function(
-                X_train, self.feature_groups_, self.model_, self.intercept_
+                X_train, X_pair, self.feature_groups_, self.model_, self.intercept_
             )
 
             iter_feature_groups = combinations(range(len(self.col_types)), 2)
@@ -539,16 +547,16 @@ class BaseCoreEBM:
         return final_indices, final_scores
 
     def _staged_fit_interactions(
-        self, X_train, y_train, X_val, y_val, inter_indices=[]
+        self, X_train, y_train, X_val, y_val, X_pair_train, X_pair_val, inter_indices=[]
     ):
 
         log.info("Training interactions")
 
         scores_train = EBMUtils.decision_function(
-            X_train, self.feature_groups_, self.model_, self.intercept_
+            X_train, X_pair_train, self.feature_groups_, self.model_, self.intercept_
         )
         scores_val = EBMUtils.decision_function(
-            X_val, self.feature_groups_, self.model_, self.intercept_
+            X_val, X_pair_val, self.feature_groups_, self.model_, self.intercept_
         )
 
         (
@@ -560,10 +568,10 @@ class BaseCoreEBM:
             n_classes=self.n_classes_,
             features=self.features_,
             feature_groups=inter_indices,
-            X_train=X_train,
+            X_train=X_pair_train,
             y_train=y_train,
             scores_train=scores_train,
-            X_val=X_val,
+            X_val=X_pair_val,
             y_val=y_val,
             scores_val=scores_val,
             n_inner_bags=self.inner_bags,
@@ -582,7 +590,7 @@ class BaseCoreEBM:
 
         return
 
-    def staged_fit_interactions_parallel(self, X, y, inter_indices=[]):
+    def staged_fit_interactions_parallel(self, X, y, X_pair, inter_indices=[]):
 
         log.info("Splitting train/test for interactions")
 
@@ -598,7 +606,15 @@ class BaseCoreEBM:
             is_classification=self.model_type == "classification",
         )
 
-        self._staged_fit_interactions(X_train, y_train, X_val, y_val, inter_indices)
+        X_pair_train, X_pair_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+            X_pair,
+            y,
+            test_size=self.validation_size,
+            random_state=self.random_state,
+            is_classification=self.model_type == "classification",
+        )
+
+        self._staged_fit_interactions(X_train, y_train, X_val, y_val, X_pair_train, X_pair_val, inter_indices)
         return self
 
 
@@ -745,8 +761,18 @@ class BaseEBM(BaseEstimator):
         )
         self.preprocessor_.fit(X)
 
+        self.pair_preprocessor_ = EBMPreprocessor(
+            feature_names=self.feature_names,
+            feature_types=self.feature_types,
+            max_bins=32, # TODO: Expose
+            binning=self.binning,
+            random_state=self.random_state,
+        )
+        self.pair_preprocessor_.fit(X)
+
         X_orig = X
         X = self.preprocessor_.transform(X)
+        X_pair = self.pair_preprocessor_.transform(X)
 
         estimators = []
         seed = EBMUtils.normalize_initial_random_seed(self.random_state)
@@ -826,18 +852,18 @@ class BaseEBM(BaseEstimator):
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
-        def train_model(estimator, X, y, n_classes):
-            return estimator.fit_parallel(X, y, n_classes)
+        def train_model(estimator, X, y, X_pair, n_classes):
+            return estimator.fit_parallel(X, y, X_pair, n_classes)
 
         train_model_args_iter = (
-            (estimators[i], X, y, n_classes) for i in range(self.outer_bags)
+            (estimators[i], X, y, X_pair, n_classes) for i in range(self.outer_bags)
         )
 
         estimators = provider.parallel(train_model, train_model_args_iter)
 
         if isinstance(self.interactions, int) and self.interactions > 0:
             # Select merged pairs
-            pair_indices = self._select_merged_pairs(estimators, X, y)
+            pair_indices = self._select_merged_pairs(estimators, X, y, X_pair)
 
             for estimator in estimators:
                 # Discard initial interactions
@@ -854,13 +880,13 @@ class BaseEBM(BaseEstimator):
 
             if len(pair_indices) != 0:
                 # Retrain interactions for base models
-                def staged_fit_fn(estimator, X, y, inter_indices=[]):
+                def staged_fit_fn(estimator, X, y, X_pair, inter_indices=[]):
                     return estimator.staged_fit_interactions_parallel(
-                        X, y, inter_indices
+                        X, y, X_pair, inter_indices
                     )
 
                 staged_fit_args_iter = (
-                    (estimators[i], X, y, pair_indices) for i in range(self.outer_bags)
+                    (estimators[i], X, y, X_pair, pair_indices) for i in range(self.outer_bags)
                 )
 
                 estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
@@ -947,7 +973,7 @@ class BaseEBM(BaseEstimator):
         else:
             # Postprocess model graphs for multiclass
             binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
-                x, self.feature_groups_, self.additive_terms_, self.intercept_
+                x, None, self.feature_groups_, self.additive_terms_, self.intercept_
             )
 
             postprocessed = multiclass_postprocess(
@@ -974,7 +1000,7 @@ class BaseEBM(BaseEstimator):
         self.has_fitted_ = True
         return self
 
-    def _select_merged_pairs(self, estimators, X, y):
+    def _select_merged_pairs(self, estimators, X, y, X_pair):
         # TODO PK we really need to use purification before here because it's not really legal to elminate
         #         a feature group unless it's average contribution value is zero, and for a pair that
         #         would mean that the intercepts for both features in the group were zero, hense purified
@@ -983,14 +1009,14 @@ class BaseEBM(BaseEstimator):
         def score_fn(model_type, X, y, feature_groups, model, intercept):
             if model_type == "classification":
                 prob = EBMUtils.classifier_predict_proba(
-                    X, feature_groups, model, intercept
+                    X, X_pair, feature_groups, model, intercept
                 )
                 return (
                     0 if len(y) == 0 else log_loss(y, prob)
                 )  # use logloss to conform consistnetly and for multiclass
             elif model_type == "regression":
                 pred = EBMUtils.regressor_predict(
-                    X, feature_groups, model, intercept
+                    X, X_pair, feature_groups, model, intercept
                 )
                 return 0 if len(y) == 0 else mean_squared_error(y, pred)
             else:  # pragma: no cover
@@ -1028,13 +1054,22 @@ class BaseEBM(BaseEstimator):
                 is_train=False,
             )
 
+            _, X_pair_val, _, y_val = EBMUtils.ebm_train_test_split(
+                X_pair,
+                y,
+                test_size=self.validation_size,
+                random_state=estimator.random_state,
+                is_classification=is_classifier(self),
+                is_train=False,
+            )
+
             n_base_feature_groups = len(estimator.feature_groups_) - len(
                 estimator.inter_indices_
             )
 
             base_forward_score = score_fn(
                 estimator.model_type,
-                X_val,
+                X_pair_val,
                 y_val,
                 estimator.feature_groups_[:n_base_feature_groups],
                 estimator.model_[:n_base_feature_groups],
@@ -1042,7 +1077,7 @@ class BaseEBM(BaseEstimator):
             )
             base_backward_score = score_fn(
                 estimator.model_type,
-                X_val,
+                X_pair_val,
                 y_val,
                 estimator.feature_groups_,
                 estimator.model_,
@@ -1055,7 +1090,7 @@ class BaseEBM(BaseEstimator):
 
                 backward_score = score_fn(
                     estimator.model_type,
-                    X_val,
+                    X_pair_val,
                     y_val,
                     estimator.feature_groups_[:n_full_idx]
                     + estimator.feature_groups_[n_full_idx + 1 :],
@@ -1064,7 +1099,7 @@ class BaseEBM(BaseEstimator):
                 )
                 forward_score = score_fn(
                     estimator.model_type,
-                    X_val,
+                    X_pair_val,
                     y_val,
                     estimator.feature_groups_[:n_base_feature_groups]
                     + estimator.feature_groups_[n_full_idx : n_full_idx + 1],
@@ -1288,8 +1323,10 @@ class BaseEBM(BaseEstimator):
             y = np.array([self._class_idx_[el] for el in y])
 
         samples = self.preprocessor_.transform(X)
-
         samples = np.ascontiguousarray(samples.T)
+
+        pair_samples = self.pair_preprocessor_.transform(X)
+        pair_samples = np.ascontiguousarray(samples.T)
 
         scores_gen = EBMUtils.scores_by_feature_group(
             samples, self.feature_groups_, self.additive_terms_
@@ -1335,11 +1372,11 @@ class BaseEBM(BaseEstimator):
         is_classification = is_classifier(self)
         if is_classification:
             scores = EBMUtils.classifier_predict_proba(
-                samples, self.feature_groups_, self.additive_terms_, self.intercept_,
+                samples, pair_samples, self.feature_groups_, self.additive_terms_, self.intercept_,
             )
         else:
             scores = EBMUtils.regressor_predict(
-                samples, self.feature_groups_, self.additive_terms_, self.intercept_,
+                samples, pair_samples, self.feature_groups_, self.additive_terms_, self.intercept_,
             )
 
         perf_list = []
@@ -1480,13 +1517,15 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
+        X = np.ascontiguousarray(X.T)
+
+        X_pair = self.pair_preprocessor_.transform(X)
+        X_pair = np.ascontiguousarray(X_pair.T)
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
-        X = np.ascontiguousarray(X.T)
-
         prob = EBMUtils.classifier_predict_proba(
-            X, self.feature_groups_, self.additive_terms_, self.intercept_
+            X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
         )
         return prob
 
@@ -1502,13 +1541,16 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
+        X = np.ascontiguousarray(X.T)
+
+        X_pair = self.pair_preprocessor_.transform(X)
+        X_pair = np.ascontiguousarray(X_pair.T)
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
-        X = np.ascontiguousarray(X.T)
-
         return EBMUtils.classifier_predict(
             X,
+            X_pair,
             self.feature_groups_,
             self.additive_terms_,
             self.intercept_,
@@ -1613,11 +1655,13 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
+        X_pair = self.pair_preprocessor_.transform(X)
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
         X = np.ascontiguousarray(X.T)
+        X_pair = np.ascontiguousarray(X_pair.T)
 
         return EBMUtils.regressor_predict(
-            X, self.feature_groups_, self.additive_terms_, self.intercept_
+            X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
         )

@@ -158,7 +158,7 @@ def test_ebm_synthetic_pairwise():
         X, y, test_size=0.20, random_state=seed
     )
 
-    clf = ExplainableBoostingClassifier(interactions=1)
+    clf = ExplainableBoostingClassifier(n_jobs=1, outer_bags=1, interactions=1)
     clf.fit(X_train, y_train)
 
     clf_global = clf.explain_global()
