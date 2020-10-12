@@ -12,6 +12,11 @@
 
 #ifdef __cplusplus
 extern "C" {
+#define EBM_CAST(MY_TYPE, MY_VAL) (static_cast<MY_TYPE>(MY_VAL))
+#else // __cplusplus
+// this EBM_CAST macro helps us avoid "old-style cast" compiler warnings when compiling in C++
+// using this gives our constants types, but also preserves the ability to use the constants in switch case statements
+#define EBM_CAST(MY_TYPE, MY_VAL) ((MY_TYPE)(MY_VAL))
 #endif // __cplusplus
 
 //#define EXPAND_BINARY_LOGITS
@@ -111,11 +116,11 @@ typedef uint64_t UIntEbmType;
 typedef int32_t SeedEbmType;
 #define SeedEbmTypePrintf PRId32
 
-#define EBM_FALSE          ((IntEbmType)0)
-#define EBM_TRUE           ((IntEbmType)1)
+#define EBM_FALSE          (EBM_CAST(IntEbmType, 0))
+#define EBM_TRUE           (EBM_CAST(IntEbmType, 1))
 
-#define FeatureTypeOrdinal ((IntEbmType)0)
-#define FeatureTypeNominal ((IntEbmType)1)
+#define FeatureTypeOrdinal (EBM_CAST(IntEbmType, 0))
+#define FeatureTypeNominal (EBM_CAST(IntEbmType, 1))
 
 typedef struct _EbmNativeFeature {
    // enums and bools aren't standardized accross languages, so use IntEbmType values
@@ -134,15 +139,15 @@ typedef int32_t TraceEbmType;
 #define TraceEbmTypePrintf PRId32
 
  // no messages will be output
-#define TraceLevelOff      ((TraceEbmType)0)
+#define TraceLevelOff      (EBM_CAST(TraceEbmType, 0))
 // invalid inputs to the C library or assert failure before exit
-#define TraceLevelError    ((TraceEbmType)1)
+#define TraceLevelError    (EBM_CAST(TraceEbmType, 1))
 // out of memory or other conditions we can't continue after
-#define TraceLevelWarning  ((TraceEbmType)2)
+#define TraceLevelWarning  (EBM_CAST(TraceEbmType, 2))
 // odd inputs like features with 1 value or empty feature groups
-#define TraceLevelInfo     ((TraceEbmType)3)
+#define TraceLevelInfo     (EBM_CAST(TraceEbmType, 3))
 // function calls, logging that helps us trace execution in the library
-#define TraceLevelVerbose  ((TraceEbmType)4)
+#define TraceLevelVerbose  (EBM_CAST(TraceEbmType, 4))
 
 // all our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_NATIVE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(TraceEbmType traceLevel, const char * message);

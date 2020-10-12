@@ -237,7 +237,8 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
 
    ++pch;
    char * endptr = pch; // set it to the error value so that even if the function doesn't set it we get an error
-   strtol(pch, &endptr, 10);
+   // we use endptr to detect failure, so ignore the return value.  Use the (void)! trick to eliminate WARNINGs
+   (void)! strtol(pch, &endptr, 10);
    if(endptr <= pch) {
       return true;
    }
