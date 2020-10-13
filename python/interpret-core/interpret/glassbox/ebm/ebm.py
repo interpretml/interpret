@@ -434,18 +434,21 @@ class BaseCoreEBM:
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
-
-        X_pair_train, X_pair_val, y_train, y_val = EBMUtils.ebm_train_test_split(
-            X_pair,
-            y,
-            test_size=self.validation_size,
-            random_state=self.random_state,
-            is_classification=self.model_type == "classification",
-        )
-
-        # Define features
         self.features_ = EBMUtils.gen_features(self.col_types, self.col_n_bins)
-        self.pair_features_ = EBMUtils.gen_features(self.col_types, self.pair_col_n_bins)
+
+        if X_pair is not None:
+            X_pair_train, X_pair_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+                X_pair,
+                y,
+                test_size=self.validation_size,
+                random_state=self.random_state,
+                is_classification=self.model_type == "classification",
+            )
+            self.pair_features_ = EBMUtils.gen_features(self.col_types, self.pair_col_n_bins)
+        else:
+            X_pair_train, X_pair_val = None, None
+            self.pair_features_ = None
+              
         # Build EBM allocation code
 
         # scikit-learn returns an np.array for classification and
@@ -768,19 +771,22 @@ class BaseEBM(BaseEstimator):
             random_state=self.random_state,
         )
         self.preprocessor_.fit(X)
-
-        self.pair_preprocessor_ = EBMPreprocessor(
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
-            max_bins=self.max_interaction_bins,
-            binning=self.binning,
-            random_state=self.random_state,
-        )
-        self.pair_preprocessor_.fit(X)
-
         X_orig = X
         X = self.preprocessor_.transform(X_orig)
-        X_pair = self.pair_preprocessor_.transform(X_orig)
+
+        if self.interactions != 0:
+            self.pair_preprocessor_ = EBMPreprocessor(
+                feature_names=self.feature_names,
+                feature_types=self.feature_types,
+                max_bins=self.max_interaction_bins,
+                binning=self.binning,
+                random_state=self.random_state,
+            )
+            self.pair_preprocessor_.fit(X_orig)
+            X_pair = self.pair_preprocessor_.transform(X_orig)
+            pair_col_n_bins = self.pair_preprocessor_.col_n_bins_
+        else:
+            self.pair_preprocessor_, X_pair, pair_col_n_bins = None, None, None
 
         estimators = []
         seed = EBMUtils.normalize_initial_random_seed(self.random_state)
@@ -804,7 +810,7 @@ class BaseEBM(BaseEstimator):
                     model_type="classification",
                     col_types=self.preprocessor_.col_types_,
                     col_n_bins=self.preprocessor_.col_n_bins_,
-                    pair_col_n_bins=self.pair_preprocessor_.col_n_bins_,
+                    pair_col_n_bins=pair_col_n_bins,
                     # Core
                     main_features=self.mains,
                     interactions=self.interactions,
@@ -831,7 +837,7 @@ class BaseEBM(BaseEstimator):
                     model_type="regression",
                     col_types=self.preprocessor_.col_types_,
                     col_n_bins=self.preprocessor_.col_n_bins_,
-                    pair_col_n_bins=self.pair_preprocessor_.col_n_bins_,
+                    pair_col_n_bins=pair_col_n_bins,
                     # Core
                     main_features=self.mains,
                     interactions=self.interactions,
@@ -908,7 +914,8 @@ class BaseEBM(BaseEstimator):
             raise RuntimeError("Argument 'interaction' has invalid value")
 
         X = np.ascontiguousarray(X.T)
-        X_pair = np.ascontiguousarray(X_pair.T) # I have no idea if we're supposed to do this.
+        if X_pair is not None:
+            X_pair = np.ascontiguousarray(X_pair.T) # I have no idea if we're supposed to do this.
 
         if isinstance(self.mains, str) and self.mains == "all":
             main_indices = [[x] for x in range(X.shape[0])]
@@ -983,6 +990,8 @@ class BaseEBM(BaseEstimator):
                 self._original_term_means_.append(score_mean)
         else:
             # Postprocess model graphs for multiclass
+
+            # Currently pairwise interactions are unsupported for multiclass-classification.
             binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
                 x, None, self.feature_groups_, self.additive_terms_, self.intercept_
             )
@@ -1343,8 +1352,11 @@ class BaseEBM(BaseEstimator):
         samples = self.preprocessor_.transform(X)
         samples = np.ascontiguousarray(samples.T)
 
-        pair_samples = self.pair_preprocessor_.transform(X)
-        pair_samples = np.ascontiguousarray(pair_samples.T)
+        if self.interactions != 0:
+            pair_samples = self.pair_preprocessor_.transform(X)
+            pair_samples = np.ascontiguousarray(pair_samples.T)
+        else:
+            pair_samples = None
 
         scores_gen = EBMUtils.scores_by_feature_group(
             samples, pair_samples, self.feature_groups_, self.additive_terms_
