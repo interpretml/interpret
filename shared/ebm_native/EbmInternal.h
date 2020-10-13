@@ -302,12 +302,7 @@ enum class FeatureType { Ordinal = 0, Nominal = 1};
 // TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
 //   runtime looped version of our code
 
-#ifdef EBM_NATIVE_R
-// we get size NOTES if we compile with too many multiclass optimizations in CRAN, so reduce them to the bare minimum
-constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 2;
-#else // EBM_NATIVE_R
 constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 8;
-#endif // EBM_NATIVE_R
 
 static_assert(
    2 <= k_cCompilerOptimizedTargetClassesMax, 
@@ -402,12 +397,7 @@ constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 constexpr size_t k_cDimensionsMax = k_cBitsForSizeT - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
-#ifdef EBM_NATIVE_R
-// we get size NOTES if we compile with too many multiclass optimizations in CRAN, so reduce them to the bare minimum
-constexpr size_t k_cCompilerOptimizedCountDimensionsMax = 1;
-#else // EBM_NATIVE_R
 constexpr size_t k_cCompilerOptimizedCountDimensionsMax = 2;
-#endif // EBM_NATIVE_R
 
 static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
    "k_cCompilerOptimizedCountDimensionsMax can be 1 if we want to turn off dimension optimization, but 0 or less is disallowed.");
