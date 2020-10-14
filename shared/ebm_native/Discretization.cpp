@@ -28,7 +28,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ConvertLo
 ) {
    UNUSED(countTargetClasses); // TODO: use this
    for(size_t i = 0; i < static_cast<size_t>(countSamples); ++i) {
-      const FloatEbmType odds = EbmExp(logits[i]);
+      const FloatEbmType odds = std::exp(logits[i]);
       probabilitiesOut[i] = odds / (FloatEbmType { 1 } + odds);
    }
    return IntEbmType { 0 };
