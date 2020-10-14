@@ -379,6 +379,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discre
    IntEbmType * discretizedOut
 );
 
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ConvertLogitsToProbabilities(
+   IntEbmType countTargetClasses,
+   IntEbmType countSamples,
+   const FloatEbmType * logits,
+   FloatEbmType * probabilitiesOut
+);
+
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
    SeedEbmType randomSeed,
    IntEbmType countIncluded,

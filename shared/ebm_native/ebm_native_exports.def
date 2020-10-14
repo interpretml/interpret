@@ -19,6 +19,7 @@ EXPORTS
   GenerateWinsorizedBinCuts
   GenerateUniformBinCuts
   Discretize
+  ConvertLogitsToProbabilities
   SuggestGraphBounds
   GenerateRandomNumber
   SamplingWithoutReplacement

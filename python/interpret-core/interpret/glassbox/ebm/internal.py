@@ -221,6 +221,19 @@ class Native:
         self.lib.Discretize.restype = ct.c_int64
 
 
+        self.lib.ConvertLogitsToProbabilities.argtypes = [
+            # int64_t countTargetClasses
+            ct.c_int64,
+            # int64_t countSamples
+            ct.c_int64,
+            # double * logits
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            # double * probabilitiesOut
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+        ]
+        self.lib.ConvertLogitsToProbabilities.restype = ct.c_int64
+
+
         self.lib.InitializeBoostingClassification.argtypes = [
             # int32_t randomSeed
             ct.c_int32,

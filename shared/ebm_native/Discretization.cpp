@@ -20,6 +20,20 @@
 //uniform
 //winsorized
 
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ConvertLogitsToProbabilities(
+   IntEbmType countTargetClasses,
+   IntEbmType countSamples,
+   const FloatEbmType * logits,
+   FloatEbmType * probabilitiesOut
+) {
+   UNUSED(countTargetClasses); // TODO: use this
+   for(size_t i = 0; i < static_cast<size_t>(countSamples); ++i) {
+      const FloatEbmType odds = EbmExp(logits[i]);
+      probabilitiesOut[i] = odds / (FloatEbmType { 1 } + odds);
+   }
+   return IntEbmType { 0 };
+}
+
 // Plan:
 //   - when making predictions, in the great majority of cases, we should serially determine the logits of each
 //     sample per feature and then later add those logits.  It's tempting to want to process more than one feature
