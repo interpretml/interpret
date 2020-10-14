@@ -20,7 +20,7 @@
 //uniform
 //winsorized
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ConvertLogitsToProbabilities(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
    IntEbmType countTargetClasses,
    IntEbmType countSamples,
    const FloatEbmType * logits,

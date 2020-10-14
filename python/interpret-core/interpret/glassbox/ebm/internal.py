@@ -221,7 +221,7 @@ class Native:
         self.lib.Discretize.restype = ct.c_int64
 
 
-        self.lib.ConvertLogitsToProbabilities.argtypes = [
+        self.lib.Softmax.argtypes = [
             # int64_t countTargetClasses
             ct.c_int64,
             # int64_t countSamples
@@ -231,7 +231,7 @@ class Native:
             # double * probabilitiesOut
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
         ]
-        self.lib.ConvertLogitsToProbabilities.restype = ct.c_int64
+        self.lib.Softmax.restype = ct.c_int64
 
 
         self.lib.InitializeBoostingClassification.argtypes = [

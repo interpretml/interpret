@@ -18,7 +18,7 @@
       GenerateWinsorizedBinCuts;
       GenerateUniformBinCuts;
       Discretize;
-      ConvertLogitsToProbabilities;
+      Softmax;
       SuggestGraphBounds;
       GenerateRandomNumber;
       SamplingWithoutReplacement;

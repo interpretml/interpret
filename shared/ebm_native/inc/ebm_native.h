@@ -379,7 +379,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discre
    IntEbmType * discretizedOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ConvertLogitsToProbabilities(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
    IntEbmType countTargetClasses,
    IntEbmType countSamples,
    const FloatEbmType * logits,
