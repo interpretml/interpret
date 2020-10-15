@@ -98,6 +98,9 @@ def plot_continuous_bar(
     y_hi = data_dict.get("upper_bounds", None)
     y_lo = data_dict.get("lower_bounds", None)
 
+    # x_min = min(x_vals)
+    # x_max = max(x_vals)
+
     if y_hi is None or multiclass:
         log.warning(
             "Argument show_error is set to true, but there are no bounds in the data."
@@ -105,18 +108,18 @@ def plot_continuous_bar(
         show_error = False
 
     def extend_x_range(x):
+        x_max = np.max(x)
         target = []
         target.append(x[0])
         for curr_val, next_val in zip(x, x[1:]):
             avg_val = np.mean([curr_val, next_val])
             target.append(avg_val)
 
-        last_dist = x[-1] - x[-2]
-        target.append(target[-1] + last_dist)
+        target.append(x_max)
         return target
 
     def extend_y_range(y):
-        return np.r_[y[np.newaxis, 0], y]
+        return y # np.r_[y[np.newaxis, 0], y]
 
     new_x_vals = extend_x_range(x_vals)
     new_y_vals = extend_y_range(y_vals)
