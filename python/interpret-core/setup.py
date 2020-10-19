@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 name = "interpret-core"
 # NOTE: Version is replaced by a regex script.
-version = "0.2.1"
+version = "0.2.2"
 long_description = """
 Core system for **the** interpret package.
 
@@ -107,7 +107,6 @@ setup(
     packages=find_packages(),
     package_data=package_data,
     classifiers=[
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
