@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.2] - 2020-10-19
+### Fixed
+- Fixed bug on predicting unknown categories with EBM.
+- Fixed bug on max value being placed in its own bin for EBM pre-processing.
+- Numerous native fixes and optimizations.
+### Added
+- Added `max_interaction_bins` as argument to EBM learners for different sized
+  bins on interactions, separate to mains.
+- New binning method 'quantile_humanized' for EBM.
+### Changed
+- Interactions in EBM now use their own pre-processing, separate to mains.
+- Python 3.5 no longer supported.
+- Switched from Python to native code for binning.
+- Switched from Python to native code for PRNG in EBM.
+
 ## [v0.2.1] - 2020-08-07
 ### Added
 - Python 3.8 support.
@@ -340,6 +355,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.2.2]: https://github.com/microsoft/interpret/releases/tag/v0.2.2
 [v0.2.1]: https://github.com/microsoft/interpret/releases/tag/v0.2.1
 [v0.2.0]: https://github.com/microsoft/interpret/releases/tag/v0.2.0
 [v0.1.22]: https://github.com/microsoft/interpret/releases/tag/v0.1.22
