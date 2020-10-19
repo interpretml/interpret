@@ -26,8 +26,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
    const FloatEbmType * logits,
    FloatEbmType * probabilitiesOut
 ) {
+   if(2 != countTargetClasses) {
+      // TODO: handle multiclass
+      exit(1);
+   };
+
    UNUSED(countTargetClasses); // TODO: use this
    for(size_t i = 0; i < static_cast<size_t>(countSamples); ++i) {
+      // NOTE: we use the non-approximate std::exp because we want our predictions to match what other softmax functions
+      // will generate instead of the approximation, and ordering is more sensitive to noise than boosting
       const FloatEbmType odds = std::exp(logits[i]);
       probabilitiesOut[i] = odds / (FloatEbmType { 1 } + odds);
    }

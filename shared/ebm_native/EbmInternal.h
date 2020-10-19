@@ -171,6 +171,12 @@ constexpr FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest
 constexpr FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
 constexpr FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
 constexpr FloatEbmType k_epsilonResidualError = 1e-7;
+#ifdef FAST_EXP
+// with the approximate exp function we can expect a bit of noise.  We might need to increase this further
+constexpr FloatEbmType k_epsilonResidualErrorForBinaryToMulticlass = 1e-2;
+#else // FAST_EXP
+constexpr FloatEbmType k_epsilonResidualErrorForBinaryToMulticlass = 1e-7;
+#endif // FAST_EXP
 constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 
 // The C++ standard makes it undefined behavior to access memory past the end of an array with a declared length.
@@ -502,46 +508,52 @@ INLINE_ALWAYS T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) {
 constexpr bool k_bUseSIMD = false;
 
 // TODO eventually, eliminate these variables, and make eliminating logits a part of our regular framework
-static constexpr ptrdiff_t k_iZeroResidual = -1;
-static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
+constexpr ptrdiff_t k_iZeroResidual = -1;
+constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 
-// TODO eventually consider using these approximate functions for exp and log.  They make a BIG difference!
-//#define FAST_EXP
-//#define FAST_LOG
+constexpr unsigned int k_expRounds = 9;
+INLINE_ALWAYS FloatEbmType ApproxExp(FloatEbmType val) {
+   // TODO: experiment a bit with normalizing our logits so that the largest is always 1 and see if that helps us
+   // on some datasets
 
-#ifdef FAST_EXP
-INLINE_ALWAYS FloatEbmType EbmExp(FloatEbmType val) {
-   // we use EbmExp to calculate the residual error, but we calculate the residual error with inputs only from the target and our logits
-   // so if we introduce some noise in the residual error from approximations to exp, it will be seen and corrected by later boosting steps
-   // so it's largely self correcting
+   // WARNING: this approximation doesn't work as well for numbers in the range of 5 < val, but for the most part
+   // in binary classification or in multiclass, whenever we get a logit above 5 then it's going to go to infinity
+   // eventually, so we're only slowing it down.  If it's a problem, we can always make the largest logit equal
+   // to 1 and shift the other smaller one, even for binary classification, but that adds extra work so first
+   // try out this implementation and see if it's a problem
+
+   // we use EbmExp to calculate the residual error, but we calculate the residual error with inputs only from
+   // the target and our logits so if we introduce some noise in the residual error from approximations to exp, 
+   // it will be seen and corrected by later boosting steps, so it's largely self correcting.
    //
-   // Exp is also used to calculate the log loss, but in that case we report the log loss, but otherwise don't use it again, so any errors
-   // in calculating the log loss don't propegate cyclically
+   // Exp is also used to calculate the log loss, but in that case we report the log loss, but otherwise don't 
+   // use it again, so any errors in calculating the log loss don't propegate cyclically
    //
-   // when we get our logit update from training a feature, we apply that to both the model AND our per sample array of logits, so we can
-   // potentialy diverge there over time, but that's just an addition operation which is going to be exact for many decimal places.
-   // that divergence will NOT be affected by noise in the exp function since the noise in the exp function
-   // will generate noise in the logit update, but it won't cause a divergence between the model and the error
+   // when we get our logit update from training a feature, we apply that to both the model AND our per sample 
+   // array of logits, so we can potentialy diverge there over time, but that's just an addition operation which 
+   // is going to be exact for many decimal places.  That divergence will NOT be affected by noise in the exp 
+   // function since the noise in the exp function will generate noise in the logit update, but it won't 
+   // cause a divergence between the model and the error
 
    // for algorithm, see https://codingforspeed.com/using-faster-exponential-approximation/
-   // TODO make the number of multiplications below a copmile time constant so we can try different values (9 in the code below)
-
    // here's annohter implementation in AVX-512 (with a table)-> http://www.ecs.umass.edu/arith-2018/pdf/arith25_18.pdf
 
-   val = FloatEbmType { 1 } + val * (FloatEbmType { 1 } / FloatEbmType { 512 });
-   val *= val;
-   val *= val;
-   val *= val;
-   val *= val;
-   val *= val;
-   val *= val;
-   val *= val;
-   val *= val;
-   val *= val;
+   static constexpr uintmax_t k_expFactorOf2 = uintmax_t { 1 } << k_expRounds;
+   static constexpr FloatEbmType k_expFactor = FloatEbmType { 1 } / FloatEbmType { k_expFactorOf2 };
+   val = FloatEbmType { 1 } + val * k_expFactor;
+   for(unsigned int iExpRound = 0; iExpRound < k_expRounds; ++iExpRound) {
+      // presumably, this loop will be optimized out and replaced with k_expRounds multiplications
+      val *= val;
+   }
    return val;
 }
+
+#ifdef FAST_EXP
+INLINE_ALWAYS FloatEbmType EbmExpForResiduals(const FloatEbmType val) {
+   return ApproxExp(val);
+}
 #else // FAST_EXP
-INLINE_ALWAYS FloatEbmType EbmExp(FloatEbmType val) {
+INLINE_ALWAYS FloatEbmType EbmExpForResiduals(const FloatEbmType val) {
    return std::exp(val);
 }
 #endif // FAST_EXP
@@ -567,6 +579,12 @@ INLINE_ALWAYS unsigned int MostSignificantBit(T val) {
    // TODO this only works in MS compiler.  This also doesn't work for numbers larger than uint64_t.  This has many problems, so review it.
    unsigned long index;
    return _BitScanReverse64(&index, static_cast<unsigned __int64>(val)) ? static_cast<unsigned int>(index) : static_cast<unsigned int>(0);
+}
+
+INLINE_ALWAYS FloatEbmType EbmExpForLogLoss(const FloatEbmType val) {
+   // if we're using approximates for the log function, we don't gain any benefit unless we're also using the
+   // approximate exp function
+   return ApproxExp(val);
 }
 
 INLINE_ALWAYS FloatEbmType EbmLog(FloatEbmType val) {
@@ -595,7 +613,13 @@ INLINE_ALWAYS FloatEbmType EbmLog(FloatEbmType val) {
    return val;
 }
 #else // FAST_LOG
-INLINE_ALWAYS FloatEbmType EbmLog(FloatEbmType val) {
+INLINE_ALWAYS FloatEbmType EbmExpForLogLoss(const FloatEbmType val) {
+   // if we're using the non-approximate std::log function, we might as well use std::exp as well for the
+   // places that we compute Exp for the log loss
+   return std::exp(val);
+}
+
+INLINE_ALWAYS FloatEbmType EbmLog(const FloatEbmType val) {
    return std::log(val);
    // TODO: also look into whehter std::log1p is a good function for this (mostly in terms of speed).  For the most part we don't care about accuracy 
    //   in the low

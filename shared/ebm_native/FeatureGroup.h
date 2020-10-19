@@ -51,8 +51,7 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS static constexpr size_t GetFeatureGroupCountBytes(const size_t cFeatures) {
-      return sizeof(FeatureGroup) - sizeof(FeatureGroupEntry) +
-         sizeof(FeatureGroupEntry) * cFeatures;
+      return sizeof(FeatureGroup) - sizeof(FeatureGroupEntry) + sizeof(FeatureGroupEntry) * cFeatures;
    }
 
    INLINE_ALWAYS static void Free(FeatureGroup * const pFeatureGroup) {

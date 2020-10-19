@@ -260,11 +260,19 @@ TEST_CASE("negative learning rate, boosting, binary") {
       }
    }
 
+#ifdef FAST_EXP
+   CHECK_APPROX(validationMetric, 1.7167810344583618);
+#else // FAST_EXP
    CHECK_APPROX(validationMetric, 1.7158914513238979);
+#endif // FAST_EXP
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, 0);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
+#ifdef FAST_EXP
+   CHECK_APPROX(modelValue, 1.5187647763863632);
+#else // FAST_EXP
    CHECK_APPROX(modelValue, 1.5176802847035755);
+#endif // FAST_EXP
 }
 
 TEST_CASE("negative learning rate, boosting, multiclass") {
@@ -300,13 +308,29 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
          }
       }
    }
+#ifdef FAST_EXP
+   CHECK_APPROX(validationMetric, 2.0613386998867287);
+#else // FAST_EXP
    CHECK_APPROX(validationMetric, 2.0611718475324357);
+#endif // FAST_EXP
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
-   CHECK_APPROX(modelValue, -0.90755332487264362);
+#ifdef FAST_EXP
+      CHECK_APPROX(modelValue, -0.90773689561328474);
+#else // FAST_EXP
+      CHECK_APPROX(modelValue, -0.90755332487264362);
+#endif // FAST_EXP
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
+#ifdef FAST_EXP
+   CHECK_APPROX(modelValue, 0.32431014975228195);
+#else // FAST_EXP
    CHECK_APPROX(modelValue, 0.32430253082567057);
+#endif // FAST_EXP
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
+#ifdef FAST_EXP
+   CHECK_APPROX(modelValue, 0.32431014975228195);
+#else // FAST_EXP
    CHECK_APPROX(modelValue, 0.32430253082567057);
+#endif // FAST_EXP
 }
 
 TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
@@ -776,11 +800,19 @@ TEST_CASE("FeatureGroup with zero features, boosting, binary") {
          }
       }
    }
+#ifdef FAST_EXP
+   CHECK_APPROX(validationMetric, 2.2585125030300232e-05);
+#else // FAST_EXP
    CHECK_APPROX(validationMetric, 2.2621439908125974e-05);
+#endif // FAST_EXP
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, 0);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
+#ifdef FAST_EXP
+   CHECK_APPROX(modelValue, -10.698207760305271);
+#else // FAST_EXP
    CHECK_APPROX(modelValue, -10.696601122148364);
+#endif // FAST_EXP
 }
 
 TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
@@ -816,13 +848,29 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
          }
       }
    }
+#ifdef FAST_EXP
+   CHECK_APPROX(validationMetric, 1.7167069973042536e-09);
+#else // FAST_EXP
    CHECK_APPROX(validationMetric, 1.7171897252232722e-09);
+#endif // FAST_EXP
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
+#ifdef FAST_EXP
+   CHECK_APPROX(modelValue, 10.643437011645416);
+#else // FAST_EXP
    CHECK_APPROX(modelValue, 10.643234965479628);
+#endif // FAST_EXP
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
+#ifdef FAST_EXP
+   CHECK_APPROX(modelValue, -10.232568058225194);
+#else // FAST_EXP
    CHECK_APPROX(modelValue, -10.232489007525166);
+#endif // FAST_EXP
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
+#ifdef FAST_EXP
+   CHECK_APPROX(modelValue, -10.232568058225194);
+#else // FAST_EXP
    CHECK_APPROX(modelValue, -10.232489007525166);
+#endif // FAST_EXP
 }
 
 TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, regression") {

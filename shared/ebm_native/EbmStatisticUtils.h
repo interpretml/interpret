@@ -592,8 +592,10 @@ public:
       // TODO: we can probably remove the negation on 1 == binnedActualValue via : return  binned_actual_value - 1 + (1 / (np.exp(training_log_odds_prediction) + 1)) 
       // once we've moved to sorted training data
       // exp will return the same type that it is given, either float or double
+      // TODO: for the ApproxExp function, we can change the constant to being a negative once we change to sorting by our target value
+      //       then we don't need to even take the negative of trainingLogOddsPrediction below
       const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } +
-         EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); 
+         EbmExpForResiduals(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); 
 
       // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
       // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
@@ -612,12 +614,13 @@ public:
       // ret can't be +-infinity, since an infinity in the denominator would just lead us to zero for the ret value!
 
 #ifndef NDEBUG
+      const FloatEbmType expVal = std::exp(trainingLogOddsPrediction);
       const FloatEbmType retDebug = 
-         ComputeResidualErrorMulticlass(FloatEbmType { 1 } + EbmExp(trainingLogOddsPrediction), EbmExp(trainingLogOddsPrediction), binnedActualValue, 1);
+         ComputeResidualErrorMulticlass(FloatEbmType { 1 } + expVal, expVal, binnedActualValue, 1);
       // the ComputeResidualErrorMulticlass can't be +-infinity per notes in ComputeResidualErrorMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
-      EBM_ASSERT(std::isnan(trainingLogOddsPrediction) || std::isnan(retDebug) || std::abs(retDebug - ret) < k_epsilonResidualError);
+      EBM_ASSERT(std::isnan(trainingLogOddsPrediction) || std::isnan(retDebug) || std::abs(retDebug - ret) < k_epsilonResidualErrorForBinaryToMulticlass);
 #endif // NDEBUG
       return ret;
    }
@@ -721,7 +724,7 @@ public:
 
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
-      const FloatEbmType ourExp = EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
+      const FloatEbmType ourExp = EbmExpForLogLoss(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
       // no reasonable implementation of exp should lead to a negative value
       EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ourExp);
 
@@ -747,8 +750,9 @@ public:
       //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
 
 #ifndef NDEBUG
+      const FloatEbmType expVal = std::exp(validationLogOddsPrediction);
       const FloatEbmType retDebug = EbmStatistics::ComputeSingleSampleLogLossMulticlass(
-         FloatEbmType { 1 } + EbmExp(validationLogOddsPrediction), 0 == binnedActualValue ? FloatEbmType { 1 } : EbmExp(validationLogOddsPrediction)
+         FloatEbmType { 1 } + expVal, 0 == binnedActualValue ? FloatEbmType { 1 } : expVal
       );
       EBM_ASSERT(std::isnan(ret) || std::isinf(ret) || std::isnan(retDebug) || std::isinf(retDebug) || std::abs(retDebug - ret) < k_epsilonResidualError);
 #endif // NDEBUG

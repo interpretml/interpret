@@ -56,11 +56,6 @@ EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations
 |Morris Sensitivity Analysis|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
 |Partial Dependence|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
 
-In addition to these, InterpretML is extended by the following repositories:
-
-- [**Interpret-Community**](https://github.com/interpretml/interpret-community): Experimental repository with additional interpretability methods and utility functions to handle real-world datasets and workflows.
-- [**Interpret-Text**](https://github.com/interpretml/interpret-text): Supports a collection of interpretability techniques for models trained on text data.
-
 # Train a glassbox model
 
 Let's fit an Explainable Boosting Machine
