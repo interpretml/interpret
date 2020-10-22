@@ -511,7 +511,7 @@ constexpr bool k_bUseSIMD = false;
 constexpr ptrdiff_t k_iZeroResidual = -1;
 constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 
-constexpr unsigned int k_expRounds = 9;
+constexpr unsigned int k_expRounds = 6;
 INLINE_ALWAYS FloatEbmType ApproxExp(FloatEbmType val) {
    // TODO: experiment a bit with normalizing our logits so that the largest is always 1 and see if that helps us
    // on some datasets

@@ -26,8 +26,8 @@ extern "C" {
 #error we should not be expanding binary logits while reducing multiclass logits
 #endif
 
-// TODO eventually consider using these approximate functions for exp and log.  They make a BIG difference!
-//#define FAST_EXP
+#define FAST_EXP
+// TODO someday consider using approximations for log, but that's going to be more sensitive to small errors than exp
 //#define FAST_LOG
 
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
