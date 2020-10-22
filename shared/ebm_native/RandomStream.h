@@ -15,9 +15,9 @@
 // We expose our random number generator, so to ensure that we get
 // different random number streams from what our caller will get, we want to mix in these values
 // in case our caller happens to mistakenly forget to provide a mix in value
-constexpr uint64_t k_quantileRandomizationMix = uint64_t { 5744215463699302938 };
-constexpr uint64_t k_boosterRandomizationMix = uint64_t { 9397611943394063143 };
-constexpr uint64_t k_samplingWithoutReplacementRandomizationMix = uint64_t { 10077040353197036781 };
+constexpr uint64_t k_quantileRandomizationMix = uint64_t { 5744215463699302938u };
+constexpr uint64_t k_boosterRandomizationMix = uint64_t { 9397611943394063143u };
+constexpr uint64_t k_samplingWithoutReplacementRandomizationMix = uint64_t { 10077040353197036781u };
 
 class RandomStream final {
    // If the RandomStream object is stored inside a class/struct, and used inside a hotspot loop, to get the best 
