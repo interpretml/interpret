@@ -68,9 +68,12 @@ install: build
 	cd $(ROOTDIR)/python/interpret && $(PIP) install -e .
 
 
-build: build-python
+build: build-wheel
+build-wheel: build-javascript build-native
+	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
+	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
 
-build-python: build-javascript build-native
+build-python:
 	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
 	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
 
