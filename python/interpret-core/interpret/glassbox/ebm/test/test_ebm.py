@@ -270,7 +270,7 @@ def test_ebm_adult():
     valid_ebm(clf)
 
     global_exp = clf.explain_global()
-    local_exp = clf.explain_local(X_te[:5, :], y_te[:5])
+    local_exp = clf.explain_local(X_te.iloc[:5], y_te[:5])
 
     _smoke_test_explanations(global_exp, local_exp, 6000)
 

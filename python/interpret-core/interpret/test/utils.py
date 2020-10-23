@@ -144,7 +144,7 @@ def adult_classification():
     ]
     train_cols = df.columns[0:-1]
     label = df.columns[-1]
-    X_df = df[train_cols].values
+    X_df = df[train_cols]
     y_df = df[label].apply(lambda x: 0 if x == " <=50K" else 1)
 
     X_df_train, X_df_test, y_df_train, y_df_test = train_test_split(
