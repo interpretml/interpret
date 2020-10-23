@@ -10,10 +10,10 @@ from sklearn.utils.extmath import softmax
 from sklearn.model_selection import train_test_split
 from sklearn.base import BaseEstimator, RegressorMixin, ClassifierMixin
 from .ebm.ebm import EBMPreprocessor, EBMExplanation
+from ..api.base import ExplainerMixin
 
 from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector, gen_perf_dicts
 from sklearn.base import is_classifier
-from sklearn.utils.validation import check_is_fitted
 
 
 def _convert_to_category(X, feature_names, feature_types):
@@ -55,7 +55,10 @@ def _fit(estimator, X, y, random_state, holdout_split, early_stopping_rounds,
     return estimator
 
 
-class LightGAMRegressor(BaseEstimator, RegressorMixin):
+class BaseLightGAM:
+    available_explanations = ["local", "global"]
+    explainer_type = "model"
+
     def __init__(self, feature_names=None, feature_types=None,
                  holdout_split=0.15, early_stopping_rounds=50,
                  max_depth=1, min_child_samples=2, num_leaves=3, max_rounds=5000,
@@ -77,7 +80,7 @@ class LightGAMRegressor(BaseEstimator, RegressorMixin):
         self.random_state = random_state
 
     def fit(self, X, y):
-        from lightgbm import LGBMRegressor
+        from lightgbm import LGBMClassifier, LGBMRegressor
 
         X_orig, y, self.feature_names, self.feature_types = unify_data(
             X, y, self.feature_names, self.feature_types
@@ -91,16 +94,29 @@ class LightGAMRegressor(BaseEstimator, RegressorMixin):
         self.preprocessor_.fit(X_orig)
         X = self.preprocessor_.transform(X_orig)
 
+        if is_classifier(self):
+            self.classes_, y = np.unique(y, return_inverse=True)
+            self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
+
         if self.outer_bags > 1:
             estimators = []
             for bag in range(self.outer_bags):
-                learner = LGBMRegressor(max_depth=self.max_depth,
-                                        n_estimators=self.max_rounds * X.shape[1],
-                                        learning_rate=self.learning_rate,
-                                        colsample_bytree=self.colsample_bytree,
-                                        n_jobs=1,
-                                        random_state=self.random_state + bag,
-                                        verbose=-1)
+                if is_classifier(self):
+                    learner = LGBMClassifier(max_depth=self.max_depth,
+                                             n_estimators=self.max_rounds * X.shape[1],
+                                             learning_rate=self.learning_rate,
+                                             colsample_bytree=self.colsample_bytree,
+                                             n_jobs=1,
+                                             random_state=self.random_state + bag,
+                                             verbose=-1)
+                else:
+                    learner = LGBMRegressor(max_depth=self.max_depth,
+                                             n_estimators=self.max_rounds * X.shape[1],
+                                             learning_rate=self.learning_rate,
+                                             colsample_bytree=self.colsample_bytree,
+                                             n_jobs=1,
+                                             random_state=self.random_state + bag,
+                                             verbose=-1)
                 estimators.append(learner)
 
             self.estimators_ = Parallel(n_jobs=self.n_jobs)(
@@ -108,94 +124,23 @@ class LightGAMRegressor(BaseEstimator, RegressorMixin):
                               self.feature_names, self.feature_types)
                 for i, estimator in enumerate(estimators)
             )
-            return self
-
         else:
-            learner = LGBMRegressor(max_depth=self.max_depth,
-                                    n_estimators=self.max_rounds * X.shape[1],
-                                    learning_rate=self.learning_rate,
-                                    colsample_bytree=self.colsample_bytree,
-                                    n_jobs=self.n_jobs,
-                                    random_state=self.random_state,
-                                    verbose=-1)
-
-            self.estimators_ = [
-                _fit(learner, X, y, self.random_state, self.holdout_split, self.early_stopping_rounds,
-                     self.feature_names, self.feature_types)]
-            return self
-
-    def predict(self, X):
-        # X_cat = _convert_to_category(X, self.feature_names, self.feature_types)
-        # Should be predicting from consolidated GAM, not many bagged estimators
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
-        X_cat = self.preprocessor_.transform(X_orig)
-        return np.mean([i.predict(X_cat) for i in self.estimators_], axis=0)
-
-
-class LightGAMClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, feature_names=None, feature_types=None,
-                 holdout_split=0.15, early_stopping_rounds=50,
-                 max_depth=1, min_child_samples=2, num_leaves=3, max_rounds=5000,
-                 learning_rate=0.01, colsample_bytree=0.00001, outer_bags=2,
-                 n_jobs=-1, random_state=1):
-
-        self.feature_names = feature_names
-        self.feature_types = feature_types
-        self.holdout_split = holdout_split
-        self.early_stopping_rounds = early_stopping_rounds
-        self.max_depth = max_depth
-        self.min_child_samples = min_child_samples
-        self.num_leaves = num_leaves
-        self.max_rounds = max_rounds
-        self.learning_rate = learning_rate
-        self.colsample_bytree = colsample_bytree
-        self.outer_bags = outer_bags
-        self.n_jobs = n_jobs
-        self.random_state = random_state
-
-    def fit(self, X, y):
-        from lightgbm import LGBMClassifier
-
-        X_orig, y, self.feature_names, self.feature_types = unify_data(
-            X, y, self.feature_names, self.feature_types
-        )
-        self.preprocessor_ = EBMPreprocessor(
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
-            random_state=1337,  # TODO: Arg
-            binning="quantile",
-        )
-        self.preprocessor_.fit(X_orig)
-        X = self.preprocessor_.transform(X_orig)
-
-        self.classes_, y = np.unique(y, return_inverse=True)
-        self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
-
-        if self.outer_bags > 1:
-            estimators = []
-            for bag in range(self.outer_bags):
+            if is_classifier(self):
                 learner = LGBMClassifier(max_depth=self.max_depth,
                                          n_estimators=self.max_rounds * X.shape[1],
                                          learning_rate=self.learning_rate,
                                          colsample_bytree=self.colsample_bytree,
-                                         n_jobs=1,
-                                         random_state=self.random_state + bag,
+                                         n_jobs=self.n_jobs,
+                                         random_state=self.random_state,
                                          verbose=-1)
-                estimators.append(learner)
-
-            self.estimators_ = Parallel(n_jobs=self.n_jobs)(
-                delayed(_fit)(estimator, X, y, self.random_state + i, self.holdout_split, self.early_stopping_rounds,
-                              self.feature_names, self.feature_types)
-                for i, estimator in enumerate(estimators)
-            )
-        else:
-            learner = LGBMClassifier(max_depth=self.max_depth,
-                                     n_estimators=self.max_rounds * X.shape[1],
-                                     learning_rate=self.learning_rate,
-                                     colsample_bytree=self.colsample_bytree,
-                                     n_jobs=self.n_jobs,
-                                     random_state=self.random_state,
-                                     verbose=-1)
+            else:
+                learner = LGBMRegressor(max_depth=self.max_depth,
+                                         n_estimators=self.max_rounds * X.shape[1],
+                                         learning_rate=self.learning_rate,
+                                         colsample_bytree=self.colsample_bytree,
+                                         n_jobs=self.n_jobs,
+                                         random_state=self.random_state,
+                                         verbose=-1)
 
             self.estimators_ = [
                 _fit(learner, X, y, self.random_state, self.holdout_split, self.early_stopping_rounds,
@@ -266,22 +211,6 @@ class LightGAMClassifier(BaseEstimator, ClassifierMixin):
 
         return self
 
-    # TODO: Remove this.
-    def _old_decision_function(self, X):
-        # X_cat = _convert_to_category(X, self.feature_names, self.feature_types)
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
-        X_cat = self.preprocessor_.transform(X_orig)
-        # TODO: Verify this can work for alternative loss functions
-        raw_scores_vector = np.mean([i.predict_proba(X_cat, raw_score=True) for i in self.estimators_], axis=0)
-
-        return raw_scores_vector
-
-    def predict_proba(self, X):
-        raw_scores_vector = self.decision_function(X)
-        if raw_scores_vector.ndim == 1:
-            raw_scores_vector = np.c_[np.zeros(raw_scores_vector.shape), raw_scores_vector]
-        return softmax(raw_scores_vector)
-
     def decision_function(self, X):
         X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X_orig)
@@ -306,18 +235,6 @@ class LightGAMClassifier(BaseEstimator, ClassifierMixin):
             score_vector += scores
 
         return score_vector
-
-        # if score_vector.ndim == 1:
-        #     score_vector = np.c_[np.zeros(score_vector.shape), score_vector]
-        #
-        # return softmax(score_vector)
-
-    def predict(self, X):
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
-        X_cat = self.preprocessor_.transform(X_orig)
-        # X_cat = _convert_to_category(X, self.feature_names, self.feature_types)
-        preds = self.predict_proba(X_cat)
-        return self.classes_[np.argmax(preds, axis=1)]
 
     def explain_local(self, X, y=None, name=None):
         """ Provides local explanations for provided samples.
@@ -534,3 +451,85 @@ class LightGAMClassifier(BaseEstimator, ClassifierMixin):
             name=name,
             selector=self.global_selector,
         )
+
+
+class LightGAMClassifier(BaseLightGAM, BaseEstimator, ClassifierMixin, ExplainerMixin):
+    def __init__(self, feature_names=None, feature_types=None,
+                 holdout_split=0.15, early_stopping_rounds=50,
+                 max_depth=1, min_child_samples=2, num_leaves=3, max_rounds=5000,
+                 learning_rate=0.01, colsample_bytree=0.00001, outer_bags=2,
+                 n_jobs=-1, random_state=1):
+
+        self.feature_names = feature_names
+        self.feature_types = feature_types
+        self.holdout_split = holdout_split
+        self.early_stopping_rounds = early_stopping_rounds
+        self.max_depth = max_depth
+        self.min_child_samples = min_child_samples
+        self.num_leaves = num_leaves
+        self.max_rounds = max_rounds
+        self.learning_rate = learning_rate
+        self.colsample_bytree = colsample_bytree
+        self.outer_bags = outer_bags
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+
+        super().__init__(
+            feature_names=feature_names, feature_types=feature_types,
+            holdout_split=holdout_split, early_stopping_rounds=early_stopping_rounds,
+            max_depth=max_depth, min_child_samples=min_child_samples,
+            num_leaves=num_leaves, max_rounds=max_rounds,
+            learning_rate=learning_rate, colsample_bytree=colsample_bytree,
+            outer_bags=outer_bags,
+            n_jobs=n_jobs, random_state=random_state
+        )
+
+    def predict_proba(self, X):
+        raw_scores_vector = self.decision_function(X)
+        if raw_scores_vector.ndim == 1:
+            raw_scores_vector = np.c_[np.zeros(raw_scores_vector.shape), raw_scores_vector]
+        return softmax(raw_scores_vector)
+
+    def predict(self, X):
+        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X_cat = self.preprocessor_.transform(X_orig)
+        preds = self.predict_proba(X_cat)
+        return self.classes_[np.argmax(preds, axis=1)]
+
+
+class LightGAMRegressor(BaseLightGAM, BaseEstimator, RegressorMixin, ExplainerMixin):
+    def __init__(self, feature_names=None, feature_types=None,
+                 holdout_split=0.15, early_stopping_rounds=50,
+                 max_depth=1, min_child_samples=2, num_leaves=3, max_rounds=5000,
+                 learning_rate=0.01, colsample_bytree=0.00001, outer_bags=2,
+                 n_jobs=-1, random_state=1):
+
+        self.feature_names = feature_names
+        self.feature_types = feature_types
+        self.holdout_split = holdout_split
+        self.early_stopping_rounds = early_stopping_rounds
+        self.max_depth = max_depth
+        self.min_child_samples = min_child_samples
+        self.num_leaves = num_leaves
+        self.max_rounds = max_rounds
+        self.learning_rate = learning_rate
+        self.colsample_bytree = colsample_bytree
+        self.outer_bags = outer_bags
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+
+        super().__init__(
+            feature_names=feature_names, feature_types=feature_types,
+            holdout_split=holdout_split, early_stopping_rounds=early_stopping_rounds,
+            max_depth=max_depth, min_child_samples=min_child_samples,
+            num_leaves=num_leaves, max_rounds=max_rounds,
+            learning_rate=learning_rate, colsample_bytree=colsample_bytree,
+            outer_bags=outer_bags,
+            n_jobs=n_jobs, random_state=random_state
+        )
+
+    def predict(self, X):
+        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X_cat = self.preprocessor_.transform(X_orig)
+        preds = self.decision_function(X_cat)
+        return preds

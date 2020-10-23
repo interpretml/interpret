@@ -96,14 +96,29 @@ def _synthetic(mode="regression"):
 
 
 def boston_regression():
-    return None
+    from sklearn.datasets import load_boston
+
+    boston = load_boston()
+    X_df = pd.DataFrame(data=boston["data"], columns=boston["feature_names"])
+    y_df = pd.DataFrame(data=boston["target"], columns=["target"])
+
+    X_df_train, X_df_test, y_df_train, y_df_test = train_test_split(
+        X_df, y_df, test_size=0.20, random_state=1
+    )
+
+    dataset = {
+        "full": {"X": X_df, "y": y_df},
+        "train": {"X": X_df_train, "y": y_df_train},
+        "test": {"X": X_df_test, "y": y_df_test},
+    }
+
+    return dataset
 
 
 def iris_classification():
     from sklearn.datasets import load_iris
 
     iris = load_iris()
-
     X_df = pd.DataFrame(data=iris["data"], columns=iris["feature_names"])
     y_df = pd.DataFrame(data=iris["target"], columns=["target"])
 
