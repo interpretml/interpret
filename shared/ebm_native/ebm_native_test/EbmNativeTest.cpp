@@ -42,12 +42,21 @@
 #include "ebm_native.h"
 #include "EbmNativeTest.h"
 
-extern void FAILED(TestCaseHidden * const pTestCaseHidden) {
+#ifdef _MSC_VER
+// we want to be able to put breakpoints in the FAILED function below, so in release mode turn off optimizations
+#pragma optimize("", off)
+#endif // _MSC_VER
+extern void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, const std::string message) {
+   UNUSED(val);
    pTestCaseHidden->m_bPassed = false;
+   std::cout << message;
 }
+#ifdef _MSC_VER
+// this turns back on whatever optimization settings we have on the command line.  It's like a pop operation
+#pragma optimize("", on)
+#endif // _MSC_VER
 
 void EBM_NATIVE_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
-   UNUSED(traceLevel);
    strlen(message); // test that the string memory is accessible
    if(traceLevel <= TraceLevelOff) {
       // don't display log messages during tests, but having this code here makes it easy to turn on when needed

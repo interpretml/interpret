@@ -97,6 +97,7 @@ TEST_CASE("test random number generator equivalency") {
    // this is meant to be an exact check for this value.  We are testing here if we can generate identical results
    // accross different OSes and C/C++ libraries.  We specificed 2 inner samples, which will use the random generator
    // and if there are any differences between environments then this will catch those
-   CHECK_APPROX(modelValue, -0.021157340206659637);
+
+   CHECK_APPROX(modelValue, -0.021161451174343732);
 }
 

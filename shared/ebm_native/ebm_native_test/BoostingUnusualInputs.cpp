@@ -255,24 +255,16 @@ TEST_CASE("negative learning rate, boosting, binary") {
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX(modelValue, 0.040202013400267564);
+            CHECK_APPROX_TOLERANCE(modelValue, 0.040202013400267564, double { 1e-4 });
          }
       }
    }
 
-#ifdef FAST_EXP
-   CHECK_APPROX(validationMetric, 1.7231777091172953);
-#else // FAST_EXP
-   CHECK_APPROX(validationMetric, 1.7158914513238979);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(validationMetric, 1.7158914513238979, double { 1e-2 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, 0);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
-#ifdef FAST_EXP
-   CHECK_APPROX(modelValue, 1.5265567645493285);
-#else // FAST_EXP
-   CHECK_APPROX(modelValue, 1.5176802847035755);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(modelValue, 1.5176802847035755, double { 1e-2 });
 }
 
 TEST_CASE("negative learning rate, boosting, multiclass") {
@@ -300,11 +292,7 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
          if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 1.1602122411839852);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
-#ifdef FAST_EXP
-            CHECK_APPROX(modelValue, -0.060920667573445553);
-#else // FAST_EXP
-            CHECK_APPROX(modelValue, -0.060920557198174352);
-#endif // FAST_EXP
+            CHECK_APPROX_TOLERANCE(modelValue, -0.060920557198174352, double { 1e-5 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
             CHECK_APPROX(modelValue, 0.030112481019468545);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
@@ -312,29 +300,13 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
          }
       }
    }
-#ifdef FAST_EXP
-   CHECK_APPROX(validationMetric, 2.0625210100399096);
-#else // FAST_EXP
-   CHECK_APPROX(validationMetric, 2.0611718475324357);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(validationMetric, 2.0611718475324357, double { 1e-2 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
-#ifdef FAST_EXP
-      CHECK_APPROX(modelValue, -0.90903772642134606);
-#else // FAST_EXP
-      CHECK_APPROX(modelValue, -0.90755332487264362);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(modelValue, -0.90755332487264362, double { 1e-2 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
-#ifdef FAST_EXP
-   CHECK_APPROX(modelValue, 0.32436394924611506);
-#else // FAST_EXP
-   CHECK_APPROX(modelValue, 0.32430253082567057);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(modelValue, 0.32430253082567057, double { 1e-2 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
-#ifdef FAST_EXP
-   CHECK_APPROX(modelValue, 0.32436394924611506);
-#else // FAST_EXP
-   CHECK_APPROX(modelValue, 0.32430253082567057);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(modelValue, 0.32430253082567057, double { 1e-4 });
 }
 
 TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
@@ -498,7 +470,7 @@ TEST_CASE("Zero validation samples, boosting, binary") {
          CHECK_APPROX(modelValue, -0.020000000000000000);
       }
       if(1 == iEpoch) {
-         CHECK_APPROX(modelValue, -0.039801986733067563);
+         CHECK_APPROX_TOLERANCE(modelValue, -0.039801986733067563, double { 1e-4 });
       }
       CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
 
@@ -539,17 +511,13 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
       }
       if(1 == iEpoch) {
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
-#ifdef FAST_EXP
-         CHECK_APPROX(modelValue, 0.059120050417537748);
-#else // FAST_EXP
-         CHECK_APPROX(modelValue, 0.059119949636662006);
-#endif // FAST_EXP
+         CHECK_APPROX_TOLERANCE(modelValue, 0.059119949636662006, double { 1e-2 });
          CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
-         CHECK_APPROX(modelValue, -0.029887518980531450);
+         CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-4 });
          CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 2);
-         CHECK_APPROX(modelValue, -0.029887518980531450);
+         CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-4 });
          CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 2));
       }
       // the best model doesn't update since we don't have any basis to validate any changes
@@ -804,23 +772,15 @@ TEST_CASE("FeatureGroup with zero features, boosting, binary") {
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX(modelValue, -0.039801986733067563);
+            CHECK_APPROX_TOLERANCE(modelValue, -0.039801986733067563, double { 1e-4 });
          }
       }
    }
-#ifdef FAST_EXP
-   CHECK_APPROX(validationMetric, 2.2328420766102482e-05);
-#else // FAST_EXP
-   CHECK_APPROX(validationMetric, 2.2621439908125974e-05);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(validationMetric, 2.2621439908125974e-05, double { 1.5e-1 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, 0);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
-#ifdef FAST_EXP
-   CHECK_APPROX(modelValue, -10.709639052902512);
-#else // FAST_EXP
-   CHECK_APPROX(modelValue, -10.696601122148364);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(modelValue, -10.696601122148364, double { 1e-2 });
 }
 
 TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
@@ -848,41 +808,21 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
          if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 1.0401627411809615);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
-#ifdef FAST_EXP
-            CHECK_APPROX(modelValue, 0.059120050417537748);
-#else // FAST_EXP
-            CHECK_APPROX(modelValue, 0.059119949636662006);
-#endif // FAST_EXP
+            CHECK_APPROX_TOLERANCE(modelValue, 0.059119949636662006, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX(modelValue, -0.029887518980531450);
+            CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-4 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
-            CHECK_APPROX(modelValue, -0.029887518980531450);
+            CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-4 });
          }
       }
    }
-#ifdef FAST_EXP
-   CHECK_APPROX(validationMetric, 1.7135584048118169e-09);
-#else // FAST_EXP
-   CHECK_APPROX(validationMetric, 1.7171897252232722e-09);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(validationMetric, 1.7171897252232722e-09, double { 1e-3 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
-#ifdef FAST_EXP
-   CHECK_APPROX(modelValue, 10.644761013055286);
-#else // FAST_EXP
-   CHECK_APPROX(modelValue, 10.643234965479628);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(modelValue, 10.643234965479628, double { 1e-4 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
-#ifdef FAST_EXP
-   CHECK_APPROX(modelValue, -10.233079930856332);
-#else // FAST_EXP
-   CHECK_APPROX(modelValue, -10.232489007525166);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(modelValue, -10.232489007525166, double { 1e-4 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
-#ifdef FAST_EXP
-   CHECK_APPROX(modelValue, -10.233079930856332);
-#else // FAST_EXP
-   CHECK_APPROX(modelValue, -10.232489007525166);
-#endif // FAST_EXP
+   CHECK_APPROX_TOLERANCE(modelValue, -10.232489007525166, double { 1e-4 });
 }
 
 TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, regression") {

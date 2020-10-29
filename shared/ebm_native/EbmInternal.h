@@ -155,6 +155,12 @@ INLINE_RELEASE_UNTEMPLATED char * strcpy_NO_WARNINGS(char * dest, const char * s
    return strcpy(dest, src);
 }
 
+#define FAST_EXP
+// TODO someday consider using approximations for log, but that's going to be more sensitive to small errors than exp
+//#define FAST_LOG
+
+
+
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type 
 //   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  
 //   Perhaps take the sqrt of the minimal change from 1?
@@ -513,18 +519,120 @@ constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 
 // TODO: try out floats instead of doubles
 
-// TODO: also try this other exp approximation that look faster, and perhaps better:
-//       64 bit double version : https://bduvenhage.me/performance/machine_learning/2019/06/04/fast-exp.html
-//       https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
-//       This seems to be the original: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
-//       http://www.machinedlearnings.com/2011/06/fast-approximate-logarithm-exponential.html
-//       https://github.com/jhjourdan/SIMD-math-prims/blob/master/simd_math_prims.h
-//       benchmarks & blog showing that the fastexp version is fastest!  https://deathandthepenguinblog.wordpress.com/2015/04/13/writing-a-faster-exp/
-//       according to this, SSE 4.1 solved the performance issues on Intel with fast EXPs https://stackoverflow.com/questions/10552280/fast-exp-calculation-possible-to-improve-accuracy-without-losing-too-much-perfo
+// TODO: if we can replace exp, log, and sqrt (check the return from regression!) throughout the boosting stages, 
+//       and we use SSE floating point instead of x87 on 32-bit (this is already done), and we specify strict
+//       floating point handling so that the compiler doesn't re-order anything, we might be able to get
+//       identical results to the last bit accross OSes and compilers since IEEE 754 requires exact rounding
+//       for multipliation, division, addition and subtraction.
 
+
+// this approximation isn't perfect.  Occasionally it isn't monotonic when floatVal wraps integer boundaries
+template<bool bNaNPossible, bool bOverflowToInfinityPossible, bool bUnderflowToDenormalPossible, bool bZeroUnderflows>
+INLINE_ALWAYS FloatEbmType ApproxExpBetterButSlower(const FloatEbmType val) {
+   // algorithm from Paul Mineiro.  re-implemented below for our package
+   // https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
+   // Here's a description by Paul Mineiro on how it works
+   // http://www.machinedlearnings.com/2011/06/fast-approximate-logarithm-exponential.html
+   // which might have come from this paper:
+   // http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
+   // This blog shows benchmarks and errors for this approximation and some others:
+   // https://deathandthepenguinblog.wordpress.com/2015/04/13/writing-a-faster-exp/
+   // according to this, SSE 4.1 solved the performance issues on Intel with fast EXPs 
+   // https://stackoverflow.com/questions/10552280/fast-exp-calculation-possible-to-improve-accuracy-without-losing-too-much-perfo
+   // If we need a double version, here's one
+   // https://bduvenhage.me/performance/machine_learning/2019/06/04/fast-exp.html
+   // Here's a different approximation that uses AVX-512, and has a version for doubles
+   // https://github.com/jhjourdan/SIMD-math-prims/blob/master/simd_math_prims.h
+   // annohter implementation in AVX-512 (with a table, but I think we'd rather avoid the table to preserve cache)
+   // http://www.ecs.umass.edu/arith-2018/pdf/arith25_18.pdf
+
+   float floatVal = static_cast<float>(val);
+   if(bNaNPossible) {
+      // if we're given a NaN value, we need to convert it to something harmless, otherwise we'll have undefined
+      // behavior below when we go to cast it to an integer.  We fix it up later back into the original NaN value.
+      // Hopefully the compiler is smart enough to recognize that we aren't using the 0 floatVal throughout.
+      // We want to use branchless operations here for future SIMD conversion.
+      floatVal = UNPREDICTABLE(std::isnan(val)) ? float { 0 } : floatVal;
+   }
+
+   const float negativeCorrection = UNPREDICTABLE(float { 0 } <= floatVal) ? float { 0 } : float { 1 };
+                       
+   floatVal *= float { 1.442695040 };
+
+   if(bUnderflowToDenormalPossible) {
+      // the lowest number we accept before underflow is -126f / 1.442695040f = -87.3365448f
+
+      // this approximation doesn't work for denormal numbers.  It doesn't immediately return garbage numbers, but it
+      // starts to drift rapidly from the true exp value, so terminate right before our first denormal number gets
+      // returned at -126.  I verified that this is a precise measurement.  One float tick below -126 here
+      // would return our first denormal
+
+      // this implementation underflows to a very small number, but it doesn't go to zero.  
+      
+      // Unfortunately, we can't let floatVal be numbers below -126 because that could lead to undefined behavior
+      // If it was -infinity then converting to an int would be undefined, so we need to do the check here.  
+      // We could if we wanted to add a second check at the
+      // end that would do a final round down to zero, but that would be an additional check and action.
+      // I think returning a very small number is fine for now and we can add the extra logic if desired later
+      
+      floatVal = UNPREDICTABLE(float { -126 } <= floatVal) ? floatVal : float { -126 };
+   }
+
+   if(bOverflowToInfinityPossible) {
+      // the highest number accepted before overflow is nextafter(127.999985f, 0f) / 1.442695040f = 88.7228241f
+
+      // 127.999985 overflows to +infinity, but the next number up (128.000000) does not overflow to +infinity due 
+      // to numeracy issues. After we flip to infinity we don't want to flip flop back on a higher number, so 
+      // clip to infinity at 127.999985 and above
+
+      floatVal = UNPREDICTABLE(float { 127.999985 } < floatVal) ? float { 127.999985 } : floatVal;
+   }
+
+   const float factor = floatVal - static_cast<float>(static_cast<int>(floatVal)) + negativeCorrection;
+
+   static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "This hacky function requires IEEE 754 binary layout");
+   union {
+      uint32_t m_int;
+      float m_float;
+   } superHack;
+
+   // Technially, it's undefined behavior to insert a value into a union and retrieve a different type out
+   // but this code is clearer and seems to work on major compilers.  If we find a case where it doesn't work,
+   // there is a trick where you can use memcpy to copy the initial value to a buffer which is portable and legal.
+   // Suposedly, most compilers are smart enough to optimize the memcpy away.  I'm not using the memcpy trick 
+   // here though because it's less clear, and it's not obvious that all compilers will do the optimal thing
+   superHack.m_int = static_cast<uint32_t>(float { 1 << 23 } * (floatVal + float { 121.2740575 } +
+      float { 27.7280233 } / (float { 4.84252568 } - factor) - factor * float { 1.49012907 }));
+
+   float retFloat = superHack.m_float;
+   constexpr bool bCheckZeroUnderflow = bZeroUnderflows && bUnderflowToDenormalPossible;
+   if(bCheckZeroUnderflow) {
+      // this is the exact value that we get when we underflow.  This is actually pretty nice because
+      // the previous value is 1.17549841458783405e-38 which is lower than the low value we'd otherwise
+      // return here without this check, so zeroing the last value we get back makes sense, and it is an approximation
+      retFloat = UNPREDICTABLE(float { 1.17551775e-38 } == retFloat) ? float { 0 } : retFloat;
+   }
+
+   FloatEbmType ret = static_cast<FloatEbmType>(retFloat);
+   if(bNaNPossible) {
+      // if the original was a NaN, then return that exact nan value.  There are many possible NaN values 
+      // and they are sometimes used to signal conditions, so preserving the exact value is nice if possible.
+
+      ret = UNPREDICTABLE(std::isnan(val)) ? val : ret;
+   }
+   return ret;
+}
+
+//INLINE_ALWAYS FloatEbmType ApproxExpWorseButFaster(FloatEbmType val) {
+// TODO: test the fasterexp algorithm from the fastexp.h file below
+// algorithm from code originally written by Paul Mineiro.  re-implemented here
+// https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
+// which might have come from this paper:
+// http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
+//}
 
 constexpr unsigned int k_expRounds = 6;
-INLINE_ALWAYS FloatEbmType ApproxExp(FloatEbmType val) {
+INLINE_ALWAYS FloatEbmType ApproxExpClean(FloatEbmType val) {
    // TODO: experiment a bit with normalizing our logits so that the largest is always 1 and see if that helps us
    // on some datasets
 
@@ -560,17 +668,27 @@ INLINE_ALWAYS FloatEbmType ApproxExp(FloatEbmType val) {
    return val;
 }
 
+
+// TODO: in the future, see if we can eliminate any of our handling for NaN, overflow, underflow, zeroing underflows
+template<bool bNaNPossible = true, bool bOverflowToInfinityPossible = true, bool bUnderflowToDenormalPossible = true, bool bZeroUnderflows = true>
+INLINE_ALWAYS FloatEbmType EbmExpForResiduals(const FloatEbmType val) {
 #ifdef FAST_EXP
-INLINE_ALWAYS FloatEbmType EbmExpForResiduals(const FloatEbmType val) {
-   return ApproxExp(val);
-}
+   return ApproxExpBetterButSlower<bNaNPossible, bOverflowToInfinityPossible, bUnderflowToDenormalPossible, bZeroUnderflows>(val);
+   //return ApproxExpClean(val);
 #else // FAST_EXP
-INLINE_ALWAYS FloatEbmType EbmExpForResiduals(const FloatEbmType val) {
    return std::exp(val);
-}
 #endif // FAST_EXP
+}
 
 #ifdef FAST_LOG
+
+// TODO: test the fastlog algorithm from the fastlog.h file below
+// algorithm from code originally written by Paul Mineiro.  re-implemented here
+// https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastlog.h
+// which might have come from this paper:
+// http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
+
+
 
 // possible approaches:
 // NOTE: even though memory lookup table approaches look to be the fastest and reasonable approach, we probably want to avoid lookup tables
@@ -596,7 +714,7 @@ INLINE_ALWAYS unsigned int MostSignificantBit(T val) {
 INLINE_ALWAYS FloatEbmType EbmExpForLogLoss(const FloatEbmType val) {
    // if we're using approximates for the log function, we don't gain any benefit unless we're also using the
    // approximate exp function
-   return ApproxExp(val);
+   return ApproxExpBetterButSlower(val);
 }
 
 INLINE_ALWAYS FloatEbmType EbmLog(FloatEbmType val) {

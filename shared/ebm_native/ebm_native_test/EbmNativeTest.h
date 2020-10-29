@@ -52,7 +52,7 @@ int RegisterTestHidden(const TestCaseHidden & testCaseHidden);
    RegisterTestHidden(TestCaseHidden(&CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__), description, k_filePriority)); \
    static void CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__)(TestCaseHidden& testCaseHidden)
 
-void FAILED(TestCaseHidden * const pTestCaseHidden);
+void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, const std::string message);
 
 bool IsApproxEqual(const double value, const double expected, const double percentage);
 
@@ -62,8 +62,7 @@ bool IsApproxEqual(const double value, const double expected, const double perce
    do { \
       const bool bFailedHidden = !(expression); \
       if(bFailedHidden) { \
-         std::cout << " FAILED on \"" #expression "\""; \
-         FAILED(&testCaseHidden); \
+         FAILED(double { 0 }, &testCaseHidden, std::string(" FAILED on \"" #expression "\"")); \
       } \
    } while(AlwaysFalse())
 
@@ -74,8 +73,18 @@ bool IsApproxEqual(const double value, const double expected, const double perce
       const double valueHidden = (value); \
       const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), double { 1e-6 }); \
       if(!bApproxEqualHidden) { \
-         std::cout << " FAILED on \"" #value "(" << valueHidden << ") approx " #expected "\""; \
-         FAILED(&testCaseHidden); \
+         FAILED(valueHidden, &testCaseHidden, std::string(" FAILED on \"" #value "(") + std::to_string(valueHidden) + ") approx " #expected "\""); \
+      } \
+   } while(AlwaysFalse())
+
+// this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
+// function where CHECK_APPROX(expression) is called
+#define CHECK_APPROX_TOLERANCE(value, expected, tolerance) \
+   do { \
+      const double valueHidden = static_cast<double>(value); \
+      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), static_cast<double>(tolerance)); \
+      if(!bApproxEqualHidden) { \
+         FAILED(valueHidden, &testCaseHidden, std::string(" FAILED on \"" #value "(") + std::to_string(valueHidden) + ") approx " #expected "\""); \
       } \
    } while(AlwaysFalse())
 

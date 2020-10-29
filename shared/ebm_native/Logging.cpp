@@ -65,7 +65,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(T
 
    // this is not an actual error, but ensure that this message gets written to the log so that we know it was properly
    // set, and also test that the callback function works at this early stage instead of waiting for a real error
-   LOG_N(TraceLevelInfo, "Native logging trace level set to %s in " COMPILE_MODE, GetTraceLevelString(traceLevel));
+   LOG_N(TraceLevelWarning, "Native logging trace level set to %s in " COMPILE_MODE, GetTraceLevelString(traceLevel));
 }
 
 WARNING_PUSH

@@ -28,10 +28,6 @@ extern "C" {
 #error we should not be expanding binary logits while reducing multiclass logits
 #endif
 
-#define FAST_EXP
-// TODO someday consider using approximations for log, but that's going to be more sensitive to small errors than exp
-//#define FAST_LOG
-
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
