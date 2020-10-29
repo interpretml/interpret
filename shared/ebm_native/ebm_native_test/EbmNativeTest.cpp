@@ -48,9 +48,11 @@ extern void FAILED(TestCaseHidden * const pTestCaseHidden) {
 
 void EBM_NATIVE_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
    UNUSED(traceLevel);
-   // don't display the message, but we want to test all our messages, so have them call us here
    strlen(message); // test that the string memory is accessible
-//   printf("%" TraceEbmTypePrintf " - %s\n", traceLevel, message);
+   if(traceLevel <= TraceLevelOff) {
+      // don't display log messages during tests, but having this code here makes it easy to turn on when needed
+      printf("\n%s: %s\n", GetTraceLevelString(traceLevel), message);
+   }
 }
 
 static int g_countEqualityFailures = 0;

@@ -166,6 +166,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetLogMessag
    LOG_MESSAGE_FUNCTION logMessageFunction
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel);
 
 // BINARY VS MULTICLASS AND LOGIT REDUCTION
 // - I initially considered storing our model files as negated logits [storing them as (0 - mathematical_logit)], but that's a bad choice because:

@@ -15,11 +15,41 @@
 const char g_trueString[] = "true";
 const char g_falseString[] = "false";
 
+#ifndef NDEBUG
+#define COMPILE_MODE "DEBUG"
+#else // NDEBUG
+#define COMPILE_MODE "RELEASE"
+#endif // NDEBUG
+
 constexpr static char g_assertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
 constexpr static char g_pLoggingParameterError[] = "Error in vsnprintf parameters for logging.";
 
 TraceEbmType g_traceLevel = TraceLevelOff;
 static LOG_MESSAGE_FUNCTION g_pLogMessageFunc = nullptr;
+
+const char g_traceOffString[] = "OFF";
+const char g_traceErrorString[] = "ERROR";
+const char g_traceWarningString[] = "WARNING";
+const char g_traceInfoString[] = "INFO";
+const char g_traceVerboseString[] = "VERBOSE";
+const char g_traceIllegalString[] = "ILLEGAL";
+
+EBM_NATIVE_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel) {
+   switch(traceLevel) {
+   case TraceLevelOff:
+      return g_traceOffString;
+   case TraceLevelError:
+      return g_traceErrorString;
+   case TraceLevelWarning:
+      return g_traceWarningString;
+   case TraceLevelInfo:
+      return g_traceInfoString;
+   case TraceLevelVerbose:
+      return g_traceVerboseString;
+   default:
+      return g_traceIllegalString;
+   }
+}
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
    assert(nullptr != logMessageFunction);
@@ -35,7 +65,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(T
 
    // this is not an actual error, but ensure that this message gets written to the log so that we know it was properly
    // set, and also test that the callback function works at this early stage instead of waiting for a real error
-   LOG_N(TraceLevelError, "Native logging trace level set to %" TraceEbmTypePrintf, traceLevel);
+   LOG_N(TraceLevelInfo, "Native logging trace level set to %s in " COMPILE_MODE, GetTraceLevelString(traceLevel));
 }
 
 WARNING_PUSH

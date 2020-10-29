@@ -3,6 +3,7 @@ LIBRARY
 EXPORTS
   SetLogMessageFunction
   SetTraceLevel
+  GetTraceLevelString
   InitializeBoostingClassification
   InitializeBoostingRegression
   GenerateModelFeatureGroupUpdate
