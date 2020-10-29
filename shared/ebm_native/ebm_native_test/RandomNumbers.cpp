@@ -35,7 +35,7 @@ TEST_CASE("GenerateRandomNumber, lowest") {
    CHECK(879100963 == ret);
 }
 
-TEST_CASE("SamplingWithoutReplacement, stress test") {
+TEST_CASE("SampleWithoutReplacement, stress test") {
    constexpr size_t cSamples = 1000;
    IntEbmType samples[cSamples];
 
@@ -49,26 +49,26 @@ TEST_CASE("SamplingWithoutReplacement, stress test") {
 
    for(IntEbmType iRun = 0; iRun < 10000; ++iRun) {
       size_t cRandomSamples = randomStream.Next(cSamples + 1);
-      size_t cIncluded = randomStream.Next(cRandomSamples + size_t { 1 });
+      size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
 
       randomSeed = GenerateRandomNumber(randomSeed, stageRandomizationMix);
 
-      SamplingWithoutReplacement(
+      SampleWithoutReplacement(
          randomSeed,
-         static_cast<IntEbmType>(cIncluded),
+         static_cast<IntEbmType>(cTrainingSamples),
          static_cast<IntEbmType>(cRandomSamples),
          samples
       );
 
-      size_t cIncludedVerified = 0;
+      size_t cTrainingSamplesVerified = 0;
       for(size_t i = 0; i < cRandomSamples; ++i) {
          const IntEbmType val = samples[i];
-         CHECK(EBM_FALSE == val || EBM_TRUE == val);
-         if(EBM_TRUE == val) {
-            ++cIncludedVerified;
+         CHECK(0 == val || 1 == val);
+         if(0 != val) {
+            ++cTrainingSamplesVerified;
          }
       }
-      CHECK(cIncludedVerified == cIncluded);
+      CHECK(cTrainingSamplesVerified == cTrainingSamples);
    }
 }
 

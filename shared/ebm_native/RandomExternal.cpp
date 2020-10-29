@@ -21,83 +21,83 @@ EBM_NATIVE_IMPORT_EXPORT_BODY SeedEbmType EBM_NATIVE_CALLING_CONVENTION Generate
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterSamplingWithoutReplacementParametersMessages = 5;
-static int g_cLogExitSamplingWithoutReplacementParametersMessages = 5;
+static int g_cLogEnterSampleWithoutReplacementParametersMessages = 5;
+static int g_cLogExitSampleWithoutReplacementParametersMessages = 5;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
    SeedEbmType randomSeed,
-   IntEbmType countIncluded,
+   IntEbmType countTrainingSamples,
    IntEbmType countSamples,
-   IntEbmType * isIncludedOut
+   IntEbmType * trainingCountsOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogEnterSamplingWithoutReplacementParametersMessages,
+      &g_cLogEnterSampleWithoutReplacementParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered SamplingWithoutReplacement: "
+      "Entered SampleWithoutReplacement: "
       "randomSeed=%" SeedEbmTypePrintf ", "
-      "countIncluded=%" IntEbmTypePrintf ", "
+      "countTrainingSamples=%" IntEbmTypePrintf ", "
       "countSamples=%" IntEbmTypePrintf ", "
-      "isIncludedOut=%p"
+      "trainingCountsOut=%p"
       ,
       randomSeed,
-      countIncluded,
+      countTrainingSamples,
       countSamples,
-      static_cast<void *>(isIncludedOut)
+      static_cast<void *>(trainingCountsOut)
    );
 
-   if(UNLIKELY(nullptr == isIncludedOut)) {
-      LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement nullptr == isIncludedOut");
+   if(UNLIKELY(nullptr == trainingCountsOut)) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement nullptr == trainingCountsOut");
       return;
    }
 
    if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
       if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-         LOG_0(TraceLevelError, "ERROR SamplingWithoutReplacement countSamples < IntEbmType { 0 }");
+         LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countSamples < IntEbmType { 0 }");
       }
       return;
    }
    if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING SamplingWithoutReplacement !IsNumberConvertable<size_t>(countSamples)");
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement !IsNumberConvertable<size_t>(countSamples)");
       return;
    }
    size_t cSamplesRemaining = static_cast<size_t>(countSamples);
-   if(UNLIKELY(IsMultiplyError(cSamplesRemaining, sizeof(*isIncludedOut)))) {
-      LOG_0(TraceLevelWarning, "WARNING SamplingWithoutReplacement IsMultiplyError(cSamples, sizeof(*isIncludedOut))");
+   if(UNLIKELY(IsMultiplyError(cSamplesRemaining, sizeof(*trainingCountsOut)))) {
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsMultiplyError(cSamples, sizeof(*trainingCountsOut))");
       return;
    }
 
-   if(UNLIKELY(countIncluded < IntEbmType { 0 })) {
+   if(UNLIKELY(countTrainingSamples < IntEbmType { 0 })) {
       // this is a stupid input.  Fix it, but give the caller a warning so they can correct their code
-      LOG_0(TraceLevelWarning, "WARNING SamplingWithoutReplacement countIncluded shouldn't be negative");
-      countIncluded = IntEbmType { 0 };
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement countTrainingSamples shouldn't be negative");
+      countTrainingSamples = IntEbmType { 0 };
    }
-   if(UNLIKELY(countSamples < countIncluded)) {
+   if(UNLIKELY(countSamples < countTrainingSamples)) {
       // this is a stupid input.  Fix it, but give the caller a warning so they can correct their code
-      LOG_0(TraceLevelWarning, "WARNING SamplingWithoutReplacement countIncluded shouldn't be higher than countSamples");
-      countIncluded = countSamples;
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement countTrainingSamples shouldn't be higher than countSamples");
+      countTrainingSamples = countSamples;
    }
-   // countIncluded can't be negative or higher than countSamples, so it can be converted to size_t
-   size_t cIncludedRemaining = static_cast<size_t>(countIncluded);
+   // countTrainingSamples can't be negative or higher than countSamples, so it can be converted to size_t
+   size_t cTrainingRemaining = static_cast<size_t>(countTrainingSamples);
 
    RandomStream randomStream;
    randomStream.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
 
-   IntEbmType * pbIncluded = isIncludedOut;
+   IntEbmType * pTrainingCountsOut = trainingCountsOut;
    do {
       const size_t iRandom = randomStream.Next(cSamplesRemaining);
-      const bool bIncluded = UNPREDICTABLE(iRandom < cIncludedRemaining);
-      cIncludedRemaining = UNPREDICTABLE(bIncluded) ? cIncludedRemaining - size_t { 1 } : cIncludedRemaining;
-      *pbIncluded = UNPREDICTABLE(bIncluded) ? EBM_TRUE : EBM_FALSE;
-      ++pbIncluded;
+      const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
+      cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
+      *pTrainingCountsOut = UNPREDICTABLE(bTrainingSample) ? IntEbmType { 1 } : IntEbmType { 0 };
+      ++pTrainingCountsOut;
       --cSamplesRemaining;
    } while(0 != cSamplesRemaining);
-   EBM_ASSERT(0 == cIncludedRemaining); // this should be all used up too now
+   EBM_ASSERT(0 == cTrainingRemaining); // this should be all used up too now
 
    LOG_COUNTED_0(
-      &g_cLogExitSamplingWithoutReplacementParametersMessages,
+      &g_cLogExitSampleWithoutReplacementParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Exited SamplingWithoutReplacement"
+      "Exited SampleWithoutReplacement"
    );
 }

@@ -511,6 +511,18 @@ constexpr bool k_bUseSIMD = false;
 constexpr ptrdiff_t k_iZeroResidual = -1;
 constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 
+// TODO: try out floats instead of doubles
+
+// TODO: also try this other exp approximation that look faster, and perhaps better:
+//       64 bit double version : https://bduvenhage.me/performance/machine_learning/2019/06/04/fast-exp.html
+//       https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
+//       This seems to be the original: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
+//       http://www.machinedlearnings.com/2011/06/fast-approximate-logarithm-exponential.html
+//       https://github.com/jhjourdan/SIMD-math-prims/blob/master/simd_math_prims.h
+//       benchmarks & blog showing that the fastexp version is fastest!  https://deathandthepenguinblog.wordpress.com/2015/04/13/writing-a-faster-exp/
+//       according to this, SSE 4.1 solved the performance issues on Intel with fast EXPs https://stackoverflow.com/questions/10552280/fast-exp-calculation-possible-to-improve-accuracy-without-losing-too-much-perfo
+
+
 constexpr unsigned int k_expRounds = 6;
 INLINE_ALWAYS FloatEbmType ApproxExp(FloatEbmType val) {
    // TODO: experiment a bit with normalizing our logits so that the largest is always 1 and see if that helps us

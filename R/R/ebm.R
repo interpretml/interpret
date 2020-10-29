@@ -108,7 +108,7 @@ ebm_classify <- function(
    }
 
    seed <- random_state
-   is_included <- vector("logical", length(y))
+   training_counts <- vector("numeric", length(y))
 
    n_classes <- 2 # only binary classification for now
    num_scores <- get_count_scores_c(n_classes)
@@ -121,13 +121,13 @@ ebm_classify <- function(
 
    for(i_outer_bag in 1:outer_bags) {
       seed <- generate_random_number(seed, 1416147523)
-      # WARNING: is_included is modified in-place
-      sampling_without_replacement(seed, validation_size, length(y), is_included)
+      # WARNING: training_counts is modified in-place
+      sample_without_replacement(seed, train_size, length(y), training_counts)
 
-      X_train <- X_binned[!is_included, ]
-      y_train <- y[!is_included]
-      X_val <- X_binned[is_included, ]
-      y_val <- y[is_included] 
+      X_train <- X_binned[0 != training_counts, ]
+      y_train <- y[0 != training_counts]
+      X_val <- X_binned[0 == training_counts, ]
+      y_val <- y[0 == training_counts] 
 
       result_list <- cyclic_gradient_boost(
          "classification",

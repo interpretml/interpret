@@ -17,8 +17,8 @@ constexpr INLINE_ALWAYS const char * ObtainTruth(const bool b) {
    return b ? g_trueString : g_falseString;
 }
 
-constexpr INLINE_ALWAYS const char * ObtainTruth(const IntEbmType isTrue) {
-   return EBM_FALSE != isTrue ? g_trueString : g_falseString;
+constexpr INLINE_ALWAYS const char * ObtainTruth(const BoolEbmType isTrue) {
+   return ObtainTruth(EBM_FALSE != isTrue);
 }
 
 extern TraceEbmType g_traceLevel;

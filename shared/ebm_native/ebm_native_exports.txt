@@ -21,6 +21,6 @@
       Softmax;
       SuggestGraphBounds;
       GenerateRandomNumber;
-      SamplingWithoutReplacement;
+      SampleWithoutReplacement;
    local: *;
 };

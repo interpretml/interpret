@@ -254,7 +254,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
             EbmBoostingState::Free(pBooster);
             return nullptr;
          }
-         bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
+         const bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
 
          pBooster->m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, featureType, bMissing);
 

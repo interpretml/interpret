@@ -12,11 +12,13 @@
 
 #ifdef __cplusplus
 extern "C" {
-#define EBM_CAST(MY_TYPE, MY_VAL) (static_cast<MY_TYPE>(MY_VAL))
+#define EBM_FEATURE_CAST(EBM_VAL) (static_cast<FeatureEbmType>(EBM_VAL))
+#define EBM_BOOL_CAST(EBM_VAL) (static_cast<BoolEbmType>(EBM_VAL))
+#define EBM_TRACE_CAST(EBM_VAL) (static_cast<TraceEbmType>(EBM_VAL))
 #else // __cplusplus
-// this EBM_CAST macro helps us avoid "old-style cast" compiler warnings when compiling in C++
-// using this gives our constants types, but also preserves the ability to use the constants in switch case statements
-#define EBM_CAST(MY_TYPE, MY_VAL) ((MY_TYPE)(MY_VAL))
+#define EBM_FEATURE_CAST(EBM_VAL) ((FeatureEbmType)(EBM_VAL))
+#define EBM_BOOL_CAST(EBM_VAL) ((BoolEbmType)(EBM_VAL))
+#define EBM_TRACE_CAST(EBM_VAL) ((TraceEbmType)(EBM_VAL))
 #endif // __cplusplus
 
 //#define EXPAND_BINARY_LOGITS
@@ -32,14 +34,14 @@ extern "C" {
 
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
+#define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
+
 #ifdef EBM_NATIVE_R
 // R has it's own way of exporting functions.  There is a single entry point that describes to 
 // R how to call our functions.  Also, we export R specific functions rather than the generic 
 // ones that we can consume from other languages
-#define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_R
-#define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern __attribute__ ((visibility ("default")))
 #endif // EBM_NATIVE_R
 
@@ -64,7 +66,6 @@ extern "C" {
 // __declspec(dllimport) is optional, but having it allows the compiler to make the 
 // resulting code more efficient when imported
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern __declspec(dllimport)
-#define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #endif // EBM_NATIVE_EXPORTS
 
 #endif // EBM_NATIVE_R
@@ -119,18 +120,26 @@ typedef uint64_t UIntEbmType;
 #define UIntEbmTypePrintf PRIu64
 typedef int32_t SeedEbmType;
 #define SeedEbmTypePrintf PRId32
+typedef int32_t TraceEbmType;
+#define TraceEbmTypePrintf PRId32
+typedef IntEbmType BoolEbmType;
+#define BoolEbmTypePrintf IntEbmTypePrintf
+typedef IntEbmType FeatureEbmType;
+#define FeatureEbmTypePrintf IntEbmTypePrintf
 
-#define EBM_FALSE          (EBM_CAST(IntEbmType, 0))
-#define EBM_TRUE           (EBM_CAST(IntEbmType, 1))
+#define EBM_FALSE          (EBM_BOOL_CAST(0))
+#define EBM_TRUE           (EBM_BOOL_CAST(1))
 
-#define FeatureTypeOrdinal (EBM_CAST(IntEbmType, 0))
-#define FeatureTypeNominal (EBM_CAST(IntEbmType, 1))
+#define FeatureTypeOrdinal (EBM_FEATURE_CAST(0))
+#define FeatureTypeNominal (EBM_FEATURE_CAST(1))
 
+// TODO: replace this structure with flat arrays.  It's easier when integrating into other languages which 
+// almost always have flat arrays built in an easy way
 typedef struct _EbmNativeFeature {
-   // enums and bools aren't standardized accross languages, so use IntEbmType values
-   IntEbmType featureType;
+   // enums and bools aren't standardized accross languages, so use FeatureEbmType values
+   FeatureEbmType featureType;
    // TODO: figure out if hasMissing is still this required now that we put missing in the top bin?
-   IntEbmType hasMissing;
+   BoolEbmType hasMissing;
    IntEbmType countBins;
 } EbmNativeFeature;
 
@@ -138,24 +147,21 @@ typedef struct _EbmNativeFeatureGroup {
    IntEbmType countFeaturesInGroup;
 } EbmNativeFeatureGroup;
 
-// SetLogMessageFunction does not need to be called if the level is left at TraceLevelOff
-typedef int32_t TraceEbmType;
-#define TraceEbmTypePrintf PRId32
-
  // no messages will be output
-#define TraceLevelOff      (EBM_CAST(TraceEbmType, 0))
+#define TraceLevelOff      (EBM_TRACE_CAST(0))
 // invalid inputs to the C library or assert failure before exit
-#define TraceLevelError    (EBM_CAST(TraceEbmType, 1))
+#define TraceLevelError    (EBM_TRACE_CAST(1))
 // out of memory or other conditions we can't continue after
-#define TraceLevelWarning  (EBM_CAST(TraceEbmType, 2))
+#define TraceLevelWarning  (EBM_TRACE_CAST(2))
 // odd inputs like features with 1 value or empty feature groups
-#define TraceLevelInfo     (EBM_CAST(TraceEbmType, 3))
+#define TraceLevelInfo     (EBM_TRACE_CAST(3))
 // function calls, logging that helps us trace execution in the library
-#define TraceLevelVerbose  (EBM_CAST(TraceEbmType, 4))
+#define TraceLevelVerbose  (EBM_TRACE_CAST(4))
 
 // all our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_NATIVE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(TraceEbmType traceLevel, const char * message);
 
+// SetLogMessageFunction does not need to be called if the level is left at TraceLevelOff
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(
    LOG_MESSAGE_FUNCTION logMessageFunction
 );
@@ -333,7 +339,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
-   IntEbmType isHumanized,
+   BoolEbmType isHumanized,
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -390,11 +396,11 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Softma
    FloatEbmType * probabilitiesOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SamplingWithoutReplacement(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
    SeedEbmType randomSeed,
-   IntEbmType countIncluded,
+   IntEbmType countTrainingSamples,
    IntEbmType countSamples,
-   IntEbmType * isIncludedOut
+   IntEbmType * trainingCountsOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(

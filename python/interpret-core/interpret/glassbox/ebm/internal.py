@@ -48,9 +48,9 @@ class Native:
 
     class EbmNativeFeature(ct.Structure):
         _fields_ = [
-            # FeatureType featureType;
+            # FeatureEbmType featureType;
             ("featureType", ct.c_int64),
-            # bool hasMissing;
+            # BoolEbmType hasMissing;
             ("hasMissing", ct.c_int64),
             # int64_t countBins;
             ("countBins", ct.c_int64),
@@ -101,17 +101,17 @@ class Native:
         ]
         self.lib.GenerateRandomNumber.restype = ct.c_int32
 
-        self.lib.SamplingWithoutReplacement.argtypes = [
+        self.lib.SampleWithoutReplacement.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
-            # int64_t countIncluded
+            # int64_t countTrainingSamples
             ct.c_int64,
             # int64_t countSamples
             ct.c_int64,
-            # int64_t * isIncludedOut
+            # int64_t * trainingCountsOut
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
-        self.lib.SamplingWithoutReplacement.restype = None
+        self.lib.SampleWithoutReplacement.restype = None
 
 
         self.lib.GenerateQuantileBinCuts.argtypes = [

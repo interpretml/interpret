@@ -2481,7 +2481,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
-   IntEbmType isHumanized,
+   BoolEbmType isHumanized,
    IntEbmType * countBinCutsInOut,
    FloatEbmType * binCutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,

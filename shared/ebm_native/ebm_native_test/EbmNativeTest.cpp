@@ -260,8 +260,8 @@ void TestApi::AddFeatures(const std::vector<FeatureTest> features) {
 
    for(const FeatureTest oneFeature : features) {
       EbmNativeFeature feature;
-      feature.featureType = static_cast<IntEbmType>(oneFeature.m_featureType);
-      feature.hasMissing = oneFeature.m_hasMissing ? IntEbmType { 1 } : IntEbmType { 0 };
+      feature.featureType = static_cast<FeatureEbmType>(oneFeature.m_featureType);
+      feature.hasMissing = oneFeature.m_hasMissing ? EBM_TRUE : EBM_FALSE;
       feature.countBins = oneFeature.m_countBins;
       m_features.push_back(feature);
    }
