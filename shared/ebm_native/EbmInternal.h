@@ -19,7 +19,7 @@
 // here's how to detect the compiler type for a variety of compilers -> https://sourceforge.net/p/predef/wiki/Compilers/
 // disabling warnings with _Pragma detailed info here https://stackoverflow.com/questions/3378560/how-to-disable-gcc-warnings-for-a-few-lines-of-code
 
-#if defined(__clang__) // compiler type
+#if defined(__clang__) // compiler type (clang++)
 
 #define WARNING_PUSH _Pragma("clang diagnostic push")
 #define WARNING_POP _Pragma("clang diagnostic pop")
@@ -33,7 +33,7 @@
 #define ANALYZER_NORETURN __attribute__((analyzer_noreturn))
 #endif // __has_feature(attribute_analyzer_noreturn)
 
-#elif defined(__GNUC__) // compiler type
+#elif defined(__GNUC__) // compiler type (g++)
 
 #define WARNING_PUSH _Pragma("GCC diagnostic push")
 #define WARNING_POP _Pragma("GCC diagnostic pop")
@@ -63,7 +63,7 @@
 
 #define ANALYZER_NORETURN
 
-#elif defined(_MSC_VER) // compiler type
+#elif defined(_MSC_VER) // compiler type (Microsoft Visual Studio compiler)
 
 #define WARNING_PUSH __pragma(warning(push))
 #define WARNING_POP __pragma(warning(pop))

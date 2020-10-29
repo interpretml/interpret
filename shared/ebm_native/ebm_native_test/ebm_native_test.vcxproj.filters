@@ -17,6 +17,7 @@
     <ClCompile Include="GenerateUniformBinCuts.cpp" />
     <ClCompile Include="SuggestGraphBounds.cpp" />
     <ClCompile Include="RandomNumbers.cpp" />
+    <ClCompile Include="CIncludeTest.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EbmNativeTest.h">

@@ -1082,8 +1082,14 @@ extern void DisplayCuts(
    std::cout << std::endl << std::endl;
 }
 
+extern "C" void TestCHeaderConstructs();
 
 int main() {
+#ifdef _MSC_VER
+   // only test on the Visual Studio Compiler since it's easier.  If we support C later then add more compilers
+   TestCHeaderConstructs();
+#endif // _MSC_VER
+
    SetLogMessageFunction(&LogMessage);
    SetTraceLevel(TraceLevelVerbose);
 
