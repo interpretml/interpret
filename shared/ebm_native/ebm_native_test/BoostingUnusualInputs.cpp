@@ -244,18 +244,18 @@ TEST_CASE("negative learning rate, boosting, binary") {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
          validationMetric = test.Boost(iFeatureGroup, {}, {}, -k_learningRateDefault);
          if(0 == iFeatureGroup && 0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 0.70319717972663420);
+            CHECK_APPROX_TOLERANCE(validationMetric, 0.70319717972663420, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX(modelValue, 0.020000000000000000);
+            CHECK_APPROX_TOLERANCE(modelValue, 0.020000000000000000, double { 1.5e-1 });
          }
          if(0 == iFeatureGroup && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 0.71345019889199235);
+            CHECK_APPROX_TOLERANCE(validationMetric, 0.71345019889199235, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX_TOLERANCE(modelValue, 0.040202013400267564, double { 1e-4 });
+            CHECK_APPROX_TOLERANCE(modelValue, 0.040202013400267564, double { 1.5e-1 });
          }
       }
    }
@@ -290,13 +290,13 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
             CHECK_APPROX(modelValue, 0.01500000000000000);
          }
          if(0 == iFeatureGroup && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 1.1602122411839852);
+            CHECK_APPROX_TOLERANCE(validationMetric, 1.1602122411839852, double { 1e-3 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
-            CHECK_APPROX_TOLERANCE(modelValue, -0.060920557198174352, double { 1e-5 });
+            CHECK_APPROX_TOLERANCE(modelValue, -0.060920557198174352, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX(modelValue, 0.030112481019468545);
+            CHECK_APPROX_TOLERANCE(modelValue, 0.030112481019468545, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
-            CHECK_APPROX(modelValue, 0.030112481019468545);
+            CHECK_APPROX_TOLERANCE(modelValue, 0.030112481019468545, double { 1e-2 });
          }
       }
    }
@@ -306,7 +306,7 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
    CHECK_APPROX_TOLERANCE(modelValue, 0.32430253082567057, double { 1e-2 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
-   CHECK_APPROX_TOLERANCE(modelValue, 0.32430253082567057, double { 1e-4 });
+   CHECK_APPROX_TOLERANCE(modelValue, 0.32430253082567057, double { 1e-2 });
 }
 
 TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
@@ -467,10 +467,10 @@ TEST_CASE("Zero validation samples, boosting, binary") {
 
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
       if(0 == iEpoch) {
-         CHECK_APPROX(modelValue, -0.020000000000000000);
+         CHECK_APPROX_TOLERANCE(modelValue, -0.020000000000000000, double { 1.5e-1 });
       }
       if(1 == iEpoch) {
-         CHECK_APPROX_TOLERANCE(modelValue, -0.039801986733067563, double { 1e-4 });
+         CHECK_APPROX_TOLERANCE(modelValue, -0.039801986733067563, double { 1e-1 });
       }
       CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
 
@@ -514,10 +514,10 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
          CHECK_APPROX_TOLERANCE(modelValue, 0.059119949636662006, double { 1e-2 });
          CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
-         CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-4 });
+         CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-2 });
          CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 2);
-         CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-4 });
+         CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-2 });
          CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 2));
       }
       // the best model doesn't update since we don't have any basis to validate any changes
@@ -761,18 +761,18 @@ TEST_CASE("FeatureGroup with zero features, boosting, binary") {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
          validationMetric = test.Boost(iFeatureGroup);
          if(0 == iFeatureGroup && 0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 0.68319717972663419);
+            CHECK_APPROX_TOLERANCE(validationMetric, 0.68319717972663419, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX(modelValue, -0.020000000000000000);
+            CHECK_APPROX_TOLERANCE(modelValue, -0.020000000000000000, double { 1e-1 });
          }
          if(0 == iFeatureGroup && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 0.67344419889200957);
+            CHECK_APPROX_TOLERANCE(validationMetric, 0.67344419889200957, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX_TOLERANCE(modelValue, -0.039801986733067563, double { 1e-4 });
+            CHECK_APPROX_TOLERANCE(modelValue, -0.039801986733067563, double { 1e-1 });
          }
       }
    }
@@ -806,13 +806,13 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
             CHECK_APPROX(modelValue, -0.01500000000000000);
          }
          if(0 == iFeatureGroup && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 1.0401627411809615);
+            CHECK_APPROX_TOLERANCE(validationMetric, 1.0401627411809615, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX_TOLERANCE(modelValue, 0.059119949636662006, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-4 });
+            CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-2 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
-            CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-4 });
+            CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-2 });
          }
       }
    }

@@ -8,16 +8,16 @@
 #define UNUSED(x) (void)(x)
 
 enum class TestPriority {
+   BoostingUnusualInputs,
+   InteractionUnusualInputs,
+   Rehydration,
+   BitPackingExtremes,
    RandomNumbers,
    SuggestGraphBounds,
    Discretize,
    GenerateUniformBinCuts,
    GenerateWinsorizedBinCuts,
-   GenerateQuantileBinCuts,
-   BoostingUnusualInputs,
-   InteractionUnusualInputs,
-   Rehydration,
-   BitPackingExtremes
+   GenerateQuantileBinCuts
 };
 
 class TestCaseHidden;

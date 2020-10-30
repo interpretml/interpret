@@ -65,13 +65,13 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
             test.InitializeBoosting();
 
             FloatEbmType validationMetric = test.Boost(0);
-            CHECK_APPROX(validationMetric, 0.70319717972663420);
+            CHECK_APPROX_TOLERANCE(validationMetric, 0.70319717972663420, double { 1e-3 });
 
             FloatEbmType modelValue;
             modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
             CHECK_APPROX(modelValue, 0);
             modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 1);
-            CHECK_APPROX(modelValue, -0.02);
+            CHECK_APPROX_TOLERANCE(modelValue, -0.02, double { 1e-1 });
          }
       }
    }
