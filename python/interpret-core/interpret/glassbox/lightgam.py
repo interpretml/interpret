@@ -4,6 +4,8 @@
 import numbers
 import pandas as pd
 import numpy as np
+from interpret.glassbox.ebm.postprocessing import multiclass_postprocess
+
 from ..utils import unify_data
 from joblib import Parallel, delayed
 from sklearn.utils.extmath import softmax
@@ -146,7 +148,6 @@ class BaseLightGAM:
                 _fit(learner, X, y, self.random_state, self.holdout_split, self.early_stopping_rounds,
                      self.feature_names, self.feature_types)]
 
-        # TODO: Introduce a merge operator to build GAM graphs
         self.additive_terms_ = []
         self.term_standard_deviations_ = []
 
@@ -155,7 +156,7 @@ class BaseLightGAM:
             X_synthetic = np.zeros(len(self.feature_names))
             baseline = estimator.predict(X_synthetic.reshape(1, -1), raw_score=True)
             baselines.append(baseline)
-        self.intercept_ = np.average(baselines, axis=0)
+        self.intercept_ = np.average(baselines, axis=0).flatten()
 
         for index, _ in enumerate(self.feature_names):
             term_contribs = []
@@ -165,9 +166,13 @@ class BaseLightGAM:
                 # X_baseline = self.preprocessor_.transform(X_synthetic)
                 baseline = estimator.predict(X_synthetic.reshape(1, -1), raw_score=True)
 
-                bin_labels = self.preprocessor_.get_bin_labels(index)
-                term_contrib = np.zeros(len(bin_labels))
-                for bin_index, bin_label in enumerate(self.preprocessor_.get_bin_labels(index)):
+                bin_labels = self.preprocessor_.get_bin_labels(index)[:-1]
+                if is_classifier(self) and len(self.classes_) > 2:
+                    term_contrib_shape = (len(bin_labels), len(self.classes_))
+                else:
+                    term_contrib_shape = (len(bin_labels),)
+                term_contrib = np.zeros(term_contrib_shape)
+                for bin_index, bin_label in enumerate(self.preprocessor_.get_bin_labels(index)[:-1]):
                     X_synthetic[index] = bin_index
                     # X_transformed = self.preprocessor_.transform(X_synthetic)
                     X_transformed = estimator.predict(X_synthetic.reshape(1, -1), raw_score=True)
@@ -181,35 +186,61 @@ class BaseLightGAM:
             self.additive_terms_.append(averaged_model)
             self.term_standard_deviations_.append(model_errors)
 
-        # TODO: Model centering
-
-        # Generate overall importance
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-        intercept = self.intercept_
-        if isinstance(intercept, numbers.Number) or len(intercept) == 1:
-            score_vector = np.empty(X.shape[0])
-        else:
-            score_vector = np.empty((X.shape[0], len(intercept)))
-        np.copyto(score_vector, intercept)
+        # Generate overall importance and mean center models
         self.feature_importances_ = []
-        model = self.additive_terms_
         for feature_index, _ in enumerate(self.feature_names):
-            tensor = model[feature_index]
-            sliced_X = X[:, feature_index]
-            unknowns = (sliced_X < 0)
-            sliced_X[unknowns] = 0
-            scores = tensor[sliced_X]
-            scores[unknowns] = 0
-            score_vector += scores
+            # Mean center
+            if (is_classifier(self) and len(self.classes_) <= 2) or not is_classifier(self):
+                scores = self._term_contrib(X, feature_index)
+                mean_score = np.mean(scores)
+                self.additive_terms_[feature_index] = \
+                    self.additive_terms_[feature_index] - mean_score
+                self.intercept_ += mean_score
+            else:
+                binned_predict_proba = lambda x: self._binned_predict_proba(x.T)
+                postprocessed = multiclass_postprocess(
+                    X.T, self.additive_terms_, binned_predict_proba, self.feature_types
+                )
+                # self.additive_terms_ = postprocessed["feature_graphs"]
+                # self.intercept_ = postprocessed["intercepts"]
+
+            # Feature importance (on updated scores)
+            scores = self._term_contrib(X, feature_index)
             mean_abs_score = np.mean(np.abs(scores))
             self.feature_importances_.append(mean_abs_score)
+
         # Generate selector
         self.global_selector = gen_global_selector(
             X_orig, self.feature_names, self.feature_types, None
         )
 
         return self
+
+    def _binned_predict_proba(self, X_binned):
+        intercept = self.intercept_
+        if isinstance(intercept, numbers.Number) or len(intercept) == 1:
+            score_vector = np.empty(X_binned.shape[0])
+        else:
+            score_vector = np.empty((X_binned.shape[0], len(intercept)))
+        np.copyto(score_vector, intercept)
+
+        for feature_index, _ in enumerate(self.feature_names):
+            scores = self._term_contrib(X_binned, feature_index)
+            score_vector += scores
+
+        if score_vector.ndim == 1:
+            score_vector = np.c_[np.zeros(score_vector.shape), score_vector]
+
+        return softmax(score_vector)
+
+    def _term_contrib(self, X_binned, feature_index):
+        tensor = self.additive_terms_[feature_index]
+        sliced_X_binned = X_binned[:, feature_index]
+        unknowns = (sliced_X_binned < 0)
+        sliced_X_binned[unknowns] = 0
+        scores = tensor[sliced_X_binned]
+        scores[unknowns] = 0
+        return scores
 
     def decision_function(self, X):
         X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
@@ -224,14 +255,8 @@ class BaseLightGAM:
             score_vector = np.empty((X.shape[0], len(intercept)))
         np.copyto(score_vector, intercept)
 
-        model = self.additive_terms_
         for feature_index, _ in enumerate(self.feature_names):
-            tensor = model[feature_index]
-            sliced_X = X[:, feature_index]
-            unknowns = (sliced_X < 0)
-            sliced_X[unknowns] = 0
-            scores = tensor[sliced_X]
-            scores[unknowns] = 0
+            scores = self._term_contrib(X, feature_index)
             score_vector += scores
 
         return score_vector
@@ -286,14 +311,8 @@ class BaseLightGAM:
                 }
             data_dicts.append(data_dict)
 
-        model = self.additive_terms_
         for feature_index, _ in enumerate(self.feature_names):
-            tensor = model[feature_index]
-            sliced_X = X[:, feature_index]
-            unknowns = (sliced_X < 0)
-            sliced_X[unknowns] = 0
-            scores = tensor[sliced_X]
-            scores[unknowns] = 0
+            scores = self._term_contrib(X, feature_index)
 
             for row_idx in range(n_rows):
                 feature_name = self.feature_names[feature_index]
@@ -382,7 +401,7 @@ class BaseLightGAM:
             # NOTE: This uses stddev. for bounds, consider issue warnings.
             errors = self.term_standard_deviations_[feature_index]
 
-            bin_labels = self.preprocessor_.get_bin_labels(feature_index)
+            bin_labels = self.preprocessor_.get_bin_labels(feature_index)[:-1]
             # bin_counts = self.preprocessor_.get_bin_counts(
             #     feature_indexes[0]
             # )
@@ -492,8 +511,7 @@ class LightGAMClassifier(BaseLightGAM, BaseEstimator, ClassifierMixin, Explainer
 
     def predict(self, X):
         X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
-        X_cat = self.preprocessor_.transform(X_orig)
-        preds = self.predict_proba(X_cat)
+        preds = self.predict_proba(X_orig)
         return self.classes_[np.argmax(preds, axis=1)]
 
 
