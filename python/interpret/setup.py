@@ -22,6 +22,7 @@ interpret_core_extra = [
     "sensitivity",
     "shap",
     "ebm",
+    "skoperules",
     "linear",
     "decisiontree",
     "dash",

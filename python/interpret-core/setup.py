@@ -71,7 +71,7 @@ extras = {
     "ebm": [joblib_dep],
     "linear": [],
     "decisiontree": [joblib_dep],
-    "skoperules": ["skope-rules>=1.0.0"],
+    "skoperules": ["skope-rules>=1.0.1"],
     "treeinterpreter": ["treeinterpreter>=0.2.2"],
     # Dash
     "dash": [

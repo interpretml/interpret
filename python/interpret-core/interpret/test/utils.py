@@ -33,7 +33,7 @@ def get_all_explainers():
     perf_explainer_classes = [ROC, PR, RegressionPerf]
     model_explainer_classes = [
         ClassificationTree,
-        # DecisionListClassifier,  # NOTE: Wait on skoperules to work with latest scikit.
+        DecisionListClassifier,
         LogisticRegression,
         ExplainableBoostingClassifier,
         RegressionTree,

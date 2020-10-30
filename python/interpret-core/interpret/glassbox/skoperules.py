@@ -16,8 +16,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-# NOTE: Not included for test coverage until skope rules is fixed for latest sklearn versions.
-class RulesExplanation(ExplanationMixin):  # pragma: no cover
+class RulesExplanation(ExplanationMixin):
     """ Visualizes rules as HTML for both global and local explanations. """
 
     explanation_type = None
@@ -99,7 +98,7 @@ class RulesExplanation(ExplanationMixin):  # pragma: no cover
             raise Exception(msg)
 
 
-class DecisionListClassifier(ClassifierMixin, ExplainerMixin):  # pragma: no cover
+class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
     """ Decision List Classifier
 
     Currently a slight variant of SkopeRules from skope-rules.
