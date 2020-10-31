@@ -131,7 +131,13 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         Returns:
             Itself.
         """
-        from skrules import SkopeRules as SR
+        try:
+            from skrules import SkopeRules as SR
+        except ImportError:  # NOTE: skoperules loves six, shame it's deprecated.
+            import six
+            import sys
+            sys.modules['sklearn.externals.six'] = six
+            from skrules import SkopeRules as SR
 
         X, y, self.feature_names, self.feature_types = unify_data(
             X, y, self.feature_names, self.feature_types
