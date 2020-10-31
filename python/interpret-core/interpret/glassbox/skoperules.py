@@ -3,7 +3,7 @@
 
 from sklearn.base import ClassifierMixin
 from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector
+from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector, gen_perf_dicts
 from ..utils import unify_data
 
 from copy import deepcopy
@@ -275,8 +275,9 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
 
         scores = self._scores(X)
         outcomes = self.predict(X)
-        prob_scores = self.predict_proba(X)
+        predictions = self.predict_proba(X)
 
+        perf_dicts = gen_perf_dicts(predictions, y, True)
         data_dicts = []
         for idx, score in enumerate(scores):
             data_dict = {
@@ -286,6 +287,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
                 "recall": [self.recall_[score]],
                 "outcome": [outcomes[idx]],
             }
+            perf_dict_obj = None if perf_dicts is None else perf_dicts[idx]
+            data_dict["perf"] = perf_dict_obj
             data_dicts.append(data_dict)
 
         internal_obj = {"overall": None, "specific": data_dicts}
