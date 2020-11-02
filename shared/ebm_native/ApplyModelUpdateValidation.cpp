@@ -10,6 +10,7 @@
 #include "EbmInternal.h"
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG
+#include "ApproximateMath.h"
 #include "EbmStatisticUtils.h"
 // FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
@@ -65,7 +66,7 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType oneExp = EbmExpForLogLoss(predictorScore);
+            const FloatEbmType oneExp = ExpForLogLoss(predictorScore);
             itemExp = iVector == targetData ? oneExp : itemExp;
             sumExp += oneExp;
             ++iVector;
@@ -283,7 +284,7 @@ public:
                const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
-               const FloatEbmType oneExp = EbmExpForLogLoss(predictorScore);
+               const FloatEbmType oneExp = ExpForLogLoss(predictorScore);
                itemExp = iVector == targetData ? oneExp : itemExp;
                sumExp += oneExp;
                ++iVector;

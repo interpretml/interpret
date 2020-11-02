@@ -10,6 +10,7 @@
 
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
+#include "ApproximateMath.h"
 
 // TODO: surprisingly, neither ComputeResidualErrorMulticlass, nor ComputeResidualErrorBinaryClassification seems to be able to generate an infinity, 
 //       even if we had an infinite logit!  Walk through the implications of this!
@@ -594,8 +595,25 @@ public:
       // exp will return the same type that it is given, either float or double
       // TODO: for the ApproxExp function, we can change the constant to being a negative once we change to sorting by our target value
       //       then we don't need to even take the negative of trainingLogOddsPrediction below
+
+      // !!! IMPORTANT: when using an approximate exp function, the formula used to compute the residuals becomes very
+      //                important.  We want something that is balanced from positive to negative, which this version
+      //                does IF the classes are roughly balanced since the positive or negative value is
+      //                determined by only the binnedActualValue, unlike if we used a forumala that relied
+      //                on the exp function returning a 1 at the 0 value, which our approximate exp does not give
+      //                In time, you'd expect boosting to make targets with 0 more negative, leading to a positive
+      //                term in the exp, and targets with 1 more positive, leading to a positive term in the exp
+      //                So both classes get the same treatment in terms of errors in the exp function (both in the
+      //                positive domain)
+      //                We do still want the error of the positive cases and the error of the negative cases to
+      //                sum to zero in the aggregate, so we want to choose our exp function to have average error
+      //                sums of zero.
+      //                I've made a copy of this formula as a comment to reference to what is good in-case the 
+      //                formula is changed in the code without reading this comment
+      //                const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } + ExpForResiduals(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction));
+      // !!! IMPORTANT: SEE ABOVE
       const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } +
-         EbmExpForResiduals(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); 
+         ExpForResiduals(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction));
 
       // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
       // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
@@ -724,7 +742,7 @@ public:
 
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
-      const FloatEbmType ourExp = EbmExpForLogLoss(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
+      const FloatEbmType ourExp = ExpForLogLoss(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
       // no reasonable implementation of exp should lead to a negative value
       EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ourExp);
 
@@ -733,7 +751,7 @@ public:
       // one way to a very very certain outcome (essentially 100%) and the validation set has the opposite, but in that case our ultimate convergence is 
       // infinity anyways, and we'll be generaly driving up the log loss, so we legitimately want our loop to terminate training since we're getting a 
       // worse and worse model, so going to infinity isn't bad in that case
-      const FloatEbmType ret = EbmLog(FloatEbmType { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
+      const FloatEbmType ret = LogForLogLoss(FloatEbmType { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
 
       // ret can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, 
       // so we should only get propagation NaN values
@@ -825,7 +843,7 @@ public:
 
       EBM_ASSERT(std::isnan(expFraction) || FloatEbmType { 1 } - k_epsilonLogLoss <= expFraction);
 
-      const FloatEbmType ret = EbmLog(expFraction);
+      const FloatEbmType ret = LogForLogLoss(expFraction);
 
       // we're never taking the log of any number close to a negative, so we won't get a NaN result here UNLESS expFraction was already NaN and we're NaN 
       // propegating

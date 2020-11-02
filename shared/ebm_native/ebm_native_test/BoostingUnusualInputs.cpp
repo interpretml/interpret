@@ -816,13 +816,13 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
          }
       }
    }
-   CHECK_APPROX_TOLERANCE(validationMetric, 1.7171897252232722e-09, double { 1e-3 });
+   CHECK_APPROX_TOLERANCE(validationMetric, 1.7171897252232722e-09, double { 1e-2 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
-   CHECK_APPROX_TOLERANCE(modelValue, 10.643234965479628, double { 1e-4 });
+   CHECK_APPROX_TOLERANCE(modelValue, 10.643234965479628, double { 1e-3 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
-   CHECK_APPROX_TOLERANCE(modelValue, -10.232489007525166, double { 1e-4 });
+   CHECK_APPROX_TOLERANCE(modelValue, -10.232489007525166, double { 1e-3 });
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
-   CHECK_APPROX_TOLERANCE(modelValue, -10.232489007525166, double { 1e-4 });
+   CHECK_APPROX_TOLERANCE(modelValue, -10.232489007525166, double { 1e-3 });
 }
 
 TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, regression") {

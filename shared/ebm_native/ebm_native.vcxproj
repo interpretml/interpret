@@ -289,6 +289,7 @@ EXIT /B 0
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ApproximateMath.h" />
     <ClInclude Include="CachedThreadResourcesInteraction.h" />
     <ClInclude Include="InteractionDetection.h" />
     <ClInclude Include="Booster.h" />
@@ -323,6 +324,7 @@ EXIT /B 0
     <ClCompile Include="CachedThreadResourcesBoosting.cpp" />
     <ClCompile Include="CachedThreadResourcesInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
+    <ClCompile Include="DebugEbm.cpp" />
     <ClCompile Include="FeatureGroup.cpp" />
     <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
     <ClCompile Include="FindBestInteractionGainPairs.cpp" />
