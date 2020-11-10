@@ -155,7 +155,7 @@ INLINE_RELEASE_UNTEMPLATED char * strcpy_NO_WARNINGS(char * dest, const char * s
    return strcpy(dest, src);
 }
 
-#define FAST_EXP
+//#define FAST_EXP
 // TODO someday consider using approximations for log, but that's going to be more sensitive to small errors than exp
 //#define FAST_LOG
 

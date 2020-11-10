@@ -127,11 +127,11 @@ static double TestSoftmaxSumErrors() {
    constexpr uint64_t k_cDivisions = 1609; // ideally choose a prime number
    constexpr ptrdiff_t k_cSoftmaxTerms = 3;
    static_assert(2 <= k_cSoftmaxTerms, "can't have just 1 since that's always 100% chance");
-   constexpr ptrdiff_t iEliminateOneTerm = -1;
+   constexpr ptrdiff_t iEliminateOneTerm = ;
    static_assert(iEliminateOneTerm < k_cSoftmaxTerms, "can't eliminate a term above our existing terms");
-   constexpr uint32_t termMid = k_termZeroMeanRelativeErrorSoftmaxThreeClasses;
-   constexpr uint32_t termStepsFromMid = 7;
-   constexpr uint32_t termStepDistance = 1;
+   constexpr uint32_t termMid = ;
+   constexpr uint32_t termStepsFromMid = 15;
+   constexpr uint32_t termStepDistance = 1000;
 
 
    // below here are calculated values dependent on the above settings
@@ -269,6 +269,16 @@ static double TestSoftmaxSumErrors() {
                   addTerm == termMid ? "*" : "",
                   iStat == k_cStats - 1 ? "\n" : ""
                );
+            } else {
+               if(iStat == k_cStats - 1) {
+#ifdef ENABLE_PRINTF
+                  printf(
+#else // ENABLE_PRINTF
+                  LOG_N(TraceLevelVerbose,
+#endif // ENABLE_PRINTF
+                     "\n"
+                  );
+               }
             }
          }
       }
