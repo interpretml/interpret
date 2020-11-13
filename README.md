@@ -7,8 +7,8 @@
 ![Coverage](https://img.shields.io/azure-devops/coverage/ms/interpret/293/develop.svg?style=flat-square)
 ![Maintenance](https://img.shields.io/maintenance/yes/2020?style=flat-square)
 <br/>
-> ### Are you afraid of the dark? You should be.  
-> ### Happy Halloween!
+> ### In the beginning machines learned in darkness, and data scientists struggled in the void to explain them. 
+> ### Let there be light.
 
 InterpretML is an open-source package that incorporates state-of-the-art machine learning interpretability techniques under one roof. With this package, you can train interpretable glassbox models and explain blackbox systems. InterpretML helps you understand your model's global behavior, or understand the reasons behind individual predictions.
 
