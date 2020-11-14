@@ -39,6 +39,16 @@ static double TestExpSumErrors() {
    EBM_ASSERT(!std::isnan(ExpApproxSchraudolph(k_expOverflowPoint, k_termUpperBound)));
    EBM_ASSERT(ExpApproxSchraudolph(k_expOverflowPoint, k_termUpperBound) <= std::numeric_limits<float>::max());
 
+
+   // no underflow to denormals
+   EBM_ASSERT(!std::isnan(ExpApproxBest(k_expUnderflowPoint)));
+   EBM_ASSERT(std::numeric_limits<float>::min() <= ExpApproxBest(k_expUnderflowPoint));
+
+   // no underflow to infinity
+   EBM_ASSERT(!std::isnan(ExpApproxBest(k_expOverflowPoint)));
+   EBM_ASSERT(ExpApproxBest(k_expOverflowPoint) <= std::numeric_limits<float>::max());
+
+
    // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as 
    // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2) 
    // BUT, this needs to be evenly distributed, so we can't use nextafter. We need to increment with a constant.
@@ -55,7 +65,10 @@ static double TestExpSumErrors() {
    std::uniform_real_distribution<double> testDistribution(k_testLowerInclusiveBound, k_testUpperExclusiveBound);
    std::mt19937 testRandom(52);
 
-   for(uint32_t addTerm = termMid - termStepsFromMid * termStepDistance; addTerm <= termMid + termStepsFromMid * termStepDistance; addTerm += termStepDistance) {
+   constexpr ptrdiff_t k_cStats = termStepsFromMid * 2 + 1;
+
+   for(ptrdiff_t iStat = 0; iStat < k_cStats; ++iStat) {
+      const uint32_t addTerm = termMid - termStepsFromMid * termStepDistance + static_cast<uint32_t>(iStat) * termStepDistance;
       if(k_termLowerBound <= addTerm && addTerm <= k_termUpperBound) {
          double avgAbsRelativeError = 0;
          double avgRelativeError = 0;
@@ -86,20 +99,34 @@ static double TestExpSumErrors() {
          avgRelativeError /= k_cTests;
          avgSquareRelativeError /= k_cTests;
 
-         //printf(
+#ifdef ENABLE_PRINTF
+         printf(
+#else // ENABLE_PRINTF
          LOG_N(TraceLevelVerbose,
-            "TextExpApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %d %s\n", 
+#endif // ENABLE_PRINTF
+            "TextExpApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %d %s%s\n", 
             avgRelativeError, 
             avgAbsRelativeError, 
             avgSquareRelativeError, 
             minRelativeError, 
             maxRelativeError, 
             addTerm, 
-            addTerm == termMid ? "*" : ""
+            addTerm == termMid ? "*" : "",
+            iStat == k_cStats - 1 ? "\n" : ""
          );
 
          // this is just to prevent the compiler for optimizing our code away on release
          debugRet += avgRelativeError;
+      } else {
+         if(iStat == k_cStats - 1) {
+#ifdef ENABLE_PRINTF
+            printf(
+#else // ENABLE_PRINTF
+            LOG_N(TraceLevelVerbose,
+#endif // ENABLE_PRINTF
+               "\n"
+            );
+         }
       }
    }
 
@@ -117,21 +144,21 @@ static double TestSoftmaxSumErrors() {
    constexpr unsigned int seed = 572422;
 
    constexpr double k_expWindowSkew = 0;
-   constexpr int expWindowMultiple = 1;
+   constexpr int expWindowMultiple = 10;
    static_assert(1 <= expWindowMultiple, "window must have a positive non-zero size");
 
-   constexpr bool k_bIsRandom = false;
+   constexpr bool k_bIsRandom = true;
    constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
-   constexpr uint64_t k_cTests = std::numeric_limits<uint64_t>::max();
-   constexpr uint64_t k_outputPeriodicity = uint64_t { 50000000 };
+   constexpr uint64_t k_cTests = uint64_t { 10000000 }; // std::numeric_limits<uint64_t>::max()
+   constexpr uint64_t k_outputPeriodicity = uint64_t { 100000000 };
    constexpr uint64_t k_cDivisions = 1609; // ideally choose a prime number
    constexpr ptrdiff_t k_cSoftmaxTerms = 3;
    static_assert(2 <= k_cSoftmaxTerms, "can't have just 1 since that's always 100% chance");
-   constexpr ptrdiff_t iEliminateOneTerm = ;
+   constexpr ptrdiff_t iEliminateOneTerm = -1;
    static_assert(iEliminateOneTerm < k_cSoftmaxTerms, "can't eliminate a term above our existing terms");
-   constexpr uint32_t termMid = ;
-   constexpr uint32_t termStepsFromMid = 15;
-   constexpr uint32_t termStepDistance = 1000;
+   constexpr uint32_t termMid = k_termZeroSoftmaxMeanError;
+   constexpr uint32_t termStepsFromMid = 0;
+   constexpr uint32_t termStepDistance = 1;
 
 
    // below here are calculated values dependent on the above settings
@@ -208,10 +235,10 @@ static double TestSoftmaxSumErrors() {
             const double exactValue = exactNumerator / exactDenominator;
 
 
-            const double approxNumerator = 0 == iEliminateOneTerm ? double { 1 } : ExpApproxSchraudolph<false, false, false, false>(softmaxTerms[0], addTerm);
+            const double approxNumerator = 0 == iEliminateOneTerm ? double { 1 } : ExpApproxBetterButSlower<false, false, false, false>(softmaxTerms[0]);
             double approxDenominator = 0;
             for(ptrdiff_t iTerm = 0; iTerm < k_cSoftmaxTerms; ++iTerm) {
-               const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : ExpApproxSchraudolph<false, false, false, false>(softmaxTerms[iTerm], addTerm);
+               const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : ExpApproxBetterButSlower<false, false, false, false>(softmaxTerms[iTerm]);
                approxDenominator += oneTermAdd;
             }
             const double approxValue = approxNumerator / approxDenominator;
@@ -232,10 +259,9 @@ static double TestSoftmaxSumErrors() {
       bool bDone = true;
       ++iTest;
       if(k_bIsRandom) {
-         if(k_cTests <= iTest) {
-            break;
+         if(iTest < k_cTests) {
+            bDone = false;
          }
-         bDone = false;
       } else {
          for(ptrdiff_t iTerm = 0; iTerm < k_cSoftmaxTerms; ++iTerm) {
             if(iTerm != iEliminateOneTerm) {

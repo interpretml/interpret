@@ -299,8 +299,8 @@ constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesSkew0 = 1064963
 
 
 
-// k_expUnderflowPoint is set to a value that prevents us from returning a denormal number. This approximate function 
-// doesn't really work with denomals and starts to drift very quickly from the true exp values when we reach denormals.
+// k_expUnderflowPoint is set to a value that prevents us from returning a denormal number. These approximate function 
+// dont't really work with denomals and starts to drift very quickly from the true exp values when we reach denormals.
 constexpr float k_expUnderflowPoint = -87.25f; // this is exactly representable in IEEE 754
 constexpr float k_expOverflowPoint = 88.5f; // this is exactly representable in IEEE 754
 
@@ -329,7 +329,8 @@ INLINE_ALWAYS T ExpApproxSchraudolph(const T val, const uint32_t addSchraudolphT
    const bool bSetOne = bSpecialCaseZero && UNPREDICTABLE(T { 0 } == val);
 
    // if val is a NaN, or would result in an underflow or overflow, we set floatVal to zero below in order to avoid 
-   // getting undefined behavior further down.  The following things we do below invoke undefined behavior:
+   // getting undefined behavior further down.  The following things we do below would invoke undefined behavior 
+   // otherwise:
    //   - converting a large double into a float that can't be represented
    //   - converting a large float to an int that can't be represented
    //   - converting +-infinity to an int
@@ -382,17 +383,14 @@ INLINE_ALWAYS T ExpApproxSchraudolph(const T val, const uint32_t addSchraudolphT
    return ret;
 }
 
-
-
 template<
-   bool bNaNPossible,
-   bool bUnderflowPossible,
-   bool bOverflowPossible,
-   bool bUnderflowToZero,
-   bool bOverflowToInfinity,
+   bool bNaNPossible = true,
+   bool bUnderflowPossible = true,
+   bool bOverflowPossible = true,
+   bool bSpecialCaseZero = false,
    typename T
 >
-INLINE_ALWAYS T ExpApproxBetterButSlower(const T val) {
+INLINE_ALWAYS T ExpApproxBest(const T val) {
    // This function DOES NOT guarnatee monotonicity, and in fact I've seen small monotonicity violations, so it's
    // not just a theoretical consideration.  Unlike the ExpApproxSchraudolph, we have discontinuities
    // at the integer rounding points due to floating point rounding inexactness.
@@ -407,8 +405,6 @@ INLINE_ALWAYS T ExpApproxBetterButSlower(const T val) {
    // http://www.machinedlearnings.com/2011/06/fast-approximate-logarithm-exponential.html
    // and a Mathematica Notebook where the constants were calculated (and longer ones are available):
    // http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
-   // which might have come from this paper:
-   // http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
    // This blog shows benchmarks and errors for this approximation and some others:
    // https://deathandthepenguinblog.wordpress.com/2015/04/13/writing-a-faster-exp/
    // according to this, SSE 4.1 (launched in 2006) solved the performance issues on Intel with fast EXPs 
@@ -427,231 +423,16 @@ INLINE_ALWAYS T ExpApproxBetterButSlower(const T val) {
    //       randomly try to choose either up or down and examine the squared error on a bunch of exp values that 
    //       we think are most important for us probably numbers in the range (-5 to +5)
 
-   float floatVal = static_cast<float>(val);
-   if(bNaNPossible) {
-      // if we're given a NaN value, we need to convert it to something harmless, otherwise we'll have undefined
-      // behavior below when we go to cast it to an integer.  We fix it up later back into the original NaN value.
-      // Hopefully the compiler is smart enough to recognize that we aren't using the 0 value throughout this function.
-      // We need branchless operations here for future SIMD conversion.
-      floatVal = UNPREDICTABLE(std::isnan(val)) ? 0.00000000f : floatVal;
-   }
-
-   const float negativeCorrection = UNPREDICTABLE(0.00000000f <= floatVal) ? 0.00000000f : 1.00000000f;
-
-   floatVal *= 1.44269502f;
-
-   if(bUnderflowPossible) {
-      //// THIS commented out code is meant to be documentation of what values we get back with various inputs
-      //// DO NOT DELETE.  It might also be useful for testing in the future if we get odd outputs
-      ////
-      //float val1 = -87.3365173f; // floatVal == -125.999962f
-      //float val2 = -87.3365250f; // floatVal == -125.999969f
-      //float val3 = -87.3365326f; // floatVal == -125.999977f
-      //float val4 = -87.3365402f; // floatVal == -125.999992f
-      //float val5 = -87.3365479f; // floatVal == -126.000000f
-      //float val6 = -87.3365555f; // floatVal == -126.000015f
-      //float val7 = -87.3365631f; // floatVal == -126.000023f
-
-      //EBM_ASSERT(std::nextafter(val1, -100.0f) == val2);
-      //EBM_ASSERT(std::nextafter(val2, -100.0f) == val3);
-      //EBM_ASSERT(std::nextafter(val3, -100.0f) == val4);
-      //EBM_ASSERT(std::nextafter(val4, -100.0f) == val5);
-      //EBM_ASSERT(std::nextafter(val5, -100.0f) == val6);
-      //EBM_ASSERT(std::nextafter(val6, -100.0f) == val7);
-
-      //float ret1tt = ExpApproxBetterButSlower<true, true, true, true, true>(val1);
-      //float ret2tt = ExpApproxBetterButSlower<true, true, true, true, true>(val2);
-      //float ret3tt = ExpApproxBetterButSlower<true, true, true, true, true>(val3);
-      //float ret4tt = ExpApproxBetterButSlower<true, true, true, true, true>(val4);
-      //float ret5tt = ExpApproxBetterButSlower<true, true, true, true, true>(val5);
-      //float ret6tt = ExpApproxBetterButSlower<true, true, true, true, true>(val6);
-      //float ret7tt = ExpApproxBetterButSlower<true, true, true, true, true>(val7);
-
-      //EBM_ASSERT(ret1tt == 1.17552336e-38f);
-      //EBM_ASSERT(ret2tt == 1.17551719e-38f);
-      //EBM_ASSERT(ret3tt == 1.17551089e-38f);
-      //EBM_ASSERT(ret4tt == 1.17549841e-38f);
-      //EBM_ASSERT(ret5tt == 0.00000000f);
-      //EBM_ASSERT(ret6tt == 0.00000000f);
-      //EBM_ASSERT(ret7tt == 0.00000000f);
-
-      //float ret1tf = ExpApproxBetterButSlower<true, true, true, false, true>(val1);
-      //float ret2tf = ExpApproxBetterButSlower<true, true, true, false, true>(val2);
-      //float ret3tf = ExpApproxBetterButSlower<true, true, true, false, true>(val3);
-      //float ret4tf = ExpApproxBetterButSlower<true, true, true, false, true>(val4);
-      //float ret5tf = ExpApproxBetterButSlower<true, true, true, false, true>(val5);
-      //float ret6tf = ExpApproxBetterButSlower<true, true, true, false, true>(val6);
-      //float ret7tf = ExpApproxBetterButSlower<true, true, true, false, true>(val7);
-
-      //EBM_ASSERT(ret1tf == 1.17552336e-38f);
-      //EBM_ASSERT(ret2tf == 1.17551719e-38f);
-      //EBM_ASSERT(ret3tf == 1.17551089e-38f);
-      //EBM_ASSERT(ret4tf == 1.17549841e-38f); // due to numeracy issues this one is lower than the endpoint
-      //EBM_ASSERT(ret5tf == 1.17551775e-38f);
-      //EBM_ASSERT(ret6tf == 1.17551775e-38f);
-      //EBM_ASSERT(ret7tf == 1.17551775e-38f);
-
-      //float ret1ff = ExpApproxBetterButSlower<true, false, true, false, true>(val1);
-      //float ret2ff = ExpApproxBetterButSlower<true, false, true, false, true>(val2);
-      //float ret3ff = ExpApproxBetterButSlower<true, false, true, false, true>(val3);
-      //float ret4ff = ExpApproxBetterButSlower<true, false, true, false, true>(val4);
-      //float ret5ff = ExpApproxBetterButSlower<true, false, true, false, true>(val5);
-      //float ret6ff = ExpApproxBetterButSlower<true, false, true, false, true>(val6);
-      //float ret7ff = ExpApproxBetterButSlower<true, false, true, false, true>(val7);
-
-      //EBM_ASSERT(ret1ff == 1.17552336e-38f && std::numeric_limits<float>::min() <= ret1ff);
-      //EBM_ASSERT(ret2ff == 1.17551719e-38f && std::numeric_limits<float>::min() <= ret2ff);
-      //EBM_ASSERT(ret3ff == 1.17551089e-38f && std::numeric_limits<float>::min() <= ret3ff);
-      //EBM_ASSERT(ret4ff == 1.17549841e-38f && std::numeric_limits<float>::min() <= ret4ff);
-      //EBM_ASSERT(ret5ff == 1.17551775e-38f && std::numeric_limits<float>::min() <= ret5ff);
-      //EBM_ASSERT(ret6ff < std::numeric_limits<float>::min()); // denormal
-      //EBM_ASSERT(ret7ff < std::numeric_limits<float>::min()); // denormal
-
-      // this approximation doesn't work for denormal numbers.  It doesn't immediately return garbage
-      // numbers, but it starts to drift rapidly from the true exp value, so terminate right before our 
-      // first denormal number gets returned.
-
-      // Unfortunately, we can't let floatVal be numbers below -126.000000f because that could lead to undefined behavior
-      // if it was -infinity then converting to an int would be undefined, so we need to do the check here.
-
-      floatVal = UNPREDICTABLE(-126.000000f <= floatVal) ? floatVal : -126.000000f;
-   }
-
-   if(bOverflowPossible) {
-      //// THIS commented out code is meant to be documentation of what values we get back with various inputs
-      //// DO NOT DELETE.  It might also be useful for testing in the future if we get odd outputs
-      ////
-      //float val1 = 88.7228088f; // floatVal == 127.999954f
-      //float val2 = 88.7228165f; // floatVal == 127.999962f
-      //float val3 = 88.7228241f; // floatVal == 127.999977f
-      //float val4 = 88.7228317f; // floatVal == 127.999985f
-      //float val5 = 88.7228394f; // floatVal == 128.000000f
-      //float val6 = 88.7228470f; // floatVal == 128.000015f
-
-      //EBM_ASSERT(std::nextafter(val1, 100.0f) == val2);
-      //EBM_ASSERT(std::nextafter(val2, 100.0f) == val3);
-      //EBM_ASSERT(std::nextafter(val3, 100.0f) == val4);
-      //EBM_ASSERT(std::nextafter(val4, 100.0f) == val5);
-      //EBM_ASSERT(std::nextafter(val5, 100.0f) == val6);
-
-      //float ret1tt = ExpApproxBetterButSlower<true, true, true, true, true>(val1);
-      //float ret2tt = ExpApproxBetterButSlower<true, true, true, true, true>(val2);
-      //float ret3tt = ExpApproxBetterButSlower<true, true, true, true, true>(val3);
-      //float ret4tt = ExpApproxBetterButSlower<true, true, true, true, true>(val4);
-      //float ret5tt = ExpApproxBetterButSlower<true, true, true, true, true>(val5);
-      //float ret6tt = ExpApproxBetterButSlower<true, true, true, true, true>(val6);
-
-      //EBM_ASSERT(ret1tt == 3.40274578e+38f);
-      //EBM_ASSERT(ret2tt == 3.40279771e+38f);
-      //EBM_ASSERT(ret3tt == 3.40279771e+38f);
-      //EBM_ASSERT(ret4tt == std::numeric_limits<float>::infinity());
-      //EBM_ASSERT(ret5tt == std::numeric_limits<float>::infinity());
-      //EBM_ASSERT(ret6tt == std::numeric_limits<float>::infinity());
-
-      //float ret1tf = ExpApproxBetterButSlower<true, true, true, true, false>(val1);
-      //float ret2tf = ExpApproxBetterButSlower<true, true, true, true, false>(val2);
-      //float ret3tf = ExpApproxBetterButSlower<true, true, true, true, false>(val3);
-      //float ret4tf = ExpApproxBetterButSlower<true, true, true, true, false>(val4);
-      //float ret5tf = ExpApproxBetterButSlower<true, true, true, true, false>(val5);
-      //float ret6tf = ExpApproxBetterButSlower<true, true, true, true, false>(val6);
-
-      //EBM_ASSERT(ret1tf == 3.40274578e+38f);
-      //EBM_ASSERT(ret2tf == 3.40279771e+38f);
-      //EBM_ASSERT(ret3tf == 3.40279771e+38f);
-      //EBM_ASSERT(ret4tf == 3.40279771e+38f);
-      //EBM_ASSERT(ret5tf == 3.40279771e+38f);
-      //EBM_ASSERT(ret6tf == 3.40279771e+38f);
-
-      //float ret1ff = ExpApproxBetterButSlower<true, true, false, true, false>(val1);
-      //float ret2ff = ExpApproxBetterButSlower<true, true, false, true, false>(val2);
-      //float ret3ff = ExpApproxBetterButSlower<true, true, false, true, false>(val3);
-      //float ret4ff = ExpApproxBetterButSlower<true, true, false, true, false>(val4);
-      //float ret5ff = ExpApproxBetterButSlower<true, true, false, true, false>(val5);
-      //float ret6ff = ExpApproxBetterButSlower<true, true, false, true, false>(val6);
-
-      //EBM_ASSERT(ret1ff == 3.40274578e+38f);
-      //EBM_ASSERT(ret2ff == 3.40279771e+38f);
-      //EBM_ASSERT(ret3ff == 3.40279771e+38f);
-      //EBM_ASSERT(ret4ff == std::numeric_limits<float>::infinity());
-      //EBM_ASSERT(ret5ff == 3.40279771e+38f);
-      //EBM_ASSERT(std::isnan(ret6ff));
-
-      // 127.999985f overflows to +infinity, but the next number up (128.000000f) does not overflow to +infinity due 
-      // to numeracy issues. After we flip to infinity we don't want to flip flop back on a higher number, so 
-      // clip to infinity at 127.999985f and above
-
-      constexpr float overflowValue = bOverflowToInfinity ? 127.999985f : 127.999977f;
-      floatVal = UNPREDICTABLE(overflowValue < floatVal) ? overflowValue : floatVal;
-   }
-
-   // TODO: it might be faster to make negativeCorrection an integer and doing the subtraction from the integer
-   // cast of floatVal.  To be trickier, we could extract the sign bit without a conditional with 
-   // int negativeCorrection = (superHack.m_int >> 31) [get the highest bit of the float, which is the sign]
-
-   // this approximation isn't perfect.  Occasionally it isn't monotonic when floatVal wraps integer boundaries
-   const float factor = floatVal - static_cast<float>(static_cast<uint32_t>(floatVal)) + negativeCorrection;
-
-   union {
-      static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
-      uint32_t m_int;
-      float m_float;
-   } superHack;
-
-   // Technially, it's undefined behavior to insert a value into a union and retrieve a different type out
-   // but this code is clearer and seems to work on major compilers.  If we find a case where it doesn't work,
-   // there is a trick where you can use memcpy to copy the initial value to a buffer which is portable and legal.
-   // Suposedly, most compilers are smart enough to optimize the memcpy away.  I'm not using the memcpy trick 
-   // here though because it's less clear, and it's not obvious that all compilers will do the optimal thing
-   superHack.m_int = static_cast<uint32_t>(float { 1 << 23 } * (floatVal + 121.274055f +
-      27.7280235f / (4.84252548f - factor) - factor * 1.49012911f));
-
-   float retFloat = superHack.m_float;
-   constexpr bool bCheckZeroUnderflow = bUnderflowPossible && bUnderflowToZero;
-   if(bCheckZeroUnderflow) {
-      // this is the exact value of the last non-denormal number that we get before entering denormal territory.
-      // Denormals are expressed strangely in IEEE 754, and some hardware doesn't support them.  They aren't
-      // necessary for our system, so avoid dealing with them by underflowing before we get the first one.
-      // Also, as described above, this approximate function doesn't really work with denomals and starts to drift
-      // very quickly from the true exp values.
-
-      retFloat = UNPREDICTABLE(1.17551775e-38f == retFloat) ? 0.00000000f : retFloat;
-   }
-
-   T ret = static_cast<T>(retFloat);
-   if(bNaNPossible) {
-      // if the original was a NaN, then return that exact nan value.  There are many possible NaN values 
-      // and they are sometimes used to signal conditions, so preserving the exact value without truncation is nice.
-
-      ret = UNPREDICTABLE(std::isnan(val)) ? val : ret;
-   }
-   return ret;
-}
-
-#ifdef NEVER
-// the algorithms inside this NEVER block have worse tradeoffs in terms of error vs computational cost
-
-template<
-   bool bNaNPossible = true,
-   bool bUnderflowPossible = true,
-   bool bOverflowPossible = true,
-   bool bSpecialCaseZero = false,
-   typename T
->
-INLINE_ALWAYS T ExpApproxSchraudolphBetter(const T val) {
-   constexpr float k_expOverflowBetterPoint = 87.25f; // this is exactly representable in IEEE 754
-
-   // This function uses the recommendation of Schraudolph to get a more accurate exp value by computing
-   // better_exp = approx_exp(x / 2) / approx_exp(-x / 2) 
-
    // if T val is a double, then we need to check before converting to a float if we're in-bounds, since converting
    // a double that is outside the float range into a float results in undefined behavior
    const bool bSetNaN = bNaNPossible && UNPREDICTABLE(std::isnan(val));
    const bool bSetZero = bUnderflowPossible && UNPREDICTABLE(val < T { k_expUnderflowPoint });
-   const bool bSetInfinity = bOverflowPossible && UNPREDICTABLE(T { k_expOverflowBetterPoint } < val);
+   const bool bSetInfinity = bOverflowPossible && UNPREDICTABLE(T { k_expOverflowPoint } < val);
    const bool bSetOne = bSpecialCaseZero && UNPREDICTABLE(T { 0 } == val);
 
    // if val is a NaN, or would result in an underflow or overflow, we set floatVal to zero below in order to avoid 
-   // getting undefined behavior further down.  The following things we do below invoke undefined behavior:
+   // getting undefined behavior further down.  The following things we do below would invoke undefined behavior 
+   // otherwise:
    //   - converting a large double into a float that can't be represented
    //   - converting a large float to an int that can't be represented
    //   - converting +-infinity to an int
@@ -665,38 +446,63 @@ INLINE_ALWAYS T ExpApproxSchraudolphBetter(const T val) {
    // We use branchless operations here for future SIMD conversion.
    float floatVal = bSetNaN || bSetZero || bSetInfinity ? 0.00000000f : static_cast<float>(val);
 
-   floatVal *= 0.5f;
-#ifdef EXP_INT
+   const float negativeCorrection = UNPREDICTABLE(0.00000000f <= floatVal) ? 0.00000000f : 1.00000000f;
 
-   // this version does the addition in integer space, so it's maybe faster if there isn't a fused multiply add
-   // instruction that works on floats since the integer add will not be slower than a float add, unless the ALU
-   // has some transfer time or time to swtich integer/float values.  Integers in the range we're expecting also
-   // have a little more precision, which means we can get closer to the ideal mean relative error constant
+   floatVal *= 1.44269502f; // 9 digits for most accurate float representation of: 1 / ln(2)
 
-   const uint32_t retIntNumerator = static_cast<uint32_t>(k_expMultiple * floatVal) + k_termForDivisionMethodDoNotUse;
-   const uint32_t retIntDenominator = static_cast<uint32_t>((-k_expMultiple) * floatVal) + k_termForDivisionMethodDoNotUse;
+   // TODO: it might be faster to make negativeCorrection an integer and doing the subtraction from the integer
+   // cast of floatVal.  To be trickier, we could extract the sign bit without a conditional with 
+   // int negativeCorrection = (superHack.m_int >> 31) [get the highest bit of the float, which is the sign]
+
+   // TODO: is there some kind of ceil or floor or something similar that exactly represents this conversion to a positive range
+
+   // this approximation isn't perfect.  Occasionally it isn't monotonic when floatVal wraps integer boundaries
+   const float factor = floatVal - (static_cast<float>(static_cast<int32_t>(floatVal)) - negativeCorrection);
+
+   // original formula from here: https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
+   // from the Mathematica Notebook where the constants were calculated (and longer ones are available):
+   // http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
+   // 121.2740575f is really 121.27405755366965833343835512821308140575
+   // 27.7280233f is really 27.72802338968109763318198810783757358521
+   // 4.84252568f is really 4.84252568892855574935929971220272175743
+   // 1.49012907f is really 1.49012907173427359585695086181761669065
+   //
+   // 2^23 * 121.27405755366965833343835512821308140575 = 1017320529.3871737252531476533353 => 1.01732051e+09f
+   // 2^23 * 27.72802338968109763318198810783757358521 = 232599518.83086597305449149089731 => 2.32599520e+08f
+   // 2^23 * 1.49012907173427359585695086181761669065 = 12500108.65218270136039438485505 => 1.25001090e+07f
+   // 4.84252568892855574935929971220272175743 => 4.84252548f
+
+   // in theory it would be more accurate for us to keep all the constants small and close to zero 
+   // and multiply by the float { 1 << 23 } at the end after all the additions and subtractions, but I've
+   // tested this and the error after expanding it is indistinquishable from if we use larger constants
+   // I think it's because we don't care about small changes in the final result much since they tend to
+   // make very small changes in the floating point output, and this loss in precision is less than the
+   // loss in precision that we're getting by using an approximate exp.
+
+   // TODO: we can probably achieve slightly better results by tuning the single constant below of
+   //       1.01732051e+09f OR 121.274055f to get better summation results similar to Schraudolph, AND/OR we can 
+   //       also convert this to a uint32_t value so that we have even more fiddling ability to tune 
+   //       the output to average to zero.  For now it's good enough
+
+   const uint32_t retInt = static_cast<uint32_t>(
+#ifdef EXP_HIGHEST_ACCURACY
+      float { 1 << 23 } * (floatVal + 121.274055f - 1.49012911f * factor + 27.7280235f / (4.84252548f - factor))
 #else
-
-   // this version might be faster if there's a cost to switching between int to float.  Fused multiply add is either 
-   // just as fast as plain multiply, or pretty close to it though, so throwing in the add might be low cost or free
-   const uint32_t retIntNumerator = static_cast<uint32_t>(k_expMultiple * floatVal + static_cast<float>(k_termForDivisionMethodDoNotUse));
-   const uint32_t retIntDenominator = static_cast<uint32_t>((-k_expMultiple) * floatVal + static_cast<float>(k_termForDivisionMethodDoNotUse));
+      float { 1 << 23 } * floatVal + 1.01732051e+09f - 1.25001090e+07f * factor + 2.32599520e+08f / (4.84252548f - factor)
 #endif
+   );
 
-   float retFloatNumerator;
-   float retFloatDenominator;
+   float retFloat;
 
    // It's undefined behavior in C++ (not C though!) to use a union or a pointer to bit convert between types 
    // using memcpy though is portable and legal since C++ aliasing rules exclude character pointer copies
    // Suposedly, most compilers are smart enough to optimize the memcpy away.
 
    static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
-   static_assert(sizeof(retIntNumerator) == sizeof(retFloatNumerator), "both binary conversion types better have the same size");
-   static_assert(sizeof(retIntDenominator) == sizeof(retFloatDenominator), "both binary conversion types better have the same size");
-   memcpy(&retFloatNumerator, &retIntNumerator, sizeof(retFloatNumerator));
-   memcpy(&retFloatDenominator, &retIntDenominator, sizeof(retFloatDenominator));
+   static_assert(sizeof(retInt) == sizeof(retFloat), "both binary conversion types better have the same size");
+   memcpy(&retFloat, &retInt, sizeof(retFloat));
 
-   T ret = static_cast<T>(retFloatNumerator / retFloatDenominator);
+   T ret = static_cast<T>(retFloat);
 
    ret = UNPREDICTABLE(bSetZero) ? T { 0 } : ret;
    ret = UNPREDICTABLE(bSetInfinity) ? std::numeric_limits<T>::infinity() : ret;
@@ -710,272 +516,6 @@ INLINE_ALWAYS T ExpApproxSchraudolphBetter(const T val) {
    return ret;
 }
 
-
-
-// !!IMPORTANT!!: this function requires being compiled with strict adherdence to floating point
-template<
-   bool bNaNPossible,
-   bool bUnderflowPossible,
-   bool bOverflowPossible,
-   bool bUnderflowToZero,
-   bool bOverflowToInfinity,
-   typename T
->
-INLINE_ALWAYS T ExpApproxWorseButFaster(const T val) {
-   // algorithm from Paul Mineiro.  re-implemented below with additional features for our package.  Also,
-   // I slightly modified his constants because float in C++ is fully expressed by having 9 digits in base
-   // 10, and I wanted to have the least variability between compilers.  The compiler should be turning his constants
-   // and my constants into the same representation, but for compatility between compilers I thought it would be best
-   // to get as close to the to compiler representation as possible
-   // https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
-   // Here's a description by Paul Mineiro on how it works
-   // http://www.machinedlearnings.com/2011/06/fast-approximate-logarithm-exponential.html
-   // and a Mathematica Notebook where the constants were calculated (and longer ones are available):
-   // http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
-   // which might have come from this paper:
-   // http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
-   // This blog shows benchmarks and errors for this approximation and some others:
-   // https://deathandthepenguinblog.wordpress.com/2015/04/13/writing-a-faster-exp/
-   // according to this, SSE 4.1 (launched in 2006) solved the performance issues on Intel with fast EXPs 
-   // https://stackoverflow.com/questions/10552280/fast-exp-calculation-possible-to-improve-accuracy-without-losing-too-much-perfo
-   // If we need a double version, here's one
-   // https://bduvenhage.me/performance/machine_learning/2019/06/04/fast-exp.html
-   // Here's a different approximation that uses AVX-512, and has a version for doubles
-   // https://github.com/jhjourdan/SIMD-math-prims/blob/master/simd_math_prims.h
-   // annohter implementation in AVX-512 (with a table, but I think we'd rather avoid the table to preserve cache)
-   // http://www.ecs.umass.edu/arith-2018/pdf/arith25_18.pdf
-   // more versions of approximate exp from the Schraudolph99 paper "A Fast, Compact Approximation of the Exponential Function"
-   // https://github.com/ekmett/approximate/blob/master/cbits/fast.c
-
-   // TODO: the constants chosen for this function were rounded to float boundaries but we can probably get a more
-   //       accurate version by rounding either up or down for each number from their theoretical values.  We could 
-   //       randomly try to choose either up or down and examine the squared error on a bunch of exp values that 
-   //       we think are most important for us probably numbers in the range (-5 to +5)
-
-   float floatVal = static_cast<float>(val);
-   if(bNaNPossible) {
-      // if we're given a NaN value, we need to convert it to something harmless, otherwise we'll have undefined
-      // behavior below when we go to cast it to an integer.  We fix it up later back into the original NaN value.
-      // Hopefully the compiler is smart enough to recognize that we aren't using the 0 value throughout this function.
-      // We need branchless operations here for future SIMD conversion.
-      floatVal = UNPREDICTABLE(std::isnan(val)) ? 0.00000000f : floatVal;
-   }
-
-   floatVal *= 1.44269502f;
-
-   if(bUnderflowPossible) {
-      //// THIS commented out code is meant to be documentation of what values we get back with various inputs
-      //// DO NOT DELETE.  It might also be useful for testing in the future if we get odd outputs
-      ////
-      //float val1 = -87.2967987f; // floatVal == -125.942657f
-      //float val2 = -87.2968063f; // floatVal == -125.942665f
-      //float val3 = -87.2968140f; // floatVal == -125.942680f
-      //float val4 = -87.2968216f; // floatVal == -125.942688f
-      //float val5 = -87.2968292f; // floatVal == -125.942703f
-      //float val6 = -87.2968369f; // floatVal == -125.942711f
-
-      //EBM_ASSERT(std::nextafter(val1, -100.0f) == val2);
-      //EBM_ASSERT(std::nextafter(val2, -100.0f) == val3);
-      //EBM_ASSERT(std::nextafter(val3, -100.0f) == val4);
-      //EBM_ASSERT(std::nextafter(val4, -100.0f) == val5);
-      //EBM_ASSERT(std::nextafter(val5, -100.0f) == val6);
-
-      //float ret1tt = ExpApproxWorseButFaster<true, true, true, true, true>(val1);
-      //float ret2tt = ExpApproxWorseButFaster<true, true, true, true, true>(val2);
-      //float ret3tt = ExpApproxWorseButFaster<true, true, true, true, true>(val3);
-      //float ret4tt = ExpApproxWorseButFaster<true, true, true, true, true>(val4);
-      //float ret5tt = ExpApproxWorseButFaster<true, true, true, true, true>(val5);
-      //float ret6tt = ExpApproxWorseButFaster<true, true, true, true, true>(val6);
-
-      //EBM_ASSERT(ret1tt == 1.17553919e-38f);
-      //EBM_ASSERT(ret2tt == 1.17553022e-38f);
-      //EBM_ASSERT(ret3tt == 1.17551229e-38f);
-      //EBM_ASSERT(ret4tt == 0.00000000f);
-      //EBM_ASSERT(ret5tt == 0.00000000f);
-      //EBM_ASSERT(ret6tt == 0.00000000f);
-
-      //float ret1tf = ExpApproxWorseButFaster<true, true, true, false, true>(val1);
-      //float ret2tf = ExpApproxWorseButFaster<true, true, true, false, true>(val2);
-      //float ret3tf = ExpApproxWorseButFaster<true, true, true, false, true>(val3);
-      //float ret4tf = ExpApproxWorseButFaster<true, true, true, false, true>(val4);
-      //float ret5tf = ExpApproxWorseButFaster<true, true, true, false, true>(val5);
-      //float ret6tf = ExpApproxWorseButFaster<true, true, true, false, true>(val6);
-
-      //EBM_ASSERT(ret1tf == 1.17553919e-38f);
-      //EBM_ASSERT(ret2tf == 1.17553022e-38f);
-      //EBM_ASSERT(ret3tf == 1.17551229e-38f);
-      //EBM_ASSERT(ret4tf == 1.17550332e-38f);
-      //EBM_ASSERT(ret5tf == 1.17550332e-38f);
-      //EBM_ASSERT(ret6tf == 1.17550332e-38f);
-
-      //float ret1ff = ExpApproxWorseButFaster<true, false, true, false, true>(val1);
-      //float ret2ff = ExpApproxWorseButFaster<true, false, true, false, true>(val2);
-      //float ret3ff = ExpApproxWorseButFaster<true, false, true, false, true>(val3);
-      //float ret4ff = ExpApproxWorseButFaster<true, false, true, false, true>(val4);
-      //float ret5ff = ExpApproxWorseButFaster<true, false, true, false, true>(val5);
-      //float ret6ff = ExpApproxWorseButFaster<true, false, true, false, true>(val6);
-
-      //EBM_ASSERT(ret1ff == 1.17553919e-38f && std::numeric_limits<float>::min() <= ret1ff);
-      //EBM_ASSERT(ret2ff == 1.17553022e-38f && std::numeric_limits<float>::min() <= ret2ff);
-      //EBM_ASSERT(ret3ff == 1.17551229e-38f && std::numeric_limits<float>::min() <= ret3ff);
-      //EBM_ASSERT(ret4ff == 1.17550332e-38f && std::numeric_limits<float>::min() <= ret4ff);
-      //EBM_ASSERT(ret5ff < std::numeric_limits<float>::min()); // denormal
-      //EBM_ASSERT(ret6ff < std::numeric_limits<float>::min()); // denormal
-
-      // this approximation doesn't work for denormal numbers.  It doesn't immediately return garbage
-      // numbers, but it starts to drift rapidly from the true exp value, so terminate right before our 
-      // first denormal number gets returned.
-
-      // Unfortunately, we can't let floatVal be numbers below -125.942688f because that could lead to undefined behavior
-      // if it was -infinity then converting to an int would be undefined, so we need to do the check here.
-
-      floatVal = UNPREDICTABLE(-125.942688f <= floatVal) ? floatVal : -125.942688f;
-   }
-
-   if(bOverflowPossible) {
-      //// THIS commented out code is meant to be documentation of what values we get back with various inputs
-      //// DO NOT DELETE.  It might also be useful for testing in the future if we get odd outputs
-      ////
-      //float val1 = 88.7625275f; // floatVal == 128.057251f
-      //float val2 = 88.7625351f; // floatVal == 128.057266f
-      //float val3 = 88.7625427f; // floatVal == 128.057281f
-      //float val4 = 88.7625504f; // floatVal == 128.057297f
-      //float val5 = 88.7625580f; // floatVal == 128.057297f
-      //float val6 = 88.7625656f; // floatVal == 128.057312f
-      //float val7 = 88.7625732f; // floatVal == 128.057327f
-
-      //EBM_ASSERT(std::nextafter(val1, 100.0f) == val2);
-      //EBM_ASSERT(std::nextafter(val2, 100.0f) == val3);
-      //EBM_ASSERT(std::nextafter(val3, 100.0f) == val4);
-      //EBM_ASSERT(std::nextafter(val4, 100.0f) == val5);
-      //EBM_ASSERT(std::nextafter(val5, 100.0f) == val6);
-      //EBM_ASSERT(std::nextafter(val6, 100.0f) == val7);
-
-      //float ret1tt = ExpApproxWorseButFaster<true, true, true, true, true>(val1);
-      //float ret2tt = ExpApproxWorseButFaster<true, true, true, true, true>(val2);
-      //float ret3tt = ExpApproxWorseButFaster<true, true, true, true, true>(val3);
-      //float ret4tt = ExpApproxWorseButFaster<true, true, true, true, true>(val4);
-      //float ret5tt = ExpApproxWorseButFaster<true, true, true, true, true>(val5);
-      //float ret6tt = ExpApproxWorseButFaster<true, true, true, true, true>(val6);
-      //float ret7tt = ExpApproxWorseButFaster<true, true, true, true, true>(val7);
-
-      //EBM_ASSERT(ret1tt == 3.40271982e+38f);
-      //EBM_ASSERT(ret2tt == 3.40277175e+38f);
-      //EBM_ASSERT(ret3tt == 3.40277175e+38f);
-      //EBM_ASSERT(ret4tt == std::numeric_limits<float>::infinity());
-      //EBM_ASSERT(ret5tt == std::numeric_limits<float>::infinity());
-      //EBM_ASSERT(ret6tt == std::numeric_limits<float>::infinity());
-      //EBM_ASSERT(ret7tt == std::numeric_limits<float>::infinity());
-
-      //float ret1tf = ExpApproxWorseButFaster<true, true, true, true, false>(val1);
-      //float ret2tf = ExpApproxWorseButFaster<true, true, true, true, false>(val2);
-      //float ret3tf = ExpApproxWorseButFaster<true, true, true, true, false>(val3);
-      //float ret4tf = ExpApproxWorseButFaster<true, true, true, true, false>(val4);
-      //float ret5tf = ExpApproxWorseButFaster<true, true, true, true, false>(val5);
-      //float ret6tf = ExpApproxWorseButFaster<true, true, true, true, false>(val6);
-      //float ret7tf = ExpApproxWorseButFaster<true, true, true, true, false>(val7);
-
-      //EBM_ASSERT(ret1tf == 3.40271982e+38f);
-      //EBM_ASSERT(ret2tf == 3.40277175e+38f);
-      //EBM_ASSERT(ret3tf == 3.40277175e+38f);
-      //EBM_ASSERT(ret4tf == 3.40277175e+38f);
-      //EBM_ASSERT(ret5tf == 3.40277175e+38f);
-      //EBM_ASSERT(ret6tf == 3.40277175e+38f);
-      //EBM_ASSERT(ret7tf == 3.40277175e+38f);
-
-      //float ret1ff = ExpApproxWorseButFaster<true, true, false, true, false>(val1);
-      //float ret2ff = ExpApproxWorseButFaster<true, true, false, true, false>(val2);
-      //float ret3ff = ExpApproxWorseButFaster<true, true, false, true, false>(val3);
-      //float ret4ff = ExpApproxWorseButFaster<true, true, false, true, false>(val4);
-      //float ret5ff = ExpApproxWorseButFaster<true, true, false, true, false>(val5);
-      //float ret6ff = ExpApproxWorseButFaster<true, true, false, true, false>(val6);
-      //float ret7ff = ExpApproxWorseButFaster<true, true, false, true, false>(val7);
-
-      //EBM_ASSERT(ret1ff == 3.40271982e+38f);
-      //EBM_ASSERT(ret2ff == 3.40277175e+38f);
-      //EBM_ASSERT(ret3ff == 3.40277175e+38f);
-      //EBM_ASSERT(ret4ff == std::numeric_limits<float>::infinity());
-      //EBM_ASSERT(ret5ff == std::numeric_limits<float>::infinity());
-      //EBM_ASSERT(ret6ff == std::numeric_limits<float>::infinity());
-      //EBM_ASSERT(std::isnan(ret7ff));
-
-      constexpr float overflowValue = bOverflowToInfinity ? 128.057297f : 128.057281f;
-      floatVal = UNPREDICTABLE(overflowValue < floatVal) ? overflowValue : floatVal;
-   }
-
-   union {
-      static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
-      uint32_t m_int;
-      float m_float;
-   } superHack;
-
-   // Technially, it's undefined behavior to insert a value into a union and retrieve a different type out
-   // but this code is clearer and seems to work on major compilers.  If we find a case where it doesn't work,
-   // there is a trick where you can use memcpy to copy the initial value to a buffer which is portable and legal.
-   // Suposedly, most compilers are smart enough to optimize the memcpy away.  I'm not using the memcpy trick 
-   // here though because it's less clear, and it's not obvious that all compilers will do the optimal thing
-   superHack.m_int = static_cast<uint32_t>(float { 1 << 23 } * (floatVal + 126.942696f));
-
-   float retFloat = superHack.m_float;
-   constexpr bool bCheckZeroUnderflow = bUnderflowPossible && bUnderflowToZero;
-   if(bCheckZeroUnderflow) {
-      // this is the exact value of the last non-denormal number that we get before entering denormal territory.
-      // Denormals are expressed strangely in IEEE 754, and some hardware doesn't support them.  They aren't
-      // necessary for our system, so avoid dealing with them by underflowing before we get the first one.
-      // Also, as described above, this approximate function doesn't really work with denomals and starts to drift
-      // very quickly from the true exp values.
-      retFloat = UNPREDICTABLE(1.17550332e-38f == retFloat) ? 0.00000000f : retFloat;
-   }
-
-   T ret = static_cast<T>(retFloat);
-   if(bNaNPossible) {
-      // if the original was a NaN, then return that exact nan value.  There are many possible NaN values 
-      // and they are sometimes used to signal conditions, so preserving the exact value without truncation is nice.
-
-      ret = UNPREDICTABLE(std::isnan(val)) ? val : ret;
-   }
-   return ret;
-}
-
-constexpr unsigned int k_expRounds = 6;
-template<typename T>
-INLINE_ALWAYS T ExpApproxClean(T val) {
-   // TODO: experiment a bit with normalizing our logits so that the largest is always 1 and see if that helps us
-   // on some datasets
-
-   // WARNING: this approximation doesn't work as well for numbers in the range of 5 < val, but for the most part
-   // in binary classification or in multiclass, whenever we get a logit above 5 then it's going to go to infinity
-   // eventually, so we're only slowing it down.  If it's a problem, we can always make the largest logit equal
-   // to 1 and shift the other smaller one, even for binary classification, but that adds extra work so first
-   // try out this implementation and see if it's a problem
-
-   // we use EbmExp to calculate the residual error, but we calculate the residual error with inputs only from
-   // the target and our logits so if we introduce some noise in the residual error from approximations to exp, 
-   // it will be seen and corrected by later boosting steps, so it's largely self correcting.
-   //
-   // Exp is also used to calculate the log loss, but in that case we report the log loss, but otherwise don't 
-   // use it again, so any errors in calculating the log loss don't propegate cyclically
-   //
-   // when we get our logit update from training a feature, we apply that to both the model AND our per sample 
-   // array of logits, so we can potentialy diverge there over time, but that's just an addition operation which 
-   // is going to be exact for many decimal places.  That divergence will NOT be affected by noise in the exp 
-   // function since the noise in the exp function will generate noise in the logit update, but it won't 
-   // cause a divergence between the model and the error
-
-   // for algorithm, see https://codingforspeed.com/using-faster-exponential-approximation/
-   // here's annohter implementation in AVX-512 (with a table)-> http://www.ecs.umass.edu/arith-2018/pdf/arith25_18.pdf
-
-   static constexpr uintmax_t k_expFactorOf2 = uintmax_t { 1 } << k_expRounds;
-   static constexpr T k_expFactor = T { 1 } / T { k_expFactorOf2 };
-   val = T { 1 } + val * k_expFactor;
-   for(unsigned int iExpRound = 0; iExpRound < k_expRounds; ++iExpRound) {
-      // presumably, this loop will be optimized out and replaced with k_expRounds multiplications
-      val *= val;
-   }
-   return val;
-}
-#endif // NEVER
-
 // TODO: in the future, see if we can eliminate any of our handling for NaN, underflow, overflow, underflowToZero, overflowToInfinity
 template<
    bool bNaNPossible = true,
@@ -986,9 +526,7 @@ template<
 >
 INLINE_ALWAYS T ExpForResiduals(const T val) {
 #ifdef FAST_EXP
-   return ExpApproxSchraudolph<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(val);
-   //return ExpApproxClean(val); // the previously tested version
-   //return ExpApproxWorseButFaster<bNaNPossible, bUnderflowPossible, bOverflowPossible, true, true, T>(val);
+   return ExpApproxBest<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(val);
 #else // FAST_EXP
    return std::exp(val);
 #endif // FAST_EXP
