@@ -5,12 +5,20 @@
 #ifndef APPROXIMATE_MATH_H
 #define APPROXIMATE_MATH_H
 
+#include <type_traits> // std::is_same
+#include <inttypes.h>
+#include <stddef.h> // size_t, ptrdiff_t
+#include <limits> // numeric_limits
+#include <cmath> // std::exp, std::log
+
 #include "ebm_native.h"
 #include "EbmInternal.h"
 
+// TODO: enable approximate exp and log by default
 // TODO: try out floats throughout our program instead of doubles.  It'll be important when we move to GPUs and SIMD
-
-// !!IMPORTANT!!: these function require being compiled with strict adherdence to floating point
+// TODO: try using the less accurate ExpApproxSchraudolph version sometime and see how much difference it makes
+//       in terms of speed first, then if it makes a speed difference, check the AUC and calibration using the benchmark system
+// TODO: do the massive multi-dataset addExpSchraudolphTerm/addLogSchraudolphTerm  term optimization using our benchmarks
 
 // START SECTION CORRECT ROUNDING : https://en.wikipedia.org/wiki/IEEE_754#Roundings_to_nearest
 // IEEE 754 has a concept called correct rounding that says that certain opterations should be rounded as if they were 
@@ -20,7 +28,7 @@
 // 
 // IEEE 754-1985 -> requires correct rounding to nearest for the following operations:
 //   - addition, subtraction, multiplication, division, fused multiply add
-// IEEE 754-2008 -> RECOMMENDS (but not require) correct rounding to nearest for these additional operations:
+// IEEE 754-2008 -> RECOMMENDS (but does not require) correct rounding to nearest for these additional operations:
 //   - e^x, ln(x), sqrt(x), and others too, but these are the ones we use
 //   - float32 values written as text need to be correctly rounded if they have 9-12 digits, 
 //     and 9 digits are required in base 10 representation to differentiate all floating point numbers
@@ -30,11 +38,12 @@
 //   even when they claim to be with regards to correct rounding and other operations.  For instance, 
 //   Visual Studio in x86 compilation calls a function to handle rounding of floating points to integers, 
 //   and that function returns different results than the Intel instruction for conversion, so the x64 compiles 
-//   return different results.
+//   return different results overall.
 //
 // It's probably not a good strategy to assume that we can get 100% reproducible results, even though with a fully
 //   compilant IEEE-754 compiler we could do so.  These approximate function help a bit in that direction though
-//   because we eliminate the variations between compilers with respect to exp and log functions.  We're still
+//   because we eliminate the variations between compilers with respect to exp and log functions, and we never
+//   use the sqrt function because for regression we return the MSE instead of the RMSE. We're still
 //   beholden to rounding, but if we include a detection of SSE 4.1 (launched in 2006), then we could use the
 //   SSE instructions that convert from float to int, so we could probably get conformance in practice for any
 //   machine built since then.  I'd assume ARM using Neon (their SIMD implementation) and other newer processors 
@@ -43,9 +52,8 @@
 // END SECTION CORRECT ROUNDING
 
 
-// log is the reversal of the exp function, so we can simply reverse the operations of the exp function to obtain
-// the log.  As such, our log and exp functions should share the same constants, so that they are exactly reversible.
-//
+///////////////////////////////////////////// EXP SECTION
+
 // This paper details our fast exp/log approximation -> "A Fast, Compact Approximation of the Exponential Function"
 // by Nicol N. Schraudolph
 // http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
@@ -57,7 +65,7 @@
 // https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
 // Here's a description by Paul Mineiro on how his works
 // http://www.machinedlearnings.com/2011/06/fast-approximate-logarithm-exponential.html
-// and a Mathematica Notebook where the constants were calculated for Paul Mineiro (and longer ones are available):
+// and a Mathematica Notebook where the constants were calculated by Paul Mineiro (more precise numbers are available):
 // http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
 // The Paul Mineiro variants seem to be based on a Pade approximant
 // https://math.stackexchange.com/questions/55830/how-to-calculate-ex-with-a-standard-calculator/56064#56064
@@ -80,6 +88,9 @@
 // https://bduvenhage.me/performance/machine_learning/2019/06/04/fast-exp.html
 //
 // there's yet annother higher accuracy approximation of exp where the calculation is exp(x) = exp(x/2)/exp(-x/2)
+// I tried this one and found that the Paul Mineiro version had quite a bit less error, and the real cost for both
+// is the division instruction that they both introduce, but this one would be slightly faster so I'm leaving it
+// here as a reference incase an intermediate error solution becomes useful in the future.  This solution was
 // suggested by Nic Schraudolph (the publisher of the original paper above used in the algorithm below)
 // "You can get a much better approximation (piecewise rational instead of linear) at the cost of a single 
 //   floating-point division by using better_exp(x) = exp(x/2)/exp(-x/2), where exp() is my published approximation 
@@ -87,16 +98,9 @@
 //   is very attractive." - Nic Schraudolph
 // https://martin.ankerl.com/2007/02/11/optimized-exponential-functions-for-java/
 // https://stackoverflow.com/questions/47025373/fastest-implementation-of-the-natural-exponential-function-using-sse
-//
-// FUTURE IDEAS:
-// Per the Schraudolph paper, you can choose to optimize for various outputs by tweaking the addition constant 
-// This function below chooses to minimize the mean relative error.  There's probably a better fixed constant 
-// to use for minimizing the softmax error.  We might be able to figure that out using the method described in 
-// the Schraudolph paper to minimize RMSE and mean relative error.
-// It's also possible that when using Newton-Raphson updates, optimizing for RMSE would be better since
-// that includes a squared term
 
 
+// Schraudolph constants used here:
 // The Schraudolph paper uses doubles and 32 bit integers.  We want to use floats and 32 bit integers because
 // it'll be more efficient in SIMD to keep the items the same width.  
 //
@@ -117,86 +121,67 @@
 // In the Schraudolph paper, there are options for calculating the 'c' value depending on what the user wants to 
 // optimize for. The Schraudolph paper includes methods of calculating the constants for optimizing different 
 // choices.  We can also run simulations to find other optimization points.  For simulations, the relative error
-// repeats at predictable points with the formula y = k * ln(2), so error from 0 to ln(2) should equal error
-// from -ln(2) to 0 or ln(2) to 2 * ln(2).
-// The paper includes theoretical calculations for several theoretically desirable outcomes.  
+// repeats at predictable points with the formula y = k * ln(2), so relative error from 0 to ln(2) should equal 
+// relative error from -ln(2) to 0 or ln(2) to 2 * ln(2).
+// The paper includes theoretical calculations for several desirable outcomes.
 // Here are the calculations for various options (remember to subtract 0.5 at the end for the staircase):
-//   - k_termMinimizeMeanRelativeAbsError:
-//     c = 0.045111411 * (2^23) / ln(2) - 0.5 = 545946.96082669957644759009613291
-//     (b - c) is: 1065353216 - 545946.96082669957644759009613291 = 1064807269.0391733004235524099039
-//     (b - c) rounded to integer is: 1064807269
-//     (b - c) rounded to float is: 1064807300.0f
-//   - k_termUpperBound:
-//     c = -1 (don't use 0 since that wouldn't account for the staircase effect)
-//     (b - c) is: 1065353216 - (-1) = 1065353217
-//   - k_termLowerBound:
+//   - k_expTermLowerBound:
 //     c = 2^23 * (1 - (ln(ln(2)) + 1) / ln(2)) = 722018.66465506613537075079698488
 //     round up to fix for the staircase: round(722018.66465506613537075079698488) = 722019
 //     (b - c) is: 1065353216 - 722019 = 1064631197
-//   - k_termMinimizeRelativeRMSE:
+//   - k_expTermUpperBound:
+//     c = -1 (don't use 0 since that wouldn't account for the staircase effect)
+//     (b - c) is: 1065353216 - (-1) = 1065353217
+//   - k_expTermMinimizeRelativeMeanAbsError:
+//     c = 0.045111411 * (2^23) / ln(2) - 0.5 = 545946.96082669957644759009613291
+//     (b - c) is: 1065353216 - 545946.96082669957644759009613291 = 1064807269.0391733004235524099039
+//     (b - c) rounded to integer is: 1064807269
+//     (b - c) rounded to float is:   1064807300.0f
+//   - k_expTermMinimizeRelativeRMSE:
 //     c = 2^23 * ln(3 / (8 * ln(2)) + 0.5) / ln(2) - 0.5 = 486411.38068434173315475522228717
 //     (b - c) is 1065353216 - 486411.38068434173315475522228717 = 1064866804.6193156582668452447777
 //     (b - c) rounded to integer is: 1064866805
-//     (b - c) rounded to float is: ?
-//   - k_termMinimizeMaximumRelativeError:
+//   - k_expTermMinimizeRelativeMaximumError:
 //     c = (ln(ln(2) + 2/e) - ln(2) - ln(ln(2))) * 2^23 / ln(2) - 0.5 = 
 //        0.03027490056158269559309255065937 * 2^23 / ln(2) - 0.5 = 366392.49729234569298343147736888
 //     (b - c) is 1065353216 - 366392.49729234569298343147736888 = 1064986823.5027076543070165685226
 //     (b - c) rounded to integer is: 1064986824
-//     (b - c) rounded to float is: ?
 // 
 // Some of these constants can be verified by this independent implementation for float32/int32 here:
 // https://github.com/ekmett/approximate/blob/master/cbits/fast.c
 // 1065353216 + 1      = 1065353217 for the upper bound
 // 1065353216 - 486411 = 1064866805 for the minimize RMSE
 // 1065353216 - 722019 = 1064631197 for the lower bound
-//
-// We use summary statistics, and we want to ensure that our summary statistics don't add any bias which would
-// miscalibrate our predictions.  EBMs are in general well calibrated, so don't destroy this property with
-// an approximate exp function that tilts one way or the other in the updates.  To generate an update we first
-// sum the results of the sigmoid/softmax function (binary vs multiclass) and then divide by the sums of the
-// denominator terms.  The denominator terms are derivates that we don't care about too much since they won't
-// affect the sign of the numerator that we use to determine the direction a logit is getting updated.  So, essentially
-// our primary objective is that our sigmoid function has no positive/negative bias for expected inputs.
-// We probably can't calculate what our 'c' value should be theoretically, but some trial and error can get
-// us a good value.  Note, that minimizing mean relative error does NOT lead to minimizing positive/negative bias
-//
-// the relative error from our approximate exp function has a periodicity of ln(2), so [0, ln(2)) should have the 
-// same relative error as [ln(2), 2 * ln(2)) and [-ln(2), 0).  We can use this property when testing to optimize
-// for various outcomes, BUT our inputs needs to be evenly distributed, so we can't use std::nextafter.  
-// We need to increment in precise increments like "ln(2) / 10000".  The period [-ln(2) / 2, +ln(2) / 2) is interesting
-// because it concentrates in the region with the most reslution for floating point values and we could get a
-// proven symmetric look at the data, and we could iterate with an integer which would ensure we have precise
-// negative and positive inputs
 
 
 // interesting items:
 // - according to the Schraudolph paper, if you choose an extreme Schraudolph term, the maximum error for any
 //   particular exp value is 6.148%.  We care more about softmax error, and we use floats instead of doubles
-// - according to the Schraudolph paper, if you choose an ideal Schraudolph term, the abolute value of teh average 
-//   error for any particular exp value is 1.483%.  Again, we care more about softmax error and we use floats
+// - according to the Schraudolph paper, if you choose a specific Schraudolph term, the mean relative absolute value of
+//   error for any particular exp value is 1.483%.  Again, we care more about softmax error and we use floats,
 //   but my experience is that we're in the same error range
 // - for boosting, we sum the residual terms in order to find the update direction (either positive or negative).  
 //   As long as the direction has the correct sign, boosting will tend to make it continue to go in the right 
 //   direction, even if the speed has a little variation due to approximate exp noise.  This means that our primary 
 //   goal is to balance the errors in our softmax terms such that the positive errors balance the negative errors.
+//   Note: minimizing relative mean abs error does NOT lead to minimizing positive/negative bias
 // - the 2nd order derivate denominator Newton-Raphson term is summed separately and then divided by the sum of the
 //   residuals.  It affects the speed of convergence, but not the direction.  We choose to optimize our approximate
 //   exp to obtain minimum error in the numerator where it will determine the sign and therefore direction of boosting
 // - any consistent bias in the error will probably show up as miscalibration.  Miscalibration can lead to us to
 //   trigger early stopping at an unideal point, but in general that seems to be a minor concern.  EBMs are well
 //   calibrated though, and we'd like to preserve this property.
-// - our error is much better controlled if one of the logits is zeroed.  This makes one of the exp(0) outputs equal 
-//   to 1, and thus have no error.  This seems to somehow help in terms of normalizing the range of the 
-//   schraudolph term required under various input skews compared with letting all the logits range wherever they go
-//   and taking the approximate exp of all of them and then softmax
+// - from experiments, our error is much better controlled if one of the logits is zeroed.  This makes one of the 
+//   exp(0) outputs equal to 1, and thus have no error.  This seems to somehow help in terms of normalizing the 
+//   range of the schraudolph terms required under various input skews compared with letting all the logits 
+//   range wherever they go, and taking the approximate exp of all of them and then softmax
 // - the error deviation seems to go down if the non-zeroed logits are all negative.  This makes sense since the
 //   exp(0) -> 1 term in the softmax then dominates.  The effect isn't too big though, so having some positive
 //   logits isn't the end of the world if it's more efficient to do it that way.  Finding the maximum logit
 //   and subtracting that logit from the other logits requires an extra loop and computation, so our implementation
 //   tollerates the slight miscalibration introduced instead of the extra CPU work
 // - the schraudolph term that achieves average error of zero for the logit that we zero isn't the same 
-//   schraudolph term that achieves error of zero for the non-zeroed terms.  They are close however.  If
+//   schraudolph term that achieves mean error of zero for the non-zeroed terms.  They are close however.  If
 //   we can't have the same ideal schraudolph term, that means we want to pick something in between, but the exact
 //   value we'd pick would depend on the balance between number of samples from the zeroed logit class and the
 //   non-zeroed class.  We might be able to develop a table with these skews and tailor them to each dataset at the 
@@ -207,12 +192,12 @@
 // - relative errors are the same at points 1/2 the periodicity, but with the opposite derivative direction
 // - softmax roughly follows this periodicity, but it's warped by the non-linear function, so we get the following
 //   experimentally determined skews that have the same Schraudolph terms: -0.696462, -0.323004, 0, 0.370957, 0.695991
-// - at the mid-point skews (-0.509733 and 0.533474) between the 1st and second values from zero we should find 
+// - at the mid-point between skews (-0.509733 and 0.533474) between the 1st and 2nd values from zero we should find 
 //   roughly the largest sumation error.  
-// - For the skew of -0.509733 our averaged error is only -0.0010472912, and in general you'd expect it to be less 
-//   since that's close to the max
-// - For the skew of 0.533474 our averaged error is only +0.0012019153, and in general you'd expect it to be less 
-//   since that's close to the max
+// - For the skew of -0.509733 our averaged error is only -0.0010472912, but often you'd expect an error that isn't
+//   the maximum since in real data there aren't precise boundaries for the probabilities of selection various logits
+// - For the skew of +0.533474 our averaged error is only +0.0012019153, but often you'd expect an error that isn't
+//   the maximum since in real data there aren't precise boundaries for the probabilities of selection various logits
 // - with a very large positive skew of k_expErrorPeriodicity * 9.25, the averaged error is still only -0.0012371404
 // - with a very large negative skew of k_expErrorPeriodicity * -9.25, the averaged error is still only +0.0000084012
 // - notice above that errors for negative logits tend to be lower, which is consistent with what we described above
@@ -224,45 +209,52 @@
 //   because there might be more of the non-zeroed logits given that there are 9 of them to the 1 zeroed logit
 // - we don't care too much about the error from the log function.  That error is used only for log loss, and the
 //   log loss is only used for early stopping, and early stopping is only used in a relative sense (improvement
-//   allows continued improvement), so if there is any skew, it'll just shift the log loss curve upwards, but shouldn't
-//   change the minimum point very much.  We also average the log loss accross many samples, so the variance should
-//   be reduced by a lot on the averaged term
-// - the best way to pick the addSchraudolphTerm would probably be to use benchmarks on real data to fine tune
+//   allows continued improvement), so if there is any skew, it'll just shift the log loss curve upwards or downwards, 
+//   but it shouldn't change the minimum point on the curve very much.  We also average the log loss accross many 
+//   samples, so the variance should be reduced by a lot on the averaged term
+// - the best way to pick the addExpSchraudolphTerm would probably be to use benchmarks on real data to fine tune
 //   the parameter such that errors are balanced on a massive multi-dataset way
 
-// TODO: do the massive multi-dataset addSchraudolphTerm term optimization using our benchmarks
+// the relative error from our approximate exp function has a periodicity of ln(2), so [0, ln(2)) should have the 
+// same relative error as [-ln(2) / 2, +ln(2) / 2), [10, 10 + ln(2)) or any other shift.  We can use this property when testing to optimize
+// for various outcomes, BUT our inputs needs to be evenly distributed, so we can't use std::nextafter.  
+// We need to increment in identical increments like "ln(2) / some_prime_number".  The period [-ln(2) / 2, +ln(2) / 2) is interesting
+// because it concentrates in the region with the most reslution for floating point values and we could get a
+// proven symmetric look at the data, and we could iterate with an integer which would ensure we have precise
+// negative and positive inputs
+
+
+
 
 constexpr double k_expErrorPeriodicity = 0.69314718055994529; // ln(2)
 
 // this constant does not change for any variation in optimizing for different objectives in Schraudolph
-constexpr float k_expMultiple = 12102203.0f;
+constexpr float k_expMultiple = 12102203.0f; // (1<<23) / ln(2)
 
 // all of these constants should have exact rounding to float, per IEEE 754 9-12 digit rule (see above)
-constexpr uint32_t k_termUpperBound                   = 1065353217; // theoretically justified -> 1065353216 + 1
-constexpr uint32_t k_termForDivisionMethodDoNotUse    = 1065353216; // use this for the more accurate exp(x/2)/exp(-x/2) method
-constexpr uint32_t k_termMinimizeMaximumRelativeError = 1064986824; // theoretically justified
-constexpr uint32_t k_termZeroMeanRelativeError        = 1064870596; // experimentally determined.  This unbiases our average such that averages of large numbers of values should be balanced towards zero
-constexpr uint32_t k_termMinimizeRelativeRMSE         = 1064866805; // theoretically justified -> 1065353216 - 486411
-constexpr uint32_t k_termMinimizeMeanRelativeAbsError = 1064807269; // theoretically justified -> 1065353216 - 545947
-constexpr uint32_t k_termLowerBound                   = 1064631197; // theoretically justified -> 1065353216 - 722019
-
+constexpr uint32_t k_expTermUpperBound                   = 1065353217; // theoretically justified -> 1065353216 + 1
+constexpr uint32_t k_expTermMinimizeRelativeMaximumError = 1064986824; // theoretically justified
+constexpr uint32_t k_expTermZeroMeanRelativeError        = 1064870596; // experimentally determined.  This unbiases our average such that averages of large numbers of values should be balanced towards zero
+constexpr uint32_t k_expTermMinimizeRelativeRMSE         = 1064866805; // theoretically justified -> 1065353216 - 486411
+constexpr uint32_t k_expTermMinimizeRelativeMeanAbsError = 1064807269; // theoretically justified -> 1065353216 - 545947
+constexpr uint32_t k_expTermLowerBound                   = 1064631197; // theoretically justified -> 1065353216 - 722019
 
 // experimentally determined softmax Schraudolph terms for softmax where one logit is zeroed by subtracing it from the other logits
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_696462 = 1064873067; // experimentally determined, +-1, from -0.696462 - k_expErrorPeriodicity / 2 to -0.696462 + k_expErrorPeriodicity / 2
+constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_696462 = 1064873067; // experimentally determined, +-1, from -0.696462 - k_expErrorPeriodicity / 2 to -0.696462 + k_expErrorPeriodicity / 2
 // mid-point = -0.509733
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_323004 = 1064873067; // experimentally determined, +-1, from -0.323004 - k_expErrorPeriodicity / 2 to -0.323004 + k_expErrorPeriodicity / 2
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkew0      = 1064873067; // experimentally determined, +-1, from - k_expErrorPeriodicity / 2 to +k_expErrorPeriodicity / 2
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_370957 = 1064873067; // experimentally determined, +-?, from 0.370957 - k_expErrorPeriodicity / 2 to 0.370957 + k_expErrorPeriodicity / 2
+constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_323004 = 1064873067; // experimentally determined, +-1, from -0.323004 - k_expErrorPeriodicity / 2 to -0.323004 + k_expErrorPeriodicity / 2
+constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkew0      = 1064873067; // experimentally determined, +-1, from -k_expErrorPeriodicity / 2 to +k_expErrorPeriodicity / 2
+constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_370957 = 1064873067; // experimentally determined, +-1, from 0.370957 - k_expErrorPeriodicity / 2 to 0.370957 + k_expErrorPeriodicity / 2
 // mid-point = 0.533474
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_695991 = 1064873067; // experimentally determined, +-?, from 0.695991 - k_expErrorPeriodicity / 2 to 0.695991 + k_expErrorPeriodicity / 2
+constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_695991 = 1064873067; // experimentally determined, +-1, from 0.695991 - k_expErrorPeriodicity / 2 to 0.695991 + k_expErrorPeriodicity / 2
 
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingRange20 = 1064872079; // experimentally determined, +-1, the zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
+constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermZeroedRange20 = 1064872079; // experimentally determined, +-1, the zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
 // USE THIS Schraudolph term for softmax.  It gives 0.001% -> 0.00001 average error, so it's unlikley to miscalibrate 
 // the results too much.  Keeping all softmax terms without zeroing any of them leads to an error of about 0.16% or 
 // thereabouts, which is much larger than anything observed for zeroed logits
 // 
-// this value is the average value between k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingRange20 and
-// k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingOtherRange20, which should be approximately correct IF
+// this value is the average value between k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermZeroedRange20 and
+// k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermNonZeroedRange20, which should be approximately correct IF
 // the zeroed logit class has roughly the same number of samples as the non-zeroed classes combined.  We don't 
 // know the sample class makeup though (and building a table for various sample class skews would be time consuming)
 // so taking the average is a pretty good guess, especially since the upper and lower values are fairly close
@@ -270,37 +262,29 @@ constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingRange20 
 // this Schraudolph term works relatively well for softmax with 3+ classes, different skews, and if the predicted
 // class is the zeroed class or a non-zeroed class.  It also works fairly well if the non-zeroed logits are greater
 // than zero after shifting them
-constexpr uint32_t k_termZeroSoftmaxMeanError = 1064871915; // experimentally determined, AVERAGED between the zeroed and non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesZeroingOtherRange20 = 1064871750; // experimentally determined, +-1, the non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
+constexpr uint32_t k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit = 1064871915; // experimentally determined, AVERAGED between the zeroed and non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
+constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermNonZeroedRange20 = 1064871750; // experimentally determined, +-1, the non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
 
-// TODO: we can probably pick a better k_termZeroSoftmaxMeanError for binary classification where we know for sure
-// the number of classes, and we know the likely sign of the value going into the exp function because we flip
-// the sign of the logit based on the true value, and boosting ensures that we'll be trying to push that value
-// in a consistent direction.
+// TODO: we can probably pick a better k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit above for binary classification 
+// where we know for sure the number of classes, and we know the likely sign of the value going into the exp 
+// function because we flip the sign of the logit based on the true value, and boosting ensures that we'll be 
+// trying to push that value in a consistent direction towards the true value
 
-// TODO: we can probably pick a better k_termZeroSoftmaxMeanError for log loss, although that's less of a prioirty
-// since for log loss consistent errors don't affect our early stopping since it just shifts the entire curve
-// in one direction.  It would be nice to get as accurate a log loss as possible though for reporting purposes.
-
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0 = 1064873955; // experimentally determined, +-?
-//constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_370? = 1064873955; // experimentally determined, +-?
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_69982536866359447004608294930875 = 1064873955; // experimentally determined, +-?
+// these are rough determinations that need to be vetted 
+//constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0 = 1064873955; // experimentally determined, +-?
+//constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_370? = 1064873955; // experimentally determined, +-?
+//constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_69982536866359447004608294930875 = 1064873955; // experimentally determined, +-?
 
 
 // DO NOT USE.  This constant minimizes the mean error for softmax where none of the logits are zeroed.  It has
 // too much variability in the output though to be useful when compared against the softmax that zeroes one of the logits
-constexpr uint32_t k_termZeroMeanRelativeErrorSoftmaxThreeClassesSkew0 = 1064963329; // experimentally determined +-1, non-zeroed, from -k_expErrorPeriodicity / 2 to k_expErrorPeriodicity / 2
-// using non-zeroed softmax isn't as viable since at modest skews (I tried k_expErrorPeriodicity / 4), achieving zero average error is impossible
-// since all valid addition terms from k_termLowerBound to k_termUpperBound can result in non-zero error averages
+// Using non-zeroed softmax isn't as viable since at modest skews (I tried k_expErrorPeriodicity / 4), achieving zero average error is impossible
+// since all valid addition terms from k_expTermLowerBound to k_expTermUpperBound can result in non-zero error averages
 // softmax with a zeroed term seems to have much tighter bounds on the mean error even if the absolute mean error is higher
-
-
-
-
-
+constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesSkew0 = 1064963329; // experimentally determined +-1, non-zeroed, from -k_expErrorPeriodicity / 2 to k_expErrorPeriodicity / 2
 
 // k_expUnderflowPoint is set to a value that prevents us from returning a denormal number. These approximate function 
-// dont't really work with denomals and starts to drift very quickly from the true exp values when we reach denormals.
+// don't really work with denomals and start to drift very quickly from the true exp values when we reach denormals.
 constexpr float k_expUnderflowPoint = -87.25f; // this is exactly representable in IEEE 754
 constexpr float k_expOverflowPoint = 88.5f; // this is exactly representable in IEEE 754
 
@@ -314,12 +298,12 @@ template<
    bool bSpecialCaseZero = false,
    typename T
 >
-INLINE_ALWAYS T ExpApproxSchraudolph(const T val, const uint32_t addSchraudolphTerm = k_termZeroSoftmaxMeanError) {
+INLINE_ALWAYS T ExpApproxSchraudolph(const T val, const uint32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) {
    // This function guarnatees non-decreasing monotonicity, so it never decreases with increasing inputs, but
    // it can sometimes yield equal outputs on increasing inputs
 
-   EBM_ASSERT(k_termLowerBound <= addSchraudolphTerm);
-   EBM_ASSERT(addSchraudolphTerm <= k_termUpperBound);
+   EBM_ASSERT(k_expTermLowerBound <= addExpSchraudolphTerm);
+   EBM_ASSERT(addExpSchraudolphTerm <= k_expTermUpperBound);
 
    // if T val is a double, then we need to check before converting to a float if we're in-bounds, since converting
    // a double that is outside the float range into a float results in undefined behavior
@@ -333,8 +317,8 @@ INLINE_ALWAYS T ExpApproxSchraudolph(const T val, const uint32_t addSchraudolphT
    // otherwise:
    //   - converting a large double into a float that can't be represented
    //   - converting a large float to an int that can't be represented
-   //   - converting +-infinity to an int
-   //   - converting a NaN to an int
+   //   - converting +-infinity to an uint32_t
+   //   - converting a NaN to an uint32_t
    // https://stackoverflow.com/questions/10366485/problems-casting-nan-floats-to-int
    // https://docs.microsoft.com/en-us/cpp/c-language/conversions-from-floating-point-types?view=msvc-160
    //
@@ -342,21 +326,23 @@ INLINE_ALWAYS T ExpApproxSchraudolph(const T val, const uint32_t addSchraudolphT
    // at the end and the zero set below has no effect, so can be eliminated if any of these conditions are true
    //
    // We use branchless operations here for future SIMD conversion.
-   float floatVal = bSetNaN || bSetZero || bSetInfinity ? 0.00000000f : static_cast<float>(val);
+   const float floatVal = bSetNaN || bSetZero || bSetInfinity ? 0.00000000f : static_cast<float>(val);
 
 #ifdef EXP_INT
 
    // this version does the addition in integer space, so it's maybe faster if there isn't a fused multiply add
    // instruction that works on floats since the integer add will not be slower than a float add, unless the ALU
    // has some transfer time or time to swtich integer/float values.  Integers in the range we're expecting also
-   // have a little more precision, which means we can get closer to the ideal mean relative error constant
+   // have a little more precision, which means we can get closer to the ideal addExpSchraudolphTerm that we want
 
-   const uint32_t retInt = static_cast<uint32_t>(k_expMultiple * floatVal) + addSchraudolphTerm;
+   const uint32_t retInt = static_cast<uint32_t>(k_expMultiple * floatVal) + addExpSchraudolphTerm;
 #else
+
+   // TODO: test the speed of this form once we have SIMD implemented
 
    // this version might be faster if there's a cost to switching between int to float.  Fused multiply add is either 
    // just as fast as plain multiply, or pretty close to it though, so throwing in the add might be low cost or free
-   const uint32_t retInt = static_cast<uint32_t>(k_expMultiple * floatVal + static_cast<float>(addSchraudolphTerm));
+   const uint32_t retInt = static_cast<uint32_t>(k_expMultiple * floatVal + static_cast<float>(addExpSchraudolphTerm));
 #endif
 
    float retFloat;
@@ -366,7 +352,7 @@ INLINE_ALWAYS T ExpApproxSchraudolph(const T val, const uint32_t addSchraudolphT
    // Suposedly, most compilers are smart enough to optimize the memcpy away.
 
    static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
-   static_assert(sizeof(retInt) == sizeof(retFloat), "both binary conversion types better have the same size");
+   static_assert(sizeof(retFloat) == sizeof(retInt), "both binary conversion types better have the same size");
    memcpy(&retFloat, &retInt, sizeof(retFloat));
 
    T ret = static_cast<T>(retFloat);
@@ -374,7 +360,6 @@ INLINE_ALWAYS T ExpApproxSchraudolph(const T val, const uint32_t addSchraudolphT
    ret = UNPREDICTABLE(bSetZero) ? T { 0 } : ret;
    ret = UNPREDICTABLE(bSetInfinity) ? std::numeric_limits<T>::infinity() : ret;
    ret = UNPREDICTABLE(bSetOne) ? T { 1 } : ret;
-
    // do the NaN value last since we then avoid issues with weird NaN comparison rules
    // if the original was a NaN, then return that exact nan value.  There are many possible NaN values 
    // and they are sometimes used to signal conditions, so preserving the exact value without truncation is nice.
@@ -418,11 +403,6 @@ INLINE_ALWAYS T ExpApproxBest(const T val) {
    // more versions of approximate exp from the Schraudolph99 paper "A Fast, Compact Approximation of the Exponential Function"
    // https://github.com/ekmett/approximate/blob/master/cbits/fast.c
 
-   // TODO: the constants chosen for this function were rounded to float boundaries but we can probably get a more
-   //       accurate version by rounding either up or down for each number from their theoretical values.  We could 
-   //       randomly try to choose either up or down and examine the squared error on a bunch of exp values that 
-   //       we think are most important for us probably numbers in the range (-5 to +5)
-
    // if T val is a double, then we need to check before converting to a float if we're in-bounds, since converting
    // a double that is outside the float range into a float results in undefined behavior
    const bool bSetNaN = bNaNPossible && UNPREDICTABLE(std::isnan(val));
@@ -435,8 +415,8 @@ INLINE_ALWAYS T ExpApproxBest(const T val) {
    // otherwise:
    //   - converting a large double into a float that can't be represented
    //   - converting a large float to an int that can't be represented
-   //   - converting +-infinity to an int
-   //   - converting a NaN to an int
+   //   - converting +-infinity to an uint32_t
+   //   - converting a NaN to an uint32_t
    // https://stackoverflow.com/questions/10366485/problems-casting-nan-floats-to-int
    // https://docs.microsoft.com/en-us/cpp/c-language/conversions-from-floating-point-types?view=msvc-160
    //
@@ -450,11 +430,20 @@ INLINE_ALWAYS T ExpApproxBest(const T val) {
 
    floatVal *= 1.44269502f; // 9 digits for most accurate float representation of: 1 / ln(2)
 
-   // TODO: it might be faster to make negativeCorrection an integer and doing the subtraction from the integer
-   // cast of floatVal.  To be trickier, we could extract the sign bit without a conditional with 
-   // int negativeCorrection = (superHack.m_int >> 31) [get the highest bit of the float, which is the sign]
-
-   // TODO: is there some kind of ceil or floor or something similar that exactly represents this conversion to a positive range
+   // TODO: (static_cast<float>(static_cast<int32_t>(floatVal)) - negativeCorrection) can alternatively be computed as:
+   //         floor(floatVal) - UNPREDICTABLE(0.00000000f <= floatValOriginal) ? 0.00000000f : 1.00000000f
+   //         UNPREDICTABLE(0.00000000f <= floatValOriginal) ? floor(floatVal) : ceil(floatVal)
+   //         UNPREDICTABLE(0.00000000f <= floatValOriginal) ? floor(floatVal) : floor(floatVal) - 1.00000000f
+   //       - I think the floor/ceil version will be the fastest since the CPU will be able to pipeline
+   //         both the floor and ceil operation in parallel and results will be ready at almost the same time for the
+   //         non-branching selection.  Taking the floor and then subtracting doesn't allow the subtraction to happen
+   //         until the floor completes
+   //       - I'm pretty sure that converting to an int32_t and then back to a float is slower since it's two
+   //         operations, while ceil is just one operation, and it does the same rounding!
+   //       - Also, look into if there is an operator that always rounds to the more negative side.  ceil and floor
+   //         round towards zero, which means negative numbers are rounding to the more positive side rather
+   //         than the more negative side like we need
+   //       - for all of these operations, test that they give the same results, especially on whole number boundaries
 
    // this approximation isn't perfect.  Occasionally it isn't monotonic when floatVal wraps integer boundaries
    const float factor = floatVal - (static_cast<float>(static_cast<int32_t>(floatVal)) - negativeCorrection);
@@ -479,10 +468,10 @@ INLINE_ALWAYS T ExpApproxBest(const T val) {
    // make very small changes in the floating point output, and this loss in precision is less than the
    // loss in precision that we're getting by using an approximate exp.
 
-   // TODO: we can probably achieve slightly better results by tuning the single constant below of
+   // TODO: we can probably achieve slightly better results by tuning the single addition constant below of
    //       1.01732051e+09f OR 121.274055f to get better summation results similar to Schraudolph, AND/OR we can 
    //       also convert this to a uint32_t value so that we have even more fiddling ability to tune 
-   //       the output to average to zero.  For now it's good enough
+   //       the output to average to zero.  For now it's good enough though
 
    const uint32_t retInt = static_cast<uint32_t>(
 #ifdef EXP_HIGHEST_ACCURACY
@@ -499,7 +488,7 @@ INLINE_ALWAYS T ExpApproxBest(const T val) {
    // Suposedly, most compilers are smart enough to optimize the memcpy away.
 
    static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
-   static_assert(sizeof(retInt) == sizeof(retFloat), "both binary conversion types better have the same size");
+   static_assert(sizeof(retFloat) == sizeof(retInt), "both binary conversion types better have the same size");
    memcpy(&retFloat, &retInt, sizeof(retFloat));
 
    T ret = static_cast<T>(retFloat);
@@ -516,7 +505,7 @@ INLINE_ALWAYS T ExpApproxBest(const T val) {
    return ret;
 }
 
-// TODO: in the future, see if we can eliminate any of our handling for NaN, underflow, overflow, underflowToZero, overflowToInfinity
+// TODO: see if we can eliminate any of our handling for bNaNPossible, bUnderflowPossible, bOverflowPossible
 template<
    bool bNaNPossible = true,
    bool bUnderflowPossible = true,
@@ -524,91 +513,243 @@ template<
    bool bSpecialCaseZero = false,
    typename T
 >
-INLINE_ALWAYS T ExpForResiduals(const T val) {
+INLINE_ALWAYS T ExpForResidualsBinaryClassification(const T val) {
 #ifdef FAST_EXP
+   // if using the ExpApproxSchraudolph function, the optimal addExpSchraudolphTerm would be different between
+   // binary and multiclass since the softmax form we use is different
+
+   // TODO : try out the faster ExpApproxSchraudolph and see how it does.  Then tune ExpApproxSchraudolph specifically
+   //        for binary classification
+
    return ExpApproxBest<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(val);
 #else // FAST_EXP
    return std::exp(val);
 #endif // FAST_EXP
 }
 
-#ifdef FAST_LOG
+// TODO: see if we can eliminate any of our handling for bNaNPossible, bUnderflowPossible, bOverflowPossible
+template<
+   bool bNaNPossible = true,
+   bool bUnderflowPossible = true,
+   bool bOverflowPossible = true,
+   bool bSpecialCaseZero = false,
+   typename T
+>
+INLINE_ALWAYS T ExpForResidualsMulticlass(const T val) {
+#ifdef FAST_EXP
+   // if using the ExpApproxSchraudolph function, the optimal addExpSchraudolphTerm would be different between
+   // binary and multiclass since the softmax form we use is different
 
-// TODO: test the fastlog algorithm from the fastlog.h file below
-// algorithm from code originally written by Paul Mineiro.  re-implemented here
+   // TODO : try out the faster ExpApproxSchraudolph and see how it does.  Then tune ExpApproxSchraudolph specifically
+   //        for multiclass classification
+
+   return ExpApproxBest<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(val);
+#else // FAST_EXP
+   return std::exp(val);
+#endif // FAST_EXP
+}
+
+
+
+
+///////////////////////////////////////////// LOG SECTION
+
+// this constant does not change for any variation in optimizing for different objectives in Schraudolph
+constexpr float k_logMultiple = 8.26295832e-08f; // ln(2) / (1<<23)
+
+// k_logTermUpperBound = 
+// std::nextafter(-(k_expTermLowerBound * ln(2) / (1 << 23))) = 
+// std::nextafter(-(1064631197 * ln(2) / (1 << 23)), 0.0f) = 
+// std::nextafter(-87.970031802262032630372429596766f, 0.0f)
+// we need to take the nextafter, because the round of that number is -87.9700317f otherwise which is below the bound
+// -87.9700241f
+constexpr float k_logTermUpperBound = -87.9700241f;
+
+// k_logTermLowerBound = 
+// -(k_expTermUpperBound * ln(2) / (1 << 23)) = 
+// -(1065353217 * ln(2) / (1 << 23)) = 
+// -88.029692013742637244666652182484f
+// -88.0296936f (rounded)
+// we do not need to take the nextafter, because the round of that number is -88.0296936f is already outside the bound
+constexpr float k_logTermLowerBound = -88.0296936f;
+
+// LOG constants
+constexpr float k_logTermZeroMeanErrorForLogFrom1_To1_5 = -87.9865799f; // experimentally determined.  optimized for input values from 1 to 1.5.  Equivalent to 1064831465
+
+
+// the more exact log constancts from https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastlog.h
+// listed in http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
+// are (we might need them someday if we want to construct a more exact log function):
+// 0.69314718f is really: ln(2)
+// 1.1920928955078125e-7f is really: 1/8388608 = 1 / (1 << 23)
+// 124.22551499f is really: 124.22551499451099260110626945692909242404
+// 1.498030302f is really: 1.49803030235745199322015574519753670721
+// 1.72587999f is really: 1.72587998888731819829751241367603866776
+// 0.3520887068f is really: 0.35208870683243006166779601840602754876
+
+// some log implementations
 // https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastlog.h
-// which might have come from this paper:
-// http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
-
-
-
-// possible approaches:
-// NOTE: even though memory lookup table approaches look to be the fastest and reasonable approach, we probably want to avoid lookup tables
-//   in order to avoid using too much of our cache memory which we need for other things
 // https://www.icsi.berkeley.edu/pubs/techreports/TR-07-002.pdf
-// https ://tech.ebayinc.com/engineering/fast-approximate-logarithms-part-i-the-basics/
+// https://tech.ebayinc.com/engineering/fast-approximate-logarithms-part-i-the-basics/
 // https://tech.ebayinc.com/engineering/fast-approximate-logarithms-part-ii-rounding-error/
 // https://tech.ebayinc.com/engineering/fast-approximate-logarithms-part-iii-the-formulas/
+// https://stackoverflow.com/questions/9799041/efficient-implementation-of-natural-logarithm-ln-and-exponentiation
+// https://github.com/ekmett/approximate/blob/master/cbits/fast.c
 
+template<
+   bool bNaNPossible = true,
+   bool bNegativePossible = true,
+   bool bZeroPossible = true, // if false, positive zero returns a big negative number, negative zero returns a big positive number
+   bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
+   typename T
+>
+INLINE_ALWAYS T LogApproxSchraudolph(const T val, const float addLogSchraudolphTerm = k_logTermZeroMeanErrorForLogFrom1_To1_5) {
+   // NOTE: this function will have large errors on denomal inputs, but the results are reliably big negative numbers
 
-// TODO move this include up into the VS specific parts
-#include <intrin.h>
-#pragma intrinsic(_BitScanReverse)
-#pragma intrinsic(_BitScanReverse64)
+   // to get the log, just reverse the approximate exp function steps
 
-template<typename T>
-INLINE_ALWAYS unsigned int MostSignificantBit(T val) {
-   // TODO this only works in MS compiler.  This also doesn't work for numbers larger than uint64_t.  This has many problems, so review it.
-   unsigned long index;
-   return _BitScanReverse64(&index, static_cast<unsigned __int64>(val)) ? static_cast<unsigned int>(index) : static_cast<unsigned int>(0);
-}
+   // we can also figure out the inverse constants above.  Take for example the theoretically determined value
+   // of k_expTermMinimizeRelativeMaximumError = 1064986824
+   // to calculate our addLogSchraudolphTerm for LogApproxSchraudolph, calculate:
+   // -(1064986824 * ln(2) / (1 << 23)) = -87.999417112957322202915588367286
+   // or inversely, calculate the equivalent exp term:
+   // -(-87.999417112957322202915588367286 * (1 << 23) / ln(2)) = 1064986824
 
-INLINE_ALWAYS FloatEbmType ExpForLogLoss(const FloatEbmType val) {
-   // if we're using approximates for the log function, we don't gain any benefit unless we're also using the
-   // approximate exp function
-   return ExpApproxSchraudolph(val);
-}
+   EBM_ASSERT(k_logTermLowerBound <= addLogSchraudolphTerm);
+   EBM_ASSERT(addLogSchraudolphTerm <= k_logTermUpperBound);
 
-INLINE_ALWAYS FloatEbmType LogForLogLoss(FloatEbmType val) {
-   // TODO: also look into whehter std::log1p has a good approximation directly
+   // according to IEEE 754, comparing NaN to anything returns false (except itself), so checking if it's greater
+   // or equal to zero will yield false if val is a NaN, and then true after the negation, so this checks for both
+   // of our NaN output conditions.  This needs to be compiled with strict floating point!
+   const bool bSetNaN = bNaNPossible && bNegativePossible && UNPREDICTABLE(!(T { 0 } <= val)) ||
+      bNaNPossible && !bNegativePossible && UNPREDICTABLE(std::isnan(val));
+   const bool bSetNegativeInfinity = bZeroPossible && UNPREDICTABLE(T { 0 } == val);
+   const bool bSetPositiveInfinity = 
+      bPositiveInfinityPossible && std::is_same<T, float>::value && UNPREDICTABLE(std::numeric_limits<T>::infinity() == val) ||
+      bPositiveInfinityPossible && !std::is_same<T, float>::value && UNPREDICTABLE(std::numeric_limits<float>::max() < val);
 
-   // the log function is only used to calculate the log loss on the valididation set only
+   // val being NaN is defined, since we bit-convert it to an integer, and all integers can be converted to float
+   // val being negative is defined, so we don't need to convert it here
+   // val being +infinity is defined, so we don't need to conver it here
+   // BUT, if val is a double, and if it happens to be between 
+   //   std::numeric_limits<float>::max() < val && val < std::numeric_limits<T>::infinity() then the conversion
+   //   would be undefined without this check below
+   //
+   // The compiler should be smart enough to notice that we overwrite the final result with specific values
+   // at the end and the zero set below has no effect, so can be eliminated if any of these conditions are true
+   //
+   // We use branchless operations here for future SIMD conversion.
+   const float floatVal = bSetPositiveInfinity && !std::is_same<T, float>::value ? 0.00000000f : static_cast<float>(val);
+
+   // the log function is only used to calculate the log loss on the valididation set only in our codebase
    // the log loss is calculated for the validation set and then returned as a single number to the caller
    // it never gets used as an input to anything inside our code, so any errors won't cyclically grow
 
-   // TODO : this only handles numbers x > 1.  I think I don't need results for less than x < 1 though, so check into that.   If we do have numbers below 1, 
-   //   we should do 1/x and figure out how much to multiply below
+   // for log, we always sum the outputs, and those outputs are used only for early stopping, and early stopping
+   // only cares about relative changes (we compare against other log losses computed by this same function),
+   // so we should be insensitive to shifts in the output provided they are by a constant amount
+   // The only reason to want balanced sums would be if we report the log loss to the user because then we want
+   // the most accurate value we can give them, otherwise we should be re-computing it for the user if they want
+   // an exact value
 
-   // for various algorithms, see https://stackoverflow.com/questions/9799041/efficient-implementation-of-natural-logarithm-ln-and-exponentiation
+   // boosting will tend to push us towards lower and lower log losses.  Our input can't be less than 1 
+   // (without floating point imprecision considerations), so 0 is our lowest output, and the input shouldn't be 
+   // much more than 2 (which returns about 0.69, which is random chance), and probably quite a bit smaller than that 
+   // in general
 
-   // TODO: this isn't going to work for us since we will often get vlaues greater than 2^64 in exp terms.  Let's figure out how to do the alternate where
-   // we extract the exponent term directly via IEEE 754
-   unsigned int shifts = MostSignificantBit(static_cast<uint64_t>(val));
-   val = val / static_cast<FloatEbmType>(uint64_t { 1 } << shifts);
+   uint32_t retInt;
 
-   // this works sorta kinda well for numbers between 1 to 2 (we shifted our number to be within this range)
-   // TODO : increase precision of these magic numbers
-   val = FloatEbmType { -1.7417939 } + (FloatEbmType { 2.8212026 } + (FloatEbmType { -1.4699568 } + (FloatEbmType { 0.44717955 } +
-      FloatEbmType { -0.056570851 } *val) * val) * val) * val;
-   val += static_cast<FloatEbmType>(shifts) * FloatEbmType {
-      0.69314718
-   };
+   static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
+   static_assert(sizeof(retInt) == sizeof(floatVal), "both binary conversion types better have the same size");
+   memcpy(&retInt, &floatVal, sizeof(retInt));
 
-   return val;
+   float retFloat = static_cast<float>(retInt);
+
+   // use a fused multiply add assembly instruction, so don't add the addLogSchraudolphTerm prior to multiplying
+   retFloat = k_logMultiple * retFloat + addLogSchraudolphTerm;
+
+   T ret = static_cast<T>(retFloat);
+
+   ret = UNPREDICTABLE(bSetNegativeInfinity) ? -std::numeric_limits<T>::infinity() : ret;
+   ret = UNPREDICTABLE(bSetPositiveInfinity) ? std::numeric_limits<T>::infinity() : ret;
+   // do the NaN value last since we then avoid issues with weird NaN comparison rules
+   ret = UNPREDICTABLE(bSetNaN) ? std::numeric_limits<T>::quiet_NaN() : ret;
+
+   return ret;
 }
+
+
+
+
+// TODO: see if we can eliminate any of our handling for bNaNPossible, bUnderflowPossible, bOverflowPossible
+template<
+   bool bNaNPossible = true,
+   bool bUnderflowPossible = true,
+   bool bOverflowPossible = true,
+   bool bSpecialCaseZero = false,
+   typename T
+>
+INLINE_ALWAYS T ExpForLogLossBinaryClassification(const T val) {
+#ifdef FAST_LOG
+   // the optimal addExpSchraudolphTerm is different between binary and multiclass 
+   // since the softmax form we use is different
+
+   // TODO : tune addExpSchraudolphTerm specifically for binary classification.  
+   //        k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit was tuned for softmax with 3 classes and one of them zeroed.  
+   //        For binary classification we can assume large positive logits typically, unlike multiclass
+
+   return ExpApproxSchraudolph<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(
+      val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
 #else // FAST_LOG
-INLINE_ALWAYS FloatEbmType ExpForLogLoss(const FloatEbmType val) {
    // if we're using the non-approximate std::log function, we might as well use std::exp as well for the
    // places that we compute Exp for the log loss
    return std::exp(val);
+#endif // FAST_LOG
 }
 
-INLINE_ALWAYS FloatEbmType LogForLogLoss(const FloatEbmType val) {
-   return std::log(val);
-   // TODO: also look into whehter std::log1p is a good function for this (mostly in terms of speed).  For the most part we don't care about accuracy 
-   //   in the low
-   // digits since we take the average, and the log loss will therefore be dominated by a few items that we predict strongly won't happen, but do happen.  
-}
+// TODO: see if we can eliminate any of our handling for bNaNPossible, bUnderflowPossible, bOverflowPossible
+template<
+   bool bNaNPossible = true,
+   bool bUnderflowPossible = true,
+   bool bOverflowPossible = true,
+   bool bSpecialCaseZero = false,
+   typename T
+>
+INLINE_ALWAYS T ExpForLogLossMulticlass(const T val) {
+#ifdef FAST_LOG
+   // the optimal addExpSchraudolphTerm is different between binary and multiclass 
+   // since the softmax form we use is different
+
+   // TODO : tune addExpSchraudolphTerm specifically for multiclass classification.  Currently (at the time that 
+   //        I'm writing this, although we have plans to change it) we aren't zeroing a 
+   //        logit and k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit is really the wrong constant since it was
+   //        tuned for softmax with a zeroed logit, but it probably doesn't matter much because we don't
+   //        care much about shifts in the log loss metric provided the shifts are stable
+
+   return ExpApproxSchraudolph<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(
+      val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
+#else // FAST_LOG
+   // if we're using the non-approximate std::log function, we might as well use std::exp as well for the
+   // places that we compute Exp for the log loss
+   return std::exp(val);
 #endif // FAST_LOG
+}
+
+// TODO: see if we can eliminate any of our handling for bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
+template<
+   bool bNaNPossible = true,
+   bool bNegativePossible = true,
+   bool bZeroPossible = true,
+   bool bPositiveInfinityPossible = true,
+   typename T
+>
+INLINE_ALWAYS T LogForLogLoss(const T val) {
+#ifdef FAST_LOG
+   return LogApproxSchraudolph<bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible, T>(
+      val, k_logTermZeroMeanErrorForLogFrom1_To1_5);
+#else // FAST_LOG
+   return std::log(val);
+#endif // FAST_LOG
+}
 
 #endif // APPROXIMATE_MATH_H

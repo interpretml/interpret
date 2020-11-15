@@ -72,7 +72,7 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType oneExp = ExpForResiduals(predictorScore);
+            const FloatEbmType oneExp = ExpForResidualsMulticlass(predictorScore);
             *pExpVector = oneExp;
             ++pExpVector;
             sumExp += oneExp;
@@ -308,7 +308,7 @@ public:
                const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
-               const FloatEbmType oneExp = ExpForResiduals(predictorScore);
+               const FloatEbmType oneExp = ExpForResidualsMulticlass(predictorScore);
                *pExpVector = oneExp;
                ++pExpVector;
                sumExp += oneExp;

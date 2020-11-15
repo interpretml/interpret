@@ -75,7 +75,7 @@ public:
          do {
             const FloatEbmType predictorScore = *pPredictorScores - subtract;
             ++pPredictorScores;
-            const FloatEbmType oneExp = ExpForResiduals(predictorScore);
+            const FloatEbmType oneExp = ExpForResidualsMulticlass(predictorScore);
             *pExpVector = oneExp;
             ++pExpVector;
             sumExp += oneExp;

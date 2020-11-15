@@ -66,7 +66,7 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType oneExp = ExpForLogLoss(predictorScore);
+            const FloatEbmType oneExp = ExpForLogLossMulticlass(predictorScore);
             itemExp = iVector == targetData ? oneExp : itemExp;
             sumExp += oneExp;
             ++iVector;
@@ -284,7 +284,7 @@ public:
                const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
-               const FloatEbmType oneExp = ExpForLogLoss(predictorScore);
+               const FloatEbmType oneExp = ExpForLogLossMulticlass(predictorScore);
                itemExp = iVector == targetData ? oneExp : itemExp;
                sumExp += oneExp;
                ++iVector;

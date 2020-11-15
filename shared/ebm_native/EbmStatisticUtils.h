@@ -613,7 +613,7 @@ public:
       //                const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } + ExpForResiduals(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction));
       // !!! IMPORTANT: SEE ABOVE
       const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } +
-         ExpForResiduals(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction));
+         ExpForResidualsBinaryClassification(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction));
 
       // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
       // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
@@ -742,7 +742,7 @@ public:
 
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
-      const FloatEbmType ourExp = ExpForLogLoss(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
+      const FloatEbmType ourExp = ExpForLogLossBinaryClassification(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
       // no reasonable implementation of exp should lead to a negative value
       EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ourExp);
 
