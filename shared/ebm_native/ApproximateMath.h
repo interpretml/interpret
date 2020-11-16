@@ -505,14 +505,7 @@ INLINE_ALWAYS T ExpApproxBest(const T val) {
    return ret;
 }
 
-// TODO: see if we can eliminate any of our handling for bNaNPossible, bUnderflowPossible, bOverflowPossible
-template<
-   bool bNaNPossible = true,
-   bool bUnderflowPossible = true,
-   bool bOverflowPossible = true,
-   bool bSpecialCaseZero = false,
-   typename T
->
+template<typename T>
 INLINE_ALWAYS T ExpForResidualsBinaryClassification(const T val) {
 #ifdef FAST_EXP
    // if using the ExpApproxSchraudolph function, the optimal addExpSchraudolphTerm would be different between
@@ -521,20 +514,13 @@ INLINE_ALWAYS T ExpForResidualsBinaryClassification(const T val) {
    // TODO : try out the faster ExpApproxSchraudolph and see how it does.  Then tune ExpApproxSchraudolph specifically
    //        for binary classification
 
-   return ExpApproxBest<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(val);
+   return ExpApproxBest<true, true, true, false, T>(val);
 #else // FAST_EXP
    return std::exp(val);
 #endif // FAST_EXP
 }
 
-// TODO: see if we can eliminate any of our handling for bNaNPossible, bUnderflowPossible, bOverflowPossible
-template<
-   bool bNaNPossible = true,
-   bool bUnderflowPossible = true,
-   bool bOverflowPossible = true,
-   bool bSpecialCaseZero = false,
-   typename T
->
+template<typename T>
 INLINE_ALWAYS T ExpForResidualsMulticlass(const T val) {
 #ifdef FAST_EXP
    // if using the ExpApproxSchraudolph function, the optimal addExpSchraudolphTerm would be different between
@@ -543,7 +529,7 @@ INLINE_ALWAYS T ExpForResidualsMulticlass(const T val) {
    // TODO : try out the faster ExpApproxSchraudolph and see how it does.  Then tune ExpApproxSchraudolph specifically
    //        for multiclass classification
 
-   return ExpApproxBest<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(val);
+   return ExpApproxBest<true, true, true, false, T>(val);
 #else // FAST_EXP
    return std::exp(val);
 #endif // FAST_EXP
@@ -681,14 +667,7 @@ INLINE_ALWAYS T LogApproxSchraudolph(const T val, const float addLogSchraudolphT
 
 
 
-// TODO: see if we can eliminate any of our handling for bNaNPossible, bUnderflowPossible, bOverflowPossible
-template<
-   bool bNaNPossible = true,
-   bool bUnderflowPossible = true,
-   bool bOverflowPossible = true,
-   bool bSpecialCaseZero = false,
-   typename T
->
+template<typename T>
 INLINE_ALWAYS T ExpForLogLossBinaryClassification(const T val) {
 #ifdef FAST_LOG
    // the optimal addExpSchraudolphTerm is different between binary and multiclass 
@@ -698,8 +677,7 @@ INLINE_ALWAYS T ExpForLogLossBinaryClassification(const T val) {
    //        k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit was tuned for softmax with 3 classes and one of them zeroed.  
    //        For binary classification we can assume large positive logits typically, unlike multiclass
 
-   return ExpApproxSchraudolph<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(
-      val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
+   return ExpApproxSchraudolph<true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
 #else // FAST_LOG
    // if we're using the non-approximate std::log function, we might as well use std::exp as well for the
    // places that we compute Exp for the log loss
@@ -707,14 +685,7 @@ INLINE_ALWAYS T ExpForLogLossBinaryClassification(const T val) {
 #endif // FAST_LOG
 }
 
-// TODO: see if we can eliminate any of our handling for bNaNPossible, bUnderflowPossible, bOverflowPossible
-template<
-   bool bNaNPossible = true,
-   bool bUnderflowPossible = true,
-   bool bOverflowPossible = true,
-   bool bSpecialCaseZero = false,
-   typename T
->
+template<typename T>
 INLINE_ALWAYS T ExpForLogLossMulticlass(const T val) {
 #ifdef FAST_LOG
    // the optimal addExpSchraudolphTerm is different between binary and multiclass 
@@ -726,8 +697,7 @@ INLINE_ALWAYS T ExpForLogLossMulticlass(const T val) {
    //        tuned for softmax with a zeroed logit, but it probably doesn't matter much because we don't
    //        care much about shifts in the log loss metric provided the shifts are stable
 
-   return ExpApproxSchraudolph<bNaNPossible, bUnderflowPossible, bOverflowPossible, bSpecialCaseZero, T>(
-      val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
+   return ExpApproxSchraudolph<true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
 #else // FAST_LOG
    // if we're using the non-approximate std::log function, we might as well use std::exp as well for the
    // places that we compute Exp for the log loss
@@ -735,18 +705,17 @@ INLINE_ALWAYS T ExpForLogLossMulticlass(const T val) {
 #endif // FAST_LOG
 }
 
-// TODO: see if we can eliminate any of our handling for bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible
-template<
-   bool bNaNPossible = true,
-   bool bNegativePossible = true,
-   bool bZeroPossible = true,
-   bool bPositiveInfinityPossible = true,
-   typename T
->
+template<typename T>
 INLINE_ALWAYS T LogForLogLoss(const T val) {
 #ifdef FAST_LOG
-   return LogApproxSchraudolph<bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible, T>(
-      val, k_logTermZeroMeanErrorForLogFrom1_To1_5);
+
+   // it is possible in theory for val to be +infinity if the logits get to above k_expOverflowPoint, BUT
+   // we don't get undefined behavior if bPositiveInfinityPossible is set to false.  What we get out is a very
+   // big positive number.  In fact, we get the biggest legal positive value, which should terminate boosting
+   // at that point if early stopping is enabled.  If we return a large positive result here instead of infinity
+   // there shouldn't be any real consequences.
+   // val can't be negative or zero from the formulas that we calculate before calling this log function
+   return LogApproxSchraudolph<true, false, false, false, T>(val, k_logTermZeroMeanErrorForLogFrom1_To1_5);
 #else // FAST_LOG
    return std::log(val);
 #endif // FAST_LOG
