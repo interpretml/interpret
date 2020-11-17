@@ -27,8 +27,8 @@ static int g_cLogExitSampleWithoutReplacementParametersMessages = 5;
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
    SeedEbmType randomSeed,
    IntEbmType countTrainingSamples,
-   IntEbmType countSamples,
-   IntEbmType * trainingCountsOut
+   IntEbmType countValidationSamples,
+   IntEbmType * sampleCountsOut
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterSampleWithoutReplacementParametersMessages,
@@ -37,59 +37,66 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
       "Entered SampleWithoutReplacement: "
       "randomSeed=%" SeedEbmTypePrintf ", "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
-      "countSamples=%" IntEbmTypePrintf ", "
-      "trainingCountsOut=%p"
+      "countValidationSamples=%" IntEbmTypePrintf ", "
+      "sampleCountsOut=%p"
       ,
       randomSeed,
       countTrainingSamples,
-      countSamples,
-      static_cast<void *>(trainingCountsOut)
+      countValidationSamples,
+      static_cast<void *>(sampleCountsOut)
    );
 
-   if(UNLIKELY(nullptr == trainingCountsOut)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement nullptr == trainingCountsOut");
-      return;
-   }
-
-   if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
-      if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-         LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countSamples < IntEbmType { 0 }");
-      }
-      return;
-   }
-   if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement !IsNumberConvertable<size_t>(countSamples)");
-      return;
-   }
-   size_t cSamplesRemaining = static_cast<size_t>(countSamples);
-   if(UNLIKELY(IsMultiplyError(cSamplesRemaining, sizeof(*trainingCountsOut)))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsMultiplyError(cSamples, sizeof(*trainingCountsOut))");
+   if(UNLIKELY(nullptr == sampleCountsOut)) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement nullptr == sampleCountsOut");
       return;
    }
 
    if(UNLIKELY(countTrainingSamples < IntEbmType { 0 })) {
-      // this is a stupid input.  Fix it, but give the caller a warning so they can correct their code
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement countTrainingSamples shouldn't be negative");
-      countTrainingSamples = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countTrainingSamples < IntEbmType { 0 }");
+      return;
    }
-   if(UNLIKELY(countSamples < countTrainingSamples)) {
-      // this is a stupid input.  Fix it, but give the caller a warning so they can correct their code
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement countTrainingSamples shouldn't be higher than countSamples");
-      countTrainingSamples = countSamples;
+   if(UNLIKELY(!IsNumberConvertable<size_t>(countTrainingSamples))) {
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement !IsNumberConvertable<size_t>(countTrainingSamples)");
+      return;
    }
-   // countTrainingSamples can't be negative or higher than countSamples, so it can be converted to size_t
-   size_t cTrainingRemaining = static_cast<size_t>(countTrainingSamples);
+   const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
+
+   if(UNLIKELY(countValidationSamples < IntEbmType { 0 })) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countValidationSamples < IntEbmType { 0 }");
+      return;
+   }
+   if(UNLIKELY(!IsNumberConvertable<size_t>(countValidationSamples))) {
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement !IsNumberConvertable<size_t>(countValidationSamples)");
+      return;
+   }
+   const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
+
+   if(UNLIKELY(IsAddError(cTrainingSamples, cValidationSamples))) {
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsAddError(cTrainingSamples, cValidationSamples)");
+      return;
+   }
+   size_t cSamplesRemaining = cTrainingSamples + cValidationSamples;
+   if(UNLIKELY(size_t { 0 } == cSamplesRemaining)) {
+      // there's nothing for us to fill the array with
+      return;
+   }
+   if(UNLIKELY(IsMultiplyError(cSamplesRemaining, sizeof(*sampleCountsOut)))) {
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsMultiplyError(cSamples, sizeof(*sampleCountsOut))");
+      return;
+   }
+
+   size_t cTrainingRemaining = cTrainingSamples;
 
    RandomStream randomStream;
    randomStream.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
 
-   IntEbmType * pTrainingCountsOut = trainingCountsOut;
+   IntEbmType * pSampleCountsOut = sampleCountsOut;
    do {
       const size_t iRandom = randomStream.Next(cSamplesRemaining);
       const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
       cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
-      *pTrainingCountsOut = UNPREDICTABLE(bTrainingSample) ? IntEbmType { 1 } : IntEbmType { 0 };
-      ++pTrainingCountsOut;
+      *pSampleCountsOut = UNPREDICTABLE(bTrainingSample) ? IntEbmType { 1 } : IntEbmType { -1 };
+      ++pSampleCountsOut;
       --cSamplesRemaining;
    } while(0 != cSamplesRemaining);
    EBM_ASSERT(0 == cTrainingRemaining); // this should be all used up too now

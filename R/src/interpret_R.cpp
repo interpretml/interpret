@@ -623,17 +623,16 @@ SEXP Discretize_R(
    return ret;
 }
 
-// TODO: we can eliminate the countSamples parameter, since we get that already from trainingCountsOut
 SEXP SampleWithoutReplacement_R(
    SEXP randomSeed,
    SEXP countTrainingSamples,
-   SEXP countSamples,
-   SEXP trainingCountsOut
+   SEXP countValidationSamples,
+   SEXP sampleCountsOut
 ) {
    EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != countTrainingSamples);
-   EBM_ASSERT(nullptr != countSamples);
-   EBM_ASSERT(nullptr != trainingCountsOut);
+   EBM_ASSERT(nullptr != countValidationSamples);
+   EBM_ASSERT(nullptr != sampleCountsOut);
 
    if(!IsSingleIntVector(randomSeed)) {
       LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsSingleIntVector(randomSeed)");
@@ -653,58 +652,58 @@ SEXP SampleWithoutReplacement_R(
    IntEbmType countTrainingSamplesIntEbmType = static_cast<IntEbmType>(countTrainingSamplesDouble);
    EBM_ASSERT(IsNumberConvertable<size_t>(countTrainingSamplesIntEbmType)); // IsDoubleToIntEbmTypeIndexValid checks this
 
-   if(!IsSingleDoubleVector(countSamples)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsSingleDoubleVector(countSamples)");
+   if(!IsSingleDoubleVector(countValidationSamples)) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsSingleDoubleVector(countValidationSamples)");
       return R_NilValue;
    }
-   const double countSamplesDouble = REAL(countSamples)[0];
-   if(!IsDoubleToIntEbmTypeIndexValid(countSamplesDouble)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsDoubleToIntEbmTypeIndexValid(countSamplesDouble)");
+   const double countValidationSamplesDouble = REAL(countValidationSamples)[0];
+   if(!IsDoubleToIntEbmTypeIndexValid(countValidationSamplesDouble)) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsDoubleToIntEbmTypeIndexValid(countValidationSamplesDouble)");
       return R_NilValue;
    }
-   IntEbmType countSamplesIntEbmType = static_cast<IntEbmType>(countSamplesDouble);
-   EBM_ASSERT(IsNumberConvertable<size_t>(countSamplesIntEbmType)); // IsDoubleToIntEbmTypeIndexValid checks this
+   IntEbmType countValidationSamplesIntEbmType = static_cast<IntEbmType>(countValidationSamplesDouble);
+   EBM_ASSERT(IsNumberConvertable<size_t>(countValidationSamplesIntEbmType)); // IsDoubleToIntEbmTypeIndexValid checks this
 
-   if(REALSXP != TYPEOF(trainingCountsOut)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R REALSXP != TYPEOF(trainingCountsOut)");
+   if(REALSXP != TYPEOF(sampleCountsOut)) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R REALSXP != TYPEOF(sampleCountsOut)");
       return R_NilValue;
    }
-   const R_xlen_t trainingCountsOutR = xlength(trainingCountsOut);
-   if(!IsNumberConvertable<size_t>(trainingCountsOutR)) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsNumberConvertable<size_t>(trainingCountsOutR)");
+   const R_xlen_t sampleCountsOutR = xlength(sampleCountsOut);
+   if(!IsNumberConvertable<size_t>(sampleCountsOutR)) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsNumberConvertable<size_t>(sampleCountsOutR)");
       return R_NilValue;
    }
-   const size_t cTrainingCountsOut = static_cast<size_t>(trainingCountsOutR);
-   if(static_cast<size_t>(countSamplesIntEbmType) != cTrainingCountsOut) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R static_cast<size_t>(countSamplesIntEbmType) != cTrainingCountsOut");
+   const size_t cSampleCountsOut = static_cast<size_t>(sampleCountsOutR);
+   if(static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValicationSamplesIntEbmType) != cSampleCountsOut) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValicationSamplesIntEbmType) != cSampleCountsOut");
       return R_NilValue;
    }
 
-   if(0 != cTrainingCountsOut) {
-      IntEbmType * const aTrainingCounts =
-         reinterpret_cast<IntEbmType *>(R_alloc(cTrainingCountsOut, static_cast<int>(sizeof(IntEbmType))));
+   if(0 != cSampleCountsOut) {
+      IntEbmType * const aSampleCounts =
+         reinterpret_cast<IntEbmType *>(R_alloc(cSampleCountsOut, static_cast<int>(sizeof(IntEbmType))));
 
       SampleWithoutReplacement(
          randomSeedLocal,
          countTrainingSamplesIntEbmType,
-         countSamplesIntEbmType,
-         aTrainingCounts
+         countValidationSamplesIntEbmType,
+         aSampleCounts
       );
 
-      double * pTrainingCountsOut = REAL(trainingCountsOut);
-      const IntEbmType * pTrainingCounts = aTrainingCounts;
-      const IntEbmType * const pTrainingCountsEnd = aTrainingCounts + cTrainingCountsOut;
+      double * pSampleCountsOut = REAL(sampleCountsOut);
+      const IntEbmType * pSampleCounts = aSampleCounts;
+      const IntEbmType * const pSampleCountsEnd = aSampleCounts + cSampleCountsOut;
       do {
-         const IntEbmType val = *pTrainingCounts;
-         *pTrainingCountsOut = static_cast<double>(val);
-         ++pTrainingCountsOut;
-         ++pTrainingCounts;
-      } while(pTrainingCountsEnd != pTrainingCounts);
+         const IntEbmType val = *pSampleCounts;
+         *pSampleCountsOut = static_cast<double>(val);
+         ++pSampleCountsOut;
+         ++pSampleCounts;
+      } while(pSampleCountsEnd != pSampleCounts);
    }
 
    // this return isn't useful beyond that it's not R_NilValue, which would signify error
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(cTrainingCountsOut);
+   REAL(ret)[0] = static_cast<double>(cSampleCountsOut);
    UNPROTECT(1);
    return ret;
 }

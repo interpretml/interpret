@@ -396,8 +396,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Softma
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
    SeedEbmType randomSeed,
    IntEbmType countTrainingSamples,
-   IntEbmType countSamples,
-   IntEbmType * trainingCountsOut
+   IntEbmType countValidationSamples,
+   IntEbmType * sampleCountsOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(

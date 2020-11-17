@@ -106,9 +106,9 @@ class Native:
             ct.c_int32,
             # int64_t countTrainingSamples
             ct.c_int64,
-            # int64_t countSamples
+            # int64_t countValidationSamples
             ct.c_int64,
-            # int64_t * trainingCountsOut
+            # int64_t * sampleCountsOut
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self.lib.SampleWithoutReplacement.restype = None

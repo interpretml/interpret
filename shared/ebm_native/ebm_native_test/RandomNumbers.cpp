@@ -50,25 +50,32 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
    for(IntEbmType iRun = 0; iRun < 10000; ++iRun) {
       size_t cRandomSamples = randomStream.Next(cSamples + 1);
       size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
+      size_t cValidationSamples = cRandomSamples - cTrainingSamples;
 
       randomSeed = GenerateRandomNumber(randomSeed, stageRandomizationMix);
 
       SampleWithoutReplacement(
          randomSeed,
          static_cast<IntEbmType>(cTrainingSamples),
-         static_cast<IntEbmType>(cRandomSamples),
+         static_cast<IntEbmType>(cValidationSamples),
          samples
       );
 
       size_t cTrainingSamplesVerified = 0;
+      size_t cValidationSamplesVerified = 0;
       for(size_t i = 0; i < cRandomSamples; ++i) {
          const IntEbmType val = samples[i];
-         CHECK(0 == val || 1 == val);
-         if(0 != val) {
+         CHECK(-1 == val || 1 == val);
+         if(0 < val) {
             ++cTrainingSamplesVerified;
+         }
+         if(val < 0) {
+            ++cValidationSamplesVerified;
          }
       }
       CHECK(cTrainingSamplesVerified == cTrainingSamples);
+      CHECK(cValidationSamplesVerified == cValidationSamples);
+      CHECK(cTrainingSamplesVerified + cValidationSamplesVerified == cRandomSamples);
    }
 }
 
