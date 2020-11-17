@@ -772,7 +772,7 @@ public:
       const FloatEbmType retDebug = EbmStatistics::ComputeSingleSampleLogLossMulticlass(
          FloatEbmType { 1 } + expVal, 0 == binnedActualValue ? FloatEbmType { 1 } : expVal
       );
-      EBM_ASSERT(std::isnan(ret) || std::isinf(ret) || std::isnan(retDebug) || std::isinf(retDebug) || std::abs(retDebug - ret) < k_epsilonResidualError);
+      EBM_ASSERT(std::isnan(ret) || std::isinf(ret) || std::isnan(retDebug) || std::isinf(retDebug) || std::abs(retDebug - ret) < k_epsilonResidualErrorForBinaryToMulticlass);
 #endif // NDEBUG
 
       return ret;

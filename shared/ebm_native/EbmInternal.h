@@ -155,11 +155,8 @@ INLINE_RELEASE_UNTEMPLATED char * strcpy_NO_WARNINGS(char * dest, const char * s
    return strcpy(dest, src);
 }
 
-//#define FAST_EXP
-// TODO someday consider using approximations for log, but that's going to be more sensitive to small errors than exp
-//#define FAST_LOG
-
-
+#define FAST_EXP
+#define FAST_LOG
 
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type 
 //   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  
@@ -177,12 +174,12 @@ constexpr FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest
 constexpr FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
 constexpr FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
 constexpr FloatEbmType k_epsilonResidualError = 1e-7;
-#ifdef FAST_EXP
+#if defined(FAST_EXP) || defined(FAST_LOG)
 // with the approximate exp function we can expect a bit of noise.  We might need to increase this further
 constexpr FloatEbmType k_epsilonResidualErrorForBinaryToMulticlass = 1e-1;
-#else // FAST_EXP
+#else // defined(FAST_EXP) || defined(FAST_LOG)
 constexpr FloatEbmType k_epsilonResidualErrorForBinaryToMulticlass = 1e-7;
-#endif // FAST_EXP
+#endif // defined(FAST_EXP) || defined(FAST_LOG)
 constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 
 // The C++ standard makes it undefined behavior to access memory past the end of an array with a declared length.

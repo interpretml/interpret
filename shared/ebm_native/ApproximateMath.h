@@ -58,7 +58,7 @@
 // by Nicol N. Schraudolph
 // http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.9.4508&rep=rep1&type=pdf
 //
-// Here's an implementation from the paper, but includes other options, like float/uint32_t versions, and log
+// Here's an implementation from the paper, but includes other options, like float/int32_t versions, and log
 // https://github.com/ekmett/approximate/blob/master/cbits/fast.c
 //
 // different algorithm from Paul Mineiro:
@@ -232,23 +232,23 @@ constexpr double k_expErrorPeriodicity = 0.69314718055994529; // ln(2)
 constexpr float k_expMultiple = 12102203.0f; // (1<<23) / ln(2)
 
 // all of these constants should have exact rounding to float, per IEEE 754 9-12 digit rule (see above)
-constexpr uint32_t k_expTermUpperBound                   = 1065353217; // theoretically justified -> 1065353216 + 1
-constexpr uint32_t k_expTermMinimizeRelativeMaximumError = 1064986824; // theoretically justified
-constexpr uint32_t k_expTermZeroMeanRelativeError        = 1064870596; // experimentally determined.  This unbiases our average such that averages of large numbers of values should be balanced towards zero
-constexpr uint32_t k_expTermMinimizeRelativeRMSE         = 1064866805; // theoretically justified -> 1065353216 - 486411
-constexpr uint32_t k_expTermMinimizeRelativeMeanAbsError = 1064807269; // theoretically justified -> 1065353216 - 545947
-constexpr uint32_t k_expTermLowerBound                   = 1064631197; // theoretically justified -> 1065353216 - 722019
+constexpr int32_t k_expTermUpperBound                   = 1065353217; // theoretically justified -> 1065353216 + 1
+constexpr int32_t k_expTermMinimizeRelativeMaximumError = 1064986824; // theoretically justified
+constexpr int32_t k_expTermZeroMeanRelativeError        = 1064870596; // experimentally determined.  This unbiases our average such that averages of large numbers of values should be balanced towards zero
+constexpr int32_t k_expTermMinimizeRelativeRMSE         = 1064866805; // theoretically justified -> 1065353216 - 486411
+constexpr int32_t k_expTermMinimizeRelativeMeanAbsError = 1064807269; // theoretically justified -> 1065353216 - 545947
+constexpr int32_t k_expTermLowerBound                   = 1064631197; // theoretically justified -> 1065353216 - 722019
 
 // experimentally determined softmax Schraudolph terms for softmax where one logit is zeroed by subtracing it from the other logits
-constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_696462 = 1064873067; // experimentally determined, +-1, from -0.696462 - k_expErrorPeriodicity / 2 to -0.696462 + k_expErrorPeriodicity / 2
+constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_696462 = 1064873067; // experimentally determined, +-1, from -0.696462 - k_expErrorPeriodicity / 2 to -0.696462 + k_expErrorPeriodicity / 2
 // mid-point = -0.509733
-constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_323004 = 1064873067; // experimentally determined, +-1, from -0.323004 - k_expErrorPeriodicity / 2 to -0.323004 + k_expErrorPeriodicity / 2
-constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkew0      = 1064873067; // experimentally determined, +-1, from -k_expErrorPeriodicity / 2 to +k_expErrorPeriodicity / 2
-constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_370957 = 1064873067; // experimentally determined, +-1, from 0.370957 - k_expErrorPeriodicity / 2 to 0.370957 + k_expErrorPeriodicity / 2
+constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewMinus0_323004 = 1064873067; // experimentally determined, +-1, from -0.323004 - k_expErrorPeriodicity / 2 to -0.323004 + k_expErrorPeriodicity / 2
+constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkew0      = 1064873067; // experimentally determined, +-1, from -k_expErrorPeriodicity / 2 to +k_expErrorPeriodicity / 2
+constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_370957 = 1064873067; // experimentally determined, +-1, from 0.370957 - k_expErrorPeriodicity / 2 to 0.370957 + k_expErrorPeriodicity / 2
 // mid-point = 0.533474
-constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_695991 = 1064873067; // experimentally determined, +-1, from 0.695991 - k_expErrorPeriodicity / 2 to 0.695991 + k_expErrorPeriodicity / 2
+constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingSkewPlus0_695991 = 1064873067; // experimentally determined, +-1, from 0.695991 - k_expErrorPeriodicity / 2 to 0.695991 + k_expErrorPeriodicity / 2
 
-constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermZeroedRange20 = 1064872079; // experimentally determined, +-1, the zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
+constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermZeroedRange20 = 1064872079; // experimentally determined, +-1, the zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
 // USE THIS Schraudolph term for softmax.  It gives 0.001% -> 0.00001 average error, so it's unlikley to miscalibrate 
 // the results too much.  Keeping all softmax terms without zeroing any of them leads to an error of about 0.16% or 
 // thereabouts, which is much larger than anything observed for zeroed logits
@@ -262,8 +262,8 @@ constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermZ
 // this Schraudolph term works relatively well for softmax with 3+ classes, different skews, and if the predicted
 // class is the zeroed class or a non-zeroed class.  It also works fairly well if the non-zeroed logits are greater
 // than zero after shifting them
-constexpr uint32_t k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit = 1064871915; // experimentally determined, AVERAGED between the zeroed and non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
-constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermNonZeroedRange20 = 1064871750; // experimentally determined, +-1, the non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
+constexpr int32_t k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit = 1064871915; // experimentally determined, AVERAGED between the zeroed and non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
+constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermNonZeroedRange20 = 1064871750; // experimentally determined, +-1, the non-zeroed class, from -10 * k_expErrorPeriodicity / 2 to +10 * k_expErrorPeriodicity / 2
 
 // TODO: we can probably pick a better k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit above for binary classification 
 // where we know for sure the number of classes, and we know the likely sign of the value going into the exp 
@@ -271,9 +271,9 @@ constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermN
 // trying to push that value in a consistent direction towards the true value
 
 // these are rough determinations that need to be vetted 
-//constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0 = 1064873955; // experimentally determined, +-?
-//constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_370? = 1064873955; // experimentally determined, +-?
-//constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_69982536866359447004608294930875 = 1064873955; // experimentally determined, +-?
+//constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0 = 1064873955; // experimentally determined, +-?
+//constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_370? = 1064873955; // experimentally determined, +-?
+//constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxTwoClassesZeroingSkew0_69982536866359447004608294930875 = 1064873955; // experimentally determined, +-?
 
 
 // DO NOT USE.  This constant minimizes the mean error for softmax where none of the logits are zeroed.  It has
@@ -281,7 +281,7 @@ constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesZeroingTermN
 // Using non-zeroed softmax isn't as viable since at modest skews (I tried k_expErrorPeriodicity / 4), achieving zero average error is impossible
 // since all valid addition terms from k_expTermLowerBound to k_expTermUpperBound can result in non-zero error averages
 // softmax with a zeroed term seems to have much tighter bounds on the mean error even if the absolute mean error is higher
-constexpr uint32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesSkew0 = 1064963329; // experimentally determined +-1, non-zeroed, from -k_expErrorPeriodicity / 2 to k_expErrorPeriodicity / 2
+constexpr int32_t k_expTermZeroMeanRelativeErrorSoftmaxThreeClassesSkew0 = 1064963329; // experimentally determined +-1, non-zeroed, from -k_expErrorPeriodicity / 2 to k_expErrorPeriodicity / 2
 
 // k_expUnderflowPoint is set to a value that prevents us from returning a denormal number. These approximate function 
 // don't really work with denomals and start to drift very quickly from the true exp values when we reach denormals.
@@ -298,74 +298,78 @@ template<
    bool bSpecialCaseZero = false,
    typename T
 >
-INLINE_ALWAYS T ExpApproxSchraudolph(const T val, const uint32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) {
+INLINE_ALWAYS T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) {
    // This function guarnatees non-decreasing monotonicity, so it never decreases with increasing inputs, but
    // it can sometimes yield equal outputs on increasing inputs
 
    EBM_ASSERT(k_expTermLowerBound <= addExpSchraudolphTerm);
    EBM_ASSERT(addExpSchraudolphTerm <= k_expTermUpperBound);
 
-   // if T val is a double, then we need to check before converting to a float if we're in-bounds, since converting
-   // a double that is outside the float range into a float results in undefined behavior
-   const bool bSetNaN = bNaNPossible && UNPREDICTABLE(std::isnan(val));
-   const bool bSetZero = bUnderflowPossible && UNPREDICTABLE(val < T { k_expUnderflowPoint });
-   const bool bSetInfinity = bOverflowPossible && UNPREDICTABLE(T { k_expOverflowPoint } < val);
-   const bool bSetOne = bSpecialCaseZero && UNPREDICTABLE(T { 0 } == val);
+   const bool bPassNaN = bNaNPossible && UNLIKELY(std::isnan(val));
+   if(LIKELY(!bPassNaN)) {
+      // we need to check the following before converting val to a float, if a conversion is needed
+      // The following things we do below would invoke undefined behavior otherwise:
+      //   - converting a big positive double into a float that can't be represented
+      //   - converting a big negative double into a float that can't be represented
+      //   - converting a large float to an int that can't be represented
+      //   - converting +-infinity to an int32_t
+      //   - converting a NaN to an int32_t
+      // https://stackoverflow.com/questions/10366485/problems-casting-nan-floats-to-int
+      // https://docs.microsoft.com/en-us/cpp/c-language/conversions-from-floating-point-types?view=msvc-160
 
-   // if val is a NaN, or would result in an underflow or overflow, we set floatVal to zero below in order to avoid 
-   // getting undefined behavior further down.  The following things we do below would invoke undefined behavior 
-   // otherwise:
-   //   - converting a large double into a float that can't be represented
-   //   - converting a large float to an int that can't be represented
-   //   - converting +-infinity to an uint32_t
-   //   - converting a NaN to an uint32_t
-   // https://stackoverflow.com/questions/10366485/problems-casting-nan-floats-to-int
-   // https://docs.microsoft.com/en-us/cpp/c-language/conversions-from-floating-point-types?view=msvc-160
-   //
-   // The compiler should be smart enough to notice that we overwrite the final result with specific values
-   // at the end and the zero set below has no effect, so can be eliminated if any of these conditions are true
-   //
-   // We use branchless operations here for future SIMD conversion.
-   const float floatVal = bSetNaN || bSetZero || bSetInfinity ? 0.00000000f : static_cast<float>(val);
+      // NOTE: I think the SIMD intrinsics don't invoke undefined behavior because they are platform specific 
+      //       intrinsics and would therefore be defined by the specific platform, so we could in that case pass 
+      //       a NaN value through our processing below and check at the end for NaN and then replace it as needed
+      //       or convert floats to ints that can't succeed, provided the platform defines how these are handled
+
+      if(bUnderflowPossible) {
+         if(UNLIKELY(val < T { k_expUnderflowPoint })) {
+            return T { 0 };
+         }
+      }
+      if(bOverflowPossible) {
+         if(UNLIKELY(T { k_expOverflowPoint } < val)) {
+            return std::numeric_limits<T>::infinity();
+         }
+      }
+      if(bSpecialCaseZero) {
+         if(UNLIKELY(T { 0 } == val)) {
+            return T { 1 };
+         }
+      }
+
+      const float valFloat = static_cast<float>(val);
 
 #ifdef EXP_INT
 
-   // this version does the addition in integer space, so it's maybe faster if there isn't a fused multiply add
-   // instruction that works on floats since the integer add will not be slower than a float add, unless the ALU
-   // has some transfer time or time to swtich integer/float values.  Integers in the range we're expecting also
-   // have a little more precision, which means we can get closer to the ideal addExpSchraudolphTerm that we want
+      // this version does the addition in integer space, so it's maybe faster if there isn't a fused multiply add
+      // instruction that works on floats since the integer add will not be slower than a float add, unless the ALU
+      // has some transfer time or time to swtich integer/float values.  Integers in the range we're expecting also
+      // have a little more precision, which means we can get closer to the ideal addExpSchraudolphTerm that we want
 
-   const uint32_t retInt = static_cast<uint32_t>(k_expMultiple * floatVal) + addExpSchraudolphTerm;
+      const int32_t retInt = static_cast<int32_t>(k_expMultiple * valFloat) + addExpSchraudolphTerm;
 #else
 
-   // TODO: test the speed of this form once we have SIMD implemented
+      // TODO: test the speed of this form once we have SIMD implemented
 
-   // this version might be faster if there's a cost to switching between int to float.  Fused multiply add is either 
-   // just as fast as plain multiply, or pretty close to it though, so throwing in the add might be low cost or free
-   const uint32_t retInt = static_cast<uint32_t>(k_expMultiple * floatVal + static_cast<float>(addExpSchraudolphTerm));
+      // this version might be faster if there's a cost to switching between int to float.  Fused multiply add is either 
+      // just as fast as plain multiply, or pretty close to it though, so throwing in the add might be low cost or free
+      const int32_t retInt = static_cast<int32_t>(k_expMultiple * valFloat + static_cast<float>(addExpSchraudolphTerm));
 #endif
 
-   float retFloat;
+      float retFloat;
 
-   // It's undefined behavior in C++ (not C though!) to use a union or a pointer to bit convert between types 
-   // using memcpy though is portable and legal since C++ aliasing rules exclude character pointer copies
-   // Suposedly, most compilers are smart enough to optimize the memcpy away.
+      // It's undefined behavior in C++ (not C though!) to use a union or a pointer to bit convert between types 
+      // using memcpy though is portable and legal since C++ aliasing rules exclude character pointer copies
+      // Suposedly, most compilers are smart enough to optimize the memcpy away.
 
-   static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
-   static_assert(sizeof(retFloat) == sizeof(retInt), "both binary conversion types better have the same size");
-   memcpy(&retFloat, &retInt, sizeof(retFloat));
+      static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
+      static_assert(sizeof(retFloat) == sizeof(retInt), "both binary conversion types better have the same size");
+      memcpy(&retFloat, &retInt, sizeof(retFloat));
 
-   T ret = static_cast<T>(retFloat);
-
-   ret = UNPREDICTABLE(bSetZero) ? T { 0 } : ret;
-   ret = UNPREDICTABLE(bSetInfinity) ? std::numeric_limits<T>::infinity() : ret;
-   ret = UNPREDICTABLE(bSetOne) ? T { 1 } : ret;
-   // do the NaN value last since we then avoid issues with weird NaN comparison rules
-   // if the original was a NaN, then return that exact nan value.  There are many possible NaN values 
-   // and they are sometimes used to signal conditions, so preserving the exact value without truncation is nice.
-   ret = UNPREDICTABLE(bSetNaN) ? val : ret;
-
-   return ret;
+      val = static_cast<T>(retFloat);
+   }
+   return val;
 }
 
 template<
@@ -375,7 +379,7 @@ template<
    bool bSpecialCaseZero = false,
    typename T
 >
-INLINE_ALWAYS T ExpApproxBest(const T val) {
+INLINE_ALWAYS T ExpApproxBest(T val) {
    // This function DOES NOT guarnatee monotonicity, and in fact I've seen small monotonicity violations, so it's
    // not just a theoretical consideration.  Unlike the ExpApproxSchraudolph, we have discontinuities
    // at the integer rounding points due to floating point rounding inexactness.
@@ -403,118 +407,127 @@ INLINE_ALWAYS T ExpApproxBest(const T val) {
    // more versions of approximate exp from the Schraudolph99 paper "A Fast, Compact Approximation of the Exponential Function"
    // https://github.com/ekmett/approximate/blob/master/cbits/fast.c
 
-   // if T val is a double, then we need to check before converting to a float if we're in-bounds, since converting
-   // a double that is outside the float range into a float results in undefined behavior
-   const bool bSetNaN = bNaNPossible && UNPREDICTABLE(std::isnan(val));
-   const bool bSetZero = bUnderflowPossible && UNPREDICTABLE(val < T { k_expUnderflowPoint });
-   const bool bSetInfinity = bOverflowPossible && UNPREDICTABLE(T { k_expOverflowPoint } < val);
-   const bool bSetOne = bSpecialCaseZero && UNPREDICTABLE(T { 0 } == val);
+   const bool bPassNaN = bNaNPossible && UNLIKELY(std::isnan(val));
+   if(LIKELY(!bPassNaN)) {
+      // we need to check the following before converting val to a float, if a conversion is needed
+      // The following things we do below would invoke undefined behavior otherwise:
+      //   - converting a big positive double into a float that can't be represented
+      //   - converting a big negative double into a float that can't be represented
+      //   - converting a large float to an int that can't be represented
+      //   - converting +-infinity to an int32_t
+      //   - converting a NaN to an int32_t
+      // https://stackoverflow.com/questions/10366485/problems-casting-nan-floats-to-int
+      // https://docs.microsoft.com/en-us/cpp/c-language/conversions-from-floating-point-types?view=msvc-160
 
-   // if val is a NaN, or would result in an underflow or overflow, we set floatVal to zero below in order to avoid 
-   // getting undefined behavior further down.  The following things we do below would invoke undefined behavior 
-   // otherwise:
-   //   - converting a large double into a float that can't be represented
-   //   - converting a large float to an int that can't be represented
-   //   - converting +-infinity to an uint32_t
-   //   - converting a NaN to an uint32_t
-   // https://stackoverflow.com/questions/10366485/problems-casting-nan-floats-to-int
-   // https://docs.microsoft.com/en-us/cpp/c-language/conversions-from-floating-point-types?view=msvc-160
-   //
-   // The compiler should be smart enough to notice that we overwrite the final result with specific values
-   // at the end and the zero set below has no effect, so can be eliminated if any of these conditions are true
-   //
-   // We use branchless operations here for future SIMD conversion.
-   float floatVal = bSetNaN || bSetZero || bSetInfinity ? 0.00000000f : static_cast<float>(val);
+      // NOTE: I think the SIMD intrinsics don't invoke undefined behavior because they are platform specific 
+      //       intrinsics and would therefore be defined by the specific platform, so we could in that case pass 
+      //       a NaN value through our processing below and check at the end for NaN and then replace it as needed
+      //       or convert floats to ints that can't succeed, provided the platform defines how these are handled
 
-   const float negativeCorrection = UNPREDICTABLE(0.00000000f <= floatVal) ? 0.00000000f : 1.00000000f;
+      if(bUnderflowPossible) {
+         if(UNLIKELY(val < T { k_expUnderflowPoint })) {
+            return T { 0 };
+         }
+      }
+      if(bOverflowPossible) {
+         if(UNLIKELY(T { k_expOverflowPoint } < val)) {
+            return std::numeric_limits<T>::infinity();
+         }
+      }
+      if(bSpecialCaseZero) {
+         if(UNLIKELY(T { 0 } == val)) {
+            return T { 1 };
+         }
+      }
 
-   floatVal *= 1.44269502f; // 9 digits for most accurate float representation of: 1 / ln(2)
+      float valFloat = static_cast<float>(val);
+      const float negativeCorrection = UNPREDICTABLE(0.00000000f <= valFloat) ? 0.00000000f : 1.00000000f;
 
-   // TODO: (static_cast<float>(static_cast<int32_t>(floatVal)) - negativeCorrection) can alternatively be computed as:
-   //         floor(floatVal) - UNPREDICTABLE(0.00000000f <= floatValOriginal) ? 0.00000000f : 1.00000000f
-   //         UNPREDICTABLE(0.00000000f <= floatValOriginal) ? floor(floatVal) : ceil(floatVal)
-   //         UNPREDICTABLE(0.00000000f <= floatValOriginal) ? floor(floatVal) : floor(floatVal) - 1.00000000f
-   //       - I think the floor/ceil version will be the fastest since the CPU will be able to pipeline
-   //         both the floor and ceil operation in parallel and results will be ready at almost the same time for the
-   //         non-branching selection.  Taking the floor and then subtracting doesn't allow the subtraction to happen
-   //         until the floor completes
-   //       - I'm pretty sure that converting to an int32_t and then back to a float is slower since it's two
-   //         operations, while ceil is just one operation, and it does the same rounding!
-   //       - Also, look into if there is an operator that always rounds to the more negative side.  ceil and floor
-   //         round towards zero, which means negative numbers are rounding to the more positive side rather
-   //         than the more negative side like we need
-   //       - for all of these operations, test that they give the same results, especially on whole number boundaries
+      valFloat *= 1.44269502f; // 9 digits for most accurate float representation of: 1 / ln(2)
 
-   // this approximation isn't perfect.  Occasionally it isn't monotonic when floatVal wraps integer boundaries
-   const float factor = floatVal - (static_cast<float>(static_cast<int32_t>(floatVal)) - negativeCorrection);
+      // TODO: (static_cast<float>(static_cast<int32_t>(valFloat)) - negativeCorrection) can alternatively be computed as:
+      //       - FIRST, look up _mm_round_sd with _MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC which I think does
+      //         what we want in a single assembly instruction
+      //         #define _MM_FROUND_TO_NEAREST_INT    0x00
+      //         #define _MM_FROUND_TO_NEG_INF        0x01
+      //         #define _MM_FROUND_TO_POS_INF        0x02
+      //         #define _MM_FROUND_TO_ZERO           0x03
+      //         #define _MM_FROUND_CUR_DIRECTION     0x04
+      //         https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_round_sd&expand=4761
+      //       - floor(valFloat) - UNPREDICTABLE(0.00000000f <= valFloatOriginal) ? 0.00000000f : 1.00000000f
+      //         UNPREDICTABLE(0.00000000f <= valFloatOriginal) ? floor(valFloat) : ceil(valFloat)
+      //         UNPREDICTABLE(0.00000000f <= valFloatOriginal) ? floor(valFloat) : floor(valFloat) - 1.00000000f
+      //       - I think the floor/ceil version will be the fastest since the CPU will be able to pipeline
+      //         both the floor and ceil operation in parallel and results will be ready at almost the same time for the
+      //         non-branching selection.  Taking the floor and then subtracting doesn't allow the subtraction to happen
+      //         until the floor completes
+      //       - I'm pretty sure that converting to an int32_t and then back to a float is slower since it's two
+      //         operations, while ceil is just one operation, and it does the same rounding!
+      //       - Also, look into if there is an operator that always rounds to the more negative side.  ceil and floor
+      //         round towards zero, which means negative numbers are rounding to the more positive side rather
+      //         than the more negative side like we need
+      //       - for all of these operations, test that they give the same results, especially on whole number boundaries
 
-   // original formula from here: https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
-   // from the Mathematica Notebook where the constants were calculated (and longer ones are available):
-   // http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
-   // 121.2740575f is really 121.27405755366965833343835512821308140575
-   // 27.7280233f is really 27.72802338968109763318198810783757358521
-   // 4.84252568f is really 4.84252568892855574935929971220272175743
-   // 1.49012907f is really 1.49012907173427359585695086181761669065
-   //
-   // 2^23 * 121.27405755366965833343835512821308140575 = 1017320529.3871737252531476533353 => 1.01732051e+09f
-   // 2^23 * 27.72802338968109763318198810783757358521 = 232599518.83086597305449149089731 => 2.32599520e+08f
-   // 2^23 * 1.49012907173427359585695086181761669065 = 12500108.65218270136039438485505 => 1.25001090e+07f
-   // 4.84252568892855574935929971220272175743 => 4.84252548f
+      // this approximation isn't perfect.  Occasionally it isn't monotonic when valFloat wraps integer boundaries
+      const float factor = valFloat - (static_cast<float>(static_cast<int32_t>(valFloat)) - negativeCorrection);
 
-   // in theory it would be more accurate for us to keep all the constants small and close to zero 
-   // and multiply by the float { 1 << 23 } at the end after all the additions and subtractions, but I've
-   // tested this and the error after expanding it is indistinquishable from if we use larger constants
-   // I think it's because we don't care about small changes in the final result much since they tend to
-   // make very small changes in the floating point output, and this loss in precision is less than the
-   // loss in precision that we're getting by using an approximate exp.
+      // original formula from here: https://github.com/etheory/fastapprox/blob/master/fastapprox/src/fastexp.h
+      // from the Mathematica Notebook where the constants were calculated (and longer ones are available):
+      // http://web.archive.org/web/20160507083630/https://fastapprox.googlecode.com/svn/trunk/fastapprox/tests/fastapprox.nb
+      // 121.2740575f is really 121.27405755366965833343835512821308140575
+      // 27.7280233f is really 27.72802338968109763318198810783757358521
+      // 4.84252568f is really 4.84252568892855574935929971220272175743
+      // 1.49012907f is really 1.49012907173427359585695086181761669065
+      //
+      // 2^23 * 121.27405755366965833343835512821308140575 = 1017320529.3871737252531476533353 => 1.01732051e+09f
+      // 2^23 * 27.72802338968109763318198810783757358521 = 232599518.83086597305449149089731 => 2.32599520e+08f
+      // 2^23 * 1.49012907173427359585695086181761669065 = 12500108.65218270136039438485505 => 1.25001090e+07f
+      // 4.84252568892855574935929971220272175743 => 4.84252548f
 
-   // TODO: we can probably achieve slightly better results by tuning the single addition constant below of
-   //       1.01732051e+09f OR 121.274055f to get better summation results similar to Schraudolph, AND/OR we can 
-   //       also convert this to a uint32_t value so that we have even more fiddling ability to tune 
-   //       the output to average to zero.  For now it's good enough though
+      // in theory it would be more accurate for us to keep all the constants small and close to zero 
+      // and multiply by the float { 1 << 23 } at the end after all the additions and subtractions, but I've
+      // tested this and the error after expanding it is indistinquishable from if we use larger constants
+      // I think it's because we don't care about small changes in the final result much since they tend to
+      // make very small changes in the floating point output, and this loss in precision is less than the
+      // loss in precision that we're getting by using an approximate exp.
 
-   const uint32_t retInt = static_cast<uint32_t>(
+      // TODO: we can probably achieve slightly better results by tuning the single addition constant below of
+      //       1.01732051e+09f OR 121.274055f to get better summation results similar to Schraudolph, AND/OR we can 
+      //       also convert this to a int32_t value so that we have even more fiddling ability to tune 
+      //       the output to average to zero.  For now it's good enough though
+
+      const int32_t retInt = static_cast<int32_t>(
 #ifdef EXP_HIGHEST_ACCURACY
-      float { 1 << 23 } * (floatVal + 121.274055f - 1.49012911f * factor + 27.7280235f / (4.84252548f - factor))
+         float { 1 << 23 } * (valFloat + 121.274055f - 1.49012911f * factor + 27.7280235f / (4.84252548f - factor))
 #else
-      float { 1 << 23 } * floatVal + 1.01732051e+09f - 1.25001090e+07f * factor + 2.32599520e+08f / (4.84252548f - factor)
+         float { 1 << 23 } * valFloat + 1.01732051e+09f - 1.25001090e+07f * factor + 2.32599520e+08f / (4.84252548f - factor)
 #endif
-   );
+      );
 
-   float retFloat;
+      float retFloat;
 
-   // It's undefined behavior in C++ (not C though!) to use a union or a pointer to bit convert between types 
-   // using memcpy though is portable and legal since C++ aliasing rules exclude character pointer copies
-   // Suposedly, most compilers are smart enough to optimize the memcpy away.
+      // It's undefined behavior in C++ (not C though!) to use a union or a pointer to bit convert between types 
+      // using memcpy though is portable and legal since C++ aliasing rules exclude character pointer copies
+      // Suposedly, most compilers are smart enough to optimize the memcpy away.
 
-   static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
-   static_assert(sizeof(retFloat) == sizeof(retInt), "both binary conversion types better have the same size");
-   memcpy(&retFloat, &retInt, sizeof(retFloat));
+      static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
+      static_assert(sizeof(retFloat) == sizeof(retInt), "both binary conversion types better have the same size");
+      memcpy(&retFloat, &retInt, sizeof(retFloat));
 
-   T ret = static_cast<T>(retFloat);
-
-   ret = UNPREDICTABLE(bSetZero) ? T { 0 } : ret;
-   ret = UNPREDICTABLE(bSetInfinity) ? std::numeric_limits<T>::infinity() : ret;
-   ret = UNPREDICTABLE(bSetOne) ? T { 1 } : ret;
-
-   // do the NaN value last since we then avoid issues with weird NaN comparison rules
-   // if the original was a NaN, then return that exact nan value.  There are many possible NaN values 
-   // and they are sometimes used to signal conditions, so preserving the exact value without truncation is nice.
-   ret = UNPREDICTABLE(bSetNaN) ? val : ret;
-
-   return ret;
+      val = static_cast<T>(retFloat);
+   }
+   return val;
 }
 
 template<typename T>
 INLINE_ALWAYS T ExpForResidualsBinaryClassification(const T val) {
 #ifdef FAST_EXP
-   // if using the ExpApproxSchraudolph function, the optimal addExpSchraudolphTerm would be different between
-   // binary and multiclass since the softmax form we use is different
+   // the optimal addExpSchraudolphTerm would be different between binary 
+   // and multiclass since the softmax form we use is different
 
-   // TODO : try out the faster ExpApproxSchraudolph and see how it does.  Then tune ExpApproxSchraudolph specifically
-   //        for binary classification
+   // TODO : Tune ExpApproxSchraudolph specifically for binary classification
 
-   return ExpApproxBest<true, true, true, false, T>(val);
+   return ExpApproxSchraudolph<true, true, true, false, T>(val);
 #else // FAST_EXP
    return std::exp(val);
 #endif // FAST_EXP
@@ -523,13 +536,12 @@ INLINE_ALWAYS T ExpForResidualsBinaryClassification(const T val) {
 template<typename T>
 INLINE_ALWAYS T ExpForResidualsMulticlass(const T val) {
 #ifdef FAST_EXP
-   // if using the ExpApproxSchraudolph function, the optimal addExpSchraudolphTerm would be different between
-   // binary and multiclass since the softmax form we use is different
+   // the optimal addExpSchraudolphTerm would be different between binary
+   // and multiclass since the softmax form we use is different
 
-   // TODO : try out the faster ExpApproxSchraudolph and see how it does.  Then tune ExpApproxSchraudolph specifically
-   //        for multiclass classification
+   // TODO : Tune ExpApproxSchraudolph specifically for multiclass classification
 
-   return ExpApproxBest<true, true, true, false, T>(val);
+   return ExpApproxSchraudolph<true, true, true, false, T>(val);
 #else // FAST_EXP
    return std::exp(val);
 #endif // FAST_EXP
@@ -558,6 +570,10 @@ constexpr float k_logTermUpperBound = -87.9700241f;
 // -88.0296936f (rounded)
 // we do not need to take the nextafter, because the round of that number is -88.0296936f is already outside the bound
 constexpr float k_logTermLowerBound = -88.0296936f;
+
+// ln(1) = 0, and we want to be close to that.  Our boosting never goes below 1 for log loss, so if we set
+// a minimum of 0.9999 (to account for floating point inexactness), then our minimum is:
+constexpr float k_logTermLowerBoundInputCloseToOne = -88.02955453797396f;
 
 // LOG constants
 constexpr float k_logTermZeroMeanErrorForLogFrom1_To1_5 = -87.9865799f; // experimentally determined.  optimized for input values from 1 to 1.5.  Equivalent to 1064831465
@@ -589,7 +605,7 @@ template<
    bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a double that is above the largest representable float, then setting this is necessary to avoid undefined behavior
    typename T
 >
-INLINE_ALWAYS T LogApproxSchraudolph(const T val, const float addLogSchraudolphTerm = k_logTermZeroMeanErrorForLogFrom1_To1_5) {
+INLINE_ALWAYS T LogApproxSchraudolph(T val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) {
    // NOTE: this function will have large errors on denomal inputs, but the results are reliably big negative numbers
 
    // to get the log, just reverse the approximate exp function steps
@@ -604,68 +620,63 @@ INLINE_ALWAYS T LogApproxSchraudolph(const T val, const float addLogSchraudolphT
    EBM_ASSERT(k_logTermLowerBound <= addLogSchraudolphTerm);
    EBM_ASSERT(addLogSchraudolphTerm <= k_logTermUpperBound);
 
-   // according to IEEE 754, comparing NaN to anything returns false (except itself), so checking if it's greater
-   // or equal to zero will yield false if val is a NaN, and then true after the negation, so this checks for both
-   // of our NaN output conditions.  This needs to be compiled with strict floating point!
-   const bool bSetNaN = bNaNPossible && bNegativePossible && UNPREDICTABLE(!(T { 0 } <= val)) ||
-      bNaNPossible && !bNegativePossible && UNPREDICTABLE(std::isnan(val));
-   const bool bSetNegativeInfinity = bZeroPossible && UNPREDICTABLE(T { 0 } == val);
-   const bool bSetPositiveInfinity = 
-      bPositiveInfinityPossible && std::is_same<T, float>::value && UNPREDICTABLE(std::numeric_limits<T>::infinity() == val) ||
-      bPositiveInfinityPossible && !std::is_same<T, float>::value && UNPREDICTABLE(std::numeric_limits<float>::max() < val);
+   const bool bPassNaN = bNaNPossible && !bNegativePossible && UNLIKELY(std::isnan(val));
+   if(LIKELY(!bPassNaN)) {
+      const bool bPassInfinity = bPositiveInfinityPossible && std::is_same<T, float>::value &&
+         UNLIKELY(std::numeric_limits<T>::infinity() == val);
+      if(LIKELY(!bPassInfinity)) {
+         if(bNegativePossible) {
+            // according to IEEE 754, comparing NaN to anything returns false (except itself), so checking if it's 
+            // greater or equal to zero will yield false if val is a NaN, and then true after the negation, so this 
+            // checks for both of our NaN output conditions.  This needs to be compiled with strict floating point!
+            if(UNLIKELY(!(T { 0 } < val))) {
+               if(bZeroPossible) {
+                  return PREDICTABLE(T { 0 } == val) ? 
+                     -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::quiet_NaN();
+               } else {
+                  return std::numeric_limits<T>::quiet_NaN();
+               }
+            }
+         } else {
+            if(bZeroPossible) {
+               if(UNLIKELY(T { 0 } == val)) {
+                  return -std::numeric_limits<T>::infinity();
+               }
+            }
+         }
+         if(!std::is_same<T, float>::value) {
+            if(UNLIKELY(T { std::numeric_limits<float>::max() } < val)) {
+               // if val is a non-float32, and it has a value outside of the float range, then it would result in 
+               // undefined behavior if we converted it to a float, so check it here and return
+               return std::numeric_limits<T>::infinity();
+            }
+         }
 
-   // val being NaN is defined, since we bit-convert it to an integer, and all integers can be converted to float
-   // val being negative is defined, so we don't need to convert it here
-   // val being +infinity is defined, so we don't need to conver it here
-   // BUT, if val is a double, and if it happens to be between 
-   //   std::numeric_limits<float>::max() < val && val < std::numeric_limits<T>::infinity() then the conversion
-   //   would be undefined without this check below
-   //
-   // The compiler should be smart enough to notice that we overwrite the final result with specific values
-   // at the end and the zero set below has no effect, so can be eliminated if any of these conditions are true
-   //
-   // We use branchless operations here for future SIMD conversion.
-   const float floatVal = bSetPositiveInfinity && !std::is_same<T, float>::value ? 0.00000000f : static_cast<float>(val);
+         // if val is a float, there are no values which would invoke undefined behavior for the code below since
+         // we bit-convert our float to an integer, which will be legal for all possible integer outputs.
+         // We then conver that integer to a float with a cast, which should be ok too since there are no integers 
+         // that cannot be converted to a float, so there are no undefined behavior possibilities.
+         // if val is a double though, and it has a value outside of the float range, then it would result in 
+         // undefined behavior if we converted it to a float, so we check for that above.
 
-   // the log function is only used to calculate the log loss on the valididation set only in our codebase
-   // the log loss is calculated for the validation set and then returned as a single number to the caller
-   // it never gets used as an input to anything inside our code, so any errors won't cyclically grow
+         const float valFloat = static_cast<float>(val);
 
-   // for log, we always sum the outputs, and those outputs are used only for early stopping, and early stopping
-   // only cares about relative changes (we compare against other log losses computed by this same function),
-   // so we should be insensitive to shifts in the output provided they are by a constant amount
-   // The only reason to want balanced sums would be if we report the log loss to the user because then we want
-   // the most accurate value we can give them, otherwise we should be re-computing it for the user if they want
-   // an exact value
+         int32_t retInt;
 
-   // boosting will tend to push us towards lower and lower log losses.  Our input can't be less than 1 
-   // (without floating point imprecision considerations), so 0 is our lowest output, and the input shouldn't be 
-   // much more than 2 (which returns about 0.69, which is random chance), and probably quite a bit smaller than that 
-   // in general
+         static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
+         static_assert(sizeof(retInt) == sizeof(valFloat), "both binary conversion types better have the same size");
+         memcpy(&retInt, &valFloat, sizeof(retInt));
 
-   uint32_t retInt;
+         float retFloat = static_cast<float>(retInt);
 
-   static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
-   static_assert(sizeof(retInt) == sizeof(floatVal), "both binary conversion types better have the same size");
-   memcpy(&retInt, &floatVal, sizeof(retInt));
+         // use a fused multiply add assembly instruction, so don't add the addLogSchraudolphTerm prior to multiplying
+         retFloat = k_logMultiple * retFloat + addLogSchraudolphTerm;
 
-   float retFloat = static_cast<float>(retInt);
-
-   // use a fused multiply add assembly instruction, so don't add the addLogSchraudolphTerm prior to multiplying
-   retFloat = k_logMultiple * retFloat + addLogSchraudolphTerm;
-
-   T ret = static_cast<T>(retFloat);
-
-   ret = UNPREDICTABLE(bSetNegativeInfinity) ? -std::numeric_limits<T>::infinity() : ret;
-   ret = UNPREDICTABLE(bSetPositiveInfinity) ? std::numeric_limits<T>::infinity() : ret;
-   // do the NaN value last since we then avoid issues with weird NaN comparison rules
-   ret = UNPREDICTABLE(bSetNaN) ? std::numeric_limits<T>::quiet_NaN() : ret;
-
-   return ret;
+         val = static_cast<T>(retFloat);
+      }
+   }
+   return val;
 }
-
-
-
 
 template<typename T>
 INLINE_ALWAYS T ExpForLogLossBinaryClassification(const T val) {
@@ -707,6 +718,23 @@ INLINE_ALWAYS T ExpForLogLossMulticlass(const T val) {
 
 template<typename T>
 INLINE_ALWAYS T LogForLogLoss(const T val) {
+
+   // the log function is only used to calculate the log loss on the valididation set only in our codebase
+   // the log loss is calculated for the validation set and then returned as a single number to the caller
+   // it never gets used as an input to anything inside our code, so any errors won't cyclically grow
+
+   // for log, we always sum the outputs, and those outputs are used only for early stopping, and early stopping
+   // only cares about relative changes (we compare against other log losses computed by this same function),
+   // so we should be insensitive to shifts in the output provided they are by a constant amount
+   // The only reason to want balanced sums would be if we report the log loss to the user because then we want
+   // the most accurate value we can give them, otherwise we should be re-computing it for the user if they want
+   // an exact value
+
+   // boosting will tend to push us towards lower and lower log losses.  Our input can't be less than 1 
+   // (without floating point imprecision considerations), so 0 is our lowest output, and the input shouldn't be 
+   // much more than 2 (which returns about 0.69, which is random chance), and probably quite a bit smaller than that 
+   // in general
+
 #ifdef FAST_LOG
 
    // it is possible in theory for val to be +infinity if the logits get to above k_expOverflowPoint, BUT
@@ -715,7 +743,7 @@ INLINE_ALWAYS T LogForLogLoss(const T val) {
    // at that point if early stopping is enabled.  If we return a large positive result here instead of infinity
    // there shouldn't be any real consequences.
    // val can't be negative or zero from the formulas that we calculate before calling this log function
-   return LogApproxSchraudolph<true, false, false, false, T>(val, k_logTermZeroMeanErrorForLogFrom1_To1_5);
+   return LogApproxSchraudolph<true, false, false, false, T>(val, k_logTermLowerBoundInputCloseToOne);
 #else // FAST_LOG
    return std::log(val);
 #endif // FAST_LOG

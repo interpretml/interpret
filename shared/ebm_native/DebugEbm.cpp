@@ -51,7 +51,7 @@ static double TestLogSumErrors() {
    EBM_ASSERT(-87.5f < LogApproxSchraudolph(std::numeric_limits<float>::min()));
    EBM_ASSERT(LogApproxSchraudolph(std::numeric_limits<float>::min()) < -87.25f);
    // -103.278931f == std::log(std::numeric_limits<float>::denorm_min())
-   EBM_ASSERT(-88.0f < LogApproxSchraudolph(std::numeric_limits<float>::denorm_min()));
+   EBM_ASSERT(-88.125f < LogApproxSchraudolph(std::numeric_limits<float>::denorm_min()));
    EBM_ASSERT(LogApproxSchraudolph(std::numeric_limits<float>::denorm_min()) < -87.75f);
    // 88.7228394f == std::log(std::numeric_limits<float>::max())
    EBM_ASSERT(88.5f < LogApproxSchraudolph(std::numeric_limits<float>::max()));
@@ -63,11 +63,11 @@ static double TestLogSumErrors() {
    // BUT, this needs to be evenly distributed, so we can't use nextafter. We need to increment with a constant.
    // boosting will push our exp values to between 1 and 1 + a small number less than e
    constexpr double k_testLowerInclusiveBound = 1; // this is true lower bound
-   constexpr double k_testUpperExclusiveBound = 1.5; // 2 would be random guessing. we should optimize for the final rounds.  1.5 gives a log loss about 0.4 which is on the high side of log loss
+   constexpr double k_testUpperExclusiveBound = static_cast<double>(1.0f + 1000 * std::numeric_limits<float>::epsilon()); // 2 would be random guessing. we should optimize for the final rounds.  1.5 gives a log loss about 0.4 which is on the high side of log loss
    constexpr uint64_t k_cTests = 123513;
    constexpr bool k_bIsRandom = false;
    constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
-   constexpr float termMid = k_logTermZeroMeanErrorForLogFrom1_To1_5;
+   constexpr float termMid = k_logTermLowerBoundInputCloseToOne;
    constexpr uint32_t termStepsFromMid = 5;
    constexpr uint32_t termStepDistance = 1;
 
@@ -86,7 +86,7 @@ static double TestLogSumErrors() {
    }
 
    for(ptrdiff_t iStat = 0; iStat < k_cStats; ++iStat) {
-      if(k_logTermLogLowerBound <= addTerm && addTerm <= k_logTermLogUpperBound) {
+      if(k_logTermLowerBound <= addTerm && addTerm <= k_logTermUpperBound) {
          double avgAbsError = 0;
          double avgError = 0;
          double avgSquareError = 0;
@@ -120,10 +120,7 @@ static double TestLogSumErrors() {
 
 #ifdef ENABLE_PRINTF
          printf(
-#else // ENABLE_PRINTF
-         LOG_N(TraceLevelVerbose,
-#endif // ENABLE_PRINTF
-            "TextExpApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.8le %s%s\n",
+            "TextLogApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.8le %s%s\n",
             avgError,
             avgAbsError,
             avgSquareError,
@@ -133,19 +130,16 @@ static double TestLogSumErrors() {
             addTerm == termMid ? "*" : "",
             iStat == k_cStats - 1 ? "\n" : ""
          );
+#endif // ENABLE_PRINTF
 
          // this is just to prevent the compiler for optimizing our code away on release
          debugRet += avgError;
       } else {
-         if(iStat == k_cStats - 1) {
 #ifdef ENABLE_PRINTF
-            printf(
-#else // ENABLE_PRINTF
-            LOG_N(TraceLevelVerbose,
-#endif // ENABLE_PRINTF
-               "\n"
-            );
+         if(iStat == k_cStats - 1) {
+            printf("\n");
          }
+#endif // ENABLE_PRINTF
       }
       for(int i = 0; i < termStepDistance; ++i) {
          addTerm = std::nextafter(addTerm, std::numeric_limits<float>::max());
@@ -239,9 +233,6 @@ static double TestExpSumErrors() {
 
 #ifdef ENABLE_PRINTF
          printf(
-#else // ENABLE_PRINTF
-         LOG_N(TraceLevelVerbose,
-#endif // ENABLE_PRINTF
             "TextExpApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %d %s%s\n", 
             avgRelativeError, 
             avgAbsRelativeError, 
@@ -252,19 +243,16 @@ static double TestExpSumErrors() {
             addTerm == termMid ? "*" : "",
             iStat == k_cStats - 1 ? "\n" : ""
          );
+#endif // ENABLE_PRINTF
 
          // this is just to prevent the compiler for optimizing our code away on release
          debugRet += avgRelativeError;
       } else {
-         if(iStat == k_cStats - 1) {
 #ifdef ENABLE_PRINTF
-            printf(
-#else // ENABLE_PRINTF
-            LOG_N(TraceLevelVerbose,
-#endif // ENABLE_PRINTF
-               "\n"
-            );
+         if(iStat == k_cStats - 1) {
+            printf("\n");
          }
+#endif // ENABLE_PRINTF
       }
    }
 
@@ -292,9 +280,9 @@ static double TestSoftmaxSumErrors() {
    constexpr uint64_t k_cDivisions = 1609; // ideally choose a prime number
    constexpr ptrdiff_t k_cSoftmaxTerms = 3;
    static_assert(2 <= k_cSoftmaxTerms, "can't have just 1 since that's always 100% chance");
-   constexpr ptrdiff_t iEliminateOneTerm = -1;
+   constexpr ptrdiff_t iEliminateOneTerm = 0;
    static_assert(iEliminateOneTerm < k_cSoftmaxTerms, "can't eliminate a term above our existing terms");
-   constexpr uint32_t termMid = k_expTermZeroSoftmaxMeanError;
+   constexpr uint32_t termMid = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit;
    constexpr uint32_t termStepsFromMid = 0;
    constexpr uint32_t termStepDistance = 1;
 
@@ -373,10 +361,10 @@ static double TestSoftmaxSumErrors() {
             const double exactValue = exactNumerator / exactDenominator;
 
 
-            const double approxNumerator = 0 == iEliminateOneTerm ? double { 1 } : ExpApproxBetterButSlower<false, false, false, false>(softmaxTerms[0]);
+            const double approxNumerator = 0 == iEliminateOneTerm ? double { 1 } : ExpApproxBest<false, false, false, false>(softmaxTerms[0]);
             double approxDenominator = 0;
             for(ptrdiff_t iTerm = 0; iTerm < k_cSoftmaxTerms; ++iTerm) {
-               const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : ExpApproxBetterButSlower<false, false, false, false>(softmaxTerms[iTerm]);
+               const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : ExpApproxBest<false, false, false, false>(softmaxTerms[iTerm]);
                approxDenominator += oneTermAdd;
             }
             const double approxValue = approxNumerator / approxDenominator;
@@ -420,9 +408,6 @@ static double TestSoftmaxSumErrors() {
             if(k_expTermLowerBound <= addTerm && addTerm <= k_expTermUpperBound) {
 #ifdef ENABLE_PRINTF
                printf(
-#else // ENABLE_PRINTF
-               LOG_N(TraceLevelVerbose,
-#endif // ENABLE_PRINTF
                   "TextSoftmaxApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %d %s%s\n",
                   avgRelativeError[iStat] / iTest,
                   avgAbsRelativeError[iStat] / iTest,
@@ -433,16 +418,13 @@ static double TestSoftmaxSumErrors() {
                   addTerm == termMid ? "*" : "",
                   iStat == k_cStats - 1 ? "\n" : ""
                );
-            } else {
-               if(iStat == k_cStats - 1) {
-#ifdef ENABLE_PRINTF
-                  printf(
-#else // ENABLE_PRINTF
-                  LOG_N(TraceLevelVerbose,
 #endif // ENABLE_PRINTF
-                     "\n"
-                  );
+            } else {
+#ifdef ENABLE_PRINTF
+               if(iStat == k_cStats - 1) {
+                  printf("\n");
                }
+#endif // ENABLE_PRINTF
             }
          }
       }
