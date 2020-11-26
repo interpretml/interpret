@@ -117,6 +117,26 @@ public:
    }
 
    INLINE_ALWAYS void Zero(const size_t cVectorLength) {
+      // TODO: make this a function that can operate on an array of HistogramBucket objects with given total size 
+      //
+      // probably we should get rid of this function, and any others that zero via non-memset ways.  We should use memset instead.  Traditionally
+      // C/C++ only guaranteed that memset would lead to zeroed integers, but I think size_t would also quality
+      // (check this), and if we have IEEE 754 floats (which we can check), then zeroed memory is a zeroed float
+
+      // C standard guarantees that zeroing integer types (size_t) is a zero, and IEEE 754 guarantees 
+      // that zeroing a floating point is zero.  Our HistogramBucket objects are POD and also only contain
+      // floating point types and size_t
+      //
+      // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
+      // object representation of a signed integer type where the sign bit is zero is a valid object 
+      // representation of the corresponding unsigned type, and shall represent the same value.For any 
+      // integer type, the object representation where all the bits are zero shall be a representation 
+      // of the value zero in that type.
+      //
+      // static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
+      // memset(some_pointer, 0, my_size);
+
+
       m_cSamplesInBucket = size_t { 0 };
       HistogramBucketVectorEntry<bClassification> * pHistogramTargetEntry = GetHistogramBucketVectorEntry();
       const HistogramBucketVectorEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];

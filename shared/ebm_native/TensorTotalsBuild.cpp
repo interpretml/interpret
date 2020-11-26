@@ -167,10 +167,10 @@ public:
 
       LOG_0(TraceLevelVerbose, "Entered BuildFastTotals");
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pBucketAuxiliaryBuildZone =
+      HistogramBucket<bClassification> * pBucketAuxiliaryBuildZone =
          pBucketAuxiliaryBuildZoneBase->GetHistogramBucket<bClassification>();
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets =
+      HistogramBucket<bClassification> * const aHistogramBuckets = 
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
       const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());

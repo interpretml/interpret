@@ -1215,6 +1215,7 @@ SEXP BoostingStep_R(
       learningRateLocal, 
       cTreeSplitsMax, 
       cSamplesRequiredForChildSplitMin, 
+      GenerateUpdateOptions_Default, 
       pTrainingWeights, 
       pValidationWeights, 
       &validationMetricOut

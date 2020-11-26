@@ -15,10 +15,12 @@ extern "C" {
 #define EBM_FEATURE_CAST(EBM_VAL) (static_cast<FeatureEbmType>(EBM_VAL))
 #define EBM_BOOL_CAST(EBM_VAL) (static_cast<BoolEbmType>(EBM_VAL))
 #define EBM_TRACE_CAST(EBM_VAL) (static_cast<TraceEbmType>(EBM_VAL))
+#define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL) (static_cast<GenerateUpdateOptionsType>(EBM_VAL))
 #else // __cplusplus
 #define EBM_FEATURE_CAST(EBM_VAL) ((FeatureEbmType)(EBM_VAL))
 #define EBM_BOOL_CAST(EBM_VAL) ((BoolEbmType)(EBM_VAL))
 #define EBM_TRACE_CAST(EBM_VAL) ((TraceEbmType)(EBM_VAL))
+#define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL) ((GenerateUpdateOptionsType)(EBM_VAL))
 #endif // __cplusplus
 
 //#define EXPAND_BINARY_LOGITS
@@ -105,6 +107,10 @@ typedef struct _EbmInteraction {
 // this should really be defined, but some compilers aren't compliant
 #define PRIu64 "llu"
 #endif // PRIu64
+#ifndef PRIx64
+// this should really be defined, but some compilers aren't compliant
+#define PRIx64 "llx"
+#endif // PRIx64
 
 typedef double FloatEbmType;
 // this needs to be in "le" format, since we internally use that format to generate "interpretable" 
@@ -122,12 +128,22 @@ typedef IntEbmType BoolEbmType;
 #define BoolEbmTypePrintf IntEbmTypePrintf
 typedef IntEbmType FeatureEbmType;
 #define FeatureEbmTypePrintf IntEbmTypePrintf
+typedef IntEbmType GenerateUpdateOptionsType;
+// technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
+typedef UIntEbmType UGenerateUpdateOptionsType;
+#define UGenerateUpdateOptionsTypePrintf PRIx64
 
 #define EBM_FALSE          (EBM_BOOL_CAST(0))
 #define EBM_TRUE           (EBM_BOOL_CAST(1))
 
 #define FeatureTypeOrdinal (EBM_FEATURE_CAST(0))
 #define FeatureTypeNominal (EBM_FEATURE_CAST(1))
+
+#define GenerateUpdateOptions_Default                    (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
+#define GenerateUpdateOptions_DisableSecondOrderGain     (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))
+#define GenerateUpdateOptions_DisableSecondOrderUpdate   (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000002))
+#define GenerateUpdateOptions_Sums                       (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000004))
+#define GenerateUpdateOptions_RandomSplits               (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000008))
 
 // TODO: replace this structure with flat arrays.  It's easier when integrating into other languages which 
 // almost always have flat arrays built in an easy way
@@ -443,6 +459,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
    FloatEbmType learningRate, 
    IntEbmType countTreeSplitsMax, 
    IntEbmType countSamplesRequiredForChildSplitMin, 
+   GenerateUpdateOptionsType options, 
    const FloatEbmType * trainingWeights, 
    const FloatEbmType * validationWeights, 
    FloatEbmType * gainOut
@@ -461,6 +478,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Boosti
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
    IntEbmType countSamplesRequiredForChildSplitMin,
+   GenerateUpdateOptionsType options,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricOut

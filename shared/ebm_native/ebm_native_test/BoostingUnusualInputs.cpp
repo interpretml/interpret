@@ -37,6 +37,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       k_learningRateDefault,
       k_countTreeSplitsMaxDefault,
       k_countSamplesRequiredForChildSplitMinDefault,
+      GenerateUpdateOptions_Default,
       nullptr,
       nullptr,
       nullptr
@@ -74,6 +75,7 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       k_learningRateDefault,
       k_countTreeSplitsMaxDefault,
       k_countSamplesRequiredForChildSplitMinDefault,
+      GenerateUpdateOptions_Default,
       nullptr,
       nullptr,
       nullptr
@@ -111,6 +113,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       k_learningRateDefault,
       k_countTreeSplitsMaxDefault,
       k_countSamplesRequiredForChildSplitMinDefault,
+      GenerateUpdateOptions_Default,
       nullptr,
       nullptr,
       nullptr
@@ -131,7 +134,7 @@ TEST_CASE("zero learning rate, boosting, regression") {
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, {}, {}, 0);
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_Default, 0);
          CHECK_APPROX(validationMetric, 144);
          modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
          CHECK_APPROX(modelValue, 0);
@@ -154,7 +157,7 @@ TEST_CASE("zero learning rate, boosting, binary") {
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, {}, {}, 0);
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_Default, 0);
          CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
          modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
          CHECK_APPROX(modelValue, 0);
@@ -181,7 +184,7 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, {}, {}, 0);
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_Default, 0);
          CHECK_APPROX_TOLERANCE(validationMetric, 1.0986122886681098, double { 1e-1 });
          modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
          CHECK_APPROX(modelValue, 0);
@@ -212,7 +215,7 @@ TEST_CASE("negative learning rate, boosting, regression") {
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, {}, {}, -k_learningRateDefault);
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_Default, -k_learningRateDefault);
          if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 146.41);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
@@ -242,7 +245,7 @@ TEST_CASE("negative learning rate, boosting, binary") {
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 50; ++iEpoch) {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, {}, {}, -k_learningRateDefault);
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_Default, -k_learningRateDefault);
          if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.70319717972663420, double { 1e-1 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
@@ -279,7 +282,7 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 20; ++iEpoch) {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, {}, {}, -k_learningRateDefault);
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_Default, -k_learningRateDefault);
          if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.1288361512023379, double { 1e-1 });
             modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
@@ -323,7 +326,7 @@ TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
    test.AddValidationSamples({ RegressionSample(12, { 1 }) });
    test.InitializeBoosting();
 
-   FloatEbmType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
+   FloatEbmType validationMetric = test.Boost(0, {}, {}, GenerateUpdateOptions_Default, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
    CHECK_APPROX(validationMetric, 141.61);
    FloatEbmType modelValue;
    modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
@@ -345,7 +348,7 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
    test.AddValidationSamples({ RegressionSample(12, { 1 }) });
    test.InitializeBoosting();
 
-   FloatEbmType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, 0);
+   FloatEbmType validationMetric = test.Boost(0, {}, {}, GenerateUpdateOptions_Default, k_learningRateDefault, 0);
    CHECK_APPROX(validationMetric, 141.61);
    FloatEbmType modelValue;
    modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
@@ -1040,4 +1043,66 @@ TEST_CASE("3 dimensional featureGroup with one dimension reduced in different wa
 }
 
 
+TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
+   TestApi test = TestApi(3);
+   test.AddFeatures({ FeatureTest(4) });
+   test.AddFeatureGroups({ { 0 } });
+   test.AddTrainingSamples({
+      ClassificationSample(0, { 0 }),
+      ClassificationSample(1, { 1 }),
+      ClassificationSample(1, { 2 }),
+      ClassificationSample(2, { 3 })
+   });
+   test.AddValidationSamples({ ClassificationSample(0, { 1 }) });
+   test.InitializeBoosting();
 
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         FloatEbmType validationMetricTwoStates = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 2);
+         if(0 == iEpoch) {
+            CHECK_APPROX(validationMetricTwoStates, 1.0340957641601563f);
+
+            FloatEbmType modelValueTwoStates0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
+            CHECK_APPROX(modelValueTwoStates0, 0.0075f);
+
+            FloatEbmType modelValueTwoStates1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
+            CHECK_APPROX(modelValueTwoStates1, 0.0075f);
+
+            FloatEbmType modelValueTwoStates2 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
+            CHECK_APPROX(modelValueTwoStates2, -0.015f);
+         }
+      }
+   }
+}
+
+TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
+   TestApi test = TestApi(3);
+   test.AddFeatures({ FeatureTest(4) });
+   test.AddFeatureGroups({ { 0 } });
+   test.AddTrainingSamples({
+      ClassificationSample(0, { 0 }),
+      ClassificationSample(1, { 1 }),
+      ClassificationSample(1, { 2 }),
+      ClassificationSample(2, { 3 })
+      });
+   test.AddValidationSamples({ ClassificationSample(0, { 1 }) });
+   test.InitializeBoosting();
+
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         FloatEbmType validationMetricTwoStates = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_Sums, k_learningRateDefault, 2);
+         if(0 == iEpoch) {
+            CHECK_APPROX(validationMetricTwoStates, 1.0372848510742188);
+
+            FloatEbmType modelValueTwoStates0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
+            CHECK_APPROX(modelValueTwoStates0, 0.0033333333333333344f);
+
+            FloatEbmType modelValueTwoStates1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
+            CHECK_APPROX(modelValueTwoStates1, 0.0033333333333333344f);
+
+            FloatEbmType modelValueTwoStates2 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
+            CHECK_APPROX(modelValueTwoStates2, -0.0066666666666666662f);
+         }
+      }
+   }
+}

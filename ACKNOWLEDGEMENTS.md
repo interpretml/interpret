@@ -6,6 +6,8 @@ Thank you to everyone here for your impactful contributions!
 - Johannes Gehrke
 - Marco Tulio Ribeiro
 - Gabriel Alon
+- Justin Colannino
+- Peggy Moloney
 - Giles Hooker
 - Aijun Zhang
 - Zebin Yang

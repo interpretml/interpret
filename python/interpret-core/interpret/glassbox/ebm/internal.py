@@ -321,6 +321,8 @@ class Native:
             ct.c_int64,
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_int64,
+            # GenerateUpdateOptionsType options 
+            ct.c_int64,
             # double * trainingWeights
             # ndpointer(dtype=ct.c_double, ndim=1),
             ct.c_void_p,
@@ -783,7 +785,12 @@ class NativeEBMBoosting:
         log.info("Deallocation boosting end")
 
     def boosting_step(
-        self, feature_group_index, learning_rate, max_leaves, min_samples_leaf,
+        self, 
+        feature_group_index, 
+        learning_rate, 
+        max_leaves, 
+        min_samples_leaf, 
+        generate_update_options, 
     ):
 
         """ Conducts a boosting step per feature
@@ -811,6 +818,7 @@ class NativeEBMBoosting:
                 learning_rate,
                 max_leaves - 1,
                 min_samples_leaf,
+                generate_update_options,
                 0,
                 0,
                 ct.byref(gain),
@@ -1108,6 +1116,13 @@ class NativeEBMInteraction:
 
 class NativeHelper:
 
+    # GenerateUpdateOptionsType
+    GenerateUpdateOptions_Default                   = 0x0000000000000000
+    GenerateUpdateOptions_DisableSecondOrderGain    = 0x0000000000000001
+    GenerateUpdateOptions_DisableSecondOrderUpdate  = 0x0000000000000002
+    GenerateUpdateOptions_Sums                      = 0x0000000000000004
+    GenerateUpdateOptions_RandomSplits              = 0x0000000000000008
+
     @staticmethod
     def get_count_scores_c(n_classes):
         # this should reflect how the C code represents scores
@@ -1138,6 +1153,7 @@ class NativeHelper:
         learning_rate,
         max_leaves,
         min_samples_leaf,
+        generate_update_options,
         max_rounds,
         early_stopping_tolerance,
         early_stopping_rounds,
@@ -1178,6 +1194,7 @@ class NativeHelper:
                         learning_rate=learning_rate,
                         max_leaves=max_leaves,
                         min_samples_leaf=min_samples_leaf,
+                        generate_update_options=generate_update_options,
                     )
 
                     min_metric = min(curr_metric, min_metric)

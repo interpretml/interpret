@@ -106,7 +106,7 @@ static FloatEbmType SweepMultiDiemensional(
             , aHistogramBucketsDebugCopy
             , aHistogramBucketsEndDebug
 #endif // NDEBUG
-            );
+         );
          if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHigh->GetCountSamplesInBucket())) {
             FloatEbmType splittingScore = FloatEbmType { 0 };
             EBM_ASSERT(0 < pTotalsLow->GetCountSamplesInBucket());
@@ -145,11 +145,7 @@ static FloatEbmType SweepMultiDiemensional(
 
                ASSERT_BINNED_BUCKET_OK(
                   cBytesPerHistogramBucket,
-                  GetHistogramBucketByIndex<bClassification>(
-                     cBytesPerHistogramBucket,
-                     pHistogramBucketBestAndTemp,
-                     1
-                     ),
+                  GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 1),
                   aHistogramBucketsEndDebug
                );
                ASSERT_BINNED_BUCKET_OK(

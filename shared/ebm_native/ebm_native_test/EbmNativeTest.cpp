@@ -702,7 +702,8 @@ FloatEbmType TestApi::Boost(
    const IntEbmType indexFeatureGroup, 
    const std::vector<FloatEbmType> trainingWeights, 
    const std::vector<FloatEbmType> validationWeights, 
-   const FloatEbmType learningRate, 
+   const GenerateUpdateOptionsType options,
+   const FloatEbmType learningRate,
    const IntEbmType countTreeSplitsMax, 
    const IntEbmType countSamplesRequiredForChildSplitMin
 ) {
@@ -735,6 +736,7 @@ FloatEbmType TestApi::Boost(
       learningRate,
       countTreeSplitsMax,
       countSamplesRequiredForChildSplitMin,
+      options,
       0 == trainingWeights.size() ? nullptr : &trainingWeights[0],
       0 == validationWeights.size() ? nullptr : &validationWeights[0],
       &validationMetricOut

@@ -324,6 +324,7 @@ EXIT /B 0
     <ClCompile Include="CachedThreadResourcesBoosting.cpp" />
     <ClCompile Include="CachedThreadResourcesInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
+    <ClCompile Include="CutRandom.cpp" />
     <ClCompile Include="DebugEbm.cpp" />
     <ClCompile Include="FeatureGroup.cpp" />
     <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />

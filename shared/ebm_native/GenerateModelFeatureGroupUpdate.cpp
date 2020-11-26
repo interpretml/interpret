@@ -80,6 +80,18 @@ extern bool FindBestBoostingSplitPairs(
 #endif // NDEBUG
 );
 
+extern bool CutRandom(
+   EbmBoostingState * const pEbmBoostingState,
+   const FeatureGroup * const pFeatureGroup,
+   HistogramBucketBase * const aHistogramBuckets,
+   const size_t cTreeSplitsMax,
+   const GenerateUpdateOptionsType options,
+   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
+   FloatEbmType * const pTotalGain
+#ifndef NDEBUG
+   , const unsigned char * const aHistogramBucketsEndDebug
+#endif // NDEBUG
+);
 
 static bool BoostZeroDimensional(
    EbmBoostingState * const pEbmBoostingState,
@@ -565,6 +577,116 @@ static bool BoostMultiDimensional(
    return false;
 }
 
+static bool BoostRandom(
+   EbmBoostingState * const pEbmBoostingState,
+   const FeatureGroup * const pFeatureGroup,
+   const SamplingSet * const pTrainingSet,
+   const size_t cTreeSplitsMax,
+   const GenerateUpdateOptionsType options,
+   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
+   FloatEbmType * const pTotalGain
+) {
+   // THIS RANDOM CUT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
+
+   LOG_0(TraceLevelVerbose, "Entered BoostRandom");
+
+   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
+   EBM_ASSERT(1 <= cDimensions);
+
+   size_t cTotalBuckets = 1;
+   for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
+      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
+      // we filer out 1 == cBins in allocation.
+      EBM_ASSERT(2 <= cBins);
+      // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureGroupIndexes
+      EBM_ASSERT(!IsMultiplyError(cTotalBuckets, cBins));
+      cTotalBuckets *= cBins;
+   }
+
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+      LOG_0(
+         TraceLevelWarning,
+         "WARNING BoostRandom GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
+      );
+      return true;
+   }
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+   if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
+      return true;
+   }
+   const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
+
+   CachedBoostingThreadResources * const pCachedThreadResources = pEbmBoostingState->GetCachedThreadResources();
+
+   // we don't need to free this!  It's tracked and reused by pCachedThreadResources
+   HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
+   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostRandom nullptr == aHistogramBuckets");
+      return true;
+   }
+
+   if(bClassification) {
+      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
+      for(size_t i = 0; i < cTotalBuckets; ++i) {
+         HistogramBucket<true> * const pHistogramBucket =
+            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         pHistogramBucket->Zero(cVectorLength);
+      }
+   } else {
+      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
+      for(size_t i = 0; i < cTotalBuckets; ++i) {
+         HistogramBucket<false> * const pHistogramBucket =
+            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         pHistogramBucket->Zero(cVectorLength);
+      }
+   }
+
+#ifndef NDEBUG
+   const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
+#endif // NDEBUG
+
+   BinBoosting(
+      pEbmBoostingState,
+      pFeatureGroup,
+      pTrainingSet,
+      aHistogramBuckets
+#ifndef NDEBUG
+      , aHistogramBucketsEndDebug
+#endif // NDEBUG
+   );
+
+   bool bError = CutRandom(
+      pEbmBoostingState,
+      pFeatureGroup,
+      aHistogramBuckets,
+      cTreeSplitsMax,
+      options,
+      pSmallChangeToModelOverwriteSingleSamplingSet,
+      pTotalGain
+#ifndef NDEBUG
+      , aHistogramBucketsEndDebug
+#endif // NDEBUG
+   );
+   if(bError) {
+      LOG_0(TraceLevelVerbose, "Exited BoostRandom with Error code");
+      return true;
+   }
+
+   // gain can be -infinity for regression in a super-super-super-rare condition.  
+   // See notes above regarding "gain = bestSplittingScore - splittingScoreParent"
+
+   // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
+   EBM_ASSERT(std::isnan(*pTotalGain) || (!bClassification) && std::isinf(*pTotalGain) ||
+      k_epsilonNegativeGainAllowed <= *pTotalGain);
+
+   LOG_0(TraceLevelVerbose, "Exited BoostRandom");
+   return false;
+}
+
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
@@ -574,6 +696,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    const FloatEbmType learningRate,
    const size_t cTreeSplitsMax,
    const size_t cSamplesRequiredForChildSplitMin,
+   const GenerateUpdateOptionsType options,
    const FloatEbmType * const aTrainingWeights,
    const FloatEbmType * const aValidationWeights,
    FloatEbmType * const pGainReturn
@@ -585,7 +708,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    UNUSED(aTrainingWeights);
    UNUSED(aValidationWeights);
 
-   LOG_0(TraceLevelVerbose, "Entered GenerateModelFeatureGroupUpdatePerTargetClasses");
+   LOG_0(TraceLevelVerbose, "Entered GenerateModelFeatureGroupUpdateInternal");
 
    const size_t cSamplingSetsAfterZero = (0 == pEbmBoostingState->GetCountSamplingSets()) ? 1 : pEbmBoostingState->GetCountSamplingSets();
    const FeatureGroup * const pFeatureGroup = pEbmBoostingState->GetFeatureGroups()[iFeatureGroup];
@@ -608,6 +731,27 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                pEbmBoostingState,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet()
+            )) {
+               if(LIKELY(nullptr != pGainReturn)) {
+                  *pGainReturn = FloatEbmType { 0 };
+               }
+               return nullptr;
+            }
+         } else if(0 != (GenerateUpdateOptions_RandomSplits & options)) {
+            if(size_t { 1 } != cSamplesRequiredForChildSplitMin) {
+               LOG_0(TraceLevelWarning, 
+                  "WARNING GenerateModelFeatureGroupUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"
+               );
+            }
+            // THIS RANDOM CUT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
+            if(BoostRandom(
+               pEbmBoostingState,
+               pFeatureGroup,
+               pEbmBoostingState->GetSamplingSets()[iSamplingSet],
+               cTreeSplitsMax,
+               options,
+               pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
+               &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -776,6 +920,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
    IntEbmType countSamplesRequiredForChildSplitMin,
+   GenerateUpdateOptionsType options,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * gainOut
@@ -784,14 +929,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       &g_cLogGenerateModelFeatureGroupUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "GenerateModelFeatureGroupUpdate parameters: ebmBoosting=%p, indexFeatureGroup=%" IntEbmTypePrintf ", learningRate=%" FloatEbmTypePrintf
-      ", countTreeSplitsMax=%" IntEbmTypePrintf ", countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf
-      ", trainingWeights=%p, validationWeights=%p, gainOut=%p",
+      "Entered GenerateModelFeatureGroupUpdate: "
+      "ebmBoosting=%p, "
+      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "learningRate=%" FloatEbmTypePrintf ", "
+      "countTreeSplitsMax=%" IntEbmTypePrintf ", "
+      "countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", "
+      "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
+      "trainingWeights=%p, "
+      "validationWeights=%p, "
+      "gainOut=%p"
+      ,
       static_cast<void *>(ebmBoosting),
       indexFeatureGroup,
       learningRate,
       countTreeSplitsMax,
       countSamplesRequiredForChildSplitMin,
+      static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned convresion is defined behavior in C++
       static_cast<const void *>(trainingWeights),
       static_cast<const void *>(validationWeights),
       static_cast<void *>(gainOut)
@@ -873,6 +1027,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
+   // TODO : test if our GenerateUpdateOptionsType options flags only include flags that we use
+
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
    EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
    // gainOut can be nullptr
@@ -897,6 +1053,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       learningRate,
       cTreeSplitsMax,
       cSamplesRequiredForChildSplitMin,
+      options,
       trainingWeights,
       validationWeights,
       gainOut

@@ -291,7 +291,8 @@ public:
    FloatEbmType Boost(const IntEbmType indexFeatureGroup, 
       const std::vector<FloatEbmType> trainingWeights = {}, 
       const std::vector<FloatEbmType> validationWeights = {}, 
-      const FloatEbmType learningRate = k_learningRateDefault, 
+      const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
+      const FloatEbmType learningRate = k_learningRateDefault,
       const IntEbmType countTreeSplitsMax = k_countTreeSplitsMaxDefault, 
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault
    );
