@@ -5,6 +5,7 @@
 #include "PrecompiledHeader.h"
 
 #include <stddef.h> // size_t, ptrdiff_t
+#include <algorithm> // sort
 
 #include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // INLINE_ALWAYS
@@ -47,8 +48,6 @@ public:
       // TODO: move most of this code out of this function into a non-templated place
 
       const size_t cLeavesMax = cTreeSplitsMax + size_t { 1 }; // TODO: this should be done by our caller in the future
-
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
