@@ -41,11 +41,14 @@ public:
 
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      // TODO: accept the minimum number of items in a cut and then refuse to allow the cut if we violate it
-      // TODO: accept 0 as a minimum number of items so that we can always choose to allow a tensor cut (for DP)
-      // TODO: we'll need to check our denominator if we allow 0 cuts since we'll have 0/0 then
       // TODO: add a new random_rety option that will retry random cutting for N times and select the one with the best gain
+      // TODO: accept the minimum number of items in a cut and then refuse to allow the cut if we violate it, or
+      //       provide a soft trigger that generates 10 random ones and selects the one that violates the least
+      //       maybe provide a flag to indicate if we want a hard or soft allowance.  We won't be cutting if we
+      //       require a soft allowance and a lot of regions have zeros.
+      // TODO: accept 0 == countSamplesRequiredForChildSplitMin as a minimum number of items so that we can always choose to allow a tensor cut (for DP)
       // TODO: move most of this code out of this function into a non-templated place
+      // TODO : accept an array of cTreeSplitsMax so that different dimensions can have different numbers of cuts
 
       const size_t cLeavesMax = cTreeSplitsMax + size_t { 1 }; // TODO: this should be done by our caller in the future
 
@@ -71,9 +74,6 @@ public:
       do {
          const Feature * const pFeature = pFeatureGroupEntry1->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
-
-         // TODO: test that 2 <= cBins is always true
-
          EBM_ASSERT(2 <= cBins); // otherwise this dimension would have been eliminated
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
          const size_t cPossibleCutLocations = cBins - size_t { 1 };
@@ -98,6 +98,15 @@ public:
          ++pFeatureGroupEntry1;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry1);
 
+      // since we subtract 1 from cPossibleCutLocations, we need to check that our final slice length isn't longer
+      cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesTotal);
+
+      if(IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))) {
+         LOG_0(TraceLevelWarning, "WARNING CutRandomInternal IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))");
+         return true;
+      }
+      const size_t cBytesSlicesPlusRandom = cSlicesPlusRandomMax * sizeof(size_t);
+
       if(UNLIKELY(
          pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells))) 
       {
@@ -107,15 +116,6 @@ public:
          );
          return true;
       }
-
-      // since we subtract 1 from cPossibleCutLocations, we need to check that our final slice length isn't longer
-      cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesTotal);
-
-      if(IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))) {
-         LOG_0(TraceLevelWarning, "WARNING CutRandomInternal IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))");
-         return true;
-      }
-      const size_t cBytesSlicesPlusRandom = cSlicesPlusRandomMax * sizeof(size_t);
 
       // our allocated histogram is bigger since it has more elements and the elements contain a size_t
       EBM_ASSERT(!IsMultiplyError(cSlicesTotal, sizeof(size_t)));
@@ -162,7 +162,7 @@ public:
 
             const size_t cCuts = EbmMin(cTreeSplitsMax, cPossibleCutLocations);
             EBM_ASSERT(1 <= cCuts);
-            size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cCuts;
+            const size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cCuts;
             do {
                const size_t iRandom = pRandomStream->Next(cPossibleCutLocations);
                size_t * const pRandomSwap = pcItemsInNextSliceOrBytesInCurrentSlice2 + iRandom;
@@ -195,7 +195,7 @@ public:
          pcBytesInSliceEnd = acItemsInNextSliceOrBytesInCurrentSlice + cFirstSlices;
          size_t iPrev = 0;
          do {
-            size_t iCur = *pcItemsInNextSliceOrBytesInCurrentSlice3;
+            const size_t iCur = *pcItemsInNextSliceOrBytesInCurrentSlice3;
             EBM_ASSERT(iPrev < iCur);
             // turn these into bytes from the previous
             *pcItemsInNextSliceOrBytesInCurrentSlice3 = (iCur - iPrev) * cBytesPerHistogramBucket;
@@ -205,13 +205,11 @@ public:
       }
 
       struct RandomCutState {
-         // these change in value
          size_t         m_cItemsInSliceRemaining;
-         const size_t * m_pcItemsInNextSlice;
-
-         // these are constant after initialization
-         const size_t * m_pcItemsInNextSliceEnd;
          size_t         m_cBytesSubtractResetCollapsedHistogramBucket;
+
+         const size_t * m_pcItemsInNextSlice;
+         const size_t * m_pcItemsInNextSliceEnd;
       };
       RandomCutState randomCutState[k_cDimensionsMax - size_t { 1 }]; // the first dimension is special cased
       RandomCutState * pStateInit = &randomCutState[0];
@@ -274,31 +272,7 @@ public:
       const HistogramBucket<bClassification> * pHistogramBucket = aHistogramBuckets;
       HistogramBucket<bClassification> * pCollapsedHistogramBucket1 = aCollapsedHistogramBuckets;
 
-      // we'll move pHistogramBucketSliceEnd to the first slice end inside the loop
-      const HistogramBucket<bClassification> * pHistogramBucketSliceEnd = pHistogramBucket;
-
       {
-         goto move_next_slice;
-
-      repeat_current_slice:;
-
-         // Ok, this is a bit confusing, but we get here from calling "goto repeat_current_slice;" below
-         // and we set these variables BEFORE calling goto, so that they have valid values
-         //
-         // putting this code here removes a jmp assembly instruction since the comparison jne operator
-         // can jump here directly and we complete the work that we need to do before re-entering the loop.
-         // The compiler may not do what we want here, and in fact Visual Studio puts this code inside the
-         // if statement below and uses a jmp instruction, but it's worth a try in case a different 
-         // compiler does what we want here.
-
-         RandomCutState * pState;
-         size_t cItemsInSliceRemaining;
-
-         pState->m_cItemsInSliceRemaining = cItemsInSliceRemaining;
-         pCollapsedHistogramBucket1 = reinterpret_cast<HistogramBucket<bClassification> *>(
-            reinterpret_cast<char *>(pCollapsedHistogramBucket1) -
-            pState->m_cBytesSubtractResetCollapsedHistogramBucket);
-
       move_next_slice:;
 
          // for the first dimension, acItemsInNextSliceOrBytesInCurrentSlice contains the number of bytes to proceed 
@@ -308,8 +282,9 @@ public:
          // super critical inner loop without overburdening the CPU registers when we execute the outer loop.
          const size_t * pcItemsInNextSliceOrBytesInCurrentSlice = acItemsInNextSliceOrBytesInCurrentSlice;
          do {
-            pHistogramBucketSliceEnd = reinterpret_cast<const HistogramBucket<bClassification> *>(
-               reinterpret_cast<const char *>(pHistogramBucketSliceEnd) + *pcItemsInNextSliceOrBytesInCurrentSlice);
+            const HistogramBucket<bClassification> * const pHistogramBucketSliceEnd = 
+               reinterpret_cast<const HistogramBucket<bClassification> *>(
+               reinterpret_cast<const char *>(pHistogramBucket) + *pcItemsInNextSliceOrBytesInCurrentSlice);
 
             do {
                ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
@@ -328,11 +303,19 @@ public:
             ++pcItemsInNextSliceOrBytesInCurrentSlice;
          } while(PREDICTABLE(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice));
 
-         for(pState = randomCutState; PREDICTABLE(pStateEnd != pState); ++pState) {
+         for(RandomCutState * pState = randomCutState; PREDICTABLE(pStateEnd != pState); ++pState) {
             EBM_ASSERT(size_t { 1 } <= pState->m_cItemsInSliceRemaining);
-            cItemsInSliceRemaining = pState->m_cItemsInSliceRemaining - size_t { 1 };
+            const size_t cItemsInSliceRemaining = pState->m_cItemsInSliceRemaining - size_t { 1 };
             if(LIKELY(size_t { 0 } != cItemsInSliceRemaining)) {
-               goto repeat_current_slice;
+               // ideally, the compiler would move this to the location right above the first loop and it would
+               // jump over it on the first loop, but I wasn't able to make the Visual Studio compiler do it
+
+               pState->m_cItemsInSliceRemaining = cItemsInSliceRemaining;
+               pCollapsedHistogramBucket1 = reinterpret_cast<HistogramBucket<bClassification> *>(
+                  reinterpret_cast<char *>(pCollapsedHistogramBucket1) -
+                  pState->m_cBytesSubtractResetCollapsedHistogramBucket);
+
+               goto move_next_slice;
             }
 
             const size_t * pcItemsInNextSlice = pState->m_pcItemsInNextSlice;
@@ -357,43 +340,44 @@ public:
          }
       }
 
-
-
-
-
-      //TODO: retrieve the gain by first calculating the gain on the collapsed histogram, then collapse the histogram
-      //      into a single total bucket and calculate that and subtract
-
+      //TODO: retrieve the gain.  Always calculate the gain without respect to the parent and pick the best one
+      //      Then, before exiting, on the last one we collapse the collapsed tensor even more into just a single
+      //      bin from which we can calculate the parent and subtract the best child from the parent.
+      
       //FloatEbmType splittingScore;
       //FloatEbmType splittingScoreParent = FloatEbmType { 0 };
       FloatEbmType gain = FloatEbmType { 0 };
 
 
 
-
-
-
-      const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       const size_t * const pcBytesInSliceLast = pcBytesInSliceEnd - size_t { 1 };
+      EBM_ASSERT(acItemsInNextSliceOrBytesInCurrentSlice <= pcBytesInSliceLast);
+      const size_t cFirstCuts = pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice;
+      // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 cuts and 
+      // one last item to indicate the termination point
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(
-         0, pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice))) 
+         0, cFirstCuts)))
       {
          LOG_0(TraceLevelWarning, "WARNING CutRandomInternal SetCountDivisions(0, )");
          free(pBuffer);
          return true;
       }
-      ActiveDataType * pDivisionFirst = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
-      // converting negative to positive number is defined behavior in C++ and uses twos compliment
-      size_t iSplitFirst = static_cast<size_t>(ptrdiff_t { -1 });
-      do {
-         EBM_ASSERT(0 != *pcBytesInSlice2);
-         EBM_ASSERT(0 == *pcBytesInSlice2 % cBytesPerHistogramBucket);
-         iSplitFirst += *pcBytesInSlice2 / cBytesPerHistogramBucket;
-         *pDivisionFirst = iSplitFirst;
-         ++pDivisionFirst;
-         ++pcBytesInSlice2;
-         // the last one is the distance to the end, which we don't include in the update
-      } while(LIKELY(pcBytesInSliceLast != pcBytesInSlice2));
+      const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
+      if(LIKELY(size_t { 0 } != cFirstCuts)) {
+         ActiveDataType * pDivisionFirst = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
+         // converting negative to positive number is defined behavior in C++ and uses twos compliment
+         size_t iSplitFirst = static_cast<size_t>(ptrdiff_t { -1 });
+         do {
+            EBM_ASSERT(pcBytesInSlice2 < pcBytesInSliceLast);
+            EBM_ASSERT(0 != *pcBytesInSlice2);
+            EBM_ASSERT(0 == *pcBytesInSlice2 % cBytesPerHistogramBucket);
+            iSplitFirst += *pcBytesInSlice2 / cBytesPerHistogramBucket;
+            *pDivisionFirst = iSplitFirst;
+            ++pDivisionFirst;
+            ++pcBytesInSlice2;
+            // the last one is the distance to the end, which we don't include in the update
+         } while(LIKELY(pcBytesInSliceLast != pcBytesInSlice2));
+      }
 
       RandomCutState * pState = randomCutState;
       if(PREDICTABLE(pStateEnd != pState)) {
@@ -403,7 +387,6 @@ public:
             ++pcBytesInSlice2; // we have one less cut than we have slices, so move to the next one
 
             const size_t * pcItemsInNextSliceLast = pState->m_pcItemsInNextSliceEnd - size_t { 1 };
-            // TODO: check if this still works if we have zero cuts
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2)) {
                LOG_0(TraceLevelWarning, "WARNING CutRandomInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2)");
                free(pBuffer);
@@ -415,8 +398,8 @@ public:
                *pDivision = iSplit;
                --pcItemsInNextSliceLast;
                while(pcItemsInNextSliceLast != pcBytesInSlice2) {
-                  ++pDivision;
                   iSplit += *pcBytesInSlice2;
+                  ++pDivision;
                   *pDivision = iSplit;
                   ++pcBytesInSlice2;
                }
@@ -430,7 +413,7 @@ public:
       FloatEbmType * pUpdate = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       HistogramBucket<bClassification> * pCollapsedHistogramBucket2 = aCollapsedHistogramBuckets;
 
-      if(0 != (GenerateUpdateOptions_Sums & options)) {
+      if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          do {
             HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
                pCollapsedHistogramBucket2->GetHistogramBucketVectorEntry();
@@ -444,25 +427,35 @@ public:
          } while(pCollapsedHistogramBucketEnd != pCollapsedHistogramBucket2);
       } else {
          do {
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
-               pCollapsedHistogramBucket2->GetHistogramBucketVectorEntry();
-
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType update;
-               if(bClassification) {
-                  update = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     pHistogramBucketVectorEntry[iVector].m_sumResidualError,
-                     pHistogramBucketVectorEntry[iVector].GetSumDenominator()
-                  );
-               } else {
-                  EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                  update = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                     pHistogramBucketVectorEntry[iVector].m_sumResidualError,
-                     static_cast<FloatEbmType>(pCollapsedHistogramBucket2->GetCountSamplesInBucket())
-                  );
+            const size_t cSamples = pCollapsedHistogramBucket2->GetCountSamplesInBucket();
+            if(UNLIKELY(size_t { 0 } == cSamples)) {
+               // normally, we'd eliminate regions where the number of items was zero before putting down a cut
+               // but for random cuts we can't know beforehand if there will be zero cuts, so we need to check
+               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+                  *pUpdate = FloatEbmType { 0 };
+                  ++pUpdate;
                }
-               *pUpdate = update;
-               ++pUpdate;
+            } else {
+               HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
+                  pCollapsedHistogramBucket2->GetHistogramBucketVectorEntry();
+
+               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+                  FloatEbmType update;
+                  if(bClassification) {
+                     update = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                        pHistogramBucketVectorEntry[iVector].m_sumResidualError,
+                        pHistogramBucketVectorEntry[iVector].GetSumDenominator()
+                     );
+                  } else {
+                     EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+                     update = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                        pHistogramBucketVectorEntry[iVector].m_sumResidualError,
+                        static_cast<FloatEbmType>(cSamples)
+                     );
+                  }
+                  *pUpdate = update;
+                  ++pUpdate;
+               }
             }
             pCollapsedHistogramBucket2 = GetHistogramBucketByIndex<bClassification>(
                cBytesPerHistogramBucket, pCollapsedHistogramBucket2, 1);

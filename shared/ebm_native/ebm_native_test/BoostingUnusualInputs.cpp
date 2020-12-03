@@ -1042,7 +1042,6 @@ TEST_CASE("3 dimensional featureGroup with one dimension reduced in different wa
    }
 }
 
-
 TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(4) });
@@ -1058,18 +1057,18 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         FloatEbmType validationMetricTwoStates = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 2);
+         FloatEbmType validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 2);
          if(0 == iEpoch) {
-            CHECK_APPROX(validationMetricTwoStates, 1.0340957641601563f);
+            CHECK_APPROX(validationMetric, 1.0340957641601563f);
 
-            FloatEbmType modelValueTwoStates0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
-            CHECK_APPROX(modelValueTwoStates0, 0.0075f);
+            FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
+            CHECK_APPROX(modelValue0, 0.0075f);
 
-            FloatEbmType modelValueTwoStates1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
-            CHECK_APPROX(modelValueTwoStates1, 0.0075f);
+            FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
+            CHECK_APPROX(modelValue1, 0.0075f);
 
-            FloatEbmType modelValueTwoStates2 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
-            CHECK_APPROX(modelValueTwoStates2, -0.015f);
+            FloatEbmType modelValue2 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
+            CHECK_APPROX(modelValue2, -0.015f);
          }
       }
    }
@@ -1090,19 +1089,276 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         FloatEbmType validationMetricTwoStates = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_Sums, k_learningRateDefault, 2);
+         FloatEbmType validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, 2);
          if(0 == iEpoch) {
-            CHECK_APPROX(validationMetricTwoStates, 1.0372848510742188);
+            CHECK_APPROX(validationMetric, 1.0372848510742188);
 
-            FloatEbmType modelValueTwoStates0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
-            CHECK_APPROX(modelValueTwoStates0, 0.0033333333333333344f);
+            FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
+            CHECK_APPROX(modelValue0, 0.0033333333333333344f);
 
-            FloatEbmType modelValueTwoStates1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
-            CHECK_APPROX(modelValueTwoStates1, 0.0033333333333333344f);
+            FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
+            CHECK_APPROX(modelValue1, 0.0033333333333333344f);
 
-            FloatEbmType modelValueTwoStates2 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
-            CHECK_APPROX(modelValueTwoStates2, -0.0066666666666666662f);
+            FloatEbmType modelValue2 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
+            CHECK_APPROX(modelValue2, -0.0066666666666666662f);
          }
       }
    }
 }
+
+TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
+   constexpr IntEbmType cStates = 7;
+
+   TestApi test = TestApi(3);
+   test.AddFeatures({ FeatureTest(cStates), FeatureTest(1), FeatureTest(cStates) });
+   test.AddFeatureGroups({ { 0, 1, 2 } });
+   std::vector<ClassificationSample> samples;
+   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+         // create a few zero spaces where we have no data
+         if(i0 != i2) {
+            if(i0 < i2) {
+               samples.push_back(ClassificationSample(1, { i0, 0, i2 }));
+            } else {
+               samples.push_back(ClassificationSample(2, { i0, 0, i2 }));
+            }
+         }
+      }
+   }
+
+   test.AddTrainingSamples(samples);
+   test.AddValidationSamples(samples); // evaluate on the train set
+   test.InitializeBoosting();
+
+   FloatEbmType validationMetric = FloatEbmType { 0 };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 2, 1);
+      }
+   }
+
+   CHECK_APPROX(validationMetric, 0.00017711094447544644f);
+
+   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+#if false
+         std::cout << std::endl;
+         std::cout << i0 << ' ' << '0' << ' ' << i2 << std::endl;
+
+         FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(0), static_cast<size_t>(i2) }, 0);
+         std::cout << modelValue0 << std::endl;
+
+         FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(0), static_cast<size_t>(i2) }, 1);
+         std::cout << modelValue1 << std::endl;
+
+         FloatEbmType modelValue2 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(0), static_cast<size_t>(i2) }, 2);
+         std::cout << modelValue2 << std::endl;
+#endif
+      }
+   }
+}
+
+TEST_CASE("Random splitting, pure tripples, multiclass") {
+   constexpr IntEbmType cStates = 7;
+
+   TestApi test = TestApi(3);
+   test.AddFeatures({ FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) });
+   test.AddFeatureGroups({ { 0, 1, 2 } });
+   std::vector<ClassificationSample> samples;
+   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
+         for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+            if(i0 == i1 && i0 == i2) {
+               samples.push_back(ClassificationSample(0, { i0, i1, i2 }));
+            } else if(i0 < i1) {
+               samples.push_back(ClassificationSample(1, { i0, i1, i2 }));
+            } else {
+               samples.push_back(ClassificationSample(2, { i0, i1, i2 }));
+            }
+         }
+      }
+   }
+
+   test.AddTrainingSamples(samples);
+   test.AddValidationSamples(samples); // evaluate on the train set
+   test.InitializeBoosting();
+
+   FloatEbmType validationMetric = FloatEbmType { 0 };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 2, 1);
+      }
+   }
+
+   CHECK_APPROX(validationMetric, 0.0091562298922079986f);
+
+   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
+         for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+#if false
+            std::cout << std::endl;
+            std::cout << i0 << ' ' << i1 << ' ' << i2 << std::endl;
+
+            FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(i1), static_cast<size_t>(i2) }, 0);
+            std::cout << modelValue0 << std::endl;
+
+            FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(i1), static_cast<size_t>(i2) }, 1);
+            std::cout << modelValue1 << std::endl;
+
+            FloatEbmType modelValue2 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(i1), static_cast<size_t>(i2) }, 2);
+            std::cout << modelValue2 << std::endl;
+#endif
+         }
+      }
+   }
+}
+
+TEST_CASE("Random splitting, pure tripples, regression") {
+   constexpr IntEbmType cStates = 7;
+
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddFeatures({ FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) });
+   test.AddFeatureGroups({ { 0, 1, 2 } });
+   std::vector<RegressionSample> samples;
+   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
+         for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+            if(i0 == i1 && i0 == i2) {
+               samples.push_back(RegressionSample(-10, { i0, i1, i2 }));
+            } else if(i0 < i1) {
+               samples.push_back(RegressionSample(1, { i0, i1, i2 }));
+            } else {
+               samples.push_back(RegressionSample(2, { i0, i1, i2 }));
+            }
+         }
+      }
+   }
+
+   test.AddTrainingSamples(samples);
+   test.AddValidationSamples(samples); // evaluate on the train set
+   test.InitializeBoosting();
+
+   FloatEbmType validationMetric = FloatEbmType { 0 };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 2, 1);
+      }
+   }
+
+   CHECK_APPROX(validationMetric, 1.4656199141470665);
+
+   for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
+      for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
+         for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
+#if false
+            std::cout << std::endl;
+            std::cout << i0 << ' ' << i1 << ' ' << i2 << std::endl;
+
+            FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(i1), static_cast<size_t>(i2) }, 0);
+            std::cout << modelValue0 << std::endl;
+#endif
+         }
+      }
+   }
+}
+
+TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
+   constexpr IntEbmType k_cStates = 7;
+   constexpr IntEbmType k_countTreeSplitsMax = 0;
+   constexpr IntEbmType k_countSamplesRequiredForChildSplitMin = 1;
+
+   TestApi test = TestApi(3);
+   test.AddFeatures({ FeatureTest(k_cStates), FeatureTest(k_cStates), FeatureTest(k_cStates) });
+   test.AddFeatureGroups({ { 0, 1, 2 } });
+   std::vector<ClassificationSample> samples;
+   for(IntEbmType i0 = 0; i0 < k_cStates; ++i0) {
+      for(IntEbmType i1 = 0; i1 < k_cStates; ++i1) {
+         for(IntEbmType i2 = 0; i2 < k_cStates; ++i2) {
+            if(i0 == i1 && i0 == i2) {
+               samples.push_back(ClassificationSample(0, { i0, i1, i2 }));
+            } else if(i0 < i1) {
+               samples.push_back(ClassificationSample(1, { i0, i1, i2 }));
+            } else {
+               samples.push_back(ClassificationSample(2, { i0, i1, i2 }));
+            }
+         }
+      }
+   }
+
+   test.AddTrainingSamples(samples);
+   test.AddValidationSamples(samples); // evaluate on the train set
+   test.InitializeBoosting();
+
+   FloatEbmType validationMetric = FloatEbmType { 0 };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(
+            iFeatureGroup, 
+            {}, 
+            {}, 
+            GenerateUpdateOptions_RandomSplits, 
+            k_learningRateDefault, 
+            k_countTreeSplitsMax, 
+            k_countSamplesRequiredForChildSplitMin
+         );
+      }
+   }
+
+   // it can't really benefit from cutting since we only allow the boosting rounds to have 1 leaf
+   CHECK_APPROX(validationMetric, 0.73616339235889672f);
+
+   for(IntEbmType i0 = 0; i0 < k_cStates; ++i0) {
+      for(IntEbmType i1 = 0; i1 < k_cStates; ++i1) {
+         for(IntEbmType i2 = 0; i2 < k_cStates; ++i2) {
+#if false
+            std::cout << std::endl;
+            std::cout << i0 << ' ' << i1 << ' ' << i2 << std::endl;
+
+            FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(i1), static_cast<size_t>(i2) }, 0);
+            std::cout << modelValue0 << std::endl;
+
+            FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(i1), static_cast<size_t>(i2) }, 1);
+            std::cout << modelValue1 << std::endl;
+
+            FloatEbmType modelValue2 = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(i0), static_cast<size_t>(i1), static_cast<size_t>(i2) }, 2);
+            std::cout << modelValue2 << std::endl;
+#endif
+         }
+      }
+   }
+}
+
+TEST_CASE("Random splitting, no cuts, binary, sums") {
+   TestApi test = TestApi(2);
+   test.AddFeatures({ FeatureTest(1) });
+   test.AddFeatureGroups({ { 0 } });
+   test.AddTrainingSamples({
+      ClassificationSample(0, { 0 }),
+      ClassificationSample(0, { 0 }),
+      ClassificationSample(1, { 0 }),
+      ClassificationSample(1, { 0 }),
+      ClassificationSample(1, { 0 }),
+      });
+   test.AddValidationSamples({ ClassificationSample(0, { 0 }) });
+   test.InitializeBoosting();
+
+   FloatEbmType validationMetric = 0;
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, 2);
+         if(0 == iEpoch) {
+            CHECK_APPROX(validationMetric, 0.67593383789062500f);
+
+            FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 0);
+            CHECK_APPROX(modelValue0, 0.0000000000000000f);
+
+            FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 1);
+            CHECK_APPROX(modelValue1, 0.0050727631441970225f);
+         }
+      }
+   }
+
+   // we're generating updates from gradient sums, which isn't good, so we expect a bad result
+   CHECK_APPROX(validationMetric, 0.87428283691406250f);
+}
+

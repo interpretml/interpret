@@ -1118,10 +1118,10 @@ class NativeHelper:
 
     # GenerateUpdateOptionsType
     GenerateUpdateOptions_Default                   = 0x0000000000000000
-    GenerateUpdateOptions_DisableSecondOrderGain    = 0x0000000000000001
-    GenerateUpdateOptions_DisableSecondOrderUpdate  = 0x0000000000000002
-    GenerateUpdateOptions_Sums                      = 0x0000000000000004
-    GenerateUpdateOptions_RandomSplits              = 0x0000000000000008
+    GenerateUpdateOptions_DisableNewtonGain     = 0x0000000000000001
+    GenerateUpdateOptions_DisableNewtonUpdate   = 0x0000000000000002
+    GenerateUpdateOptions_GradientSums          = 0x0000000000000004
+    GenerateUpdateOptions_RandomSplits          = 0x0000000000000008
 
     @staticmethod
     def get_count_scores_c(n_classes):

@@ -139,11 +139,11 @@ typedef UIntEbmType UGenerateUpdateOptionsType;
 #define FeatureTypeOrdinal (EBM_FEATURE_CAST(0))
 #define FeatureTypeNominal (EBM_FEATURE_CAST(1))
 
-#define GenerateUpdateOptions_Default                    (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
-#define GenerateUpdateOptions_DisableSecondOrderGain     (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))
-#define GenerateUpdateOptions_DisableSecondOrderUpdate   (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000002))
-#define GenerateUpdateOptions_Sums                       (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000004))
-#define GenerateUpdateOptions_RandomSplits               (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000008))
+#define GenerateUpdateOptions_Default              (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
+#define GenerateUpdateOptions_DisableNewtonGain    (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))
+#define GenerateUpdateOptions_DisableNewtonUpdate  (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000002))
+#define GenerateUpdateOptions_GradientSums         (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000004))
+#define GenerateUpdateOptions_RandomSplits         (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000008))
 
 // TODO: replace this structure with flat arrays.  It's easier when integrating into other languages which 
 // almost always have flat arrays built in an easy way

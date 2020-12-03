@@ -96,6 +96,7 @@ extern bool CutRandom(
 static bool BoostZeroDimensional(
    EbmBoostingState * const pEbmBoostingState,
    const SamplingSet * const pTrainingSet,
+   const GenerateUpdateOptionsType options,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
@@ -142,23 +143,35 @@ static bool BoostZeroDimensional(
       const HistogramBucket<true> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<true>();
       const HistogramBucketVectorEntry<true> * const aSumHistogramBucketVectorEntry =
          pHistogramBucketLocal->GetHistogramBucketVectorEntry();
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-            aSumHistogramBucketVectorEntry[iVector].m_sumResidualError,
-            aSumHistogramBucketVectorEntry[iVector].GetSumDenominator()
-         );
-         aValues[iVector] = smallChangeToModel;
+      if(0 != (GenerateUpdateOptions_GradientSums & options)) {
+         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            const FloatEbmType smallChangeToModel = aSumHistogramBucketVectorEntry[iVector].m_sumResidualError;
+            aValues[iVector] = smallChangeToModel;
+         }
+      } else {
+         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+               aSumHistogramBucketVectorEntry[iVector].m_sumResidualError,
+               aSumHistogramBucketVectorEntry[iVector].GetSumDenominator()
+            );
+            aValues[iVector] = smallChangeToModel;
+         }
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       const HistogramBucket<false> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<false>();
       const HistogramBucketVectorEntry<false> * const aSumHistogramBucketVectorEntry =
          pHistogramBucketLocal->GetHistogramBucketVectorEntry();
-      const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-         aSumHistogramBucketVectorEntry[0].m_sumResidualError,
-         static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
-      );
-      aValues[0] = smallChangeToModel;
+      if(0 != (GenerateUpdateOptions_GradientSums & options)) {
+         const FloatEbmType smallChangeToModel = aSumHistogramBucketVectorEntry[0].m_sumResidualError;
+         aValues[0] = smallChangeToModel;
+      } else {
+         const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+            aSumHistogramBucketVectorEntry[0].m_sumResidualError,
+            static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
+         );
+         aValues[0] = smallChangeToModel;
+      }
    }
 
    LOG_0(TraceLevelVerbose, "Exited BoostZeroDimensional");
@@ -725,11 +738,14 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
       pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet()->SetCountDimensions(cDimensions);
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
-         FloatEbmType gain = FloatEbmType { 0 };
-         if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureGroup->GetCountFeatures()))) {
+         FloatEbmType gain;
+         if(UNLIKELY(UNLIKELY(0 == pFeatureGroup->GetCountFeatures()) || 
+            UNLIKELY(PREDICTABLE(1 == pFeatureGroup->GetCountFeatures()) && UNLIKELY(0 == cTreeSplitsMax))))
+         {
             if(BoostZeroDimensional(
                pEbmBoostingState,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
+               options,
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet()
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -737,6 +753,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                }
                return nullptr;
             }
+            gain = FloatEbmType { 0 };
          } else if(0 != (GenerateUpdateOptions_RandomSplits & options)) {
             if(size_t { 1 } != cSamplesRequiredForChildSplitMin) {
                LOG_0(TraceLevelWarning, 
