@@ -871,10 +871,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
    IntEbmType indexFeatureGroup,
-   FloatEbmType learningRate,
-   IntEbmType countTreeSplitsMax,
-   IntEbmType countSamplesRequiredForChildSplitMin,
    GenerateUpdateOptionsType options,
+   FloatEbmType learningRate,
+   IntEbmType countSamplesRequiredForChildSplitMin,
+   const IntEbmType * leavesMax,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricOut
@@ -904,10 +904,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
    FloatEbmType * pModelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
       ebmBoosting, 
       indexFeatureGroup, 
-      learningRate, 
-      countTreeSplitsMax, 
+      options,
+      learningRate,
       countSamplesRequiredForChildSplitMin, 
-      options, 
+      leavesMax, 
       trainingWeights, 
       validationWeights, 
       &gain

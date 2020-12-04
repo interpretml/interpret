@@ -315,14 +315,14 @@ class Native:
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
-            # double learningRate
-            ct.c_double,
-            # int64_t countTreeSplitsMax
-            ct.c_int64,
-            # int64_t countSamplesRequiredForChildSplitMin
-            ct.c_int64,
             # GenerateUpdateOptionsType options 
             ct.c_int64,
+            # double learningRate
+            ct.c_double,
+            # int64_t countSamplesRequiredForChildSplitMin
+            ct.c_int64,
+            # int64_t * leavesMax
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # double * trainingWeights
             # ndpointer(dtype=ct.c_double, ndim=1),
             ct.c_void_p,
@@ -787,10 +787,10 @@ class NativeEBMBoosting:
     def boosting_step(
         self, 
         feature_group_index, 
-        learning_rate, 
-        max_leaves, 
-        min_samples_leaf, 
         generate_update_options, 
+        learning_rate, 
+        min_samples_leaf, 
+        max_leaves, 
     ):
 
         """ Conducts a boosting step per feature
@@ -812,13 +812,23 @@ class NativeEBMBoosting:
         # for a classification problem with only 1 target value, we will always predict the answer perfectly
         if self._model_type != "classification" or 2 <= self._n_classes:
             gain = ct.c_double(0.0)
+
+            # TODO : !WARNING! currently we can only accept a single number for max_leaves because in C++ we eliminate
+            #        dimensions that have only 1 state.  If a dimension in C++ is eliminated this way then it won't
+            #        match the dimensionality of the max_leaves_arr that we pass in here.  If all the numbers are the
+            #        same though as they currently are below, we're safe since we just access one less item in the
+            #        array, and still get the same numbers in the C++ code
+            #        Look at GenerateModelFeatureGroupUpdate in the C++ for more details on resolving this issue
+            n_features = len(self._feature_groups[feature_group_index])
+            max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
+
             model_update_tensor_pointer = self._native.lib.GenerateModelFeatureGroupUpdate(
                 self._booster_pointer,
                 feature_group_index,
-                learning_rate,
-                max_leaves - 1,
-                min_samples_leaf,
                 generate_update_options,
+                learning_rate,
+                min_samples_leaf,
+                max_leaves_arr,
                 0,
                 0,
                 ct.byref(gain),
@@ -1117,7 +1127,7 @@ class NativeEBMInteraction:
 class NativeHelper:
 
     # GenerateUpdateOptionsType
-    GenerateUpdateOptions_Default                   = 0x0000000000000000
+    GenerateUpdateOptions_Default               = 0x0000000000000000
     GenerateUpdateOptions_DisableNewtonGain     = 0x0000000000000001
     GenerateUpdateOptions_DisableNewtonUpdate   = 0x0000000000000002
     GenerateUpdateOptions_GradientSums          = 0x0000000000000004
@@ -1150,10 +1160,10 @@ class NativeHelper:
         scores_val,
         n_inner_bags,
         random_state,
-        learning_rate,
-        max_leaves,
-        min_samples_leaf,
         generate_update_options,
+        learning_rate,
+        min_samples_leaf,
+        max_leaves,
         max_rounds,
         early_stopping_tolerance,
         early_stopping_rounds,
@@ -1191,10 +1201,10 @@ class NativeHelper:
                 for feature_group_index in range(len(feature_groups)):
                     curr_metric = native_ebm_boosting.boosting_step(
                         feature_group_index=feature_group_index,
-                        learning_rate=learning_rate,
-                        max_leaves=max_leaves,
-                        min_samples_leaf=min_samples_leaf,
                         generate_update_options=generate_update_options,
+                        learning_rate=learning_rate,
+                        min_samples_leaf=min_samples_leaf,
+                        max_leaves=max_leaves,
                     )
 
                     min_metric = min(curr_metric, min_metric)

@@ -698,14 +698,15 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    m_stage = Stage::InitializedBoosting;
 }
 
+// TODO: harmonize the order of these parameters with GenerateModelFeatureGroupUpdate
 FloatEbmType TestApi::Boost(
-   const IntEbmType indexFeatureGroup, 
-   const std::vector<FloatEbmType> trainingWeights, 
-   const std::vector<FloatEbmType> validationWeights, 
+   const IntEbmType indexFeatureGroup,
+   const std::vector<FloatEbmType> trainingWeights,
+   const std::vector<FloatEbmType> validationWeights,
    const GenerateUpdateOptionsType options,
    const FloatEbmType learningRate,
-   const IntEbmType countTreeSplitsMax, 
-   const IntEbmType countSamplesRequiredForChildSplitMin
+   const IntEbmType countSamplesRequiredForChildSplitMin,
+   const std::vector<IntEbmType> leavesMax
 ) {
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
@@ -722,9 +723,6 @@ FloatEbmType TestApi::Boost(
    if(std::isinf(learningRate)) {
       exit(1);
    }
-   if(countTreeSplitsMax < FloatEbmType { 0 }) {
-      exit(1);
-   }
    if(countSamplesRequiredForChildSplitMin < FloatEbmType { 0 }) {
       exit(1);
    }
@@ -733,10 +731,10 @@ FloatEbmType TestApi::Boost(
    const IntEbmType ret = BoostingStep(
       m_pEbmBoosting,
       indexFeatureGroup,
-      learningRate,
-      countTreeSplitsMax,
-      countSamplesRequiredForChildSplitMin,
       options,
+      learningRate,
+      countSamplesRequiredForChildSplitMin,
+      0 == leavesMax.size() ? nullptr : &leavesMax[0],
       0 == trainingWeights.size() ? nullptr : &trainingWeights[0],
       0 == validationWeights.size() ? nullptr : &validationWeights[0],
       &validationMetricOut

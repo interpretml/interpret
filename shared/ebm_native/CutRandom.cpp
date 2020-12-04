@@ -29,8 +29,8 @@ public:
       EbmBoostingState * const pEbmBoostingState,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBucketsBase,
-      const size_t cTreeSplitsMax,
       const GenerateUpdateOptionsType options,
+      const IntEbmType * const aLeavesMax,
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
       FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -48,9 +48,6 @@ public:
       //       require a soft allowance and a lot of regions have zeros.
       // TODO: accept 0 == countSamplesRequiredForChildSplitMin as a minimum number of items so that we can always choose to allow a tensor cut (for DP)
       // TODO: move most of this code out of this function into a non-templated place
-      // TODO : accept an array of cTreeSplitsMax so that different dimensions can have different numbers of cuts
-
-      const size_t cLeavesMax = cTreeSplitsMax + size_t { 1 }; // TODO: this should be done by our caller in the future
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -66,12 +63,33 @@ public:
       const size_t cDimensions = pFeatureGroup->GetCountFeatures();
       EBM_ASSERT(1 <= cDimensions);
 
+      const IntEbmType * pLeavesMax1 = aLeavesMax;
       const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry1 + cDimensions;
       size_t cSlicesTotal = 0;
       size_t cSlicesPlusRandomMax = 0;
       size_t cCollapsedTensorCells = 1;
       do {
+         size_t cLeavesMax;
+         if(nullptr == pLeavesMax1) {
+            LOG_0(TraceLevelWarning, "WARNING CutRandomInternal aLeavesMax is null.  Setting to one.");
+            cLeavesMax = size_t { 1 };
+         } else {
+            const IntEbmType countLeavesMax = *pLeavesMax1;
+            ++pLeavesMax1;
+            if(countLeavesMax <= IntEbmType { 1 }) {
+               LOG_0(TraceLevelWarning, "WARNING CutRandomInternal countLeavesMax is 1 or less.");
+               cLeavesMax = size_t { 1 };
+            } else {
+               cLeavesMax = static_cast<size_t>(countLeavesMax);
+               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
+                  // were going to overflow because it will generate the same results as if we used the true number
+                  cLeavesMax = std::numeric_limits<size_t>::max();
+               }
+            }
+         }
+
          const Feature * const pFeature = pFeatureGroupEntry1->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(2 <= cBins); // otherwise this dimension would have been eliminated
@@ -140,10 +158,29 @@ public:
       }
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
+      const IntEbmType * pLeavesMax2 = aLeavesMax;
       RandomStream * const pRandomStream = pEbmBoostingState->GetRandomStream();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
       do {
+         size_t cTreeSplitsMax;
+         if(nullptr == pLeavesMax2) {
+            cTreeSplitsMax = size_t { 0 };
+         } else {
+            const IntEbmType countLeavesMax = *pLeavesMax2;
+            ++pLeavesMax2;
+            if(countLeavesMax <= IntEbmType { 1 }) {
+               cTreeSplitsMax = size_t { 0 };
+            } else {
+               cTreeSplitsMax = static_cast<size_t>(countLeavesMax) - size_t { 1 };
+               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
+                  // were going to overflow because it will generate the same results as if we used the true number
+                  cTreeSplitsMax = std::numeric_limits<size_t>::max() - size_t { 1 };
+               }
+            }
+         }
+
          const Feature * const pFeature = pFeatureGroupEntry2->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(2 <= cBins); // otherwise this dimension would have been eliminated
@@ -156,7 +193,7 @@ public:
                *pFillIndexes = iPossibleCutLocation;
                ++pFillIndexes;
                --iPossibleCutLocation;
-            } while(0 != iPossibleCutLocation);
+            } while(size_t { 0 } != iPossibleCutLocation);
 
             size_t * pOriginal = pcItemsInNextSliceOrBytesInCurrentSlice2;
 
@@ -180,11 +217,30 @@ public:
          ++pFeatureGroupEntry2;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry2);
 
+      const IntEbmType * pLeavesMax3 = aLeavesMax;
       const size_t * pcBytesInSliceEnd;
       const FeatureGroupEntry * pFeatureGroupEntry3 = pFeatureGroup->GetFeatureGroupEntries();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice3 = acItemsInNextSliceOrBytesInCurrentSlice;
       size_t cBytesCollapsedTensor3;
       {
+         size_t cLeavesMax;
+         if(nullptr == pLeavesMax3) {
+            cLeavesMax = size_t { 1 };
+         } else {
+            const IntEbmType countLeavesMax = *pLeavesMax3;
+            ++pLeavesMax3;
+            if(countLeavesMax <= IntEbmType { 1 }) {
+               cLeavesMax = size_t { 1 };
+            } else {
+               cLeavesMax = static_cast<size_t>(countLeavesMax);
+               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
+                  // were going to overflow because it will generate the same results as if we used the true number
+                  cLeavesMax = std::numeric_limits<size_t>::max();
+               }
+            }
+         }
+
          // the first dimension is special.  we put byte until next item into it instead of counts remaining
          const Feature * const pFirstFeature = pFeatureGroupEntry3->m_pFeature;
          const size_t cFirstBins = pFirstFeature->GetCountBins();
@@ -193,7 +249,7 @@ public:
          cBytesCollapsedTensor3 = cBytesPerHistogramBucket * cFirstSlices;
 
          pcBytesInSliceEnd = acItemsInNextSliceOrBytesInCurrentSlice + cFirstSlices;
-         size_t iPrev = 0;
+         size_t iPrev = size_t { 0 };
          do {
             const size_t iCur = *pcItemsInNextSliceOrBytesInCurrentSlice3;
             EBM_ASSERT(iPrev < iCur);
@@ -215,6 +271,24 @@ public:
       RandomCutState * pStateInit = &randomCutState[0];
 
       for(++pFeatureGroupEntry3; pFeatureGroupEntryEnd != pFeatureGroupEntry3; ++pFeatureGroupEntry3) {
+         size_t cLeavesMax;
+         if(nullptr == pLeavesMax3) {
+            cLeavesMax = size_t { 1 };
+         } else {
+            const IntEbmType countLeavesMax = *pLeavesMax3;
+            ++pLeavesMax3;
+            if(countLeavesMax <= IntEbmType { 1 }) {
+               cLeavesMax = size_t { 1 };
+            } else {
+               cLeavesMax = static_cast<size_t>(countLeavesMax);
+               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
+                  // were going to overflow because it will generate the same results as if we used the true number
+                  cLeavesMax = std::numeric_limits<size_t>::max();
+               }
+            }
+         }
+
          const Feature * const pFeature = pFeatureGroupEntry3->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(2 <= cBins); // otherwise this dimension would have been eliminated
@@ -478,8 +552,8 @@ public:
       EbmBoostingState * const pEbmBoostingState,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets,
-      const size_t cTreeSplitsMax,
       const GenerateUpdateOptionsType options,
+      const IntEbmType * const aLeavesMax,
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
       FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -498,8 +572,8 @@ public:
             pEbmBoostingState,
             pFeatureGroup,
             aHistogramBuckets,
-            cTreeSplitsMax,
             options,
+            aLeavesMax,
             pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
 #ifndef NDEBUG
@@ -511,8 +585,8 @@ public:
             pEbmBoostingState,
             pFeatureGroup,
             aHistogramBuckets,
-            cTreeSplitsMax,
             options,
+            aLeavesMax,
             pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
 #ifndef NDEBUG
@@ -533,8 +607,8 @@ public:
       EbmBoostingState * const pEbmBoostingState,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets,
-      const size_t cTreeSplitsMax,
       const GenerateUpdateOptionsType options,
+      const IntEbmType * const aLeavesMax,
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
       FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -550,8 +624,8 @@ public:
          pEbmBoostingState,
          pFeatureGroup,
          aHistogramBuckets,
-         cTreeSplitsMax,
          options,
+         aLeavesMax,
          pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
 #ifndef NDEBUG
@@ -565,8 +639,8 @@ extern bool CutRandom(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureGroup * const pFeatureGroup,
    HistogramBucketBase * const aHistogramBuckets,
-   const size_t cTreeSplitsMax,
    const GenerateUpdateOptionsType options,
+   const IntEbmType * const aLeavesMax,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -580,8 +654,8 @@ extern bool CutRandom(
          pEbmBoostingState,
          pFeatureGroup,
          aHistogramBuckets,
-         cTreeSplitsMax,
          options,
+         aLeavesMax,
          pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
 #ifndef NDEBUG
@@ -594,8 +668,8 @@ extern bool CutRandom(
          pEbmBoostingState,
          pFeatureGroup,
          aHistogramBuckets,
-         cTreeSplitsMax,
          options,
+         aLeavesMax,
          pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
 #ifndef NDEBUG

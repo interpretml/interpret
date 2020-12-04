@@ -57,8 +57,8 @@ ebm_classify <- function(
    early_stopping_rounds = 50, 
    early_stopping_tolerance = 1e-4,
    max_rounds = 5000, 
-   max_leaves = 3,
    min_samples_leaf = 2,
+   max_leaves = 3,
    random_state = 42
 ) {
    min_samples_bin <- 5
@@ -146,8 +146,8 @@ ebm_classify <- function(
          early_stopping_rounds,
          early_stopping_tolerance,
          max_rounds,
+         min_samples_leaf, 
          max_leaves, 
-         min_samples_leaf
       )
       for(i_feature in 1:n_features) {
          additive_terms[[col_names[i_feature]]] <- 

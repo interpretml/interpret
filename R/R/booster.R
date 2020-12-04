@@ -141,16 +141,16 @@ boosting_step <- function(
    booster_pointer, 
    index_feature_group, 
    learning_rate, 
-   count_tree_splits_max, 
    count_samples_required_for_child_split_min, 
+   max_leaves, 
    training_weights, 
    validation_weights
 ) {
    stopifnot(class(booster_pointer) == "externalptr")
    index_feature_group <- as.double(index_feature_group)
    learning_rate <- as.double(learning_rate)
-   count_tree_splits_max <- as.double(count_tree_splits_max)
    count_samples_required_for_child_split_min <- as.double(count_samples_required_for_child_split_min)
+   max_leaves <- as.double(max_leaves)
    if(!is.null(training_weights)) {
       training_weights <- as.double(training_weights)
    }
@@ -163,8 +163,8 @@ boosting_step <- function(
       booster_pointer, 
       index_feature_group, 
       learning_rate, 
-      count_tree_splits_max, 
       count_samples_required_for_child_split_min, 
+      max_leaves, 
       training_weights, 
       validation_weights
    )
@@ -270,6 +270,7 @@ native_ebm_boosting <- function(
    return(self)
 }
 
+# TODO: match the order of the parameters that we use in python
 cyclic_gradient_boost <- function(
    model_type,
    n_classes,
@@ -287,8 +288,8 @@ cyclic_gradient_boost <- function(
    early_stopping_rounds, 
    early_stopping_tolerance,
    max_rounds, 
-   max_leaves,
-   min_samples_leaf
+   min_samples_leaf, 
+   max_leaves, 
 ) {
    min_metric <- Inf
    episode_index <- 0
@@ -317,8 +318,8 @@ cyclic_gradient_boost <- function(
                ebm_booster$booster_pointer, 
                feature_group_index - 1, 
                learning_rate, 
-               max_leaves - 1, 
                min_samples_leaf, 
+               max_leaves, 
                NULL,
                NULL
             )

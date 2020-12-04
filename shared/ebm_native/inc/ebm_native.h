@@ -456,10 +456,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting, 
    IntEbmType indexFeatureGroup, 
-   FloatEbmType learningRate, 
-   IntEbmType countTreeSplitsMax, 
-   IntEbmType countSamplesRequiredForChildSplitMin, 
    GenerateUpdateOptionsType options, 
+   FloatEbmType learningRate, 
+   IntEbmType countSamplesRequiredForChildSplitMin, 
+   const IntEbmType * leavesMax, 
    const FloatEbmType * trainingWeights, 
    const FloatEbmType * validationWeights, 
    FloatEbmType * gainOut
@@ -475,10 +475,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyM
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
    IntEbmType indexFeatureGroup,
-   FloatEbmType learningRate,
-   IntEbmType countTreeSplitsMax,
-   IntEbmType countSamplesRequiredForChildSplitMin,
    GenerateUpdateOptionsType options,
+   FloatEbmType learningRate,
+   IntEbmType countSamplesRequiredForChildSplitMin,
+   const IntEbmType * leavesMax,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricOut

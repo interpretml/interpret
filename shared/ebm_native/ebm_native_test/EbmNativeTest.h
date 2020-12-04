@@ -209,8 +209,76 @@ public:
 static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
 static constexpr IntEbmType k_countInnerBagsDefault = IntEbmType { 0 };
 static constexpr FloatEbmType k_learningRateDefault = FloatEbmType { 0.01 };
-static constexpr IntEbmType k_countTreeSplitsMaxDefault = IntEbmType { 4 };
 static constexpr IntEbmType k_countSamplesRequiredForChildSplitMinDefault = IntEbmType { 1 };
+
+static constexpr IntEbmType k_leavesMaxFillDefault = 5;
+// 64 dimensions is the most we can express with a 64 bit IntEbmType
+static const std::vector<IntEbmType> k_leavesMaxDefault = { 
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault },
+   IntEbmType { k_leavesMaxFillDefault }
+};
 
 class TestApi {
    enum class Stage {
@@ -293,8 +361,8 @@ public:
       const std::vector<FloatEbmType> validationWeights = {}, 
       const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
       const FloatEbmType learningRate = k_learningRateDefault,
-      const IntEbmType countTreeSplitsMax = k_countTreeSplitsMaxDefault, 
-      const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault
+      const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault,
+      const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
    );
    FloatEbmType GetBestModelPredictorScore(
       const size_t iFeatureGroup, 

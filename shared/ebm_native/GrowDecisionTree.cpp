@@ -408,8 +408,8 @@ public:
       const HistogramBucketBase * const aHistogramBucketBase,
       const size_t cSamplesTotal,
       const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
-      const size_t cTreeSplitsMax,
       const size_t cSamplesRequiredForChildSplitMin,
+      const size_t cLeavesMax,
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
       FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -434,7 +434,7 @@ public:
       EBM_ASSERT(nullptr != pTotalGain);
       EBM_ASSERT(1 <= cSamplesTotal); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(2 <= cHistogramBuckets); // filter these out at the start where we can handle this case easily
-      EBM_ASSERT(1 <= cTreeSplitsMax); // filter these out at the start where we can handle this case easily
+      EBM_ASSERT(2 <= cLeavesMax); // filter these out at the start where we can handle this case easily
 
       // there will be at least one split
 
@@ -489,7 +489,7 @@ public:
          cVectorLength * sizeof(*aSumHistogramBucketVectorEntry)
       );
 
-      size_t cSplits;
+      size_t cLeaves;
       if(ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
          pEbmBoostingState,
          aHistogramBucket,
@@ -528,7 +528,7 @@ public:
          return false;
       }
 
-      if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
+      if(UNPREDICTABLE(PREDICTABLE(2 == cLeavesMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
          // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
 
          EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<bClassification>(
@@ -617,7 +617,7 @@ public:
             CompareTreeNodeSplittingGain<bClassification>
          > bestTreeNodeToSplit;
 
-         cSplits = 0;
+         cLeaves = size_t { 1 };
          TreeNode<bClassification> * pParentTreeNode = pRootTreeNode;
 
          // we skip 3 tree nodes.  The root, the left child of the root, and the right child of the root
@@ -746,8 +746,8 @@ public:
 
                pRightChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
             }
-            ++cSplits;
-         } while(cSplits < cTreeSplitsMax && UNLIKELY(!bestTreeNodeToSplit.empty()));
+            ++cLeaves;
+         } while(cLeaves < cLeavesMax && UNLIKELY(!bestTreeNodeToSplit.empty()));
          // we DON'T need to call SetLeafAfterDone() on any items that remain in the bestTreeNodeToSplit queue because everything in that queue has set 
          // a non-NaN nodeSplittingScore value
 
@@ -767,16 +767,16 @@ public:
          return true;
       }
 
-      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cSplits))) {
-         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cSplits)");
+      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 }))) {
+         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 })");
          return true;
       }
-      if(IsMultiplyError(cVectorLength, cSplits + 1)) {
-         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree IsMultiplyError(cVectorLength, cSplits + 1)");
+      if(IsMultiplyError(cVectorLength, cLeaves)) {
+         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree IsMultiplyError(cVectorLength, cLeaves)");
          return true;
       }
-      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * (cSplits + 1)))) {
-         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * (cSplits + 1)");
+      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves))) {
+         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves");
          return true;
       }
       ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
@@ -787,9 +787,9 @@ public:
       LOG_0(TraceLevelVerbose, "Exited Flatten");
 
       EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0) <= pDivisions);
-      EBM_ASSERT(static_cast<size_t>(pDivisions - pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)) == cSplits);
+      EBM_ASSERT(static_cast<size_t>(pDivisions - pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)) == cLeaves - 1);
       EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer() < pValues);
-      EBM_ASSERT(static_cast<size_t>(pValues - pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()) == cVectorLength * (cSplits + 1));
+      EBM_ASSERT(static_cast<size_t>(pValues - pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()) == cVectorLength * cLeaves);
 
       return false;
    }
@@ -801,8 +801,8 @@ extern bool GrowDecisionTree(
    const HistogramBucketBase * const aHistogramBucketBase,
    const size_t cSamplesTotal,
    const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
-   const size_t cTreeSplitsMax,
    const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cLeavesMax,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -822,8 +822,8 @@ extern bool GrowDecisionTree(
             aHistogramBucketBase,
             cSamplesTotal,
             aSumHistogramBucketVectorEntryBase,
-            cTreeSplitsMax,
             cSamplesRequiredForChildSplitMin,
+            cLeavesMax,
             pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
 #ifndef NDEBUG
@@ -837,8 +837,8 @@ extern bool GrowDecisionTree(
             aHistogramBucketBase,
             cSamplesTotal,
             aSumHistogramBucketVectorEntryBase,
-            cTreeSplitsMax,
             cSamplesRequiredForChildSplitMin,
+            cLeavesMax,
             pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
 #ifndef NDEBUG
@@ -854,8 +854,8 @@ extern bool GrowDecisionTree(
          aHistogramBucketBase,
          cSamplesTotal,
          aSumHistogramBucketVectorEntryBase,
-         cTreeSplitsMax,
          cSamplesRequiredForChildSplitMin,
+         cLeavesMax,
          pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
 #ifndef NDEBUG

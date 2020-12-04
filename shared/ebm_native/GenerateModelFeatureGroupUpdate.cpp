@@ -56,8 +56,8 @@ extern bool GrowDecisionTree(
    const HistogramBucketBase * const aHistogramBucketBase,
    const size_t cSamplesTotal,
    const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
-   const size_t cTreeSplitsMax,
    const size_t cSamplesRequiredForChildSplitMin,
+   const size_t cLeavesMax,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -84,8 +84,8 @@ extern bool CutRandom(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureGroup * const pFeatureGroup,
    HistogramBucketBase * const aHistogramBuckets,
-   const size_t cTreeSplitsMax,
    const GenerateUpdateOptionsType options,
+   const IntEbmType * const aLeavesMax,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -182,8 +182,8 @@ static bool BoostSingleDimensional(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
-   const size_t cTreeSplitsMax,
    const size_t cSamplesRequiredForChildSplitMin,
+   const IntEbmType countLeavesMax,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
@@ -191,6 +191,14 @@ static bool BoostSingleDimensional(
 
    EBM_ASSERT(1 == pFeatureGroup->GetCountFeatures());
    size_t cTotalBuckets = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
+
+   EBM_ASSERT(IntEbmType { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
+   size_t cLeavesMax = static_cast<size_t>(countLeavesMax);
+   if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+      // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we were going to overflow because it will generate 
+      // the same results as if we used the true number
+      cLeavesMax = std::numeric_limits<size_t>::max();
+   }
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
@@ -283,8 +291,8 @@ static bool BoostSingleDimensional(
       aHistogramBuckets,
       cSamplesTotal,
       aSumHistogramBucketVectorEntry,
-      cTreeSplitsMax,
       cSamplesRequiredForChildSplitMin,
+      cLeavesMax, 
       pSmallChangeToModelOverwriteSingleSamplingSet,
       pTotalGain
 #ifndef NDEBUG
@@ -594,8 +602,8 @@ static bool BoostRandom(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
-   const size_t cTreeSplitsMax,
    const GenerateUpdateOptionsType options,
+   const IntEbmType * const aLeavesMax,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
@@ -676,8 +684,8 @@ static bool BoostRandom(
       pEbmBoostingState,
       pFeatureGroup,
       aHistogramBuckets,
-      cTreeSplitsMax,
       options,
+      aLeavesMax,
       pSmallChangeToModelOverwriteSingleSamplingSet,
       pTotalGain
 #ifndef NDEBUG
@@ -706,10 +714,10 @@ static bool BoostRandom(
 static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    EbmBoostingState * const pEbmBoostingState,
    const size_t iFeatureGroup,
-   const FloatEbmType learningRate,
-   const size_t cTreeSplitsMax,
-   const size_t cSamplesRequiredForChildSplitMin,
    const GenerateUpdateOptionsType options,
+   const FloatEbmType learningRate,
+   const size_t cSamplesRequiredForChildSplitMin,
+   const IntEbmType * const aLeavesMax, 
    const FloatEbmType * const aTrainingWeights,
    const FloatEbmType * const aValidationWeights,
    FloatEbmType * const pGainReturn
@@ -740,7 +748,8 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain;
          if(UNLIKELY(UNLIKELY(0 == pFeatureGroup->GetCountFeatures()) || 
-            UNLIKELY(PREDICTABLE(1 == pFeatureGroup->GetCountFeatures()) && UNLIKELY(0 == cTreeSplitsMax))))
+            UNLIKELY(PREDICTABLE(1 == pFeatureGroup->GetCountFeatures()) && 
+            UNLIKELY(UNLIKELY(nullptr == aLeavesMax) || UNLIKELY(*aLeavesMax <= IntEbmType { 1 })))))
          {
             if(BoostZeroDimensional(
                pEbmBoostingState,
@@ -765,8 +774,8 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                pEbmBoostingState,
                pFeatureGroup,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
-               cTreeSplitsMax,
                options,
+               aLeavesMax, 
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
@@ -776,12 +785,13 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                return nullptr;
             }
          } else if(1 == pFeatureGroup->GetCountFeatures()) {
+            EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
             if(BoostSingleDimensional(
                pEbmBoostingState,
                pFeatureGroup,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
-               cTreeSplitsMax,
                cSamplesRequiredForChildSplitMin,
+               *aLeavesMax,
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
@@ -934,35 +944,45 @@ static int g_cLogGenerateModelFeatureGroupUpdateParametersMessages = 10;
 EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting,
    IntEbmType indexFeatureGroup,
-   FloatEbmType learningRate,
-   IntEbmType countTreeSplitsMax,
-   IntEbmType countSamplesRequiredForChildSplitMin,
    GenerateUpdateOptionsType options,
+   FloatEbmType learningRate,
+   IntEbmType countSamplesRequiredForChildSplitMin,
+   const IntEbmType * leavesMax,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * gainOut
 ) {
+   // TODO: BIG ISSUE: if we reduced the number of dimensions because one of the dimensions had only 1 state,
+   //                  then the dimensions of leavesMax won't match up with the dimensions in our FeatureGroup
+   //                  we need to either re-include the AtomicFeatures back into the Feature group array OR
+   //                  we need to have a bool array of some kind to indicate which ones were eliminated.  I think
+   //                  keeping the AtomicFeature in the FeatureGroup would be better
+   //                  OR we could introduce a dimension remapping function, which could actually be the best since
+   //                  it would give us flexibility.  For the time being this issue isn't causing any bugs since
+   //                  in python/R we only allow a single value for leaveMax, so they should all be the same and
+   //                  if we eliminate a dimension then we just refer to less dimensions and that's ok
+
    LOG_COUNTED_N(
       &g_cLogGenerateModelFeatureGroupUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered GenerateModelFeatureGroupUpdate: "
+      "GenerateModelFeatureGroupUpdate: "
       "ebmBoosting=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
-      "learningRate=%" FloatEbmTypePrintf ", "
-      "countTreeSplitsMax=%" IntEbmTypePrintf ", "
-      "countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", "
       "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
+      "learningRate=%" FloatEbmTypePrintf ", "
+      "countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", "
+      "leavesMax=%p, "
       "trainingWeights=%p, "
       "validationWeights=%p, "
       "gainOut=%p"
       ,
       static_cast<void *>(ebmBoosting),
       indexFeatureGroup,
+      static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
       learningRate,
-      countTreeSplitsMax,
       countSamplesRequiredForChildSplitMin,
-      static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned convresion is defined behavior in C++
+      static_cast<const void *>(leavesMax),
       static_cast<const void *>(trainingWeights),
       static_cast<const void *>(validationWeights),
       static_cast<void *>(gainOut)
@@ -1009,6 +1029,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       "Entered GenerateModelFeatureGroupUpdate"
    );
 
+   // TODO : test if our GenerateUpdateOptionsType options flags only include flags that we use
+
    if(std::isnan(learningRate)) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is NaN");
    } else if(std::isinf(learningRate)) {
@@ -1017,19 +1039,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is zero");
    } else if(learningRate < FloatEbmType { 0 }) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is negative");
-   }
-
-   if(countTreeSplitsMax < 0) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countTreeSplitsMax is negative.  Adjusting to zero.");
-      countTreeSplitsMax = 0;
-   } else if(0 == countTreeSplitsMax) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countTreeSplitsMax is zero.");
-   }
-   size_t cTreeSplitsMax = static_cast<size_t>(countTreeSplitsMax);
-   if(!IsNumberConvertable<size_t>(countTreeSplitsMax)) {
-      // we can never exceed a size_t number of splits, so let's just set it to the maximum if we were going to overflow because it will generate 
-      // the same results as if we used the true number
-      cTreeSplitsMax = std::numeric_limits<size_t>::max();
    }
 
    size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
@@ -1044,7 +1053,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
-   // TODO : test if our GenerateUpdateOptionsType options flags only include flags that we use
+   if(nullptr == leavesMax) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate leavesMax was null, so there won't be any splits");
+   }
 
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
    EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
@@ -1067,10 +1078,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    FloatEbmType * aModelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdateInternal(
       pEbmBoostingState,
       iFeatureGroup,
-      learningRate,
-      cTreeSplitsMax,
-      cSamplesRequiredForChildSplitMin,
       options,
+      learningRate,
+      cSamplesRequiredForChildSplitMin,
+      leavesMax,
       trainingWeights,
       validationWeights,
       gainOut

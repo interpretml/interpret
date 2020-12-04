@@ -392,8 +392,8 @@ class BaseCoreEBM:
         # Native
         inner_bags,
         learning_rate,
-        max_leaves,
         min_samples_leaf,
+        max_leaves,
         # Overall
         random_state,
     ):
@@ -416,8 +416,8 @@ class BaseCoreEBM:
         # Arguments for internal EBM.
         self.inner_bags = inner_bags
         self.learning_rate = learning_rate
-        self.max_leaves = max_leaves
         self.min_samples_leaf = min_samples_leaf
+        self.max_leaves = max_leaves
 
         # Arguments for overall
         self.random_state = random_state
@@ -510,10 +510,10 @@ class BaseCoreEBM:
             scores_val=None,
             n_inner_bags=self.inner_bags,
             random_state=self.random_state,
-            learning_rate=self.learning_rate,
-            max_leaves=self.max_leaves,
-            min_samples_leaf=self.min_samples_leaf,
             generate_update_options=NativeHelper.GenerateUpdateOptions_Default, 
+            learning_rate=self.learning_rate,
+            min_samples_leaf=self.min_samples_leaf,
+            max_leaves=self.max_leaves,
             max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
             early_stopping_rounds=self.early_stopping_rounds,
@@ -586,10 +586,10 @@ class BaseCoreEBM:
             scores_val=scores_val,
             n_inner_bags=self.inner_bags,
             random_state=self.random_state,
-            learning_rate=self.learning_rate,
-            max_leaves=self.max_leaves,
-            min_samples_leaf=self.min_samples_leaf,
             generate_update_options=NativeHelper.GenerateUpdateOptions_Default, 
+            learning_rate=self.learning_rate,
+            min_samples_leaf=self.min_samples_leaf,
+            max_leaves=self.max_leaves,
             max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
             early_stopping_rounds=self.early_stopping_rounds,
@@ -680,11 +680,11 @@ class BaseEBM(BaseEstimator):
         early_stopping_rounds,
         # Native
         learning_rate,
-        max_leaves,
         # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets"
         # says use 6 as the minimum samples https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
         # TODO PK try setting this (not here, but in our caller) to 6 and run tests to verify the best value.
         min_samples_leaf,
+        max_leaves,
         # Overall
         n_jobs,
         random_state,
@@ -715,8 +715,8 @@ class BaseEBM(BaseEstimator):
 
         # Arguments for internal EBM.
         self.learning_rate = learning_rate
-        self.max_leaves = max_leaves
         self.min_samples_leaf = min_samples_leaf
+        self.max_leaves = max_leaves
 
         # Arguments for overall
         self.n_jobs = n_jobs
@@ -823,8 +823,8 @@ class BaseEBM(BaseEstimator):
                     # Native
                     inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
-                    max_leaves=self.max_leaves,
                     min_samples_leaf=self.min_samples_leaf,
+                    max_leaves=self.max_leaves,
                     # Overall
                     random_state=seed
                 )
@@ -850,8 +850,8 @@ class BaseEBM(BaseEstimator):
                     # Native
                     inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
-                    max_leaves=self.max_leaves,
                     min_samples_leaf=self.min_samples_leaf,
+                    max_leaves=self.max_leaves,
                     # Overall
                     random_state=seed,
                 )
@@ -1482,8 +1482,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         early_stopping_tolerance=1e-4,
         max_rounds=5000,
         # Trees
-        max_leaves=3,
         min_samples_leaf=2,
+        max_leaves=3,
         # Overall
         n_jobs=-2,
         random_state=42,
@@ -1506,8 +1506,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             max_rounds: Number of rounds for boosting.
-            max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
         """
@@ -1532,8 +1532,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             early_stopping_tolerance=early_stopping_tolerance,
             max_rounds=max_rounds,
             # Trees
-            max_leaves=max_leaves,
             min_samples_leaf=min_samples_leaf,
+            max_leaves=max_leaves,
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
@@ -1630,8 +1630,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         early_stopping_tolerance=1e-4,
         max_rounds=5000,
         # Trees
-        max_leaves=3,
         min_samples_leaf=2,
+        max_leaves=3,
         # Overall
         n_jobs=-2,
         random_state=42,
@@ -1654,8 +1654,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             max_rounds: Number of rounds for boosting.
-            max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
         """
@@ -1680,8 +1680,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             early_stopping_tolerance=early_stopping_tolerance,
             max_rounds=max_rounds,
             # Trees
-            max_leaves=max_leaves,
             min_samples_leaf=min_samples_leaf,
+            max_leaves=max_leaves,
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,

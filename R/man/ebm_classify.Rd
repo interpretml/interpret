@@ -16,8 +16,8 @@ ebm_classify(
   early_stopping_rounds = 50, 
   early_stopping_tolerance = 1e-4,
   max_rounds = 5000, 
-  max_leaves = 3,
   min_samples_leaf = 2,
+  max_leaves = 3,
   random_state = 42
 )
 }
@@ -32,8 +32,8 @@ ebm_classify(
   \item{early_stopping_rounds}{how many rounds without improvement before we quit}
   \item{early_stopping_tolerance}{how much does the round need to improve by to be considered as an advancement}
   \item{max_rounds}{number of boosting rounds}
-  \item{max_leaves}{how many leaves allowed}
   \item{min_samples_leaf}{number of samples required for a split}
+  \item{max_leaves}{how many leaves allowed}
   \item{random_state}{random seed}
 }
 \value{

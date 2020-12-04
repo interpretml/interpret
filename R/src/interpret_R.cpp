@@ -1096,16 +1096,16 @@ SEXP BoostingStep_R(
    SEXP ebmBoosting,
    SEXP indexFeatureGroup,
    SEXP learningRate,
-   SEXP countTreeSplitsMax,
    SEXP countSamplesRequiredForChildSplitMin,
+   SEXP leavesMax,
    SEXP trainingWeights,
    SEXP validationWeights
 ) {
    EBM_ASSERT(nullptr != ebmBoosting);
    EBM_ASSERT(nullptr != indexFeatureGroup);
    EBM_ASSERT(nullptr != learningRate);
-   EBM_ASSERT(nullptr != countTreeSplitsMax);
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
+   EBM_ASSERT(nullptr != leavesMax);
    EBM_ASSERT(nullptr != trainingWeights);
    EBM_ASSERT(nullptr != validationWeights);
 
@@ -1136,23 +1136,6 @@ SEXP BoostingStep_R(
    }
    double learningRateLocal = REAL(learningRate)[0];
 
-   if(!IsSingleDoubleVector(countTreeSplitsMax)) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(countTreeSplitsMax)");
-      return R_NilValue;
-   }
-   double doubleCountTreeSplitsMax = REAL(countTreeSplitsMax)[0];
-   IntEbmType cTreeSplitsMax;
-   static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountTreeSplitsMax) || static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountTreeSplitsMax) {
-      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countTreeSplitsMax overflow");
-      cTreeSplitsMax = std::numeric_limits<IntEbmType>::max();
-   } else if(doubleCountTreeSplitsMax < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countTreeSplitsMax underflow");
-      cTreeSplitsMax = std::numeric_limits<IntEbmType>::lowest();
-   } else {
-      cTreeSplitsMax = static_cast<IntEbmType>(doubleCountTreeSplitsMax);
-   }
-
    if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
       LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
@@ -1170,6 +1153,18 @@ SEXP BoostingStep_R(
       cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
       cSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
+   }
+
+   size_t cDimensions;
+   const IntEbmType * aLeavesMax;
+   if(ConvertDoublesToIndexes(leavesMax, &cDimensions, &aLeavesMax)) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R ConvertDoublesToIndexes(leavesMax, &cDimensions, &aLeavesMax)");
+      return R_NilValue;
+   }
+   // TODO: check that iFeatureGroup is below pEbmBoosting->GetCountFeatureGroups()
+   if(cDimensions < pEbmBoosting->GetFeatureGroups()[iFeatureGroup]->GetCountFeatures()) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R cDimensions < pEbmBoosting->GetFeatureGroups()[iFeatureGroup]->GetCountFeatures()");
+      return R_NilValue;
    }
 
    double * pTrainingWeights = nullptr;
@@ -1212,10 +1207,10 @@ SEXP BoostingStep_R(
    if(0 != BoostingStep(
       reinterpret_cast<PEbmBoosting>(pEbmBoosting), 
       iFeatureGroup, 
-      learningRateLocal, 
-      cTreeSplitsMax, 
+      GenerateUpdateOptions_Default,
+      learningRateLocal,
       cSamplesRequiredForChildSplitMin, 
-      GenerateUpdateOptions_Default, 
+      aLeavesMax, 
       pTrainingWeights, 
       pValidationWeights, 
       &validationMetricOut
