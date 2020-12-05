@@ -270,7 +270,6 @@ native_ebm_boosting <- function(
    return(self)
 }
 
-# TODO: match the order of the parameters that we use in python
 cyclic_gradient_boost <- function(
    model_type,
    n_classes,
@@ -283,13 +282,13 @@ cyclic_gradient_boost <- function(
    y_val,
    scores_val,
    inner_bags,
-   random_state,
    learning_rate,
+   min_samples_leaf, 
+   max_leaves, 
    early_stopping_rounds, 
    early_stopping_tolerance,
    max_rounds, 
-   min_samples_leaf, 
-   max_leaves, 
+   random_state,
 ) {
    min_metric <- Inf
    episode_index <- 0

@@ -49,17 +49,17 @@ get_count_scores_c <- function(n_classes) {
 ebm_classify <- function(
    X, 
    y, 
-   max_bins = 255,
+   max_bins = 255, 
    outer_bags = 16, 
-   inner_bags = 0,
+   inner_bags = 0, 
    learning_rate = 0.01, 
    validation_size = 0.15, 
    early_stopping_rounds = 50, 
-   early_stopping_tolerance = 1e-4,
+   early_stopping_tolerance = 1e-4, 
    max_rounds = 5000, 
-   min_samples_leaf = 2,
-   max_leaves = 3,
-   random_state = 42
+   min_samples_leaf = 2, 
+   max_leaves = 3, 
+   random_state = 42, 
 ) {
    min_samples_bin <- 5
    humanized <- FALSE # TODO this should be it's own binning type 'quantile_humanized' eventually
@@ -107,7 +107,6 @@ ebm_classify <- function(
       additive_terms[[col_name]] <- vector("numeric", length(bin_cuts[[col_name]]) + 1)
    }
 
-   seed <- random_state
    sample_counts <- vector("numeric", length(y))
 
    n_classes <- 2 # only binary classification for now
@@ -120,9 +119,9 @@ ebm_classify <- function(
    scores_val <- vector("numeric", num_scores * validation_size)
 
    for(i_outer_bag in 1:outer_bags) {
-      seed <- generate_random_number(seed, 1416147523)
+      random_state <- generate_random_number(random_state, 1416147523)
       # WARNING: sample_counts is modified in-place
-      sample_without_replacement(seed, train_size, validation_size, sample_counts)
+      sample_without_replacement(random_state, train_size, validation_size, sample_counts)
 
       X_train <- X_binned[0 < sample_counts, ]
       y_train <- y[0 < sample_counts]
@@ -141,13 +140,13 @@ ebm_classify <- function(
          y_val,
          scores_val,
          inner_bags,
-         seed,
          learning_rate,
+         min_samples_leaf, 
+         max_leaves, 
          early_stopping_rounds,
          early_stopping_tolerance,
          max_rounds,
-         min_samples_leaf, 
-         max_leaves, 
+         random_state,
       )
       for(i_feature in 1:n_features) {
          additive_terms[[col_names[i_feature]]] <- 

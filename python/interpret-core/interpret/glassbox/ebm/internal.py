@@ -1159,18 +1159,17 @@ class NativeHelper:
         y_val,
         scores_val,
         n_inner_bags,
-        random_state,
         generate_update_options,
         learning_rate,
         min_samples_leaf,
         max_leaves,
-        max_rounds,
-        early_stopping_tolerance,
         early_stopping_rounds,
+        early_stopping_tolerance,
+        max_rounds,
+        random_state,
         name,
         optional_temp_params=None,
     ):
-
         min_metric = np.inf
         episode_index = 0
         with closing(

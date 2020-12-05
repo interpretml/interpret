@@ -698,15 +698,14 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    m_stage = Stage::InitializedBoosting;
 }
 
-// TODO: harmonize the order of these parameters with GenerateModelFeatureGroupUpdate
 FloatEbmType TestApi::Boost(
    const IntEbmType indexFeatureGroup,
-   const std::vector<FloatEbmType> trainingWeights,
-   const std::vector<FloatEbmType> validationWeights,
    const GenerateUpdateOptionsType options,
    const FloatEbmType learningRate,
    const IntEbmType countSamplesRequiredForChildSplitMin,
-   const std::vector<IntEbmType> leavesMax
+   const std::vector<IntEbmType> leavesMax,
+   const std::vector<FloatEbmType> trainingWeights,
+   const std::vector<FloatEbmType> validationWeights
 ) {
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);

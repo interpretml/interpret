@@ -751,6 +751,8 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
             UNLIKELY(PREDICTABLE(1 == pFeatureGroup->GetCountFeatures()) && 
             UNLIKELY(UNLIKELY(nullptr == aLeavesMax) || UNLIKELY(*aLeavesMax <= IntEbmType { 1 })))))
          {
+            // TODO: add a log warning here that we're boosting zero dimensionally for whatever reason
+
             if(BoostZeroDimensional(
                pEbmBoostingState,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],

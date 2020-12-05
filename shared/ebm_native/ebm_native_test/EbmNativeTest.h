@@ -356,13 +356,14 @@ public:
    void AddValidationSamples(const std::vector<RegressionSample> samples);
    void AddValidationSamples(const std::vector<ClassificationSample> samples);
    void InitializeBoosting(const IntEbmType countInnerBags = k_countInnerBagsDefault);
-   FloatEbmType Boost(const IntEbmType indexFeatureGroup, 
-      const std::vector<FloatEbmType> trainingWeights = {}, 
-      const std::vector<FloatEbmType> validationWeights = {}, 
+   FloatEbmType Boost(
+      const IntEbmType indexFeatureGroup,
       const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
       const FloatEbmType learningRate = k_learningRateDefault,
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault,
-      const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
+      const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault,
+      const std::vector<FloatEbmType> trainingWeights = {},
+      const std::vector<FloatEbmType> validationWeights = {}
    );
    FloatEbmType GetBestModelPredictorScore(
       const size_t iFeatureGroup, 
