@@ -567,7 +567,7 @@ static Booster * AllocateBoosting(
    const IntEbmType countInnerBags,
    const FloatEbmType * const optionalTempParams
 ) {
-   // TODO : give AllocateBoosting the same calling parameter order as InitializeBoostingClassification
+   // TODO : give AllocateBoosting the same calling parameter order as CreateClassificationBooster
 
    if(countFeatures < 0) {
       LOG_0(TraceLevelError, "ERROR AllocateBoosting countFeatures must be positive");
@@ -696,7 +696,7 @@ static Booster * AllocateBoosting(
    return pBooster;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
+EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
@@ -717,7 +717,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Initia
 ) {
    LOG_N(
       TraceLevelInfo, 
-      "Entered InitializeBoostingClassification: "
+      "Entered CreateClassificationBooster: "
       "randomSeed=%" SeedEbmTypePrintf ", "
       "countTargetClasses=%" IntEbmTypePrintf ", "
       "countFeatures=%" IntEbmTypePrintf ", "
@@ -755,15 +755,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Initia
       static_cast<const void *>(optionalTempParams)
       );
    if(countTargetClasses < 0) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification countTargetClasses can't be negative");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster countTargetClasses can't be negative");
       return nullptr;
    }
    if(0 == countTargetClasses && (0 != countTrainingSamples || 0 != countValidationSamples)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification countTargetClasses can't be zero unless there are no training and no validation cases");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster countTargetClasses can't be zero unless there are no training and no validation cases");
       return nullptr;
    }
    if(!IsNumberConvertable<ptrdiff_t>(countTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING InitializeBoostingClassification !IsNumberConvertable<ptrdiff_t>(countTargetClasses)");
+      LOG_0(TraceLevelWarning, "WARNING CreateClassificationBooster !IsNumberConvertable<ptrdiff_t>(countTargetClasses)");
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
@@ -786,11 +786,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Initia
       countInnerBags,
       optionalTempParams
    ));
-   LOG_N(TraceLevelInfo, "Exited InitializeBoostingClassification %p", static_cast<void *>(boosterHandle));
+   LOG_N(TraceLevelInfo, "Exited CreateClassificationBooster %p", static_cast<void *>(boosterHandle));
    return boosterHandle;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
+EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
    SeedEbmType randomSeed,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
@@ -810,7 +810,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Initia
 ) {
    LOG_N(
       TraceLevelInfo, 
-      "Entered InitializeBoostingRegression: "
+      "Entered CreateRegressionBooster: "
       "randomSeed=%" SeedEbmTypePrintf ", "
       "countFeatures=%" IntEbmTypePrintf ", "
       "features=%p, "
@@ -864,7 +864,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Initia
       countInnerBags,
       optionalTempParams
    ));
-   LOG_N(TraceLevelInfo, "Exited InitializeBoostingRegression %p", static_cast<void *>(boosterHandle));
+   LOG_N(TraceLevelInfo, "Exited CreateRegressionBooster %p", static_cast<void *>(boosterHandle));
    return boosterHandle;
 }
 
@@ -1036,15 +1036,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
    return pRet;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBoosting(
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
 ) {
-   LOG_N(TraceLevelInfo, "Entered FreeBoosting: boosterHandle=%p", static_cast<void *>(boosterHandle));
+   LOG_N(TraceLevelInfo, "Entered FreeBooster: boosterHandle=%p", static_cast<void *>(boosterHandle));
 
    Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
 
    // it's legal to call free on nullptr, just like for free().  This is checked inside Booster::Free()
    Booster::Free(pBooster);
 
-   LOG_0(TraceLevelInfo, "Exited FreeBoosting");
+   LOG_0(TraceLevelInfo, "Exited FreeBooster");
 }

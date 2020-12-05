@@ -4,18 +4,18 @@ EXPORTS
   SetLogMessageFunction
   SetTraceLevel
   GetTraceLevelString
-  InitializeBoostingClassification
-  InitializeBoostingRegression
+  CreateClassificationBooster
+  CreateRegressionBooster
   GenerateModelFeatureGroupUpdate
   ApplyModelFeatureGroupUpdate
   BoostingStep
   GetBestModelFeatureGroup
   GetCurrentModelFeatureGroup
-  FreeBoosting
-  InitializeInteractionClassification
-  InitializeInteractionRegression
+  FreeBooster
+  CreateClassificationInteractionDetector
+  CreateRegressionInteractionDetector
   CalculateInteractionScore
-  FreeInteraction
+  FreeInteractionDetector
   GenerateQuantileBinCuts
   GenerateWinsorizedBinCuts
   GenerateUniformBinCuts

@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-initialize_interaction_classification <- function(
+create_classification_interaction_detector <- function(
    count_target_classes, 
    features, 
    binned_data, 
@@ -18,7 +18,7 @@ initialize_interaction_classification <- function(
    }
 
    interaction_handle <- .Call(
-      InitializeInteractionClassification_R, 
+      CreateClassificationInteractionDetector_R, 
       count_target_classes, 
       features, 
       binned_data, 
@@ -26,12 +26,12 @@ initialize_interaction_classification <- function(
       predictor_scores
    )
    if(is.null(interaction_handle)) {
-      stop("error in InitializeInteractionClassification_R")
+      stop("error in CreateClassificationInteractionDetector_R")
    }
    return(interaction_handle)
 }
 
-initialize_interaction_regression <- function(features, binned_data, targets, predictor_scores) {
+create_regression_interaction_detector <- function(features, binned_data, targets, predictor_scores) {
    features <- as.list(features)
    binned_data <- as.double(binned_data)
    targets <- as.double(targets)
@@ -39,9 +39,9 @@ initialize_interaction_regression <- function(features, binned_data, targets, pr
       predictor_scores <- as.double(predictor_scores)
    }
 
-   interaction_handle <- .Call(InitializeInteractionRegression_R, features, binned_data, targets, predictor_scores)
+   interaction_handle <- .Call(CreateRegressionInteractionDetector_R, features, binned_data, targets, predictor_scores)
    if(is.null(interaction_handle)) {
-      stop("error in InitializeInteractionRegression_R")
+      stop("error in CreateRegressionInteractionDetector_R")
    }
    return(interaction_handle)
 }

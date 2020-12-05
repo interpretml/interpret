@@ -31,7 +31,7 @@ OBJECTS = interpret_R.o \
    $(NATIVEDIR)/GenerateModelFeatureGroupUpdate.o \
    $(NATIVEDIR)/GrowDecisionTree.o \
    $(NATIVEDIR)/InitializeResiduals.o \
-   $(NATIVEDIR)/InteractionDetection.o \
+   $(NATIVEDIR)/InteractionDetector.o \
    $(NATIVEDIR)/InterpretableNumerics.o \
    $(NATIVEDIR)/Logging.o \
    $(NATIVEDIR)/RandomExternal.o \

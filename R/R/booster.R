@@ -31,7 +31,7 @@ convert_feature_groups_to_c <- function(feature_groups) {
    return(list(feature_groups_c = feature_groups_c, feature_group_indexes = feature_group_indexes))
 }
 
-initialize_boosting_classification <- function(
+create_classification_booster <- function(
    random_seed,
    count_target_classes, 
    features, 
@@ -63,7 +63,7 @@ initialize_boosting_classification <- function(
    count_inner_bags <- as.integer(count_inner_bags)
 
    booster_handle <- .Call(
-      InitializeBoostingClassification_R, 
+      CreateClassificationBooster_R, 
       random_seed,
       count_target_classes, 
       features, 
@@ -78,12 +78,12 @@ initialize_boosting_classification <- function(
       count_inner_bags
    )
    if(is.null(booster_handle)) {
-      stop("Error in InitializeBoostingClassification")
+      stop("Error in CreateClassificationBooster")
    }
    return(booster_handle)
 }
 
-initialize_boosting_regression <- function(
+create_regression_booster <- function(
    random_seed,
    features, 
    feature_groups, 
@@ -113,7 +113,7 @@ initialize_boosting_regression <- function(
    count_inner_bags <- as.integer(count_inner_bags)
 
    booster_handle <- .Call(
-      InitializeBoostingRegression_R, 
+      CreateRegressionBooster_R, 
       random_seed,
       features, 
       feature_groups, 
@@ -127,13 +127,13 @@ initialize_boosting_regression <- function(
       count_inner_bags
    )
    if(is.null(booster_handle)) {
-      stop("Error in InitializeBoostingRegression")
+      stop("Error in CreateRegressionBooster")
    }
    return(booster_handle)
 }
 
 free_boosting <- function(booster_handle) {
-   .Call(FreeBoosting_R, booster_handle)
+   .Call(FreeBooster_R, booster_handle)
    return(NULL)
 }
 
@@ -196,23 +196,23 @@ get_current_model_feature_group <- function(booster_handle, index_feature_group)
    return(model_feature_group_tensor)
 }
 
-get_best_model <- function(native_ebm_boosting) {
+get_best_model <- function(native_ebm_booster) {
    model <- lapply(
-      seq_along(native_ebm_boosting$feature_groups), 
-      function(i) { get_best_model_feature_group(native_ebm_boosting$booster_handle, i - 1) }
+      seq_along(native_ebm_booster$feature_groups), 
+      function(i) { get_best_model_feature_group(native_ebm_booster$booster_handle, i - 1) }
    )
    return(model)
 }
 
-get_current_model <- function(native_ebm_boosting) {
+get_current_model <- function(native_ebm_booster) {
    model <- lapply(
-      seq_along(native_ebm_boosting$feature_groups), 
-      function(i) { get_current_model_feature_group(native_ebm_boosting$booster_handle, i - 1) }
+      seq_along(native_ebm_booster$feature_groups), 
+      function(i) { get_current_model_feature_group(native_ebm_booster$booster_handle, i - 1) }
    )
    return(model)
 }
 
-native_ebm_boosting <- function(
+native_ebm_booster <- function(
    model_type,
    n_classes,
    features,
@@ -229,7 +229,7 @@ native_ebm_boosting <- function(
    c_structs <- convert_feature_groups_to_c(feature_groups)
 
    if(model_type == "classification") {
-      booster_handle <- initialize_boosting_classification(
+      booster_handle <- create_classification_booster(
          random_state,
          n_classes, 
          features, 
@@ -244,7 +244,7 @@ native_ebm_boosting <- function(
          inner_bags
       )
    } else if(model_type == "regression") {
-      booster_handle <- initialize_boosting_regression(
+      booster_handle <- create_regression_booster(
          random_state,
          features, 
          c_structs$feature_groups_c, 
@@ -266,7 +266,7 @@ native_ebm_boosting <- function(
       n_classes = n_classes, 
       feature_groups = feature_groups, 
       booster_handle = booster_handle
-      ), class = "native_ebm_boosting")
+      ), class = "native_ebm_booster")
    return(self)
 }
 
@@ -293,7 +293,7 @@ cyclic_gradient_boost <- function(
    min_metric <- Inf
    episode_index <- 0
 
-   ebm_booster <- native_ebm_boosting(
+   ebm_booster <- native_ebm_booster(
       model_type,
       n_classes,
       features,

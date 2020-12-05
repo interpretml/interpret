@@ -234,7 +234,7 @@ class Native:
         self.lib.Softmax.restype = ct.c_int64
 
 
-        self.lib.InitializeBoostingClassification.argtypes = [
+        self.lib.CreateClassificationBooster.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
             # int64_t countTargetClasses
@@ -272,9 +272,9 @@ class Native:
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
-        self.lib.InitializeBoostingClassification.restype = ct.c_void_p
+        self.lib.CreateClassificationBooster.restype = ct.c_void_p
 
-        self.lib.InitializeBoostingRegression.argtypes = [
+        self.lib.CreateRegressionBooster.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
             # int64_t countFeatures
@@ -308,7 +308,7 @@ class Native:
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
-        self.lib.InitializeBoostingRegression.restype = ct.c_void_p
+        self.lib.CreateRegressionBooster.restype = ct.c_void_p
 
         self.lib.GenerateModelFeatureGroupUpdate.argtypes = [
             # void * boosterHandle
@@ -362,14 +362,14 @@ class Native:
         ]
         self.lib.GetCurrentModelFeatureGroup.restype = ct.POINTER(ct.c_double)
 
-        self.lib.FreeBoosting.argtypes = [
+        self.lib.FreeBooster.argtypes = [
             # void * boosterHandle
             ct.c_void_p
         ]
-        self.lib.FreeBoosting.restype = None
+        self.lib.FreeBooster.restype = None
 
 
-        self.lib.InitializeInteractionClassification.argtypes = [
+        self.lib.CreateClassificationInteractionDetector.argtypes = [
             # int64_t countTargetClasses
             ct.c_int64,
             # int64_t countFeatures
@@ -388,9 +388,9 @@ class Native:
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
-        self.lib.InitializeInteractionClassification.restype = ct.c_void_p
+        self.lib.CreateClassificationInteractionDetector.restype = ct.c_void_p
 
-        self.lib.InitializeInteractionRegression.argtypes = [
+        self.lib.CreateRegressionInteractionDetector.argtypes = [
             # int64_t countFeatures
             ct.c_int64,
             # EbmNativeFeature * features
@@ -406,10 +406,10 @@ class Native:
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
         ]
-        self.lib.InitializeInteractionRegression.restype = ct.c_void_p
+        self.lib.CreateRegressionInteractionDetector.restype = ct.c_void_p
 
         self.lib.CalculateInteractionScore.argtypes = [
-            # void * interactionDetectionHandle
+            # void * interactionDetectorHandle
             ct.c_void_p,
             # int64_t countFeaturesInGroup
             ct.c_int64,
@@ -422,11 +422,11 @@ class Native:
         ]
         self.lib.CalculateInteractionScore.restype = ct.c_int64
 
-        self.lib.FreeInteraction.argtypes = [
-            # void * interactionDetectionHandle
+        self.lib.FreeInteractionDetector.argtypes = [
+            # void * interactionDetectorHandle
             ct.c_void_p
         ]
-        self.lib.FreeInteraction.restype = None
+        self.lib.FreeInteractionDetector.restype = None
 
     def _set_logging(self, level=None):
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
@@ -573,7 +573,7 @@ class Native:
         return feature_groups_ar, feature_group_indexes
 
 
-class NativeEBMBoosting:
+class NativeEBMBooster:
     """Lightweight wrapper for EBM C boosting code.
     """
 
@@ -731,7 +731,7 @@ class NativeEBMBoosting:
 
         # Allocate external resources
         if model_type == "classification":
-            self._booster_handle = self._native.lib.InitializeBoostingClassification(
+            self._booster_handle = self._native.lib.CreateClassificationBooster(
                 random_state,
                 n_classes,
                 len(feature_array),
@@ -751,9 +751,9 @@ class NativeEBMBoosting:
                 optional_temp_params,
             )
             if not self._booster_handle:  # pragma: no cover
-                raise MemoryError("Out of memory in InitializeBoostingClassification")
+                raise MemoryError("Out of memory in CreateClassificationBooster")
         elif model_type == "regression":
-            self._booster_handle = self._native.lib.InitializeBoostingRegression(
+            self._booster_handle = self._native.lib.CreateRegressionBooster(
                 random_state,
                 len(feature_array),
                 feature_array,
@@ -772,7 +772,7 @@ class NativeEBMBoosting:
                 optional_temp_params,
             )
             if not self._booster_handle:  # pragma: no cover
-                raise MemoryError("Out of memory in InitializeBoostingRegression")
+                raise MemoryError("Out of memory in CreateRegressionBooster")
         else:  # pragma: no cover
             raise AttributeError("Unrecognized model_type")
 
@@ -781,7 +781,7 @@ class NativeEBMBoosting:
     def close(self):
         """ Deallocates C objects used to boost EBM. """
         log.info("Deallocation boosting start")
-        self._native.lib.FreeBoosting(self._booster_handle)
+        self._native.lib.FreeBooster(self._booster_handle)
         log.info("Deallocation boosting end")
 
     def boosting_step(
@@ -1069,7 +1069,7 @@ class NativeEBMInteraction:
 
         # Allocate external resources
         if model_type == "classification":
-            self._interaction_handle = self._native.lib.InitializeInteractionClassification(
+            self._interaction_handle = self._native.lib.CreateClassificationInteractionDetector(
                 n_classes,
                 len(feature_array),
                 feature_array,
@@ -1081,10 +1081,10 @@ class NativeEBMInteraction:
             )
             if not self._interaction_handle:  # pragma: no cover
                 raise MemoryError(
-                    "Out of memory in InitializeInteractionClassification"
+                    "Out of memory in CreateClassificationInteractionDetector"
                 )
         elif model_type == "regression":
-            self._interaction_handle = self._native.lib.InitializeInteractionRegression(
+            self._interaction_handle = self._native.lib.CreateRegressionInteractionDetector(
                 len(feature_array),
                 feature_array,
                 len(y),
@@ -1094,7 +1094,7 @@ class NativeEBMInteraction:
                 optional_temp_params,
             )
             if not self._interaction_handle:  # pragma: no cover
-                raise MemoryError("Out of memory in InitializeInteractionRegression")
+                raise MemoryError("Out of memory in CreateRegressionInteractionDetector")
         else:  # pragma: no cover
             raise AttributeError("Unrecognized model_type")
 
@@ -1103,7 +1103,7 @@ class NativeEBMInteraction:
     def close(self):
         """ Deallocates C objects used to determine interactions in EBM. """
         log.info("Deallocation interaction start")
-        self._native.lib.FreeInteraction(self._interaction_handle)
+        self._native.lib.FreeInteractionDetector(self._interaction_handle)
         log.info("Deallocation interaction end")
 
     def get_interaction_score(self, feature_index_tuple, min_samples_leaf):
@@ -1173,7 +1173,7 @@ class NativeHelper:
         min_metric = np.inf
         episode_index = 0
         with closing(
-            NativeEBMBoosting(
+            NativeEBMBooster(
                 model_type,
                 n_classes,
                 features,
@@ -1188,7 +1188,7 @@ class NativeHelper:
                 random_state,
                 optional_temp_params,
             )
-        ) as native_ebm_boosting:
+        ) as native_ebm_booster:
             no_change_run_length = 0
             bp_metric = np.inf
             log.info("Start boosting {0}".format(name))
@@ -1198,7 +1198,7 @@ class NativeHelper:
                     log.debug("Metric: {0}".format(min_metric))
 
                 for feature_group_index in range(len(feature_groups)):
-                    curr_metric = native_ebm_boosting.boosting_step(
+                    curr_metric = native_ebm_booster.boosting_step(
                         feature_group_index=feature_group_index,
                         generate_update_options=generate_update_options,
                         learning_rate=learning_rate,
@@ -1235,7 +1235,7 @@ class NativeHelper:
             )
 
             # TODO: Add alternative | get_current_model
-            model_update = native_ebm_boosting.get_best_model()
+            model_update = native_ebm_booster.get_best_model()
 
         return model_update, min_metric, episode_index
 

@@ -322,7 +322,7 @@ class TestApi {
    std::vector<FloatEbmType> m_interactionPredictionScores;
    bool m_bNullInteractionPredictionScores;
 
-   InteractionDetectionHandle m_interactionDetectionHandle;
+   InteractionDetectorHandle m_interactionDetectorHandle;
 
    const FloatEbmType * GetPredictorScores(
       const size_t iFeatureGroup,

@@ -76,19 +76,19 @@ void BoostingFinalizer(SEXP boosterHandleWrapped) {
    if(EXTPTRSXP == TYPEOF(boosterHandleWrapped)) {
       const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
       if(nullptr != boosterHandle) {
-         FreeBoosting(boosterHandle);
+         FreeBooster(boosterHandle);
          R_ClearExternalPtr(boosterHandleWrapped);
       }
    }
 }
 
-void InteractionFinalizer(SEXP interactionDetectionHandleWrapped) {
-   EBM_ASSERT(nullptr != interactionDetectionHandleWrapped); // shouldn't be possible
-   if(EXTPTRSXP == TYPEOF(interactionDetectionHandleWrapped)) {
-      const InteractionDetectionHandle interactionDetectionHandle = static_cast<InteractionDetectionHandle>(R_ExternalPtrAddr(interactionDetectionHandleWrapped));
-      if(nullptr != interactionDetectionHandle) {
-         FreeInteraction(interactionDetectionHandle);
-         R_ClearExternalPtr(interactionDetectionHandleWrapped);
+void InteractionFinalizer(SEXP interactionDetectorHandleWrapped) {
+   EBM_ASSERT(nullptr != interactionDetectorHandleWrapped); // shouldn't be possible
+   if(EXTPTRSXP == TYPEOF(interactionDetectorHandleWrapped)) {
+      const InteractionDetectorHandle interactionDetectorHandle = static_cast<InteractionDetectorHandle>(R_ExternalPtrAddr(interactionDetectorHandleWrapped));
+      if(nullptr != interactionDetectorHandle) {
+         FreeInteractionDetector(interactionDetectorHandle);
+         R_ClearExternalPtr(interactionDetectorHandleWrapped);
       }
    }
 }
@@ -708,7 +708,7 @@ SEXP SampleWithoutReplacement_R(
    return ret;
 }
 
-SEXP InitializeBoostingClassification_R(
+SEXP CreateClassificationBooster_R(
    SEXP randomSeed,
    SEXP countTargetClasses,
    SEXP features,
@@ -736,24 +736,24 @@ SEXP InitializeBoostingClassification_R(
    EBM_ASSERT(nullptr != countInnerBags);
 
    if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleIntVector(randomSeed)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
    const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    if(!IsSingleDoubleVector(countTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleDoubleVector(countTargetClasses)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleDoubleVector(countTargetClasses)");
       return R_NilValue;
    }
    double countTargetClassesDouble = REAL(countTargetClasses)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)");
       return R_NilValue;
    }
    EBM_ASSERT(IsNumberConvertable<size_t>(countTargetClassesDouble)); // IsDoubleToIntEbmTypeIndexValid checks this
    const size_t cTargetClasses = static_cast<size_t>(countTargetClassesDouble);
    if(!IsNumberConvertable<ptrdiff_t>(cTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsNumberConvertable<ptrdiff_t>(cTargetClasses)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsNumberConvertable<ptrdiff_t>(cTargetClasses)");
       return R_NilValue;
    }
    const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
@@ -788,7 +788,7 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
    if(cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck");
       return R_NilValue;
    }
 
@@ -808,11 +808,11 @@ SEXP InitializeBoostingClassification_R(
    const IntEbmType countTrainingSamples = static_cast<IntEbmType>(cTrainingSamples);
 
    if(IsMultiplyError(cTrainingSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingSamples, cFeatures)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cTrainingSamples, cFeatures)");
       return R_NilValue;
    }
    if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cTrainingSamples * cFeatures != cTrainingBinnedData");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cTrainingSamples * cFeatures != cTrainingBinnedData");
       return R_NilValue;
    }
 
@@ -823,11 +823,11 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
    if(IsMultiplyError(cTrainingSamples, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingSamples, cVectorLength)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cTrainingSamples, cVectorLength)");
       return R_NilValue;
    }
    if(cVectorLength * cTrainingSamples != cTrainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cTrainingSamples != cTrainingPredictorScores");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cVectorLength * cTrainingSamples != cTrainingPredictorScores");
       return R_NilValue;
    }
 
@@ -847,11 +847,11 @@ SEXP InitializeBoostingClassification_R(
    const IntEbmType countValidationSamples = static_cast<IntEbmType>(cValidationSamples);
 
    if(IsMultiplyError(cValidationSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationSamples, cFeatures)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cValidationSamples, cFeatures)");
       return R_NilValue;
    }
    if(cValidationSamples * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cValidationSamples * cFeatures != cValidationBinnedData");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cValidationSamples * cFeatures != cValidationBinnedData");
       return R_NilValue;
    }
 
@@ -862,26 +862,26 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
    if(IsMultiplyError(cValidationSamples, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationSamples, cVectorLength)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cValidationSamples, cVectorLength)");
       return R_NilValue;
    }
    if(cVectorLength * cValidationSamples != cValidationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cValidationSamples != cValidationPredictorScores");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cVectorLength * cValidationSamples != cValidationPredictorScores");
       return R_NilValue;
    }
 
    if(!IsSingleIntVector(countInnerBags)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleIntVector(countInnerBags)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleIntVector(countInnerBags)");
       return R_NilValue;
    }
    int countInnerBagsInt = INTEGER(countInnerBags)[0];
    if(!IsNumberConvertable<IntEbmType>(countInnerBagsInt)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsNumberConvertable<IntEbmType>(countInnerBagsInt)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsNumberConvertable<IntEbmType>(countInnerBagsInt)");
       return nullptr;
    }
    IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
-   const BoosterHandle boosterHandle = InitializeBoostingClassification(
+   const BoosterHandle boosterHandle = CreateClassificationBooster(
       randomSeedLocal,
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures, 
@@ -914,7 +914,7 @@ SEXP InitializeBoostingClassification_R(
    }
 }
 
-SEXP InitializeBoostingRegression_R(
+SEXP CreateRegressionBooster_R(
    SEXP randomSeed,
    SEXP features,
    SEXP featureGroups,
@@ -940,7 +940,7 @@ SEXP InitializeBoostingRegression_R(
    EBM_ASSERT(nullptr != countInnerBags);
 
    if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsSingleIntVector(randomSeed)");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
    const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
@@ -975,7 +975,7 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
    if(cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck");
       return R_NilValue;
    }
 
@@ -995,11 +995,11 @@ SEXP InitializeBoostingRegression_R(
    const IntEbmType countTrainingSamples = static_cast<IntEbmType>(cTrainingSamples);
 
    if(IsMultiplyError(cTrainingSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cTrainingSamples, cFeatures)");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R IsMultiplyError(cTrainingSamples, cFeatures)");
       return R_NilValue;
    }
    if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingSamples * cFeatures != cTrainingBinnedData");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTrainingSamples * cFeatures != cTrainingBinnedData");
       return R_NilValue;
    }
 
@@ -1010,7 +1010,7 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
    if(cTrainingSamples != cTrainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingSamples != cTrainingPredictorScores");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTrainingSamples != cTrainingPredictorScores");
       return R_NilValue;
    }
 
@@ -1030,11 +1030,11 @@ SEXP InitializeBoostingRegression_R(
    const IntEbmType countValidationSamples = static_cast<IntEbmType>(cValidationSamples);
 
    if(IsMultiplyError(cValidationSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cValidationSamples, cFeatures)");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R IsMultiplyError(cValidationSamples, cFeatures)");
       return R_NilValue;
    }
    if(cValidationSamples * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationSamples * cFeatures != cValidationBinnedData");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cValidationSamples * cFeatures != cValidationBinnedData");
       return R_NilValue;
    }
 
@@ -1045,22 +1045,22 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
    if(cValidationSamples != cValidationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationSamples != cValidationPredictorScores");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cValidationSamples != cValidationPredictorScores");
       return R_NilValue;
    }
 
    if(!IsSingleIntVector(countInnerBags)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsSingleIntVector(countInnerBags)");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R !IsSingleIntVector(countInnerBags)");
       return R_NilValue;
    }
    int countInnerBagsInt = INTEGER(countInnerBags)[0];
    if(!IsNumberConvertable<IntEbmType>(countInnerBagsInt)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsNumberConvertable<IntEbmType>(countInnerBagsInt)");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R !IsNumberConvertable<IntEbmType>(countInnerBagsInt)");
       return nullptr;
    }
    IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
-   const BoosterHandle boosterHandle = InitializeBoostingRegression(
+   const BoosterHandle boosterHandle = CreateRegressionBooster(
       randomSeedLocal,
       countFeatures,
       aFeatures, 
@@ -1361,7 +1361,7 @@ SEXP GetCurrentModelFeatureGroup_R(
    return ret;
 }
 
-SEXP FreeBoosting_R(
+SEXP FreeBooster_R(
    SEXP boosterHandleWrapped
 ) {
    BoostingFinalizer(boosterHandleWrapped);
@@ -1369,7 +1369,7 @@ SEXP FreeBoosting_R(
 }
 
 
-SEXP InitializeInteractionClassification_R(
+SEXP CreateClassificationInteractionDetector_R(
    SEXP countTargetClasses,
    SEXP features,
    SEXP binnedData,
@@ -1383,17 +1383,17 @@ SEXP InitializeInteractionClassification_R(
    EBM_ASSERT(nullptr != predictorScores);
 
    if(!IsSingleDoubleVector(countTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R !IsSingleDoubleVector(countTargetClasses)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R !IsSingleDoubleVector(countTargetClasses)");
       return R_NilValue;
    }
    double countTargetClassesDouble = REAL(countTargetClasses)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R !IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R !IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)");
       return R_NilValue;
    }
    const size_t cTargetClasses = static_cast<size_t>(countTargetClassesDouble);
    if(!IsNumberConvertable<ptrdiff_t>(cTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R !IsNumberConvertable<ptrdiff_t>(cTargetClasses)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R !IsNumberConvertable<ptrdiff_t>(cTargetClasses)");
       return R_NilValue;
    }
    const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
@@ -1422,11 +1422,11 @@ SEXP InitializeInteractionClassification_R(
    const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
 
    if(IsMultiplyError(cSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cSamples, cFeatures)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cSamples, cFeatures)");
       return R_NilValue;
    }
    if(cSamples * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cSamples * cFeatures != cBinnedData");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cSamples * cFeatures != cBinnedData");
       return R_NilValue;
    }
 
@@ -1437,15 +1437,15 @@ SEXP InitializeInteractionClassification_R(
       return R_NilValue;
    }
    if(IsMultiplyError(cSamples, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cSamples, cVectorLength)");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cSamples, cVectorLength)");
       return R_NilValue;
    }
    if(cVectorLength * cSamples != cPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cVectorLength * cSamples != cPredictorScores");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cVectorLength * cSamples != cPredictorScores");
       return R_NilValue;
    }
 
-   const InteractionDetectionHandle interactionDetectionHandle = InitializeInteractionClassification(
+   const InteractionDetectorHandle interactionDetectorHandle = CreateClassificationInteractionDetector(
       static_cast<IntEbmType>(cTargetClasses), 
       countFeatures, 
       aFeatures, 
@@ -1456,20 +1456,20 @@ SEXP InitializeInteractionClassification_R(
       nullptr
    );
 
-   if(nullptr == interactionDetectionHandle) {
+   if(nullptr == interactionDetectorHandle) {
       return R_NilValue;
    } else {
-      SEXP interactionDetectionHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionDetectionHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(interactionDetectionHandleWrapped);
+      SEXP interactionDetectorHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionDetectorHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(interactionDetectorHandleWrapped);
 
-      R_RegisterCFinalizerEx(interactionDetectionHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
+      R_RegisterCFinalizerEx(interactionDetectorHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
 
       UNPROTECT(1);
-      return interactionDetectionHandleWrapped;
+      return interactionDetectorHandleWrapped;
    }
 }
 
-SEXP InitializeInteractionRegression_R(
+SEXP CreateRegressionInteractionDetector_R(
    SEXP features,
    SEXP binnedData,
    SEXP targets,
@@ -1504,11 +1504,11 @@ SEXP InitializeInteractionRegression_R(
    const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
 
    if(IsMultiplyError(cSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R IsMultiplyError(cSamples, cFeatures)");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R IsMultiplyError(cSamples, cFeatures)");
       return R_NilValue;
    }
    if(cSamples * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cSamples * cFeatures != cBinnedData");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cSamples * cFeatures != cBinnedData");
       return R_NilValue;
    }
 
@@ -1519,11 +1519,11 @@ SEXP InitializeInteractionRegression_R(
       return R_NilValue;
    }
    if(cSamples != cPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cSamples != cPredictorScores");
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cSamples != cPredictorScores");
       return R_NilValue;
    }
 
-   const InteractionDetectionHandle interactionDetectionHandle = InitializeInteractionRegression(
+   const InteractionDetectorHandle interactionDetectorHandle = CreateRegressionInteractionDetector(
       countFeatures, 
       aFeatures, 
       countSamples, 
@@ -1533,35 +1533,35 @@ SEXP InitializeInteractionRegression_R(
       nullptr
    );
 
-   if(nullptr == interactionDetectionHandle) {
+   if(nullptr == interactionDetectorHandle) {
       return R_NilValue;
    } else {
-      SEXP interactionDetectionHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionDetectionHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(interactionDetectionHandleWrapped);
+      SEXP interactionDetectorHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionDetectorHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(interactionDetectorHandleWrapped);
 
-      R_RegisterCFinalizerEx(interactionDetectionHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
+      R_RegisterCFinalizerEx(interactionDetectorHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
 
       UNPROTECT(1);
-      return interactionDetectionHandleWrapped;
+      return interactionDetectorHandleWrapped;
    }
 }
 
 SEXP CalculateInteractionScore_R(
-   SEXP interactionDetectionHandleWrapped,
+   SEXP interactionDetectorHandleWrapped,
    SEXP featureIndexes,
    SEXP countSamplesRequiredForChildSplitMin
 ) {
-   EBM_ASSERT(nullptr != interactionDetectionHandleWrapped); // shouldn't be possible
+   EBM_ASSERT(nullptr != interactionDetectorHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
 
-   if(EXTPTRSXP != TYPEOF(interactionDetectionHandleWrapped)) {
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R EXTPTRSXP != TYPEOF(interactionDetectionHandleWrapped)");
+   if(EXTPTRSXP != TYPEOF(interactionDetectorHandleWrapped)) {
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R EXTPTRSXP != TYPEOF(interactionDetectorHandleWrapped)");
       return R_NilValue;
    }
-   InteractionDetection * pInteractionDetection = static_cast<InteractionDetection *>(R_ExternalPtrAddr(interactionDetectionHandleWrapped));
-   if(nullptr == pInteractionDetection) {
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R nullptr == pInteractionDetection");
+   InteractionDetector * pInteractionDetector = static_cast<InteractionDetector *>(R_ExternalPtrAddr(interactionDetectorHandleWrapped));
+   if(nullptr == pInteractionDetector) {
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R nullptr == pInteractionDetector");
       return R_NilValue;
    }
 
@@ -1593,7 +1593,7 @@ SEXP CalculateInteractionScore_R(
    }
 
    FloatEbmType interactionScoreOut;
-   if(0 != CalculateInteractionScore(reinterpret_cast<InteractionDetectionHandle>(pInteractionDetection), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
+   if(0 != CalculateInteractionScore(reinterpret_cast<InteractionDetectorHandle>(pInteractionDetector), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R CalculateInteractionScore returned error code");
       return R_NilValue;
    }
@@ -1604,10 +1604,10 @@ SEXP CalculateInteractionScore_R(
    return ret;
 }
 
-SEXP FreeInteraction_R(
-   SEXP interactionDetectionHandleWrapped
+SEXP FreeInteractionDetector_R(
+   SEXP interactionDetectorHandleWrapped
 ) {
-   InteractionFinalizer(interactionDetectionHandleWrapped);
+   InteractionFinalizer(interactionDetectorHandleWrapped);
    return R_NilValue;
 }
 
@@ -1616,16 +1616,16 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 5 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
-   { "InitializeBoostingClassification_R", (DL_FUNC)&InitializeBoostingClassification_R, 12 },
-   { "InitializeBoostingRegression_R", (DL_FUNC)& InitializeBoostingRegression_R, 11 },
+   { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 12 },
+   { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 11 },
    { "BoostingStep_R", (DL_FUNC)& BoostingStep_R, 7 },
    { "GetBestModelFeatureGroup_R", (DL_FUNC)&GetBestModelFeatureGroup_R, 2 },
    { "GetCurrentModelFeatureGroup_R", (DL_FUNC)& GetCurrentModelFeatureGroup_R, 2 },
-   { "FreeBoosting_R", (DL_FUNC)& FreeBoosting_R, 1 },
-   { "InitializeInteractionClassification_R", (DL_FUNC)&InitializeInteractionClassification_R, 5 },
-   { "InitializeInteractionRegression_R", (DL_FUNC)& InitializeInteractionRegression_R, 4 },
-   { "CalculateInteractionScore_R", (DL_FUNC)& CalculateInteractionScore_R, 3 },
-   { "FreeInteraction_R", (DL_FUNC)& FreeInteraction_R, 1 },
+   { "FreeBooster_R", (DL_FUNC)& FreeBooster_R, 1 },
+   { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 5 },
+   { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 4 },
+   { "CalculateInteractionScore_R", (DL_FUNC)&CalculateInteractionScore_R, 3 },
+   { "FreeInteractionDetector_R", (DL_FUNC)&FreeInteractionDetector_R, 1 },
    { NULL, NULL, 0 }
 };
 

@@ -20,19 +20,19 @@
 
 #include "InteractionDetection.h"
 
-void InteractionDetection::Free(InteractionDetection * const pInteractionDetection) {
-   LOG_0(TraceLevelInfo, "Entered InteractionDetection::Free");
+void InteractionDetector::Free(InteractionDetector * const pInteractionDetector) {
+   LOG_0(TraceLevelInfo, "Entered InteractionDetector::Free");
 
-   if(nullptr != pInteractionDetection) {
-      pInteractionDetection->m_dataSet.Destruct();
-      free(pInteractionDetection->m_aFeatures);
-      free(pInteractionDetection);
+   if(nullptr != pInteractionDetector) {
+      pInteractionDetector->m_dataSet.Destruct();
+      free(pInteractionDetector->m_aFeatures);
+      free(pInteractionDetector);
    }
 
-   LOG_0(TraceLevelInfo, "Exited InteractionDetection::Free");
+   LOG_0(TraceLevelInfo, "Exited InteractionDetector::Free");
 }
 
-InteractionDetection * InteractionDetection::Allocate(
+InteractionDetector * InteractionDetector::Allocate(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cFeatures,
    const FloatEbmType * const optionalTempParams,
@@ -46,14 +46,14 @@ InteractionDetection * InteractionDetection::Allocate(
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(optionalTempParams);
 
-   LOG_0(TraceLevelInfo, "Entered InteractionDetection::Allocate");
+   LOG_0(TraceLevelInfo, "Entered InteractionDetector::Allocate");
 
-   LOG_0(TraceLevelInfo, "InteractionDetection::Allocate starting feature processing");
+   LOG_0(TraceLevelInfo, "InteractionDetector::Allocate starting feature processing");
    Feature * aFeatures = nullptr;
    if(0 != cFeatures) {
       aFeatures = EbmMalloc<Feature>(cFeatures);
       if(nullptr == aFeatures) {
-         LOG_0(TraceLevelWarning, "WARNING InteractionDetection::Allocate nullptr == aFeatures");
+         LOG_0(TraceLevelWarning, "WARNING InteractionDetector::Allocate nullptr == aFeatures");
          return nullptr;
       }
       const EbmNativeFeature * pFeatureInitialize = aNativeFeatures;
@@ -68,7 +68,7 @@ InteractionDetection * InteractionDetection::Allocate(
             FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), "FeatureType::Nominal must have the same value as FeatureTypeNominal"
             );
          if(FeatureTypeOrdinal != pFeatureInitialize->featureType && FeatureTypeNominal != pFeatureInitialize->featureType) {
-            LOG_0(TraceLevelError, "ERROR InteractionDetection::Allocate featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
+            LOG_0(TraceLevelError, "ERROR InteractionDetector::Allocate featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
             free(aFeatures);
             return nullptr;
          }
@@ -76,17 +76,17 @@ InteractionDetection * InteractionDetection::Allocate(
 
          IntEbmType countBins = pFeatureInitialize->countBins;
          if(countBins < 0) {
-            LOG_0(TraceLevelError, "ERROR InteractionDetection::Allocate countBins cannot be negative");
+            LOG_0(TraceLevelError, "ERROR InteractionDetector::Allocate countBins cannot be negative");
             free(aFeatures);
             return nullptr;
          }
          if(0 == countBins && 0 != cSamples) {
-            LOG_0(TraceLevelError, "ERROR InteractionDetection::Allocate countBins cannot be zero if 0 < cSamples");
+            LOG_0(TraceLevelError, "ERROR InteractionDetector::Allocate countBins cannot be zero if 0 < cSamples");
             free(aFeatures);
             return nullptr;
          }
          if(!IsNumberConvertable<size_t>(countBins)) {
-            LOG_0(TraceLevelWarning, "WARNING InteractionDetection::Allocate countBins is too high for us to allocate enough memory");
+            LOG_0(TraceLevelWarning, "WARNING InteractionDetector::Allocate countBins is too high for us to allocate enough memory");
             free(aFeatures);
             return nullptr;
          }
@@ -95,14 +95,14 @@ InteractionDetection * InteractionDetection::Allocate(
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
             // features would require a value, even if it was 0.
-            LOG_0(TraceLevelInfo, "INFO InteractionDetection::Allocate feature with 0 values");
+            LOG_0(TraceLevelInfo, "INFO InteractionDetector::Allocate feature with 0 values");
          } else if(1 == cBins) {
             // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on. 
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
-            LOG_0(TraceLevelInfo, "INFO InteractionDetection::Allocate feature with 1 value");
+            LOG_0(TraceLevelInfo, "INFO InteractionDetector::Allocate feature with 1 value");
          }
          if(EBM_FALSE != pFeatureInitialize->hasMissing && EBM_TRUE != pFeatureInitialize->hasMissing) {
-            LOG_0(TraceLevelError, "ERROR InteractionDetection::Allocate hasMissing must either be EBM_TRUE or EBM_FALSE");
+            LOG_0(TraceLevelError, "ERROR InteractionDetector::Allocate hasMissing must either be EBM_TRUE or EBM_FALSE");
             free(aFeatures);
             return nullptr;
          }
@@ -117,9 +117,9 @@ InteractionDetection * InteractionDetection::Allocate(
          ++pFeatureInitialize;
       } while(pFeatureEnd != pFeatureInitialize);
    }
-   LOG_0(TraceLevelInfo, "InteractionDetection::Allocate done feature processing");
+   LOG_0(TraceLevelInfo, "InteractionDetector::Allocate done feature processing");
 
-   InteractionDetection * const pRet = EbmMalloc<InteractionDetection>();
+   InteractionDetector * const pRet = EbmMalloc<InteractionDetector>();
    if(nullptr == pRet) {
       free(aFeatures);
       return nullptr;
@@ -141,19 +141,19 @@ InteractionDetection * InteractionDetection::Allocate(
       aPredictorScores,
       runtimeLearningTypeOrCountTargetClasses
    )) {
-      LOG_0(TraceLevelWarning, "WARNING InteractionDetection::Allocate m_dataSet.Initialize");
-      InteractionDetection::Free(pRet);
+      LOG_0(TraceLevelWarning, "WARNING InteractionDetector::Allocate m_dataSet.Initialize");
+      InteractionDetector::Free(pRet);
       return nullptr;
    }
 
-   LOG_0(TraceLevelInfo, "Exited InteractionDetection::Allocate");
+   LOG_0(TraceLevelInfo, "Exited InteractionDetector::Allocate");
    return pRet;
 }
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static InteractionDetection * AllocateInteraction(
+static InteractionDetector * AllocateInteraction(
    IntEbmType countFeatures, 
    const EbmNativeFeature * features, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
@@ -163,7 +163,7 @@ static InteractionDetection * AllocateInteraction(
    const FloatEbmType * predictorScores,
    const FloatEbmType * const optionalTempParams
 ) {
-   // TODO : give AllocateInteraction the same calling parameter order as InitializeInteractionClassification
+   // TODO : give AllocateInteraction the same calling parameter order as CreateClassificationInteractionDetector
 
    if(countFeatures < 0) {
       LOG_0(TraceLevelError, "ERROR AllocateInteraction countFeatures must be positive");
@@ -201,7 +201,7 @@ static InteractionDetection * AllocateInteraction(
    size_t cFeatures = static_cast<size_t>(countFeatures);
    size_t cSamples = static_cast<size_t>(countSamples);
 
-   InteractionDetection * const pInteractionDetection = InteractionDetection::Allocate(
+   InteractionDetector * const pInteractionDetector = InteractionDetector::Allocate(
       runtimeLearningTypeOrCountTargetClasses,
       cFeatures,
       optionalTempParams,
@@ -211,14 +211,14 @@ static InteractionDetection * AllocateInteraction(
       binnedData,
       predictorScores
    );
-   if(UNLIKELY(nullptr == pInteractionDetection)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateInteraction nullptr == pInteractionDetection");
+   if(UNLIKELY(nullptr == pInteractionDetector)) {
+      LOG_0(TraceLevelWarning, "WARNING AllocateInteraction nullptr == pInteractionDetector");
       return nullptr;
    }
-   return pInteractionDetection;
+   return pInteractionDetector;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONVENTION InitializeInteractionClassification(
+EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
@@ -230,7 +230,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONV
 ) {
    LOG_N(
       TraceLevelInfo, 
-      "Entered InitializeInteractionClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
+      "Entered CreateClassificationInteractionDetector: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
       ", features=%p, countSamples=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p, optionalTempParams=%p",
       countTargetClasses, 
       countFeatures, 
@@ -242,19 +242,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONV
       static_cast<const void *>(optionalTempParams)
    );
    if(countTargetClasses < 0) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be negative");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector countTargetClasses can't be negative");
       return nullptr;
    }
    if(0 == countTargetClasses && 0 != countSamples) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be zero unless there are no samples");
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector countTargetClasses can't be zero unless there are no samples");
       return nullptr;
    }
    if(!IsNumberConvertable<ptrdiff_t>(countTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING InitializeInteractionClassification !IsNumberConvertable<ptrdiff_t>(countTargetClasses)");
+      LOG_0(TraceLevelWarning, "WARNING CreateClassificationInteractionDetector !IsNumberConvertable<ptrdiff_t>(countTargetClasses)");
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   InteractionDetectionHandle interactionDetectionHandle = reinterpret_cast<InteractionDetectionHandle>(AllocateInteraction(
+   InteractionDetectorHandle interactionDetectorHandle = reinterpret_cast<InteractionDetectorHandle>(AllocateInteraction(
       countFeatures, 
       features, 
       runtimeLearningTypeOrCountTargetClasses, 
@@ -264,11 +264,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONV
       predictorScores,
       optionalTempParams
    ));
-   LOG_N(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(interactionDetectionHandle));
-   return interactionDetectionHandle;
+   LOG_N(TraceLevelInfo, "Exited CreateClassificationInteractionDetector %p", static_cast<void *>(interactionDetectorHandle));
+   return interactionDetectorHandle;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
+EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
    IntEbmType countSamples,
@@ -277,7 +277,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONV
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countSamples=%" IntEbmTypePrintf 
+   LOG_N(TraceLevelInfo, "Entered CreateRegressionInteractionDetector: countFeatures=%" IntEbmTypePrintf ", features=%p, countSamples=%" IntEbmTypePrintf 
       ", binnedData=%p, targets=%p, predictorScores=%p, optionalTempParams=%p",
       countFeatures, 
       static_cast<const void *>(features), 
@@ -287,7 +287,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONV
       static_cast<const void *>(predictorScores),
       static_cast<const void *>(optionalTempParams)
    );
-   InteractionDetectionHandle interactionDetectionHandle = reinterpret_cast<InteractionDetectionHandle>(AllocateInteraction(
+   InteractionDetectorHandle interactionDetectorHandle = reinterpret_cast<InteractionDetectorHandle>(AllocateInteraction(
       countFeatures, 
       features, 
       k_regression, 
@@ -297,18 +297,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONV
       predictorScores,
       optionalTempParams
    ));
-   LOG_N(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(interactionDetectionHandle));
-   return interactionDetectionHandle;
+   LOG_N(TraceLevelInfo, "Exited CreateRegressionInteractionDetector %p", static_cast<void *>(interactionDetectorHandle));
+   return interactionDetectorHandle;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(
-   InteractionDetectionHandle interactionDetectionHandle
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
+   InteractionDetectorHandle interactionDetectorHandle
 ) {
-   LOG_N(TraceLevelInfo, "Entered FreeInteraction: interactionDetectionHandle=%p", static_cast<void *>(interactionDetectionHandle));
-   InteractionDetection * pInteractionDetection = reinterpret_cast<InteractionDetection *>(interactionDetectionHandle);
+   LOG_N(TraceLevelInfo, "Entered FreeInteractionDetector: interactionDetectorHandle=%p", static_cast<void *>(interactionDetectorHandle));
+   InteractionDetector * pInteractionDetector = reinterpret_cast<InteractionDetector *>(interactionDetectorHandle);
 
-   // pInteractionDetection is allowed to be nullptr.  We handle that inside InteractionDetection::Free
-   InteractionDetection::Free(pInteractionDetection);
+   // pInteractionDetector is allowed to be nullptr.  We handle that inside InteractionDetector::Free
+   InteractionDetector::Free(pInteractionDetector);
    
-   LOG_0(TraceLevelInfo, "Exited FreeInteraction");
+   LOG_0(TraceLevelInfo, "Exited FreeInteractionDetector");
 }

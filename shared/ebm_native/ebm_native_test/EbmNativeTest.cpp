@@ -243,7 +243,7 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
    m_bNullValidationPredictionScores(true),
    m_boosterHandle(nullptr),
    m_bNullInteractionPredictionScores(true),
-   m_interactionDetectionHandle(nullptr) {
+   m_interactionDetectorHandle(nullptr) {
    if(IsClassification(learningTypeOrCountTargetClasses)) {
       if(learningTypeOrCountTargetClasses <= iZeroClassificationLogit) {
          exit(1);
@@ -257,10 +257,10 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
 
 TestApi::~TestApi() {
    if(nullptr != m_boosterHandle) {
-      FreeBoosting(m_boosterHandle);
+      FreeBooster(m_boosterHandle);
    }
-   if(nullptr != m_interactionDetectionHandle) {
-      FreeInteraction(m_interactionDetectionHandle);
+   if(nullptr != m_interactionDetectorHandle) {
+      FreeInteractionDetector(m_interactionDetectorHandle);
    }
 }
 
@@ -643,7 +643,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       if(m_bNullValidationPredictionScores) {
          m_validationPredictionScores.resize(cVectorLength * m_validationClassificationTargets.size());
       }
-      m_boosterHandle = InitializeBoostingClassification(
+      m_boosterHandle = CreateClassificationBooster(
          k_randomSeed,
          m_learningTypeOrCountTargetClasses,
          m_features.size(),
@@ -669,7 +669,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       if(m_bNullValidationPredictionScores) {
          m_validationPredictionScores.resize(cVectorLength * m_validationRegressionTargets.size());
       }
-      m_boosterHandle = InitializeBoostingRegression(
+      m_boosterHandle = CreateRegressionBooster(
          k_randomSeed,
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
@@ -976,7 +976,7 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionPredictionScores) {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionClassificationTargets.size());
       }
-      m_interactionDetectionHandle = InitializeInteractionClassification(
+      m_interactionDetectorHandle = CreateClassificationInteractionDetector(
          m_learningTypeOrCountTargetClasses,
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
@@ -990,7 +990,7 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionPredictionScores) {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionRegressionTargets.size());
       }
-      m_interactionDetectionHandle = InitializeInteractionRegression(
+      m_interactionDetectorHandle = CreateRegressionInteractionDetector(
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
          m_interactionRegressionTargets.size(),
@@ -1003,7 +1003,7 @@ void TestApi::InitializeInteraction() {
       exit(1);
    }
 
-   if(nullptr == m_interactionDetectionHandle) {
+   if(nullptr == m_interactionDetectorHandle) {
       exit(1);
    }
    m_stage = Stage::InitializedInteraction;
@@ -1027,7 +1027,7 @@ FloatEbmType TestApi::InteractionScore(
 
    FloatEbmType interactionScoreOut = FloatEbmType { 0 };
    const IntEbmType ret = CalculateInteractionScore(
-      m_interactionDetectionHandle,
+      m_interactionDetectorHandle,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
       countSamplesRequiredForChildSplitMin,

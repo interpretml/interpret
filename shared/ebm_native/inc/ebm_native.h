@@ -85,15 +85,15 @@ extern "C" {
 #endif // compiler type
 
 typedef struct _BoosterHandle {
-   // this struct exists to enforce that our caller doesn't mix BoosterHandle and InteractionDetectionHandle types.
+   // this struct exists to enforce that our caller doesn't mix BoosterHandle and InteractionDetectorHandle types.
    // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
 } * BoosterHandle;
-typedef struct _InteractionDetectionHandle {
-   // this struct exists to enforce that our caller doesn't mix BoosterHandle and InteractionDetectionHandle types.
+typedef struct _InteractionDetectorHandle {
+   // this struct exists to enforce that our caller doesn't mix BoosterHandle and InteractionDetectorHandle types.
    // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
-} * InteractionDetectionHandle;
+} * InteractionDetectorHandle;
 
 #ifndef PRId32
 // this should really be defined, but some compilers aren't compliant
@@ -204,7 +204,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetT
 //     will subtract into a register and subract that from the pointer indirection to the target memory location.
 //   - clearly, keeping normal logits instead of negated logits will be less confusing
 //   - keeping negated logits would be even more confusing since we want to keep non-negated values for regression models
-//   - when calling InitializeBoostingClassification, the trainingPredictorScores and validationPredictorScores values would logically need to be negated 
+//   - when calling CreateClassificationBooster, the trainingPredictorScores and validationPredictorScores values would logically need to be negated 
 //     for consistency with the models if we stored the models as negated, so it would be even more confusing
 //   - even if it were better to keep negated logits, in order to calculate a probabily from a model, you need to loop over all the "feature groups" 
 //     and get the logit for that "feature group" to sum them all together for the combined logit, and that work is going to be far far greater 
@@ -416,7 +416,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SampleWithou
    IntEbmType * sampleCountsOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
@@ -435,7 +435,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Ini
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
    SeedEbmType randomSeed,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
@@ -491,12 +491,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBoosting(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
 );
 
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectionHandle EBM_NATIVE_CALLING_CONVENTION InitializeInteractionClassification(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
@@ -506,7 +506,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectionHandle EBM_NATIVE_CALLING_C
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectionHandle EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
    IntEbmType countFeatures, 
    const EbmNativeFeature * features,
    IntEbmType countSamples, 
@@ -516,14 +516,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectionHandle EBM_NATIVE_CALLING_C
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
-   InteractionDetectionHandle interactionDetectionHandle, 
+   InteractionDetectorHandle interactionDetectorHandle, 
    IntEbmType countFeaturesInGroup, 
    const IntEbmType * featureIndexes, 
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(
-   InteractionDetectionHandle interactionDetectionHandle
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
+   InteractionDetectorHandle interactionDetectorHandle
 );
 
 // TODO PK Implement the following for memory efficiency and speed of initialization :

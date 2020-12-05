@@ -17,7 +17,7 @@
 // dataset depends on features
 #include "DataSetInteraction.h"
 
-class InteractionDetection final {
+class InteractionDetector final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
    size_t m_cFeatures;
@@ -30,8 +30,8 @@ class InteractionDetection final {
 
 public:
 
-   InteractionDetection() = default; // preserve our POD status
-   ~InteractionDetection() = default; // preserve our POD status
+   InteractionDetector() = default; // preserve our POD status
+   ~InteractionDetector() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -71,8 +71,8 @@ public:
       return m_cFeatures;
    }
 
-   static void Free(InteractionDetection * const pInteractionDetection);
-   static InteractionDetection * Allocate(
+   static void Free(InteractionDetector * const pInteractionDetector);
+   static InteractionDetector * Allocate(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cFeatures,
       const FloatEbmType * const optionalTempParams,
@@ -83,11 +83,11 @@ public:
       const FloatEbmType * const aPredictorScores
    );
 };
-static_assert(std::is_standard_layout<InteractionDetection>::value,
+static_assert(std::is_standard_layout<InteractionDetector>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<InteractionDetection>::value,
+static_assert(std::is_trivial<InteractionDetector>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<InteractionDetection>::value,
+static_assert(std::is_pod<InteractionDetector>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // EBM_INTERACTION_STATE_H

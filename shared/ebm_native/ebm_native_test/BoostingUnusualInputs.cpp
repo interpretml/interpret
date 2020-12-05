@@ -13,7 +13,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
    EbmNativeFeatureGroup groups[1];
    groups->countFeaturesInGroup = 0;
 
-   const BoosterHandle boosterHandle = InitializeBoostingRegression(
+   const BoosterHandle boosterHandle = CreateRegressionBooster(
       k_randomSeed,
       0,
       nullptr,
@@ -43,14 +43,14 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr
    );
    CHECK(0 == ret);
-   FreeBoosting(boosterHandle);
+   FreeBooster(boosterHandle);
 }
 
 TEST_CASE("null validationMetricOut, boosting, binary") {
    EbmNativeFeatureGroup groups[1];
    groups->countFeaturesInGroup = 0;
 
-   const BoosterHandle boosterHandle = InitializeBoostingClassification(
+   const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
       2,
       0,
@@ -81,14 +81,14 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr
    );
    CHECK(0 == ret);
-   FreeBoosting(boosterHandle);
+   FreeBooster(boosterHandle);
 }
 
 TEST_CASE("null validationMetricOut, boosting, multiclass") {
    EbmNativeFeatureGroup groups[1];
    groups->countFeaturesInGroup = 0;
 
-   const BoosterHandle boosterHandle = InitializeBoostingClassification(
+   const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
       3,
       0,
@@ -119,7 +119,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr
    );
    CHECK(0 == ret);
-   FreeBoosting(boosterHandle);
+   FreeBooster(boosterHandle);
 }
 
 TEST_CASE("zero learning rate, boosting, regression") {

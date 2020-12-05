@@ -28,7 +28,7 @@ public:
    FindBestInteractionGainPairsInternal() = delete; // this is a static class.  Do not construct
 
    static FloatEbmType Func(
-      InteractionDetection * const pInteractionDetection,
+      InteractionDetector * const pInteractionDetector,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
@@ -53,7 +53,7 @@ public:
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
-         pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses()
+         pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses()
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
@@ -215,7 +215,7 @@ public:
    FindBestInteractionGainPairsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static FloatEbmType Func(
-      InteractionDetection * const pInteractionDetection,
+      InteractionDetector * const pInteractionDetector,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
@@ -228,13 +228,13 @@ public:
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          return FindBestInteractionGainPairsInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
-            pInteractionDetection,
+            pInteractionDetector,
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
@@ -246,7 +246,7 @@ public:
          );
       } else {
          return FindBestInteractionGainPairsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pInteractionDetection,
+            pInteractionDetector,
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
@@ -267,7 +267,7 @@ public:
    FindBestInteractionGainPairsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static FloatEbmType Func(
-      InteractionDetection * const pInteractionDetection,
+      InteractionDetector * const pInteractionDetector,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
@@ -279,11 +279,11 @@ public:
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses());
 
       return FindBestInteractionGainPairsInternal<k_dynamicClassification>::Func(
-         pInteractionDetection,
+         pInteractionDetector,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -297,7 +297,7 @@ public:
 };
 
 extern FloatEbmType FindBestInteractionGainPairs(
-   InteractionDetection * const pInteractionDetection,
+   InteractionDetector * const pInteractionDetector,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
@@ -307,11 +307,11 @@ extern FloatEbmType FindBestInteractionGainPairs(
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       return FindBestInteractionGainPairsTarget<2>::Func(
-         pInteractionDetection,
+         pInteractionDetector,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -324,7 +324,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       return FindBestInteractionGainPairsInternal<k_regression>::Func(
-         pInteractionDetection,
+         pInteractionDetector,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
