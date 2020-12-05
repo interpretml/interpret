@@ -26,7 +26,7 @@ public:
    CutRandomInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBucketsBase,
       const GenerateUpdateOptionsType options,
@@ -51,7 +51,7 @@ public:
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
-         pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()
+         pBooster->GetRuntimeLearningTypeOrCountTargetClasses()
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
@@ -159,7 +159,7 @@ public:
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
       const IntEbmType * pLeavesMax2 = aLeavesMax;
-      RandomStream * const pRandomStream = pEbmBoostingState->GetRandomStream();
+      RandomStream * const pRandomStream = pBooster->GetRandomStream();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
       do {
@@ -549,7 +549,7 @@ public:
    CutRandomTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static bool Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets,
       const GenerateUpdateOptionsType options,
@@ -563,13 +563,13 @@ public:
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          return CutRandomInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
-            pEbmBoostingState,
+            pBooster,
             pFeatureGroup,
             aHistogramBuckets,
             options,
@@ -582,7 +582,7 @@ public:
          );
       } else {
          return CutRandomTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pEbmBoostingState,
+            pBooster,
             pFeatureGroup,
             aHistogramBuckets,
             options,
@@ -604,7 +604,7 @@ public:
    CutRandomTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static bool Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets,
       const GenerateUpdateOptionsType options,
@@ -617,11 +617,11 @@ public:
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
 
       return CutRandomInternal<k_dynamicClassification>::Func(
-         pEbmBoostingState,
+         pBooster,
          pFeatureGroup,
          aHistogramBuckets,
          options,
@@ -636,7 +636,7 @@ public:
 };
 
 extern bool CutRandom(
-   EbmBoostingState * const pEbmBoostingState,
+   Booster * const pBooster,
    const FeatureGroup * const pFeatureGroup,
    HistogramBucketBase * const aHistogramBuckets,
    const GenerateUpdateOptionsType options,
@@ -647,11 +647,11 @@ extern bool CutRandom(
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       return CutRandomTarget<2>::Func(
-         pEbmBoostingState,
+         pBooster,
          pFeatureGroup,
          aHistogramBuckets,
          options,
@@ -665,7 +665,7 @@ extern bool CutRandom(
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       return CutRandomInternal<k_regression>::Func(
-         pEbmBoostingState,
+         pBooster,
          pFeatureGroup,
          aHistogramBuckets,
          options,

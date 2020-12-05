@@ -84,16 +84,16 @@ extern "C" {
 #error compiler not recognized
 #endif // compiler type
 
-typedef struct _EbmBoosting {
-   // this struct exists to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  
+typedef struct _BoosterHandle {
+   // this struct exists to enforce that our caller doesn't mix BoosterHandle and InteractionDetectionHandle types.
    // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
-} * PEbmBoosting;
-typedef struct _EbmInteraction {
-   // this struct exists to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  
+} * BoosterHandle;
+typedef struct _InteractionDetectionHandle {
+   // this struct exists to enforce that our caller doesn't mix BoosterHandle and InteractionDetectionHandle types.
    // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
-} * PEbmInteraction;
+} * InteractionDetectionHandle;
 
 #ifndef PRId32
 // this should really be defined, but some compilers aren't compliant
@@ -416,7 +416,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SampleWithou
    IntEbmType * sampleCountsOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
@@ -435,7 +435,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
    SeedEbmType randomSeed,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
@@ -454,7 +454,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
-   PEbmBoosting ebmBoosting, 
+   BoosterHandle boosterHandle, 
    IntEbmType indexFeatureGroup, 
    GenerateUpdateOptionsType options, 
    FloatEbmType learningRate, 
@@ -465,7 +465,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
    FloatEbmType * gainOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
-   PEbmBoosting ebmBoosting, 
+   BoosterHandle boosterHandle, 
    IntEbmType indexFeatureGroup, 
    const FloatEbmType * modelFeatureGroupUpdateTensor,
    FloatEbmType * validationMetricOut
@@ -473,7 +473,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyM
 // TODO: we can remove BoostingStep if we change R so that R passes us in a model_feature_group vector
 // and we fill that vector with the results from GenerateModelFeatureGroupUpdate
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
-   PEbmBoosting ebmBoosting,
+   BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options,
    FloatEbmType learningRate,
@@ -484,19 +484,19 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Boosti
    FloatEbmType * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
-   PEbmBoosting ebmBoosting, 
+   BoosterHandle boosterHandle, 
    IntEbmType indexFeatureGroup
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
-   PEbmBoosting ebmBoosting,
+   BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBoosting(
-   PEbmBoosting ebmBoosting
+   BoosterHandle boosterHandle
 );
 
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionClassification(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectionHandle EBM_NATIVE_CALLING_CONVENTION InitializeInteractionClassification(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
@@ -506,7 +506,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION I
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectionHandle EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
    IntEbmType countFeatures, 
    const EbmNativeFeature * features,
    IntEbmType countSamples, 
@@ -516,14 +516,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION I
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
-   PEbmInteraction ebmInteraction, 
+   InteractionDetectionHandle interactionDetectionHandle, 
    IntEbmType countFeaturesInGroup, 
    const IntEbmType * featureIndexes, 
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(
-   PEbmInteraction ebmInteraction
+   InteractionDetectionHandle interactionDetectionHandle
 );
 
 // TODO PK Implement the following for memory efficiency and speed of initialization :

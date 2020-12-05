@@ -41,7 +41,7 @@ INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
    return k_cBitsForStorageType / cBits;
 }
 
-void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureGroups, SegmentedTensor ** const apSegmentedTensors) {
+void Booster::DeleteSegmentedTensors(const size_t cFeatureGroups, SegmentedTensor ** const apSegmentedTensors) {
    LOG_0(TraceLevelInfo, "Entered DeleteSegmentedTensors");
 
    if(UNLIKELY(nullptr != apSegmentedTensors)) {
@@ -57,7 +57,7 @@ void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureGroups, Segme
    LOG_0(TraceLevelInfo, "Exited DeleteSegmentedTensors");
 }
 
-SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
+SegmentedTensor ** Booster::InitializeSegmentedTensors(
    const size_t cFeatureGroups, 
    const FeatureGroup * const * const apFeatureGroups, 
    const size_t cVectorLength) 
@@ -122,31 +122,31 @@ SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
    return apSegmentedTensors;
 }
 
-void EbmBoostingState::Free(EbmBoostingState * const pBoostingState) {
-   LOG_0(TraceLevelInfo, "Entered EbmBoostingState::Free");
-   if(nullptr != pBoostingState) {
-      pBoostingState->m_trainingSet.Destruct();
-      pBoostingState->m_validationSet.Destruct();
+void Booster::Free(Booster * const pBooster) {
+   LOG_0(TraceLevelInfo, "Entered Booster::Free");
+   if(nullptr != pBooster) {
+      pBooster->m_trainingSet.Destruct();
+      pBooster->m_validationSet.Destruct();
 
-      CachedBoostingThreadResources::Free(pBoostingState->m_pCachedThreadResources);
+      CachedBoostingThreadResources::Free(pBooster->m_pCachedThreadResources);
 
-      SamplingSet::FreeSamplingSets(pBoostingState->m_cSamplingSets, pBoostingState->m_apSamplingSets);
+      SamplingSet::FreeSamplingSets(pBooster->m_cSamplingSets, pBooster->m_apSamplingSets);
 
-      FeatureGroup::FreeFeatureGroups(pBoostingState->m_cFeatureGroups, pBoostingState->m_apFeatureGroups);
+      FeatureGroup::FreeFeatureGroups(pBooster->m_cFeatureGroups, pBooster->m_apFeatureGroups);
 
-      free(pBoostingState->m_aFeatures);
+      free(pBooster->m_aFeatures);
 
-      DeleteSegmentedTensors(pBoostingState->m_cFeatureGroups, pBoostingState->m_apCurrentModel);
-      DeleteSegmentedTensors(pBoostingState->m_cFeatureGroups, pBoostingState->m_apBestModel);
-      SegmentedTensor::Free(pBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet);
-      SegmentedTensor::Free(pBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets);
+      DeleteSegmentedTensors(pBooster->m_cFeatureGroups, pBooster->m_apCurrentModel);
+      DeleteSegmentedTensors(pBooster->m_cFeatureGroups, pBooster->m_apBestModel);
+      SegmentedTensor::Free(pBooster->m_pSmallChangeToModelOverwriteSingleSamplingSet);
+      SegmentedTensor::Free(pBooster->m_pSmallChangeToModelAccumulatedFromSamplingSets);
 
-      free(pBoostingState);
+      free(pBooster);
    }
-   LOG_0(TraceLevelInfo, "Exited EbmBoostingState::Free");
+   LOG_0(TraceLevelInfo, "Exited Booster::Free");
 }
 
-EbmBoostingState * EbmBoostingState::Allocate(
+Booster * Booster::Allocate(
    const SeedEbmType randomSeed,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cFeatures,
@@ -169,11 +169,11 @@ EbmBoostingState * EbmBoostingState::Allocate(
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(optionalTempParams);
 
-   LOG_0(TraceLevelInfo, "Entered EbmBoostingState::Initialize");
+   LOG_0(TraceLevelInfo, "Entered Booster::Initialize");
 
-   EbmBoostingState * const pBooster = EbmMalloc<EbmBoostingState>();
+   Booster * const pBooster = EbmMalloc<Booster>();
    if(UNLIKELY(nullptr == pBooster)) {
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pBooster");
+      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pBooster");
       return nullptr;
    }
    pBooster->InitializeZero();
@@ -183,25 +183,25 @@ EbmBoostingState * EbmBoostingState::Allocate(
    pBooster->m_pSmallChangeToModelOverwriteSingleSamplingSet = 
       SegmentedTensor::Allocate(k_cDimensionsMax, cVectorLength);
    if(UNLIKELY(nullptr == pBooster->m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet");
-      EbmBoostingState::Free(pBooster);
+      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet");
+      Booster::Free(pBooster);
       return nullptr;
    }
 
    pBooster->m_pSmallChangeToModelAccumulatedFromSamplingSets = 
       SegmentedTensor::Allocate(k_cDimensionsMax, cVectorLength);
    if(UNLIKELY(nullptr == pBooster->m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets");
-      EbmBoostingState::Free(pBooster);
+      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets");
+      Booster::Free(pBooster);
       return nullptr;
    }
 
-   LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature processing");
+   LOG_0(TraceLevelInfo, "Booster::Initialize starting feature processing");
    if(0 != cFeatures) {
       pBooster->m_aFeatures = EbmMalloc<Feature>(cFeatures);
       if(nullptr == pBooster->m_aFeatures) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pBooster->m_aFeatures");
-         EbmBoostingState::Free(pBooster);
+         LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pBooster->m_aFeatures");
+         Booster::Free(pBooster);
          return nullptr;
       }
       pBooster->m_cFeatures = cFeatures;
@@ -216,26 +216,26 @@ EbmBoostingState * EbmBoostingState::Allocate(
          static_assert(FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), 
             "FeatureType::Nominal must have the same value as FeatureTypeNominal");
          if(FeatureTypeOrdinal != pFeatureInitialize->featureType && FeatureTypeNominal != pFeatureInitialize->featureType) {
-            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelError, "ERROR Booster::Initialize featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
+            Booster::Free(pBooster);
             return nullptr;
          }
          FeatureType featureType = static_cast<FeatureType>(pFeatureInitialize->featureType);
 
          IntEbmType countBins = pFeatureInitialize->countBins;
          if(countBins < 0) {
-            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countBins cannot be negative");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelError, "ERROR Booster::Initialize countBins cannot be negative");
+            Booster::Free(pBooster);
             return nullptr;
          }
          if(0 == countBins && (0 != cTrainingSamples || 0 != cValidationSamples)) {
-            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelError, "ERROR Booster::Initialize countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
+            Booster::Free(pBooster);
             return nullptr;
          }
          if(!IsNumberConvertable<size_t>(countBins)) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize countBins is too high for us to allocate enough memory");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize countBins is too high for us to allocate enough memory");
+            Booster::Free(pBooster);
             return nullptr;
          }
          size_t cBins = static_cast<size_t>(countBins);
@@ -243,15 +243,15 @@ EbmBoostingState * EbmBoostingState::Allocate(
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
             // features would require a value, even if it was 0.
-            LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature with 0 values");
+            LOG_0(TraceLevelInfo, "INFO Booster::Initialize feature with 0 values");
          } else if(1 == cBins) {
             // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on. 
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
-            LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature with 1 value");
+            LOG_0(TraceLevelInfo, "INFO Booster::Initialize feature with 1 value");
          }
          if(EBM_FALSE != pFeatureInitialize->hasMissing && EBM_TRUE != pFeatureInitialize->hasMissing) {
-            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize hasMissing must either be EBM_TRUE or EBM_FALSE");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelError, "ERROR Booster::Initialize hasMissing must either be EBM_TRUE or EBM_FALSE");
+            Booster::Free(pBooster);
             return nullptr;
          }
          const bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
@@ -265,7 +265,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
          ++pFeatureInitialize;
       } while(pFeatureEnd != pFeatureInitialize);
    }
-   LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize done feature processing");
+   LOG_0(TraceLevelInfo, "Booster::Initialize done feature processing");
 
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    size_t cBytesArrayEquivalentSplitMax = 0;
@@ -273,19 +273,19 @@ EbmBoostingState * EbmBoostingState::Allocate(
    EBM_ASSERT(nullptr == pBooster->m_apCurrentModel);
    EBM_ASSERT(nullptr == pBooster->m_apBestModel);
 
-   LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature group processing");
+   LOG_0(TraceLevelInfo, "Booster::Initialize starting feature group processing");
    if(0 != cFeatureGroups) {
       pBooster->m_cFeatureGroups = cFeatureGroups;
       pBooster->m_apFeatureGroups = FeatureGroup::AllocateFeatureGroups(cFeatureGroups);
       if(UNLIKELY(nullptr == pBooster->m_apFeatureGroups)) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize 0 != m_cFeatureGroups && nullptr == m_apFeatureGroups");
-         EbmBoostingState::Free(pBooster);
+         LOG_0(TraceLevelWarning, "WARNING Booster::Initialize 0 != m_cFeatureGroups && nullptr == m_apFeatureGroups");
+         Booster::Free(pBooster);
          return nullptr;
       }
 
       if(GetSweepTreeNodeSizeOverflow(bClassification, cVectorLength)) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize GetSweepTreeNodeSizeOverflow(bClassification, cVectorLength)");
-         EbmBoostingState::Free(pBooster);
+         LOG_0(TraceLevelWarning, "WARNING Booster::Initialize GetSweepTreeNodeSizeOverflow(bClassification, cVectorLength)");
+         Booster::Free(pBooster);
          return nullptr;
       }
       size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize(bClassification, cVectorLength);
@@ -296,26 +296,26 @@ EbmBoostingState * EbmBoostingState::Allocate(
          const EbmNativeFeatureGroup * const pFeatureGroupInterop = &aFeatureGroups[iFeatureGroup];
          const IntEbmType countFeaturesInGroup = pFeatureGroupInterop->countFeaturesInGroup;
          if(countFeaturesInGroup < 0) {
-            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countFeaturesInGroup cannot be negative");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelError, "ERROR Booster::Initialize countFeaturesInGroup cannot be negative");
+            Booster::Free(pBooster);
             return nullptr;
          }
          if(!IsNumberConvertable<size_t>(countFeaturesInGroup)) {
             // if countFeaturesInGroup exceeds the size of size_t, then we wouldn't be able to find it
             // in the array passed to us
-            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countFeaturesInGroup is too high to index");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelError, "ERROR Booster::Initialize countFeaturesInGroup is too high to index");
+            Booster::Free(pBooster);
             return nullptr;
          }
          size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
          size_t cSignificantFeaturesInGroup = 0;
          const IntEbmType * pFeatureGroupIndexEnd = pFeatureGroupIndex;
          if(UNLIKELY(0 == cFeaturesInGroup)) {
-            LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize empty feature group");
+            LOG_0(TraceLevelInfo, "INFO Booster::Initialize empty feature group");
          } else {
             if(nullptr == pFeatureGroupIndex) {
-               LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureGroupIndexes is null when there are FeatureGroups with non-zero numbers of features");
-               EbmBoostingState::Free(pBooster);
+               LOG_0(TraceLevelError, "ERROR Booster::Initialize featureGroupIndexes is null when there are FeatureGroups with non-zero numbers of features");
+               Booster::Free(pBooster);
                return nullptr;
             }
             pFeatureGroupIndexEnd += cFeaturesInGroup;
@@ -323,20 +323,20 @@ EbmBoostingState * EbmBoostingState::Allocate(
             do {
                const IntEbmType indexFeatureInterop = *pFeatureGroupIndexTemp;
                if(indexFeatureInterop < 0) {
-                  LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureGroupIndexes value cannot be negative");
-                  EbmBoostingState::Free(pBooster);
+                  LOG_0(TraceLevelError, "ERROR Booster::Initialize featureGroupIndexes value cannot be negative");
+                  Booster::Free(pBooster);
                   return nullptr;
                }
                if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
-                  LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureGroupIndexes value too big to reference memory");
-                  EbmBoostingState::Free(pBooster);
+                  LOG_0(TraceLevelError, "ERROR Booster::Initialize featureGroupIndexes value too big to reference memory");
+                  Booster::Free(pBooster);
                   return nullptr;
                }
                const size_t iFeatureForGroup = static_cast<size_t>(indexFeatureInterop);
 
                if(cFeatures <= iFeatureForGroup) {
-                  LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureGroupIndexes value must be less than the number of features");
-                  EbmBoostingState::Free(pBooster);
+                  LOG_0(TraceLevelError, "ERROR Booster::Initialize featureGroupIndexes value must be less than the number of features");
+                  Booster::Free(pBooster);
                   return nullptr;
                }
 
@@ -349,23 +349,23 @@ EbmBoostingState * EbmBoostingState::Allocate(
                   // otherwise indistinquishable from the original data
                   ++cSignificantFeaturesInGroup;
                } else {
-                  LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature group with no useful features");
+                  LOG_0(TraceLevelInfo, "INFO Booster::Initialize feature group with no useful features");
                }
                ++pFeatureGroupIndexTemp;
             } while(pFeatureGroupIndexEnd != pFeatureGroupIndexTemp);
 
             if(k_cDimensionsMax < cSignificantFeaturesInGroup) {
                // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
-               LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize k_cDimensionsMax < cSignificantFeaturesInGroup");
-               EbmBoostingState::Free(pBooster);
+               LOG_0(TraceLevelWarning, "WARNING Booster::Initialize k_cDimensionsMax < cSignificantFeaturesInGroup");
+               Booster::Free(pBooster);
                return nullptr;
             }
          }
 
          FeatureGroup * pFeatureGroup = FeatureGroup::Allocate(cSignificantFeaturesInGroup, iFeatureGroup);
          if(nullptr == pFeatureGroup) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pFeatureGroup");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pFeatureGroup");
+            Booster::Free(pBooster);
             return nullptr;
          }
          // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
@@ -391,8 +391,8 @@ EbmBoostingState * EbmBoostingState::Allocate(
                   ++pFeatureGroupEntry;
                   if(IsMultiplyError(cTensorBins, cBins)) {
                      // if this overflows, we definetly won't be able to allocate it
-                     LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize IsMultiplyError(cTensorStates, cBins)");
-                     EbmBoostingState::Free(pBooster);
+                     LOG_0(TraceLevelWarning, "WARNING Booster::Initialize IsMultiplyError(cTensorStates, cBins)");
+                     Booster::Free(pBooster);
                      return nullptr;
                   }
                   cTensorBins *= cBins;
@@ -405,8 +405,8 @@ EbmBoostingState * EbmBoostingState::Allocate(
             size_t cBytesArrayEquivalentSplit;
             if(1 == cSignificantFeaturesInGroup) {
                if(IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)) {
-                  LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)");
-                  EbmBoostingState::Free(pBooster);
+                  LOG_0(TraceLevelWarning, "WARNING Booster::Initialize IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)");
+                  Booster::Free(pBooster);
                   return nullptr;
                }
                cBytesArrayEquivalentSplit = cEquivalentSplits * cBytesPerSweepTreeNode;
@@ -432,27 +432,27 @@ EbmBoostingState * EbmBoostingState::Allocate(
       if(!bClassification || ptrdiff_t { 2 } <= runtimeLearningTypeOrCountTargetClasses) {
          pBooster->m_apCurrentModel = InitializeSegmentedTensors(cFeatureGroups, pBooster->m_apFeatureGroups, cVectorLength);
          if(nullptr == pBooster->m_apCurrentModel) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apCurrentModel");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == m_apCurrentModel");
+            Booster::Free(pBooster);
             return nullptr;
          }
          pBooster->m_apBestModel = InitializeSegmentedTensors(cFeatureGroups, pBooster->m_apFeatureGroups, cVectorLength);
          if(nullptr == pBooster->m_apBestModel) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apBestModel");
-            EbmBoostingState::Free(pBooster);
+            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == m_apBestModel");
+            Booster::Free(pBooster);
             return nullptr;
          }
       }
    }
-   LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature group processing");
+   LOG_0(TraceLevelInfo, "Booster::Initialize finished feature group processing");
 
    pBooster->m_pCachedThreadResources = CachedBoostingThreadResources::Allocate(
       runtimeLearningTypeOrCountTargetClasses,
       cBytesArrayEquivalentSplitMax
    );
    if(UNLIKELY(nullptr == pBooster->m_pCachedThreadResources)) {
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pCachedThreadResources");
-      EbmBoostingState::Free(pBooster);
+      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == m_pCachedThreadResources");
+      Booster::Free(pBooster);
       return nullptr;
    }
 
@@ -468,8 +468,8 @@ EbmBoostingState * EbmBoostingState::Allocate(
       aTrainingPredictorScores, 
       runtimeLearningTypeOrCountTargetClasses
    )) {
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_trainingSet.Initialize");
-      EbmBoostingState::Free(pBooster);
+      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize m_trainingSet.Initialize");
+      Booster::Free(pBooster);
       return nullptr;
    }
 
@@ -485,8 +485,8 @@ EbmBoostingState * EbmBoostingState::Allocate(
       aValidationPredictorScores, 
       runtimeLearningTypeOrCountTargetClasses
    )) {
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_validationSet.Initialize");
-      EbmBoostingState::Free(pBooster);
+      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize m_validationSet.Initialize");
+      Booster::Free(pBooster);
       return nullptr;
    }
 
@@ -497,8 +497,8 @@ EbmBoostingState * EbmBoostingState::Allocate(
       pBooster->m_cSamplingSets = cSamplingSets;
       pBooster->m_apSamplingSets = SamplingSet::GenerateSamplingSets(&pBooster->m_randomStream, &pBooster->m_trainingSet, cSamplingSets);
       if(UNLIKELY(nullptr == pBooster->m_apSamplingSets)) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apSamplingSets");
-         EbmBoostingState::Free(pBooster);
+         LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == m_apSamplingSets");
+         Booster::Free(pBooster);
          return nullptr;
       }
    }
@@ -541,14 +541,14 @@ EbmBoostingState * EbmBoostingState::Allocate(
    pBooster->m_runtimeLearningTypeOrCountTargetClasses = runtimeLearningTypeOrCountTargetClasses;
    pBooster->m_bestModelMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::max() };
 
-   LOG_0(TraceLevelInfo, "Exited EbmBoostingState::Initialize");
+   LOG_0(TraceLevelInfo, "Exited Booster::Initialize");
    return pBooster;
 }
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static EbmBoostingState * AllocateBoosting(
+static Booster * AllocateBoosting(
    const SeedEbmType randomSeed,
    const IntEbmType countFeatures, 
    const EbmNativeFeature * const features, 
@@ -670,7 +670,7 @@ static EbmBoostingState * AllocateBoosting(
       return nullptr;
    }
 
-   EbmBoostingState * const pEbmBoostingState = EbmBoostingState::Allocate(
+   Booster * const pBooster = Booster::Allocate(
       randomSeed,
       runtimeLearningTypeOrCountTargetClasses,
       cFeatures,
@@ -689,14 +689,14 @@ static EbmBoostingState * AllocateBoosting(
       validationBinnedData,
       validationPredictorScores
    );
-   if(UNLIKELY(nullptr == pEbmBoostingState)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting pEbmBoostingState->Initialize");
+   if(UNLIKELY(nullptr == pBooster)) {
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting pBooster->Initialize");
       return nullptr;
    }
-   return pEbmBoostingState;
+   return pBooster;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
+EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
@@ -767,7 +767,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateBoosting(
+   const BoosterHandle boosterHandle = reinterpret_cast<BoosterHandle>(AllocateBoosting(
       randomSeed, 
       countFeatures, 
       features, 
@@ -786,11 +786,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       countInnerBags,
       optionalTempParams
    ));
-   LOG_N(TraceLevelInfo, "Exited InitializeBoostingClassification %p", static_cast<void *>(pEbmBoosting));
-   return pEbmBoosting;
+   LOG_N(TraceLevelInfo, "Exited InitializeBoostingClassification %p", static_cast<void *>(boosterHandle));
+   return boosterHandle;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
+EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
    SeedEbmType randomSeed,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
@@ -845,7 +845,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       countInnerBags, 
       static_cast<const void *>(optionalTempParams)
    );
-   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateBoosting(
+   const BoosterHandle boosterHandle = reinterpret_cast<BoosterHandle>(AllocateBoosting(
       randomSeed, 
       countFeatures, 
       features, 
@@ -864,12 +864,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       countInnerBags,
       optionalTempParams
    ));
-   LOG_N(TraceLevelInfo, "Exited InitializeBoostingRegression %p", static_cast<void *>(pEbmBoosting));
-   return pEbmBoosting;
+   LOG_N(TraceLevelInfo, "Exited InitializeBoostingRegression %p", static_cast<void *>(boosterHandle));
+   return boosterHandle;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
-   PEbmBoosting ebmBoosting,
+   BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options,
    FloatEbmType learningRate,
@@ -879,30 +879,30 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
    const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricOut
 ) {
-   EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
-   if(nullptr == pEbmBoostingState) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep ebmBoosting cannot be nullptr");
+   Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
+   if(nullptr == pBooster) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep boosterHandle cannot be nullptr");
       return 1;
    }
 
-   if(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses())) {
+   if(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses())) {
       // we need to special handle this case because if we call GenerateModelUpdate, we'll get back a nullptr for the model (since there is no model) 
       // and we'll return 1 from this function.  We'd like to return 0 (success) here, so we handle it ourselves
-      if(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
+      if(pBooster->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
          // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
          // length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
          if(nullptr != validationMetricOut) {
             *validationMetricOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelWarning, "WARNING BoostingStep pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }");
+         LOG_0(TraceLevelWarning, "WARNING BoostingStep pBooster->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }");
          return 0;
       }
    }
 
    FloatEbmType gain; // we toss this value, but we still need to get it
    FloatEbmType * pModelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
-      ebmBoosting, 
+      boosterHandle, 
       indexFeatureGroup, 
       options,
       learningRate,
@@ -921,23 +921,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
       }
       return 1;
    }
-   return ApplyModelFeatureGroupUpdate(ebmBoosting, indexFeatureGroup, pModelFeatureGroupUpdateTensor, validationMetricOut);
+   return ApplyModelFeatureGroupUpdate(boosterHandle, indexFeatureGroup, pModelFeatureGroupUpdateTensor, validationMetricOut);
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
-   PEbmBoosting ebmBoosting,
+   BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup
 ) {
    LOG_N(
       TraceLevelInfo, 
-      "Entered GetBestModelFeatureGroup: ebmBoosting=%p, indexFeatureGroup=%" IntEbmTypePrintf, 
-      static_cast<void *>(ebmBoosting), 
+      "Entered GetBestModelFeatureGroup: boosterHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf, 
+      static_cast<void *>(boosterHandle), 
       indexFeatureGroup
    );
 
-   EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
-   if(nullptr == pEbmBoostingState) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup ebmBoosting cannot be nullptr");
+   Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
+   if(nullptr == pBooster) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup boosterHandle cannot be nullptr");
       return nullptr;
    }
    if(indexFeatureGroup < 0) {
@@ -950,12 +950,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBe
       return nullptr;
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
-   if(pEbmBoostingState->GetCountFeatureGroups() <= iFeatureGroup) {
+   if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
       return nullptr;
    }
-   if(nullptr == pEbmBoostingState->GetBestModel()) {
-      // if pEbmBoostingState->m_apBestModel is nullptr, then either:
+   if(nullptr == pBooster->GetBestModel()) {
+      // if pBooster->m_apBestModel is nullptr, then either:
       //    1) m_cFeatureGroups was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
       //       indexFeatureGroup, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), 
@@ -970,7 +970,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBe
       return nullptr;
    }
 
-   SegmentedTensor * pBestModel = pEbmBoostingState->GetBestModel()[iFeatureGroup];
+   SegmentedTensor * pBestModel = pBooster->GetBestModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pBestModel);
    EBM_ASSERT(pBestModel->GetExpanded()); // the model should have been expanded at startup
    FloatEbmType * pRet = pBestModel->GetValuePointer();
@@ -981,19 +981,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBe
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
-   PEbmBoosting ebmBoosting,
+   BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup
 ) {
    LOG_N(
       TraceLevelInfo, 
-      "Entered GetCurrentModelFeatureGroup: ebmBoosting=%p, indexFeatureGroup=%" IntEbmTypePrintf, 
-      static_cast<void *>(ebmBoosting), 
+      "Entered GetCurrentModelFeatureGroup: boosterHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf, 
+      static_cast<void *>(boosterHandle), 
       indexFeatureGroup
    );
 
-   EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
-   if(nullptr == pEbmBoostingState) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup ebmBoosting cannot be nullptr");
+   Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
+   if(nullptr == pBooster) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup boosterHandle cannot be nullptr");
       return nullptr;
    }
    if(indexFeatureGroup < 0) {
@@ -1006,12 +1006,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
       return nullptr;
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
-   if(pEbmBoostingState->GetCountFeatureGroups() <= iFeatureGroup) {
+   if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
       return nullptr;
    }
-   if(nullptr == pEbmBoostingState->GetCurrentModel()) {
-      // if pEbmBoostingState->m_apCurrentModel is nullptr, then either:
+   if(nullptr == pBooster->GetCurrentModel()) {
+      // if pBooster->m_apCurrentModel is nullptr, then either:
       //    1) m_cFeatureGroups was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
       //       indexFeatureGroup, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, 
@@ -1026,7 +1026,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
       return nullptr;
    }
 
-   SegmentedTensor * pCurrentModel = pEbmBoostingState->GetCurrentModel()[iFeatureGroup];
+   SegmentedTensor * pCurrentModel = pBooster->GetCurrentModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pCurrentModel);
    EBM_ASSERT(pCurrentModel->GetExpanded()); // the model should have been expanded at startup
    FloatEbmType * pRet = pCurrentModel->GetValuePointer();
@@ -1037,14 +1037,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBoosting(
-   PEbmBoosting ebmBoosting
+   BoosterHandle boosterHandle
 ) {
-   LOG_N(TraceLevelInfo, "Entered FreeBoosting: ebmBoosting=%p", static_cast<void *>(ebmBoosting));
+   LOG_N(TraceLevelInfo, "Entered FreeBoosting: boosterHandle=%p", static_cast<void *>(boosterHandle));
 
-   EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
+   Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
 
-   // it's legal to call free on nullptr, just like for free().  This is checked inside EbmBoostingState::Free()
-   EbmBoostingState::Free(pEbmBoostingState);
+   // it's legal to call free on nullptr, just like for free().  This is checked inside Booster::Free()
+   Booster::Free(pBooster);
 
    LOG_0(TraceLevelInfo, "Exited FreeBoosting");
 }

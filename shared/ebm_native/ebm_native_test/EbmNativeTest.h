@@ -314,7 +314,7 @@ class TestApi {
    std::vector<FloatEbmType> m_validationPredictionScores;
    bool m_bNullValidationPredictionScores;
 
-   PEbmBoosting m_pEbmBoosting;
+   BoosterHandle m_boosterHandle;
 
    std::vector<FloatEbmType> m_interactionRegressionTargets;
    std::vector<IntEbmType> m_interactionClassificationTargets;
@@ -322,7 +322,7 @@ class TestApi {
    std::vector<FloatEbmType> m_interactionPredictionScores;
    bool m_bNullInteractionPredictionScores;
 
-   PEbmInteraction m_pEbmInteraction;
+   InteractionDetectionHandle m_interactionDetectionHandle;
 
    const FloatEbmType * GetPredictorScores(
       const size_t iFeatureGroup,

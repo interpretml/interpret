@@ -28,7 +28,7 @@ public:
    BinInteractionInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
-      EbmInteractionState * const pEbmInteractionState,
+      InteractionDetection * const pInteractionDetection,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
@@ -42,7 +42,7 @@ public:
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = 
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -52,7 +52,7 @@ public:
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-      const DataSetByFeature * const pDataSet = pEbmInteractionState->GetDataSetByFeature();
+      const DataSetByFeature * const pDataSet = pInteractionDetection->GetDataSetByFeature();
       const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountSamples();
 
@@ -147,7 +147,7 @@ public:
    BinInteractionDimensions() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmInteractionState * const pEbmInteractionState,
+      InteractionDetection * const pInteractionDetection,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -163,7 +163,7 @@ public:
       EBM_ASSERT(runtimeCountDimensions <= k_cDimensionsMax);
       if(compilerCountDimensionsPossible == runtimeCountDimensions) {
          BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, compilerCountDimensionsPossible>::Func(
-            pEbmInteractionState,
+            pInteractionDetection,
             pFeatureGroup,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -172,7 +172,7 @@ public:
          );
       } else {
          BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, compilerCountDimensionsPossible + 1>::Func(
-            pEbmInteractionState,
+            pInteractionDetection,
             pFeatureGroup,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -190,7 +190,7 @@ public:
    BinInteractionDimensions() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmInteractionState * const pEbmInteractionState,
+      InteractionDetection * const pInteractionDetection,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -200,7 +200,7 @@ public:
       EBM_ASSERT(2 <= pFeatureGroup->GetCountFeatures());
       EBM_ASSERT(pFeatureGroup->GetCountFeatures() <= k_cDimensionsMax);
       BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(
-         pEbmInteractionState,
+         pInteractionDetection,
          pFeatureGroup,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -217,7 +217,7 @@ public:
    BinInteractionTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmInteractionState * const pEbmInteractionState,
+      InteractionDetection * const pInteractionDetection,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -227,13 +227,13 @@ public:
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          BinInteractionDimensions<compilerLearningTypeOrCountTargetClassesPossible, 2>::Func(
-            pEbmInteractionState,
+            pInteractionDetection,
             pFeatureGroup,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -242,7 +242,7 @@ public:
          );
       } else {
          BinInteractionTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pEbmInteractionState,
+            pInteractionDetection,
             pFeatureGroup,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -260,7 +260,7 @@ public:
    BinInteractionTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmInteractionState * const pEbmInteractionState,
+      InteractionDetection * const pInteractionDetection,
       const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -269,11 +269,11 @@ public:
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses());
 
       BinInteractionDimensions<k_dynamicClassification, 2>::Func(
-         pEbmInteractionState,
+         pInteractionDetection,
          pFeatureGroup,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -284,18 +284,18 @@ public:
 };
 
 extern void BinInteraction(
-   EbmInteractionState * const pEbmInteractionState,
+   InteractionDetection * const pInteractionDetection,
    const FeatureGroup * const pFeatureGroup,
    HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetection->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       BinInteractionTarget<2>::Func(
-         pEbmInteractionState,
+         pInteractionDetection,
          pFeatureGroup,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -305,7 +305,7 @@ extern void BinInteraction(
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       BinInteractionDimensions<k_regression, 2>::Func(
-         pEbmInteractionState,
+         pInteractionDetection,
          pFeatureGroup,
          aHistogramBuckets
 #ifndef NDEBUG

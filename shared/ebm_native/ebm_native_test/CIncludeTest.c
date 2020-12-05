@@ -21,11 +21,11 @@ extern void TestCHeaderConstructs() {
    EbmNativeFeature ebmNativeFeature;
    EbmNativeFeatureGroup ebmNativeFeatureGroup;
 
-   PEbmBoosting pEbmBoosting = NULL;
-   snprintf(buffer, cBytesBuffer, "%p\n", pEbmBoosting);
+   BoosterHandle boosterHandle = NULL;
+   snprintf(buffer, cBytesBuffer, "%p\n", boosterHandle);
 
-   PEbmInteraction pEbmInteraction = NULL;
-   snprintf(buffer, cBytesBuffer, "%p\n", pEbmInteraction);
+   InteractionDetectionHandle interactionDetectionHandle = NULL;
+   snprintf(buffer, cBytesBuffer, "%p\n", interactionDetectionHandle);
 
    FloatEbmType testFloat = -123.456;
    snprintf(buffer, cBytesBuffer, "%" FloatEbmTypePrintf "\n", testFloat);

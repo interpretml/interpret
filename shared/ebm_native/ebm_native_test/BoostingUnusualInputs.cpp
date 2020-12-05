@@ -13,7 +13,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
    EbmNativeFeatureGroup groups[1];
    groups->countFeaturesInGroup = 0;
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingRegression(
+   const BoosterHandle boosterHandle = InitializeBoostingRegression(
       k_randomSeed,
       0,
       nullptr,
@@ -32,7 +32,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr
    );
    const IntEbmType ret = BoostingStep(
-      pEbmBoosting,
+      boosterHandle,
       0,
       GenerateUpdateOptions_Default,
       k_learningRateDefault,
@@ -43,14 +43,14 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr
    );
    CHECK(0 == ret);
-   FreeBoosting(pEbmBoosting);
+   FreeBoosting(boosterHandle);
 }
 
 TEST_CASE("null validationMetricOut, boosting, binary") {
    EbmNativeFeatureGroup groups[1];
    groups->countFeaturesInGroup = 0;
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
+   const BoosterHandle boosterHandle = InitializeBoostingClassification(
       k_randomSeed,
       2,
       0,
@@ -70,7 +70,7 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr
    );
    const IntEbmType ret = BoostingStep(
-      pEbmBoosting,
+      boosterHandle,
       0,
       GenerateUpdateOptions_Default,
       k_learningRateDefault,
@@ -81,14 +81,14 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr
    );
    CHECK(0 == ret);
-   FreeBoosting(pEbmBoosting);
+   FreeBoosting(boosterHandle);
 }
 
 TEST_CASE("null validationMetricOut, boosting, multiclass") {
    EbmNativeFeatureGroup groups[1];
    groups->countFeaturesInGroup = 0;
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
+   const BoosterHandle boosterHandle = InitializeBoostingClassification(
       k_randomSeed,
       3,
       0,
@@ -108,7 +108,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr
    );
    const IntEbmType ret = BoostingStep(
-      pEbmBoosting,
+      boosterHandle,
       0,
       GenerateUpdateOptions_Default,
       k_learningRateDefault,
@@ -119,7 +119,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr
    );
    CHECK(0 == ret);
-   FreeBoosting(pEbmBoosting);
+   FreeBoosting(boosterHandle);
 }
 
 TEST_CASE("zero learning rate, boosting, regression") {

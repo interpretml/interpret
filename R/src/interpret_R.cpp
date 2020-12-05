@@ -71,24 +71,24 @@ INLINE_ALWAYS bool IsDoubleToIntEbmTypeIndexValid(const double val) {
    return true;
 }
 
-void BoostingFinalizer(SEXP boostingRPointer) {
-   EBM_ASSERT(nullptr != boostingRPointer); // shouldn't be possible
-   if(EXTPTRSXP == TYPEOF(boostingRPointer)) {
-      PEbmBoosting pEbmBoosting = static_cast<PEbmBoosting>(R_ExternalPtrAddr(boostingRPointer));
-      if(nullptr != pEbmBoosting) {
-         FreeBoosting(pEbmBoosting);
-         R_ClearExternalPtr(boostingRPointer);
+void BoostingFinalizer(SEXP boosterHandleWrapped) {
+   EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
+   if(EXTPTRSXP == TYPEOF(boosterHandleWrapped)) {
+      const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
+      if(nullptr != boosterHandle) {
+         FreeBoosting(boosterHandle);
+         R_ClearExternalPtr(boosterHandleWrapped);
       }
    }
 }
 
-void InteractionFinalizer(SEXP interactionRPointer) {
-   EBM_ASSERT(nullptr != interactionRPointer); // shouldn't be possible
-   if(EXTPTRSXP == TYPEOF(interactionRPointer)) {
-      PEbmInteraction pInteraction = static_cast<PEbmInteraction>(R_ExternalPtrAddr(interactionRPointer));
-      if(nullptr != pInteraction) {
-         FreeInteraction(pInteraction);
-         R_ClearExternalPtr(interactionRPointer);
+void InteractionFinalizer(SEXP interactionDetectionHandleWrapped) {
+   EBM_ASSERT(nullptr != interactionDetectionHandleWrapped); // shouldn't be possible
+   if(EXTPTRSXP == TYPEOF(interactionDetectionHandleWrapped)) {
+      const InteractionDetectionHandle interactionDetectionHandle = static_cast<InteractionDetectionHandle>(R_ExternalPtrAddr(interactionDetectionHandleWrapped));
+      if(nullptr != interactionDetectionHandle) {
+         FreeInteraction(interactionDetectionHandle);
+         R_ClearExternalPtr(interactionDetectionHandleWrapped);
       }
    }
 }
@@ -881,7 +881,7 @@ SEXP InitializeBoostingClassification_R(
    }
    IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
+   const BoosterHandle boosterHandle = InitializeBoostingClassification(
       randomSeedLocal,
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures, 
@@ -901,16 +901,16 @@ SEXP InitializeBoostingClassification_R(
       nullptr
    );
 
-   if(nullptr == pEbmBoosting) {
+   if(nullptr == boosterHandle) {
       return R_NilValue;
    } else {
-      SEXP boostingRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmBoosting), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(boostingRPointer);
+      SEXP boosterHandleWrapped = R_MakeExternalPtr(static_cast<void *>(boosterHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(boosterHandleWrapped);
 
-      R_RegisterCFinalizerEx(boostingRPointer, &BoostingFinalizer, Rboolean::TRUE);
+      R_RegisterCFinalizerEx(boosterHandleWrapped, &BoostingFinalizer, Rboolean::TRUE);
 
       UNPROTECT(1);
-      return boostingRPointer;
+      return boosterHandleWrapped;
    }
 }
 
@@ -1060,7 +1060,7 @@ SEXP InitializeBoostingRegression_R(
    }
    IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingRegression(
+   const BoosterHandle boosterHandle = InitializeBoostingRegression(
       randomSeedLocal,
       countFeatures,
       aFeatures, 
@@ -1079,21 +1079,21 @@ SEXP InitializeBoostingRegression_R(
       nullptr
    );
 
-   if(nullptr == pEbmBoosting) {
+   if(nullptr == boosterHandle) {
       return R_NilValue;
    } else {
-      SEXP boostingRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmBoosting), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(boostingRPointer);
+      SEXP boosterHandleWrapped = R_MakeExternalPtr(static_cast<void *>(boosterHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(boosterHandleWrapped);
 
-      R_RegisterCFinalizerEx(boostingRPointer, &BoostingFinalizer, Rboolean::TRUE);
+      R_RegisterCFinalizerEx(boosterHandleWrapped, &BoostingFinalizer, Rboolean::TRUE);
 
       UNPROTECT(1);
-      return boostingRPointer;
+      return boosterHandleWrapped;
    }
 }
 
 SEXP BoostingStep_R(
-   SEXP ebmBoosting,
+   SEXP boosterHandleWrapped,
    SEXP indexFeatureGroup,
    SEXP learningRate,
    SEXP countSamplesRequiredForChildSplitMin,
@@ -1101,7 +1101,7 @@ SEXP BoostingStep_R(
    SEXP trainingWeights,
    SEXP validationWeights
 ) {
-   EBM_ASSERT(nullptr != ebmBoosting);
+   EBM_ASSERT(nullptr != boosterHandleWrapped);
    EBM_ASSERT(nullptr != indexFeatureGroup);
    EBM_ASSERT(nullptr != learningRate);
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
@@ -1109,13 +1109,13 @@ SEXP BoostingStep_R(
    EBM_ASSERT(nullptr != trainingWeights);
    EBM_ASSERT(nullptr != validationWeights);
 
-   if(EXTPTRSXP != TYPEOF(ebmBoosting)) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep_R EXTPTRSXP != TYPEOF(ebmBoosting)");
+   if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
-   EbmBoostingState * pEbmBoosting = static_cast<EbmBoostingState *>(R_ExternalPtrAddr(ebmBoosting));
-   if(nullptr == pEbmBoosting) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep_R nullptr == pEbmBoosting");
+   Booster * pBooster = static_cast<Booster *>(R_ExternalPtrAddr(boosterHandleWrapped));
+   if(nullptr == pBooster) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R nullptr == pBooster");
       return R_NilValue;
    }
 
@@ -1161,9 +1161,9 @@ SEXP BoostingStep_R(
       LOG_0(TraceLevelError, "ERROR BoostingStep_R ConvertDoublesToIndexes(leavesMax, &cDimensions, &aLeavesMax)");
       return R_NilValue;
    }
-   // TODO: check that iFeatureGroup is below pEbmBoosting->GetCountFeatureGroups()
-   if(cDimensions < pEbmBoosting->GetFeatureGroups()[iFeatureGroup]->GetCountFeatures()) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep_R cDimensions < pEbmBoosting->GetFeatureGroups()[iFeatureGroup]->GetCountFeatures()");
+   // TODO: check that iFeatureGroup is below pBooster->GetCountFeatureGroups()
+   if(cDimensions < pBooster->GetFeatureGroups()[iFeatureGroup]->GetCountFeatures()) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R cDimensions < pBooster->GetFeatureGroups()[iFeatureGroup]->GetCountFeatures()");
       return R_NilValue;
    }
 
@@ -1180,8 +1180,8 @@ SEXP BoostingStep_R(
          return R_NilValue;
       }
       size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
-      if(cTrainingWeights != pEbmBoosting->GetTrainingSet()->GetCountSamples()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pEbmBoosting->GetTrainingSet()->GetCountSamples()");
+      if(cTrainingWeights != pBooster->GetTrainingSet()->GetCountSamples()) {
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pBooster->GetTrainingSet()->GetCountSamples()");
          return R_NilValue;
       }
       pTrainingWeights = REAL(trainingWeights);
@@ -1196,8 +1196,8 @@ SEXP BoostingStep_R(
          return R_NilValue;
       }
       size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
-      if(cValidationWeights != pEbmBoosting->GetValidationSet()->GetCountSamples()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pEbmBoosting->GetValidationSet()->GetCountSamples()");
+      if(cValidationWeights != pBooster->GetValidationSet()->GetCountSamples()) {
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pBooster->GetValidationSet()->GetCountSamples()");
          return R_NilValue;
       }
       pValidationWeights = REAL(validationWeights);
@@ -1205,7 +1205,7 @@ SEXP BoostingStep_R(
 
    FloatEbmType validationMetricOut;
    if(0 != BoostingStep(
-      reinterpret_cast<PEbmBoosting>(pEbmBoosting), 
+      reinterpret_cast<BoosterHandle>(pBooster),
       iFeatureGroup, 
       GenerateUpdateOptions_Default,
       learningRateLocal,
@@ -1226,19 +1226,19 @@ SEXP BoostingStep_R(
 }
 
 SEXP GetBestModelFeatureGroup_R(
-   SEXP ebmBoosting,
+   SEXP boosterHandleWrapped,
    SEXP indexFeatureGroup
 ) {
-   EBM_ASSERT(nullptr != ebmBoosting); // shouldn't be possible
+   EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != indexFeatureGroup); // shouldn't be possible
 
-   if(EXTPTRSXP != TYPEOF(ebmBoosting)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R EXTPTRSXP != TYPEOF(ebmBoosting)");
+   if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
-   EbmBoostingState * pEbmBoosting = static_cast<EbmBoostingState *>(R_ExternalPtrAddr(ebmBoosting));
-   if(nullptr == pEbmBoosting) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R nullptr == pEbmBoosting");
+   Booster * pBooster = static_cast<Booster *>(R_ExternalPtrAddr(boosterHandleWrapped));
+   if(nullptr == pBooster) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R nullptr == pBooster");
       return R_NilValue;
    }
 
@@ -1253,12 +1253,12 @@ SEXP GetBestModelFeatureGroup_R(
    }
    IntEbmType iFeatureGroup = static_cast<IntEbmType>(doubleIndex);
    // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
-   if(pEbmBoosting->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R pEbmBoosting->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)");
+   if(pBooster->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R pBooster->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)");
       return R_NilValue;
    }
 
-   FloatEbmType * pModelFeatureGroupTensor = GetBestModelFeatureGroup(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureGroup);
+   FloatEbmType * pModelFeatureGroupTensor = GetBestModelFeatureGroup(reinterpret_cast<BoosterHandle>(pBooster), iFeatureGroup);
    if(nullptr == pModelFeatureGroupTensor) {
       LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
 
@@ -1270,8 +1270,8 @@ SEXP GetBestModelFeatureGroup_R(
       SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
       return ret;
    }
-   size_t cValues = GetVectorLength(pEbmBoosting->GetRuntimeLearningTypeOrCountTargetClasses());
-   const FeatureGroup * const pFeatureGroup = pEbmBoosting->GetFeatureGroups()[static_cast<size_t>(iFeatureGroup)];
+   size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+   const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[static_cast<size_t>(iFeatureGroup)];
    const size_t cFeatures = pFeatureGroup->GetCountFeatures();
    if(0 != cFeatures) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
@@ -1294,19 +1294,19 @@ SEXP GetBestModelFeatureGroup_R(
 }
 
 SEXP GetCurrentModelFeatureGroup_R(
-   SEXP ebmBoosting,
+   SEXP boosterHandleWrapped,
    SEXP indexFeatureGroup
 ) {
-   EBM_ASSERT(nullptr != ebmBoosting); // shouldn't be possible
+   EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != indexFeatureGroup); // shouldn't be possible
 
-   if(EXTPTRSXP != TYPEOF(ebmBoosting)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R EXTPTRSXP != TYPEOF(ebmBoosting)");
+   if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
-   EbmBoostingState * pEbmBoosting = static_cast<EbmBoostingState *>(R_ExternalPtrAddr(ebmBoosting));
-   if(nullptr == pEbmBoosting) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R nullptr == pEbmBoosting");
+   Booster * pBooster = static_cast<Booster *>(R_ExternalPtrAddr(boosterHandleWrapped));
+   if(nullptr == pBooster) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R nullptr == pBooster");
       return R_NilValue;
    }
 
@@ -1321,12 +1321,12 @@ SEXP GetCurrentModelFeatureGroup_R(
    }
    IntEbmType iFeatureGroup = static_cast<IntEbmType>(doubleIndex);
    // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
-   if(pEbmBoosting->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R pEbmBoosting->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)");
+   if(pBooster->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R pBooster->GetCountFeatureGroups() <= static_cast<size_t>(iFeatureGroup)");
       return R_NilValue;
    }
 
-   FloatEbmType * pModelFeatureGroupTensor = GetCurrentModelFeatureGroup(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureGroup);
+   FloatEbmType * pModelFeatureGroupTensor = GetCurrentModelFeatureGroup(reinterpret_cast<BoosterHandle>(pBooster), iFeatureGroup);
    if(nullptr == pModelFeatureGroupTensor) {
       LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
 
@@ -1338,8 +1338,8 @@ SEXP GetCurrentModelFeatureGroup_R(
       SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
       return ret;
    }
-   size_t cValues = GetVectorLength(pEbmBoosting->GetRuntimeLearningTypeOrCountTargetClasses());
-   const FeatureGroup * const pFeatureGroup = pEbmBoosting->GetFeatureGroups()[static_cast<size_t>(iFeatureGroup)];
+   size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+   const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[static_cast<size_t>(iFeatureGroup)];
    const size_t cFeatures = pFeatureGroup->GetCountFeatures();
    if(0 != cFeatures) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
@@ -1362,9 +1362,9 @@ SEXP GetCurrentModelFeatureGroup_R(
 }
 
 SEXP FreeBoosting_R(
-   SEXP ebmBoosting
+   SEXP boosterHandleWrapped
 ) {
-   BoostingFinalizer(ebmBoosting);
+   BoostingFinalizer(boosterHandleWrapped);
    return R_NilValue;
 }
 
@@ -1445,7 +1445,7 @@ SEXP InitializeInteractionClassification_R(
       return R_NilValue;
    }
 
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(
+   const InteractionDetectionHandle interactionDetectionHandle = InitializeInteractionClassification(
       static_cast<IntEbmType>(cTargetClasses), 
       countFeatures, 
       aFeatures, 
@@ -1456,16 +1456,16 @@ SEXP InitializeInteractionClassification_R(
       nullptr
    );
 
-   if(nullptr == pEbmInteraction) {
+   if(nullptr == interactionDetectionHandle) {
       return R_NilValue;
    } else {
-      SEXP interactionRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmInteraction), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(interactionRPointer);
+      SEXP interactionDetectionHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionDetectionHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(interactionDetectionHandleWrapped);
 
-      R_RegisterCFinalizerEx(interactionRPointer, &InteractionFinalizer, Rboolean::TRUE);
+      R_RegisterCFinalizerEx(interactionDetectionHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
 
       UNPROTECT(1);
-      return interactionRPointer;
+      return interactionDetectionHandleWrapped;
    }
 }
 
@@ -1523,7 +1523,7 @@ SEXP InitializeInteractionRegression_R(
       return R_NilValue;
    }
 
-   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(
+   const InteractionDetectionHandle interactionDetectionHandle = InitializeInteractionRegression(
       countFeatures, 
       aFeatures, 
       countSamples, 
@@ -1533,35 +1533,35 @@ SEXP InitializeInteractionRegression_R(
       nullptr
    );
 
-   if(nullptr == pEbmInteraction) {
+   if(nullptr == interactionDetectionHandle) {
       return R_NilValue;
    } else {
-      SEXP interactionRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmInteraction), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(interactionRPointer);
+      SEXP interactionDetectionHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionDetectionHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(interactionDetectionHandleWrapped);
 
-      R_RegisterCFinalizerEx(interactionRPointer, &InteractionFinalizer, Rboolean::TRUE);
+      R_RegisterCFinalizerEx(interactionDetectionHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
 
       UNPROTECT(1);
-      return interactionRPointer;
+      return interactionDetectionHandleWrapped;
    }
 }
 
 SEXP CalculateInteractionScore_R(
-   SEXP ebmInteraction,
+   SEXP interactionDetectionHandleWrapped,
    SEXP featureIndexes,
    SEXP countSamplesRequiredForChildSplitMin
 ) {
-   EBM_ASSERT(nullptr != ebmInteraction); // shouldn't be possible
+   EBM_ASSERT(nullptr != interactionDetectionHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
 
-   if(EXTPTRSXP != TYPEOF(ebmInteraction)) {
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R EXTPTRSXP != TYPEOF(ebmInteraction)");
+   if(EXTPTRSXP != TYPEOF(interactionDetectionHandleWrapped)) {
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R EXTPTRSXP != TYPEOF(interactionDetectionHandleWrapped)");
       return R_NilValue;
    }
-   EbmInteractionState * pEbmInteraction = static_cast<EbmInteractionState *>(R_ExternalPtrAddr(ebmInteraction));
-   if(nullptr == pEbmInteraction) {
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R nullptr == pEbmInteraction");
+   InteractionDetection * pInteractionDetection = static_cast<InteractionDetection *>(R_ExternalPtrAddr(interactionDetectionHandleWrapped));
+   if(nullptr == pInteractionDetection) {
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R nullptr == pInteractionDetection");
       return R_NilValue;
    }
 
@@ -1593,7 +1593,7 @@ SEXP CalculateInteractionScore_R(
    }
 
    FloatEbmType interactionScoreOut;
-   if(0 != CalculateInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
+   if(0 != CalculateInteractionScore(reinterpret_cast<InteractionDetectionHandle>(pInteractionDetection), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R CalculateInteractionScore returned error code");
       return R_NilValue;
    }
@@ -1605,9 +1605,9 @@ SEXP CalculateInteractionScore_R(
 }
 
 SEXP FreeInteraction_R(
-   SEXP ebmInteraction
+   SEXP interactionDetectionHandleWrapped
 ) {
-   InteractionFinalizer(ebmInteraction);
+   InteractionFinalizer(interactionDetectionHandleWrapped);
    return R_NilValue;
 }
 

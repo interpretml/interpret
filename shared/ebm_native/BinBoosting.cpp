@@ -28,7 +28,7 @@ public:
    BinBoostingZeroDimensions() = delete; // this is a static class.  Do not construct
 
    static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const pHistogramBucketEntryBase
    ) {
@@ -39,7 +39,7 @@ public:
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry =
          pHistogramBucketEntryBase->GetHistogramBucket<bClassification>();
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -130,26 +130,26 @@ public:
    BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const pHistogramBucketEntryBase
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          BinBoostingZeroDimensions<compilerLearningTypeOrCountTargetClassesPossible>::Func(
-            pEbmBoostingState,
+            pBooster,
             pTrainingSet,
             pHistogramBucketEntryBase
          );
       } else {
          BinBoostingZeroDimensionsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pEbmBoostingState,
+            pBooster,
             pTrainingSet,
             pHistogramBucketEntryBase
          );
@@ -164,17 +164,17 @@ public:
    BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const pHistogramBucketEntryBase
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
 
       BinBoostingZeroDimensions<k_dynamicClassification>::Func(
-         pEbmBoostingState,
+         pBooster,
          pTrainingSet,
          pHistogramBucketEntryBase
       );
@@ -188,7 +188,7 @@ public:
    BinBoostingInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
@@ -203,7 +203,7 @@ public:
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets =
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -357,7 +357,7 @@ public:
    BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
@@ -368,13 +368,13 @@ public:
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          BinBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-            pEbmBoostingState,
+            pBooster,
             pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
@@ -384,7 +384,7 @@ public:
          );
       } else {
          BinBoostingNormalTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pEbmBoostingState,
+            pBooster,
             pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
@@ -403,7 +403,7 @@ public:
    BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
@@ -413,11 +413,11 @@ public:
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
 
       BinBoostingInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-         pEbmBoostingState,
+         pBooster,
          pFeatureGroup,
          pTrainingSet,
          aHistogramBucketBase
@@ -435,7 +435,7 @@ public:
    BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
@@ -450,7 +450,7 @@ public:
       static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
          BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
-            pEbmBoostingState,
+            pBooster,
             pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
@@ -463,7 +463,7 @@ public:
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::Func(
-            pEbmBoostingState,
+            pBooster,
             pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
@@ -482,7 +482,7 @@ public:
    BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
@@ -493,7 +493,7 @@ public:
       EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
       EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
       BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-         pEbmBoostingState,
+         pBooster,
          pFeatureGroup,
          pTrainingSet,
          aHistogramBucketBase
@@ -511,7 +511,7 @@ public:
    BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
@@ -522,7 +522,7 @@ public:
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
@@ -531,7 +531,7 @@ public:
             compilerLearningTypeOrCountTargetClassesPossible,
             k_cItemsPerBitPackedDataUnitMax
          >::Func(
-            pEbmBoostingState,
+            pBooster,
             pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
@@ -541,7 +541,7 @@ public:
          );
       } else {
          BinBoostingSIMDTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pEbmBoostingState,
+            pBooster,
             pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
@@ -560,7 +560,7 @@ public:
    BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      EbmBoostingState * const pEbmBoostingState,
+      Booster * const pBooster,
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
@@ -570,11 +570,11 @@ public:
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
 
       BinBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackedDataUnitMax>::Func(
-         pEbmBoostingState,
+         pBooster,
          pFeatureGroup,
          pTrainingSet,
          aHistogramBucketBase
@@ -586,7 +586,7 @@ public:
 };
 
 extern void BinBoosting(
-   EbmBoostingState * const pEbmBoostingState,
+   Booster * const pBooster,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    HistogramBucketBase * const aHistogramBucketBase
@@ -596,19 +596,19 @@ extern void BinBoosting(
 ) {
    LOG_0(TraceLevelVerbose, "Entered BinBoosting");
 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(nullptr == pFeatureGroup) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          BinBoostingZeroDimensionsTarget<2>::Func(
-            pEbmBoostingState,
+            pBooster,
             pTrainingSet,
             aHistogramBucketBase
          );
       } else {
          EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
          BinBoostingZeroDimensions<k_regression>::Func(
-            pEbmBoostingState,
+            pBooster,
             pTrainingSet,
             aHistogramBucketBase
          );
@@ -630,7 +630,7 @@ extern void BinBoosting(
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             BinBoostingSIMDTarget<2>::Func(
-               pEbmBoostingState,
+               pBooster,
                pFeatureGroup,
                pTrainingSet,
                aHistogramBucketBase
@@ -641,7 +641,7 @@ extern void BinBoosting(
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             BinBoostingSIMDPacking<k_regression, k_cItemsPerBitPackedDataUnitMax>::Func(
-               pEbmBoostingState,
+               pBooster,
                pFeatureGroup,
                pTrainingSet,
                aHistogramBucketBase
@@ -659,7 +659,7 @@ extern void BinBoosting(
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             BinBoostingNormalTarget<2>::Func(
-               pEbmBoostingState,
+               pBooster,
                pFeatureGroup,
                pTrainingSet,
                aHistogramBucketBase
@@ -670,7 +670,7 @@ extern void BinBoosting(
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             BinBoostingInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-               pEbmBoostingState,
+               pBooster,
                pFeatureGroup,
                pTrainingSet,
                aHistogramBucketBase

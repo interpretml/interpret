@@ -241,9 +241,9 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
    m_iZeroClassificationLogit(iZeroClassificationLogit),
    m_bNullTrainingPredictionScores(true),
    m_bNullValidationPredictionScores(true),
-   m_pEbmBoosting(nullptr),
+   m_boosterHandle(nullptr),
    m_bNullInteractionPredictionScores(true),
-   m_pEbmInteraction(nullptr) {
+   m_interactionDetectionHandle(nullptr) {
    if(IsClassification(learningTypeOrCountTargetClasses)) {
       if(learningTypeOrCountTargetClasses <= iZeroClassificationLogit) {
          exit(1);
@@ -256,11 +256,11 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
 }
 
 TestApi::~TestApi() {
-   if(nullptr != m_pEbmBoosting) {
-      FreeBoosting(m_pEbmBoosting);
+   if(nullptr != m_boosterHandle) {
+      FreeBoosting(m_boosterHandle);
    }
-   if(nullptr != m_pEbmInteraction) {
-      FreeInteraction(m_pEbmInteraction);
+   if(nullptr != m_interactionDetectionHandle) {
+      FreeInteraction(m_interactionDetectionHandle);
    }
 }
 
@@ -643,7 +643,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       if(m_bNullValidationPredictionScores) {
          m_validationPredictionScores.resize(cVectorLength * m_validationClassificationTargets.size());
       }
-      m_pEbmBoosting = InitializeBoostingClassification(
+      m_boosterHandle = InitializeBoostingClassification(
          k_randomSeed,
          m_learningTypeOrCountTargetClasses,
          m_features.size(),
@@ -669,7 +669,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       if(m_bNullValidationPredictionScores) {
          m_validationPredictionScores.resize(cVectorLength * m_validationRegressionTargets.size());
       }
-      m_pEbmBoosting = InitializeBoostingRegression(
+      m_boosterHandle = InitializeBoostingRegression(
          k_randomSeed,
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
@@ -691,7 +691,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       exit(1);
    }
 
-   if(nullptr == m_pEbmBoosting) {
+   if(nullptr == m_boosterHandle) {
       printf("\nClean exit with nullptr from InitializeBoosting*.\n");
       exit(1);
    }
@@ -728,7 +728,7 @@ FloatEbmType TestApi::Boost(
 
    FloatEbmType validationMetricOut = FloatEbmType { 0 };
    const IntEbmType ret = BoostingStep(
-      m_pEbmBoosting,
+      m_boosterHandle,
       indexFeatureGroup,
       options,
       learningRate,
@@ -755,7 +755,7 @@ FloatEbmType TestApi::GetBestModelPredictorScore(
    if(m_featureGroups.size() <= iFeatureGroup) {
       exit(1);
    }
-   FloatEbmType * pModelFeatureGroup = GetBestModelFeatureGroup(m_pEbmBoosting, iFeatureGroup);
+   FloatEbmType * pModelFeatureGroup = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup);
    FloatEbmType predictorScore = GetPredictorScore(iFeatureGroup, pModelFeatureGroup, indexes, iScore);
    return predictorScore;
 }
@@ -767,7 +767,7 @@ const FloatEbmType * TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureG
    if(m_featureGroups.size() <= iFeatureGroup) {
       exit(1);
    }
-   FloatEbmType * pModel = GetBestModelFeatureGroup(m_pEbmBoosting, iFeatureGroup);
+   FloatEbmType * pModel = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup);
    return pModel;
 }
 
@@ -782,7 +782,7 @@ FloatEbmType TestApi::GetCurrentModelPredictorScore(
    if(m_featureGroups.size() <= iFeatureGroup) {
       exit(1);
    }
-   FloatEbmType * pModelFeatureGroup = GetCurrentModelFeatureGroup(m_pEbmBoosting, iFeatureGroup);
+   FloatEbmType * pModelFeatureGroup = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup);
    FloatEbmType predictorScore = GetPredictorScore(
       iFeatureGroup,
       pModelFeatureGroup,
@@ -799,7 +799,7 @@ const FloatEbmType * TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatu
    if(m_featureGroups.size() <= iFeatureGroup) {
       exit(1);
    }
-   FloatEbmType * pModel = GetCurrentModelFeatureGroup(m_pEbmBoosting, iFeatureGroup);
+   FloatEbmType * pModel = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup);
    return pModel;
 }
 
@@ -976,7 +976,7 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionPredictionScores) {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionClassificationTargets.size());
       }
-      m_pEbmInteraction = InitializeInteractionClassification(
+      m_interactionDetectionHandle = InitializeInteractionClassification(
          m_learningTypeOrCountTargetClasses,
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
@@ -990,7 +990,7 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionPredictionScores) {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionRegressionTargets.size());
       }
-      m_pEbmInteraction = InitializeInteractionRegression(
+      m_interactionDetectionHandle = InitializeInteractionRegression(
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
          m_interactionRegressionTargets.size(),
@@ -1003,7 +1003,7 @@ void TestApi::InitializeInteraction() {
       exit(1);
    }
 
-   if(nullptr == m_pEbmInteraction) {
+   if(nullptr == m_interactionDetectionHandle) {
       exit(1);
    }
    m_stage = Stage::InitializedInteraction;
@@ -1027,7 +1027,7 @@ FloatEbmType TestApi::InteractionScore(
 
    FloatEbmType interactionScoreOut = FloatEbmType { 0 };
    const IntEbmType ret = CalculateInteractionScore(
-      m_pEbmInteraction,
+      m_interactionDetectionHandle,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
       countSamplesRequiredForChildSplitMin,

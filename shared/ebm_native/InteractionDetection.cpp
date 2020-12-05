@@ -20,8 +20,8 @@
 
 #include "InteractionDetection.h"
 
-void EbmInteractionState::Free(EbmInteractionState * const pInteractionDetection) {
-   LOG_0(TraceLevelInfo, "Entered EbmInteractionState::Free");
+void InteractionDetection::Free(InteractionDetection * const pInteractionDetection) {
+   LOG_0(TraceLevelInfo, "Entered InteractionDetection::Free");
 
    if(nullptr != pInteractionDetection) {
       pInteractionDetection->m_dataSet.Destruct();
@@ -29,10 +29,10 @@ void EbmInteractionState::Free(EbmInteractionState * const pInteractionDetection
       free(pInteractionDetection);
    }
 
-   LOG_0(TraceLevelInfo, "Exited EbmInteractionState::Free");
+   LOG_0(TraceLevelInfo, "Exited InteractionDetection::Free");
 }
 
-EbmInteractionState * EbmInteractionState::Allocate(
+InteractionDetection * InteractionDetection::Allocate(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cFeatures,
    const FloatEbmType * const optionalTempParams,
@@ -46,14 +46,14 @@ EbmInteractionState * EbmInteractionState::Allocate(
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(optionalTempParams);
 
-   LOG_0(TraceLevelInfo, "Entered EbmInteractionState::Allocate");
+   LOG_0(TraceLevelInfo, "Entered InteractionDetection::Allocate");
 
-   LOG_0(TraceLevelInfo, "EbmInteractionState::Allocate starting feature processing");
+   LOG_0(TraceLevelInfo, "InteractionDetection::Allocate starting feature processing");
    Feature * aFeatures = nullptr;
    if(0 != cFeatures) {
       aFeatures = EbmMalloc<Feature>(cFeatures);
       if(nullptr == aFeatures) {
-         LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate nullptr == aFeatures");
+         LOG_0(TraceLevelWarning, "WARNING InteractionDetection::Allocate nullptr == aFeatures");
          return nullptr;
       }
       const EbmNativeFeature * pFeatureInitialize = aNativeFeatures;
@@ -68,7 +68,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
             FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), "FeatureType::Nominal must have the same value as FeatureTypeNominal"
             );
          if(FeatureTypeOrdinal != pFeatureInitialize->featureType && FeatureTypeNominal != pFeatureInitialize->featureType) {
-            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
+            LOG_0(TraceLevelError, "ERROR InteractionDetection::Allocate featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
             free(aFeatures);
             return nullptr;
          }
@@ -76,17 +76,17 @@ EbmInteractionState * EbmInteractionState::Allocate(
 
          IntEbmType countBins = pFeatureInitialize->countBins;
          if(countBins < 0) {
-            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate countBins cannot be negative");
+            LOG_0(TraceLevelError, "ERROR InteractionDetection::Allocate countBins cannot be negative");
             free(aFeatures);
             return nullptr;
          }
          if(0 == countBins && 0 != cSamples) {
-            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate countBins cannot be zero if 0 < cSamples");
+            LOG_0(TraceLevelError, "ERROR InteractionDetection::Allocate countBins cannot be zero if 0 < cSamples");
             free(aFeatures);
             return nullptr;
          }
          if(!IsNumberConvertable<size_t>(countBins)) {
-            LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate countBins is too high for us to allocate enough memory");
+            LOG_0(TraceLevelWarning, "WARNING InteractionDetection::Allocate countBins is too high for us to allocate enough memory");
             free(aFeatures);
             return nullptr;
          }
@@ -95,14 +95,14 @@ EbmInteractionState * EbmInteractionState::Allocate(
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
             // features would require a value, even if it was 0.
-            LOG_0(TraceLevelInfo, "INFO EbmInteractionState::Allocate feature with 0 values");
+            LOG_0(TraceLevelInfo, "INFO InteractionDetection::Allocate feature with 0 values");
          } else if(1 == cBins) {
             // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on. 
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
-            LOG_0(TraceLevelInfo, "INFO EbmInteractionState::Allocate feature with 1 value");
+            LOG_0(TraceLevelInfo, "INFO InteractionDetection::Allocate feature with 1 value");
          }
          if(EBM_FALSE != pFeatureInitialize->hasMissing && EBM_TRUE != pFeatureInitialize->hasMissing) {
-            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate hasMissing must either be EBM_TRUE or EBM_FALSE");
+            LOG_0(TraceLevelError, "ERROR InteractionDetection::Allocate hasMissing must either be EBM_TRUE or EBM_FALSE");
             free(aFeatures);
             return nullptr;
          }
@@ -117,9 +117,9 @@ EbmInteractionState * EbmInteractionState::Allocate(
          ++pFeatureInitialize;
       } while(pFeatureEnd != pFeatureInitialize);
    }
-   LOG_0(TraceLevelInfo, "EbmInteractionState::Allocate done feature processing");
+   LOG_0(TraceLevelInfo, "InteractionDetection::Allocate done feature processing");
 
-   EbmInteractionState * const pRet = EbmMalloc<EbmInteractionState>();
+   InteractionDetection * const pRet = EbmMalloc<InteractionDetection>();
    if(nullptr == pRet) {
       free(aFeatures);
       return nullptr;
@@ -141,19 +141,19 @@ EbmInteractionState * EbmInteractionState::Allocate(
       aPredictorScores,
       runtimeLearningTypeOrCountTargetClasses
    )) {
-      LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate m_dataSet.Initialize");
-      EbmInteractionState::Free(pRet);
+      LOG_0(TraceLevelWarning, "WARNING InteractionDetection::Allocate m_dataSet.Initialize");
+      InteractionDetection::Free(pRet);
       return nullptr;
    }
 
-   LOG_0(TraceLevelInfo, "Exited EbmInteractionState::Allocate");
+   LOG_0(TraceLevelInfo, "Exited InteractionDetection::Allocate");
    return pRet;
 }
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static EbmInteractionState * AllocateInteraction(
+static InteractionDetection * AllocateInteraction(
    IntEbmType countFeatures, 
    const EbmNativeFeature * features, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
@@ -201,7 +201,7 @@ static EbmInteractionState * AllocateInteraction(
    size_t cFeatures = static_cast<size_t>(countFeatures);
    size_t cSamples = static_cast<size_t>(countSamples);
 
-   EbmInteractionState * const pEbmInteractionState = EbmInteractionState::Allocate(
+   InteractionDetection * const pInteractionDetection = InteractionDetection::Allocate(
       runtimeLearningTypeOrCountTargetClasses,
       cFeatures,
       optionalTempParams,
@@ -211,14 +211,14 @@ static EbmInteractionState * AllocateInteraction(
       binnedData,
       predictorScores
    );
-   if(UNLIKELY(nullptr == pEbmInteractionState)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateInteraction nullptr == pEbmInteractionState");
+   if(UNLIKELY(nullptr == pInteractionDetection)) {
+      LOG_0(TraceLevelWarning, "WARNING AllocateInteraction nullptr == pInteractionDetection");
       return nullptr;
    }
-   return pEbmInteractionState;
+   return pInteractionDetection;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionClassification(
+EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONVENTION InitializeInteractionClassification(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
@@ -254,7 +254,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateInteraction(
+   InteractionDetectionHandle interactionDetectionHandle = reinterpret_cast<InteractionDetectionHandle>(AllocateInteraction(
       countFeatures, 
       features, 
       runtimeLearningTypeOrCountTargetClasses, 
@@ -264,11 +264,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       predictorScores,
       optionalTempParams
    ));
-   LOG_N(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(pEbmInteraction));
-   return pEbmInteraction;
+   LOG_N(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(interactionDetectionHandle));
+   return interactionDetectionHandle;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
+EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectionHandle EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
    IntEbmType countSamples,
@@ -287,7 +287,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       static_cast<const void *>(predictorScores),
       static_cast<const void *>(optionalTempParams)
    );
-   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateInteraction(
+   InteractionDetectionHandle interactionDetectionHandle = reinterpret_cast<InteractionDetectionHandle>(AllocateInteraction(
       countFeatures, 
       features, 
       k_regression, 
@@ -297,18 +297,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       predictorScores,
       optionalTempParams
    ));
-   LOG_N(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(pEbmInteraction));
-   return pEbmInteraction;
+   LOG_N(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(interactionDetectionHandle));
+   return interactionDetectionHandle;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(
-   PEbmInteraction ebmInteraction
+   InteractionDetectionHandle interactionDetectionHandle
 ) {
-   LOG_N(TraceLevelInfo, "Entered FreeInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
-   EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
+   LOG_N(TraceLevelInfo, "Entered FreeInteraction: interactionDetectionHandle=%p", static_cast<void *>(interactionDetectionHandle));
+   InteractionDetection * pInteractionDetection = reinterpret_cast<InteractionDetection *>(interactionDetectionHandle);
 
-   // pEbmInteractionState is allowed to be nullptr.  We handle that inside EbmInteractionState::Free
-   EbmInteractionState::Free(pEbmInteractionState);
+   // pInteractionDetection is allowed to be nullptr.  We handle that inside InteractionDetection::Free
+   InteractionDetection::Free(pInteractionDetection);
    
    LOG_0(TraceLevelInfo, "Exited FreeInteraction");
 }

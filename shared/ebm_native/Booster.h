@@ -26,7 +26,7 @@
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingSet.h"
 
-class EbmBoostingState final {
+class Booster final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
    size_t m_cFeatures;
@@ -65,8 +65,8 @@ class EbmBoostingState final {
 
 public:
 
-   EbmBoostingState() = default; // preserve our POD status
-   ~EbmBoostingState() = default; // preserve our POD status
+   Booster() = default; // preserve our POD status
+   ~Booster() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -156,9 +156,9 @@ public:
       return &m_randomStream;
    }
 
-   static void Free(EbmBoostingState * const pBoostingState);
+   static void Free(Booster * const pBooster);
 
-   static EbmBoostingState * Allocate(
+   static Booster * Allocate(
       const SeedEbmType randomSeed,
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cFeatures,
@@ -178,11 +178,11 @@ public:
       const FloatEbmType * const aValidationPredictorScores
    );
 };
-static_assert(std::is_standard_layout<EbmBoostingState>::value,
+static_assert(std::is_standard_layout<Booster>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<EbmBoostingState>::value,
+static_assert(std::is_trivial<Booster>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<EbmBoostingState>::value,
+static_assert(std::is_pod<Booster>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // EBM_BOOSTING_STATE_H

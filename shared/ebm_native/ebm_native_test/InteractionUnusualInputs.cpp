@@ -10,24 +10,24 @@
 static const TestPriority k_filePriority = TestPriority::InteractionUnusualInputs;
 
 TEST_CASE("null interactionScoreOut, interaction, regression") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
-   const IntEbmType ret = CalculateInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
+   const InteractionDetectionHandle interactionDetectionHandle = InitializeInteractionRegression(0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
+   const IntEbmType ret = CalculateInteractionScore(interactionDetectionHandle, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
-   FreeInteraction(pEbmInteraction);
+   FreeInteraction(interactionDetectionHandle);
 }
 
 TEST_CASE("null interactionScoreOut, interaction, binary") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
-   const IntEbmType ret = CalculateInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
+   const InteractionDetectionHandle interactionDetectionHandle = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
+   const IntEbmType ret = CalculateInteractionScore(interactionDetectionHandle, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
-   FreeInteraction(pEbmInteraction);
+   FreeInteraction(interactionDetectionHandle);
 }
 
 TEST_CASE("null interactionScoreOut, interaction, multiclass") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
-   const IntEbmType ret = CalculateInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
+   const InteractionDetectionHandle interactionDetectionHandle = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
+   const IntEbmType ret = CalculateInteractionScore(interactionDetectionHandle, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
-   FreeInteraction(pEbmInteraction);
+   FreeInteraction(interactionDetectionHandle);
 }
 
 TEST_CASE("Zero interaction samples, interaction, regression") {

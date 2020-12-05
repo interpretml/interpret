@@ -17,7 +17,7 @@ initialize_interaction_classification <- function(
       predictor_scores <- as.double(predictor_scores)
    }
 
-   interaction_pointer <- .Call(
+   interaction_handle <- .Call(
       InitializeInteractionClassification_R, 
       count_target_classes, 
       features, 
@@ -25,10 +25,10 @@ initialize_interaction_classification <- function(
       targets, 
       predictor_scores
    )
-   if(is.null(interaction_pointer)) {
+   if(is.null(interaction_handle)) {
       stop("error in InitializeInteractionClassification_R")
    }
-   return(interaction_pointer)
+   return(interaction_handle)
 }
 
 initialize_interaction_regression <- function(features, binned_data, targets, predictor_scores) {
@@ -39,21 +39,21 @@ initialize_interaction_regression <- function(features, binned_data, targets, pr
       predictor_scores <- as.double(predictor_scores)
    }
 
-   interaction_pointer <- .Call(InitializeInteractionRegression_R, features, binned_data, targets, predictor_scores)
-   if(is.null(interaction_pointer)) {
+   interaction_handle <- .Call(InitializeInteractionRegression_R, features, binned_data, targets, predictor_scores)
+   if(is.null(interaction_handle)) {
       stop("error in InitializeInteractionRegression_R")
    }
-   return(interaction_pointer)
+   return(interaction_handle)
 }
 
-calculate_interaction_score <- function(interaction_pointer, feature_indexes, count_samples_required_for_child_split_min) {
-   stopifnot(class(interaction_pointer) == "externalptr")
+calculate_interaction_score <- function(interaction_handle, feature_indexes, count_samples_required_for_child_split_min) {
+   stopifnot(class(interaction_handle) == "externalptr")
    feature_indexes <- as.double(feature_indexes)
    count_samples_required_for_child_split_min <- as.double(count_samples_required_for_child_split_min)
 
    interaction_score <- .Call(
       CalculateInteractionScore_R, 
-      interaction_pointer, 
+      interaction_handle, 
       feature_indexes, 
       count_samples_required_for_child_split_min
    )
