@@ -341,7 +341,7 @@ EXIT /B 0
     <ClCompile Include="DataSetBoosting.cpp" />
     <ClCompile Include="Discretization.cpp" />
     <ClCompile Include="DllMainEbmNative.cpp" />
-    <ClCompile Include="InteractionDetection.cpp" />
+    <ClCompile Include="InteractionDetector.cpp" />
     <ClCompile Include="Logging.cpp" />
     <ClCompile Include="PrecompiledHeader.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
