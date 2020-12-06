@@ -22,6 +22,7 @@ OBJECTS = interpret_R.o \
    $(NATIVEDIR)/CalculateInteractionScore.o \
    $(NATIVEDIR)/CachedThreadResourcesBoosting.o \
    $(NATIVEDIR)/CachedThreadResourcesInteraction.o \
+   $(NATIVEDIR)/CutRandom.o \
    $(NATIVEDIR)/DataSetBoosting.o \
    $(NATIVEDIR)/DataSetInteraction.o \
    $(NATIVEDIR)/Discretization.o \

@@ -2,41 +2,35 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-ebm_feature_group_c <- function(n_features) {
-   n_features <- as.double(n_features)
-   ret <- structure(list(n_features = n_features), class = "ebm_feature_group_c")
-   return(ret)
-}
-
 convert_feature_groups_to_c <- function(feature_groups) {
    n_feature_indexes <- 0
    for (feature_group in feature_groups) {
       n_feature_indexes <- n_feature_indexes + length(feature_group$feature_indexes)
    }
 
-   feature_group_indexes <- vector("list", n_feature_indexes)
-   feature_groups_c <- vector("list", length(feature_groups))
+   feature_groups_feature_count <- vector("numeric", length(feature_groups))
+   feature_groups_feature_indexes <- vector("numeric", n_feature_indexes)
    index_indexes <- 1
 
    for (index_feature_group in seq_along(feature_groups)) {
       feature_group <- feature_groups[[index_feature_group]]
       feature_indexes_in_group <- feature_group$feature_indexes
-      feature_groups_c[[index_feature_group]] <- ebm_feature_group_c(length(feature_indexes_in_group))
+      feature_groups_feature_count[[index_feature_group]] <- length(feature_indexes_in_group)
 
       for(feature_index in feature_indexes_in_group) {
-         feature_group_indexes[[index_indexes]] <- feature_index - 1
+         feature_groups_feature_indexes[[index_indexes]] <- feature_index - 1
          index_indexes <- index_indexes + 1
       }
    }
-   return(list(feature_groups_c = feature_groups_c, feature_group_indexes = feature_group_indexes))
+   return(list(feature_groups_feature_count = feature_groups_feature_count, feature_groups_feature_indexes = feature_groups_feature_indexes))
 }
 
 create_classification_booster <- function(
    random_seed,
    count_target_classes, 
    features, 
-   feature_groups, 
-   feature_group_indexes, 
+   feature_groups_feature_count, 
+   feature_groups_feature_indexes, 
    training_binned_data, 
    training_targets, 
    training_predictor_scores, 
@@ -48,8 +42,8 @@ create_classification_booster <- function(
    random_seed <- as.integer(random_seed)
    count_target_classes <- as.double(count_target_classes)
    features <- as.list(features)
-   feature_groups <- as.list(feature_groups)
-   feature_group_indexes <- as.double(feature_group_indexes)
+   feature_groups_feature_count <- as.double(feature_groups_feature_count)
+   feature_groups_feature_indexes <- as.double(feature_groups_feature_indexes)
    training_binned_data <- as.double(training_binned_data)
    training_targets <- as.double(training_targets)
    if(!is.null(training_predictor_scores)) {
@@ -67,8 +61,8 @@ create_classification_booster <- function(
       random_seed,
       count_target_classes, 
       features, 
-      feature_groups, 
-      feature_group_indexes, 
+      feature_groups_feature_count, 
+      feature_groups_feature_indexes, 
       training_binned_data, 
       training_targets, 
       training_predictor_scores, 
@@ -86,8 +80,8 @@ create_classification_booster <- function(
 create_regression_booster <- function(
    random_seed,
    features, 
-   feature_groups, 
-   feature_group_indexes, 
+   feature_groups_feature_count, 
+   feature_groups_feature_indexes, 
    training_binned_data, 
    training_targets, 
    training_predictor_scores, 
@@ -98,8 +92,8 @@ create_regression_booster <- function(
 ) {
    random_seed <- as.integer(random_seed)
    features <- as.list(features)
-   feature_groups <- as.list(feature_groups)
-   feature_group_indexes <- as.double(feature_group_indexes)
+   feature_groups_feature_count <- as.double(feature_groups_feature_count)
+   feature_groups_feature_indexes <- as.double(feature_groups_feature_indexes)
    training_binned_data <- as.double(training_binned_data)
    training_targets <- as.double(training_targets)
    if(!is.null(training_predictor_scores)) {
@@ -116,8 +110,8 @@ create_regression_booster <- function(
       CreateRegressionBooster_R, 
       random_seed,
       features, 
-      feature_groups, 
-      feature_group_indexes, 
+      feature_groups_feature_count, 
+      feature_groups_feature_indexes, 
       training_binned_data, 
       training_targets, 
       training_predictor_scores, 
@@ -233,8 +227,8 @@ native_ebm_booster <- function(
          random_state,
          n_classes, 
          features, 
-         c_structs$feature_groups_c, 
-         c_structs$feature_group_indexes, 
+         c_structs$feature_groups_feature_count, 
+         c_structs$feature_groups_feature_indexes, 
          X_train, 
          y_train, 
          scores_train, 
@@ -247,8 +241,8 @@ native_ebm_booster <- function(
       booster_handle <- create_regression_booster(
          random_state,
          features, 
-         c_structs$feature_groups_c, 
-         c_structs$feature_group_indexes, 
+         c_structs$feature_groups_feature_count, 
+         c_structs$feature_groups_feature_indexes, 
          X_train, 
          y_train, 
          scores_train, 
@@ -288,7 +282,7 @@ cyclic_gradient_boost <- function(
    early_stopping_rounds, 
    early_stopping_tolerance,
    max_rounds, 
-   random_state,
+   random_state
 ) {
    min_metric <- Inf
    episode_index <- 0

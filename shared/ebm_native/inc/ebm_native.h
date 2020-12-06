@@ -155,10 +155,6 @@ typedef struct _EbmNativeFeature {
    IntEbmType countBins;
 } EbmNativeFeature;
 
-typedef struct _EbmNativeFeatureGroup {
-   IntEbmType countFeaturesInGroup;
-} EbmNativeFeatureGroup;
-
  // no messages will be output
 #define TraceLevelOff      (EBM_TRACE_CAST(0))
 // invalid inputs to the C library or assert failure before exit
@@ -422,8 +418,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
    IntEbmType countFeatureGroups,
-   const EbmNativeFeatureGroup * featureGroups,
-   const IntEbmType * featureGroupIndexes,
+   const IntEbmType * featureGroupsFeatureCount,
+   const IntEbmType * featureGroupsFeatureIndexes,
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
@@ -440,9 +436,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
    IntEbmType countFeatureGroups, 
-   const EbmNativeFeatureGroup * featureGroups,
-   const IntEbmType * featureGroupIndexes, 
-   IntEbmType countTrainingSamples, 
+   const IntEbmType * featureGroupsFeatureCount, 
+   const IntEbmType * featureGroupsFeatureIndexes, 
+   IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData, 
    const FloatEbmType * trainingTargets,
    const FloatEbmType * trainingPredictorScores,
@@ -517,8 +513,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
    InteractionDetectorHandle interactionDetectorHandle, 
-   IntEbmType countFeaturesInGroup, 
-   const IntEbmType * featureIndexes, 
+   IntEbmType countFeaturesInGroup,
+   const IntEbmType * featureIndexes,
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 );

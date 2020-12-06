@@ -59,7 +59,7 @@ ebm_classify <- function(
    max_rounds = 5000, 
    min_samples_leaf = 2, 
    max_leaves = 3, 
-   random_state = 42, 
+   random_state = 42
 ) {
    min_samples_bin <- 5
    humanized <- FALSE # TODO this should be it's own binning type 'quantile_humanized' eventually
@@ -146,7 +146,7 @@ ebm_classify <- function(
          early_stopping_rounds,
          early_stopping_tolerance,
          max_rounds,
-         random_state,
+         random_state
       )
       for(i_feature in 1:n_features) {
          additive_terms[[col_names[i_feature]]] <- 

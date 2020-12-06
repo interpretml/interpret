@@ -56,12 +56,6 @@ class Native:
             ("countBins", ct.c_int64),
         ]
 
-    class EbmNativeFeatureGroup(ct.Structure):
-        _fields_ = [
-            # int64_t countFeaturesInGroup;
-            ("countFeaturesInGroup", ct.c_int64)
-        ]
-
     # const int32_t TraceLevelOff = 0;
     TraceLevelOff = 0
     # const int32_t TraceLevelError = 1;
@@ -245,9 +239,9 @@ class Native:
             ct.POINTER(self.EbmNativeFeature),
             # int64_t countFeatureGroups
             ct.c_int64,
-            # EbmNativeFeatureGroup * featureGroups
-            ct.POINTER(self.EbmNativeFeatureGroup),
-            # int64_t * featureGroupIndexes
+            # int64_t * featureGroupsFeatureCount
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featureGroupsFeatureIndexes
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countTrainingSamples
             ct.c_int64,
@@ -283,9 +277,9 @@ class Native:
             ct.POINTER(self.EbmNativeFeature),
             # int64_t countFeatureGroups
             ct.c_int64,
-            # EbmNativeFeatureGroup * featureGroups
-            ct.POINTER(self.EbmNativeFeatureGroup),
-            # int64_t * featureGroupIndexes
+            # int64_t * featureGroupsFeatureCount
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featureGroupsFeatureIndexes
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countTrainingSamples
             ct.c_int64,
@@ -560,17 +554,16 @@ class Native:
     def convert_feature_groups_to_c(feature_groups):
         # Create C form of feature_groups
 
-        feature_group_indexes = []
-        feature_groups_ar = (Native.EbmNativeFeatureGroup * len(feature_groups))()
+        feature_groups_feature_count = np.empty(len(feature_groups), dtype=ct.c_int64, order='C')
+        feature_groups_feature_indexes = []
         for idx, features_in_group in enumerate(feature_groups):
-            feature_groups_ar[idx].countFeaturesInGroup = len(features_in_group)
-
+            feature_groups_feature_count[idx] = len(features_in_group)
             for feature_idx in features_in_group:
-                feature_group_indexes.append(feature_idx)
+                feature_groups_feature_indexes.append(feature_idx)
 
-        feature_group_indexes = np.array(feature_group_indexes, dtype=ct.c_int64)
+        feature_groups_feature_indexes = np.array(feature_groups_feature_indexes, dtype=ct.c_int64)
 
-        return feature_groups_ar, feature_group_indexes
+        return feature_groups_feature_count, feature_groups_feature_indexes
 
 
 class NativeEBMBooster:
@@ -675,8 +668,8 @@ class NativeEBMBooster:
 
         self._feature_groups = feature_groups
         (
-            feature_groups_array,
-            feature_group_indexes,
+            feature_groups_feature_count,
+            feature_groups_feature_indexes,
         ) = Native.convert_feature_groups_to_c(feature_groups)
 
         n_scores = NativeHelper.get_count_scores_c(n_classes)
@@ -736,9 +729,9 @@ class NativeEBMBooster:
                 n_classes,
                 len(feature_array),
                 feature_array,
-                len(feature_groups_array),
-                feature_groups_array,
-                feature_group_indexes,
+                len(feature_groups_feature_count),
+                feature_groups_feature_count,
+                feature_groups_feature_indexes,
                 len(y_train),
                 X_train,
                 y_train,
@@ -757,9 +750,9 @@ class NativeEBMBooster:
                 random_state,
                 len(feature_array),
                 feature_array,
-                len(feature_groups_array),
-                feature_groups_array,
-                feature_group_indexes,
+                len(feature_groups_feature_count),
+                feature_groups_feature_count,
+                feature_groups_feature_indexes,
                 len(y_train),
                 X_train,
                 y_train,

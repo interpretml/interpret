@@ -10,15 +10,15 @@
 static const TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
 
 TEST_CASE("null validationMetricOut, boosting, regression") {
-   EbmNativeFeatureGroup groups[1];
-   groups->countFeaturesInGroup = 0;
+   IntEbmType featureGroupsFeatureCount[1];
+   featureGroupsFeatureCount[0] = 0;
 
    const BoosterHandle boosterHandle = CreateRegressionBooster(
       k_randomSeed,
       0,
       nullptr,
       1,
-      groups,
+      featureGroupsFeatureCount,
       nullptr,
       0,
       nullptr,
@@ -47,8 +47,8 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
 }
 
 TEST_CASE("null validationMetricOut, boosting, binary") {
-   EbmNativeFeatureGroup groups[1];
-   groups->countFeaturesInGroup = 0;
+   IntEbmType featureGroupsFeatureCount[1];
+   featureGroupsFeatureCount[0] = 0;
 
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
@@ -56,7 +56,7 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       0,
       nullptr,
       1,
-      groups,
+      featureGroupsFeatureCount,
       nullptr,
       0,
       nullptr,
@@ -85,8 +85,8 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
 }
 
 TEST_CASE("null validationMetricOut, boosting, multiclass") {
-   EbmNativeFeatureGroup groups[1];
-   groups->countFeaturesInGroup = 0;
+   IntEbmType featureGroupsFeatureCount[1];
+   featureGroupsFeatureCount[0] = 0;
 
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
@@ -94,7 +94,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       0,
       nullptr,
       1,
-      groups,
+      featureGroupsFeatureCount,
       nullptr,
       0,
       nullptr,

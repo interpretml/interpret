@@ -286,15 +286,13 @@ void TestApi::AddFeatureGroups(const std::vector<std::vector<size_t>> featureGro
    }
 
    for(const std::vector<size_t> oneFeatureGroup : featureGroups) {
-      EbmNativeFeatureGroup featureGroup;
-      featureGroup.countFeaturesInGroup = oneFeatureGroup.size();
-      m_featureGroups.push_back(featureGroup);
+      m_featureGroupsFeatureCount.push_back(oneFeatureGroup.size());
       std::vector<size_t> countBins;
       for(const size_t oneIndex : oneFeatureGroup) {
          if(m_features.size() <= oneIndex) {
             exit(1);
          }
-         m_featureGroupIndexes.push_back(oneIndex);
+         m_featureGroupsFeatureIndexes.push_back(oneIndex);
          countBins.push_back(static_cast<size_t>(m_features[oneIndex].countBins));
       }
       m_countBinsByFeatureGroup.push_back(countBins);
@@ -648,9 +646,9 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          m_learningTypeOrCountTargetClasses,
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
-         m_featureGroups.size(),
-         0 == m_featureGroups.size() ? nullptr : &m_featureGroups[0],
-         0 == m_featureGroupIndexes.size() ? nullptr : &m_featureGroupIndexes[0],
+         m_featureGroupsFeatureCount.size(),
+         0 == m_featureGroupsFeatureCount.size() ? nullptr : &m_featureGroupsFeatureCount[0],
+         0 == m_featureGroupsFeatureIndexes.size() ? nullptr : &m_featureGroupsFeatureIndexes[0],
          m_trainingClassificationTargets.size(),
          0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0],
          0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0],
@@ -673,9 +671,9 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          k_randomSeed,
          m_features.size(),
          0 == m_features.size() ? nullptr : &m_features[0],
-         m_featureGroups.size(),
-         0 == m_featureGroups.size() ? nullptr : &m_featureGroups[0],
-         0 == m_featureGroupIndexes.size() ? nullptr : &m_featureGroupIndexes[0],
+         m_featureGroupsFeatureCount.size(),
+         0 == m_featureGroupsFeatureCount.size() ? nullptr : &m_featureGroupsFeatureCount[0],
+         0 == m_featureGroupsFeatureIndexes.size() ? nullptr : &m_featureGroupsFeatureIndexes[0],
          m_trainingRegressionTargets.size(),
          0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0],
          0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0],
@@ -713,7 +711,7 @@ FloatEbmType TestApi::Boost(
    if(indexFeatureGroup < IntEbmType { 0 }) {
       exit(1);
    }
-   if(m_featureGroups.size() <= static_cast<size_t>(indexFeatureGroup)) {
+   if(m_featureGroupsFeatureCount.size() <= static_cast<size_t>(indexFeatureGroup)) {
       exit(1);
    }
    if(std::isnan(learningRate)) {
@@ -752,7 +750,7 @@ FloatEbmType TestApi::GetBestModelPredictorScore(
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroups.size() <= iFeatureGroup) {
+   if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
       exit(1);
    }
    FloatEbmType * pModelFeatureGroup = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup);
@@ -764,7 +762,7 @@ const FloatEbmType * TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureG
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroups.size() <= iFeatureGroup) {
+   if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
       exit(1);
    }
    FloatEbmType * pModel = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup);
@@ -779,7 +777,7 @@ FloatEbmType TestApi::GetCurrentModelPredictorScore(
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroups.size() <= iFeatureGroup) {
+   if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
       exit(1);
    }
    FloatEbmType * pModelFeatureGroup = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup);
@@ -796,7 +794,7 @@ const FloatEbmType * TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatu
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroups.size() <= iFeatureGroup) {
+   if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
       exit(1);
    }
    FloatEbmType * pModel = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup);

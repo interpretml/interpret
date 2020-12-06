@@ -19,7 +19,6 @@ extern void TestCHeaderConstructs() {
    const size_t cBytesBuffer = sizeof(buffer) / sizeof(buffer[0]);
 
    EbmNativeFeature ebmNativeFeature;
-   EbmNativeFeatureGroup ebmNativeFeatureGroup;
 
    BoosterHandle boosterHandle = NULL;
    snprintf(buffer, cBytesBuffer, "%p\n", boosterHandle);
@@ -54,8 +53,6 @@ extern void TestCHeaderConstructs() {
    ebmNativeFeature.countBins = 77;
    snprintf(buffer, cBytesBuffer, "%" IntEbmTypePrintf "\n", ebmNativeFeature.countBins);
 
-   ebmNativeFeatureGroup.countFeaturesInGroup = 2;
-   snprintf(buffer, cBytesBuffer, "%" IntEbmTypePrintf "\n", ebmNativeFeatureGroup.countFeaturesInGroup);
 
    TraceEbmType testTraceOff = TraceLevelOff;
    snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceOff);

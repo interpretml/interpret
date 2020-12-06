@@ -332,7 +332,7 @@ static bool BoostMultiDimensional(
       // allocation that cTotalBucketsMainSpace would not overflow
       EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
       cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-      // we check for simple multiplication overflow from m_cBins in Booster->Initialize when we unpack featureGroupIndexes
+      // we check for simple multiplication overflow from m_cBins in Booster->Initialize when we unpack featureGroupsFeatureIndexes
       EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins));
       cTotalBucketsMainSpace *= cBins;
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -619,7 +619,7 @@ static bool BoostRandom(
       const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
       // we filer out 1 == cBins in allocation.
       EBM_ASSERT(2 <= cBins);
-      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupIndexes
+      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes
       EBM_ASSERT(!IsMultiplyError(cTotalBuckets, cBins));
       cTotalBuckets *= cBins;
    }

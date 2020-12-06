@@ -297,8 +297,8 @@ class TestApi {
    const ptrdiff_t m_iZeroClassificationLogit;
 
    std::vector<EbmNativeFeature> m_features;
-   std::vector<EbmNativeFeatureGroup> m_featureGroups;
-   std::vector<IntEbmType> m_featureGroupIndexes;
+   std::vector<IntEbmType> m_featureGroupsFeatureCount;
+   std::vector<IntEbmType> m_featureGroupsFeatureIndexes;
 
    std::vector<std::vector<size_t>> m_countBinsByFeatureGroup;
 
@@ -346,7 +346,7 @@ public:
    ~TestApi();
 
    inline size_t GetFeatureGroupsCount() const {
-      return m_featureGroups.size();
+      return m_featureGroupsFeatureCount.size();
    }
 
    void AddFeatures(const std::vector<FeatureTest> features);

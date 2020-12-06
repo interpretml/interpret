@@ -154,8 +154,8 @@ Booster * Booster::Allocate(
    const size_t cSamplingSets,
    const FloatEbmType * const optionalTempParams,
    const EbmNativeFeature * const aFeatures,
-   const EbmNativeFeatureGroup * const aFeatureGroups, 
-   const IntEbmType * featureGroupIndexes, 
+   const IntEbmType * const aFeatureGroupsFeatureCount,
+   const IntEbmType * const aFeatureGroupsFeatureIndexes, 
    const size_t cTrainingSamples, 
    const void * const aTrainingTargets, 
    const IntEbmType * const aTrainingBinnedData, 
@@ -290,11 +290,10 @@ Booster * Booster::Allocate(
       }
       size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize(bClassification, cVectorLength);
 
-      const IntEbmType * pFeatureGroupIndex = featureGroupIndexes;
+      const IntEbmType * pFeatureGroupFeatureIndexes = aFeatureGroupsFeatureIndexes;
       size_t iFeatureGroup = 0;
       do {
-         const EbmNativeFeatureGroup * const pFeatureGroupInterop = &aFeatureGroups[iFeatureGroup];
-         const IntEbmType countFeaturesInGroup = pFeatureGroupInterop->countFeaturesInGroup;
+         const IntEbmType countFeaturesInGroup = aFeatureGroupsFeatureCount[iFeatureGroup];
          if(countFeaturesInGroup < 0) {
             LOG_0(TraceLevelError, "ERROR Booster::Initialize countFeaturesInGroup cannot be negative");
             Booster::Free(pBooster);
@@ -309,33 +308,33 @@ Booster * Booster::Allocate(
          }
          size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
          size_t cSignificantFeaturesInGroup = 0;
-         const IntEbmType * pFeatureGroupIndexEnd = pFeatureGroupIndex;
+         const IntEbmType * pFeatureGroupFeatureIndexesEnd = pFeatureGroupFeatureIndexes;
          if(UNLIKELY(0 == cFeaturesInGroup)) {
             LOG_0(TraceLevelInfo, "INFO Booster::Initialize empty feature group");
          } else {
-            if(nullptr == pFeatureGroupIndex) {
-               LOG_0(TraceLevelError, "ERROR Booster::Initialize featureGroupIndexes is null when there are FeatureGroups with non-zero numbers of features");
+            if(nullptr == pFeatureGroupFeatureIndexes) {
+               LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureIndexes is null when there are FeatureGroups with non-zero numbers of features");
                Booster::Free(pBooster);
                return nullptr;
             }
-            pFeatureGroupIndexEnd += cFeaturesInGroup;
-            const IntEbmType * pFeatureGroupIndexTemp = pFeatureGroupIndex;
+            pFeatureGroupFeatureIndexesEnd += cFeaturesInGroup;
+            const IntEbmType * pFeatureGroupFeatureIndexesTemp = pFeatureGroupFeatureIndexes;
             do {
-               const IntEbmType indexFeatureInterop = *pFeatureGroupIndexTemp;
+               const IntEbmType indexFeatureInterop = *pFeatureGroupFeatureIndexesTemp;
                if(indexFeatureInterop < 0) {
-                  LOG_0(TraceLevelError, "ERROR Booster::Initialize featureGroupIndexes value cannot be negative");
+                  LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureIndexes value cannot be negative");
                   Booster::Free(pBooster);
                   return nullptr;
                }
                if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
-                  LOG_0(TraceLevelError, "ERROR Booster::Initialize featureGroupIndexes value too big to reference memory");
+                  LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureIndexes value too big to reference memory");
                   Booster::Free(pBooster);
                   return nullptr;
                }
-               const size_t iFeatureForGroup = static_cast<size_t>(indexFeatureInterop);
+               const size_t iFeatureInGroup = static_cast<size_t>(indexFeatureInterop);
 
-               if(cFeatures <= iFeatureForGroup) {
-                  LOG_0(TraceLevelError, "ERROR Booster::Initialize featureGroupIndexes value must be less than the number of features");
+               if(cFeatures <= iFeatureInGroup) {
+                  LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureIndexes value must be less than the number of features");
                   Booster::Free(pBooster);
                   return nullptr;
                }
@@ -343,7 +342,7 @@ Booster * Booster::Allocate(
                EBM_ASSERT(1 <= cFeatures);
                EBM_ASSERT(nullptr != pBooster->m_aFeatures);
 
-               Feature * const pInputFeature = &pBooster->m_aFeatures[iFeatureForGroup];
+               Feature * const pInputFeature = &pBooster->m_aFeatures[iFeatureInGroup];
                if(LIKELY(1 < pInputFeature->GetCountBins())) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
                   // otherwise indistinquishable from the original data
@@ -351,8 +350,8 @@ Booster * Booster::Allocate(
                } else {
                   LOG_0(TraceLevelInfo, "INFO Booster::Initialize feature group with no useful features");
                }
-               ++pFeatureGroupIndexTemp;
-            } while(pFeatureGroupIndexEnd != pFeatureGroupIndexTemp);
+               ++pFeatureGroupFeatureIndexesTemp;
+            } while(pFeatureGroupFeatureIndexesEnd != pFeatureGroupFeatureIndexesTemp);
 
             if(k_cDimensionsMax < cSignificantFeaturesInGroup) {
                // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
@@ -372,17 +371,17 @@ Booster * Booster::Allocate(
          pBooster->m_apFeatureGroups[iFeatureGroup] = pFeatureGroup;
 
          if(UNLIKELY(0 != cSignificantFeaturesInGroup)) {
-            EBM_ASSERT(nullptr != featureGroupIndexes);
+            EBM_ASSERT(nullptr != aFeatureGroupsFeatureIndexes);
             size_t cEquivalentSplits = 1;
             size_t cTensorBins = 1;
             FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
             do {
-               const IntEbmType indexFeatureInterop = *pFeatureGroupIndex;
+               const IntEbmType indexFeatureInterop = *pFeatureGroupFeatureIndexes;
                EBM_ASSERT(0 <= indexFeatureInterop);
                EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureInterop)); // this was checked above
-               const size_t iFeatureForGroup = static_cast<size_t>(indexFeatureInterop);
-               EBM_ASSERT(iFeatureForGroup < cFeatures);
-               const Feature * const pInputFeature = &pBooster->m_aFeatures[iFeatureForGroup];
+               const size_t iFeatureInGroup = static_cast<size_t>(indexFeatureInterop);
+               EBM_ASSERT(iFeatureInGroup < cFeatures);
+               const Feature * const pInputFeature = &pBooster->m_aFeatures[iFeatureInGroup];
                const size_t cBins = pInputFeature->GetCountBins();
                if(LIKELY(1 < cBins)) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
@@ -398,8 +397,8 @@ Booster * Booster::Allocate(
                   cTensorBins *= cBins;
                   cEquivalentSplits *= cBins - 1; // we can only split between the bins
                }
-               ++pFeatureGroupIndex;
-            } while(pFeatureGroupIndexEnd != pFeatureGroupIndex);
+               ++pFeatureGroupFeatureIndexes;
+            } while(pFeatureGroupFeatureIndexesEnd != pFeatureGroupFeatureIndexes);
             EBM_ASSERT(1 < cTensorBins);
 
             size_t cBytesArrayEquivalentSplit;
@@ -424,7 +423,7 @@ Booster * Booster::Allocate(
             EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
             pFeatureGroup->SetCountItemsPerBitPackedDataUnit(GetCountItemsBitPacked(cBitsRequiredMin));
          }
-         pFeatureGroupIndex = pFeatureGroupIndexEnd;
+         pFeatureGroupFeatureIndexes = pFeatureGroupFeatureIndexesEnd;
 
          ++iFeatureGroup;
       } while(iFeatureGroup < cFeatureGroups);
@@ -553,8 +552,8 @@ static Booster * AllocateBoosting(
    const IntEbmType countFeatures, 
    const EbmNativeFeature * const features, 
    const IntEbmType countFeatureGroups, 
-   const EbmNativeFeatureGroup * const featureGroups, 
-   const IntEbmType * const featureGroupIndexes, 
+   const IntEbmType * const aFeatureGroupsFeatureCount,
+   const IntEbmType * const aFeatureGroupsFeatureIndexes, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
    const IntEbmType countTrainingSamples, 
    const void * const trainingTargets, 
@@ -581,12 +580,12 @@ static Booster * AllocateBoosting(
       LOG_0(TraceLevelError, "ERROR AllocateBoosting countFeatureGroups must be positive");
       return nullptr;
    }
-   if(0 != countFeatureGroups && nullptr == featureGroups) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting featureGroups cannot be nullptr if 0 < countFeatureGroups");
+   if(0 != countFeatureGroups && nullptr == aFeatureGroupsFeatureCount) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeatureGroupsFeatureCount cannot be nullptr if 0 < countFeatureGroups");
       return nullptr;
    }
-   // featureGroupIndexes -> it's legal for featureGroupIndexes to be nullptr if there are no features indexed by our featureGroups.  
-   // FeatureGroups can have zero features, so it could be legal for this to be null even if there are featureGroups
+   // aFeatureGroupsFeatureIndexes -> it's legal for aFeatureGroupsFeatureIndexes to be nullptr if there are no features indexed by our featureGroups.  
+   // FeatureGroups can have zero features, so it could be legal for this to be null even if there are aFeatureGroupsFeatureCount
    if(countTrainingSamples < 0) {
       LOG_0(TraceLevelError, "ERROR AllocateBoosting countTrainingSamples must be positive");
       return nullptr;
@@ -630,7 +629,7 @@ static Booster * AllocateBoosting(
       return nullptr;
    }
    if(!IsNumberConvertable<size_t>(countFeatureGroups)) {
-      // the caller should not have been able to allocate enough memory in "featureGroups" if this didn't fit in memory
+      // the caller should not have been able to allocate enough memory in "aFeatureGroupsFeatureCount" if this didn't fit in memory
       LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t>(countFeatureGroups)");
       return nullptr;
    }
@@ -678,8 +677,8 @@ static Booster * AllocateBoosting(
       cInnerBags,
       optionalTempParams,
       features,
-      featureGroups,
-      featureGroupIndexes,
+      aFeatureGroupsFeatureCount,
+      aFeatureGroupsFeatureIndexes,
       cTrainingSamples,
       trainingTargets,
       trainingBinnedData,
@@ -702,8 +701,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
    IntEbmType countFeatureGroups,
-   const EbmNativeFeatureGroup * featureGroups,
-   const IntEbmType * featureGroupIndexes,
+   const IntEbmType * featureGroupsFeatureCount,
+   const IntEbmType * featureGroupsFeatureIndexes,
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
@@ -723,8 +722,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       "countFeatures=%" IntEbmTypePrintf ", "
       "features=%p, "
       "countFeatureGroups=%" IntEbmTypePrintf ", "
-      "featureGroups=%p, "
-      "featureGroupIndexes=%p, "
+      "featureGroupsFeatureCount=%p, "
+      "featureGroupsFeatureIndexes=%p, "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "trainingBinnedData=%p, "
       "trainingTargets=%p, "
@@ -741,8 +740,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       countFeatures, 
       static_cast<const void *>(features), 
       countFeatureGroups, 
-      static_cast<const void *>(featureGroups), 
-      static_cast<const void *>(featureGroupIndexes), 
+      static_cast<const void *>(featureGroupsFeatureCount),
+      static_cast<const void *>(featureGroupsFeatureIndexes), 
       countTrainingSamples, 
       static_cast<const void *>(trainingBinnedData), 
       static_cast<const void *>(trainingTargets), 
@@ -772,8 +771,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       countFeatures, 
       features, 
       countFeatureGroups, 
-      featureGroups, 
-      featureGroupIndexes, 
+      featureGroupsFeatureCount,
+      featureGroupsFeatureIndexes, 
       runtimeLearningTypeOrCountTargetClasses, 
       countTrainingSamples, 
       trainingTargets, 
@@ -795,8 +794,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
    IntEbmType countFeatureGroups,
-   const EbmNativeFeatureGroup * featureGroups,
-   const IntEbmType * featureGroupIndexes,
+   const IntEbmType * featureGroupsFeatureCount,
+   const IntEbmType * featureGroupsFeatureIndexes,
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const FloatEbmType * trainingTargets,
@@ -815,8 +814,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       "countFeatures=%" IntEbmTypePrintf ", "
       "features=%p, "
       "countFeatureGroups=%" IntEbmTypePrintf ", "
-      "featureGroups=%p, "
-      "featureGroupIndexes=%p, "
+      "featureGroupsFeatureCount=%p, "
+      "featureGroupsFeatureIndexes=%p, "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "trainingBinnedData=%p, "
       "trainingTargets=%p, "
@@ -832,8 +831,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       countFeatures,
       static_cast<const void *>(features), 
       countFeatureGroups, 
-      static_cast<const void *>(featureGroups), 
-      static_cast<const void *>(featureGroupIndexes), 
+      static_cast<const void *>(featureGroupsFeatureCount),
+      static_cast<const void *>(featureGroupsFeatureIndexes), 
       countTrainingSamples, 
       static_cast<const void *>(trainingBinnedData), 
       static_cast<const void *>(trainingTargets), 
@@ -850,8 +849,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       countFeatures, 
       features, 
       countFeatureGroups, 
-      featureGroups, 
-      featureGroupIndexes, 
+      featureGroupsFeatureCount,
+      featureGroupsFeatureIndexes, 
       k_regression, 
       countTrainingSamples, 
       trainingTargets, 

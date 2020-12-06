@@ -326,11 +326,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    }
 
    const Feature * const aFeatures = pInteractionDetector->GetFeatures();
-   const IntEbmType * pFeatureGroupIndex = featureIndexes;
-   const IntEbmType * const pFeatureGroupIndexEnd = featureIndexes + cFeaturesInGroup;
+   const IntEbmType * pFeatureIndexes = featureIndexes;
+   const IntEbmType * const pFeatureIndexesEnd = featureIndexes + cFeaturesInGroup;
 
    do {
-      const IntEbmType indexFeatureInterop = *pFeatureGroupIndex;
+      const IntEbmType indexFeatureInterop = *pFeatureIndexes;
       if(indexFeatureInterop < 0) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
@@ -345,15 +345,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value too big to reference memory");
          return 1;
       }
-      const size_t iFeatureForGroup = static_cast<size_t>(indexFeatureInterop);
-      if(pInteractionDetector->GetCountFeatures() <= iFeatureForGroup) {
+      const size_t iFeatureInGroup = static_cast<size_t>(indexFeatureInterop);
+      if(pInteractionDetector->GetCountFeatures() <= iFeatureInGroup) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value must be less than the number of features");
          return 1;
       }
-      const Feature * const pFeature = &aFeatures[iFeatureForGroup];
+      const Feature * const pFeature = &aFeatures[iFeatureInGroup];
       if(pFeature->GetCountBins() <= 1) {
          if(nullptr != interactionScoreOut) {
             // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
@@ -363,8 +363,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore feature with 0/1 value");
          return 0;
       }
-      ++pFeatureGroupIndex;
-   } while(pFeatureGroupIndexEnd != pFeatureGroupIndex);
+      ++pFeatureIndexes;
+   } while(pFeatureIndexesEnd != pFeatureIndexes);
 
    if(k_cDimensionsMax < cFeaturesInGroup) {
       // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
@@ -378,21 +378,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    FeatureGroup * const pFeatureGroup = reinterpret_cast<FeatureGroup *>(&FeatureGroupBuffer);
    pFeatureGroup->Initialize(cFeaturesInGroup, 0);
 
-   pFeatureGroupIndex = featureIndexes; // restart from the start
+   pFeatureIndexes = featureIndexes; // restart from the start
    FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
    do {
-      const IntEbmType indexFeatureInterop = *pFeatureGroupIndex;
+      const IntEbmType indexFeatureInterop = *pFeatureIndexes;
       EBM_ASSERT(0 <= indexFeatureInterop);
       EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureInterop)); // we already checked indexFeatureInterop was good above
-      size_t iFeatureForGroup = static_cast<size_t>(indexFeatureInterop);
-      EBM_ASSERT(iFeatureForGroup < pInteractionDetector->GetCountFeatures());
-      const Feature * const pFeature = &aFeatures[iFeatureForGroup];
+      size_t iFeatureInGroup = static_cast<size_t>(indexFeatureInterop);
+      EBM_ASSERT(iFeatureInGroup < pInteractionDetector->GetCountFeatures());
+      const Feature * const pFeature = &aFeatures[iFeatureInGroup];
       EBM_ASSERT(2 <= pFeature->GetCountBins()); // we should have filtered out anything with 1 bin above
 
       pFeatureGroupEntry->m_pFeature = pFeature;
       ++pFeatureGroupEntry;
-      ++pFeatureGroupIndex;
-   } while(pFeatureGroupIndexEnd != pFeatureGroupIndex);
+      ++pFeatureIndexes;
+   } while(pFeatureIndexesEnd != pFeatureIndexes);
 
    if(ptrdiff_t { 0 } == pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses()) {
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore target with 0/1 classes");

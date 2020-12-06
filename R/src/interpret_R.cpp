@@ -247,111 +247,35 @@ EbmNativeFeature * ConvertFeatures(const SEXP features, size_t * const pcFeature
    return aFeatures;
 }
 
-EbmNativeFeatureGroup * ConvertFeatureGroups(const SEXP featureGroups, size_t * const pcFeatureGroups) {
-   if(VECSXP != TYPEOF(featureGroups)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups VECSXP != TYPEOF(featureGroups)");
-      return nullptr;
-   }
+size_t CountFeatureGroupsFeatureIndexes(const size_t cFeatureGroups, const IntEbmType * const aFeatureGroupsFeatureCount) {
+   EBM_ASSERT(nullptr != aFeatureGroupsFeatureCount);
 
-   const R_xlen_t countFeatureGroupsR = xlength(featureGroups);
-   if(!IsNumberConvertable<size_t>(countFeatureGroupsR)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups !IsNumberConvertable<size_t>(countFeatureGroupsR)");
-      return nullptr;
-   }
-   const size_t cFeatureGroups = static_cast<size_t>(countFeatureGroupsR);
-   if(!IsNumberConvertable<IntEbmType>(cFeatureGroups)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups !IsNumberConvertable<IntEbmType>(cFeatureGroups)");
-      return nullptr;
-   }
-   *pcFeatureGroups = cFeatureGroups;
-
-   EbmNativeFeatureGroup * const aFeatureGroups = reinterpret_cast<EbmNativeFeatureGroup *>(
-      R_alloc(cFeatureGroups, static_cast<int>(sizeof(EbmNativeFeatureGroup))));
-   // R_alloc doesn't return nullptr, so we don't need to check aFeatureGroups
-   EbmNativeFeatureGroup * pFeatureGroup = aFeatureGroups;
-   for(size_t iFeatureGroup = 0; iFeatureGroup < cFeatureGroups; ++iFeatureGroup) {
-      const SEXP oneFeatureGroup = VECTOR_ELT(featureGroups, iFeatureGroup);
-      EBM_ASSERT(nullptr != oneFeatureGroup);
-      if(VECSXP != TYPEOF(oneFeatureGroup)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups VECSXP != TYPEOF(oneFeatureGroup)");
-         return nullptr;
-      }
-
-      constexpr size_t cItems = 1;
-      if(R_xlen_t { cItems } != xlength(oneFeatureGroup)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups R_xlen_t { cItems } != xlength(oneFeatureGroup)");
-         return nullptr;
-      }
-      const SEXP fieldNames = getAttrib(oneFeatureGroup, R_NamesSymbol);
-      EBM_ASSERT(nullptr != fieldNames);
-      if(STRSXP != TYPEOF(fieldNames)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups STRSXP != TYPEOF(fieldNames)");
-         return nullptr;
-      }
-      if(R_xlen_t { cItems } != xlength(fieldNames)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups R_xlen_t { cItems } != xlength(fieldNames)");
-         return nullptr;
-      }
-
-      const SEXP nameR = STRING_ELT(fieldNames, 0);
-      if(CHARSXP != TYPEOF(nameR)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups CHARSXP != TYPEOF(nameR)");
-         return nullptr;
-      }
-      const char * pName = CHAR(nameR);
-      if(0 != strcmp("n_features", pName)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups 0 != strcmp(\"n_features\", pName");
-         return nullptr;
-      }
-
-      SEXP val = VECTOR_ELT(oneFeatureGroup, 0);
-      if(REALSXP != TYPEOF(val)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups REALSXP != TYPEOF(value)");
-         return nullptr;
-      }
-      if(1 != xlength(val)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups 1 != xlength(val)");
-         return nullptr;
-      }
-
-      double countFeaturesInGroupDouble = REAL(val)[0];
-      if(!IsDoubleToIntEbmTypeIndexValid(countFeaturesInGroupDouble)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups !IsDoubleToIntEbmTypeIndexValid(countFeaturesInGroupDouble)");
-         return nullptr;
-      }
-      pFeatureGroup->countFeaturesInGroup = static_cast<IntEbmType>(countFeaturesInGroupDouble);
-
-      ++pFeatureGroup;
-   }
-   return aFeatureGroups;
-}
-
-size_t CountFeatureGroupsIndexes(const size_t cFeatureGroups, const EbmNativeFeatureGroup * const aFeatureGroups) {
-   size_t cFeatureGroupsIndexes = 0;
+   size_t cFeatureGroupsFeatureIndexes = size_t { 0 };
    if(0 != cFeatureGroups) {
-      const EbmNativeFeatureGroup * pFeatureGroup = aFeatureGroups;
-      const EbmNativeFeatureGroup * const pFeatureGroupEnd = aFeatureGroups + cFeatureGroups;
+      const IntEbmType * pFeatureGroupFeatureCount = aFeatureGroupsFeatureCount;
+      const IntEbmType * const pFeatureGroupFeatureCountEnd = aFeatureGroupsFeatureCount + cFeatureGroups;
       do {
-         const IntEbmType countFeaturesInGroup = pFeatureGroup->countFeaturesInGroup;
+         const IntEbmType countFeaturesInGroup = *pFeatureGroupFeatureCount;
          if(!IsNumberConvertable<size_t>(countFeaturesInGroup)) {
-            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsIndexes !IsNumberConvertable<size_t>(countFeaturesInGroup)");
+            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsFeatureIndexes !IsNumberConvertable<size_t>(countFeaturesInGroup)");
             return SIZE_MAX;
          }
          const size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
-         if(IsAddError(cFeatureGroupsIndexes, cFeaturesInGroup)) {
-            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsIndexes IsAddError(cFeatureGroupsIndexes, cFeaturesInGroup)");
+         if(IsAddError(cFeatureGroupsFeatureIndexes, cFeaturesInGroup)) {
+            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsFeatureIndexes IsAddError(cFeatureGroupsFeatureIndexes, cFeaturesInGroup)");
             return SIZE_MAX;
          }
-         cFeatureGroupsIndexes += cFeaturesInGroup;
-         ++pFeatureGroup;
-      } while(pFeatureGroupEnd != pFeatureGroup);
+         cFeatureGroupsFeatureIndexes += cFeaturesInGroup;
+         ++pFeatureGroupFeatureCount;
+      } while(pFeatureGroupFeatureCountEnd != pFeatureGroupFeatureCount);
    }
-   return cFeatureGroupsIndexes;
+   return cFeatureGroupsFeatureIndexes;
 }
 
 bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const IntEbmType * * const pRet) {
    EBM_ASSERT(nullptr != items);
    EBM_ASSERT(nullptr != pcItems);
+   EBM_ASSERT(nullptr != pRet);
    if(REALSXP != TYPEOF(items)) {
       LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes REALSXP != TYPEOF(items)");
       return true;
@@ -649,7 +573,7 @@ SEXP SampleWithoutReplacement_R(
       LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsDoubleToIntEbmTypeIndexValid(countTrainingSamplesDouble)");
       return R_NilValue;
    }
-   IntEbmType countTrainingSamplesIntEbmType = static_cast<IntEbmType>(countTrainingSamplesDouble);
+   const IntEbmType countTrainingSamplesIntEbmType = static_cast<IntEbmType>(countTrainingSamplesDouble);
    EBM_ASSERT(IsNumberConvertable<size_t>(countTrainingSamplesIntEbmType)); // IsDoubleToIntEbmTypeIndexValid checks this
 
    if(!IsSingleDoubleVector(countValidationSamples)) {
@@ -674,8 +598,8 @@ SEXP SampleWithoutReplacement_R(
       return R_NilValue;
    }
    const size_t cSampleCountsOut = static_cast<size_t>(sampleCountsOutR);
-   if(static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValicationSamplesIntEbmType) != cSampleCountsOut) {
-      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValicationSamplesIntEbmType) != cSampleCountsOut");
+   if(static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValidationSamplesIntEbmType) != cSampleCountsOut) {
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R static_cast<size_t>(countTrainingSamplesIntEbmType) + static_cast<size_t>(countValidationSamplesIntEbmType) != cSampleCountsOut");
       return R_NilValue;
    }
 
@@ -712,8 +636,8 @@ SEXP CreateClassificationBooster_R(
    SEXP randomSeed,
    SEXP countTargetClasses,
    SEXP features,
-   SEXP featureGroups,
-   SEXP featureGroupIndexes,
+   SEXP featureGroupsFeatureCount,
+   SEXP featureGroupsFeatureIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingPredictorScores,
@@ -725,8 +649,8 @@ SEXP CreateClassificationBooster_R(
    EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != countTargetClasses);
    EBM_ASSERT(nullptr != features);
-   EBM_ASSERT(nullptr != featureGroups);
-   EBM_ASSERT(nullptr != featureGroupIndexes);
+   EBM_ASSERT(nullptr != featureGroupsFeatureCount);
+   EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingPredictorScores);
@@ -767,28 +691,28 @@ SEXP CreateClassificationBooster_R(
    const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
 
    size_t cFeatureGroups;
-   EbmNativeFeatureGroup * const aFeatureGroups = ConvertFeatureGroups(featureGroups, &cFeatureGroups);
-   if(nullptr == aFeatureGroups) {
+   const IntEbmType * aFeatureGroupsFeatureCount;
+   if(ConvertDoublesToIndexes(featureGroupsFeatureCount, &cFeatureGroups, &aFeatureGroupsFeatureCount)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   // the validity of this conversion was checked in ConvertFeatureGroups(...)
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
    const IntEbmType countFeatureGroups = static_cast<IntEbmType>(cFeatureGroups);
 
-   const size_t cFeatureGroupsIndexesCheck = CountFeatureGroupsIndexes(cFeatureGroups, aFeatureGroups);
-   if(SIZE_MAX == cFeatureGroupsIndexesCheck) {
+   const size_t cFeatureGroupsFeatureIndexesCheck = CountFeatureGroupsFeatureIndexes(cFeatureGroups, aFeatureGroupsFeatureCount);
+   if(SIZE_MAX == cFeatureGroupsFeatureIndexesCheck) {
       // we've already logged any errors
       return R_NilValue;
    }
 
-   size_t cFeatureGroupsIndexesActual;
-   const IntEbmType * aFeatureGroupIndexes;
-   if(ConvertDoublesToIndexes(featureGroupIndexes, &cFeatureGroupsIndexesActual, &aFeatureGroupIndexes)) {
+   size_t cFeatureGroupsFeatureIndexesActual;
+   const IntEbmType * aFeatureGroupsFeatureIndexes;
+   if(ConvertDoublesToIndexes(featureGroupsFeatureIndexes, &cFeatureGroupsFeatureIndexesActual, &aFeatureGroupsFeatureIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck");
+   if(cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck");
       return R_NilValue;
    }
 
@@ -887,8 +811,8 @@ SEXP CreateClassificationBooster_R(
       countFeatures, 
       aFeatures, 
       countFeatureGroups, 
-      aFeatureGroups, 
-      aFeatureGroupIndexes, 
+      aFeatureGroupsFeatureCount,
+      aFeatureGroupsFeatureIndexes,
       countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
@@ -917,8 +841,8 @@ SEXP CreateClassificationBooster_R(
 SEXP CreateRegressionBooster_R(
    SEXP randomSeed,
    SEXP features,
-   SEXP featureGroups,
-   SEXP featureGroupIndexes,
+   SEXP featureGroupsFeatureCount,
+   SEXP featureGroupsFeatureIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingPredictorScores,
@@ -929,8 +853,8 @@ SEXP CreateRegressionBooster_R(
 ) {
    EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != features);
-   EBM_ASSERT(nullptr != featureGroups);
-   EBM_ASSERT(nullptr != featureGroupIndexes);
+   EBM_ASSERT(nullptr != featureGroupsFeatureCount);
+   EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingPredictorScores);
@@ -954,28 +878,28 @@ SEXP CreateRegressionBooster_R(
    const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
 
    size_t cFeatureGroups;
-   EbmNativeFeatureGroup * const aFeatureGroups = ConvertFeatureGroups(featureGroups, &cFeatureGroups);
-   if(nullptr == aFeatureGroups) {
+   const IntEbmType * aFeatureGroupsFeatureCount;
+   if(ConvertDoublesToIndexes(featureGroupsFeatureCount, &cFeatureGroups, &aFeatureGroupsFeatureCount)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   // the validity of this conversion was checked in ConvertFeatureGroups(...)
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
    const IntEbmType countFeatureGroups = static_cast<IntEbmType>(cFeatureGroups);
 
-   const size_t cFeatureGroupsIndexesCheck = CountFeatureGroupsIndexes(cFeatureGroups, aFeatureGroups);
-   if(SIZE_MAX == cFeatureGroupsIndexesCheck) {
+   const size_t cFeatureGroupsFeatureIndexesCheck = CountFeatureGroupsFeatureIndexes(cFeatureGroups, aFeatureGroupsFeatureCount);
+   if(SIZE_MAX == cFeatureGroupsFeatureIndexesCheck) {
       // we've already logged any errors
       return R_NilValue;
    }
 
-   size_t cFeatureGroupsIndexesActual;
-   const IntEbmType * aFeatureGroupIndexes;
-   if(ConvertDoublesToIndexes(featureGroupIndexes, &cFeatureGroupsIndexesActual, &aFeatureGroupIndexes)) {
+   size_t cFeatureGroupsFeatureIndexesActual;
+   const IntEbmType * aFeatureGroupsFeatureIndexes;
+   if(ConvertDoublesToIndexes(featureGroupsFeatureIndexes, &cFeatureGroupsFeatureIndexesActual, &aFeatureGroupsFeatureIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck");
+   if(cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck");
       return R_NilValue;
    }
 
@@ -1065,8 +989,8 @@ SEXP CreateRegressionBooster_R(
       countFeatures,
       aFeatures, 
       countFeatureGroups, 
-      aFeatureGroups, 
-      aFeatureGroupIndexes, 
+      aFeatureGroupsFeatureCount,
+      aFeatureGroupsFeatureIndexes,
       countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
