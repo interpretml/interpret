@@ -21,7 +21,7 @@
 #include "SamplingSet.h"
 
 #include "Booster.h"
-#include "InteractionDetection.h"
+#include "InteractionDetector.h"
 
 template<bool bClassification>
 struct HistogramBucket;

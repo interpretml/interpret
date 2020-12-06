@@ -17,7 +17,7 @@
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
 
-#include "InteractionDetection.h"
+#include "InteractionDetector.h"
 
 #include "TensorTotalsSum.h"
 

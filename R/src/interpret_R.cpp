@@ -11,7 +11,7 @@
 #include "EbmInternal.h"
 #include "Logging.h"
 #include "Booster.h"
-#include "InteractionDetection.h"
+#include "InteractionDetector.h"
 
 #include <Rinternals.h>
 #include <R_ext/Visibility.h>

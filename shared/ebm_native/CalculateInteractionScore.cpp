@@ -17,7 +17,7 @@
 #include "DataSetInteraction.h"
 #include "CachedThreadResourcesInteraction.h"
 
-#include "InteractionDetection.h"
+#include "InteractionDetector.h"
 
 #include "TensorTotalsSum.h"
 

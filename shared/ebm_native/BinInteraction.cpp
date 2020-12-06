@@ -16,7 +16,7 @@
 #include "FeatureGroup.h"
 #include "DataSetInteraction.h"
 
-#include "InteractionDetection.h"
+#include "InteractionDetector.h"
 
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"

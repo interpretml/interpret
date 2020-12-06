@@ -18,7 +18,7 @@
 #include "DataSetInteraction.h"
 #include "CachedThreadResourcesInteraction.h"
 
-#include "InteractionDetection.h"
+#include "InteractionDetector.h"
 
 void InteractionDetector::Free(InteractionDetector * const pInteractionDetector) {
    LOG_0(TraceLevelInfo, "Entered InteractionDetector::Free");
