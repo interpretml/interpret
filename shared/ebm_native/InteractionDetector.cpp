@@ -40,11 +40,16 @@ InteractionDetector * InteractionDetector::Allocate(
    const size_t cSamples,
    const void * const aTargets,
    const IntEbmType * const aBinnedData,
+   const FloatEbmType * const aWeights, 
    const FloatEbmType * const aPredictorScores
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(optionalTempParams);
+
+   // TODO : implement weights 
+   UNUSED(aWeights);
+   EBM_ASSERT(nullptr == aWeights);
 
    LOG_0(TraceLevelInfo, "Entered InteractionDetector::Allocate");
 
@@ -154,13 +159,14 @@ InteractionDetector * InteractionDetector::Allocate(
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 static InteractionDetector * AllocateInteraction(
-   IntEbmType countFeatures, 
-   const EbmNativeFeature * features, 
+   const IntEbmType countFeatures, 
+   const EbmNativeFeature * const features, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   IntEbmType countSamples, 
-   const void * targets, 
-   const IntEbmType * binnedData, 
-   const FloatEbmType * predictorScores,
+   const IntEbmType countSamples, 
+   const void * const targets, 
+   const IntEbmType * const binnedData, 
+   const FloatEbmType * const aWeights, 
+   const FloatEbmType * const predictorScores,
    const FloatEbmType * const optionalTempParams
 ) {
    // TODO : give AllocateInteraction the same calling parameter order as CreateClassificationInteractionDetector
@@ -209,6 +215,7 @@ static InteractionDetector * AllocateInteraction(
       cSamples,
       targets,
       binnedData,
+      aWeights, 
       predictorScores
    );
    if(UNLIKELY(nullptr == pInteractionDetector)) {
@@ -225,19 +232,30 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
    IntEbmType countSamples,
    const IntEbmType * binnedData,
    const IntEbmType * targets,
+   const FloatEbmType * weights,
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 ) {
    LOG_N(
       TraceLevelInfo, 
-      "Entered CreateClassificationInteractionDetector: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
-      ", features=%p, countSamples=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p, optionalTempParams=%p",
+      "Entered CreateClassificationInteractionDetector: "
+      "countTargetClasses=%" IntEbmTypePrintf ", "
+      "countFeatures=%" IntEbmTypePrintf ", "
+      "features=%p, "
+      "countSamples=%" IntEbmTypePrintf ", "
+      "binnedData=%p, "
+      "targets=%p, "
+      "weights=%p, "
+      "predictorScores=%p, "
+      "optionalTempParams=%p"
+      ,
       countTargetClasses, 
       countFeatures, 
       static_cast<const void *>(features), 
       countSamples, 
       static_cast<const void *>(binnedData), 
       static_cast<const void *>(targets), 
+      static_cast<const void *>(weights), 
       static_cast<const void *>(predictorScores),
       static_cast<const void *>(optionalTempParams)
    );
@@ -254,13 +272,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   InteractionDetectorHandle interactionDetectorHandle = reinterpret_cast<InteractionDetectorHandle>(AllocateInteraction(
+   const InteractionDetectorHandle interactionDetectorHandle = reinterpret_cast<InteractionDetectorHandle>(AllocateInteraction(
       countFeatures, 
       features, 
       runtimeLearningTypeOrCountTargetClasses, 
       countSamples, 
       targets, 
       binnedData, 
+      weights,
       predictorScores,
       optionalTempParams
    ));
@@ -274,26 +293,37 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
    IntEbmType countSamples,
    const IntEbmType * binnedData,
    const FloatEbmType * targets,
+   const FloatEbmType * weights, 
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 ) {
-   LOG_N(TraceLevelInfo, "Entered CreateRegressionInteractionDetector: countFeatures=%" IntEbmTypePrintf ", features=%p, countSamples=%" IntEbmTypePrintf 
-      ", binnedData=%p, targets=%p, predictorScores=%p, optionalTempParams=%p",
+   LOG_N(TraceLevelInfo, "Entered CreateRegressionInteractionDetector: "
+      "countFeatures=%" IntEbmTypePrintf ", "
+      "features=%p, "
+      "countSamples=%" IntEbmTypePrintf ", "
+      "binnedData=%p, "
+      "targets=%p, "
+      "weights=%p, "
+      "predictorScores=%p, "
+      "optionalTempParams=%p"
+      ,
       countFeatures, 
       static_cast<const void *>(features), 
       countSamples, 
       static_cast<const void *>(binnedData), 
       static_cast<const void *>(targets), 
+      static_cast<const void *>(weights), 
       static_cast<const void *>(predictorScores),
       static_cast<const void *>(optionalTempParams)
    );
-   InteractionDetectorHandle interactionDetectorHandle = reinterpret_cast<InteractionDetectorHandle>(AllocateInteraction(
+   const InteractionDetectorHandle interactionDetectorHandle = reinterpret_cast<InteractionDetectorHandle>(AllocateInteraction(
       countFeatures, 
       features, 
       k_regression, 
       countSamples, 
       targets, 
       binnedData, 
+      weights, 
       predictorScores,
       optionalTempParams
    ));

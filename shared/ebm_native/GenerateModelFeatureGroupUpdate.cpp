@@ -718,16 +718,10 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    const FloatEbmType learningRate,
    const size_t cSamplesRequiredForChildSplitMin,
    const IntEbmType * const aLeavesMax, 
-   const FloatEbmType * const aTrainingWeights,
-   const FloatEbmType * const aValidationWeights,
    FloatEbmType * const pGainReturn
 ) {
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
-
-   // TODO remove this after we use aTrainingWeights and aValidationWeights into the GenerateModelFeatureGroupUpdatePerTargetClasses function
-   UNUSED(aTrainingWeights);
-   UNUSED(aValidationWeights);
 
    LOG_0(TraceLevelVerbose, "Entered GenerateModelFeatureGroupUpdateInternal");
 
@@ -950,8 +944,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    FloatEbmType learningRate,
    IntEbmType countSamplesRequiredForChildSplitMin,
    const IntEbmType * leavesMax,
-   const FloatEbmType * trainingWeights,
-   const FloatEbmType * validationWeights,
    FloatEbmType * gainOut
 ) {
    // TODO: BIG ISSUE: if we reduced the number of dimensions because one of the dimensions had only 1 state,
@@ -975,8 +967,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       "learningRate=%" FloatEbmTypePrintf ", "
       "countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", "
       "leavesMax=%p, "
-      "trainingWeights=%p, "
-      "validationWeights=%p, "
       "gainOut=%p"
       ,
       static_cast<void *>(boosterHandle),
@@ -985,8 +975,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       learningRate,
       countSamplesRequiredForChildSplitMin,
       static_cast<const void *>(leavesMax),
-      static_cast<const void *>(trainingWeights),
-      static_cast<const void *>(validationWeights),
       static_cast<void *>(gainOut)
    );
 
@@ -1059,8 +1047,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate leavesMax was null, so there won't be any splits");
    }
 
-   EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
-   EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
    // gainOut can be nullptr
 
    if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) {
@@ -1084,8 +1070,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       learningRate,
       cSamplesRequiredForChildSplitMin,
       leavesMax,
-      trainingWeights,
-      validationWeights,
       gainOut
    );
 

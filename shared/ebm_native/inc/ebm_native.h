@@ -423,10 +423,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
+   const FloatEbmType * trainingWeights,
    const FloatEbmType * trainingPredictorScores,
    IntEbmType countValidationSamples,
    const IntEbmType * validationBinnedData,
    const IntEbmType * validationTargets,
+   const FloatEbmType * validationWeights,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams
@@ -441,10 +443,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData, 
    const FloatEbmType * trainingTargets,
+   const FloatEbmType * trainingWeights,
    const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationSamples, 
+   IntEbmType countValidationSamples,
    const IntEbmType * validationBinnedData, 
    const FloatEbmType * validationTargets,
+   const FloatEbmType * validationWeights,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams
@@ -456,8 +460,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
    FloatEbmType learningRate, 
    IntEbmType countSamplesRequiredForChildSplitMin, 
    const IntEbmType * leavesMax, 
-   const FloatEbmType * trainingWeights, 
-   const FloatEbmType * validationWeights, 
    FloatEbmType * gainOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
@@ -475,8 +477,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Boosti
    FloatEbmType learningRate,
    IntEbmType countSamplesRequiredForChildSplitMin,
    const IntEbmType * leavesMax,
-   const FloatEbmType * trainingWeights,
-   const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
@@ -499,6 +499,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
    IntEbmType countSamples,
    const IntEbmType * binnedData,
    const IntEbmType * targets,
+   const FloatEbmType * weights,
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 );
@@ -508,6 +509,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
    IntEbmType countSamples, 
    const IntEbmType * binnedData, 
    const FloatEbmType * targets,
+   const FloatEbmType * weights,
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 );

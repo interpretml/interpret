@@ -249,6 +249,9 @@ class Native:
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # int64_t * trainingTargets
             ndpointer(dtype=ct.c_int64, ndim=1),
+            # double * trainingWeights
+            # ndpointer(dtype=ct.c_double, ndim=1),
+            ct.c_void_p,
             # double * trainingPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
@@ -258,6 +261,9 @@ class Native:
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # int64_t * validationTargets
             ndpointer(dtype=ct.c_int64, ndim=1),
+            # double * validationWeights
+            # ndpointer(dtype=ct.c_double, ndim=1),
+            ct.c_void_p,
             # double * validationPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
@@ -287,6 +293,9 @@ class Native:
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * trainingTargets
             ndpointer(dtype=ct.c_double, ndim=1),
+            # double * trainingWeights
+            # ndpointer(dtype=ct.c_double, ndim=1),
+            ct.c_void_p,
             # double * trainingPredictorScores
             ndpointer(dtype=ct.c_double, ndim=1),
             # int64_t countValidationSamples
@@ -295,6 +304,9 @@ class Native:
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * validationTargets
             ndpointer(dtype=ct.c_double, ndim=1),
+            # double * validationWeights
+            # ndpointer(dtype=ct.c_double, ndim=1),
+            ct.c_void_p,
             # double * validationPredictorScores
             ndpointer(dtype=ct.c_double, ndim=1),
             # int64_t countInnerBags
@@ -317,12 +329,6 @@ class Native:
             ct.c_int64,
             # int64_t * leavesMax
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # double * trainingWeights
-            # ndpointer(dtype=ct.c_double, ndim=1),
-            ct.c_void_p,
-            # double * validationWeights
-            # ndpointer(dtype=ct.c_double, ndim=1),
-            ct.c_void_p,
             # double * gainOut
             ct.POINTER(ct.c_double),
         ]
@@ -376,6 +382,9 @@ class Native:
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # int64_t * targets
             ndpointer(dtype=ct.c_int64, ndim=1),
+            # double * weights
+            # ndpointer(dtype=ct.c_double, ndim=1),
+            ct.c_void_p,
             # double * predictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
@@ -395,6 +404,9 @@ class Native:
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * targets
             ndpointer(dtype=ct.c_double, ndim=1),
+            # double * weights
+            # ndpointer(dtype=ct.c_double, ndim=1),
+            ct.c_void_p,
             # double * predictorScores
             ndpointer(dtype=ct.c_double, ndim=1),
             # double * optionalTempParams
@@ -735,10 +747,12 @@ class NativeEBMBooster:
                 len(y_train),
                 X_train,
                 y_train,
+                0,
                 scores_train,
                 len(y_val),
                 X_val,
                 y_val,
+                0,
                 scores_val,
                 n_inner_bags,
                 optional_temp_params,
@@ -756,10 +770,12 @@ class NativeEBMBooster:
                 len(y_train),
                 X_train,
                 y_train,
+                0,
                 scores_train,
                 len(y_val),
                 X_val,
                 y_val,
+                0,
                 scores_val,
                 n_inner_bags,
                 optional_temp_params,
@@ -822,8 +838,6 @@ class NativeEBMBooster:
                 learning_rate,
                 min_samples_leaf,
                 max_leaves_arr,
-                0,
-                0,
                 ct.byref(gain),
             )
             if not model_update_tensor_pointer:  # pragma: no cover
@@ -1069,6 +1083,7 @@ class NativeEBMInteraction:
                 len(y),
                 X,
                 y,
+                0,
                 scores,
                 optional_temp_params,
             )
@@ -1083,6 +1098,7 @@ class NativeEBMInteraction:
                 len(y),
                 X,
                 y,
+                0,
                 scores,
                 optional_temp_params,
             )

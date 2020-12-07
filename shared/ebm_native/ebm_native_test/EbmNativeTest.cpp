@@ -652,11 +652,13 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          m_trainingClassificationTargets.size(),
          0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0],
          0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0],
-         0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingPredictionScores[0],
+         0 == m_trainingWeights.size() ? nullptr : &m_trainingWeights[0],
+         0 == m_trainingPredictionScores.size() ? nullptr : &m_trainingPredictionScores[0],
          m_validationClassificationTargets.size(),
          0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0],
          0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0],
-         0 == m_validationClassificationTargets.size() ? nullptr : &m_validationPredictionScores[0],
+         0 == m_validationWeights.size() ? nullptr : &m_validationWeights[0],
+         0 == m_validationPredictionScores.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
          nullptr
       );
@@ -677,11 +679,13 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          m_trainingRegressionTargets.size(),
          0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0],
          0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0],
-         0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingPredictionScores[0],
+         0 == m_trainingWeights.size() ? nullptr : &m_trainingWeights[0],
+         0 == m_trainingPredictionScores.size() ? nullptr : &m_trainingPredictionScores[0],
          m_validationRegressionTargets.size(),
          0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0],
          0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0],
-         0 == m_validationRegressionTargets.size() ? nullptr : &m_validationPredictionScores[0],
+         0 == m_validationWeights.size() ? nullptr : &m_validationWeights[0],
+         0 == m_validationPredictionScores.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
          nullptr
       );
@@ -701,9 +705,7 @@ FloatEbmType TestApi::Boost(
    const GenerateUpdateOptionsType options,
    const FloatEbmType learningRate,
    const IntEbmType countSamplesRequiredForChildSplitMin,
-   const std::vector<IntEbmType> leavesMax,
-   const std::vector<FloatEbmType> trainingWeights,
-   const std::vector<FloatEbmType> validationWeights
+   const std::vector<IntEbmType> leavesMax
 ) {
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
@@ -732,8 +734,6 @@ FloatEbmType TestApi::Boost(
       learningRate,
       countSamplesRequiredForChildSplitMin,
       0 == leavesMax.size() ? nullptr : &leavesMax[0],
-      0 == trainingWeights.size() ? nullptr : &trainingWeights[0],
-      0 == validationWeights.size() ? nullptr : &validationWeights[0],
       &validationMetricOut
    );
    if(0 != ret) {
@@ -981,7 +981,8 @@ void TestApi::InitializeInteraction() {
          m_interactionClassificationTargets.size(),
          0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0],
          0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0],
-         0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionPredictionScores[0],
+         0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0],
+         0 == m_interactionPredictionScores.size() ? nullptr : &m_interactionPredictionScores[0],
          nullptr
       );
    } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
@@ -994,7 +995,8 @@ void TestApi::InitializeInteraction() {
          m_interactionRegressionTargets.size(),
          0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0],
          0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0],
-         0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionPredictionScores[0],
+         0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0],
+         0 == m_interactionPredictionScores.size() ? nullptr : &m_interactionPredictionScores[0],
          nullptr
       );
    } else {

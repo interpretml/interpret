@@ -33,9 +33,11 @@ create_classification_booster <- function(
    feature_groups_feature_indexes, 
    training_binned_data, 
    training_targets, 
+   training_weights, 
    training_predictor_scores, 
    validation_binned_data, 
    validation_targets, 
+   validation_weights, 
    validation_predictor_scores, 
    count_inner_bags
 ) {
@@ -46,11 +48,17 @@ create_classification_booster <- function(
    feature_groups_feature_indexes <- as.double(feature_groups_feature_indexes)
    training_binned_data <- as.double(training_binned_data)
    training_targets <- as.double(training_targets)
+   if(!is.null(training_weights)) {
+      training_weights <- as.double(training_weights)
+   }
    if(!is.null(training_predictor_scores)) {
       training_predictor_scores <- as.double(training_predictor_scores)
    }
    validation_binned_data <- as.double(validation_binned_data)
    validation_targets <- as.double(validation_targets)
+   if(!is.null(validation_weights)) {
+      validation_weights <- as.double(validation_weights)
+   }
    if(!is.null(validation_predictor_scores)) {
       validation_predictor_scores <- as.double(validation_predictor_scores)
    }
@@ -65,9 +73,11 @@ create_classification_booster <- function(
       feature_groups_feature_indexes, 
       training_binned_data, 
       training_targets, 
+      training_weights, 
       training_predictor_scores, 
       validation_binned_data, 
       validation_targets, 
+      validation_weights, 
       validation_predictor_scores, 
       count_inner_bags
    )
@@ -84,9 +94,11 @@ create_regression_booster <- function(
    feature_groups_feature_indexes, 
    training_binned_data, 
    training_targets, 
+   training_weights, 
    training_predictor_scores, 
    validation_binned_data, 
    validation_targets, 
+   validation_weights, 
    validation_predictor_scores, 
    count_inner_bags
 ) {
@@ -96,11 +108,17 @@ create_regression_booster <- function(
    feature_groups_feature_indexes <- as.double(feature_groups_feature_indexes)
    training_binned_data <- as.double(training_binned_data)
    training_targets <- as.double(training_targets)
+   if(!is.null(training_weights)) {
+      training_weights <- as.double(training_weights)
+   }
    if(!is.null(training_predictor_scores)) {
       training_predictor_scores <- as.double(training_predictor_scores)
    }
    validation_binned_data <- as.double(validation_binned_data)
    validation_targets <- as.double(validation_targets)
+   if(!is.null(validation_weights)) {
+      validation_weights <- as.double(validation_weights)
+   }
    if(!is.null(validation_predictor_scores)) {
       validation_predictor_scores <- as.double(validation_predictor_scores)
    }
@@ -114,9 +132,11 @@ create_regression_booster <- function(
       feature_groups_feature_indexes, 
       training_binned_data, 
       training_targets, 
+      training_weights, 
       training_predictor_scores, 
       validation_binned_data, 
       validation_targets, 
+      validation_weights, 
       validation_predictor_scores, 
       count_inner_bags
    )
@@ -136,21 +156,13 @@ boosting_step <- function(
    index_feature_group, 
    learning_rate, 
    count_samples_required_for_child_split_min, 
-   max_leaves, 
-   training_weights, 
-   validation_weights
+   max_leaves
 ) {
    stopifnot(class(booster_handle) == "externalptr")
    index_feature_group <- as.double(index_feature_group)
    learning_rate <- as.double(learning_rate)
    count_samples_required_for_child_split_min <- as.double(count_samples_required_for_child_split_min)
    max_leaves <- as.double(max_leaves)
-   if(!is.null(training_weights)) {
-      training_weights <- as.double(training_weights)
-   }
-   if(!is.null(validation_weights)) {
-      validation_weights <- as.double(validation_weights)
-   }
 
    validation_metric <- .Call(
       BoostingStep_R, 
@@ -158,9 +170,7 @@ boosting_step <- function(
       index_feature_group, 
       learning_rate, 
       count_samples_required_for_child_split_min, 
-      max_leaves, 
-      training_weights, 
-      validation_weights
+      max_leaves
    )
    if(is.null(validation_metric)) {
       stop("error in BoostingStep_R")
@@ -213,9 +223,11 @@ native_ebm_booster <- function(
    feature_groups,
    X_train,
    y_train,
+   weights_train, 
    scores_train,
    X_val,
    y_val,
+   weights_val, 
    scores_val,
    inner_bags,
    random_state
@@ -231,9 +243,11 @@ native_ebm_booster <- function(
          c_structs$feature_groups_feature_indexes, 
          X_train, 
          y_train, 
+         weights_train, 
          scores_train, 
          X_val, 
          y_val, 
+         weights_val, 
          scores_val, 
          inner_bags
       )
@@ -245,9 +259,11 @@ native_ebm_booster <- function(
          c_structs$feature_groups_feature_indexes, 
          X_train, 
          y_train, 
+         weights_train, 
          scores_train, 
          X_val, 
          y_val, 
+         weights_val, 
          scores_val, 
          inner_bags
       )
@@ -271,9 +287,11 @@ cyclic_gradient_boost <- function(
    feature_groups,
    X_train,
    y_train,
+   weights_train, 
    scores_train,
    X_val,
    y_val,
+   weights_val, 
    scores_val,
    inner_bags,
    learning_rate,
@@ -294,9 +312,11 @@ cyclic_gradient_boost <- function(
       feature_groups,
       X_train,
       y_train,
+      weights_train, 
       scores_train,
       X_val,
       y_val,
+      weights_val, 
       scores_val,
       inner_bags,
       random_state
@@ -312,9 +332,7 @@ cyclic_gradient_boost <- function(
                feature_group_index - 1, 
                learning_rate, 
                min_samples_leaf, 
-               max_leaves, 
-               NULL,
-               NULL
+               max_leaves
             )
             if(validation_metric < min_metric) {
                min_metric <- validation_metric

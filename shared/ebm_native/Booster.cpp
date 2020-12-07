@@ -159,15 +159,23 @@ Booster * Booster::Allocate(
    const size_t cTrainingSamples, 
    const void * const aTrainingTargets, 
    const IntEbmType * const aTrainingBinnedData, 
-   const FloatEbmType * const aTrainingPredictorScores, 
+   const FloatEbmType * const aTrainingWeights,
+   const FloatEbmType * const aTrainingPredictorScores,
    const size_t cValidationSamples, 
    const void * const aValidationTargets, 
    const IntEbmType * const aValidationBinnedData, 
+   const FloatEbmType * const aValidationWeights,
    const FloatEbmType * const aValidationPredictorScores
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(optionalTempParams);
+
+   // TODO: implement weights
+   UNUSED(aTrainingWeights);
+   UNUSED(aValidationWeights);
+   EBM_ASSERT(nullptr == aTrainingWeights);
+   EBM_ASSERT(nullptr == aValidationWeights);
 
    LOG_0(TraceLevelInfo, "Entered Booster::Initialize");
 
@@ -558,11 +566,13 @@ static Booster * AllocateBoosting(
    const IntEbmType countTrainingSamples, 
    const void * const trainingTargets, 
    const IntEbmType * const trainingBinnedData, 
+   const FloatEbmType * const aTrainingWeights,
    const FloatEbmType * const trainingPredictorScores, 
    const IntEbmType countValidationSamples, 
    const void * const validationTargets, 
    const IntEbmType * const validationBinnedData, 
-   const FloatEbmType * const validationPredictorScores, 
+   const FloatEbmType * const aValidationWeights, 
+   const FloatEbmType * const validationPredictorScores,
    const IntEbmType countInnerBags,
    const FloatEbmType * const optionalTempParams
 ) {
@@ -682,10 +692,12 @@ static Booster * AllocateBoosting(
       cTrainingSamples,
       trainingTargets,
       trainingBinnedData,
+      aTrainingWeights, 
       trainingPredictorScores,
       cValidationSamples,
       validationTargets,
       validationBinnedData,
+      aValidationWeights,
       validationPredictorScores
    );
    if(UNLIKELY(nullptr == pBooster)) {
@@ -706,10 +718,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
+   const FloatEbmType * trainingWeights,
    const FloatEbmType * trainingPredictorScores,
    IntEbmType countValidationSamples,
    const IntEbmType * validationBinnedData,
    const IntEbmType * validationTargets,
+   const FloatEbmType * validationWeights,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams
@@ -727,10 +741,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "trainingBinnedData=%p, "
       "trainingTargets=%p, "
+      "trainingWeights=%p, "
       "trainingPredictorScores=%p, "
       "countValidationSamples=%" IntEbmTypePrintf ", "
       "validationBinnedData=%p, "
       "validationTargets=%p, "
+      "validationWeights=%p, "
       "validationPredictorScores=%p, "
       "countInnerBags=%" IntEbmTypePrintf ", "
       "optionalTempParams=%p"
@@ -745,11 +761,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       countTrainingSamples, 
       static_cast<const void *>(trainingBinnedData), 
       static_cast<const void *>(trainingTargets), 
-      static_cast<const void *>(trainingPredictorScores), 
+      static_cast<const void *>(trainingWeights),
+      static_cast<const void *>(trainingPredictorScores),
       countValidationSamples, 
       static_cast<const void *>(validationBinnedData), 
       static_cast<const void *>(validationTargets), 
-      static_cast<const void *>(validationPredictorScores), 
+      static_cast<const void *>(validationWeights),
+      static_cast<const void *>(validationPredictorScores),
       countInnerBags, 
       static_cast<const void *>(optionalTempParams)
       );
@@ -777,10 +795,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       countTrainingSamples, 
       trainingTargets, 
       trainingBinnedData, 
+      trainingWeights, 
       trainingPredictorScores, 
       countValidationSamples, 
       validationTargets, 
       validationBinnedData, 
+      validationWeights, 
       validationPredictorScores, 
       countInnerBags,
       optionalTempParams
@@ -799,10 +819,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const FloatEbmType * trainingTargets,
+   const FloatEbmType * trainingWeights,
    const FloatEbmType * trainingPredictorScores,
    IntEbmType countValidationSamples,
    const IntEbmType * validationBinnedData,
    const FloatEbmType * validationTargets,
+   const FloatEbmType * validationWeights,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams
@@ -819,10 +841,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "trainingBinnedData=%p, "
       "trainingTargets=%p, "
+      "trainingWeights=%p, "
       "trainingPredictorScores=%p, "
       "countValidationSamples=%" IntEbmTypePrintf ", "
       "validationBinnedData=%p, "
       "validationTargets=%p, "
+      "validationWeights=%p, "
       "validationPredictorScores=%p, "
       "countInnerBags=%" IntEbmTypePrintf ", "
       "optionalTempParams=%p"
@@ -836,11 +860,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       countTrainingSamples, 
       static_cast<const void *>(trainingBinnedData), 
       static_cast<const void *>(trainingTargets), 
-      static_cast<const void *>(trainingPredictorScores), 
+      static_cast<const void *>(trainingWeights),
+      static_cast<const void *>(trainingPredictorScores),
       countValidationSamples, 
       static_cast<const void *>(validationBinnedData), 
       static_cast<const void *>(validationTargets), 
-      static_cast<const void *>(validationPredictorScores), 
+      static_cast<const void *>(validationWeights),
+      static_cast<const void *>(validationPredictorScores),
       countInnerBags, 
       static_cast<const void *>(optionalTempParams)
    );
@@ -855,10 +881,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       countTrainingSamples, 
       trainingTargets, 
       trainingBinnedData, 
+      trainingWeights, 
       trainingPredictorScores, 
       countValidationSamples, 
       validationTargets, 
       validationBinnedData, 
+      validationWeights,
       validationPredictorScores, 
       countInnerBags,
       optionalTempParams
@@ -874,8 +902,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
    FloatEbmType learningRate,
    IntEbmType countSamplesRequiredForChildSplitMin,
    const IntEbmType * leavesMax,
-   const FloatEbmType * trainingWeights,
-   const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricOut
 ) {
    Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
@@ -907,8 +933,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
       learningRate,
       countSamplesRequiredForChildSplitMin, 
       leavesMax, 
-      trainingWeights, 
-      validationWeights, 
       &gain
    );
    if(nullptr == pModelFeatureGroupUpdateTensor) {

@@ -7,12 +7,16 @@ create_classification_interaction_detector <- function(
    features, 
    binned_data, 
    targets, 
+   weights, 
    predictor_scores
 ) {
    count_target_classes <- as.double(count_target_classes)
    features <- as.list(features)
    binned_data <- as.double(binned_data)
    targets <- as.double(targets)
+   if(!is.null(weights)) {
+      weights <- as.double(weights)
+   }
    if(!is.null(predictor_scores)) {
       predictor_scores <- as.double(predictor_scores)
    }
@@ -23,6 +27,7 @@ create_classification_interaction_detector <- function(
       features, 
       binned_data, 
       targets, 
+      weights, 
       predictor_scores
    )
    if(is.null(interaction_handle)) {
@@ -31,15 +36,31 @@ create_classification_interaction_detector <- function(
    return(interaction_handle)
 }
 
-create_regression_interaction_detector <- function(features, binned_data, targets, predictor_scores) {
+create_regression_interaction_detector <- function(
+   features, 
+   binned_data, 
+   targets, 
+   weights, 
+   predictor_scores
+) {
    features <- as.list(features)
    binned_data <- as.double(binned_data)
    targets <- as.double(targets)
+   if(!is.null(weights)) {
+      weights <- as.double(weights)
+   }
    if(!is.null(predictor_scores)) {
       predictor_scores <- as.double(predictor_scores)
    }
 
-   interaction_handle <- .Call(CreateRegressionInteractionDetector_R, features, binned_data, targets, predictor_scores)
+   interaction_handle <- .Call(
+      CreateRegressionInteractionDetector_R, 
+      features, 
+      binned_data, 
+      targets, 
+      weights, 
+      predictor_scores
+   )
    if(is.null(interaction_handle)) {
       stop("error in CreateRegressionInteractionDetector_R")
    }

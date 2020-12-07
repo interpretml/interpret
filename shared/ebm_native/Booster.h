@@ -171,10 +171,12 @@ public:
       const size_t cTrainingSamples, 
       const void * const aTrainingTargets, 
       const IntEbmType * const aTrainingBinnedData, 
-      const FloatEbmType * const aTrainingPredictorScores, 
+      const FloatEbmType * const aTrainingWeights,
+      const FloatEbmType * const aTrainingPredictorScores,
       const size_t cValidationSamples, 
       const void * const aValidationTargets, 
       const IntEbmType * const aValidationBinnedData, 
+      const FloatEbmType * const aValidationWeights,
       const FloatEbmType * const aValidationPredictorScores
    );
 };

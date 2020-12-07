@@ -640,9 +640,11 @@ SEXP CreateClassificationBooster_R(
    SEXP featureGroupsFeatureIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
+   SEXP trainingWeights,
    SEXP trainingPredictorScores,
    SEXP validationBinnedData,
    SEXP validationTargets,
+   SEXP validationWeights,
    SEXP validationPredictorScores,
    SEXP countInnerBags
 ) {
@@ -653,9 +655,11 @@ SEXP CreateClassificationBooster_R(
    EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
+   EBM_ASSERT(nullptr != trainingWeights);
    EBM_ASSERT(nullptr != trainingPredictorScores);
    EBM_ASSERT(nullptr != validationBinnedData);
    EBM_ASSERT(nullptr != validationTargets);
+   EBM_ASSERT(nullptr != validationWeights);
    EBM_ASSERT(nullptr != validationPredictorScores);
    EBM_ASSERT(nullptr != countInnerBags);
 
@@ -805,6 +809,42 @@ SEXP CreateClassificationBooster_R(
    }
    IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
+   double * pTrainingWeights = nullptr;
+   double * pValidationWeights = nullptr;
+   if(NILSXP != TYPEOF(trainingWeights) || NILSXP != TYPEOF(validationWeights)) {
+      if(REALSXP != TYPEOF(trainingWeights)) {
+         LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R REALSXP != TYPEOF(trainingWeights)");
+         return R_NilValue;
+      }
+      R_xlen_t trainingWeightsLength = xlength(trainingWeights);
+      if(!IsNumberConvertable<size_t>(trainingWeightsLength)) {
+         LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsNumberConvertable<size_t>(trainingWeightsLength)");
+         return R_NilValue;
+      }
+      size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
+      if(cTrainingWeights != cTrainingSamples) {
+         LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cTrainingWeights != cTrainingSamples");
+         return R_NilValue;
+      }
+      pTrainingWeights = REAL(trainingWeights);
+
+      if(REALSXP != TYPEOF(validationWeights)) {
+         LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R REALSXP != TYPEOF(validationWeights)");
+         return R_NilValue;
+      }
+      R_xlen_t validationWeightsLength = xlength(validationWeights);
+      if(!IsNumberConvertable<size_t>(validationWeightsLength)) {
+         LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsNumberConvertable<size_t>(validationWeightsLength)");
+         return R_NilValue;
+      }
+      size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
+      if(cValidationWeights != cValidationSamples) {
+         LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cValidationWeights != cValidationSamples");
+         return R_NilValue;
+      }
+      pValidationWeights = REAL(validationWeights);
+   }
+
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       randomSeedLocal,
       static_cast<IntEbmType>(cTargetClasses),
@@ -816,11 +856,13 @@ SEXP CreateClassificationBooster_R(
       countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
-      aTrainingPredictorScores, 
+      pTrainingWeights,
+      aTrainingPredictorScores,
       countValidationSamples, 
       aValidationBinnedData, 
       aValidationTargets, 
-      aValidationPredictorScores, 
+      pValidationWeights,
+      aValidationPredictorScores,
       countInnerBagsLocal, 
       nullptr
    );
@@ -845,9 +887,11 @@ SEXP CreateRegressionBooster_R(
    SEXP featureGroupsFeatureIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
+   SEXP trainingWeights,
    SEXP trainingPredictorScores,
    SEXP validationBinnedData,
    SEXP validationTargets,
+   SEXP validationWeights,
    SEXP validationPredictorScores,
    SEXP countInnerBags
 ) {
@@ -857,9 +901,11 @@ SEXP CreateRegressionBooster_R(
    EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
+   EBM_ASSERT(nullptr != trainingWeights);
    EBM_ASSERT(nullptr != trainingPredictorScores);
    EBM_ASSERT(nullptr != validationBinnedData);
    EBM_ASSERT(nullptr != validationTargets);
+   EBM_ASSERT(nullptr != validationWeights);
    EBM_ASSERT(nullptr != validationPredictorScores);
    EBM_ASSERT(nullptr != countInnerBags);
 
@@ -984,6 +1030,42 @@ SEXP CreateRegressionBooster_R(
    }
    IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
+   double * pTrainingWeights = nullptr;
+   double * pValidationWeights = nullptr;
+   if(NILSXP != TYPEOF(trainingWeights) || NILSXP != TYPEOF(validationWeights)) {
+      if(REALSXP != TYPEOF(trainingWeights)) {
+         LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R REALSXP != TYPEOF(trainingWeights)");
+         return R_NilValue;
+      }
+      R_xlen_t trainingWeightsLength = xlength(trainingWeights);
+      if(!IsNumberConvertable<size_t>(trainingWeightsLength)) {
+         LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R !IsNumberConvertable<size_t>(trainingWeightsLength)");
+         return R_NilValue;
+      }
+      size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
+      if(cTrainingWeights != cTrainingSamples) {
+         LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTrainingWeights != cTrainingSamples");
+         return R_NilValue;
+      }
+      pTrainingWeights = REAL(trainingWeights);
+
+      if(REALSXP != TYPEOF(validationWeights)) {
+         LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R REALSXP != TYPEOF(validationWeights)");
+         return R_NilValue;
+      }
+      R_xlen_t validationWeightsLength = xlength(validationWeights);
+      if(!IsNumberConvertable<size_t>(validationWeightsLength)) {
+         LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R !IsNumberConvertable<size_t>(validationWeightsLength)");
+         return R_NilValue;
+      }
+      size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
+      if(cValidationWeights != cValidationSamples) {
+         LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cValidationWeights != cValidationSamples");
+         return R_NilValue;
+      }
+      pValidationWeights = REAL(validationWeights);
+   }
+
    const BoosterHandle boosterHandle = CreateRegressionBooster(
       randomSeedLocal,
       countFeatures,
@@ -994,11 +1076,13 @@ SEXP CreateRegressionBooster_R(
       countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
-      aTrainingPredictorScores, 
+      pTrainingWeights, 
+      aTrainingPredictorScores,
       countValidationSamples, 
       aValidationBinnedData, 
       aValidationTargets, 
-      aValidationPredictorScores, 
+      pValidationWeights, 
+      aValidationPredictorScores,
       countInnerBagsLocal, 
       nullptr
    );
@@ -1021,17 +1105,13 @@ SEXP BoostingStep_R(
    SEXP indexFeatureGroup,
    SEXP learningRate,
    SEXP countSamplesRequiredForChildSplitMin,
-   SEXP leavesMax,
-   SEXP trainingWeights,
-   SEXP validationWeights
+   SEXP leavesMax
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped);
    EBM_ASSERT(nullptr != indexFeatureGroup);
    EBM_ASSERT(nullptr != learningRate);
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
    EBM_ASSERT(nullptr != leavesMax);
-   EBM_ASSERT(nullptr != trainingWeights);
-   EBM_ASSERT(nullptr != validationWeights);
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       LOG_0(TraceLevelError, "ERROR BoostingStep_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
@@ -1091,42 +1171,6 @@ SEXP BoostingStep_R(
       return R_NilValue;
    }
 
-   double * pTrainingWeights = nullptr;
-   double * pValidationWeights = nullptr;
-   if(NILSXP != TYPEOF(trainingWeights) || NILSXP != TYPEOF(validationWeights)) {
-      if(REALSXP != TYPEOF(trainingWeights)) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R REALSXP != TYPEOF(trainingWeights)");
-         return R_NilValue;
-      }
-      R_xlen_t trainingWeightsLength = xlength(trainingWeights);
-      if(!IsNumberConvertable<size_t>(trainingWeightsLength)) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsNumberConvertable<size_t>(trainingWeightsLength)");
-         return R_NilValue;
-      }
-      size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
-      if(cTrainingWeights != pBooster->GetTrainingSet()->GetCountSamples()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pBooster->GetTrainingSet()->GetCountSamples()");
-         return R_NilValue;
-      }
-      pTrainingWeights = REAL(trainingWeights);
-
-      if(REALSXP != TYPEOF(validationWeights)) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R REALSXP != TYPEOF(validationWeights)");
-         return R_NilValue;
-      }
-      R_xlen_t validationWeightsLength = xlength(validationWeights);
-      if(!IsNumberConvertable<size_t>(validationWeightsLength)) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsNumberConvertable<size_t>(validationWeightsLength)");
-         return R_NilValue;
-      }
-      size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
-      if(cValidationWeights != pBooster->GetValidationSet()->GetCountSamples()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pBooster->GetValidationSet()->GetCountSamples()");
-         return R_NilValue;
-      }
-      pValidationWeights = REAL(validationWeights);
-   }
-
    FloatEbmType validationMetricOut;
    if(0 != BoostingStep(
       reinterpret_cast<BoosterHandle>(pBooster),
@@ -1135,8 +1179,6 @@ SEXP BoostingStep_R(
       learningRateLocal,
       cSamplesRequiredForChildSplitMin, 
       aLeavesMax, 
-      pTrainingWeights, 
-      pValidationWeights, 
       &validationMetricOut
    )) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R BoostingStep returned error code");
@@ -1298,12 +1340,14 @@ SEXP CreateClassificationInteractionDetector_R(
    SEXP features,
    SEXP binnedData,
    SEXP targets,
+   SEXP weights,
    SEXP predictorScores
 ) {
    EBM_ASSERT(nullptr != countTargetClasses);
    EBM_ASSERT(nullptr != features);
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
+   EBM_ASSERT(nullptr != weights);
    EBM_ASSERT(nullptr != predictorScores);
 
    if(!IsSingleDoubleVector(countTargetClasses)) {
@@ -1369,13 +1413,33 @@ SEXP CreateClassificationInteractionDetector_R(
       return R_NilValue;
    }
 
+   double * pWeights = nullptr;
+   if(NILSXP != TYPEOF(weights)) {
+      if(REALSXP != TYPEOF(weights)) {
+         LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R REALSXP != TYPEOF(weights)");
+         return R_NilValue;
+      }
+      R_xlen_t weightsLength = xlength(weights);
+      if(!IsNumberConvertable<size_t>(weightsLength)) {
+         LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R !IsNumberConvertable<size_t>(weightsLength)");
+         return R_NilValue;
+      }
+      size_t cWeights = static_cast<size_t>(weightsLength);
+      if(cWeights != cSamples) {
+         LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cWeights != cSamples");
+         return R_NilValue;
+      }
+      pWeights = REAL(weights);
+   }
+
    const InteractionDetectorHandle interactionDetectorHandle = CreateClassificationInteractionDetector(
-      static_cast<IntEbmType>(cTargetClasses), 
-      countFeatures, 
-      aFeatures, 
-      countSamples, 
-      aBinnedData, 
-      aTargets, 
+      static_cast<IntEbmType>(cTargetClasses),
+      countFeatures,
+      aFeatures,
+      countSamples,
+      aBinnedData,
+      aTargets,
+      pWeights,
       aPredictorScores,
       nullptr
    );
@@ -1397,11 +1461,13 @@ SEXP CreateRegressionInteractionDetector_R(
    SEXP features,
    SEXP binnedData,
    SEXP targets,
+   SEXP weights,
    SEXP predictorScores
 ) {
    EBM_ASSERT(nullptr != features);
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
+   EBM_ASSERT(nullptr != weights);
    EBM_ASSERT(nullptr != predictorScores);
 
    size_t cFeatures;
@@ -1447,12 +1513,32 @@ SEXP CreateRegressionInteractionDetector_R(
       return R_NilValue;
    }
 
+   double * pWeights = nullptr;
+   if(NILSXP != TYPEOF(weights)) {
+      if(REALSXP != TYPEOF(weights)) {
+         LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R REALSXP != TYPEOF(weights)");
+         return R_NilValue;
+      }
+      R_xlen_t weightsLength = xlength(weights);
+      if(!IsNumberConvertable<size_t>(weightsLength)) {
+         LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R !IsNumberConvertable<size_t>(weightsLength)");
+         return R_NilValue;
+      }
+      size_t cWeights = static_cast<size_t>(weightsLength);
+      if(cWeights != cSamples) {
+         LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cWeights != cSamples");
+         return R_NilValue;
+      }
+      pWeights = REAL(weights);
+   }
+
    const InteractionDetectorHandle interactionDetectorHandle = CreateRegressionInteractionDetector(
       countFeatures, 
       aFeatures, 
       countSamples, 
       aBinnedData, 
       aTargets, 
+      pWeights,
       aPredictorScores,
       nullptr
    );
@@ -1540,14 +1626,14 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 5 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
-   { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 12 },
-   { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 11 },
-   { "BoostingStep_R", (DL_FUNC)& BoostingStep_R, 7 },
+   { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 14 },
+   { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 13 },
+   { "BoostingStep_R", (DL_FUNC)& BoostingStep_R, 5 },
    { "GetBestModelFeatureGroup_R", (DL_FUNC)&GetBestModelFeatureGroup_R, 2 },
    { "GetCurrentModelFeatureGroup_R", (DL_FUNC)& GetCurrentModelFeatureGroup_R, 2 },
    { "FreeBooster_R", (DL_FUNC)& FreeBooster_R, 1 },
-   { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 5 },
-   { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 4 },
+   { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 6 },
+   { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 5 },
    { "CalculateInteractionScore_R", (DL_FUNC)&CalculateInteractionScore_R, 3 },
    { "FreeInteractionDetector_R", (DL_FUNC)&FreeInteractionDetector_R, 1 },
    { NULL, NULL, 0 }

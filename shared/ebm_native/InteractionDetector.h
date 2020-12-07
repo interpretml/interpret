@@ -80,6 +80,7 @@ public:
       const size_t cSamples,
       const void * const aTargets,
       const IntEbmType * const aBinnedData,
+      const FloatEbmType * const aWeights,
       const FloatEbmType * const aPredictorScores
    );
 };

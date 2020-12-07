@@ -305,12 +305,14 @@ class TestApi {
    std::vector<FloatEbmType> m_trainingRegressionTargets;
    std::vector<IntEbmType> m_trainingClassificationTargets;
    std::vector<IntEbmType> m_trainingBinnedData;
+   std::vector<FloatEbmType> m_trainingWeights;
    std::vector<FloatEbmType> m_trainingPredictionScores;
    bool m_bNullTrainingPredictionScores;
 
    std::vector<FloatEbmType> m_validationRegressionTargets;
    std::vector<IntEbmType> m_validationClassificationTargets;
    std::vector<IntEbmType> m_validationBinnedData;
+   std::vector<FloatEbmType> m_validationWeights;
    std::vector<FloatEbmType> m_validationPredictionScores;
    bool m_bNullValidationPredictionScores;
 
@@ -319,6 +321,7 @@ class TestApi {
    std::vector<FloatEbmType> m_interactionRegressionTargets;
    std::vector<IntEbmType> m_interactionClassificationTargets;
    std::vector<IntEbmType> m_interactionBinnedData;
+   std::vector<FloatEbmType> m_interactionWeights;
    std::vector<FloatEbmType> m_interactionPredictionScores;
    bool m_bNullInteractionPredictionScores;
 
@@ -361,9 +364,7 @@ public:
       const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
       const FloatEbmType learningRate = k_learningRateDefault,
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault,
-      const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault,
-      const std::vector<FloatEbmType> trainingWeights = {},
-      const std::vector<FloatEbmType> validationWeights = {}
+      const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
    );
    FloatEbmType GetBestModelPredictorScore(
       const size_t iFeatureGroup, 

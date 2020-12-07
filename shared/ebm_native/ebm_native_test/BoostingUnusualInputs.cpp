@@ -24,7 +24,9 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr,
       nullptr,
       nullptr,
+      nullptr,
       0,
+      nullptr,
       nullptr,
       nullptr,
       nullptr,
@@ -38,8 +40,6 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       k_learningRateDefault,
       k_countSamplesRequiredForChildSplitMinDefault,
       &k_leavesMaxDefault[0],
-      nullptr,
-      nullptr,
       nullptr
    );
    CHECK(0 == ret);
@@ -62,7 +62,9 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr,
       nullptr,
       nullptr,
+      nullptr,
       0,
+      nullptr,
       nullptr,
       nullptr,
       nullptr,
@@ -76,8 +78,6 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       k_learningRateDefault,
       k_countSamplesRequiredForChildSplitMinDefault,
       &k_leavesMaxDefault[0],
-      nullptr,
-      nullptr,
       nullptr
    );
    CHECK(0 == ret);
@@ -100,7 +100,9 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr,
       nullptr,
       nullptr,
+      nullptr,
       0,
+      nullptr,
       nullptr,
       nullptr,
       nullptr,
@@ -114,8 +116,6 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       k_learningRateDefault,
       k_countSamplesRequiredForChildSplitMinDefault,
       &k_leavesMaxDefault[0],
-      nullptr,
-      nullptr,
       nullptr
    );
    CHECK(0 == ret);
