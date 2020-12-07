@@ -46,16 +46,6 @@ class Native:
     # Nominal = 1
     FeatureTypeNominal = 1
 
-    class EbmNativeFeature(ct.Structure):
-        _fields_ = [
-            # FeatureEbmType featureType;
-            ("featureType", ct.c_int64),
-            # BoolEbmType hasMissing;
-            ("hasMissing", ct.c_int64),
-            # int64_t countBins;
-            ("countBins", ct.c_int64),
-        ]
-
     # const int32_t TraceLevelOff = 0;
     TraceLevelOff = 0
     # const int32_t TraceLevelError = 1;
@@ -235,8 +225,12 @@ class Native:
             ct.c_int64,
             # int64_t countFeatures
             ct.c_int64,
-            # EbmNativeFeature * features
-            ct.POINTER(self.EbmNativeFeature),
+            # int64_t * featuresType
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featuresMissingPresent
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featuresBinCount
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countFeatureGroups
             ct.c_int64,
             # int64_t * featureGroupsFeatureCount
@@ -279,8 +273,12 @@ class Native:
             ct.c_int32,
             # int64_t countFeatures
             ct.c_int64,
-            # EbmNativeFeature * features
-            ct.POINTER(self.EbmNativeFeature),
+            # int64_t * featuresType
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featuresMissingPresent
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featuresBinCount
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countFeatureGroups
             ct.c_int64,
             # int64_t * featureGroupsFeatureCount
@@ -374,8 +372,12 @@ class Native:
             ct.c_int64,
             # int64_t countFeatures
             ct.c_int64,
-            # EbmNativeFeature * features
-            ct.POINTER(self.EbmNativeFeature),
+            # int64_t * featuresType
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featuresMissingPresent
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featuresBinCount
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binnedData
@@ -396,8 +398,12 @@ class Native:
         self.lib.CreateRegressionInteractionDetector.argtypes = [
             # int64_t countFeatures
             ct.c_int64,
-            # EbmNativeFeature * features
-            ct.POINTER(self.EbmNativeFeature),
+            # int64_t * featuresType
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featuresMissingPresent
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * featuresBinCount
+            ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binnedData
@@ -549,18 +555,21 @@ class Native:
     def convert_features_to_c(features):
         # Create C form of features
 
-        feature_ar = (Native.EbmNativeFeature * len(features))()
+        features_type = np.empty(len(features), dtype=ct.c_int64, order='C')
+        features_missing_present = np.empty(len(features), dtype=ct.c_int64, order='C')
+        features_bin_count = np.empty(len(features), dtype=ct.c_int64, order='C')
+
         for idx, feature in enumerate(features):
             if feature["type"] == "categorical":
-                feature_ar[idx].featureType = Native.FeatureTypeNominal
+                features_type[idx] = Native.FeatureTypeNominal
             elif feature["type"] == "continuous":
-                feature_ar[idx].featureType = Native.FeatureTypeOrdinal
+                features_type[idx] = Native.FeatureTypeOrdinal
             else:  # pragma: no cover
                 raise AttributeError('Unrecognized feature["type"]')
-            feature_ar[idx].hasMissing = 1 * feature["has_missing"]
-            feature_ar[idx].countBins = feature["n_bins"]
+            features_missing_present[idx] = 1 * feature["has_missing"]
+            features_bin_count[idx] = feature["n_bins"]
 
-        return feature_ar
+        return features_type, features_missing_present, features_bin_count
 
     @staticmethod
     def convert_feature_groups_to_c(feature_groups):
@@ -676,8 +685,11 @@ class NativeEBMBooster:
         self._n_classes = n_classes
 
         self._features = features
-        feature_array = Native.convert_features_to_c(features)
-
+        (
+            features_type, 
+            features_missing_present, 
+            features_bin_count
+        ) = Native.convert_features_to_c(features)
         self._feature_groups = feature_groups
         (
             feature_groups_feature_count,
@@ -739,8 +751,10 @@ class NativeEBMBooster:
             self._booster_handle = self._native.lib.CreateClassificationBooster(
                 random_state,
                 n_classes,
-                len(feature_array),
-                feature_array,
+                len(features_bin_count),
+                features_type, 
+                features_missing_present, 
+                features_bin_count,
                 len(feature_groups_feature_count),
                 feature_groups_feature_count,
                 feature_groups_feature_indexes,
@@ -762,8 +776,10 @@ class NativeEBMBooster:
         elif model_type == "regression":
             self._booster_handle = self._native.lib.CreateRegressionBooster(
                 random_state,
-                len(feature_array),
-                feature_array,
+                len(features_bin_count),
+                features_type, 
+                features_missing_present, 
+                features_bin_count,
                 len(feature_groups_feature_count),
                 feature_groups_feature_count,
                 feature_groups_feature_indexes,
@@ -1044,7 +1060,11 @@ class NativeEBMInteraction:
         log.info("Allocation interaction start")
 
         # Store args
-        feature_array = Native.convert_features_to_c(features)
+        (
+            features_type, 
+            features_missing_present, 
+            features_bin_count
+        ) = Native.convert_features_to_c(features)
 
         n_scores = NativeHelper.get_count_scores_c(n_classes)
         if scores is None:  # pragma: no cover
@@ -1078,8 +1098,10 @@ class NativeEBMInteraction:
         if model_type == "classification":
             self._interaction_handle = self._native.lib.CreateClassificationInteractionDetector(
                 n_classes,
-                len(feature_array),
-                feature_array,
+                len(features_bin_count),
+                features_type, 
+                features_missing_present, 
+                features_bin_count,
                 len(y),
                 X,
                 y,
@@ -1093,8 +1115,10 @@ class NativeEBMInteraction:
                 )
         elif model_type == "regression":
             self._interaction_handle = self._native.lib.CreateRegressionInteractionDetector(
-                len(feature_array),
-                feature_array,
+                len(features_bin_count),
+                features_type, 
+                features_missing_present, 
+                features_bin_count,
                 len(y),
                 X,
                 y,

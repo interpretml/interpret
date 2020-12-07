@@ -145,16 +145,6 @@ typedef UIntEbmType UGenerateUpdateOptionsType;
 #define GenerateUpdateOptions_GradientSums         (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000004))
 #define GenerateUpdateOptions_RandomSplits         (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000008))
 
-// TODO: replace this structure with flat arrays.  It's easier when integrating into other languages which 
-// almost always have flat arrays built in an easy way
-typedef struct _EbmNativeFeature {
-   // enums and bools aren't standardized accross languages, so use FeatureEbmType values
-   FeatureEbmType featureType;
-   // TODO: figure out if hasMissing is still this required now that we put missing in the top bin?
-   BoolEbmType hasMissing;
-   IntEbmType countBins;
-} EbmNativeFeature;
-
  // no messages will be output
 #define TraceLevelOff      (EBM_TRACE_CAST(0))
 // invalid inputs to the C library or assert failure before exit
@@ -416,7 +406,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
-   const EbmNativeFeature * features,
+   const FeatureEbmType * featuresType,
+   const BoolEbmType * featuresMissingPresent,
+   const IntEbmType * featuresBinCount,
    IntEbmType countFeatureGroups,
    const IntEbmType * featureGroupsFeatureCount,
    const IntEbmType * featureGroupsFeatureIndexes,
@@ -436,8 +428,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
    SeedEbmType randomSeed,
    IntEbmType countFeatures,
-   const EbmNativeFeature * features,
-   IntEbmType countFeatureGroups, 
+   const FeatureEbmType * featuresType,
+   const BoolEbmType * featuresMissingPresent,
+   const IntEbmType * featuresBinCount,
+   IntEbmType countFeatureGroups,
    const IntEbmType * featureGroupsFeatureCount, 
    const IntEbmType * featureGroupsFeatureIndexes, 
    IntEbmType countTrainingSamples,
@@ -495,7 +489,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
-   const EbmNativeFeature * features,
+   const FeatureEbmType * featuresType,
+   const BoolEbmType * featuresMissingPresent,
+   const IntEbmType * featuresBinCount,
    IntEbmType countSamples,
    const IntEbmType * binnedData,
    const IntEbmType * targets,
@@ -505,8 +501,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
    IntEbmType countFeatures, 
-   const EbmNativeFeature * features,
-   IntEbmType countSamples, 
+   const FeatureEbmType * featuresType,
+   const BoolEbmType * featuresMissingPresent,
+   const IntEbmType * featuresBinCount,
+   IntEbmType countSamples,
    const IntEbmType * binnedData, 
    const FloatEbmType * targets,
    const FloatEbmType * weights,

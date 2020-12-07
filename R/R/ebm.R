@@ -22,14 +22,6 @@
 
 # S3 data structures
 
-ebm_feature <- function(n_bins, has_missing = FALSE, feature_type = "ordinal") {
-   n_bins <- as.double(n_bins)
-   stopifnot(is.logical(has_missing))
-   feature_type <- match.arg(feature_type, c("ordinal", "nominal"))
-   ret <- structure(list(n_bins = n_bins, has_missing = has_missing, feature_type = feature_type), class = "ebm_feature")
-   return(ret)
-}
-
 ebm_feature_group <- function(feature_indexes) {
    feature_indexes <- as.double(feature_indexes)
    ret <- structure(list(feature_indexes = feature_indexes), class = "ebm_feature_group")
@@ -78,7 +70,11 @@ ebm_classify <- function(
    }
 
    bin_cuts <- vector("list")
-   features <- vector("list")
+
+   features_type <- vector("numeric", n_features)
+   features_missing_present <- vector("numeric", n_features)
+   features_bin_count <- vector("numeric", n_features)
+
    # byrow = FALSE to ensure this matrix is column-major (FORTRAN ordered), which is the fastest memory ordering for us
    X_binned <- matrix(nrow = nrow(X), ncol = ncol(X), byrow = FALSE)
    discretized <- vector("numeric", length(y))
@@ -93,7 +89,11 @@ ebm_classify <- function(
       )
       col_name <- col_names[i_feature]
       bin_cuts[[col_name]] <- feature_bin_cuts
-      features[[col_name]] <- ebm_feature(n_bins = length(feature_bin_cuts) + 1)
+
+      features_type[[i_feature]] <- 0  # Ordinal.  TODO: make this a constant
+      features_missing_present[[i_feature]] <- FALSE
+      features_bin_count[[i_feature]] <- length(feature_bin_cuts) + 1
+
       # WARNING: discretized is modified in-place
       discretize(X_feature, feature_bin_cuts, discretized)
       X_binned[, i_feature] <- discretized
@@ -131,7 +131,9 @@ ebm_classify <- function(
       result_list <- cyclic_gradient_boost(
          "classification",
          n_classes,
-         features,
+         features_type,
+         features_missing_present,
+         features_bin_count,
          feature_groups,
          X_train,
          y_train,

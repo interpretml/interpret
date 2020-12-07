@@ -18,8 +18,6 @@ extern void TestCHeaderConstructs() {
    char buffer[1000];
    const size_t cBytesBuffer = sizeof(buffer) / sizeof(buffer[0]);
 
-   EbmNativeFeature ebmNativeFeature;
-
    BoosterHandle boosterHandle = NULL;
    snprintf(buffer, cBytesBuffer, "%p\n", boosterHandle);
 
@@ -41,18 +39,14 @@ extern void TestCHeaderConstructs() {
    BoolEbmType testBoolTrue = EBM_TRUE;
    snprintf(buffer, cBytesBuffer, "%" BoolEbmTypePrintf "\n", testBoolTrue);
 
-   ebmNativeFeature.hasMissing = EBM_FALSE;
-   snprintf(buffer, cBytesBuffer, "%" BoolEbmTypePrintf "\n", ebmNativeFeature.hasMissing);
+   BoolEbmType testBoolFalse = EBM_FALSE;
+   snprintf(buffer, cBytesBuffer, "%" BoolEbmTypePrintf "\n", testBoolFalse);
 
    FeatureEbmType testFeatureOrdinal = FeatureTypeOrdinal;
    snprintf(buffer, cBytesBuffer, "%" FeatureEbmTypePrintf "\n", testFeatureOrdinal);
 
-   ebmNativeFeature.featureType = FeatureTypeNominal;
-   snprintf(buffer, cBytesBuffer, "%" FeatureEbmTypePrintf "\n", ebmNativeFeature.featureType);
-
-   ebmNativeFeature.countBins = 77;
-   snprintf(buffer, cBytesBuffer, "%" IntEbmTypePrintf "\n", ebmNativeFeature.countBins);
-
+   FeatureEbmType testFeatureNominal = FeatureTypeNominal;
+   snprintf(buffer, cBytesBuffer, "%" FeatureEbmTypePrintf "\n", testFeatureNominal);
 
    TraceEbmType testTraceOff = TraceLevelOff;
    snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceOff);

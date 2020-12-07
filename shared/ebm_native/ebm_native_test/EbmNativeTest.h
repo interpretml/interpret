@@ -296,7 +296,9 @@ class TestApi {
    const ptrdiff_t m_learningTypeOrCountTargetClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<EbmNativeFeature> m_features;
+   std::vector<FeatureEbmType> m_featuresType;
+   std::vector<BoolEbmType> m_featuresMissingPresent;
+   std::vector<IntEbmType> m_featuresBinCount;
    std::vector<IntEbmType> m_featureGroupsFeatureCount;
    std::vector<IntEbmType> m_featureGroupsFeatureIndexes;
 

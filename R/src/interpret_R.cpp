@@ -93,160 +93,6 @@ void InteractionFinalizer(SEXP interactionDetectorHandleWrapped) {
    }
 }
 
-EbmNativeFeature * ConvertFeatures(const SEXP features, size_t * const pcFeatures) {
-   if(VECSXP != TYPEOF(features)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatures VECSXP != TYPEOF(features)");
-      return nullptr;
-   }
-   const R_xlen_t countFeaturesR = xlength(features);
-   if(!IsNumberConvertable<size_t>(countFeaturesR)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatures !IsNumberConvertable<size_t>(countFeaturesR)");
-      return nullptr;
-   }
-   const size_t cFeatures = static_cast<size_t>(countFeaturesR);
-   if(!IsNumberConvertable<IntEbmType>(cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatures !IsNumberConvertable<IntEbmType>(cFeatures)");
-      return nullptr;
-   }
-   *pcFeatures = cFeatures;
-
-   EbmNativeFeature * const aFeatures = reinterpret_cast<EbmNativeFeature *>(R_alloc(cFeatures, static_cast<int>(sizeof(EbmNativeFeature))));
-   // R_alloc doesn't return nullptr, so we don't need to check aFeatures
-   EbmNativeFeature * pFeature = aFeatures;
-   for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-      const SEXP oneFeature = VECTOR_ELT(features, iFeature);
-      EBM_ASSERT(nullptr != oneFeature);
-      if(VECSXP != TYPEOF(oneFeature)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatures VECSXP != TYPEOF(oneFeature)");
-         return nullptr;
-      }
-      constexpr size_t cItems = 3;
-      if(R_xlen_t { cItems } != xlength(oneFeature)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatures R_xlen_t { cItems } != xlength(oneFeature)");
-         return nullptr;
-      }
-      const SEXP fieldNames = getAttrib(oneFeature, R_NamesSymbol);
-      EBM_ASSERT(nullptr != fieldNames);
-      if(STRSXP != TYPEOF(fieldNames)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatures STRSXP != TYPEOF(fieldNames)");
-         return nullptr;
-      }
-      if(R_xlen_t { cItems } != xlength(fieldNames)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatures R_xlen_t { cItems } != xlength(fieldNames)");
-         return nullptr;
-      }
-
-      bool bCountBinsFound = false;
-      bool bHasMissingFound = false;
-      bool bFeatureTypeFound = false;
-      for(size_t iName = 0; iName < cItems; ++iName) {
-         const SEXP nameR = STRING_ELT(fieldNames, iName);
-         if(CHARSXP != TYPEOF(nameR)) {
-            LOG_0(TraceLevelError, "ERROR ConvertFeatures CHARSXP != TYPEOF(nameR)");
-            return nullptr;
-         }
-         const char * pName = CHAR(nameR);
-         if(0 == strcmp("n_bins", pName)) {
-            if(bCountBinsFound) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures bCountBinsFound");
-               return nullptr;
-            }
-
-            SEXP val = VECTOR_ELT(oneFeature, iName);
-            if(REALSXP != TYPEOF(val)) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures REALSXP != TYPEOF(value)");
-               return nullptr;
-            }
-            if(1 != xlength(val)) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures 1 != xlength(val)");
-               return nullptr;
-            }
-
-            double countBinsDouble = REAL(val)[0];
-            if(!IsDoubleToIntEbmTypeIndexValid(countBinsDouble)) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures !IsDoubleToIntEbmTypeIndexValid(countBinsDouble)");
-               return nullptr;
-            }
-            pFeature->countBins = static_cast<IntEbmType>(countBinsDouble);
-            bCountBinsFound = true;
-         } else if(0 == strcmp("has_missing", pName)) {
-            if(bHasMissingFound) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures bHasMissingFound");
-               return nullptr;
-            }
-
-            SEXP val = VECTOR_ELT(oneFeature, iName);
-            if(LGLSXP != TYPEOF(val)) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures LGLSXP != TYPEOF(value)");
-               return nullptr;
-            }
-            if(1 != xlength(val)) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures 1 != xlength(val)");
-               return nullptr;
-            }
-
-            const Rboolean hasMissing = static_cast<Rboolean>(LOGICAL(val)[0]);
-            if(Rboolean::FALSE != hasMissing && Rboolean::TRUE != hasMissing) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures Rboolean::FALSE != hasMissing && Rboolean::TRUE != hasMissing");
-               return nullptr;
-            }
-            pFeature->hasMissing = Rboolean::FALSE != hasMissing ? EBM_TRUE : EBM_FALSE;
-            bHasMissingFound = true;
-         } else if(0 == strcmp("feature_type", pName)) {
-            if(bFeatureTypeFound) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures bFeatureTypeFound");
-               return nullptr;
-            }
-
-            SEXP val = VECTOR_ELT(oneFeature, iName);
-
-            if(STRSXP != TYPEOF(val)) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures STRSXP != TYPEOF(value)");
-               return nullptr;
-            }
-            if(1 != xlength(val)) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures 1 != xlength(val)");
-               return nullptr;
-            }
-
-            const SEXP featureTypeR = STRING_ELT(val, 0);
-            if(CHARSXP != TYPEOF(featureTypeR)) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures CHARSXP != TYPEOF(featureTypeR)");
-               return nullptr;
-            }
-
-            bFeatureTypeFound = true;
-            const char * pFeatureType = CHAR(featureTypeR);
-            if(0 == strcmp("ordinal", pFeatureType)) {
-               pFeature->featureType = FeatureTypeOrdinal;
-            } else if(0 == strcmp("nominal", pFeatureType)) {
-               pFeature->featureType = FeatureTypeNominal;
-            } else {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures unrecognized pFeatureType");
-               return nullptr;
-            }
-         } else {
-            LOG_0(TraceLevelError, "ERROR ConvertFeatures unrecognized pName");
-            return nullptr;
-         }
-      }
-      if(!bCountBinsFound) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatures !bCountBinsFound");
-         return nullptr;
-      }
-      if(!bHasMissingFound) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatures !bHasMissingFound");
-         return nullptr;
-      }
-      if(!bFeatureTypeFound) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatures !bFeatureTypeFound");
-         return nullptr;
-      }
-      ++pFeature;
-   }
-   return aFeatures;
-}
-
 size_t CountFeatureGroupsFeatureIndexes(const size_t cFeatureGroups, const IntEbmType * const aFeatureGroupsFeatureCount) {
    EBM_ASSERT(nullptr != aFeatureGroupsFeatureCount);
 
@@ -635,7 +481,9 @@ SEXP SampleWithoutReplacement_R(
 SEXP CreateClassificationBooster_R(
    SEXP randomSeed,
    SEXP countTargetClasses,
-   SEXP features,
+   SEXP featuresType,
+   SEXP featuresMissingPresent,
+   SEXP featuresBinCount,
    SEXP featureGroupsFeatureCount,
    SEXP featureGroupsFeatureIndexes,
    SEXP trainingBinnedData,
@@ -650,7 +498,9 @@ SEXP CreateClassificationBooster_R(
 ) {
    EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != countTargetClasses);
-   EBM_ASSERT(nullptr != features);
+   EBM_ASSERT(nullptr != featuresType);
+   EBM_ASSERT(nullptr != featuresMissingPresent);
+   EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != featureGroupsFeatureCount);
    EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
@@ -687,12 +537,35 @@ SEXP CreateClassificationBooster_R(
    const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
-   EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
-   if(nullptr == aFeatures) {
+   const IntEbmType * aFeaturesType;
+   if(ConvertDoublesToIndexes(featuresType, &cFeatures, &aFeaturesType)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
+
+   size_t cFeaturesFromMissingPresent;
+   const IntEbmType * aFeaturesMissingPresent;
+   if(ConvertDoublesToIndexes(featuresMissingPresent, &cFeaturesFromMissingPresent, &aFeaturesMissingPresent)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cFeatures != cFeaturesFromMissingPresent) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatures != cFeaturesFromMissingPresent");
+      return R_NilValue;
+   }
+
+   size_t cFeaturesFromBinCount;
+   const IntEbmType * aFeaturesBinCount;
+   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cFeatures != cFeaturesFromBinCount) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatures != cFeaturesFromBinCount");
+      return R_NilValue;
+   }
 
    size_t cFeatureGroups;
    const IntEbmType * aFeatureGroupsFeatureCount;
@@ -849,7 +722,9 @@ SEXP CreateClassificationBooster_R(
       randomSeedLocal,
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures, 
-      aFeatures, 
+      aFeaturesType,
+      aFeaturesMissingPresent,
+      aFeaturesBinCount,
       countFeatureGroups, 
       aFeatureGroupsFeatureCount,
       aFeatureGroupsFeatureIndexes,
@@ -882,7 +757,9 @@ SEXP CreateClassificationBooster_R(
 
 SEXP CreateRegressionBooster_R(
    SEXP randomSeed,
-   SEXP features,
+   SEXP featuresType,
+   SEXP featuresMissingPresent,
+   SEXP featuresBinCount,
    SEXP featureGroupsFeatureCount,
    SEXP featureGroupsFeatureIndexes,
    SEXP trainingBinnedData,
@@ -896,7 +773,9 @@ SEXP CreateRegressionBooster_R(
    SEXP countInnerBags
 ) {
    EBM_ASSERT(nullptr != randomSeed);
-   EBM_ASSERT(nullptr != features);
+   EBM_ASSERT(nullptr != featuresType);
+   EBM_ASSERT(nullptr != featuresMissingPresent);
+   EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != featureGroupsFeatureCount);
    EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
@@ -916,12 +795,35 @@ SEXP CreateRegressionBooster_R(
    const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    size_t cFeatures;
-   EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
-   if(nullptr == aFeatures) {
+   const IntEbmType * aFeaturesType;
+   if(ConvertDoublesToIndexes(featuresType, &cFeatures, &aFeaturesType)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
+
+   size_t cFeaturesFromMissingPresent;
+   const IntEbmType * aFeaturesMissingPresent;
+   if(ConvertDoublesToIndexes(featuresMissingPresent, &cFeaturesFromMissingPresent, &aFeaturesMissingPresent)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cFeatures != cFeaturesFromMissingPresent) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatures != cFeaturesFromMissingPresent");
+      return R_NilValue;
+   }
+
+   size_t cFeaturesFromBinCount;
+   const IntEbmType * aFeaturesBinCount;
+   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cFeatures != cFeaturesFromBinCount) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatures != cFeaturesFromBinCount");
+      return R_NilValue;
+   }
 
    size_t cFeatureGroups;
    const IntEbmType * aFeatureGroupsFeatureCount;
@@ -1069,8 +971,10 @@ SEXP CreateRegressionBooster_R(
    const BoosterHandle boosterHandle = CreateRegressionBooster(
       randomSeedLocal,
       countFeatures,
-      aFeatures, 
-      countFeatureGroups, 
+      aFeaturesType,
+      aFeaturesMissingPresent,
+      aFeaturesBinCount,
+      countFeatureGroups,
       aFeatureGroupsFeatureCount,
       aFeatureGroupsFeatureIndexes,
       countTrainingSamples, 
@@ -1337,14 +1241,18 @@ SEXP FreeBooster_R(
 
 SEXP CreateClassificationInteractionDetector_R(
    SEXP countTargetClasses,
-   SEXP features,
+   SEXP featuresType,
+   SEXP featuresMissingPresent,
+   SEXP featuresBinCount,
    SEXP binnedData,
    SEXP targets,
    SEXP weights,
    SEXP predictorScores
 ) {
    EBM_ASSERT(nullptr != countTargetClasses);
-   EBM_ASSERT(nullptr != features);
+   EBM_ASSERT(nullptr != featuresType);
+   EBM_ASSERT(nullptr != featuresMissingPresent);
+   EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
@@ -1367,12 +1275,35 @@ SEXP CreateClassificationInteractionDetector_R(
    const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
-   EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
-   if(nullptr == aFeatures) {
+   const IntEbmType * aFeaturesType;
+   if(ConvertDoublesToIndexes(featuresType, &cFeatures, &aFeaturesType)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
+
+   size_t cFeaturesFromMissingPresent;
+   const IntEbmType * aFeaturesMissingPresent;
+   if(ConvertDoublesToIndexes(featuresMissingPresent, &cFeaturesFromMissingPresent, &aFeaturesMissingPresent)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cFeatures != cFeaturesFromMissingPresent) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cFeatures != cFeaturesFromMissingPresent");
+      return R_NilValue;
+   }
+
+   size_t cFeaturesFromBinCount;
+   const IntEbmType * aFeaturesBinCount;
+   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cFeatures != cFeaturesFromBinCount) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cFeatures != cFeaturesFromBinCount");
+      return R_NilValue;
+   }
 
    size_t cBinnedData;
    const IntEbmType * aBinnedData;
@@ -1435,7 +1366,9 @@ SEXP CreateClassificationInteractionDetector_R(
    const InteractionDetectorHandle interactionDetectorHandle = CreateClassificationInteractionDetector(
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures,
-      aFeatures,
+      aFeaturesType,
+      aFeaturesMissingPresent,
+      aFeaturesBinCount,
       countSamples,
       aBinnedData,
       aTargets,
@@ -1458,25 +1391,52 @@ SEXP CreateClassificationInteractionDetector_R(
 }
 
 SEXP CreateRegressionInteractionDetector_R(
-   SEXP features,
+   SEXP featuresType,
+   SEXP featuresMissingPresent,
+   SEXP featuresBinCount,
    SEXP binnedData,
    SEXP targets,
    SEXP weights,
    SEXP predictorScores
 ) {
-   EBM_ASSERT(nullptr != features);
+   EBM_ASSERT(nullptr != featuresType);
+   EBM_ASSERT(nullptr != featuresMissingPresent);
+   EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
    EBM_ASSERT(nullptr != predictorScores);
 
    size_t cFeatures;
-   EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
-   if(nullptr == aFeatures) {
+   const IntEbmType * aFeaturesType;
+   if(ConvertDoublesToIndexes(featuresType, &cFeatures, &aFeaturesType)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+   // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
+   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
+
+   size_t cFeaturesFromMissingPresent;
+   const IntEbmType * aFeaturesMissingPresent;
+   if(ConvertDoublesToIndexes(featuresMissingPresent, &cFeaturesFromMissingPresent, &aFeaturesMissingPresent)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cFeatures != cFeaturesFromMissingPresent) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cFeatures != cFeaturesFromMissingPresent");
+      return R_NilValue;
+   }
+
+   size_t cFeaturesFromBinCount;
+   const IntEbmType * aFeaturesBinCount;
+   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cFeatures != cFeaturesFromBinCount) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cFeatures != cFeaturesFromBinCount");
+      return R_NilValue;
+   }
 
    size_t cBinnedData;
    const IntEbmType * aBinnedData;
@@ -1534,8 +1494,10 @@ SEXP CreateRegressionInteractionDetector_R(
 
    const InteractionDetectorHandle interactionDetectorHandle = CreateRegressionInteractionDetector(
       countFeatures, 
-      aFeatures, 
-      countSamples, 
+      aFeaturesType,
+      aFeaturesMissingPresent,
+      aFeaturesBinCount,
+      countSamples,
       aBinnedData, 
       aTargets, 
       pWeights,
@@ -1626,14 +1588,14 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 5 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
-   { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 14 },
-   { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 13 },
+   { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 16 },
+   { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 15 },
    { "BoostingStep_R", (DL_FUNC)& BoostingStep_R, 5 },
    { "GetBestModelFeatureGroup_R", (DL_FUNC)&GetBestModelFeatureGroup_R, 2 },
    { "GetCurrentModelFeatureGroup_R", (DL_FUNC)& GetCurrentModelFeatureGroup_R, 2 },
    { "FreeBooster_R", (DL_FUNC)& FreeBooster_R, 1 },
-   { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 6 },
-   { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 5 },
+   { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 8 },
+   { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 7 },
    { "CalculateInteractionScore_R", (DL_FUNC)&CalculateInteractionScore_R, 3 },
    { "FreeInteractionDetector_R", (DL_FUNC)&FreeInteractionDetector_R, 1 },
    { NULL, NULL, 0 }

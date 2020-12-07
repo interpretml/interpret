@@ -28,7 +28,9 @@ convert_feature_groups_to_c <- function(feature_groups) {
 create_classification_booster <- function(
    random_seed,
    count_target_classes, 
-   features, 
+   features_type,
+   features_missing_present,
+   features_bin_count,
    feature_groups_feature_count, 
    feature_groups_feature_indexes, 
    training_binned_data, 
@@ -43,7 +45,9 @@ create_classification_booster <- function(
 ) {
    random_seed <- as.integer(random_seed)
    count_target_classes <- as.double(count_target_classes)
-   features <- as.list(features)
+   features_type <- as.double(features_type)
+   features_missing_present <- as.double(features_missing_present)
+   features_bin_count <- as.double(features_bin_count)
    feature_groups_feature_count <- as.double(feature_groups_feature_count)
    feature_groups_feature_indexes <- as.double(feature_groups_feature_indexes)
    training_binned_data <- as.double(training_binned_data)
@@ -68,7 +72,9 @@ create_classification_booster <- function(
       CreateClassificationBooster_R, 
       random_seed,
       count_target_classes, 
-      features, 
+      features_type,
+      features_missing_present,
+      features_bin_count,
       feature_groups_feature_count, 
       feature_groups_feature_indexes, 
       training_binned_data, 
@@ -89,7 +95,9 @@ create_classification_booster <- function(
 
 create_regression_booster <- function(
    random_seed,
-   features, 
+   features_type,
+   features_missing_present,
+   features_bin_count,
    feature_groups_feature_count, 
    feature_groups_feature_indexes, 
    training_binned_data, 
@@ -103,7 +111,9 @@ create_regression_booster <- function(
    count_inner_bags
 ) {
    random_seed <- as.integer(random_seed)
-   features <- as.list(features)
+   features_type <- as.double(features_type)
+   features_missing_present <- as.double(features_missing_present)
+   features_bin_count <- as.double(features_bin_count)
    feature_groups_feature_count <- as.double(feature_groups_feature_count)
    feature_groups_feature_indexes <- as.double(feature_groups_feature_indexes)
    training_binned_data <- as.double(training_binned_data)
@@ -127,7 +137,9 @@ create_regression_booster <- function(
    booster_handle <- .Call(
       CreateRegressionBooster_R, 
       random_seed,
-      features, 
+      features_type,
+      features_missing_present,
+      features_bin_count,
       feature_groups_feature_count, 
       feature_groups_feature_indexes, 
       training_binned_data, 
@@ -219,7 +231,9 @@ get_current_model <- function(native_ebm_booster) {
 native_ebm_booster <- function(
    model_type,
    n_classes,
-   features,
+   features_type,
+   features_missing_present,
+   features_bin_count,
    feature_groups,
    X_train,
    y_train,
@@ -238,7 +252,9 @@ native_ebm_booster <- function(
       booster_handle <- create_classification_booster(
          random_state,
          n_classes, 
-         features, 
+         features_type,
+         features_missing_present,
+         features_bin_count,
          c_structs$feature_groups_feature_count, 
          c_structs$feature_groups_feature_indexes, 
          X_train, 
@@ -254,7 +270,9 @@ native_ebm_booster <- function(
    } else if(model_type == "regression") {
       booster_handle <- create_regression_booster(
          random_state,
-         features, 
+         features_type,
+         features_missing_present,
+         features_bin_count,
          c_structs$feature_groups_feature_count, 
          c_structs$feature_groups_feature_indexes, 
          X_train, 
@@ -283,7 +301,9 @@ native_ebm_booster <- function(
 cyclic_gradient_boost <- function(
    model_type,
    n_classes,
-   features,
+   features_type,
+   features_missing_present,
+   features_bin_count,
    feature_groups,
    X_train,
    y_train,
@@ -308,7 +328,9 @@ cyclic_gradient_boost <- function(
    ebm_booster <- native_ebm_booster(
       model_type,
       n_classes,
-      features,
+      features_type,
+      features_missing_present,
+      features_bin_count,
       feature_groups,
       X_train,
       y_train,

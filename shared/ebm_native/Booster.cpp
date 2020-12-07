@@ -153,7 +153,9 @@ Booster * Booster::Allocate(
    const size_t cFeatureGroups,
    const size_t cSamplingSets,
    const FloatEbmType * const optionalTempParams,
-   const EbmNativeFeature * const aFeatures,
+   const FeatureEbmType * const aFeaturesType,
+   const BoolEbmType * const aFeaturesMissingPresent,
+   const IntEbmType * const aFeaturesBinCount,
    const IntEbmType * const aFeatureGroupsFeatureCount,
    const IntEbmType * const aFeatureGroupsFeatureIndexes, 
    const size_t cTrainingSamples, 
@@ -214,23 +216,23 @@ Booster * Booster::Allocate(
       }
       pBooster->m_cFeatures = cFeatures;
 
-      const EbmNativeFeature * pFeatureInitialize = aFeatures;
-      const EbmNativeFeature * const pFeatureEnd = &aFeatures[cFeatures];
-      EBM_ASSERT(pFeatureInitialize < pFeatureEnd);
-      size_t iFeatureInitialize = 0;
+      const FeatureEbmType * pFeatureType = aFeaturesType;
+      const BoolEbmType * pFeatureMissingPresent = aFeaturesMissingPresent;
+      const IntEbmType * pFeatureBinCount = aFeaturesBinCount;
+      size_t iFeatureInitialize = size_t { 0 };
       do {
          static_assert(FeatureType::Ordinal == static_cast<FeatureType>(FeatureTypeOrdinal), 
             "FeatureType::Ordinal must have the same value as FeatureTypeOrdinal");
          static_assert(FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), 
             "FeatureType::Nominal must have the same value as FeatureTypeNominal");
-         if(FeatureTypeOrdinal != pFeatureInitialize->featureType && FeatureTypeNominal != pFeatureInitialize->featureType) {
+         if(FeatureTypeOrdinal != *pFeatureType && FeatureTypeNominal != *pFeatureType) {
             LOG_0(TraceLevelError, "ERROR Booster::Initialize featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
             Booster::Free(pBooster);
             return nullptr;
          }
-         FeatureType featureType = static_cast<FeatureType>(pFeatureInitialize->featureType);
+         FeatureType featureType = static_cast<FeatureType>(*pFeatureType);
 
-         IntEbmType countBins = pFeatureInitialize->countBins;
+         const IntEbmType countBins = *pFeatureBinCount;
          if(countBins < 0) {
             LOG_0(TraceLevelError, "ERROR Booster::Initialize countBins cannot be negative");
             Booster::Free(pBooster);
@@ -246,7 +248,7 @@ Booster * Booster::Allocate(
             Booster::Free(pBooster);
             return nullptr;
          }
-         size_t cBins = static_cast<size_t>(countBins);
+         const size_t cBins = static_cast<size_t>(countBins);
          if(0 == cBins) {
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
@@ -257,21 +259,24 @@ Booster * Booster::Allocate(
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(TraceLevelInfo, "INFO Booster::Initialize feature with 1 value");
          }
-         if(EBM_FALSE != pFeatureInitialize->hasMissing && EBM_TRUE != pFeatureInitialize->hasMissing) {
+         if(EBM_FALSE != *pFeatureMissingPresent && EBM_TRUE != *pFeatureMissingPresent) {
             LOG_0(TraceLevelError, "ERROR Booster::Initialize hasMissing must either be EBM_TRUE or EBM_FALSE");
             Booster::Free(pBooster);
             return nullptr;
          }
-         const bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
+         const bool bMissing = EBM_FALSE != *pFeatureMissingPresent;
 
          pBooster->m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, featureType, bMissing);
 
-         EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
-         EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType); // TODO : implement this, then remove this assert
+         EBM_ASSERT(EBM_FALSE == *pFeatureMissingPresent); // TODO : implement this, then remove this assert
+         EBM_ASSERT(FeatureTypeOrdinal == *pFeatureType); // TODO : implement this, then remove this assert
+
+         ++pFeatureType;
+         ++pFeatureMissingPresent;
+         ++pFeatureBinCount;
 
          ++iFeatureInitialize;
-         ++pFeatureInitialize;
-      } while(pFeatureEnd != pFeatureInitialize);
+      } while(cFeatures != iFeatureInitialize);
    }
    LOG_0(TraceLevelInfo, "Booster::Initialize done feature processing");
 
@@ -558,8 +563,10 @@ Booster * Booster::Allocate(
 static Booster * AllocateBoosting(
    const SeedEbmType randomSeed,
    const IntEbmType countFeatures, 
-   const EbmNativeFeature * const features, 
-   const IntEbmType countFeatureGroups, 
+   const FeatureEbmType * const aFeaturesType, 
+   const BoolEbmType * const aFeaturesMissingPresent, 
+   const IntEbmType * const aFeaturesBinCount, 
+   const IntEbmType countFeatureGroups,
    const IntEbmType * const aFeatureGroupsFeatureCount,
    const IntEbmType * const aFeatureGroupsFeatureIndexes, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
@@ -582,8 +589,18 @@ static Booster * AllocateBoosting(
       LOG_0(TraceLevelError, "ERROR AllocateBoosting countFeatures must be positive");
       return nullptr;
    }
-   if(0 != countFeatures && nullptr == features) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting features cannot be nullptr if 0 < countFeatures");
+   if(0 != countFeatures && nullptr == aFeaturesType) {
+      // TODO: in the future maybe accept null aFeaturesType and assume they are ordinals
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeaturesType cannot be nullptr if 0 < countFeatures");
+      return nullptr;
+   }
+   if(0 != countFeatures && nullptr == aFeaturesMissingPresent) {
+      // TODO: in the future maybe accept null aFeaturesType and assume there are no missing values
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeaturesMissingPresent cannot be nullptr if 0 < countFeatures");
+      return nullptr;
+   }
+   if(0 != countFeatures && nullptr == aFeaturesBinCount) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeaturesBinCount cannot be nullptr if 0 < countFeatures");
       return nullptr;
    }
    if(countFeatureGroups < 0) {
@@ -686,7 +703,9 @@ static Booster * AllocateBoosting(
       cFeatureGroups,
       cInnerBags,
       optionalTempParams,
-      features,
+      aFeaturesType,
+      aFeaturesMissingPresent,
+      aFeaturesBinCount,
       aFeatureGroupsFeatureCount,
       aFeatureGroupsFeatureIndexes,
       cTrainingSamples,
@@ -711,7 +730,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
-   const EbmNativeFeature * features,
+   const FeatureEbmType * featuresType,
+   const BoolEbmType * featuresMissingPresent,
+   const IntEbmType * featuresBinCount,
    IntEbmType countFeatureGroups,
    const IntEbmType * featureGroupsFeatureCount,
    const IntEbmType * featureGroupsFeatureIndexes,
@@ -734,7 +755,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       "randomSeed=%" SeedEbmTypePrintf ", "
       "countTargetClasses=%" IntEbmTypePrintf ", "
       "countFeatures=%" IntEbmTypePrintf ", "
-      "features=%p, "
+      "featuresType=%p, "
+      "featuresMissingPresent=%p, "
+      "featuresBinCount=%p, "
       "countFeatureGroups=%" IntEbmTypePrintf ", "
       "featureGroupsFeatureCount=%p, "
       "featureGroupsFeatureIndexes=%p, "
@@ -754,8 +777,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       randomSeed,
       countTargetClasses,
       countFeatures, 
-      static_cast<const void *>(features), 
-      countFeatureGroups, 
+      static_cast<const void *>(featuresType),
+      static_cast<const void *>(featuresMissingPresent),
+      static_cast<const void *>(featuresBinCount),
+      countFeatureGroups,
       static_cast<const void *>(featureGroupsFeatureCount),
       static_cast<const void *>(featureGroupsFeatureIndexes), 
       countTrainingSamples, 
@@ -787,8 +812,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    const BoosterHandle boosterHandle = reinterpret_cast<BoosterHandle>(AllocateBoosting(
       randomSeed, 
       countFeatures, 
-      features, 
-      countFeatureGroups, 
+      featuresType,
+      featuresMissingPresent,
+      featuresBinCount,
+      countFeatureGroups,
       featureGroupsFeatureCount,
       featureGroupsFeatureIndexes, 
       runtimeLearningTypeOrCountTargetClasses, 
@@ -812,7 +839,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
 EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
    SeedEbmType randomSeed,
    IntEbmType countFeatures,
-   const EbmNativeFeature * features,
+   const FeatureEbmType * featuresType,
+   const BoolEbmType * featuresMissingPresent,
+   const IntEbmType * featuresBinCount,
    IntEbmType countFeatureGroups,
    const IntEbmType * featureGroupsFeatureCount,
    const IntEbmType * featureGroupsFeatureIndexes,
@@ -834,7 +863,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       "Entered CreateRegressionBooster: "
       "randomSeed=%" SeedEbmTypePrintf ", "
       "countFeatures=%" IntEbmTypePrintf ", "
-      "features=%p, "
+      "featuresType=%p, "
+      "featuresMissingPresent=%p, "
+      "featuresBinCount=%p, "
       "countFeatureGroups=%" IntEbmTypePrintf ", "
       "featureGroupsFeatureCount=%p, "
       "featureGroupsFeatureIndexes=%p, "
@@ -853,8 +884,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       ,
       randomSeed,
       countFeatures,
-      static_cast<const void *>(features), 
-      countFeatureGroups, 
+      static_cast<const void *>(featuresType),
+      static_cast<const void *>(featuresMissingPresent),
+      static_cast<const void *>(featuresBinCount),
+      countFeatureGroups,
       static_cast<const void *>(featureGroupsFeatureCount),
       static_cast<const void *>(featureGroupsFeatureIndexes), 
       countTrainingSamples, 
@@ -873,7 +906,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    const BoosterHandle boosterHandle = reinterpret_cast<BoosterHandle>(AllocateBoosting(
       randomSeed, 
       countFeatures, 
-      features, 
+      featuresType,
+      featuresMissingPresent,
+      featuresBinCount,
       countFeatureGroups, 
       featureGroupsFeatureCount,
       featureGroupsFeatureIndexes, 
