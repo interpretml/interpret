@@ -30,6 +30,7 @@ extern FloatEbmType ArithmeticMean(
 static int g_cLogEnterGenerateWinsorizedBinCutsParametersMessages = 25;
 static int g_cLogExitGenerateWinsorizedBinCutsParametersMessages = 25;
 
+// TODO: add this as a python/R option "winsorized"
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateWinsorizedBinCuts(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,

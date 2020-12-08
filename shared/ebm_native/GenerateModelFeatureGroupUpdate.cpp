@@ -858,6 +858,11 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
          //   pBooster->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
          //}
 
+         // TODO: When NewtonBoosting is enabled, we need to multiply our rate by (K - 1)/K (see above), per:
+         // https://arxiv.org/pdf/1810.09092v2.pdf (forumla 5) and also the 
+         // Ping Li paper (algorithm #1, line 5, (K - 1) / K )
+         // https://arxiv.org/pdf/1006.5051.pdf
+
          const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
          if(bDividing) {
             bBad = pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);

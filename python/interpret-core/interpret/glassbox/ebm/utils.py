@@ -165,20 +165,13 @@ class EBMUtils:
             else:
                 sliced_X = X[feature_idxs, :]
 
-
-            # Log and re-assign negative indexes to prevent slice failure
-            unknowns = (sliced_X < 0)
-            sliced_X[unknowns] = 0  
             scores = tensor[tuple(sliced_X)]
 
-            # Reduce pairs back to 1 dimensional, currently fails on 3D+ tensors
-            if unknowns.shape[0] == 2:
-                unknowns = unknowns[0, :] | unknowns[1, :]
-            else:
-                unknowns = unknowns.ravel()
-                
-            # Reset scores from unknown/missing indexes to 0  
-            scores[unknowns] = 0  
+            # Reset scores from unknown (not missing!) indexes to 0
+            # this assumes all logits are zero weighted centered, and ideally tensors are purified
+
+            unknowns = (sliced_X < 0).any(axis=0)
+            scores[unknowns] = 0
 
             yield set_idx, feature_group, scores
 

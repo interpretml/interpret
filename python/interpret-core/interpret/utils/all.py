@@ -86,8 +86,9 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
 
         if feat_idx < X.shape[1]:
             col_vals = X[:, feat_idx]
-            record["# Unique"] = len(np.unique(col_vals))
             nz_count = np.count_nonzero(col_vals)
+            col_vals = col_vals.astype('U')
+            record["# Unique"] = len(np.unique(col_vals))
             record["% Non-zero"] = nz_count / X.shape[0]
         else:
             record["# Unique"] = np.nan
@@ -258,7 +259,7 @@ def _get_new_feature_types(data, feature_types, new_feature_names):
 
 
 # TODO: Docs for unify_data.
-def unify_data(data, labels=None, feature_names=None, feature_types=None):
+def unify_data(data, labels=None, feature_names=None, feature_types=None, missing_data_allowed=False):
     """ Attempts to unify data into a numpy array with feature names and types.
 
     If it cannot unify, returns the original data structure.
@@ -334,7 +335,7 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
         True if new_labels is not None and pd.isnull(new_labels).any() else False
     )
 
-    if new_data_has_na or new_labels_has_na:
+    if (new_data_has_na and not missing_data_allowed) or new_labels_has_na:
         msg = "Missing values are currently not supported."
         log.error(msg)
         raise ValueError(msg)
@@ -364,7 +365,7 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
             "Passing a numpy array to schema autogen when it should be dataframe."
         )
         if feature_names is None:
-            feature_names = ["col_" + str(i) for i in range(X.shape[1])]
+            feature_names = [f'col_{i:04}' for i in range(1, 1 + X.shape[1])]
 
         # NOTE: Use rolled out infer_objects for old pandas.
         # As used from SO:
@@ -402,7 +403,7 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
             for idx, name in enumerate(X.dtypes.index):
                 schema[name]["type"] = feature_types[idx]
     else:  # pragma: no cover
-        raise TypeError("GA2M only supports numpy arrays or pandas dataframes.")
+        raise TypeError("EBMs only supports numpy arrays or pandas dataframes.")
 
     return schema
 

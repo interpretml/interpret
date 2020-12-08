@@ -79,20 +79,20 @@ TEST_CASE("Discretize, increasing lengths") {
       );
 
       for(size_t iCutPoint = 0; iCutPoint < cBinCutsEnd; ++iCutPoint) {
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 0] == IntEbmType { 0 });
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 1] == static_cast<IntEbmType>(cBinCuts) + IntEbmType { 1 });
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 0] == IntEbmType { 1 });
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 1] == IntEbmType { 0 });
 
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 2] == IntEbmType { 0 });
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 3] == (size_t { 0 } == cBinCuts ? IntEbmType { 0 } : IntEbmType { 1 }));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 2] == IntEbmType { 1 });
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 3] == (size_t { 0 } == cBinCuts ? IntEbmType { 1 } : IntEbmType { 2 }));
 
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 4] == static_cast<IntEbmType>(std::min(iCutPoint, cBinCuts)));
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 5] == static_cast<IntEbmType>(std::min(iCutPoint + 1, cBinCuts)));
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 6] == static_cast<IntEbmType>(std::min(iCutPoint + 1, cBinCuts)));
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 7] == static_cast<IntEbmType>(cBinCuts));
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 8] == static_cast<IntEbmType>(cBinCuts));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 4] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint, cBinCuts)));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 5] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint + 1, cBinCuts)));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 6] == IntEbmType { 1 } + static_cast<IntEbmType>(std::min(iCutPoint + 1, cBinCuts)));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 7] == IntEbmType { 1 } + static_cast<IntEbmType>(cBinCuts));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 8] == IntEbmType { 1 } + static_cast<IntEbmType>(cBinCuts));
 
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 9] == static_cast<IntEbmType>(cBinCuts) + IntEbmType { 1 });
-         CHECK(singleFeatureDiscretized[11 * iCutPoint + 10] == IntEbmType { 0 });
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 9] == IntEbmType { 0 });
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 10] == IntEbmType { 1 });
       }
    }
 

@@ -126,7 +126,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
     """ Transformer that preprocesses data to be ready before EBM. """
 
     def __init__(
-        self, feature_names=None, feature_types=None, max_bins=255, binning="quantile", random_state=42,
+        self, feature_names=None, feature_types=None, max_bins=255, binning="quantile", missing_str=str(np.nan)
     ):
         """ Initializes EBM preprocessor.
 
@@ -134,14 +134,14 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             feature_names: Feature names as list.
             feature_types: Feature types as list, for example "continuous" or "categorical".
             max_bins: Max number of bins to process numeric features.
-            binning: Strategy to compute bins according to density if "quantile", "quantile_humanized" or equidistant if "uniform". 
-            random_state: Random state for quantile binning.
+            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform". 
+            missing_str: By default np.nan values are missing for all datatypes. Setting this parameter changes the string representation for missing
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
         self.max_bins = max_bins
         self.binning = binning
-        self.random_state = random_state
+        self.missing_str = missing_str
 
     def fit(self, X):
         """ Fits transformer to provided samples.
@@ -152,6 +152,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         Returns:
             Itself.
         """
+
+        # TODO PK: wouldn't these be better as lists, since we only use numeric indexes?
+
         self.col_bin_counts_ = {}
         self.col_bin_edges_ = {}
 
@@ -159,7 +162,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.hist_edges_ = {}
 
         self.col_mapping_ = {}
-        self.col_mapping_counts_ = {}
 
         self.col_n_bins_ = {}
 
@@ -173,6 +175,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             X, feature_names=self.feature_names, feature_types=self.feature_types
         )
 
+        # binning_random_state is a cross-language constant to get identical results between languages
+        # It isn't imporant enough though to expose as a parameter since it's only used for tiebreaking
+        binning_random_state = ct.c_int32(1260428135)
+
         for col_idx in range(X.shape[1]):
             col_name = list(schema.keys())[col_idx]
             self.col_names_.append(col_name)
@@ -185,11 +191,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             if col_info["type"] == "continuous":
                 col_data = col_data.astype(float)
 
-                random_state = ct.c_int32(self.random_state)
                 min_samples_bin = 1 # TODO: Expose
                 is_humanized = 0
 
-                count_bins = ct.c_int64(self.max_bins - 1)
+                count_cuts = ct.c_int64(self.max_bins - 1)
                 bin_cuts = np.zeros(self.max_bins - 1, dtype=np.float64, order="C")
                 count_missing = ct.c_int64(0)
                 min_val = ct.c_double(0)
@@ -197,17 +202,17 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 max_val = ct.c_double(0)
                 count_inf = ct.c_int64(0)
 
-                if self.binning.startswith('quantile'):
-                    if self.binning.endswith('humanized'):
+                if self.binning == 'quantile' or self.binning == 'quantile_humanized':
+                    if self.binning == 'quantile_humanized':
                         is_humanized = 1
                     
                     _ = native.lib.GenerateQuantileBinCuts(
-                        random_state,
+                        binning_random_state,
                         col_data.shape[0],
                         col_data, 
                         min_samples_bin,
                         is_humanized,
-                        ct.byref(count_bins),
+                        ct.byref(count_cuts),
                         bin_cuts,
                         ct.byref(count_missing),
                         ct.byref(min_val),
@@ -217,10 +222,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     )
 
                 elif self.binning == "uniform":
+                    # TODO PK: move this into the protected interop classes and check the return value
                     _ = native.lib.GenerateUniformBinCuts(
                         col_data.shape[0],
                         col_data, 
-                        ct.byref(count_bins),
+                        ct.byref(count_cuts),
                         bin_cuts,
                         ct.byref(count_missing),
                         ct.byref(min_val),
@@ -228,8 +234,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         ct.byref(max_val),
                         ct.byref(count_inf)
                     )
+                else:
+                    raise ValueError(f"Unrecognized bin type: {self.binning}")
 
-                bin_cuts = bin_cuts[:count_bins.value]
+                bin_cuts = bin_cuts[:count_cuts.value]
                 
                 discretized = np.zeros(col_data.shape[0], dtype=np.int64, order="C")
                 _ = native.lib.Discretize(
@@ -240,30 +248,37 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     discretized
                 )
                 _, bin_counts = np.unique(discretized, return_counts=True)
-                
+
+                if count_missing.value == 0:
+                    bin_counts = np.concatenate(([0], bin_counts))
+                else:
+                    col_data = col_data[~np.isnan(col_data)]
+               
                 self.col_bin_counts_[col_idx] = bin_counts
-                self.col_bin_edges_[col_idx] = np.concatenate(([np.min(col_data)],bin_cuts,[np.max(col_data)]))
+                self.col_bin_edges_[col_idx] = np.concatenate(([min_val.value],bin_cuts,[max_val.value]))
 
                 hist_counts, hist_edges = np.histogram(col_data, bins="doane")
                 self.hist_edges_[col_idx] = hist_edges
                 self.hist_counts_[col_idx] = hist_counts
                 self.col_n_bins_[col_idx] = len(bin_cuts) + 1
             elif col_info["type"] == "ordinal":
-                mapping = {val: indx for indx, val in enumerate(col_info["order"])}
+                mapping = {val: indx + 1 for indx, val in enumerate(col_info["order"])}
                 self.col_mapping_[col_idx] = mapping
                 self.col_n_bins_[col_idx] = len(col_info["order"])
             elif col_info["type"] == "categorical":
+                col_data = col_data.astype('U')
                 uniq_vals, counts = np.unique(col_data, return_counts=True)
 
-                non_nan_index = ~np.isnan(counts)
-                uniq_vals = uniq_vals[non_nan_index]
-                counts = counts[non_nan_index]
+                missings = np.isin(uniq_vals, self.missing_str)
 
-                mapping = {val: indx for indx, val in enumerate(uniq_vals)}
-                self.col_mapping_counts_[col_idx] = counts
+                count_missing = np.sum(counts[missings])
+                counts = np.concatenate(([count_missing], counts[~missings]))
+                self.col_bin_counts_[col_idx] = counts
+
+                uniq_vals = uniq_vals[~missings]
+                mapping = {val: indx + 1 for indx, val in enumerate(uniq_vals)}
                 self.col_mapping_[col_idx] = mapping
 
-                # TODO: Review NA as we don't support it yet.
                 self.col_n_bins_[col_idx] = len(uniq_vals)
 
         self.has_fitted_ = True
@@ -280,8 +295,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        missing_constant = -1
-        unknown_constant = -2
+        missing_constant = 0
+        unknown_constant = -1
 
         native = Native.get_native_singleton()
         X_new = np.copy(X)
@@ -293,7 +308,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 col_data = col_data.astype(float)
                 bin_cuts = self.col_bin_edges_[col_idx][1:-1] # Strip min/max
                 
-                discretized = np.zeros(col_data.shape[0], dtype=np.int64, order="C")
+                discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")
+                # TODO PK: move this into the protected interop classes and check the return value
                 _ = native.lib.Discretize(
                     col_data.shape[0],
                     col_data,
@@ -305,32 +321,38 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 X_new[:, col_idx] = discretized
 
             elif col_type == "ordinal":
-                mapping = self.col_mapping_[col_idx]
-                mapping[np.nan] = missing_constant
+                mapping = self.col_mapping_[col_idx].copy()
                 vec_map = np.vectorize(
                     lambda x: mapping[x] if x in mapping else unknown_constant
                 )
                 X_new[:, col_idx] = vec_map(col_data)
             elif col_type == "categorical":
-                mapping = self.col_mapping_[col_idx]
-                mapping[np.nan] = missing_constant
+                mapping = self.col_mapping_[col_idx].copy()
+
+                if isinstance(self.missing_str, list):
+                    for val in self.missing_str:
+                        mapping[val] = missing_constant
+                else:
+                    mapping[self.missing_str] = missing_constant
+
                 vec_map = np.vectorize(
                     lambda x: mapping[x] if x in mapping else unknown_constant
                 )
+                col_data = col_data.astype('U')
                 X_new[:, col_idx] = vec_map(col_data)
 
         return X_new.astype(np.int64)
 
-    def get_hist_counts(self, feature_index):
+    def _get_hist_counts(self, feature_index):
         col_type = self.col_types_[feature_index]
         if col_type == "continuous":
             return list(self.hist_counts_[feature_index])
         elif col_type == "categorical":
-            return list(self.col_mapping_counts_[feature_index])
+            return list(self.col_bin_counts_[feature_index][1:])
         else:  # pragma: no cover
             raise Exception("Cannot get counts for type: {0}".format(col_type))
 
-    def get_hist_edges(self, feature_index):
+    def _get_hist_edges(self, feature_index):
         col_type = self.col_types_[feature_index]
         if col_type == "continuous":
             return list(self.hist_edges_[feature_index])
@@ -340,16 +362,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         else:  # pragma: no cover
             raise Exception("Cannot get counts for type: {0}".format(col_type))
 
-    def get_bin_counts(self, feature_index):
-        col_type = self.col_types_[feature_index]
-        if col_type == 'continuous':
-            return list(self.col_bin_counts_[feature_index])
-        elif col_type == 'categorical':
-            return list(self.col_mapping_counts_[feature_index])
-        else:
-            raise Exception("Cannot get counts for type: {0}".format(col_type))
 
-    def get_bin_labels(self, feature_index):
+    def _get_bin_labels(self, feature_index):
         """ Returns bin labels for a given feature index.
 
         Args:
@@ -761,7 +775,7 @@ class BaseEBM(BaseEstimator):
         # TODO PK write an efficient striping converter for X that replaces unify_data for EBMs
         # algorithm: grap N columns and convert them to rows then process those by sending them to C
         X, y, self.feature_names, _ = unify_data(
-            X, y, self.feature_names, self.feature_types
+            X, y, self.feature_names, self.feature_types, missing_data_allowed=True
         )
 
         # Build preprocessor
@@ -770,7 +784,6 @@ class BaseEBM(BaseEstimator):
             feature_types=self.feature_types,
             max_bins=self.max_bins,
             binning=self.binning,
-            random_state=self.random_state,
         )
         self.preprocessor_.fit(X)
         X_orig = X
@@ -782,7 +795,6 @@ class BaseEBM(BaseEstimator):
                 feature_types=self.feature_types,
                 max_bins=self.max_interaction_bins,
                 binning=self.binning,
-                random_state=self.random_state,
             )
             self.pair_preprocessor_.fit(X_orig)
             X_pair = self.pair_preprocessor_.transform(X_orig)
@@ -1004,6 +1016,15 @@ class BaseEBM(BaseEstimator):
             self.additive_terms_ = postprocessed["feature_graphs"]
             self.intercept_ = postprocessed["intercepts"]
 
+        for feature_group_idx, feature_group in enumerate(self.feature_groups_):
+            entire_tensor = [slice(None, None, None) for i in range(self.additive_terms_[feature_group_idx].ndim)]
+            for dimension_idx, feature_idx in enumerate(feature_group):
+                if self.preprocessor_.col_bin_counts_[feature_idx][0] == 0:
+                    zero_dimension = entire_tensor.copy()
+                    zero_dimension[dimension_idx] = 0
+                    self.additive_terms_[feature_group_idx][tuple(zero_dimension)] = 0
+                    self.term_standard_deviations_[feature_group_idx][tuple(zero_dimension)] = 0
+
         # Generate overall importance
         scores_gen = EBMUtils.scores_by_feature_group(
             X, X_pair, self.feature_groups_, self.additive_terms_
@@ -1175,7 +1196,7 @@ class BaseEBM(BaseEstimator):
                 The sum of the additive term contributions.
         """
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=True)
         X = self.preprocessor_.transform(X_orig)
         X = np.ascontiguousarray(X.T)
 
@@ -1231,7 +1252,12 @@ class BaseEBM(BaseEstimator):
             errors = self.term_standard_deviations_[feature_group_index]
 
             if len(feature_indexes) == 1:
-                bin_labels = self.preprocessor_.get_bin_labels(feature_indexes[0])
+                # hack. remove the 0th index which is for missing values
+                model_graph = model_graph[1:]
+                errors = errors[1:]
+
+
+                bin_labels = self.preprocessor_._get_bin_labels(feature_indexes[0])
                 # bin_counts = self.preprocessor_.get_bin_counts(
                 #     feature_indexes[0]
                 # )
@@ -1239,8 +1265,8 @@ class BaseEBM(BaseEstimator):
                 upper_bounds = list(model_graph + errors)
                 lower_bounds = list(model_graph - errors)
                 density_dict = {
-                    "names": self.preprocessor_.get_hist_edges(feature_indexes[0]),
-                    "scores": self.preprocessor_.get_hist_counts(feature_indexes[0]),
+                    "names": self.preprocessor_._get_hist_edges(feature_indexes[0]),
+                    "scores": self.preprocessor_._get_hist_counts(feature_indexes[0]),
                 }
 
                 feature_dict = {
@@ -1262,8 +1288,8 @@ class BaseEBM(BaseEstimator):
                     "upper_bounds": model_graph + errors,
                     "lower_bounds": model_graph - errors,
                     "density": {
-                        "names": self.preprocessor_.get_hist_edges(feature_indexes[0]),
-                        "scores": self.preprocessor_.get_hist_counts(
+                        "names": self.preprocessor_._get_hist_edges(feature_indexes[0]),
+                        "scores": self.preprocessor_._get_hist_counts(
                             feature_indexes[0]
                         ),
                     },
@@ -1275,8 +1301,13 @@ class BaseEBM(BaseEstimator):
 
                 data_dicts.append(data_dict)
             elif len(feature_indexes) == 2:
-                bin_labels_left = self.pair_preprocessor_.get_bin_labels(feature_indexes[0])
-                bin_labels_right = self.pair_preprocessor_.get_bin_labels(feature_indexes[1])
+                # hack. remove the 0th index which is for missing values
+                model_graph = model_graph[1:, 1:]
+                errors = errors[1:, 1:]
+
+
+                bin_labels_left = self.pair_preprocessor_._get_bin_labels(feature_indexes[0])
+                bin_labels_right = self.pair_preprocessor_._get_bin_labels(feature_indexes[1])
 
                 feature_dict = {
                     "type": "pairwise",
@@ -1345,7 +1376,7 @@ class BaseEBM(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
+        X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types, missing_data_allowed=True)
 
         # Transform y if classifier
         if is_classifier(self) and y is not None:
@@ -1420,6 +1451,18 @@ class BaseEBM(BaseEstimator):
 
         selector = gen_local_selector(data_dicts, is_classification=is_classification)
 
+
+        additive_terms = []
+        for feature_group_index, feature_indexes in enumerate(self.feature_groups_):
+            if len(feature_indexes) == 1:
+                # hack. remove the 0th index which is for missing values
+                additive_terms.append(self.additive_terms_[feature_group_index][1:])
+            elif len(feature_indexes) == 2:
+                # hack. remove the 0th index which is for missing values
+                additive_terms.append(self.additive_terms_[feature_group_index][1:, 1:])
+            else:
+                raise ValueError("only handles 1D/2D")
+
         internal_obj = {
             "overall": None,
             "specific": data_dicts,
@@ -1427,7 +1470,7 @@ class BaseEBM(BaseEstimator):
                 {
                     "explanation_type": "ebm_local",
                     "value": {
-                        "scores": self.additive_terms_,
+                        "scores": additive_terms,
                         "intercept": self.intercept_,
                         "perf": perf_list,
                     },
@@ -1467,7 +1510,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         feature_types=None,
         # Preprocessor
         max_bins=255,
-        max_interaction_bins=32,
+        max_interaction_bins=31,
         binning="quantile",
         # Stages
         mains="all",
@@ -1550,7 +1593,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             Probability estimate of sample for each class.
         """
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=True)
         X = self.preprocessor_.transform(X_orig)
         X = np.ascontiguousarray(X.T)
 
@@ -1577,7 +1620,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             Predicted class label per sample.
         """
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=True)
         X = self.preprocessor_.transform(X_orig)
         X = np.ascontiguousarray(X.T)
 
@@ -1615,7 +1658,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         feature_types=None,
         # Preprocessor
         max_bins=255,
-        max_interaction_bins=32,
+        max_interaction_bins=31,
         binning="quantile",
         # Stages
         mains="all",
@@ -1697,7 +1740,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             Predicted class label per sample.
         """
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=True)
         X = self.preprocessor_.transform(X_orig)
         X = np.ascontiguousarray(X.T)
 

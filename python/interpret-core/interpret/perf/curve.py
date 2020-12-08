@@ -44,7 +44,7 @@ class PR(ExplainerMixin):
             name = gen_name_from_class(self)
 
         X, y, self.feature_names, self.feature_types = unify_data(
-            X, y, self.feature_names, self.feature_types
+            X, y, self.feature_names, self.feature_types, missing_data_allowed=True
         )
         predict_fn = unify_predict_fn(self.predict_fn, X)
         scores = predict_fn(X)
@@ -110,7 +110,7 @@ class ROC(ExplainerMixin):
             name = gen_name_from_class(self)
 
         X, y, self.feature_names, self.feature_types = unify_data(
-            X, y, self.feature_names, self.feature_types
+            X, y, self.feature_names, self.feature_types, missing_data_allowed=True
         )
         predict_fn = unify_predict_fn(self.predict_fn, X)
         scores = predict_fn(X)

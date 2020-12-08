@@ -46,6 +46,9 @@ def test_unknown_multiclass_category():
     X_train['cat_feature'] = [np.random.choice(['a', 'b', 'c']) for x in range(X_train.shape[0])]
     X_test['cat_feature'] = ['d' for x in range(X_test.shape[0])]  # Unknown category in test set
 
+    X_train['cat_feature'][1] = np.nan
+    X_test['cat_feature'][1] = np.nan
+
     clf = ExplainableBoostingClassifier()
     clf.fit(X_train, y_train)
 
@@ -165,7 +168,7 @@ def test_ebm_synthetic_pairwise():
 
     # Low/Low and High/High should learn high scores
     assert clf_global.data(2)["scores"][-1][-1] > 5
-    assert clf_global.data(2)["scores"][0][0] > 5
+    assert clf_global.data(2)["scores"][1][1] > 5
 
 
 @pytest.mark.slow

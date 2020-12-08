@@ -567,7 +567,7 @@ class Native:
             else:  # pragma: no cover
                 raise AttributeError('Unrecognized feature["type"]')
             features_missing_present[idx] = 1 * feature["has_missing"]
-            features_bin_count[idx] = feature["n_bins"]
+            features_bin_count[idx] = feature["n_bins"] + 1
 
         return features_type, features_missing_present, features_bin_count
 
@@ -888,7 +888,7 @@ class NativeEBMBooster:
         feature_indexes = self._feature_groups[feature_group_index]
         for _, feature_idx in enumerate(feature_indexes):
             n_bins = self._features[feature_idx]["n_bins"]
-            dimensions.append(n_bins)
+            dimensions.append(n_bins + 1)
 
         dimensions = list(reversed(dimensions))
 
