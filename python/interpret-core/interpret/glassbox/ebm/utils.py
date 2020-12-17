@@ -137,22 +137,6 @@ class EBMUtils:
         return X_train, X_val, y_train, y_val
 
     @staticmethod
-    def gen_features(col_types, col_n_bins):
-        # Create Python form of features
-        # Undocumented.
-        features = [None] * len(col_types)
-        for col_idx, _ in enumerate(features):
-            features[col_idx] = {
-                # NOTE: Ordinal only handled at native, override.
-                # 'type': col_types[col_idx],
-                "type": "continuous",
-                # NOTE: Missing not implemented at native, always set to false.
-                "has_missing": False,
-                "n_bins": col_n_bins[col_idx],
-            }
-        return features
-
-    @staticmethod
     def scores_by_feature_group(X, X_pair, feature_groups, model):
         for set_idx, feature_group in enumerate(feature_groups):
             tensor = model[set_idx]

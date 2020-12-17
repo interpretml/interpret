@@ -71,8 +71,7 @@ ebm_classify <- function(
 
    bin_cuts <- vector("list")
 
-   features_type <- vector("numeric", n_features)
-   features_missing_present <- vector("numeric", n_features)
+   features_categorical <- vector("logical", n_features)
    features_bin_count <- vector("numeric", n_features)
 
    # byrow = FALSE to ensure this matrix is column-major (FORTRAN ordered), which is the fastest memory ordering for us
@@ -90,9 +89,9 @@ ebm_classify <- function(
       col_name <- col_names[i_feature]
       bin_cuts[[col_name]] <- feature_bin_cuts
 
-      features_type[[i_feature]] <- 0  # Ordinal.  TODO: make this a constant
-      features_missing_present[[i_feature]] <- FALSE
-      features_bin_count[[i_feature]] <- length(feature_bin_cuts) + 1
+      features_categorical[[i_feature]] <- FALSE
+      # one more bin than cuts plus one more for the missing value
+      features_bin_count[[i_feature]] <- length(feature_bin_cuts) + 2
 
       # WARNING: discretized is modified in-place
       discretize(X_feature, feature_bin_cuts, discretized)
@@ -131,8 +130,7 @@ ebm_classify <- function(
       result_list <- cyclic_gradient_boost(
          "classification",
          n_classes,
-         features_type,
-         features_missing_present,
+         features_categorical,
          features_bin_count,
          feature_groups,
          X_train,
@@ -159,6 +157,8 @@ ebm_classify <- function(
    }
    for(col_name in col_names) {
       additive_terms[[col_name]] <- additive_terms[[col_name]] / outer_bags
+      # for now, zero all missing values
+      additive_terms[[col_name]][0] = 0
    }
 
    # TODO PK : we're going to need to modify this structure in the future to handle interaction terms by making
@@ -225,7 +225,8 @@ ebm_show <- function (model, name) {
    }
 
    x <- append(append(low_val, rep(bin_cuts, each = 2)), high_val)
-   y <- rep(additive_terms, each = 2)
+   # remove the missing bin at the start
+   y <- rep(additive_terms[2:length(additive_terms)], each = 2)
 
    graphics::plot(x, y, type = "l", lty = 1, main = name, xlab="", ylab="score")
 }

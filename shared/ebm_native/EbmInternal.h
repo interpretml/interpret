@@ -298,8 +298,6 @@ constexpr INLINE_ALWAYS bool IsNumberConvertable(const TFrom number) {
 }
 WARNING_POP
 
-enum class FeatureType { Ordinal = 0, Nominal = 1};
-
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be 
 // that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes

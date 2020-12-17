@@ -12,12 +12,10 @@
 
 #ifdef __cplusplus
 extern "C" {
-#define EBM_FEATURE_CAST(EBM_VAL) (static_cast<FeatureEbmType>(EBM_VAL))
 #define EBM_BOOL_CAST(EBM_VAL) (static_cast<BoolEbmType>(EBM_VAL))
 #define EBM_TRACE_CAST(EBM_VAL) (static_cast<TraceEbmType>(EBM_VAL))
 #define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL) (static_cast<GenerateUpdateOptionsType>(EBM_VAL))
 #else // __cplusplus
-#define EBM_FEATURE_CAST(EBM_VAL) ((FeatureEbmType)(EBM_VAL))
 #define EBM_BOOL_CAST(EBM_VAL) ((BoolEbmType)(EBM_VAL))
 #define EBM_TRACE_CAST(EBM_VAL) ((TraceEbmType)(EBM_VAL))
 #define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL) ((GenerateUpdateOptionsType)(EBM_VAL))
@@ -126,8 +124,6 @@ typedef int32_t TraceEbmType;
 #define TraceEbmTypePrintf PRId32
 typedef IntEbmType BoolEbmType;
 #define BoolEbmTypePrintf IntEbmTypePrintf
-typedef IntEbmType FeatureEbmType;
-#define FeatureEbmTypePrintf IntEbmTypePrintf
 typedef IntEbmType GenerateUpdateOptionsType;
 // technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
 typedef UIntEbmType UGenerateUpdateOptionsType;
@@ -135,9 +131,6 @@ typedef UIntEbmType UGenerateUpdateOptionsType;
 
 #define EBM_FALSE          (EBM_BOOL_CAST(0))
 #define EBM_TRUE           (EBM_BOOL_CAST(1))
-
-#define FeatureTypeOrdinal (EBM_FEATURE_CAST(0))
-#define FeatureTypeNominal (EBM_FEATURE_CAST(1))
 
 #define GenerateUpdateOptions_Default              (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
 #define GenerateUpdateOptions_DisableNewtonGain    (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))
@@ -410,8 +403,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
-   const FeatureEbmType * featuresType,
-   const BoolEbmType * featuresMissingPresent,
+   const BoolEbmType * featuresCategorical,
    const IntEbmType * featuresBinCount,
    IntEbmType countFeatureGroups,
    const IntEbmType * featureGroupsFeatureCount,
@@ -432,8 +424,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
    SeedEbmType randomSeed,
    IntEbmType countFeatures,
-   const FeatureEbmType * featuresType,
-   const BoolEbmType * featuresMissingPresent,
+   const BoolEbmType * featuresCategorical,
    const IntEbmType * featuresBinCount,
    IntEbmType countFeatureGroups,
    const IntEbmType * featureGroupsFeatureCount, 
@@ -493,10 +484,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
-   const FeatureEbmType * featuresType,
-   // TODO: eliminate featuresMissingPresent and just detect if missing is present in our subsample
-   const BoolEbmType * featuresMissingPresent,
-   // TODO: make this featuresBinCountIncludingMissing
+   const BoolEbmType * featuresCategorical,
    const IntEbmType * featuresBinCount,
    IntEbmType countSamples,
    const IntEbmType * binnedData,
@@ -507,8 +495,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
    IntEbmType countFeatures, 
-   const FeatureEbmType * featuresType,
-   const BoolEbmType * featuresMissingPresent,
+   const BoolEbmType * featuresCategorical,
    const IntEbmType * featuresBinCount,
    IntEbmType countSamples,
    const IntEbmType * binnedData, 

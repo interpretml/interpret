@@ -42,12 +42,6 @@ extern void TestCHeaderConstructs() {
    BoolEbmType testBoolFalse = EBM_FALSE;
    snprintf(buffer, cBytesBuffer, "%" BoolEbmTypePrintf "\n", testBoolFalse);
 
-   FeatureEbmType testFeatureOrdinal = FeatureTypeOrdinal;
-   snprintf(buffer, cBytesBuffer, "%" FeatureEbmTypePrintf "\n", testFeatureOrdinal);
-
-   FeatureEbmType testFeatureNominal = FeatureTypeNominal;
-   snprintf(buffer, cBytesBuffer, "%" FeatureEbmTypePrintf "\n", testFeatureNominal);
-
    TraceEbmType testTraceOff = TraceLevelOff;
    snprintf(buffer, cBytesBuffer, "%" TraceEbmTypePrintf "\n", testTraceOff);
 

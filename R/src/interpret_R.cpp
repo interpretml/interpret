@@ -118,6 +118,44 @@ size_t CountFeatureGroupsFeatureIndexes(const size_t cFeatureGroups, const IntEb
    return cFeatureGroupsFeatureIndexes;
 }
 
+bool ConvertLogicalsToBools(const SEXP items, size_t * const pcItems, const BoolEbmType ** const pRet) {
+   EBM_ASSERT(nullptr != items);
+   EBM_ASSERT(nullptr != pcItems);
+   EBM_ASSERT(nullptr != pRet);
+   if(LGLSXP != TYPEOF(items)) {
+      LOG_0(TraceLevelError, "ERROR ConvertLogicalsToBools LGLSXP != TYPEOF(items)");
+      return true;
+   }
+   const R_xlen_t countItemsR = xlength(items);
+   if(!IsNumberConvertable<size_t>(countItemsR)) {
+      LOG_0(TraceLevelError, "ERROR ConvertLogicalsToBools !IsNumberConvertable<size_t>(countItemsR)");
+      return true;
+   }
+   const size_t cItems = static_cast<size_t>(countItemsR);
+   if(!IsNumberConvertable<IntEbmType>(cItems)) {
+      LOG_0(TraceLevelError, "ERROR ConvertLogicalsToBools !IsNumberConvertable<IntEbmType>(cItems)");
+      return true;
+   }
+   *pcItems = cItems;
+
+   BoolEbmType * aItems = nullptr;
+   if(0 != cItems) {
+      aItems = reinterpret_cast<BoolEbmType *>(R_alloc(cItems, static_cast<int>(sizeof(BoolEbmType))));
+      // R_alloc doesn't return nullptr, so we don't need to check aItems
+      BoolEbmType * pItem = aItems;
+      const BoolEbmType * const pItemEnd = aItems + cItems;
+      const int * pOriginal = LOGICAL(items);
+      do {
+         const Rboolean val = static_cast<Rboolean>(*pOriginal);
+         *pItem = Rboolean::FALSE != val ? EBM_TRUE : EBM_FALSE;
+         ++pOriginal;
+         ++pItem;
+      } while(pItemEnd != pItem);
+   }
+   *pRet = aItems;
+   return false;
+}
+
 bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const IntEbmType * * const pRet) {
    EBM_ASSERT(nullptr != items);
    EBM_ASSERT(nullptr != pcItems);
@@ -152,8 +190,8 @@ bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const Int
             return true;
          }
          *pItem = static_cast<IntEbmType>(val);
-         ++pItem;
          ++pOriginal;
+         ++pItem;
       } while(pItemEnd != pItem);
    }
    *pRet = aItems;
@@ -189,8 +227,8 @@ bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const Flo
       do {
          const double val = *pOriginal;
          *pItem = static_cast<FloatEbmType>(val);
-         ++pItem;
          ++pOriginal;
+         ++pItem;
       } while(pItemEnd != pItem);
    }
    *pRet = aItems;
@@ -481,8 +519,7 @@ SEXP SampleWithoutReplacement_R(
 SEXP CreateClassificationBooster_R(
    SEXP randomSeed,
    SEXP countTargetClasses,
-   SEXP featuresType,
-   SEXP featuresMissingPresent,
+   SEXP featuresCategorical,
    SEXP featuresBinCount,
    SEXP featureGroupsFeatureCount,
    SEXP featureGroupsFeatureIndexes,
@@ -498,8 +535,7 @@ SEXP CreateClassificationBooster_R(
 ) {
    EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != countTargetClasses);
-   EBM_ASSERT(nullptr != featuresType);
-   EBM_ASSERT(nullptr != featuresMissingPresent);
+   EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != featureGroupsFeatureCount);
    EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
@@ -537,24 +573,13 @@ SEXP CreateClassificationBooster_R(
    const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
-   const IntEbmType * aFeaturesType;
-   if(ConvertDoublesToIndexes(featuresType, &cFeatures, &aFeaturesType)) {
+   const BoolEbmType * aFeaturesCategorical;
+   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
    const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
-
-   size_t cFeaturesFromMissingPresent;
-   const IntEbmType * aFeaturesMissingPresent;
-   if(ConvertDoublesToIndexes(featuresMissingPresent, &cFeaturesFromMissingPresent, &aFeaturesMissingPresent)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   if(cFeatures != cFeaturesFromMissingPresent) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatures != cFeaturesFromMissingPresent");
-      return R_NilValue;
-   }
 
    size_t cFeaturesFromBinCount;
    const IntEbmType * aFeaturesBinCount;
@@ -722,8 +747,7 @@ SEXP CreateClassificationBooster_R(
       randomSeedLocal,
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures, 
-      aFeaturesType,
-      aFeaturesMissingPresent,
+      aFeaturesCategorical,
       aFeaturesBinCount,
       countFeatureGroups, 
       aFeatureGroupsFeatureCount,
@@ -757,8 +781,7 @@ SEXP CreateClassificationBooster_R(
 
 SEXP CreateRegressionBooster_R(
    SEXP randomSeed,
-   SEXP featuresType,
-   SEXP featuresMissingPresent,
+   SEXP featuresCategorical,
    SEXP featuresBinCount,
    SEXP featureGroupsFeatureCount,
    SEXP featureGroupsFeatureIndexes,
@@ -773,8 +796,7 @@ SEXP CreateRegressionBooster_R(
    SEXP countInnerBags
 ) {
    EBM_ASSERT(nullptr != randomSeed);
-   EBM_ASSERT(nullptr != featuresType);
-   EBM_ASSERT(nullptr != featuresMissingPresent);
+   EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != featureGroupsFeatureCount);
    EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
@@ -795,24 +817,14 @@ SEXP CreateRegressionBooster_R(
    const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    size_t cFeatures;
-   const IntEbmType * aFeaturesType;
-   if(ConvertDoublesToIndexes(featuresType, &cFeatures, &aFeaturesType)) {
+   const BoolEbmType * aFeaturesCategorical;
+   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
    const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
 
-   size_t cFeaturesFromMissingPresent;
-   const IntEbmType * aFeaturesMissingPresent;
-   if(ConvertDoublesToIndexes(featuresMissingPresent, &cFeaturesFromMissingPresent, &aFeaturesMissingPresent)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   if(cFeatures != cFeaturesFromMissingPresent) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatures != cFeaturesFromMissingPresent");
-      return R_NilValue;
-   }
 
    size_t cFeaturesFromBinCount;
    const IntEbmType * aFeaturesBinCount;
@@ -971,8 +983,7 @@ SEXP CreateRegressionBooster_R(
    const BoosterHandle boosterHandle = CreateRegressionBooster(
       randomSeedLocal,
       countFeatures,
-      aFeaturesType,
-      aFeaturesMissingPresent,
+      aFeaturesCategorical,
       aFeaturesBinCount,
       countFeatureGroups,
       aFeatureGroupsFeatureCount,
@@ -1241,8 +1252,7 @@ SEXP FreeBooster_R(
 
 SEXP CreateClassificationInteractionDetector_R(
    SEXP countTargetClasses,
-   SEXP featuresType,
-   SEXP featuresMissingPresent,
+   SEXP featuresCategorical,
    SEXP featuresBinCount,
    SEXP binnedData,
    SEXP targets,
@@ -1250,8 +1260,7 @@ SEXP CreateClassificationInteractionDetector_R(
    SEXP predictorScores
 ) {
    EBM_ASSERT(nullptr != countTargetClasses);
-   EBM_ASSERT(nullptr != featuresType);
-   EBM_ASSERT(nullptr != featuresMissingPresent);
+   EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
@@ -1275,24 +1284,13 @@ SEXP CreateClassificationInteractionDetector_R(
    const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
-   const IntEbmType * aFeaturesType;
-   if(ConvertDoublesToIndexes(featuresType, &cFeatures, &aFeaturesType)) {
+   const BoolEbmType * aFeaturesCategorical;
+   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
    const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
-
-   size_t cFeaturesFromMissingPresent;
-   const IntEbmType * aFeaturesMissingPresent;
-   if(ConvertDoublesToIndexes(featuresMissingPresent, &cFeaturesFromMissingPresent, &aFeaturesMissingPresent)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   if(cFeatures != cFeaturesFromMissingPresent) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cFeatures != cFeaturesFromMissingPresent");
-      return R_NilValue;
-   }
 
    size_t cFeaturesFromBinCount;
    const IntEbmType * aFeaturesBinCount;
@@ -1366,8 +1364,7 @@ SEXP CreateClassificationInteractionDetector_R(
    const InteractionDetectorHandle interactionDetectorHandle = CreateClassificationInteractionDetector(
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures,
-      aFeaturesType,
-      aFeaturesMissingPresent,
+      aFeaturesCategorical,
       aFeaturesBinCount,
       countSamples,
       aBinnedData,
@@ -1391,16 +1388,14 @@ SEXP CreateClassificationInteractionDetector_R(
 }
 
 SEXP CreateRegressionInteractionDetector_R(
-   SEXP featuresType,
-   SEXP featuresMissingPresent,
+   SEXP featuresCategorical,
    SEXP featuresBinCount,
    SEXP binnedData,
    SEXP targets,
    SEXP weights,
    SEXP predictorScores
 ) {
-   EBM_ASSERT(nullptr != featuresType);
-   EBM_ASSERT(nullptr != featuresMissingPresent);
+   EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
@@ -1408,24 +1403,13 @@ SEXP CreateRegressionInteractionDetector_R(
    EBM_ASSERT(nullptr != predictorScores);
 
    size_t cFeatures;
-   const IntEbmType * aFeaturesType;
-   if(ConvertDoublesToIndexes(featuresType, &cFeatures, &aFeaturesType)) {
+   const BoolEbmType * aFeaturesCategorical;
+   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
    const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
-
-   size_t cFeaturesFromMissingPresent;
-   const IntEbmType * aFeaturesMissingPresent;
-   if(ConvertDoublesToIndexes(featuresMissingPresent, &cFeaturesFromMissingPresent, &aFeaturesMissingPresent)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   if(cFeatures != cFeaturesFromMissingPresent) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cFeatures != cFeaturesFromMissingPresent");
-      return R_NilValue;
-   }
 
    size_t cFeaturesFromBinCount;
    const IntEbmType * aFeaturesBinCount;
@@ -1494,8 +1478,7 @@ SEXP CreateRegressionInteractionDetector_R(
 
    const InteractionDetectorHandle interactionDetectorHandle = CreateRegressionInteractionDetector(
       countFeatures, 
-      aFeaturesType,
-      aFeaturesMissingPresent,
+      aFeaturesCategorical,
       aFeaturesBinCount,
       countSamples,
       aBinnedData, 
@@ -1588,14 +1571,14 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 5 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
-   { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 16 },
-   { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 15 },
+   { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 15 },
+   { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 14 },
    { "BoostingStep_R", (DL_FUNC)& BoostingStep_R, 5 },
    { "GetBestModelFeatureGroup_R", (DL_FUNC)&GetBestModelFeatureGroup_R, 2 },
    { "GetCurrentModelFeatureGroup_R", (DL_FUNC)& GetCurrentModelFeatureGroup_R, 2 },
    { "FreeBooster_R", (DL_FUNC)& FreeBooster_R, 1 },
-   { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 8 },
-   { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 7 },
+   { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 7 },
+   { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 6 },
    { "CalculateInteractionScore_R", (DL_FUNC)&CalculateInteractionScore_R, 3 },
    { "FreeInteractionDetector_R", (DL_FUNC)&FreeInteractionDetector_R, 1 },
    { NULL, NULL, 0 }

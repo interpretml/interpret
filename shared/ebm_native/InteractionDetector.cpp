@@ -36,8 +36,7 @@ InteractionDetector * InteractionDetector::Allocate(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cFeatures,
    const FloatEbmType * const optionalTempParams,
-   const FeatureEbmType * const aFeaturesType,
-   const BoolEbmType * const aFeaturesMissingPresent,
+   const BoolEbmType * const aFeaturesCategorical,
    const IntEbmType * const aFeaturesBinCount,
    const size_t cSamples,
    const void * const aTargets,
@@ -64,24 +63,10 @@ InteractionDetector * InteractionDetector::Allocate(
          return nullptr;
       }
 
-      const FeatureEbmType * pFeatureType = aFeaturesType;
-      const BoolEbmType * pFeatureMissingPresent = aFeaturesMissingPresent;
+      const BoolEbmType * pFeatureCategorical = aFeaturesCategorical;
       const IntEbmType * pFeatureBinCount = aFeaturesBinCount;
       size_t iFeatureInitialize = 0;
       do {
-         static_assert(
-            FeatureType::Ordinal == static_cast<FeatureType>(FeatureTypeOrdinal), "FeatureType::Ordinal must have the same value as FeatureTypeOrdinal"
-            );
-         static_assert(
-            FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), "FeatureType::Nominal must have the same value as FeatureTypeNominal"
-            );
-         if(FeatureTypeOrdinal != *pFeatureType && FeatureTypeNominal != *pFeatureType) {
-            LOG_0(TraceLevelError, "ERROR InteractionDetector::Allocate featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
-            free(aFeatures);
-            return nullptr;
-         }
-         FeatureType featureType = static_cast<FeatureType>(*pFeatureType);
-
          const IntEbmType countBins = *pFeatureBinCount;
          if(countBins < 0) {
             LOG_0(TraceLevelError, "ERROR InteractionDetector::Allocate countBins cannot be negative");
@@ -109,20 +94,15 @@ InteractionDetector * InteractionDetector::Allocate(
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(TraceLevelInfo, "INFO InteractionDetector::Allocate feature with 1 value");
          }
-         if(EBM_FALSE != *pFeatureMissingPresent && EBM_TRUE != *pFeatureMissingPresent) {
-            LOG_0(TraceLevelError, "ERROR InteractionDetector::Allocate hasMissing must either be EBM_TRUE or EBM_FALSE");
-            free(aFeatures);
-            return nullptr;
+         const BoolEbmType isCategorical = *pFeatureCategorical;
+         if(EBM_FALSE != isCategorical && EBM_TRUE != isCategorical) {
+            LOG_0(TraceLevelWarning, "WARNING InteractionDetector::Initialize featuresCategorical should either be EBM_TRUE or EBM_FALSE");
          }
-         bool bMissing = EBM_FALSE != *pFeatureMissingPresent;
+         const bool bCategorical = EBM_FALSE != isCategorical;
 
-         aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, featureType, bMissing);
+         aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, bCategorical);
 
-         EBM_ASSERT(EBM_FALSE == *pFeatureMissingPresent); // TODO : implement this, then remove this assert
-         EBM_ASSERT(FeatureTypeOrdinal == *pFeatureType); // TODO : implement this, then remove this assert
-
-         ++pFeatureType;
-         ++pFeatureMissingPresent;
+         ++pFeatureCategorical;
          ++pFeatureBinCount;
 
          ++iFeatureInitialize;
@@ -166,8 +146,7 @@ InteractionDetector * InteractionDetector::Allocate(
 // a*PredictorScores = predictedValue for regression
 static InteractionDetector * AllocateInteraction(
    const IntEbmType countFeatures, 
-   const FeatureEbmType * const aFeaturesType,
-   const BoolEbmType * const aFeaturesMissingPresent,
+   const BoolEbmType * const aFeaturesCategorical,
    const IntEbmType * const aFeaturesBinCount,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const IntEbmType countSamples, 
@@ -183,14 +162,9 @@ static InteractionDetector * AllocateInteraction(
       LOG_0(TraceLevelError, "ERROR AllocateInteraction countFeatures must be positive");
       return nullptr;
    }
-   if(0 != countFeatures && nullptr == aFeaturesType) {
-      // TODO: in the future maybe accept null aFeaturesType and assume they are ordinals
-      LOG_0(TraceLevelError, "ERROR AllocateInteraction aFeaturesType cannot be nullptr if 0 < countFeatures");
-      return nullptr;
-   }
-   if(0 != countFeatures && nullptr == aFeaturesMissingPresent) {
-      // TODO: in the future maybe accept null aFeaturesType and assume there are no missing values
-      LOG_0(TraceLevelError, "ERROR AllocateInteraction aFeaturesMissingPresent cannot be nullptr if 0 < countFeatures");
+   if(0 != countFeatures && nullptr == aFeaturesCategorical) {
+      // TODO: in the future maybe accept null aFeaturesCategorical and assume there are no missing values
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction aFeaturesCategorical cannot be nullptr if 0 < countFeatures");
       return nullptr;
    }
    if(0 != countFeatures && nullptr == aFeaturesBinCount) {
@@ -229,8 +203,7 @@ static InteractionDetector * AllocateInteraction(
       runtimeLearningTypeOrCountTargetClasses,
       cFeatures,
       optionalTempParams,
-      aFeaturesType,
-      aFeaturesMissingPresent,
+      aFeaturesCategorical,
       aFeaturesBinCount,
       cSamples,
       targets,
@@ -248,8 +221,7 @@ static InteractionDetector * AllocateInteraction(
 EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
-   const FeatureEbmType * featuresType,
-   const BoolEbmType * featuresMissingPresent,
+   const BoolEbmType * featuresCategorical,
    const IntEbmType * featuresBinCount,
    IntEbmType countSamples,
    const IntEbmType * binnedData,
@@ -263,8 +235,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
       "Entered CreateClassificationInteractionDetector: "
       "countTargetClasses=%" IntEbmTypePrintf ", "
       "countFeatures=%" IntEbmTypePrintf ", "
-      "featuresType=%p, "
-      "featuresMissingPresent=%p, "
+      "featuresCategorical=%p, "
       "featuresBinCount=%p, "
       "countSamples=%" IntEbmTypePrintf ", "
       "binnedData=%p, "
@@ -275,8 +246,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
       ,
       countTargetClasses, 
       countFeatures, 
-      static_cast<const void *>(featuresType),
-      static_cast<const void *>(featuresMissingPresent),
+      static_cast<const void *>(featuresCategorical),
       static_cast<const void *>(featuresBinCount),
       countSamples,
       static_cast<const void *>(binnedData), 
@@ -300,8 +270,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
    const InteractionDetectorHandle interactionDetectorHandle = reinterpret_cast<InteractionDetectorHandle>(AllocateInteraction(
       countFeatures, 
-      featuresType,
-      featuresMissingPresent,
+      featuresCategorical,
       featuresBinCount,
       runtimeLearningTypeOrCountTargetClasses,
       countSamples, 
@@ -317,8 +286,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
 
 EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
    IntEbmType countFeatures,
-   const FeatureEbmType * featuresType,
-   const BoolEbmType * featuresMissingPresent,
+   const BoolEbmType * featuresCategorical,
    const IntEbmType * featuresBinCount,
    IntEbmType countSamples,
    const IntEbmType * binnedData,
@@ -329,8 +297,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
 ) {
    LOG_N(TraceLevelInfo, "Entered CreateRegressionInteractionDetector: "
       "countFeatures=%" IntEbmTypePrintf ", "
-      "featuresType=%p, "
-      "featuresMissingPresent=%p, "
+      "featuresCategorical=%p, "
       "featuresBinCount=%p, "
       "countSamples=%" IntEbmTypePrintf ", "
       "binnedData=%p, "
@@ -340,8 +307,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
       "optionalTempParams=%p"
       ,
       countFeatures, 
-      static_cast<const void *>(featuresType),
-      static_cast<const void *>(featuresMissingPresent),
+      static_cast<const void *>(featuresCategorical),
       static_cast<const void *>(featuresBinCount),
       countSamples,
       static_cast<const void *>(binnedData), 
@@ -352,8 +318,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
    );
    const InteractionDetectorHandle interactionDetectorHandle = reinterpret_cast<InteractionDetectorHandle>(AllocateInteraction(
       countFeatures, 
-      featuresType,
-      featuresMissingPresent,
+      featuresCategorical,
       featuresBinCount,
       k_regression,
       countSamples, 

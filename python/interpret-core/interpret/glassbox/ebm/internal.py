@@ -225,9 +225,7 @@ class Native:
             ct.c_int64,
             # int64_t countFeatures
             ct.c_int64,
-            # int64_t * featuresType
-            ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featuresMissingPresent
+            # int64_t * featuresCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t * featuresBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
@@ -273,9 +271,7 @@ class Native:
             ct.c_int32,
             # int64_t countFeatures
             ct.c_int64,
-            # int64_t * featuresType
-            ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featuresMissingPresent
+            # int64_t * featuresCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t * featuresBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
@@ -372,9 +368,7 @@ class Native:
             ct.c_int64,
             # int64_t countFeatures
             ct.c_int64,
-            # int64_t * featuresType
-            ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featuresMissingPresent
+            # int64_t * featuresCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t * featuresBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
@@ -398,9 +392,7 @@ class Native:
         self.lib.CreateRegressionInteractionDetector.argtypes = [
             # int64_t countFeatures
             ct.c_int64,
-            # int64_t * featuresType
-            ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featuresMissingPresent
+            # int64_t * featuresCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t * featuresBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
@@ -552,26 +544,6 @@ class Native:
             return arr
 
     @staticmethod
-    def convert_features_to_c(features):
-        # Create C form of features
-
-        features_type = np.empty(len(features), dtype=ct.c_int64, order='C')
-        features_missing_present = np.empty(len(features), dtype=ct.c_int64, order='C')
-        features_bin_count = np.empty(len(features), dtype=ct.c_int64, order='C')
-
-        for idx, feature in enumerate(features):
-            if feature["type"] == "categorical":
-                features_type[idx] = Native.FeatureTypeNominal
-            elif feature["type"] == "continuous":
-                features_type[idx] = Native.FeatureTypeOrdinal
-            else:  # pragma: no cover
-                raise AttributeError('Unrecognized feature["type"]')
-            features_missing_present[idx] = 1 * feature["has_missing"]
-            features_bin_count[idx] = feature["n_bins"] + 1
-
-        return features_type, features_missing_present, features_bin_count
-
-    @staticmethod
     def convert_feature_groups_to_c(feature_groups):
         # Create C form of feature_groups
 
@@ -595,7 +567,8 @@ class NativeEBMBooster:
         self,
         model_type,
         n_classes,
-        features,
+        features_categorical, 
+        features_bin_count,
         feature_groups,
         X_train,
         y_train,
@@ -614,8 +587,8 @@ class NativeEBMBooster:
             model_type: 'regression'/'classification'.
             n_classes: Specific to classification,
                 number of unique classes.
-            features: List of features represented individually as
-                dictionary of keys ('type', 'has_missing', 'n_bins').
+            features_categorical: list of categorical features represented by bools 
+            features_bin_count: count of the number of bins for each feature
             feature_groups: List of feature groups represented as
                 a dictionary of keys ("features")
             X_train: Training design matrix as 2-D ndarray.
@@ -638,8 +611,11 @@ class NativeEBMBooster:
         self._booster_handle = None
 
         # check inputs for important inputs or things that would segfault in C
-        if not isinstance(features, list):  # pragma: no cover
-            raise ValueError("features should be a list")
+        if not isinstance(features_categorical, np.ndarray):  # pragma: no cover
+            raise ValueError("features_categorical should be an np.ndarray")
+
+        if not isinstance(features_bin_count, np.ndarray):  # pragma: no cover
+            raise ValueError("features_bin_count should be an np.ndarray")
 
         if not isinstance(feature_groups, list):  # pragma: no cover
             raise ValueError("feature_groups should be a list")
@@ -650,9 +626,14 @@ class NativeEBMBooster:
         if y_train.ndim != 1:  # pragma: no cover
             raise ValueError("y_train should have exactly 1 dimension")
 
-        if X_train.shape[0] != len(features):  # pragma: no cover
+        if X_train.shape[0] != len(features_categorical):  # pragma: no cover
             raise ValueError(
-                "X_train does not have the same number of features as the features array"
+                "X_train does not have the same number of items as the features_categorical array"
+            )
+
+        if X_train.shape[0] != len(features_bin_count):  # pragma: no cover
+            raise ValueError(
+                "X_train does not have the same number of items as the features_bin_count array"
             )
 
         if X_train.shape[1] != len(y_train):  # pragma: no cover
@@ -666,9 +647,9 @@ class NativeEBMBooster:
         if y_val.ndim != 1:  # pragma: no cover
             raise ValueError("y_val should have exactly 1 dimension")
 
-        if X_val.shape[0] != len(features):  # pragma: no cover
+        if X_val.shape[0] != X_train.shape[0]:  # pragma: no cover
             raise ValueError(
-                "X_val does not have the same number of features as the features array"
+                "X_val does not have the same number of features as the X_train array"
             )
 
         if X_val.shape[1] != len(y_val):  # pragma: no cover
@@ -684,12 +665,8 @@ class NativeEBMBooster:
         self._model_type = model_type
         self._n_classes = n_classes
 
-        self._features = features
-        (
-            features_type, 
-            features_missing_present, 
-            features_bin_count
-        ) = Native.convert_features_to_c(features)
+        self._features_bin_count = features_bin_count
+
         self._feature_groups = feature_groups
         (
             feature_groups_feature_count,
@@ -752,8 +729,7 @@ class NativeEBMBooster:
                 random_state,
                 n_classes,
                 len(features_bin_count),
-                features_type, 
-                features_missing_present, 
+                features_categorical, 
                 features_bin_count,
                 len(feature_groups_feature_count),
                 feature_groups_feature_count,
@@ -777,8 +753,7 @@ class NativeEBMBooster:
             self._booster_handle = self._native.lib.CreateRegressionBooster(
                 random_state,
                 len(features_bin_count),
-                features_type, 
-                features_missing_present, 
+                features_categorical, 
                 features_bin_count,
                 len(feature_groups_feature_count),
                 feature_groups_feature_count,
@@ -887,8 +862,8 @@ class NativeEBMBooster:
         dimensions = []
         feature_indexes = self._feature_groups[feature_group_index]
         for _, feature_idx in enumerate(feature_indexes):
-            n_bins = self._features[feature_idx]["n_bins"]
-            dimensions.append(n_bins + 1)
+            n_bins = self._features_bin_count[feature_idx]
+            dimensions.append(n_bins)
 
         dimensions = list(reversed(dimensions))
 
@@ -1015,7 +990,7 @@ class NativeEBMInteraction:
     """
 
     def __init__(
-        self, model_type, n_classes, features, X, y, scores, optional_temp_params
+        self, model_type, n_classes, features_categorical, features_bin_count, X, y, scores, optional_temp_params
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -1024,8 +999,8 @@ class NativeEBMInteraction:
             model_type: 'regression'/'classification'.
             n_classes: Specific to classification,
                 number of unique classes.
-            features: List of features represented individually as
-                dictionary of keys ('type', 'has_missing', 'n_bins').
+            features_categorical: list of categorical features represented by bools 
+            features_bin_count: count of the number of bins for each feature
             X: Training design matrix as 2-D ndarray.
             y: Training response as 1-D ndarray.
             scores: predictions from a prior predictor.  For regression
@@ -1038,8 +1013,11 @@ class NativeEBMInteraction:
         self._interaction_handle = None
 
         # check inputs for important inputs or things that would segfault in C
-        if not isinstance(features, list):  # pragma: no cover
-            raise ValueError("features should be a list")
+        if not isinstance(features_categorical, np.ndarray):  # pragma: no cover
+            raise ValueError("features_categorical should be an np.ndarray")
+
+        if not isinstance(features_bin_count, np.ndarray):  # pragma: no cover
+            raise ValueError("features_bin_count should be an np.ndarray")
 
         if X.ndim != 2:  # pragma: no cover
             raise ValueError("X should have exactly 2 dimensions")
@@ -1047,9 +1025,15 @@ class NativeEBMInteraction:
         if y.ndim != 1:  # pragma: no cover
             raise ValueError("y should have exactly 1 dimension")
 
-        if X.shape[0] != len(features):  # pragma: no cover
+
+        if X.shape[0] != len(features_categorical):  # pragma: no cover
             raise ValueError(
-                "X does not have the same number of features as the features array"
+                "X does not have the same number of items as the features_categorical array"
+            )
+
+        if X.shape[0] != len(features_bin_count):  # pragma: no cover
+            raise ValueError(
+                "X does not have the same number of items as the features_bin_count array"
             )
 
         if X.shape[1] != len(y):  # pragma: no cover
@@ -1058,13 +1042,6 @@ class NativeEBMInteraction:
         self._native = Native.get_native_singleton()
 
         log.info("Allocation interaction start")
-
-        # Store args
-        (
-            features_type, 
-            features_missing_present, 
-            features_bin_count
-        ) = Native.convert_features_to_c(features)
 
         n_scores = NativeHelper.get_count_scores_c(n_classes)
         if scores is None:  # pragma: no cover
@@ -1099,8 +1076,7 @@ class NativeEBMInteraction:
             self._interaction_handle = self._native.lib.CreateClassificationInteractionDetector(
                 n_classes,
                 len(features_bin_count),
-                features_type, 
-                features_missing_present, 
+                features_categorical, 
                 features_bin_count,
                 len(y),
                 X,
@@ -1116,8 +1092,7 @@ class NativeEBMInteraction:
         elif model_type == "regression":
             self._interaction_handle = self._native.lib.CreateRegressionInteractionDetector(
                 len(features_bin_count),
-                features_type, 
-                features_missing_present, 
+                features_categorical, 
                 features_bin_count,
                 len(y),
                 X,
@@ -1183,7 +1158,8 @@ class NativeHelper:
     def cyclic_gradient_boost(
         model_type,
         n_classes,
-        features,
+        features_categorical, 
+        features_bin_count,
         feature_groups,
         X_train,
         y_train,
@@ -1209,7 +1185,8 @@ class NativeHelper:
             NativeEBMBooster(
                 model_type,
                 n_classes,
-                features,
+                features_categorical, 
+                features_bin_count,
                 feature_groups,
                 X_train,
                 y_train,
@@ -1278,7 +1255,8 @@ class NativeHelper:
         iter_feature_groups,
         model_type,
         n_classes,
-        features,
+        features_categorical, 
+        features_bin_count,
         X,
         y,
         scores,
@@ -1289,7 +1267,7 @@ class NativeHelper:
         interaction_scores = []
         with closing(
             NativeEBMInteraction(
-                model_type, n_classes, features, X, y, scores, optional_temp_params
+                model_type, n_classes, features_categorical, features_bin_count, X, y, scores, optional_temp_params
             )
         ) as native_ebm_interactions:
             for feature_group in iter_feature_groups:

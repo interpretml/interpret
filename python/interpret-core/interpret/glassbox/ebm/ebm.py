@@ -163,8 +163,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         self.col_mapping_ = {}
 
-        self.col_n_bins_ = {}
-
         self.col_names_ = []
         self.col_types_ = []
 
@@ -260,11 +258,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 hist_counts, hist_edges = np.histogram(col_data, bins="doane")
                 self.hist_edges_[col_idx] = hist_edges
                 self.hist_counts_[col_idx] = hist_counts
-                self.col_n_bins_[col_idx] = len(bin_cuts) + 1
             elif col_info["type"] == "ordinal":
                 mapping = {val: indx + 1 for indx, val in enumerate(col_info["order"])}
                 self.col_mapping_[col_idx] = mapping
-                self.col_n_bins_[col_idx] = len(col_info["order"])
             elif col_info["type"] == "categorical":
                 col_data = col_data.astype('U')
                 uniq_vals, counts = np.unique(col_data, return_counts=True)
@@ -278,8 +274,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 uniq_vals = uniq_vals[~missings]
                 mapping = {val: indx + 1 for indx, val in enumerate(uniq_vals)}
                 self.col_mapping_[col_idx] = mapping
-
-                self.col_n_bins_[col_idx] = len(uniq_vals)
 
         self.has_fitted_ = True
         return self
@@ -393,9 +387,10 @@ class BaseCoreEBM:
         self,
         model_type,
         # Data
-        col_types,
-        col_n_bins,
-        pair_col_n_bins,
+        features_categorical,
+        features_bin_count,
+        pair_features_categorical,
+        pair_features_bin_count,
         # Core
         main_features,
         interactions,
@@ -415,9 +410,10 @@ class BaseCoreEBM:
         self.model_type = model_type
 
         # Arguments for data
-        self.col_types = col_types
-        self.col_n_bins = col_n_bins
-        self.pair_col_n_bins = pair_col_n_bins
+        self.features_categorical = features_categorical
+        self.features_bin_count = features_bin_count
+        self.pair_features_categorical = pair_features_categorical
+        self.pair_features_bin_count = pair_features_bin_count
 
         # Arguments for EBM beyond training a feature-step.
         self.main_features = main_features
@@ -448,7 +444,6 @@ class BaseCoreEBM:
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
-        self.features_ = EBMUtils.gen_features(self.col_types, self.col_n_bins)
 
         if X_pair is not None:
             X_pair_train, X_pair_val, y_train, y_val = EBMUtils.ebm_train_test_split(
@@ -458,10 +453,8 @@ class BaseCoreEBM:
                 random_state=self.random_state,
                 is_classification=self.model_type == "classification",
             )
-            self.pair_features_ = EBMUtils.gen_features(self.col_types, self.pair_col_n_bins)
         else:
             X_pair_train, X_pair_val = None, None
-            self.pair_features_ = None
               
         # Build EBM allocation code
 
@@ -477,7 +470,7 @@ class BaseCoreEBM:
             self.intercept_ = np.float64(0)
 
         if isinstance(self.main_features, str) and self.main_features == "all":
-            main_feature_indices = [[x] for x in range(len(self.features_))]
+            main_feature_indices = [[x] for x in range(X.shape[1])]
         elif isinstance(self.main_features, list) and all(
             isinstance(x, int) for x in self.main_features
         ):
@@ -514,7 +507,8 @@ class BaseCoreEBM:
         ) = NativeHelper.cyclic_gradient_boost(
             model_type=self.model_type,
             n_classes=self.n_classes_,
-            features=self.features_,
+            features_categorical = self.features_categorical, 
+            features_bin_count = self.features_bin_count, 
             feature_groups=main_feature_groups,
             X_train=X_train,
             y_train=y_train,
@@ -546,15 +540,16 @@ class BaseCoreEBM:
                 X_train, X_pair, self.feature_groups_, self.model_, self.intercept_
             )
 
-            iter_feature_groups = combinations(range(len(self.col_types)), 2)
+            iter_feature_groups = combinations(range(X_pair.shape[0]), 2)
 
             final_indices, final_scores = NativeHelper.get_interactions(
                 n_interactions=self.interactions,
                 iter_feature_groups=iter_feature_groups,
                 model_type=self.model_type,
                 n_classes=self.n_classes_,
-                features=self.features_,
-                X=X_train,
+                features_categorical = self.pair_features_categorical, 
+                features_bin_count = self.pair_features_bin_count, 
+                X=X_pair,
                 y=y_train,
                 scores=scores_train,
                 min_samples_leaf=self.min_samples_leaf,
@@ -590,7 +585,8 @@ class BaseCoreEBM:
         ) = NativeHelper.cyclic_gradient_boost(
             model_type=self.model_type,
             n_classes=self.n_classes_,
-            features=self.pair_features_,
+            features_categorical = self.pair_features_categorical, 
+            features_bin_count = self.pair_features_bin_count, 
             feature_groups=inter_indices,
             X_train=X_pair_train,
             y_train=y_train,
@@ -789,6 +785,9 @@ class BaseEBM(BaseEstimator):
         X_orig = X
         X = self.preprocessor_.transform(X_orig)
 
+        features_categorical = np.array([x == "categorical" for x in self.preprocessor_.col_types_], dtype=ct.c_int64)
+        features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_.values()], dtype=ct.c_int64)
+
         if self.interactions != 0:
             self.pair_preprocessor_ = EBMPreprocessor(
                 feature_names=self.feature_names,
@@ -798,9 +797,10 @@ class BaseEBM(BaseEstimator):
             )
             self.pair_preprocessor_.fit(X_orig)
             X_pair = self.pair_preprocessor_.transform(X_orig)
-            pair_col_n_bins = self.pair_preprocessor_.col_n_bins_
+            pair_features_categorical = np.array([x == "categorical" for x in self.pair_preprocessor_.col_types_], dtype=ct.c_int64)
+            pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_.values()], dtype=ct.c_int64)
         else:
-            self.pair_preprocessor_, X_pair, pair_col_n_bins = None, None, None
+            self.pair_preprocessor_, X_pair, pair_features_categorical, pair_features_bin_count = None, None, None, None
 
         estimators = []
         seed = EBMUtils.normalize_initial_random_seed(self.random_state)
@@ -822,9 +822,10 @@ class BaseEBM(BaseEstimator):
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="classification",
-                    col_types=self.preprocessor_.col_types_,
-                    col_n_bins=self.preprocessor_.col_n_bins_,
-                    pair_col_n_bins=pair_col_n_bins,
+                    features_categorical=features_categorical,
+                    features_bin_count=features_bin_count,
+                    pair_features_categorical=pair_features_categorical,
+                    pair_features_bin_count=pair_features_bin_count,
                     # Core
                     main_features=self.mains,
                     interactions=self.interactions,
@@ -849,9 +850,10 @@ class BaseEBM(BaseEstimator):
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="regression",
-                    col_types=self.preprocessor_.col_types_,
-                    col_n_bins=self.preprocessor_.col_n_bins_,
-                    pair_col_n_bins=pair_col_n_bins,
+                    features_categorical=features_categorical,
+                    features_bin_count=features_bin_count,
+                    pair_features_categorical=pair_features_categorical,
+                    pair_features_bin_count=pair_features_bin_count,
                     # Core
                     main_features=self.mains,
                     interactions=self.interactions,

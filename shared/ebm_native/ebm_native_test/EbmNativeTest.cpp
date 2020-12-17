@@ -271,8 +271,7 @@ void TestApi::AddFeatures(const std::vector<FeatureTest> features) {
    }
 
    for(const FeatureTest oneFeature : features) {
-      m_featuresType.push_back(static_cast<FeatureEbmType>(oneFeature.m_featureType));
-      m_featuresMissingPresent.push_back(oneFeature.m_hasMissing ? EBM_TRUE : EBM_FALSE);
+      m_featuresCategorical.push_back(oneFeature.m_bCategorical ? EBM_TRUE : EBM_FALSE);
       m_featuresBinCount.push_back(oneFeature.m_countBins);
    }
 
@@ -644,8 +643,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          k_randomSeed,
          m_learningTypeOrCountTargetClasses,
          m_featuresBinCount.size(),
-         0 == m_featuresType.size() ? nullptr : &m_featuresType[0],
-         0 == m_featuresMissingPresent.size() ? nullptr : &m_featuresMissingPresent[0],
+         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
          0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
          m_featureGroupsFeatureCount.size(),
          0 == m_featureGroupsFeatureCount.size() ? nullptr : &m_featureGroupsFeatureCount[0],
@@ -673,8 +671,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       m_boosterHandle = CreateRegressionBooster(
          k_randomSeed,
          m_featuresBinCount.size(),
-         0 == m_featuresType.size() ? nullptr : &m_featuresType[0],
-         0 == m_featuresMissingPresent.size() ? nullptr : &m_featuresMissingPresent[0],
+         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
          0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
          m_featureGroupsFeatureCount.size(),
          0 == m_featureGroupsFeatureCount.size() ? nullptr : &m_featureGroupsFeatureCount[0],
@@ -980,8 +977,7 @@ void TestApi::InitializeInteraction() {
       m_interactionDetectorHandle = CreateClassificationInteractionDetector(
          m_learningTypeOrCountTargetClasses,
          m_featuresBinCount.size(),
-         0 == m_featuresType.size() ? nullptr : &m_featuresType[0],
-         0 == m_featuresMissingPresent.size() ? nullptr : &m_featuresMissingPresent[0],
+         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
          0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
          m_interactionClassificationTargets.size(),
          0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0],
@@ -996,8 +992,7 @@ void TestApi::InitializeInteraction() {
       }
       m_interactionDetectorHandle = CreateRegressionInteractionDetector(
          m_featuresBinCount.size(),
-         0 == m_featuresType.size() ? nullptr : &m_featuresType[0],
-         0 == m_featuresMissingPresent.size() ? nullptr : &m_featuresMissingPresent[0],
+         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
          0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
          m_interactionRegressionTargets.size(),
          0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0],

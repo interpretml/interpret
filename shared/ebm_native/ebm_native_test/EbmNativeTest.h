@@ -130,24 +130,18 @@ constexpr size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasse
 }
 
 constexpr SeedEbmType k_randomSeed = SeedEbmType { -42 };
-enum class FeatureType : IntEbmType {
-   Ordinal = FeatureTypeOrdinal, Nominal = FeatureTypeNominal
-};
 
 class FeatureTest final {
 public:
 
-   const FeatureType m_featureType;
-   const bool m_hasMissing;
+   const bool m_bCategorical;
    const IntEbmType m_countBins;
 
    inline FeatureTest(
       const IntEbmType countBins, 
-      const FeatureType featureType = FeatureType::Ordinal, 
-      const bool hasMissing = false
+      const bool bCategorical = false
    ) :
-      m_featureType(featureType),
-      m_hasMissing(hasMissing),
+      m_bCategorical(bCategorical),
       m_countBins(countBins) {
       if(countBins < 0) {
          exit(1);
@@ -296,8 +290,7 @@ class TestApi {
    const ptrdiff_t m_learningTypeOrCountTargetClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<FeatureEbmType> m_featuresType;
-   std::vector<BoolEbmType> m_featuresMissingPresent;
+   std::vector<BoolEbmType> m_featuresCategorical;
    std::vector<IntEbmType> m_featuresBinCount;
    std::vector<IntEbmType> m_featureGroupsFeatureCount;
    std::vector<IntEbmType> m_featureGroupsFeatureIndexes;

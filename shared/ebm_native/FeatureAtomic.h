@@ -14,8 +14,7 @@ enum class FeatureType;
 class Feature final {
    size_t m_cBins;
    size_t m_iFeatureData;
-   FeatureType m_featureType;
-   bool m_bMissing;
+   bool m_bCategorical;
 
 public:
 
@@ -24,11 +23,10 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void Initialize(const size_t cBins, const size_t iFeatureData, const FeatureType featureType, const bool bMissing) {
+   INLINE_ALWAYS void Initialize(const size_t cBins, const size_t iFeatureData, const bool bCategorical) {
       m_cBins = cBins;
       m_iFeatureData = iFeatureData;
-      m_featureType = featureType;
-      m_bMissing = bMissing;
+      m_bCategorical = bCategorical;
    }
 
    INLINE_ALWAYS size_t GetCountBins() const {
@@ -40,12 +38,8 @@ public:
       return m_iFeatureData;
    }
 
-   INLINE_ALWAYS FeatureType GetFeatureType() const {
-      return m_featureType;
-   }
-
-   INLINE_ALWAYS bool GetIsMissing() const {
-      return m_bMissing;
+   INLINE_ALWAYS bool GetIsCategorical() const {
+      return m_bCategorical;
    }
 };
 static_assert(std::is_standard_layout<Feature>::value,
