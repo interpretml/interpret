@@ -15,36 +15,32 @@ from contextlib import closing
 log = logging.getLogger(__name__)
 
 
-class Native:
-    """Layer/Class responsible for native function calls."""
+class UnsafeNative:
+    """Layer/Class responsible for native function calls. 
+    This class contains unsanitized function calls that 
+    can crash the process if called with bad inputs.
+    """
 
-    _native = None
+    _unsafe_native = None
 
-    def _initialize(self, is_debug, log_level):
+    def _initialize(self, is_debug):
+        self._typed_log_func = None
         self.is_debug = is_debug
-        self.log_level = log_level
 
-        self.lib = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
+        self.lib = ct.cdll.LoadLibrary(UnsafeNative._get_ebm_lib_path(debug=is_debug))
         self._harden_function_signatures()
-        self._set_logging(level=log_level)
 
     @staticmethod
-    def get_native_singleton(is_debug=False, log_level=None):
+    def get_unsafe_native_singleton(is_debug=False):
         log.debug("Check if EBM lib is loaded")
-        if Native._native is None:
+        if UnsafeNative._unsafe_native is None:
             log.info("EBM lib loading.")
-            native = Native()
-            native._initialize(is_debug=is_debug, log_level=log_level)
-            Native._native = native
+            unsafe_native = UnsafeNative()
+            unsafe_native._initialize(is_debug=is_debug)
+            UnsafeNative._unsafe_native = unsafe_native
         else:
             log.debug("EBM lib already loaded")
-        return Native._native
-
-    # enum FeatureType : int64_t
-    # Ordinal = 0
-    FeatureTypeOrdinal = 0
-    # Nominal = 1
-    FeatureTypeNominal = 1
+        return UnsafeNative._unsafe_native
 
     # const int32_t TraceLevelOff = 0;
     TraceLevelOff = 0
@@ -99,8 +95,6 @@ class Native:
 
 
         self.lib.GenerateQuantileBinCuts.argtypes = [
-            # int32_t randomSeed
-            ct.c_int32,
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
@@ -432,7 +426,7 @@ class Native:
         ]
         self.lib.FreeInteractionDetector.restype = None
 
-    def _set_logging(self, level=None):
+    def set_logging(self, level=None):
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
         def native_log(trace_level, message):  # pragma: no cover
             try:
@@ -469,12 +463,14 @@ class Native:
             "NOTSET": self.TraceLevelOff,
         }
 
-        # it's critical that we put typed_log_func into self,
-        # otherwise it will be garbage collected
-        self._typed_log_func = self._LogFuncType(native_log)
+        trace_level = level_dict[level]
+        if self._typed_log_func is None and trace_level != self.TraceLevelOff:
+            # it's critical that we put typed_log_func into self,
+            # otherwise it will be garbage collected
+            self._typed_log_func = self._LogFuncType(native_log)
+            self.lib.SetLogMessageFunction(self._typed_log_func)
 
-        self.lib.SetLogMessageFunction(self._typed_log_func)
-        self.lib.SetTraceLevel(level_dict[level])
+        self.lib.SetTraceLevel(trace_level)
 
     @staticmethod
     def _get_ebm_lib_path(debug=False):
@@ -558,6 +554,124 @@ class Native:
 
         return feature_groups_feature_count, feature_groups_feature_indexes
 
+class SafeNative:
+    """ Layer/Class responsible for native function calls. 
+    This class has sanitized function calls and attempts to make it impossible 
+    to crash the process when calling these functions, even with bad inputs.
+    """
+
+    # GenerateUpdateOptionsType
+    GenerateUpdateOptions_Default               = 0x0000000000000000
+    GenerateUpdateOptions_DisableNewtonGain     = 0x0000000000000001
+    GenerateUpdateOptions_DisableNewtonUpdate   = 0x0000000000000002
+    GenerateUpdateOptions_GradientSums          = 0x0000000000000004
+    GenerateUpdateOptions_RandomSplits          = 0x0000000000000008
+
+    def __init__(self, is_debug=False):
+        """ Initializes SafeNative for calling native functions. """
+
+        self._unsafe_native = UnsafeNative.get_unsafe_native_singleton(is_debug)
+
+    def generate_random_number(self, random_seed, stage_randomization_mix):
+        return self._unsafe_native.lib.GenerateRandomNumber(random_seed, stage_randomization_mix)
+
+    def set_logging(self, level=None):
+        self._unsafe_native.set_logging(level)
+
+    def generate_quantile_bin_cuts(
+        self, 
+        col_data, 
+        min_samples_bin, 
+        is_humanized, 
+        max_cuts, 
+    ):
+        bin_cuts = np.empty(max_cuts, dtype=np.float64, order="C")
+        count_cuts = ct.c_int64(max_cuts)
+        count_missing = ct.c_int64(0)
+        min_val = ct.c_double(0)
+        count_neg_inf = ct.c_int64(0)
+        max_val = ct.c_double(0)
+        count_inf = ct.c_int64(0)
+
+        return_code = self._unsafe_native.lib.GenerateQuantileBinCuts(
+            col_data.shape[0],
+            col_data, 
+            min_samples_bin,
+            is_humanized,
+            ct.byref(count_cuts),
+            bin_cuts,
+            ct.byref(count_missing),
+            ct.byref(min_val),
+            ct.byref(count_neg_inf),
+            ct.byref(max_val),
+            ct.byref(count_inf)
+        )
+
+        if return_code != 0:  # pragma: no cover
+            raise Exception("Out of memory in GenerateQuantileBinCuts")
+
+        bin_cuts = bin_cuts[:count_cuts.value]
+        count_missing = count_missing.value
+        min_val = min_val.value
+        max_val = max_val.value
+
+        return bin_cuts, count_missing, min_val, max_val
+
+    def generate_uniform_bin_cuts(
+        self, 
+        col_data, 
+        max_cuts, 
+    ):
+        bin_cuts = np.empty(max_cuts, dtype=np.float64, order="C")
+        count_cuts = ct.c_int64(max_cuts)
+        count_missing = ct.c_int64(0)
+        min_val = ct.c_double(0)
+        count_neg_inf = ct.c_int64(0)
+        max_val = ct.c_double(0)
+        count_inf = ct.c_int64(0)
+
+        self._unsafe_native.lib.GenerateUniformBinCuts(
+            col_data.shape[0],
+            col_data, 
+            ct.byref(count_cuts),
+            bin_cuts,
+            ct.byref(count_missing),
+            ct.byref(min_val),
+            ct.byref(count_neg_inf),
+            ct.byref(max_val),
+            ct.byref(count_inf)
+        )
+
+        bin_cuts = bin_cuts[:count_cuts.value]
+        count_missing = count_missing.value
+        min_val = min_val.value
+        max_val = max_val.value
+
+        return bin_cuts, count_missing, min_val, max_val
+
+    def discretize(
+        self, 
+        col_data, 
+        bin_cuts, 
+    ):
+        discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")
+        return_code = self._unsafe_native.lib.Discretize(
+            col_data.shape[0],
+            col_data,
+            bin_cuts.shape[0],
+            bin_cuts,
+            discretized
+        )
+
+        if return_code != 0:  # pragma: no cover
+            raise Exception("Out of memory in Discretize")
+
+        return discretized
+
+    @staticmethod
+    def get_count_scores_c(n_classes):
+        # this should reflect how the C code represents scores
+        return 1 if n_classes <= 2 else n_classes
 
 class NativeEBMBooster:
     """Lightweight wrapper for EBM C boosting code.
@@ -657,7 +771,7 @@ class NativeEBMBooster:
                 "X_val does not have the same number of samples as y_val"
             )
 
-        self._native = Native.get_native_singleton()
+        self._unsafe_native = UnsafeNative.get_unsafe_native_singleton()
 
         log.info("Allocation training start")
 
@@ -671,9 +785,9 @@ class NativeEBMBooster:
         (
             feature_groups_feature_count,
             feature_groups_feature_indexes,
-        ) = Native.convert_feature_groups_to_c(feature_groups)
+        ) = UnsafeNative.convert_feature_groups_to_c(feature_groups)
 
-        n_scores = NativeHelper.get_count_scores_c(n_classes)
+        n_scores = SafeNative.get_count_scores_c(n_classes)
         if scores_train is None:
             scores_train = np.zeros(len(y_train) * n_scores, dtype=ct.c_double, order="C")
         else:
@@ -725,7 +839,7 @@ class NativeEBMBooster:
 
         # Allocate external resources
         if model_type == "classification":
-            self._booster_handle = self._native.lib.CreateClassificationBooster(
+            self._booster_handle = self._unsafe_native.lib.CreateClassificationBooster(
                 random_state,
                 n_classes,
                 len(features_bin_count),
@@ -750,7 +864,7 @@ class NativeEBMBooster:
             if not self._booster_handle:  # pragma: no cover
                 raise MemoryError("Out of memory in CreateClassificationBooster")
         elif model_type == "regression":
-            self._booster_handle = self._native.lib.CreateRegressionBooster(
+            self._booster_handle = self._unsafe_native.lib.CreateRegressionBooster(
                 random_state,
                 len(features_bin_count),
                 features_categorical, 
@@ -781,7 +895,7 @@ class NativeEBMBooster:
     def close(self):
         """ Deallocates C objects used to boost EBM. """
         log.info("Deallocation boosting start")
-        self._native.lib.FreeBooster(self._booster_handle)
+        self._unsafe_native.lib.FreeBooster(self._booster_handle)
         log.info("Deallocation boosting end")
 
     def boosting_step(
@@ -822,7 +936,7 @@ class NativeEBMBooster:
             n_features = len(self._feature_groups[feature_group_index])
             max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
-            model_update_tensor_pointer = self._native.lib.GenerateModelFeatureGroupUpdate(
+            model_update_tensor_pointer = self._unsafe_native.lib.GenerateModelFeatureGroupUpdate(
                 self._booster_handle,
                 feature_group_index,
                 generate_update_options,
@@ -838,11 +952,11 @@ class NativeEBMBooster:
 
             shape = self._get_feature_group_shape(feature_group_index)
             # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureGroupUpdate
-            model_update_tensor = Native.make_ndarray(
+            model_update_tensor = UnsafeNative.make_ndarray(
                 model_update_tensor_pointer, shape, dtype=ct.c_double, copy_data=False
             )
 
-            return_code = self._native.lib.ApplyModelFeatureGroupUpdate(
+            return_code = self._unsafe_native.lib.ApplyModelFeatureGroupUpdate(
                 self._booster_handle,
                 feature_group_index,
                 model_update_tensor,
@@ -868,7 +982,7 @@ class NativeEBMBooster:
         dimensions = list(reversed(dimensions))
 
         # Array returned for multiclass is one higher dimension
-        n_scores = NativeHelper.get_count_scores_c(self._n_classes)
+        n_scores = SafeNative.get_count_scores_c(self._n_classes)
         if n_scores > 1:
             dimensions.append(n_scores)
 
@@ -902,7 +1016,7 @@ class NativeEBMBooster:
             # TODO PK make sure the None value here is handled by our caller
             return None
 
-        array_p = self._native.lib.GetBestModelFeatureGroup(
+        array_p = self._unsafe_native.lib.GetBestModelFeatureGroup(
             self._booster_handle, feature_group_index
         )
 
@@ -911,7 +1025,7 @@ class NativeEBMBooster:
 
         shape = self._get_feature_group_shape(feature_group_index)
 
-        array = Native.make_ndarray(array_p, shape, dtype=ct.c_double)
+        array = UnsafeNative.make_ndarray(array_p, shape, dtype=ct.c_double)
         if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
@@ -955,7 +1069,7 @@ class NativeEBMBooster:
             # TODO PK make sure the None value here is handled by our caller
             return None
 
-        array_p = self._native.lib.GetCurrentModelFeatureGroup(
+        array_p = self._unsafe_native.lib.GetCurrentModelFeatureGroup(
             self._booster_handle, feature_group_index
         )
 
@@ -964,7 +1078,7 @@ class NativeEBMBooster:
 
         shape = self._get_feature_group_shape(feature_group_index)
 
-        array = Native.make_ndarray(array_p, shape, dtype=ct.c_double)
+        array = UnsafeNative.make_ndarray(array_p, shape, dtype=ct.c_double)
         if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
@@ -1039,11 +1153,11 @@ class NativeEBMInteraction:
         if X.shape[1] != len(y):  # pragma: no cover
             raise ValueError("X does not have the same number of samples as y")
 
-        self._native = Native.get_native_singleton()
+        self._unsafe_native = UnsafeNative.get_unsafe_native_singleton()
 
         log.info("Allocation interaction start")
 
-        n_scores = NativeHelper.get_count_scores_c(n_classes)
+        n_scores = SafeNative.get_count_scores_c(n_classes)
         if scores is None:  # pragma: no cover
             scores = np.zeros(len(y) * n_scores, dtype=ct.c_double, order="C")
         else:
@@ -1073,7 +1187,7 @@ class NativeEBMInteraction:
 
         # Allocate external resources
         if model_type == "classification":
-            self._interaction_handle = self._native.lib.CreateClassificationInteractionDetector(
+            self._interaction_handle = self._unsafe_native.lib.CreateClassificationInteractionDetector(
                 n_classes,
                 len(features_bin_count),
                 features_categorical, 
@@ -1090,7 +1204,7 @@ class NativeEBMInteraction:
                     "Out of memory in CreateClassificationInteractionDetector"
                 )
         elif model_type == "regression":
-            self._interaction_handle = self._native.lib.CreateRegressionInteractionDetector(
+            self._interaction_handle = self._unsafe_native.lib.CreateRegressionInteractionDetector(
                 len(features_bin_count),
                 features_categorical, 
                 features_bin_count,
@@ -1111,14 +1225,14 @@ class NativeEBMInteraction:
     def close(self):
         """ Deallocates C objects used to determine interactions in EBM. """
         log.info("Deallocation interaction start")
-        self._native.lib.FreeInteractionDetector(self._interaction_handle)
+        self._unsafe_native.lib.FreeInteractionDetector(self._interaction_handle)
         log.info("Deallocation interaction end")
 
     def get_interaction_score(self, feature_index_tuple, min_samples_leaf):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
-        return_code = self._native.lib.CalculateInteractionScore(
+        return_code = self._unsafe_native.lib.CalculateInteractionScore(
             self._interaction_handle,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=ct.c_int64),
@@ -1133,27 +1247,6 @@ class NativeEBMInteraction:
 
 
 class NativeHelper:
-
-    # GenerateUpdateOptionsType
-    GenerateUpdateOptions_Default               = 0x0000000000000000
-    GenerateUpdateOptions_DisableNewtonGain     = 0x0000000000000001
-    GenerateUpdateOptions_DisableNewtonUpdate   = 0x0000000000000002
-    GenerateUpdateOptions_GradientSums          = 0x0000000000000004
-    GenerateUpdateOptions_RandomSplits          = 0x0000000000000008
-
-    @staticmethod
-    def get_count_scores_c(n_classes):
-        # this should reflect how the C code represents scores
-        return 1 if n_classes <= 2 else n_classes
-
-    @staticmethod
-    def generate_random_number(
-        random_seed,
-        stage_randomization_mix
-    ):
-        native = Native.get_native_singleton()
-        return native.lib.GenerateRandomNumber(random_seed, stage_randomization_mix)
-
     @staticmethod
     def cyclic_gradient_boost(
         model_type,

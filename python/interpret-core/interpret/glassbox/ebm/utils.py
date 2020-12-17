@@ -214,23 +214,23 @@ class EBMUtils:
         return scores
 
     @staticmethod
-    def gen_feature_name(feature_idxs, col_names):
-        feature_name = []
+    def gen_feature_group_name(feature_idxs, col_names):
+        feature_group_name = []
         for feature_index in feature_idxs:
             col_name = col_names[feature_index]
-            feature_name.append(
-                "feature_" + str(col_name)
+            feature_group_name.append(
+                f'feature_{col_name:04}'
                 if isinstance(col_name, int)
                 else str(col_name)
             )
-        feature_name = " x ".join(feature_name)
-        return feature_name
+        feature_group_name = " x ".join(feature_group_name)
+        return feature_group_name
 
     @staticmethod
-    def gen_feature_type(feature_idxs, col_types):
+    def gen_feature_group_type(feature_idxs, col_types):
         if len(feature_idxs) == 1:
             return col_types[feature_idxs[0]]
         else:
             # TODO PK we should consider changing the feature type to the same " x " separator
             # style as gen_feature_name, for human understanability
-            return "pairwise"
+            return "interaction"

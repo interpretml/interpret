@@ -263,23 +263,15 @@ SEXP GenerateRandomNumber_R(
 }
 
 SEXP GenerateQuantileBinCuts_R(
-   SEXP randomSeed,
    SEXP featureValues,
    SEXP countSamplesPerBinMin,
    SEXP isHumanized,
    SEXP countBinCuts
 ) {
-   EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != featureValues);
    EBM_ASSERT(nullptr != countSamplesPerBinMin);
    EBM_ASSERT(nullptr != isHumanized);
    EBM_ASSERT(nullptr != countBinCuts);
-
-   if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleIntVector(randomSeed)");
-      return R_NilValue;
-   }
-   const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    const FloatEbmType * aFeatureValues = nullptr;
    size_t cFeatureValues;
@@ -329,7 +321,6 @@ SEXP GenerateQuantileBinCuts_R(
    // R_alloc doesn't return nullptr, so we don't need to check aItems
 
    const IntEbmType ret = GenerateQuantileBinCuts(
-      randomSeedLocal,
       static_cast<IntEbmType>(cFeatureValues),
       aFeatureValues,
       countSamplesPerBinMinIntEbmType,
@@ -1568,7 +1559,7 @@ SEXP FreeInteractionDetector_R(
 
 static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateRandomNumber_R", (DL_FUNC)&GenerateRandomNumber_R, 2 },
-   { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 5 },
+   { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 4 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
    { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 15 },

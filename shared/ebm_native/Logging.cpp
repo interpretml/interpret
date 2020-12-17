@@ -9,7 +9,7 @@
 #include <stdarg.h>
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // FeatureType
+#include "EbmInternal.h"
 #include "Logging.h"
 
 const char g_trueString[] = "true";
@@ -54,13 +54,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION GetTrac
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
    assert(nullptr != logMessageFunction);
    assert(nullptr == g_pLogMessageFunc); /* "SetLogMessageFunction should only be called once" */
+   assert(TraceLevelOff == g_traceLevel);
+
    g_pLogMessageFunc = logMessageFunction;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel) {
    assert(TraceLevelOff <= traceLevel);
    assert(traceLevel <= TraceLevelVerbose);
-   assert(nullptr != g_pLogMessageFunc); /* "call SetLogMessageFunction before calling SetTraceLevel" */
+   // call SetLogMessageFunction before calling SetTraceLevel unless we're keeping tracing off
+   assert(nullptr != g_pLogMessageFunc || TraceLevelOff == traceLevel);
    g_traceLevel = traceLevel;
 
    // this is not an actual error, but ensure that this message gets written to the log so that we know it was properly

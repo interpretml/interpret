@@ -3,13 +3,11 @@
 # Author: Paul Koch <code@koch.ninja>
 
 generate_quantile_bin_cuts <- function(
-   random_seed, 
    feature_values, 
    count_samples_per_bin_min, 
    is_humanized, 
    count_bin_cuts
 ) {
-   random_seed <- as.integer(random_seed)
    feature_values <- as.double(feature_values)
    count_samples_per_bin_min <- as.double(count_samples_per_bin_min)
    is_humanized <- as.logical(is_humanized)
@@ -17,7 +15,6 @@ generate_quantile_bin_cuts <- function(
 
    bin_cuts_lower_bound_inclusive <- .Call(
       GenerateQuantileBinCuts_R, 
-      random_seed, 
       feature_values, 
       count_samples_per_bin_min, 
       is_humanized, 
