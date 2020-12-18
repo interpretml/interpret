@@ -287,9 +287,10 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None, missin
             new_feature_names = feature_names
 
         if feature_types is None:
-            unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
+            # unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
+            bool_indicator = [data[col].isin([np.nan, 0, 1]).all() for col in data.columns]
             new_feature_types = [
-                _assign_feature_type(feature_type, unique_counts[index])
+                _assign_feature_type(feature_type, bool_indicator[index])
                 for index, feature_type in enumerate(data.dtypes)
             ]
         else:
@@ -381,15 +382,10 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
         for name, col_dtype in zip(X.dtypes.index, X.dtypes):
             schema[name] = {}
             if is_numeric_dtype(col_dtype):
-                # schema[name]['type'] = 'continuous'
-                # TODO: Fix this once we know it works.
-                if len(set(X[name])) > ordinal_max_items:
-                    schema[name]["type"] = "continuous"
-                else:
-                    # TODO: Work with ordinal later.
+                if X[name].isin([np.nan, 0, 1]).all():
                     schema[name]["type"] = "categorical"
-                    # schema[name]['type'] = 'ordinal'
-                    # schema[name]['order'] = list(set(X[name]))
+                else:
+                    schema[name]["type"] = "continuous"
             elif is_string_dtype(col_dtype):
                 schema[name]["type"] = "categorical"
             else:  # pragma: no cover
@@ -408,11 +404,9 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
     return schema
 
 
-def _assign_feature_type(feature_type, unique_count=0):
-    if is_string_dtype(feature_type) or (
-        is_numeric_dtype(feature_type) and unique_count <= 2
-    ):
-        return "categorical"
+def _assign_feature_type(feature_type, is_boolean=False):
+    if is_boolean or is_string_dtype(feature_type):
+        return 'categorical'
     elif is_numeric_dtype(feature_type):
         return "continuous"
     else:  # pragma: no cover

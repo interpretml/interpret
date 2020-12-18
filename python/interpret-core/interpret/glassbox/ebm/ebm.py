@@ -251,7 +251,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     bin_counts = np.concatenate(([0], bin_counts))
                 else:
                     col_data = col_data[~np.isnan(col_data)]
-               
+                
                 self.col_bin_counts_[col_idx] = bin_counts
                 self.col_bin_edges_[col_idx] = np.concatenate(([min_val.value],bin_cuts,[max_val.value]))
 
