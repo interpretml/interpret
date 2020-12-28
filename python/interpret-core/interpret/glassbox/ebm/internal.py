@@ -1263,7 +1263,6 @@ class NativeHelper:
         min_samples_leaf,
         optional_temp_params=None,
     ):
-        # TODO PK we only need to store the top n_interactions items, so use a heap
         interaction_scores = []
         with closing(
             NativeEBMInteraction(
@@ -1279,8 +1278,7 @@ class NativeHelper:
         ranked_scores = list(
             sorted(interaction_scores, key=lambda x: x[1], reverse=True)
         )
-        n_interactions = min(len(ranked_scores), n_interactions)
-        final_ranked_scores = ranked_scores[0:n_interactions]
+        final_ranked_scores = ranked_scores
 
         final_indices = [x[0] for x in final_ranked_scores]
         final_scores = [x[1] for x in final_ranked_scores]

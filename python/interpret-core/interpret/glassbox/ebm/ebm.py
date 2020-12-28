@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 
+from typing import DefaultDict
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
 from .internal import NativeHelper, Native
@@ -19,7 +20,8 @@ from warnings import warn
 from sklearn.base import is_classifier
 from sklearn.utils.validation import check_is_fitted
 from sklearn.metrics import log_loss, mean_squared_error
-from collections import Counter
+from collections import Counter, defaultdict
+import heapq
 
 from sklearn.base import (
     BaseEstimator,
@@ -490,16 +492,10 @@ class BaseCoreEBM:
         )
 
         self.inter_episode_idx_ = 0
-        if len(self.inter_indices_) != 0:
-            self._staged_fit_interactions(
-                X_train, y_train, X_val, y_val, X_pair_train, X_pair_val, self.inter_indices_
-            )
-
         return self
 
     def _fit_main(self, main_feature_groups, X_train, y_train, X_val, y_val):
         log.info("Train main effects")
-
         (
             self.model_,
             self.current_metric_,
@@ -893,9 +889,24 @@ class BaseEBM(BaseEstimator):
 
         estimators = provider.parallel(train_model, train_model_args_iter)
 
+        def select_pairs_from_fast(estimators, n_interactions):
+            # Average rank from estimators
+            pair_ranks = defaultdict(list)
+            
+            for estimator in estimators:
+                for rank, indices in enumerate(estimator.inter_indices_):
+                    pair_ranks[indices].append(rank)
+
+            final_ranks = []
+            for indices in pair_ranks:
+                final_ranks.append((np.mean(pair_ranks[indices]), indices))
+
+            top_pairs = [x[1] for x in heapq.nsmallest(n_interactions, final_ranks)]
+            return top_pairs
+
         if isinstance(self.interactions, int) and self.interactions > 0:
             # Select merged pairs
-            pair_indices = self._select_merged_pairs(estimators, X, y, X_pair)
+            pair_indices = select_pairs_from_fast(estimators, self.interactions)
 
             for estimator in estimators:
                 # Discard initial interactions
@@ -926,6 +937,18 @@ class BaseEBM(BaseEstimator):
             pair_indices = []
         elif isinstance(self.interactions, list):
             pair_indices = self.interactions
+            if len(pair_indices) != 0:
+                # Retrain interactions for base models
+                def staged_fit_fn(estimator, X, y, X_pair, inter_indices=[]):
+                    return estimator.staged_fit_interactions_parallel(
+                        X, y, X_pair, inter_indices
+                    )
+
+                staged_fit_args_iter = (
+                    (estimators[i], X, y, X_pair, pair_indices) for i in range(self.outer_bags)
+                )
+
+                estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
         else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
@@ -1062,131 +1085,6 @@ class BaseEBM(BaseEstimator):
         else:  # pragma: no cover
             msg = "Unknown model_type: '{}'.".format(model_type)
             raise ValueError(msg)
-
-    def _select_merged_pairs(self, estimators, X, y, X_pair):
-        # TODO PK we really need to use purification before here because it's not really legal to elminate
-        #         a feature group unless it's average contribution value is zero, and for a pair that
-        #         would mean that the intercepts for both features in the group were zero, hense purified
-
-        # TODO PK rename the "pair" variables in this function to "interaction" since that's more generalized
-
-        # TODO PK sort the interaction tuples so that they have a unique ordering, otherwise
-        #         when they get inserted into pair_cum_rank and pair_freq they could potentially have
-        #         reversed ordering and then be duplicates
-        #         ordering by increasing indexes is probably the most meaningful representation to the user
-
-        pair_cum_rank = Counter()
-        pair_freq = Counter()
-
-        for index, estimator in enumerate(estimators):
-            # TODO PK move the work done inside this loop to the original parallel threads so that this part can be done in parallel
-
-            # TODO PK this algorithm in O(N^2) by the number of interactions.  Alternatively
-            #         there is an O(N) algorithm where we generate the logits for the base forward and base backwards
-            #         predictions, then we copy that entire array AND add or substract the one feature under consideration
-
-            backward_impacts = []
-            forward_impacts = []
-
-            # TODO PK we can remove the is_train input to ebm_train_test_split once we've moved the pair scoring stuff
-            #         to a background thread because we'll already have the validation split without re-splitting it
-            _, X_val, _, y_val = EBMUtils.ebm_train_test_split(
-                X,
-                y,
-                test_size=self.validation_size,
-                random_state=estimator.random_state,
-                is_classification=is_classifier(self),
-                is_train=False,
-            )
-
-            _, X_pair_val, _, y_val = EBMUtils.ebm_train_test_split(
-                X_pair,
-                y,
-                test_size=self.validation_size,
-                random_state=estimator.random_state,
-                is_classification=is_classifier(self),
-                is_train=False,
-            )
-
-            n_base_feature_groups = len(estimator.feature_groups_) - len(
-                estimator.inter_indices_
-            )
-
-            base_forward_score = self._merged_pair_score_fn(
-                estimator.model_type,
-                X_val,
-                y_val,
-                X_pair_val,
-                estimator.feature_groups_[:n_base_feature_groups],
-                estimator.model_[:n_base_feature_groups],
-                estimator.intercept_,
-            )
-            base_backward_score = self._merged_pair_score_fn(
-                estimator.model_type,
-                X_val,
-                y_val,
-                X_pair_val,
-                estimator.feature_groups_,
-                estimator.model_,
-                estimator.intercept_,
-            )
-            for pair_idx, pair in enumerate(estimator.inter_indices_):
-                n_full_idx = n_base_feature_groups + pair_idx
-
-                pair_freq[pair] += 1
-
-                backward_score = self._merged_pair_score_fn(
-                    estimator.model_type,
-                    X_val,
-                    y_val,
-                    X_pair_val,
-                    estimator.feature_groups_[:n_full_idx]
-                    + estimator.feature_groups_[n_full_idx + 1 :],
-                    estimator.model_[:n_full_idx] + estimator.model_[n_full_idx + 1 :],
-                    estimator.intercept_,
-                )
-                forward_score = self._merged_pair_score_fn(
-                    estimator.model_type,
-                    X_val,
-                    y_val,
-                    X_pair_val,
-                    estimator.feature_groups_[:n_base_feature_groups]
-                    + estimator.feature_groups_[n_full_idx : n_full_idx + 1],
-                    estimator.model_[:n_base_feature_groups]
-                    + estimator.model_[n_full_idx : n_full_idx + 1],
-                    estimator.intercept_,
-                )
-                # for both regression (mean square error) and classification (log loss), higher values are bad, so
-                # interactions with high positive values for backward_impact and forward_impact are good
-                backward_impact = backward_score - base_backward_score
-                forward_impact = base_forward_score - forward_score
-
-                backward_impacts.append(backward_impact)
-                forward_impacts.append(forward_impact)
-
-            # Average ranks
-            backward_ranks = np.argsort(backward_impacts)[::-1]
-            forward_ranks = np.argsort(forward_impacts)[::-1]
-            pair_ranks = np.mean(np.array([backward_ranks, forward_ranks]), axis=0)
-
-            # Add to cumulative rank for a pair across all models
-            for pair_idx, pair in enumerate(estimator.inter_indices_):
-                pair_cum_rank[pair] += pair_ranks[pair_idx]
-
-        # Calculate pair importance ranks
-        # TODO PK this copy isn't required
-        pair_weighted_ranks = pair_cum_rank.copy()
-        for pair, freq in pair_freq.items():
-            # Calculate average rank
-            pair_weighted_ranks[pair] /= freq
-            # Reweight by frequency
-            pair_weighted_ranks[pair] /= np.sqrt(freq)
-        pair_weighted_ranks = sorted(pair_weighted_ranks.items(), key=lambda x: x[1])
-
-        # Retrieve top K pairs
-        pair_indices = [list(x[0]) for x in pair_weighted_ranks[: self.interactions]]
-
-        return pair_indices
 
     def decision_function(self, X):
         """ Predict scores from model before calling the link function.
