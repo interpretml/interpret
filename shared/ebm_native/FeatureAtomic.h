@@ -9,8 +9,6 @@
 
 #include "EbmInternal.h" // INLINE_ALWAYS
 
-enum class FeatureType;
-
 class Feature final {
    size_t m_cBins;
    size_t m_iFeatureData;

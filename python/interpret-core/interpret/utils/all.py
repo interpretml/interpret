@@ -242,7 +242,7 @@ def unify_vector(data):
 
 def _get_new_feature_names(data, feature_names):
     if feature_names is None:
-        return ["feature_" + str(i) for i in range(data.shape[1])]
+        return [f'feature_{i:04}' for i in range(1, 1 + data.shape[1])]
     else:
         return feature_names
 
@@ -366,7 +366,7 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
             "Passing a numpy array to schema autogen when it should be dataframe."
         )
         if feature_names is None:
-            feature_names = [f'col_{i:04}' for i in range(1, 1 + X.shape[1])]
+            feature_names = [f'feature_{i:04}' for i in range(1, 1 + X.shape[1])]
 
         # NOTE: Use rolled out infer_objects for old pandas.
         # As used from SO:

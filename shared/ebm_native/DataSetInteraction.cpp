@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // FeatureType
+#include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureAtomic.h"
 #include "DataSetInteraction.h"

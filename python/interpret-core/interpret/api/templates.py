@@ -152,7 +152,7 @@ class FeatureValueExplanation(ExplanationMixin):
             return plot_line(data_dict, title=title)
         elif feature_type == "categorical":
             return plot_bar(data_dict, title=title)
-        elif feature_type == "pairwise":
+        elif feature_type == "interaction":
             # TODO: Generalize this out.
             xtitle = title.split(" x ")[0]
             ytitle = title.split(" x ")[1]

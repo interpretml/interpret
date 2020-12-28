@@ -2442,42 +2442,11 @@ INLINE_RELEASE_UNTEMPLATED static size_t GetUncuttableRangeLengthMin(
    return cUncuttableRangeLengthMin;
 }
 
-INLINE_RELEASE_UNTEMPLATED static size_t PossiblyRemoveCutForMissing(
-   const bool bMissingPresent,
-   size_t cBinCutsMax
-) noexcept {
-   if(PREDICTABLE(bMissingPresent)) {
-      // if there is a missing value, then we use 0 for the missing value bin, and bump up all other values by 1.  This creates a semi-problem
-      // if the number of bins was specified as a power of two like 256, because we now have 257 possible values, and instead of consuming 8
-      // bits per value, we're consuming 9.  If we're told to have a maximum of a power of two bins though, in most cases it won't hurt to
-      // have one less bin so that we consume less data.  Our countBinsMax is just a maximum afterall, so we can choose to have less bins.
-      // BUT, if the user requests 8 bins or less, then don't reduce the number of bins since then we'll be changing the bin size significantly
-
-      size_t cCuts = ~size_t { 0 };
-      do {
-         // if cBinsMax is a power of two equal to or greater than 16, then reduce the number of bins (it's a maximum after all) to one less so that
-         // it's more compressible.  If we have 256 bins, we really want 255 bins and 0 to be the missing value, using 256 values and 1 byte of storage
-         // some powers of two aren't compressible, like 2^34, which needs to fit into a 64 bit storage, but we don't want to take a dependency
-         // on the size of the storage system, which is system dependent, so we just exclude all powers of two
-         if(UNLIKELY(cCuts == cBinCutsMax)) {
-            --cBinCutsMax;
-            break;
-         }
-         cCuts >>= 1;
-         // don't allow shrinkage below 16 bins (8 is the first power of two below 16, which is 7 cuts).  By the time we reach 8 bins, we don't want to reduce this
-         // by a complete bin.  We can just use an extra bit for the missing bin
-         // if we had shrunk down to 7 bits for non-missing, we would have been able to fit in 21 items per data item instead of 16 for 64 bit systems
-      } while(UNLIKELY(0x7 != cCuts));
-   }
-   return cBinCutsMax;
-}
-
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
 static int g_cLogEnterGenerateQuantileBinCutsParametersMessages = 25;
 static int g_cLogExitGenerateQuantileBinCutsParametersMessages = 25;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileBinCuts(
-   SeedEbmType randomSeed,
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
@@ -2490,12 +2459,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    FloatEbmType * maxNonInfinityValueOut,
    IntEbmType * countPositiveInfinityOut
 ) {
+   // don't expose this random seed.  It's used to settle tiebreakers and will only make 
+   // marginal changes to where the cuts are placed.  Exposing it just means we need to 
+   // use the same value in every language that we support, and any preprocessors then need to
+   // take a random number to be useful, which would be odd for a preprocessor.
+   const SeedEbmType randomSeed = SeedEbmType { 1260428135 };
+
    LOG_COUNTED_N(
       &g_cLogEnterGenerateQuantileBinCutsParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered GenerateQuantileBinCuts: "
-      "randomSeed=%" SeedEbmTypePrintf ", "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
@@ -2508,7 +2482,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       "maxNonInfinityValueOut=%p, "
       "countPositiveInfinityOut=%p"
       ,
-      randomSeed,
       countSamples,
       static_cast<const void *>(featureValues),
       countSamplesPerBinMin,
@@ -2677,30 +2650,26 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          EBM_ASSERT(IsNumberConvertable<size_t>(countSamplesPerBinMin));
          const size_t cSamplesPerBinMin = static_cast<size_t>(countSamplesPerBinMin);
 
-         // In theory, we could constrain our cBinsMaxInitialInitial value a bit more by taking our value array
+         // In theory, we could constrain our cBinsMaxInitial value a bit more by taking our value array
          // and attempting to jump by the minimum each time.  Then if there was a long run of equal values we'd
          // be able to limit the number of cuts, but then the algorithm is going to need to be pretty smart later
          // on when it finds the long run and needs to compress the available cuts back down into the cutable regions
          // it's probably better to just place a lot of asiprational cuts at the minimum separation and trim them
          // as we go on so.  In that case we'd be hard pressed to misallocate cuts since they'll almost always
          // alrady be cSamplesPerBinMin apart in the regions that are cutable.
-         const size_t cBinsMaxInitialInitial = cSamples / cSamplesPerBinMin;
+         const size_t cBinsMaxInitial = cSamples / cSamplesPerBinMin;
 
          // otherwise we'd have failed the check "static_cast<IntEbmType>(cSamples >> 1) < countSamplesPerBinMin"
-         EBM_ASSERT(size_t { 2 } <= cBinsMaxInitialInitial);
-         const size_t cBinCutsMaxInitialInitial = cBinsMaxInitialInitial - size_t { 1 };
+         EBM_ASSERT(size_t { 2 } <= cBinsMaxInitial);
+         const size_t cBinCutsMaxInitial = cBinsMaxInitial - size_t { 1 };
 
-         // cSamples fit into an IntEbmType, and since cBinCutsMaxInitialInitial is less than cSamples, 
+         // cSamples fit into an IntEbmType, and since cBinCutsMaxInitial is less than cSamples, 
          // we should be able to convert it back to an IntEbmType
-         EBM_ASSERT(cBinCutsMaxInitialInitial < cSamples);
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cBinCutsMaxInitialInitial));
-         const size_t cBinCutsMaxInitial = static_cast<IntEbmType>(cBinCutsMaxInitialInitial) < countBinCuts ?
-            cBinCutsMaxInitialInitial : static_cast<size_t>(countBinCuts);
+         EBM_ASSERT(cBinCutsMaxInitial < cSamples);
+         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cBinCutsMaxInitial));
+         const size_t cBinCutsMax = static_cast<IntEbmType>(cBinCutsMaxInitial) < countBinCuts ?
+            cBinCutsMaxInitial : static_cast<size_t>(countBinCuts);
 
-         const size_t cBinCutsMax = PossiblyRemoveCutForMissing(
-            IntEbmType { 0 } != countMissingValuesRet, 
-            cBinCutsMaxInitial
-         );
          EBM_ASSERT(size_t { 1 } <= cBinCutsMax); // we won't eliminate to less than 1, and we had at least 1 before
 
          // we need to be able to index both the binCutsLowerBoundInclusiveOut AND we also allocate an array

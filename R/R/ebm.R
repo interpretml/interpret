@@ -80,7 +80,6 @@ ebm_classify <- function(
    for(i_feature in 1:n_features) {
       X_feature <- X[, i_feature] # if our originator X matrix is byrow, pay the transpose cost once
       feature_bin_cuts <- generate_quantile_bin_cuts(
-         random_state, 
          X_feature, 
          min_samples_bin, 
          humanized, 

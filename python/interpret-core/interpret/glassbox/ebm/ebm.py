@@ -128,7 +128,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
     """ Transformer that preprocesses data to be ready before EBM. """
 
     def __init__(
-        self, feature_names=None, feature_types=None, max_bins=255, binning="quantile", missing_str=str(np.nan)
+        self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", missing_str=str(np.nan)
     ):
         """ Initializes EBM preprocessor.
 
@@ -155,16 +155,16 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             Itself.
         """
 
-        # TODO PK: wouldn't these be better as lists, since we only use numeric indexes?
-
-        self.col_bin_counts_ = {}
         self.col_bin_edges_ = {}
+        self.col_min_ = {}
+        self.col_max_ = {}
 
         self.hist_counts_ = {}
         self.hist_edges_ = {}
 
         self.col_mapping_ = {}
 
+        self.col_bin_counts_ = []
         self.col_names_ = []
         self.col_types_ = []
 
@@ -175,9 +175,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             X, feature_names=self.feature_names, feature_types=self.feature_types
         )
 
-        # binning_random_state is a cross-language constant to get identical results between languages
-        # It isn't imporant enough though to expose as a parameter since it's only used for tiebreaking
-        binning_random_state = ct.c_int32(1260428135)
+        if self.max_bins < 2:
+            raise ValueError("max_bins must be 2 or higher.  One bin is required for missing, and annother for non-missing values.")
 
         for col_idx in range(X.shape[1]):
             col_name = list(schema.keys())[col_idx]
@@ -194,68 +193,47 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 min_samples_bin = 1 # TODO: Expose
                 is_humanized = 0
 
-                count_cuts = ct.c_int64(self.max_bins - 1)
-                bin_cuts = np.zeros(self.max_bins - 1, dtype=np.float64, order="C")
-                count_missing = ct.c_int64(0)
-                min_val = ct.c_double(0)
-                count_neg_inf = ct.c_int64(0)
-                max_val = ct.c_double(0)
-                count_inf = ct.c_int64(0)
-
                 if self.binning == 'quantile' or self.binning == 'quantile_humanized':
                     if self.binning == 'quantile_humanized':
                         is_humanized = 1
-                    
-                    _ = native.lib.GenerateQuantileBinCuts(
-                        binning_random_state,
-                        col_data.shape[0],
-                        col_data, 
-                        min_samples_bin,
-                        is_humanized,
-                        ct.byref(count_cuts),
-                        bin_cuts,
-                        ct.byref(count_missing),
-                        ct.byref(min_val),
-                        ct.byref(count_neg_inf),
-                        ct.byref(max_val),
-                        ct.byref(count_inf)
-                    )
 
-                elif self.binning == "uniform":
-                    # TODO PK: move this into the protected interop classes and check the return value
-                    _ = native.lib.GenerateUniformBinCuts(
-                        col_data.shape[0],
+                    (
+                        bin_cuts, 
+                        count_missing, 
+                        min_val, 
+                        max_val, 
+                    ) = native.generate_quantile_bin_cuts(
                         col_data, 
-                        ct.byref(count_cuts),
-                        bin_cuts,
-                        ct.byref(count_missing),
-                        ct.byref(min_val),
-                        ct.byref(count_neg_inf),
-                        ct.byref(max_val),
-                        ct.byref(count_inf)
+                        min_samples_bin, 
+                        is_humanized, 
+                        self.max_bins - 2, # one bin for missing, and # of cuts is one less again
+                    )
+                elif self.binning == "uniform":
+                    (
+                        bin_cuts, 
+                        count_missing, 
+                        min_val, 
+                        max_val,
+                    ) = native.generate_uniform_bin_cuts(
+                        col_data, 
+                        self.max_bins - 2, # one bin for missing, and # of cuts is one less again
                     )
                 else:
                     raise ValueError(f"Unrecognized bin type: {self.binning}")
 
-                bin_cuts = bin_cuts[:count_cuts.value]
-                
-                discretized = np.zeros(col_data.shape[0], dtype=np.int64, order="C")
-                _ = native.lib.Discretize(
-                    col_data.shape[0],
-                    col_data,
-                    bin_cuts.shape[0],
-                    bin_cuts,
-                    discretized
-                )
+                discretized = native.discretize(col_data, bin_cuts)
+
                 _, bin_counts = np.unique(discretized, return_counts=True)
 
-                if count_missing.value == 0:
+                if count_missing == 0:
                     bin_counts = np.concatenate(([0], bin_counts))
                 else:
                     col_data = col_data[~np.isnan(col_data)]
                 
-                self.col_bin_counts_[col_idx] = bin_counts
-                self.col_bin_edges_[col_idx] = np.concatenate(([min_val.value],bin_cuts,[max_val.value]))
+                self.col_bin_counts_.append(bin_counts)
+                self.col_bin_edges_[col_idx] = bin_cuts
+                self.col_min_[col_idx] = min_val
+                self.col_max_[col_idx] = max_val
 
                 hist_counts, hist_edges = np.histogram(col_data, bins="doane")
                 self.hist_edges_[col_idx] = hist_edges
@@ -263,6 +241,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             elif col_info["type"] == "ordinal":
                 mapping = {val: indx + 1 for indx, val in enumerate(col_info["order"])}
                 self.col_mapping_[col_idx] = mapping
+                self.col_bin_counts_.append(None) # TODO count the values in each bin
             elif col_info["type"] == "categorical":
                 col_data = col_data.astype('U')
                 uniq_vals, counts = np.unique(col_data, return_counts=True)
@@ -270,8 +249,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 missings = np.isin(uniq_vals, self.missing_str)
 
                 count_missing = np.sum(counts[missings])
-                counts = np.concatenate(([count_missing], counts[~missings]))
-                self.col_bin_counts_[col_idx] = counts
+                bin_counts = np.concatenate(([count_missing], counts[~missings]))
+                self.col_bin_counts_.append(bin_counts)
 
                 uniq_vals = uniq_vals[~missings]
                 mapping = {val: indx + 1 for indx, val in enumerate(uniq_vals)}
@@ -302,18 +281,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
             if col_type == "continuous":
                 col_data = col_data.astype(float)
-                bin_cuts = self.col_bin_edges_[col_idx][1:-1] # Strip min/max
-                
-                discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")
-                # TODO PK: move this into the protected interop classes and check the return value
-                _ = native.lib.Discretize(
-                    col_data.shape[0],
-                    col_data,
-                    bin_cuts.shape[0],
-                    bin_cuts,
-                    discretized
-                )
+                bin_cuts = self.col_bin_edges_[col_idx]
 
+                discretized = native.discretize(col_data, bin_cuts)
+                
                 X_new[:, col_idx] = discretized
 
             elif col_type == "ordinal":
@@ -371,7 +342,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         col_type = self.col_types_[feature_index]
         if col_type == "continuous":
-            return list(self.col_bin_edges_[feature_index])
+            min_val = self.col_min_[feature_index]
+            bin_cuts = self.col_bin_edges_[feature_index]
+            max_val = self.col_max_[feature_index]
+            return list(np.concatenate(([min_val], bin_cuts, [max_val])))
         elif col_type == "ordinal":
             map = self.col_mapping_[feature_index]
             return list(map.keys())
@@ -464,7 +438,7 @@ class BaseCoreEBM:
         # a single np.float64 for regression, so we do the same
         if self.model_type == "classification":
             self.intercept_ = np.zeros(
-                NativeHelper.get_count_scores_c(self.n_classes_),
+                Native.get_count_scores_c(self.n_classes_),
                 dtype=np.float64,
                 order="C",
             )
@@ -513,7 +487,7 @@ class BaseCoreEBM:
             y_val=y_val,
             scores_val=None,
             n_inner_bags=self.inner_bags,
-            generate_update_options=NativeHelper.GenerateUpdateOptions_Default, 
+            generate_update_options=Native.GenerateUpdateOptions_Default, 
             learning_rate=self.learning_rate,
             min_samples_leaf=self.min_samples_leaf,
             max_leaves=self.max_leaves,
@@ -591,7 +565,7 @@ class BaseCoreEBM:
             y_val=y_val,
             scores_val=scores_val,
             n_inner_bags=self.inner_bags,
-            generate_update_options=NativeHelper.GenerateUpdateOptions_Default, 
+            generate_update_options=Native.GenerateUpdateOptions_Default, 
             learning_rate=self.learning_rate,
             min_samples_leaf=self.min_samples_leaf,
             max_leaves=self.max_leaves,
@@ -766,6 +740,9 @@ class BaseEBM(BaseEstimator):
 
         # TODO PK write an efficient striping converter for X that replaces unify_data for EBMs
         # algorithm: grap N columns and convert them to rows then process those by sending them to C
+
+        # TODO: PK don't overwrite self.feature_names here (scikit-learn rules), and it's also confusing to
+        #       user to have their fields overwritten.  Use feature_names_out_ or something similar
         X, y, self.feature_names, _ = unify_data(
             X, y, self.feature_names, self.feature_types, missing_data_allowed=True
         )
@@ -782,7 +759,7 @@ class BaseEBM(BaseEstimator):
         X = self.preprocessor_.transform(X_orig)
 
         features_categorical = np.array([x == "categorical" for x in self.preprocessor_.col_types_], dtype=ct.c_int64)
-        features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_.values()], dtype=ct.c_int64)
+        features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_], dtype=ct.c_int64)
 
         if self.interactions != 0:
             self.pair_preprocessor_ = EBMPreprocessor(
@@ -794,13 +771,14 @@ class BaseEBM(BaseEstimator):
             self.pair_preprocessor_.fit(X_orig)
             X_pair = self.pair_preprocessor_.transform(X_orig)
             pair_features_categorical = np.array([x == "categorical" for x in self.pair_preprocessor_.col_types_], dtype=ct.c_int64)
-            pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_.values()], dtype=ct.c_int64)
+            pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_], dtype=ct.c_int64)
         else:
             self.pair_preprocessor_, X_pair, pair_features_categorical, pair_features_bin_count = None, None, None, None
 
         estimators = []
         seed = EBMUtils.normalize_initial_random_seed(self.random_state)
 
+        native = Native.get_native_singleton()
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
@@ -814,7 +792,7 @@ class BaseEBM(BaseEstimator):
                     "Multiclass with interactions currently not supported."
                 )
             for i in range(self.outer_bags):
-                seed=NativeHelper.generate_random_number(seed, 1416147523)
+                seed=native.generate_random_number(seed, 1416147523)
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="classification",
@@ -842,7 +820,7 @@ class BaseEBM(BaseEstimator):
             n_classes = -1
             y = y.astype(np.float64, casting="unsafe", copy=False)
             for i in range(self.outer_bags):
-                seed=NativeHelper.generate_random_number(seed, 1416147523)
+                seed=native.generate_random_number(seed, 1416147523)
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="regression",
@@ -873,7 +851,7 @@ class BaseEBM(BaseEstimator):
         # a single float64 for regression, so we do the same
         if is_classifier(self):
             self.intercept_ = np.zeros(
-                NativeHelper.get_count_scores_c(n_classes), dtype=np.float64, order="C",
+                Native.get_count_scores_c(n_classes), dtype=np.float64, order="C",
             )
         else:
             self.intercept_ = np.float64(0)
@@ -995,20 +973,20 @@ class BaseEBM(BaseEstimator):
         if len(pair_indices) != 0:
             self.breakpoint_iteration_.append(inter_episode_idxs)
 
-        # Extract feature names and feature types.
+        # Extract feature group names and feature group types.
         # TODO PK v.3 don't overwrite feature_names and feature_types.  Create new fields called feature_names_out and
-        #             feature_types_out_
+        #             feature_types_out_ or feature_group_names_ and feature_group_types_
         self.feature_names = []
         self.feature_types = []
         for index, feature_indices in enumerate(self.feature_groups_):
-            feature_name = EBMUtils.gen_feature_name(
+            feature_group_name = EBMUtils.gen_feature_group_name(
                 feature_indices, self.preprocessor_.col_names_
             )
-            feature_type = EBMUtils.gen_feature_type(
+            feature_group_type = EBMUtils.gen_feature_group_type(
                 feature_indices, self.preprocessor_.col_types_
             )
-            self.feature_types.append(feature_type)
-            self.feature_names.append(feature_name)
+            self.feature_types.append(feature_group_type)
+            self.feature_names.append(feature_group_name)
 
         if n_classes <= 2:
             # Mean center graphs - only for binary classification and regression
@@ -1210,7 +1188,7 @@ class BaseEBM(BaseEstimator):
                 bin_labels_right = self.pair_preprocessor_._get_bin_labels(feature_indexes[1])
 
                 feature_dict = {
-                    "type": "pairwise",
+                    "type": "interaction",
                     "left_names": bin_labels_left,
                     "right_names": bin_labels_right,
                     "scores": model_graph,
@@ -1220,7 +1198,7 @@ class BaseEBM(BaseEstimator):
                 density_list.append({})
 
                 data_dict = {
-                    "type": "pairwise",
+                    "type": "interaction",
                     "left_names": bin_labels_left,
                     "right_names": bin_labels_right,
                     "scores": model_graph,
@@ -1409,8 +1387,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         feature_names=None,
         feature_types=None,
         # Preprocessor
-        max_bins=255,
-        max_interaction_bins=31,
+        max_bins=256,
+        max_interaction_bins=32,
         binning="quantile",
         # Stages
         mains="all",
@@ -1557,8 +1535,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         feature_names=None,
         feature_types=None,
         # Preprocessor
-        max_bins=255,
-        max_interaction_bins=31,
+        max_bins=256,
+        max_interaction_bins=32,
         binning="quantile",
         # Stages
         mains="all",

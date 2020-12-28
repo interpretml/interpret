@@ -327,11 +327,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION Gener
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileBinCuts(
-   // TODO: remove randomSeed and just make it a constant in GenerateQuantileBinCuts that can be changed at compile time
-   // in some languages we have preprocessor classes and we don't want them to take a random value and the random
-   // value is really quite useless since it's just for tiebreaking.  We shouldn't have to need to handle this cross
-   // language ensuring that everyone has the same random values
-   SeedEbmType randomSeed,
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
