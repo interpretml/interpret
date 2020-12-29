@@ -4,7 +4,7 @@
 
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
-from .internal import NativeHelper, SafeNative
+from .internal import NativeHelper, Native
 from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema
 from ...api.base import ExplainerMixin
@@ -168,7 +168,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         self.has_fitted_ = False
 
-        safe_native = SafeNative()
+        native = Native.get_native_singleton()
         schema = autogen_schema(
             X, feature_names=self.feature_names, feature_types=self.feature_types
         )
@@ -200,7 +200,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         count_missing, 
                         min_val, 
                         max_val, 
-                    ) = safe_native.generate_quantile_bin_cuts(
+                    ) = native.generate_quantile_bin_cuts(
                         col_data, 
                         min_samples_bin, 
                         is_humanized, 
@@ -212,14 +212,14 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         count_missing, 
                         min_val, 
                         max_val,
-                    ) = safe_native.generate_uniform_bin_cuts(
+                    ) = native.generate_uniform_bin_cuts(
                         col_data, 
                         self.max_bins - 2, # one bin for missing, and # of cuts is one less again
                     )
                 else:
                     raise ValueError(f"Unrecognized bin type: {self.binning}")
 
-                discretized = safe_native.discretize(col_data, bin_cuts)
+                discretized = native.discretize(col_data, bin_cuts)
 
                 _, bin_counts = np.unique(discretized, return_counts=True)
 
@@ -271,7 +271,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         missing_constant = 0
         unknown_constant = -1
 
-        safe_native = SafeNative()
+        native = Native.get_native_singleton()
         X_new = np.copy(X)
         for col_idx in range(X.shape[1]):
             col_type = self.col_types_[col_idx]
@@ -281,7 +281,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 col_data = col_data.astype(float)
                 bin_cuts = self.col_bin_edges_[col_idx]
 
-                discretized = safe_native.discretize(col_data, bin_cuts)
+                discretized = native.discretize(col_data, bin_cuts)
                 
                 X_new[:, col_idx] = discretized
 
@@ -436,7 +436,7 @@ class BaseCoreEBM:
         # a single np.float64 for regression, so we do the same
         if self.model_type == "classification":
             self.intercept_ = np.zeros(
-                SafeNative.get_count_scores_c(self.n_classes_),
+                Native.get_count_scores_c(self.n_classes_),
                 dtype=np.float64,
                 order="C",
             )
@@ -491,7 +491,7 @@ class BaseCoreEBM:
             y_val=y_val,
             scores_val=None,
             n_inner_bags=self.inner_bags,
-            generate_update_options=SafeNative.GenerateUpdateOptions_Default, 
+            generate_update_options=Native.GenerateUpdateOptions_Default, 
             learning_rate=self.learning_rate,
             min_samples_leaf=self.min_samples_leaf,
             max_leaves=self.max_leaves,
@@ -569,7 +569,7 @@ class BaseCoreEBM:
             y_val=y_val,
             scores_val=scores_val,
             n_inner_bags=self.inner_bags,
-            generate_update_options=SafeNative.GenerateUpdateOptions_Default, 
+            generate_update_options=Native.GenerateUpdateOptions_Default, 
             learning_rate=self.learning_rate,
             min_samples_leaf=self.min_samples_leaf,
             max_leaves=self.max_leaves,
@@ -782,7 +782,7 @@ class BaseEBM(BaseEstimator):
         estimators = []
         seed = EBMUtils.normalize_initial_random_seed(self.random_state)
 
-        safe_native = SafeNative()
+        native = Native.get_native_singleton()
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
@@ -796,7 +796,7 @@ class BaseEBM(BaseEstimator):
                     "Multiclass with interactions currently not supported."
                 )
             for i in range(self.outer_bags):
-                seed=safe_native.generate_random_number(seed, 1416147523)
+                seed=native.generate_random_number(seed, 1416147523)
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="classification",
@@ -824,7 +824,7 @@ class BaseEBM(BaseEstimator):
             n_classes = -1
             y = y.astype(np.float64, casting="unsafe", copy=False)
             for i in range(self.outer_bags):
-                seed=safe_native.generate_random_number(seed, 1416147523)
+                seed=native.generate_random_number(seed, 1416147523)
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="regression",
@@ -855,7 +855,7 @@ class BaseEBM(BaseEstimator):
         # a single float64 for regression, so we do the same
         if is_classifier(self):
             self.intercept_ = np.zeros(
-                SafeNative.get_count_scores_c(n_classes), dtype=np.float64, order="C",
+                Native.get_count_scores_c(n_classes), dtype=np.float64, order="C",
             )
         else:
             self.intercept_ = np.float64(0)

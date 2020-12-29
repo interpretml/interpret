@@ -150,6 +150,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
    const FloatEbmType * binCutsLowerBoundInclusive,
    IntEbmType * discretizedOut
 ) {
+   // make the 0th bin always the missing value.  This makes cutting mains easier, since we always know where the 
+   // missing bin will be, and also the first non-missing bin.  We can also increment the pointer to the histogram
+   // to the first non-missing bin and reduce our bin index numbers by one, which will allow us to compress
+   // binary features into 1 bit still.  It will make handling tensors with missing or no missing easier since
+   // we'll always know how to skip the missing slice if desired.  None of these things are as easy if the missing
+   // bin is in the Nth item because we then need to know what N is and use multiplication and badly ordered memory
+   // accesses to reach it if we want to use the missing bin during cutting.  Lastly, in higher level languages, it's
+   // easier to detect missing values in the discretized data, since it's always just a zero.
+   
    LOG_COUNTED_N(
       &g_cLogEnterDiscretizeParametersMessages,
       TraceLevelInfo,
