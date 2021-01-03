@@ -869,17 +869,18 @@ class BaseEBM(BaseEstimator):
 
         def select_pairs_from_fast(estimators, n_interactions):
             # Average rank from estimators
-            pair_ranks = defaultdict(list)
-            
-            for estimator in estimators:
+            pair_ranks = {}
+
+            for n, estimator in enumerate(estimators):
                 for rank, indices in enumerate(estimator.inter_indices_):
-                    pair_ranks[indices].append(rank)
+                    old_mean = pair_ranks.get(indices, 0)
+                    pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
 
             final_ranks = []
             for indices in pair_ranks:
-                final_ranks.append((np.mean(pair_ranks[indices]), indices))
+                heapq.heappush(final_ranks, (pair_ranks[indices], indices))
 
-            top_pairs = [x[1] for x in heapq.nsmallest(n_interactions, final_ranks)]
+            top_pairs = [heapq.heappop(final_ranks)[1] for x in range(n_interactions)]
             return top_pairs
 
         if isinstance(self.interactions, int) and self.interactions > 0:
