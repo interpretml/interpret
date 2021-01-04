@@ -877,10 +877,13 @@ class BaseEBM(BaseEstimator):
                     pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
 
             final_ranks = []
+            total_interactions = 0
             for indices in pair_ranks:
                 heapq.heappush(final_ranks, (pair_ranks[indices], indices))
+                total_interactions += 1
 
-            top_pairs = [heapq.heappop(final_ranks)[1] for x in range(n_interactions)]
+            n_interactions = min(n_interactions, total_interactions)
+            top_pairs = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
             return top_pairs
 
         if isinstance(self.interactions, int) and self.interactions > 0:
