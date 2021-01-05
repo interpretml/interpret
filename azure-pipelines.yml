@@ -28,7 +28,7 @@ jobs:
     runCodesignValidationInjection: false
   steps:
   - script: |
-      /bin/sh ./build.sh -32bit
+      /bin/sh ./build.sh
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Building ebm_native code (Linux)'
   - script: |
@@ -37,9 +37,65 @@ jobs:
     displayName: 'Building ebm_native code (Mac)'
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\build.bat -32bit
+      .\build.bat
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Building ebm_native code (Windows)'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: staging
+      contents: '*'
+      targetFolder: '$(Build.ArtifactStagingDirectory)'
+    displayName: 'Move binary to staging'
+  - task: PublishBuildArtifacts@1
+    condition: succeeded()
+    inputs:
+      pathtoPublish: $(Build.ArtifactStagingDirectory)
+      artifactName: ebm_native-$(image.name)
+    displayName: 'Publish ebm_native library'
+
+- job: 'Test_ebm_native'
+  dependsOn: 'Build_ebm_native'
+  strategy:
+    matrix:
+      Linux:
+        image.name: '${{ variables.ubuntu_image }}'
+      Mac:
+        image.name: '${{ variables.mac_image }}'
+      Windows:
+        image.name: '${{ variables.windows_image }}'
+    maxParallel: 3
+  pool:
+    vmImage: '$(image.name)'
+  variables:
+    runCodesignValidationInjection: false
+  steps:
+  - task: DownloadBuildArtifacts@0
+    inputs:
+      buildType: 'current'
+      downloadType: 'specific'
+    displayName: 'Download build artifacts'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/lib_ebm_native_*'
+      targetFolder: 'staging'
+      flattenFolders: true
+    displayName: 'Move binary to staging directory'
+  - script: |
+      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
+    condition: startsWith(variables['image.name'], 'ubuntu')
+    displayName: 'Testing ebm_native code (Linux)'
+  - script: |
+      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
+    condition: startsWith(variables['image.name'], 'macOS')
+    displayName: 'Testing ebm_native code (Mac)'
+  - script: |
+      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
+    condition: startsWith(variables['image.name'], 'windows')
+    displayName: 'Testing ebm_native code (Windows)'
   - task: ComponentGovernanceComponentDetection@0
     displayName: 'Scan dependencies for incompatible licenses and security issues'
   - task: CredScan@2
@@ -85,62 +141,6 @@ jobs:
       RoslynAnalyzers: false
       TSLint: false
       ToolLogsNotFoundAction: 'Standard'
-  - task: CopyFiles@2
-    condition: succeeded()
-    inputs:
-      sourceFolder: staging
-      contents: '*'
-      targetFolder: '$(Build.ArtifactStagingDirectory)'
-    displayName: 'Move binary to staging'
-  - task: PublishBuildArtifacts@1
-    condition: succeeded()
-    inputs:
-      pathtoPublish: $(Build.ArtifactStagingDirectory)
-      artifactName: ebm_native-$(image.name)
-    displayName: 'Publish ebm_native library'
-
-- job: 'Test_ebm_native'
-  dependsOn: 'Build_ebm_native'
-  strategy:
-    matrix:
-      Linux:
-        image.name: '${{ variables.ubuntu_image }}'
-      Mac:
-        image.name: '${{ variables.mac_image }}'
-      Windows:
-        image.name: '${{ variables.windows_image }}'
-    maxParallel: 3
-  pool:
-    vmImage: '$(image.name)'
-  variables:
-    runCodesignValidationInjection: false
-  steps:
-  - task: DownloadBuildArtifacts@0
-    inputs:
-      buildType: 'current'
-      downloadType: 'specific'
-    displayName: 'Download build artifacts'
-  - task: CopyFiles@2
-    condition: succeeded()
-    inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebm_native_*'
-      targetFolder: 'staging'
-      flattenFolders: true
-    displayName: 'Move binary to staging directory'
-  - script: |
-      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -nobuildebmnative
-    condition: startsWith(variables['image.name'], 'ubuntu')
-    displayName: 'Testing ebm_native code (Linux)'
-  - script: |
-      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -nobuildebmnative
-    condition: startsWith(variables['image.name'], 'macOS')
-    displayName: 'Testing ebm_native code (Mac)'
-  - script: |
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -nobuildebmnative
-    condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Testing ebm_native code (Windows)'
 
 - job: 'Build_JS_Inline'
   pool:

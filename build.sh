@@ -47,9 +47,13 @@ python_lib="$root_path/python/interpret-core/interpret/lib"
 staging_path="$root_path/staging"
 
 build_32_bit=0
+build_64_bit=1
 for arg in "$@"; do
    if [ "$arg" = "-32bit" ]; then
       build_32_bit=1
+   fi
+   if [ "$arg" = "-no64bit" ]; then
+      build_64_bit=0
    fi
 done
 
@@ -121,80 +125,80 @@ if [ "$os_type" = "Darwin" ]; then
       exit $ret_code
    fi
 
+   if [ $build_64_bit -eq 1 ]; then
+      ########################## macOS release|x64
 
-   ########################## macOS release|x64
-
-   printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS release|x64"
-   intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native"
-   bin_path="$root_path/tmp/clang/bin/release/mac/x64/ebm_native"
-   bin_file="lib_ebm_native_mac_x64.dylib"
-   log_file="$intermediate_path/ebm_native_release_mac_x64_build_log.txt"
-   compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+      printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS release|x64"
+      intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native"
+      bin_path="$root_path/tmp/clang/bin/release/mac/x64/ebm_native"
+      bin_file="lib_ebm_native_mac_x64.dylib"
+      log_file="$intermediate_path/ebm_native_release_mac_x64_build_log.txt"
+      compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
    
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   [ -d "$bin_path" ] || mkdir -p "$bin_path"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   compile_out=`eval $compile_command`
-   ret_code=$?
-   printf "%s\n" "$compile_out"
-   printf "%s\n" "$compile_out" > "$log_file"
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   cp "$bin_path/$bin_file" "$python_lib/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   cp "$bin_path/$bin_file" "$staging_path/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
+      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      [ -d "$bin_path" ] || mkdir -p "$bin_path"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      compile_out=`eval $compile_command`
+      ret_code=$?
+      printf "%s\n" "$compile_out"
+      printf "%s\n" "$compile_out" > "$log_file"
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      cp "$bin_path/$bin_file" "$python_lib/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      cp "$bin_path/$bin_file" "$staging_path/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
 
+      ########################## macOS debug|x64
 
-   ########################## macOS debug|x64
-
-   printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS debug|x64"
-   intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native"
-   bin_path="$root_path/tmp/clang/bin/debug/mac/x64/ebm_native"
-   bin_file="lib_ebm_native_mac_x64_debug.dylib"
-   log_file="$intermediate_path/ebm_native_debug_mac_x64_build_log.txt"
-   compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+      printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS debug|x64"
+      intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native"
+      bin_path="$root_path/tmp/clang/bin/debug/mac/x64/ebm_native"
+      bin_file="lib_ebm_native_mac_x64_debug.dylib"
+      log_file="$intermediate_path/ebm_native_debug_mac_x64_build_log.txt"
+      compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
    
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   [ -d "$bin_path" ] || mkdir -p "$bin_path"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   compile_out=`eval $compile_command`
-   ret_code=$?
-   printf "%s\n" "$compile_out"
-   printf "%s\n" "$compile_out" > "$log_file"
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   cp "$bin_path/$bin_file" "$python_lib/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   cp "$bin_path/$bin_file" "$staging_path/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
+      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      [ -d "$bin_path" ] || mkdir -p "$bin_path"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      compile_out=`eval $compile_command`
+      ret_code=$?
+      printf "%s\n" "$compile_out"
+      printf "%s\n" "$compile_out" > "$log_file"
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      cp "$bin_path/$bin_file" "$python_lib/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      cp "$bin_path/$bin_file" "$staging_path/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
    fi
 elif [ "$os_type" = "Linux" ]; then
 
@@ -216,83 +220,83 @@ elif [ "$os_type" = "Linux" ]; then
    fi
 
 
-   ########################## Linux release|x64
+   if [ $build_64_bit -eq 1 ]; then
+      ########################## Linux release|x64
 
-   printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux release|x64"
-   intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native"
-   bin_path="$root_path/tmp/gcc/bin/release/linux/x64/ebm_native"
-   bin_file="lib_ebm_native_linux_x64.so"
-   log_file="$intermediate_path/ebm_native_release_linux_x64_build_log.txt"
-   compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -O3 -o \"$bin_path/$bin_file\" 2>&1"
+      printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux release|x64"
+      intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native"
+      bin_path="$root_path/tmp/gcc/bin/release/linux/x64/ebm_native"
+      bin_file="lib_ebm_native_linux_x64.so"
+      log_file="$intermediate_path/ebm_native_release_linux_x64_build_log.txt"
+      compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -O3 -o \"$bin_path/$bin_file\" 2>&1"
    
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   [ -d "$bin_path" ] || mkdir -p "$bin_path"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   compile_out=`eval $compile_command`
-   ret_code=$?
-   printf "%s\n" "$compile_out"
-   printf "%s\n" "$compile_out" > "$log_file"
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   cp "$bin_path/$bin_file" "$python_lib/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   cp "$bin_path/$bin_file" "$staging_path/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
+      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      [ -d "$bin_path" ] || mkdir -p "$bin_path"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      compile_out=`eval $compile_command`
+      ret_code=$?
+      printf "%s\n" "$compile_out"
+      printf "%s\n" "$compile_out" > "$log_file"
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      cp "$bin_path/$bin_file" "$python_lib/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      cp "$bin_path/$bin_file" "$staging_path/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
 
+      ########################## Linux debug|x64
 
-   ########################## Linux debug|x64
-
-   printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux debug|x64"
-   intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native"
-   bin_path="$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native"
-   bin_file="lib_ebm_native_linux_x64_debug.so"
-   log_file="$intermediate_path/ebm_native_debug_linux_x64_build_log.txt"
-   compile_command="$g_pp_bin $compile_linux -m64 -O1 -o \"$bin_path/$bin_file\" 2>&1"
+      printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux debug|x64"
+      intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native"
+      bin_path="$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native"
+      bin_file="lib_ebm_native_linux_x64_debug.so"
+      log_file="$intermediate_path/ebm_native_debug_linux_x64_build_log.txt"
+      compile_command="$g_pp_bin $compile_linux -m64 -O1 -o \"$bin_path/$bin_file\" 2>&1"
    
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   [ -d "$bin_path" ] || mkdir -p "$bin_path"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   compile_out=`eval $compile_command`
-   ret_code=$?
-   printf "%s\n" "$compile_out"
-   printf "%s\n" "$compile_out" > "$log_file"
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   cp "$bin_path/$bin_file" "$python_lib/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   cp "$bin_path/$bin_file" "$staging_path/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
+      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      [ -d "$bin_path" ] || mkdir -p "$bin_path"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      compile_out=`eval $compile_command`
+      ret_code=$?
+      printf "%s\n" "$compile_out"
+      printf "%s\n" "$compile_out" > "$log_file"
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      cp "$bin_path/$bin_file" "$python_lib/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+      cp "$bin_path/$bin_file" "$staging_path/"
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
    fi
 
    if [ $build_32_bit -eq 1 ]; then
-
       ########################## Linux release|x86
 
       printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux release|x86"
@@ -350,7 +354,6 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-
 
       ########################## Linux debug|x86
 

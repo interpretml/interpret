@@ -9,18 +9,21 @@ src_path="$script_path"
 staging_path="$root_path/staging"
 bin_file="ebm_native_test"
 
-build_ebm_native=1
+build_pipeline=0
 for arg in "$@"; do
-   if [ "$arg" = "-nobuildebmnative" ]; then
-      build_ebm_native=0
+   if [ "$arg" = "-pipeline" ]; then
+      build_pipeline=1
    fi
 done
 
-if [ $build_ebm_native -eq 1 ]; then
+if [ $build_pipeline -eq 0 ]; then
    echo "Building ebm_native library..."
-   /bin/sh "$root_path/build.sh" -32bit
-else
-   echo "ebm_native library NOT being built"
+   /bin/sh "$root_path/build.sh" -32bit -analysis
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      # build.sh should write out any messages
+      exit $ret_code
+   fi
 fi
 
 compile_all=""
@@ -85,7 +88,6 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-
 
    ########################## macOS release|x64
 
@@ -189,66 +191,6 @@ elif [ "$os_type" = "Linux" ]; then
       exit $ret_code
    fi
 
-
-   ########################## Linux debug|x86
-
-   echo "Compiling $bin_file with $g_pp_bin for Linux debug|x86"
-   intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native_test"
-   bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test"
-   lib_file_body="_ebm_native_linux_x86_debug"
-   log_file="$intermediate_path/ebm_native_test_debug_linux_x86_build_log.txt"
-   compile_command="$g_pp_bin $compile_linux -m32 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
-
-   if [ ! -d "$intermediate_path" ]; then
-      printf "%s\n" "Doing first time installation of Linux debug|x86"
-
-      # this is the first time we're being compiled x86 on this machine, so install other required items
-
-      # TODO consider NOT running sudo inside this script and move that requirement to the caller
-      #      per https://askubuntu.com/questions/425754/how-do-i-run-a-sudo-command-inside-a-script
-
-      sudo apt-get -y update
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-
-      sudo apt-get -y install g++-multilib
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-
-      mkdir -p "$intermediate_path"
-   fi
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   [ -d "$bin_path" ] || mkdir -p "$bin_path"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   compile_out=`eval $compile_command`
-   ret_code=$?
-   echo -n "$compile_out"
-   echo -n "$compile_out" > "$log_file"
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   cp "$staging_path/lib$lib_file_body.so" "$bin_path/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   "$bin_path/$bin_file"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-
-
    ########################## Linux release|x64
 
    echo "Compiling $bin_file with $g_pp_bin for Linux release|x64"
@@ -286,6 +228,56 @@ elif [ "$os_type" = "Linux" ]; then
       exit $ret_code
    fi
 
+
+
+   ########################## Pipeline build for 32 bit and static analysis
+   if [ $build_pipeline -eq 1 ]; then
+      echo "Building ebm_native library for 32 bit and static analysis..."
+      /bin/sh "$root_path/build.sh" -32bit -analysis
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         # build.sh should write out any messages
+         exit $ret_code
+      fi
+   fi
+
+
+   ########################## Linux debug|x86
+
+   echo "Compiling $bin_file with $g_pp_bin for Linux debug|x86"
+   intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native_test"
+   bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test"
+   lib_file_body="_ebm_native_linux_x86_debug"
+   log_file="$intermediate_path/ebm_native_test_debug_linux_x86_build_log.txt"
+   compile_command="$g_pp_bin $compile_linux -m32 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
+
+   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+   [ -d "$bin_path" ] || mkdir -p "$bin_path"
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+   compile_out=`eval $compile_command`
+   ret_code=$?
+   echo -n "$compile_out"
+   echo -n "$compile_out" > "$log_file"
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+   cp "$staging_path/lib$lib_file_body.so" "$bin_path/"
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+   "$bin_path/$bin_file"
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
 
    ########################## Linux release|x86
 
