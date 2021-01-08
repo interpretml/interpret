@@ -1397,7 +1397,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         mains="all",
         interactions=10,
         # Ensemble
-        outer_bags=16,
+        outer_bags=8,
         inner_bags=0,
         # Boosting
         learning_rate=0.01,
@@ -1546,7 +1546,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         mains="all",
         interactions=10,
         # Ensemble
-        outer_bags=16,
+        outer_bags=8,
         inner_bags=0,
         # Boosting
         learning_rate=0.01,
