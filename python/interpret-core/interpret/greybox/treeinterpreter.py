@@ -6,10 +6,11 @@ from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, unify_data, gen_perf_dicts, gen_local_selector
 
 from sklearn.base import is_classifier
-import numpy as np
 
 
-class TreeInterpreter(ExplainerMixin):
+# TODO: Remove pragma when tree interpreter updates.
+# NOTE: Code coverage disabled, upstream dependency failure.
+class TreeInterpreter(ExplainerMixin):  # pragma: no cover
     """ Provides 'Tree Explainer' algorithm for specific sklearn trees.
 
         Wrapper around andosa/treeinterpreter github package.
