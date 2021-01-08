@@ -91,9 +91,9 @@ show(ebm_local)
 
 <br/>
 
-And if you have multiple models, compare them
+And if you have multiple model explanations, compare them
 ```python
-show([logistic_regression, decision_tree])
+show([logistic_regression_global, decision_tree_global])
 ```
 ![Dashboard Image](./examples/python/assets/readme_dashboard.PNG?raw=true)
 <br/>
