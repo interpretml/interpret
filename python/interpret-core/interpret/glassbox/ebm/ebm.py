@@ -787,10 +787,9 @@ class BaseEBM(BaseEstimator):
             n_classes = len(self.classes_)
             if n_classes > 2:  # pragma: no cover
                 warn("Multiclass is still experimental. Subject to change per release.")
-            if n_classes > 2 and self.interactions != 0:  # pragma: no cover
-                raise RuntimeError(
-                    "Multiclass with interactions currently not supported."
-                )
+            if n_classes > 2 and self.interactions != 0:
+                self.interactions = 0
+                warn("Detected multiclass problem: forcing interactions to 0")
             for i in range(self.outer_bags):
                 seed=native.generate_random_number(seed, 1416147523)
                 estimator = BaseCoreEBM(
@@ -1396,7 +1395,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         binning="quantile",
         # Stages
         mains="all",
-        interactions=0,
+        interactions=10,
         # Ensemble
         outer_bags=16,
         inner_bags=0,
@@ -1424,6 +1423,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
+                Interactions are forcefully set to 0 for multiclass problems.
             outer_bags: Number of outer bags.
             inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
@@ -1544,7 +1544,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         binning="quantile",
         # Stages
         mains="all",
-        interactions=0,
+        interactions=10,
         # Ensemble
         outer_bags=16,
         inner_bags=0,
