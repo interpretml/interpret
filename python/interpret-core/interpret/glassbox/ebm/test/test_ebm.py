@@ -138,8 +138,9 @@ def test_ebm_synthetic_multiclass_pairwise():
     y = data["full"]["y"]
 
     clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=1, outer_bags=2)
-    with pytest.raises(RuntimeError):
-        clf.fit(X, y)
+    clf.fit(X, y)
+    clf.predict_proba(X)
+    valid_ebm(clf)
 
 
 @pytest.mark.slow
