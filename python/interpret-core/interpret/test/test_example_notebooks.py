@@ -68,4 +68,11 @@ def test_example_notebooks(notebook_path):
         nb, errors = run_notebook(notebook_path)
         assert errors == []
 
+    # NOTE: Hotfix required for Windows to run Jupyter notebooks in cloud.
+    # https://github.com/jupyter/nbconvert/issues/1372#issuecomment-691596163
+    import sys
+    import asyncio
+    if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     check_notebook(notebook_path)
