@@ -251,9 +251,9 @@ jobs:
         python.version: '3.7'
         image.name: '${{ variables.windows_image }}'
       # NOTE: Temporary disable due to upstream dependencies.
-       WindowsPython38:
-         python.version: '3.8'
-         image.name: '${{ variables.windows_image }}'
+      WindowsPython38:
+        python.version: '3.8'
+        image.name: '${{ variables.windows_image }}'
       # WindowsPython39:
       #   python.version: '3.9'
       #   image.name: '${{ variables.windows_image }}'
