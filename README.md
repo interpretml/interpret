@@ -6,7 +6,7 @@
 ![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/293/develop.svg?style=flat-square)
 ![Coverage](https://img.shields.io/azure-devops/coverage/ms/interpret/293/develop.svg?style=flat-square)
 ![LGTM Grade](https://img.shields.io/lgtm/grade/python/github/interpretml/interpret?style=flat-square)
-![Maintenance](https://img.shields.io/maintenance/yes/2020?style=flat-square)
+![Maintenance](https://img.shields.io/maintenance/yes/2021?style=flat-square)
 <br/>
 > ### In the beginning machines learned in darkness, and data scientists struggled in the void to explain them. 
 > ### Let there be light.
