@@ -54,93 +54,93 @@ jobs:
       artifactName: ebm_native-$(image.name)
     displayName: 'Publish ebm_native library'
 
-- job: 'Test_ebm_native'
-  dependsOn: 'Build_ebm_native'
-  strategy:
-    matrix:
-      Linux:
-        image.name: '${{ variables.ubuntu_image }}'
-      Mac:
-        image.name: '${{ variables.mac_image }}'
-      Windows:
-        image.name: '${{ variables.windows_image }}'
-    maxParallel: 3
-  pool:
-    vmImage: '$(image.name)'
-  variables:
-    runCodesignValidationInjection: false
-  steps:
-  - task: DownloadBuildArtifacts@0
-    inputs:
-      buildType: 'current'
-      downloadType: 'specific'
-    displayName: 'Download build artifacts'
-  - task: CopyFiles@2
-    condition: succeeded()
-    inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebm_native_*'
-      targetFolder: 'staging'
-      flattenFolders: true
-    displayName: 'Move binary to staging directory'
-  - script: |
-      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
-    condition: startsWith(variables['image.name'], 'ubuntu')
-    displayName: 'Testing ebm_native code (Linux)'
-  - script: |
-      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
-    condition: startsWith(variables['image.name'], 'macOS')
-    displayName: 'Testing ebm_native code (Mac)'
-  - script: |
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
-    condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Testing ebm_native code (Windows)'
-  - task: ComponentGovernanceComponentDetection@0
-    displayName: 'Scan dependencies for incompatible licenses and security issues'
-  - task: CredScan@2
-    displayName: 'Scan codebase for leaked secrets'
-    condition: startsWith(variables['image.name'], 'windows')
-#  - task: BinSkim@3
-#    displayName: 'Scan DLLs for compiler/linker security improvements'
-#    condition: startsWith(variables['image.name'], 'windows')
-#    inputs:
-#      InputType: Basic
-#      AnalyzeTarget: 'staging\*.dll'
-#      AnalyzeSymPath: 'staging'
-#      AnalyzeVerbose: true
-#  - task: AntiMalware@3
-#    displayName: 'AntiMalware scan'
-  - task: SdtReport@1
-    displayName: 'Generate security report'
-    condition: startsWith(variables['image.name'], 'windows')
-    inputs:
-      TsvFile: false
-      AllTools: false
-      BinSkim: false
-      CredScan: true
-      MSRD: false
-      RoslynAnalyzers: false
-      TSLint: false
-      ToolLogsNotFoundAction: 'Standard'
-  - task: PublishSecurityAnalysisLogs@2
-    displayName: 'Publish security report'
-    condition: startsWith(variables['image.name'], 'windows')
-    inputs:
-      ArtifactName: 'CodeAnalysisLogs'
-      ArtifactType: 'Container'
-      AllTools: true
-      ToolLogsNotFoundAction: 'Standard'
-  - task: PostAnalysis@1
-    displayName: 'Stop on security errors'
-    condition: startsWith(variables['image.name'], 'windows')
-    inputs:
-      AllTools: false
-      BinSkim: false
-      CredScan: true
-      RoslynAnalyzers: false
-      TSLint: false
-      ToolLogsNotFoundAction: 'Standard'
+# - job: 'Test_ebm_native'
+#   dependsOn: 'Build_ebm_native'
+#   strategy:
+#     matrix:
+#       Linux:
+#         image.name: '${{ variables.ubuntu_image }}'
+#       Mac:
+#         image.name: '${{ variables.mac_image }}'
+#       Windows:
+#         image.name: '${{ variables.windows_image }}'
+#     maxParallel: 3
+#   pool:
+#     vmImage: '$(image.name)'
+#   variables:
+#     runCodesignValidationInjection: false
+#   steps:
+#   - task: DownloadBuildArtifacts@0
+#     inputs:
+#       buildType: 'current'
+#       downloadType: 'specific'
+#     displayName: 'Download build artifacts'
+#   - task: CopyFiles@2
+#     condition: succeeded()
+#     inputs:
+#       sourceFolder: '$(System.ArtifactsDirectory)'
+#       contents: '**/lib_ebm_native_*'
+#       targetFolder: 'staging'
+#       flattenFolders: true
+#     displayName: 'Move binary to staging directory'
+#   - script: |
+#       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
+#     condition: startsWith(variables['image.name'], 'ubuntu')
+#     displayName: 'Testing ebm_native code (Linux)'
+#   - script: |
+#       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
+#     condition: startsWith(variables['image.name'], 'macOS')
+#     displayName: 'Testing ebm_native code (Mac)'
+#   - script: |
+#       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+#       .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
+#     condition: startsWith(variables['image.name'], 'windows')
+#     displayName: 'Testing ebm_native code (Windows)'
+#   - task: ComponentGovernanceComponentDetection@0
+#     displayName: 'Scan dependencies for incompatible licenses and security issues'
+#   - task: CredScan@2
+#     displayName: 'Scan codebase for leaked secrets'
+#     condition: startsWith(variables['image.name'], 'windows')
+# #  - task: BinSkim@3
+# #    displayName: 'Scan DLLs for compiler/linker security improvements'
+# #    condition: startsWith(variables['image.name'], 'windows')
+# #    inputs:
+# #      InputType: Basic
+# #      AnalyzeTarget: 'staging\*.dll'
+# #      AnalyzeSymPath: 'staging'
+# #      AnalyzeVerbose: true
+# #  - task: AntiMalware@3
+# #    displayName: 'AntiMalware scan'
+#   - task: SdtReport@1
+#     displayName: 'Generate security report'
+#     condition: startsWith(variables['image.name'], 'windows')
+#     inputs:
+#       TsvFile: false
+#       AllTools: false
+#       BinSkim: false
+#       CredScan: true
+#       MSRD: false
+#       RoslynAnalyzers: false
+#       TSLint: false
+#       ToolLogsNotFoundAction: 'Standard'
+#   - task: PublishSecurityAnalysisLogs@2
+#     displayName: 'Publish security report'
+#     condition: startsWith(variables['image.name'], 'windows')
+#     inputs:
+#       ArtifactName: 'CodeAnalysisLogs'
+#       ArtifactType: 'Container'
+#       AllTools: true
+#       ToolLogsNotFoundAction: 'Standard'
+#   - task: PostAnalysis@1
+#     displayName: 'Stop on security errors'
+#     condition: startsWith(variables['image.name'], 'windows')
+#     inputs:
+#       AllTools: false
+#       BinSkim: false
+#       CredScan: true
+#       RoslynAnalyzers: false
+#       TSLint: false
+#       ToolLogsNotFoundAction: 'Standard'
 
 - job: 'Build_JS_Inline'
   pool:
@@ -343,7 +343,8 @@ jobs:
     displayName: 'Publish test coverage results'
 
 - job: 'Publish_Package'
-  dependsOn: ['Test_ebm_native', 'Test']
+  # dependsOn: ['Test_ebm_native', 'Test']
+  dependsOn: ['Test']
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
   variables:
