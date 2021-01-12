@@ -772,7 +772,7 @@ def rules_to_html(data_dict, title=""):  # pragma: no cover
     return html_str
 
 
-def plot_all(feat_names, ebm_global, mpl_style=False, figname=None):
+def plot_ebm_multiple_booleans(feat_names, ebm_global, mpl_style=False, figname=None):  # pragma: no cover
     """
         Helper function to plot the effect sizes of many Boolean features on the same figure.
         Args:
