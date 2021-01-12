@@ -28,7 +28,11 @@ def run_notebook(notebook_path):
     nb.cells[1]["source"] = re.sub(
         "# df = df.sample", "df = df.sample", nb.cells[1]["source"]
     )
-
+    # Set n_jobs to None where appropriate
+    for cell in nb.cells:
+        cell["source"] = re.sub(
+        "n_jobs=-1", "n_jobs=None", nb.cells[1]["source"]
+    )
     proc.preprocess(nb, {"metadata": {"path": package_path}})
 
     errors = []
