@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.3] - 2021-01-13
+
+**Major** upgrades to EBM in this release. Automatic interaction detection is now
+included by default. This will increase accuracy substantially in most cases.
+Numerous optimizations to support this, especially around binary classification.
+Expect similar or slightly slower training times due to interactions.
+
+### Fixed
+- Automated interaction detection uses low-resolution binning
+  for both FAST and pairwise training.
+### Changed
+- EBM argument has been reduced from `outer_bags=16` to `outer_bags=8`.
+- EBM now includes interactions by default from `interactions=0` to `interactions=10`.
+- Algorithm `treeinterpreter` is now unstable due to upstream dependencies.
+- Automated interaction detection now operates from two-pass to one-pass.
+- Numeric approximations used in boosting (i.e. approx log / exp).
+- Some arguments have been re-ordered for EBM initialization.
+
 ## [v0.2.2] - 2020-10-19
 ### Fixed
 - Fixed bug on predicting unknown categories with EBM.
@@ -355,6 +373,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.2.3]: https://github.com/microsoft/interpret/releases/tag/v0.2.3
 [v0.2.2]: https://github.com/microsoft/interpret/releases/tag/v0.2.2
 [v0.2.1]: https://github.com/microsoft/interpret/releases/tag/v0.2.1
 [v0.2.0]: https://github.com/microsoft/interpret/releases/tag/v0.2.0
