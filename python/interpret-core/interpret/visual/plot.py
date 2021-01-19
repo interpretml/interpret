@@ -112,7 +112,7 @@ def plot_continuous_bar(
         return x
 
     def extend_y_range(y):
-        return np.append(y, y[-1])
+        return np.r_[y, y[np.newaxis, -1]]
 
     new_x_vals = extend_x_range(x_vals)
     new_y_vals = extend_y_range(y_vals)
