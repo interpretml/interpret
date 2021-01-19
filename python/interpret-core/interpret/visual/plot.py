@@ -109,18 +109,10 @@ def plot_continuous_bar(
         show_error = False
 
     def extend_x_range(x):
-        x_max = np.max(x)
-        target = []
-        target.append(x[0])
-        for curr_val, next_val in zip(x, x[1:]):
-            avg_val = np.mean([curr_val, next_val])
-            target.append(avg_val)
-
-        target.append(x_max)
-        return target
+        return x
 
     def extend_y_range(y):
-        return y # np.r_[y[np.newaxis, 0], y]
+        return np.append(y, y[-1])
 
     new_x_vals = extend_x_range(x_vals)
     new_y_vals = extend_y_range(y_vals)
@@ -143,7 +135,7 @@ def plot_continuous_bar(
             class_line = go.Scatter(
                 x=new_x_vals,
                 y=new_y_vals[:, i],
-                line=dict(shape="hvh"),
+                line=dict(shape="hv"),
                 name=class_name,
                 mode="lines",
             )
@@ -154,7 +146,7 @@ def plot_continuous_bar(
             y=new_y_vals,
             name="Main",
             mode="lines",
-            line=dict(color="rgb(31, 119, 180)", shape="hvh"),
+            line=dict(color="rgb(31, 119, 180)", shape="hv"),
             fillcolor="rgba(68, 68, 68, 0.15)",
             fill=fill,
         )
@@ -167,7 +159,7 @@ def plot_continuous_bar(
             y=new_y_hi,
             mode="lines",
             marker=dict(color="#444"),
-            line=dict(width=0, shape="hvh"),
+            line=dict(width=0, shape="hv"),
             fillcolor="rgba(68, 68, 68, 0.15)",
             fill="tonexty",
         )
@@ -176,7 +168,7 @@ def plot_continuous_bar(
             x=new_x_vals,
             y=new_y_lo,
             marker=dict(color="#444"),
-            line=dict(width=0, shape="hvh"),
+            line=dict(width=0, shape="hv"),
             mode="lines",
         )
         data = [lower_bound, main_line, upper_bound]
