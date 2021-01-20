@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.4] - 2021-01-19
+### Fixed
+- Bug fix on global EBM plots.
+- Rendering fix for AzureML notebooks.
+### Changed
+- JavaScript dependencies for inline renderers updated.
+
 ## [v0.2.3] - 2021-01-13
 
 **Major** upgrades to EBM in this release. Automatic interaction detection is now
@@ -373,6 +380,7 @@ Expect similar or slightly slower training times due to interactions.
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.2.4]: https://github.com/microsoft/interpret/releases/tag/v0.2.4
 [v0.2.3]: https://github.com/microsoft/interpret/releases/tag/v0.2.3
 [v0.2.2]: https://github.com/microsoft/interpret/releases/tag/v0.2.2
 [v0.2.1]: https://github.com/microsoft/interpret/releases/tag/v0.2.1
