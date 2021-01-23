@@ -33,13 +33,13 @@ pip install interpret
 
 EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations)</sup>. It uses modern machine learning techniques like bagging, gradient boosting, and automatic interaction detection to breathe new life into traditional GAMs (Generalized Additive Models). This makes EBMs as accurate as state-of-the-art techniques like random forests and gradient boosted trees. However, unlike these blackbox models, EBMs produce lossless explanations and are editable by domain experts.
 
-| Dataset/AUROC | Domain  | Logistic Regression | Random Forest | XGBoost        | Explainable Boosting Machine |
-|---------------|---------|:-------------------:|:-------------:|:--------------:|:----------------------------:|
-| Adult Income  | Finance | .907±.003           | .903±.002     | .922±.002      | **_.928±.002_**              |
-| Heart Disease | Medical | .895±.030           | .890±.008     | .870±.014      | **_.916±.010_**              |
-| Breast Cancer | Medical | **_.995±.005_**     | .992±.009     | **_.995±.006_**| **_.995±.006_**              |
-| Telecom Churn | Business| .804±.015           | .824±.002     | .850±.006      | **_.851±.005_**              |
-| Credit Fraud  | Security| .979±.002           | .950±.007     | **_.981±.003_**| .975±.005                    |
+| Dataset/AUROC | Domain  | Logistic Regression | Random Forest | XGBoost         | Explainable Boosting Machine |
+|---------------|---------|:-------------------:|:-------------:|:---------------:|:----------------------------:|
+| Adult Income  | Finance | .907±.003           | .903±.002     | .927±.001       | **_.928±.002_**              |
+| Heart Disease | Medical | .895±.030           | .890±.008     | .851±.018       | **_.898±.013_**              |
+| Breast Cancer | Medical | **_.995±.005_**     | .992±.009     | .992±.010       | **_.995±.006_**              |
+| Telecom Churn | Business| .849±.005           | .824±.004     | .828±.010       | **_.852±.006_**              |
+| Credit Fraud  | Security| .979±.002           | .950±.007     | **_.981±.003_** | **_.981±.003_**              |
 
 [*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/benchmarks/EBM%20Classification%20Comparison.ipynb)
 
