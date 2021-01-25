@@ -390,9 +390,10 @@ bool SegmentedTensor::Expand(const size_t * const acValuesPerDimension) {
          LOG_0(TraceLevelWarning, "WARNING Expand SetCountDivisions(iDimension, cDivisions)");
          return true;
       }
-
+      
+      ActiveDataType * const aDivision = aDimension1[iDimension].m_aDivisions;
       for(size_t iDivision = 0; iDivision < cDivisions; ++iDivision) {
-         aDimension1[iDimension].m_aDivisions[iDivision] = iDivision;
+         aDivision[iDivision] = iDivision;
       }
    }
 

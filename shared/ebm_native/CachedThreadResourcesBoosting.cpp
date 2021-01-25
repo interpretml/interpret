@@ -21,7 +21,6 @@ void CachedBoostingThreadResources::Free(CachedBoostingThreadResources * const p
       free(pCachedResources->m_aThreadByteBuffer1);
       free(pCachedResources->m_aThreadByteBuffer2);
       free(pCachedResources->m_aSumHistogramBucketVectorEntry);
-      free(pCachedResources->m_aSumHistogramBucketVectorEntry1);
       free(pCachedResources->m_aTempFloatVector);
       free(pCachedResources->m_aEquivalentSplits);
 
@@ -49,24 +48,19 @@ CachedBoostingThreadResources * CachedBoostingThreadResources::Allocate(
          EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
       if(LIKELY(nullptr != aSumHistogramBucketVectorEntry)) {
          pNew->m_aSumHistogramBucketVectorEntry = aSumHistogramBucketVectorEntry;
-         HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry1 =
-            EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
-         if(LIKELY(nullptr != aSumHistogramBucketVectorEntry1)) {
-            pNew->m_aSumHistogramBucketVectorEntry1 = aSumHistogramBucketVectorEntry1;
-            FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
-            if(LIKELY(nullptr != aTempFloatVector)) {
-               pNew->m_aTempFloatVector = aTempFloatVector;
-               if(0 != cBytesArrayEquivalentSplitMax) {
-                  void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
-                  if(UNLIKELY(nullptr == aEquivalentSplits)) {
-                     goto exit_error;
-                  }
-                  pNew->m_aEquivalentSplits = aEquivalentSplits;
+         FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
+         if(LIKELY(nullptr != aTempFloatVector)) {
+            pNew->m_aTempFloatVector = aTempFloatVector;
+            if(0 != cBytesArrayEquivalentSplitMax) {
+               void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
+               if(UNLIKELY(nullptr == aEquivalentSplits)) {
+                  goto exit_error;
                }
-
-               LOG_0(TraceLevelInfo, "Exited CachedBoostingThreadResources::Allocate");
-               return pNew;
+               pNew->m_aEquivalentSplits = aEquivalentSplits;
             }
+
+            LOG_0(TraceLevelInfo, "Exited CachedBoostingThreadResources::Allocate");
+            return pNew;
          }
       }
    exit_error:;

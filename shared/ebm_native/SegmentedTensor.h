@@ -195,10 +195,6 @@ public:
       return m_bExpanded;
    }
 
-   INLINE_ALWAYS FloatEbmType * GetValues() {
-      return m_aValues;
-   }
-
    INLINE_ALWAYS void SetCountDimensions(const size_t cDimensions) {
       EBM_ASSERT(cDimensions <= m_cDimensionsMax);
       m_cDimensions = cDimensions;
@@ -210,7 +206,7 @@ public:
    }
 
    INLINE_ALWAYS FloatEbmType * GetValuePointer() {
-      return &m_aValues[0];
+      return m_aValues;
    }
 };
 static_assert(std::is_standard_layout<SegmentedTensor>::value,

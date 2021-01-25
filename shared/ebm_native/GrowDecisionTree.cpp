@@ -110,7 +110,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    CachedBoostingThreadResources * const pCachedThreadResources = pBooster->GetCachedThreadResources();
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
-      pCachedThreadResources->GetSumHistogramBucketVectorEntry1Array<bClassification>();
+      pCachedThreadResources->GetSumHistogramBucketVectorEntryArray()->GetHistogramBucketVectorEntry<bClassification>();
    for(size_t i = 0; i < cVectorLength; ++i) {
       aSumHistogramBucketVectorEntryLeft[i].Zero();
    }
@@ -510,15 +510,15 @@ public:
          if(bClassification) {
             FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator()
+               const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                  pRootTreeNode->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pRootTreeNode->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator()
                );
                aValues[iVector] = smallChangeToModel;
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-               aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FloatEbmType>(cSamplesTotal)
+               pRootTreeNode->GetHistogramBucketVectorEntry()[0].m_sumResidualError, static_cast<FloatEbmType>(cSamplesTotal)
             );
             FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
             pValues[0] = smallChangeToModel;

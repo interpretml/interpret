@@ -28,7 +28,6 @@ class CachedBoostingThreadResources final {
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
    HistogramBucketVectorEntryBase * m_aSumHistogramBucketVectorEntry;
-   HistogramBucketVectorEntryBase * m_aSumHistogramBucketVectorEntry1;
 
 public:
 
@@ -45,7 +44,6 @@ public:
       m_aTempFloatVector = nullptr;
       m_aEquivalentSplits = nullptr;
       m_aSumHistogramBucketVectorEntry = nullptr;
-      m_aSumHistogramBucketVectorEntry1 = nullptr;
    }
 
    static void Free(CachedBoostingThreadResources * const pCachedResources);
@@ -74,11 +72,6 @@ public:
 
    INLINE_ALWAYS HistogramBucketVectorEntryBase * GetSumHistogramBucketVectorEntryArray() {
       return m_aSumHistogramBucketVectorEntry;
-   }
-
-   template<bool bClassification>
-   INLINE_ALWAYS HistogramBucketVectorEntry<bClassification> * GetSumHistogramBucketVectorEntry1Array() {
-      return static_cast<HistogramBucketVectorEntry<bClassification> *>(m_aSumHistogramBucketVectorEntry1);
    }
 };
 static_assert(std::is_standard_layout<CachedBoostingThreadResources>::value,

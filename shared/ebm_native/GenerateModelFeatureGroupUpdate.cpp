@@ -914,7 +914,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    }
 
    LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureGroupUpdatePerTargetClasses");
-   return pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValues();
+   return pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
 }
 
 // we made this a global because if we had put this variable inside the Booster object, then we would need to dereference that before getting 
