@@ -16,7 +16,7 @@
 #include "FeatureGroup.h"
 // dataset depends on features
 #include "DataSetInteraction.h"
-#include "CachedThreadResourcesInteraction.h"
+#include "ThreadStateInteraction.h"
 
 #include "InteractionDetector.h"
 

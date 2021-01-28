@@ -15,7 +15,7 @@
 #include "FeatureGroup.h"
 // dataset depends on features
 #include "DataSetInteraction.h"
-#include "CachedThreadResourcesInteraction.h"
+#include "ThreadStateInteraction.h"
 
 #include "InteractionDetector.h"
 
@@ -43,7 +43,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
 );
 
 static bool CalculateInteractionScoreInternal(
-   ThreadStateInteraction * const pCachedThreadResources,
+   ThreadStateInteraction * const pThreadStateInteraction,
    InteractionDetector * const pInteractionDetector,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
@@ -112,7 +112,7 @@ static bool CalculateInteractionScoreInternal(
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
    // this doesn't need to be freed since it's tracked and re-used by the class ThreadStateInteraction
-   HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
+   HistogramBucketBase * const aHistogramBuckets = pThreadStateInteraction->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal nullptr == aHistogramBuckets");
       return true;
@@ -405,20 +405,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    }
 
    // TODO : be smarter about our ThreadStateInteraction, otherwise why have it?
-   ThreadStateInteraction * const pCachedThreadResources = ThreadStateInteraction::Allocate();
-   if(nullptr == pCachedThreadResources) {
+   ThreadStateInteraction * const pThreadStateInteraction = ThreadStateInteraction::Allocate();
+   if(nullptr == pThreadStateInteraction) {
       return 1;
    }
 
    IntEbmType ret = CalculateInteractionScoreInternal(
-      pCachedThreadResources,
+      pThreadStateInteraction,
       pInteractionDetector,
       pFeatureGroup,
       cSamplesRequiredForChildSplitMin,
       interactionScoreOut
    );
 
-   ThreadStateInteraction::Free(pCachedThreadResources);
+   ThreadStateInteraction::Free(pThreadStateInteraction);
 
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" IntEbmTypePrintf, ret);

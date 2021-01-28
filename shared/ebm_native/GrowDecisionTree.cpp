@@ -15,7 +15,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
 #include "EbmStatisticUtils.h"
-#include "CachedThreadResourcesBoosting.h"
+#include "ThreadStateBoosting.h"
 
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
@@ -107,15 +107,15 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
-   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
-      pCachedThreadResources->GetSumHistogramBucketVectorEntryArray()->GetHistogramBucketVectorEntry<bClassification>();
+      pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray()->GetHistogramBucketVectorEntry<bClassification>();
    for(size_t i = 0; i < cVectorLength; ++i) {
       aSumHistogramBucketVectorEntryLeft[i].Zero();
    }
 
-   FloatEbmType * const aSumResidualErrorsRight = pCachedThreadResources->GetTempFloatVector();
+   FloatEbmType * const aSumResidualErrorsRight = pThreadStateBoosting->GetTempFloatVector();
    const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryInit = 
       pTreeNode->GetHistogramBucketVectorEntry();
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -149,7 +149,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize(bClassification, cVectorLength);
 
    SweepTreeNode<bClassification> * pSweepTreeNodeStart =
-      static_cast<SweepTreeNode<bClassification> *>(pCachedThreadResources->GetEquivalentSplits());
+      static_cast<SweepTreeNode<bClassification> *>(pThreadStateBoosting->GetEquivalentSplits());
    SweepTreeNode<bClassification> * pSweepTreeNodeCur = pSweepTreeNodeStart;
 
    size_t cSamplesRight = pTreeNode->AMBIGUOUS_GetSamples();
@@ -448,24 +448,24 @@ public:
 
    retry_with_bigger_tree_node_children_array:
 
-      ThreadStateBoosting * pCachedThreadResources = pBooster->GetCachedThreadResources();
+      ThreadStateBoosting * pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
-      size_t cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
+      size_t cBytesBuffer2 = pThreadStateBoosting->GetThreadByteBuffer2Size();
       // we need 1 TreeNode for the root, 1 for the left child of the root and 1 for the right child of the root
       const size_t cBytesInitialNeededAllocation = 3 * cBytesPerTreeNode;
       if(cBytesBuffer2 < cBytesInitialNeededAllocation) {
          // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of three 
          // TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode), or the number of bins (interactions multiply bins) on the 
          // highest bin count feature
-         if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
-            LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
+         if(pThreadStateBoosting->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
+            LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pThreadStateBoosting->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
             return true;
          }
-         cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
+         cBytesBuffer2 = pThreadStateBoosting->GetThreadByteBuffer2Size();
          EBM_ASSERT(cBytesInitialNeededAllocation <= cBytesBuffer2);
       }
       TreeNode<bClassification> * pRootTreeNode =
-         static_cast<TreeNode<bClassification> *>(pCachedThreadResources->GetThreadByteBuffer2());
+         static_cast<TreeNode<bClassification> *>(pThreadStateBoosting->GetThreadByteBuffer2());
 
 #ifndef NDEBUG
       pRootTreeNode->SetExaminedForPossibleSplitting(false);
@@ -662,8 +662,8 @@ public:
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                if(cBytesBuffer2 <
                   static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
-                  if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                     LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
+                  if(pThreadStateBoosting->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
+                     LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pThreadStateBoosting->GrowThreadByteBuffer2(cBytesPerTreeNode)");
                      return true;
                   }
                   goto retry_with_bigger_tree_node_children_array;
@@ -709,8 +709,8 @@ public:
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                if(cBytesBuffer2 <
                   static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
-                  if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                     LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
+                  if(pThreadStateBoosting->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
+                     LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pThreadStateBoosting->GrowThreadByteBuffer2(cBytesPerTreeNode)");
                      return true;
                   }
                   goto retry_with_bigger_tree_node_children_array;

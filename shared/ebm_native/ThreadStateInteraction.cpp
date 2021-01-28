@@ -10,14 +10,14 @@
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
-#include "CachedThreadResourcesInteraction.h"
+#include "ThreadStateInteraction.h"
 
-void ThreadStateInteraction::Free(ThreadStateInteraction * const pCachedResources) {
+void ThreadStateInteraction::Free(ThreadStateInteraction * const pThreadStateInteraction) {
    LOG_0(TraceLevelInfo, "Entered ThreadStateInteraction::Free");
 
-   free(pCachedResources->m_aThreadByteBuffer1);
+   free(pThreadStateInteraction->m_aThreadByteBuffer1);
 
-   free(pCachedResources);
+   free(pThreadStateInteraction);
 
    LOG_0(TraceLevelInfo, "Exited ThreadStateInteraction::Free");
 }

@@ -20,8 +20,6 @@ OBJECTS = interpret_R.o \
    $(NATIVEDIR)/BinningWinsorized.o \
    $(NATIVEDIR)/Booster.o \
    $(NATIVEDIR)/CalculateInteractionScore.o \
-   $(NATIVEDIR)/CachedThreadResourcesBoosting.o \
-   $(NATIVEDIR)/CachedThreadResourcesInteraction.o \
    $(NATIVEDIR)/CutRandom.o \
    $(NATIVEDIR)/DataSetBoosting.o \
    $(NATIVEDIR)/DataSetInteraction.o \
@@ -41,3 +39,5 @@ OBJECTS = interpret_R.o \
    $(NATIVEDIR)/SegmentedTensor.o \
    $(NATIVEDIR)/SumHistogramBuckets.o \
    $(NATIVEDIR)/TensorTotalsBuild.o 
+   $(NATIVEDIR)/ThreadStateBoosting.o \
+   $(NATIVEDIR)/ThreadStateInteraction.o \

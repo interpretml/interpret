@@ -15,8 +15,6 @@
 
 struct HistogramBucketBase;
 
-// TODO: rename CachedThreadResourcesBoosting.* files as ThreadStateBoosting.cpp and ThreadStateBoosting.h
-
 class ThreadStateBoosting final {
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
@@ -48,7 +46,7 @@ public:
       m_aSumHistogramBucketVectorEntry = nullptr;
    }
 
-   static void Free(ThreadStateBoosting * const pCachedResources);
+   static void Free(ThreadStateBoosting * const pThreadStateBoosting);
    static ThreadStateBoosting * Allocate(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cBytesArrayEquivalentSplitMax

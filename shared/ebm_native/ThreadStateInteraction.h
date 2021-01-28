@@ -13,8 +13,6 @@
 
 struct HistogramBucketBase;
 
-// TODO: rename CachedThreadResourcesInteraction.* files as ThreadStateInteraction.cpp and ThreadStateInteraction.h
-
 class ThreadStateInteraction final {
    HistogramBucketBase * m_aThreadByteBuffer1;
    size_t m_cThreadByteBufferCapacity1;
@@ -31,7 +29,7 @@ public:
       m_cThreadByteBufferCapacity1 = 0;
    }
 
-   static void Free(ThreadStateInteraction * const pCachedResources);
+   static void Free(ThreadStateInteraction * const pThreadStateInteraction);
    static ThreadStateInteraction * Allocate();
    HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired);
 

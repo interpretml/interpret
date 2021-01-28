@@ -128,7 +128,7 @@ void Booster::Free(Booster * const pBooster) {
       pBooster->m_trainingSet.Destruct();
       pBooster->m_validationSet.Destruct();
 
-      ThreadStateBoosting::Free(pBooster->m_pCachedThreadResources);
+      ThreadStateBoosting::Free(pBooster->m_pThreadStateBoosting);
 
       SamplingSet::FreeSamplingSets(pBooster->m_cSamplingSets, pBooster->m_apSamplingSets);
 
@@ -440,12 +440,12 @@ Booster * Booster::Allocate(
    }
    LOG_0(TraceLevelInfo, "Booster::Initialize finished feature group processing");
 
-   pBooster->m_pCachedThreadResources = ThreadStateBoosting::Allocate(
+   pBooster->m_pThreadStateBoosting = ThreadStateBoosting::Allocate(
       runtimeLearningTypeOrCountTargetClasses,
       cBytesArrayEquivalentSplitMax
    );
-   if(UNLIKELY(nullptr == pBooster->m_pCachedThreadResources)) {
-      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == m_pCachedThreadResources");
+   if(UNLIKELY(nullptr == pBooster->m_pThreadStateBoosting)) {
+      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pBooster->m_pThreadStateBoosting");
       Booster::Free(pBooster);
       return nullptr;
    }
@@ -504,7 +504,7 @@ Booster * Booster::Allocate(
             cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
-            pBooster->GetCachedThreadResources()->GetTempFloatVector(),
+            pBooster->GetThreadStateBoosting()->GetTempFloatVector(),
             pBooster->m_trainingSet.GetResidualPointer()
          );
       }

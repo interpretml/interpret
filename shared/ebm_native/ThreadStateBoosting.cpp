@@ -12,19 +12,19 @@
 
 #include "HistogramTargetEntry.h"
 
-#include "CachedThreadResourcesBoosting.h"
+#include "ThreadStateBoosting.h"
 
-void ThreadStateBoosting::Free(ThreadStateBoosting * const pCachedResources) {
+void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting) {
    LOG_0(TraceLevelInfo, "Entered ThreadStateBoosting::Free");
 
-   if(nullptr != pCachedResources) {
-      free(pCachedResources->m_aThreadByteBuffer1);
-      free(pCachedResources->m_aThreadByteBuffer2);
-      free(pCachedResources->m_aSumHistogramBucketVectorEntry);
-      free(pCachedResources->m_aTempFloatVector);
-      free(pCachedResources->m_aEquivalentSplits);
+   if(nullptr != pThreadStateBoosting) {
+      free(pThreadStateBoosting->m_aThreadByteBuffer1);
+      free(pThreadStateBoosting->m_aThreadByteBuffer2);
+      free(pThreadStateBoosting->m_aSumHistogramBucketVectorEntry);
+      free(pThreadStateBoosting->m_aTempFloatVector);
+      free(pThreadStateBoosting->m_aEquivalentSplits);
 
-      free(pCachedResources);
+      free(pThreadStateBoosting);
    }
 
    LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Free");

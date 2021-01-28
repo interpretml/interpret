@@ -112,10 +112,10 @@ static bool BoostZeroDimensional(
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
    HistogramBucketBase * const pHistogramBucket =
-      pCachedThreadResources->GetThreadByteBuffer1(cBytesPerHistogramBucket);
+      pThreadStateBoosting->GetThreadByteBuffer1(cBytesPerHistogramBucket);
 
    if(UNLIKELY(nullptr == pHistogramBucket)) {
       LOG_0(TraceLevelWarning, "WARNING nullptr == pHistogramBucket");
@@ -216,16 +216,16 @@ static bool BoostSingleDimensional(
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
-   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
-   HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
+   HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional nullptr == aHistogramBuckets");
       return true;
    }
 
    HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry =
-      pCachedThreadResources->GetSumHistogramBucketVectorEntryArray();
+      pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray();
 
    if(bClassification) {
       HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
@@ -365,10 +365,10 @@ static bool BoostMultiDimensional(
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
-   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
-   // we don't need to free this!  It's tracked and reused by pCachedThreadResources
-   HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
+   // we don't need to free this!  It's tracked and reused by pThreadStateBoosting
+   HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional nullptr == aHistogramBuckets");
       return true;
@@ -641,10 +641,10 @@ static bool BoostRandom(
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
-   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
-   // we don't need to free this!  It's tracked and reused by pCachedThreadResources
-   HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
+   // we don't need to free this!  It's tracked and reused by pThreadStateBoosting
+   HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostRandom nullptr == aHistogramBuckets");
       return true;

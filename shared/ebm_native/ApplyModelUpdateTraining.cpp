@@ -36,7 +36,7 @@ public:
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
-      FloatEbmType * const aTempFloatVector = pBooster->GetCachedThreadResources()->GetTempFloatVector();
+      FloatEbmType * const aTempFloatVector = pBooster->GetThreadStateBoosting()->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
          k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
@@ -241,7 +241,7 @@ public:
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
-      FloatEbmType * const aTempFloatVector = pBooster->GetCachedThreadResources()->GetTempFloatVector();
+      FloatEbmType * const aTempFloatVector = pBooster->GetThreadStateBoosting()->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
          k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)

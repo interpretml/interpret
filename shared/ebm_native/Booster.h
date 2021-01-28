@@ -16,7 +16,7 @@
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
 // this depends on TreeNode pointers, but doesn't require the full definition of TreeNode
-#include "CachedThreadResourcesBoosting.h"
+#include "ThreadStateBoosting.h"
 // feature includes
 #include "FeatureAtomic.h"
 // FeatureGroup.h depends on FeatureInternal.h
@@ -51,7 +51,7 @@ class Booster final {
    SegmentedTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
    SegmentedTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
 
-   ThreadStateBoosting * m_pCachedThreadResources;
+   ThreadStateBoosting * m_pThreadStateBoosting;
 
    RandomStream m_randomStream;
 
@@ -93,7 +93,7 @@ public:
       m_pSmallChangeToModelOverwriteSingleSamplingSet = nullptr;
       m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
 
-      m_pCachedThreadResources = nullptr;
+      m_pThreadStateBoosting = nullptr;
    }
 
    INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() const {
@@ -148,8 +148,8 @@ public:
       return m_pSmallChangeToModelAccumulatedFromSamplingSets;
    }
 
-   INLINE_ALWAYS ThreadStateBoosting * GetCachedThreadResources() const {
-      return m_pCachedThreadResources;
+   INLINE_ALWAYS ThreadStateBoosting * GetThreadStateBoosting() const {
+      return m_pThreadStateBoosting;
    }
 
    INLINE_ALWAYS RandomStream * GetRandomStream() {
