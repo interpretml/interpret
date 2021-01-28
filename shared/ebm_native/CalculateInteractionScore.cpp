@@ -43,7 +43,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
 );
 
 static bool CalculateInteractionScoreInternal(
-   CachedInteractionThreadResources * const pCachedThreadResources,
+   ThreadStateInteraction * const pCachedThreadResources,
    InteractionDetector * const pInteractionDetector,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
@@ -111,7 +111,7 @@ static bool CalculateInteractionScoreInternal(
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
-   // this doesn't need to be freed since it's tracked and re-used by the class CachedInteractionThreadResources
+   // this doesn't need to be freed since it's tracked and re-used by the class ThreadStateInteraction
    HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal nullptr == aHistogramBuckets");
@@ -404,8 +404,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       return 0;
    }
 
-   // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
-   CachedInteractionThreadResources * const pCachedThreadResources = CachedInteractionThreadResources::Allocate();
+   // TODO : be smarter about our ThreadStateInteraction, otherwise why have it?
+   ThreadStateInteraction * const pCachedThreadResources = ThreadStateInteraction::Allocate();
    if(nullptr == pCachedThreadResources) {
       return 1;
    }
@@ -418,7 +418,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       interactionScoreOut
    );
 
-   CachedInteractionThreadResources::Free(pCachedThreadResources);
+   ThreadStateInteraction::Free(pCachedThreadResources);
 
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" IntEbmTypePrintf, ret);

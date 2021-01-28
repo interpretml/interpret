@@ -112,7 +112,7 @@ static bool BoostZeroDimensional(
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-   CachedBoostingThreadResources * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
 
    HistogramBucketBase * const pHistogramBucket =
       pCachedThreadResources->GetThreadByteBuffer1(cBytesPerHistogramBucket);
@@ -216,7 +216,7 @@ static bool BoostSingleDimensional(
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
-   CachedBoostingThreadResources * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
 
    HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
@@ -365,7 +365,7 @@ static bool BoostMultiDimensional(
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
-   CachedBoostingThreadResources * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
 
    // we don't need to free this!  It's tracked and reused by pCachedThreadResources
    HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
@@ -641,7 +641,7 @@ static bool BoostRandom(
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
-   CachedBoostingThreadResources * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
 
    // we don't need to free this!  It's tracked and reused by pCachedThreadResources
    HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);

@@ -51,7 +51,7 @@ class Booster final {
    SegmentedTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
    SegmentedTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
 
-   CachedBoostingThreadResources * m_pCachedThreadResources;
+   ThreadStateBoosting * m_pCachedThreadResources;
 
    RandomStream m_randomStream;
 
@@ -148,7 +148,7 @@ public:
       return m_pSmallChangeToModelAccumulatedFromSamplingSets;
    }
 
-   INLINE_ALWAYS CachedBoostingThreadResources * GetCachedThreadResources() const {
+   INLINE_ALWAYS ThreadStateBoosting * GetCachedThreadResources() const {
       return m_pCachedThreadResources;
    }
 

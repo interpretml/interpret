@@ -15,7 +15,9 @@
 
 struct HistogramBucketBase;
 
-class CachedBoostingThreadResources final {
+// TODO: rename CachedThreadResourcesBoosting.* files as ThreadStateBoosting.cpp and ThreadStateBoosting.h
+
+class ThreadStateBoosting final {
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
    HistogramBucketBase * m_aThreadByteBuffer1;
@@ -31,8 +33,8 @@ class CachedBoostingThreadResources final {
 
 public:
 
-   CachedBoostingThreadResources() = default; // preserve our POD status
-   ~CachedBoostingThreadResources() = default; // preserve our POD status
+   ThreadStateBoosting() = default; // preserve our POD status
+   ~ThreadStateBoosting() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -46,8 +48,8 @@ public:
       m_aSumHistogramBucketVectorEntry = nullptr;
    }
 
-   static void Free(CachedBoostingThreadResources * const pCachedResources);
-   static CachedBoostingThreadResources * Allocate(
+   static void Free(ThreadStateBoosting * const pCachedResources);
+   static ThreadStateBoosting * Allocate(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cBytesArrayEquivalentSplitMax
    );
@@ -74,11 +76,11 @@ public:
       return m_aSumHistogramBucketVectorEntry;
    }
 };
-static_assert(std::is_standard_layout<CachedBoostingThreadResources>::value,
+static_assert(std::is_standard_layout<ThreadStateBoosting>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<CachedBoostingThreadResources>::value,
+static_assert(std::is_trivial<ThreadStateBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<CachedBoostingThreadResources>::value,
+static_assert(std::is_pod<ThreadStateBoosting>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // CACHED_BOOSTING_THREAD_RESOURCES_H

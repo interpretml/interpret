@@ -12,34 +12,34 @@
 
 #include "CachedThreadResourcesInteraction.h"
 
-void CachedInteractionThreadResources::Free(CachedInteractionThreadResources * const pCachedResources) {
-   LOG_0(TraceLevelInfo, "Entered CachedInteractionThreadResources::Free");
+void ThreadStateInteraction::Free(ThreadStateInteraction * const pCachedResources) {
+   LOG_0(TraceLevelInfo, "Entered ThreadStateInteraction::Free");
 
    free(pCachedResources->m_aThreadByteBuffer1);
 
    free(pCachedResources);
 
-   LOG_0(TraceLevelInfo, "Exited CachedInteractionThreadResources::Free");
+   LOG_0(TraceLevelInfo, "Exited ThreadStateInteraction::Free");
 }
 
-CachedInteractionThreadResources * CachedInteractionThreadResources::Allocate() {
-   LOG_0(TraceLevelInfo, "Entered CachedInteractionThreadResources::Allocate");
+ThreadStateInteraction * ThreadStateInteraction::Allocate() {
+   LOG_0(TraceLevelInfo, "Entered ThreadStateInteraction::Allocate");
 
-   CachedInteractionThreadResources * const pNew = EbmMalloc<CachedInteractionThreadResources>();
+   ThreadStateInteraction * const pNew = EbmMalloc<ThreadStateInteraction>();
    if(nullptr != pNew) {
       pNew->InitializeZero();
    }
 
-   LOG_0(TraceLevelInfo, "Exited CachedInteractionThreadResources::Allocate");
+   LOG_0(TraceLevelInfo, "Exited ThreadStateInteraction::Allocate");
 
    return pNew;
 }
 
-HistogramBucketBase * CachedInteractionThreadResources::GetThreadByteBuffer1(const size_t cBytesRequired) {
+HistogramBucketBase * ThreadStateInteraction::GetThreadByteBuffer1(const size_t cBytesRequired) {
    HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
    if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
       m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
-      LOG_N(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
+      LOG_N(TraceLevelInfo, "Growing ThreadStateInteraction::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
 
       free(aBuffer);
       aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(m_cThreadByteBufferCapacity1));

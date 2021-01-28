@@ -107,7 +107,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
-   CachedBoostingThreadResources * const pCachedThreadResources = pBooster->GetCachedThreadResources();
+   ThreadStateBoosting * const pCachedThreadResources = pBooster->GetCachedThreadResources();
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
       pCachedThreadResources->GetSumHistogramBucketVectorEntryArray()->GetHistogramBucketVectorEntry<bClassification>();
@@ -448,7 +448,7 @@ public:
 
    retry_with_bigger_tree_node_children_array:
 
-      CachedBoostingThreadResources * pCachedThreadResources = pBooster->GetCachedThreadResources();
+      ThreadStateBoosting * pCachedThreadResources = pBooster->GetCachedThreadResources();
 
       size_t cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
       // we need 1 TreeNode for the root, 1 for the left child of the root and 1 for the right child of the root

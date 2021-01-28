@@ -14,8 +14,8 @@
 
 #include "CachedThreadResourcesBoosting.h"
 
-void CachedBoostingThreadResources::Free(CachedBoostingThreadResources * const pCachedResources) {
-   LOG_0(TraceLevelInfo, "Entered CachedBoostingThreadResources::Free");
+void ThreadStateBoosting::Free(ThreadStateBoosting * const pCachedResources) {
+   LOG_0(TraceLevelInfo, "Entered ThreadStateBoosting::Free");
 
    if(nullptr != pCachedResources) {
       free(pCachedResources->m_aThreadByteBuffer1);
@@ -27,16 +27,16 @@ void CachedBoostingThreadResources::Free(CachedBoostingThreadResources * const p
       free(pCachedResources);
    }
 
-   LOG_0(TraceLevelInfo, "Exited CachedBoostingThreadResources::Free");
+   LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Free");
 }
 
-CachedBoostingThreadResources * CachedBoostingThreadResources::Allocate(
+ThreadStateBoosting * ThreadStateBoosting::Allocate(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cBytesArrayEquivalentSplitMax
 ) {
-   LOG_0(TraceLevelInfo, "Entered CachedBoostingThreadResources::Allocate");
+   LOG_0(TraceLevelInfo, "Entered ThreadStateBoosting::Allocate");
 
-   CachedBoostingThreadResources * const pNew = EbmMalloc<CachedBoostingThreadResources>();
+   ThreadStateBoosting * const pNew = EbmMalloc<ThreadStateBoosting>();
    if(LIKELY(nullptr != pNew)) {
       pNew->InitializeZero();
 
@@ -59,22 +59,22 @@ CachedBoostingThreadResources * CachedBoostingThreadResources::Allocate(
                pNew->m_aEquivalentSplits = aEquivalentSplits;
             }
 
-            LOG_0(TraceLevelInfo, "Exited CachedBoostingThreadResources::Allocate");
+            LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Allocate");
             return pNew;
          }
       }
    exit_error:;
       Free(pNew);
    }
-   LOG_0(TraceLevelWarning, "WARNING Exited CachedBoostingThreadResources::Allocate with error");
+   LOG_0(TraceLevelWarning, "WARNING Exited ThreadStateBoosting::Allocate with error");
    return nullptr;
 }
 
-HistogramBucketBase * CachedBoostingThreadResources::GetThreadByteBuffer1(const size_t cBytesRequired) {
+HistogramBucketBase * ThreadStateBoosting::GetThreadByteBuffer1(const size_t cBytesRequired) {
    HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
    if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
       m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
-      LOG_N(TraceLevelInfo, "Growing CachedBoostingThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
+      LOG_N(TraceLevelInfo, "Growing ThreadStateBoosting::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
 
       free(aBuffer);
       aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(m_cThreadByteBufferCapacity1));
@@ -83,13 +83,13 @@ HistogramBucketBase * CachedBoostingThreadResources::GetThreadByteBuffer1(const 
    return aBuffer;
 }
 
-bool CachedBoostingThreadResources::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
+bool ThreadStateBoosting::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    // by adding cByteBoundaries and shifting our existing size, we do 2 things:
    //   1) we ensure that if we have zero size, we'll get some size that we'll get a non-zero size after the shift
    //   2) we'll always get back an odd number of items, which is good because we always have an odd number of TreeNodeChilden
    EBM_ASSERT(0 == m_cThreadByteBufferCapacity2 % cByteBoundaries);
    m_cThreadByteBufferCapacity2 = cByteBoundaries + (m_cThreadByteBufferCapacity2 << 1);
-   LOG_N(TraceLevelInfo, "Growing CachedBoostingThreadResources::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
+   LOG_N(TraceLevelInfo, "Growing ThreadStateBoosting::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
 
    // our tree objects have internal pointers, so we're going to dispose of our work anyways
    // We can't use realloc since there is no way to check if the array was re-allocated or not without 

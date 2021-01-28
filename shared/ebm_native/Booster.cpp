@@ -128,7 +128,7 @@ void Booster::Free(Booster * const pBooster) {
       pBooster->m_trainingSet.Destruct();
       pBooster->m_validationSet.Destruct();
 
-      CachedBoostingThreadResources::Free(pBooster->m_pCachedThreadResources);
+      ThreadStateBoosting::Free(pBooster->m_pCachedThreadResources);
 
       SamplingSet::FreeSamplingSets(pBooster->m_cSamplingSets, pBooster->m_apSamplingSets);
 
@@ -440,7 +440,7 @@ Booster * Booster::Allocate(
    }
    LOG_0(TraceLevelInfo, "Booster::Initialize finished feature group processing");
 
-   pBooster->m_pCachedThreadResources = CachedBoostingThreadResources::Allocate(
+   pBooster->m_pCachedThreadResources = ThreadStateBoosting::Allocate(
       runtimeLearningTypeOrCountTargetClasses,
       cBytesArrayEquivalentSplitMax
    );
