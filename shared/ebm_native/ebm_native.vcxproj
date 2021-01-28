@@ -290,14 +290,14 @@ EXIT /B 0
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />
-    <ClInclude Include="CachedThreadResourcesInteraction.h" />
+    <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />
     <ClInclude Include="inc\ebm_native.h" />
     <ClInclude Include="FeatureAtomic.h" />
     <ClInclude Include="FeatureGroup.h" />
     <ClInclude Include="HistogramBucket.h" />
-    <ClInclude Include="CachedThreadResourcesBoosting.h" />
+    <ClInclude Include="ThreadStateBoosting.h" />
     <ClInclude Include="DataSetInteraction.h" />
     <ClInclude Include="DataSetBoosting.h" />
     <ClInclude Include="EbmInternal.h" />
@@ -321,8 +321,8 @@ EXIT /B 0
     <ClCompile Include="BinningQuantile.cpp" />
     <ClCompile Include="BinningUniform.cpp" />
     <ClCompile Include="BinningWinsorized.cpp" />
-    <ClCompile Include="CachedThreadResourcesBoosting.cpp" />
-    <ClCompile Include="CachedThreadResourcesInteraction.cpp" />
+    <ClCompile Include="ThreadStateBoosting.cpp" />
+    <ClCompile Include="ThreadStateInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
     <ClCompile Include="CutRandom.cpp" />
     <ClCompile Include="DebugEbm.cpp" />
