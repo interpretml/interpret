@@ -46,11 +46,6 @@ class Booster final {
 
    FloatEbmType m_bestModelMetric;
 
-   // m_pSmallChangeToModelOverwriteSingleSamplingSet, m_pSmallChangeToModelAccumulatedFromSamplingSets and m_aEquivalentSplits should eventually move into 
-   // the per-chunk class and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
-   SegmentedTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
-   SegmentedTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
-
    ThreadStateBoosting * m_pThreadStateBoosting;
 
    RandomStream m_randomStream;
@@ -89,9 +84,6 @@ public:
       m_apBestModel = nullptr;
 
       m_bestModelMetric = FloatEbmType { 0 };
-
-      m_pSmallChangeToModelOverwriteSingleSamplingSet = nullptr;
-      m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
 
       m_pThreadStateBoosting = nullptr;
    }
@@ -138,14 +130,6 @@ public:
 
    INLINE_ALWAYS void SetBestModelMetric(const FloatEbmType bestModelMetric) {
       m_bestModelMetric = bestModelMetric;
-   }
-
-   INLINE_ALWAYS SegmentedTensor * GetSmallChangeToModelOverwriteSingleSamplingSet() {
-      return m_pSmallChangeToModelOverwriteSingleSamplingSet;
-   }
-
-   INLINE_ALWAYS SegmentedTensor * GetSmallChangeToModelAccumulatedFromSamplingSets() {
-      return m_pSmallChangeToModelAccumulatedFromSamplingSets;
    }
 
    INLINE_ALWAYS ThreadStateBoosting * GetThreadStateBoosting() const {

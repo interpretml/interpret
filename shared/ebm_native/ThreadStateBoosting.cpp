@@ -10,6 +10,8 @@
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
+#include "SegmentedTensor.h"
+
 #include "HistogramTargetEntry.h"
 
 #include "ThreadStateBoosting.h"
@@ -18,6 +20,8 @@ void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting)
    LOG_0(TraceLevelInfo, "Entered ThreadStateBoosting::Free");
 
    if(nullptr != pThreadStateBoosting) {
+      SegmentedTensor::Free(pThreadStateBoosting->m_pSmallChangeToModelAccumulatedFromSamplingSets);
+      SegmentedTensor::Free(pThreadStateBoosting->m_pSmallChangeToModelOverwriteSingleSamplingSet);
       free(pThreadStateBoosting->m_aThreadByteBuffer1);
       free(pThreadStateBoosting->m_aThreadByteBuffer2);
       free(pThreadStateBoosting->m_aSumHistogramBucketVectorEntry);
@@ -44,23 +48,33 @@ ThreadStateBoosting * ThreadStateBoosting::Allocate(
       const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
          sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>);
 
-      HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry =
-         EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
-      if(LIKELY(nullptr != aSumHistogramBucketVectorEntry)) {
-         pNew->m_aSumHistogramBucketVectorEntry = aSumHistogramBucketVectorEntry;
-         FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
-         if(LIKELY(nullptr != aTempFloatVector)) {
-            pNew->m_aTempFloatVector = aTempFloatVector;
-            if(0 != cBytesArrayEquivalentSplitMax) {
-               void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
-               if(UNLIKELY(nullptr == aEquivalentSplits)) {
-                  goto exit_error;
-               }
-               pNew->m_aEquivalentSplits = aEquivalentSplits;
-            }
+      SegmentedTensor * const pSmallChangeToModelAccumulatedFromSamplingSets =
+         SegmentedTensor::Allocate(k_cDimensionsMax, cVectorLength);
+      if(LIKELY(nullptr != pSmallChangeToModelAccumulatedFromSamplingSets)) {
+         pNew->m_pSmallChangeToModelAccumulatedFromSamplingSets = pSmallChangeToModelAccumulatedFromSamplingSets;
+         SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
+            SegmentedTensor::Allocate(k_cDimensionsMax, cVectorLength);
+         if(LIKELY(nullptr != pSmallChangeToModelOverwriteSingleSamplingSet)) {
+            pNew->m_pSmallChangeToModelOverwriteSingleSamplingSet = pSmallChangeToModelOverwriteSingleSamplingSet;
+            HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry =
+               EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
+            if(LIKELY(nullptr != aSumHistogramBucketVectorEntry)) {
+               pNew->m_aSumHistogramBucketVectorEntry = aSumHistogramBucketVectorEntry;
+               FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
+               if(LIKELY(nullptr != aTempFloatVector)) {
+                  pNew->m_aTempFloatVector = aTempFloatVector;
+                  if(0 != cBytesArrayEquivalentSplitMax) {
+                     void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
+                     if(UNLIKELY(nullptr == aEquivalentSplits)) {
+                        goto exit_error;
+                     }
+                     pNew->m_aEquivalentSplits = aEquivalentSplits;
+                  }
 
-            LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Allocate");
-            return pNew;
+                  LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Allocate");
+                  return pNew;
+               }
+            }
          }
       }
    exit_error:;

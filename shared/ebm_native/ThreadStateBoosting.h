@@ -16,6 +16,10 @@
 struct HistogramBucketBase;
 
 class ThreadStateBoosting final {
+
+   SegmentedTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   SegmentedTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
+
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
    HistogramBucketBase * m_aThreadByteBuffer1;
@@ -37,6 +41,8 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS void InitializeZero() {
+      m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
+      m_pSmallChangeToModelOverwriteSingleSamplingSet = nullptr;
       m_aThreadByteBuffer1 = nullptr;
       m_cThreadByteBufferCapacity1 = 0;
       m_aThreadByteBuffer2 = nullptr;
@@ -51,6 +57,15 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cBytesArrayEquivalentSplitMax
    );
+
+   INLINE_ALWAYS SegmentedTensor * GetSmallChangeToModelAccumulatedFromSamplingSets() {
+      return m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   }
+
+   INLINE_ALWAYS SegmentedTensor * GetSmallChangeToModelOverwriteSingleSamplingSet() {
+      return m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   }
+
    HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired);
    bool GrowThreadByteBuffer2(const size_t cByteBoundaries);
 

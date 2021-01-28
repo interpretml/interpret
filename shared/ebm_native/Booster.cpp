@@ -138,8 +138,6 @@ void Booster::Free(Booster * const pBooster) {
 
       DeleteSegmentedTensors(pBooster->m_cFeatureGroups, pBooster->m_apCurrentModel);
       DeleteSegmentedTensors(pBooster->m_cFeatureGroups, pBooster->m_apBestModel);
-      SegmentedTensor::Free(pBooster->m_pSmallChangeToModelOverwriteSingleSamplingSet);
-      SegmentedTensor::Free(pBooster->m_pSmallChangeToModelAccumulatedFromSamplingSets);
 
       free(pBooster);
    }
@@ -188,22 +186,6 @@ Booster * Booster::Allocate(
    pBooster->InitializeZero();
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-
-   pBooster->m_pSmallChangeToModelOverwriteSingleSamplingSet = 
-      SegmentedTensor::Allocate(k_cDimensionsMax, cVectorLength);
-   if(UNLIKELY(nullptr == pBooster->m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
-      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet");
-      Booster::Free(pBooster);
-      return nullptr;
-   }
-
-   pBooster->m_pSmallChangeToModelAccumulatedFromSamplingSets = 
-      SegmentedTensor::Allocate(k_cDimensionsMax, cVectorLength);
-   if(UNLIKELY(nullptr == pBooster->m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
-      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets");
-      Booster::Free(pBooster);
-      return nullptr;
-   }
 
    LOG_0(TraceLevelInfo, "Booster::Initialize starting feature processing");
    if(0 != cFeatures) {

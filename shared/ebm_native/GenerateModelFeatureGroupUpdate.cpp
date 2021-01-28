@@ -729,15 +729,15 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
    const size_t cDimensions = pFeatureGroup->GetCountFeatures();
 
-   pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
-   pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
+   pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
+   pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
 
    // if pBooster->m_apSamplingSets is nullptr, then we should have zero training samples
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
    FloatEbmType totalGain = FloatEbmType { 0 };
    if(nullptr != pBooster->GetSamplingSets()) {
-      pBooster->GetSmallChangeToModelOverwriteSingleSamplingSet()->SetCountDimensions(cDimensions);
+      pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet()->SetCountDimensions(cDimensions);
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain;
@@ -751,7 +751,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                pBooster,
                pBooster->GetSamplingSets()[iSamplingSet],
                options,
-               pBooster->GetSmallChangeToModelOverwriteSingleSamplingSet()
+               pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet()
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -772,7 +772,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                pBooster->GetSamplingSets()[iSamplingSet],
                options,
                aLeavesMax, 
-               pBooster->GetSmallChangeToModelOverwriteSingleSamplingSet(),
+               pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -788,7 +788,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                pBooster->GetSamplingSets()[iSamplingSet],
                cSamplesRequiredForChildSplitMin,
                *aLeavesMax,
-               pBooster->GetSmallChangeToModelOverwriteSingleSamplingSet(),
+               pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -802,7 +802,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                pFeatureGroup,
                pBooster->GetSamplingSets()[iSamplingSet],
                cSamplesRequiredForChildSplitMin,
-               pBooster->GetSmallChangeToModelOverwriteSingleSamplingSet(),
+               pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -817,7 +817,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
          totalGain += gain;
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
          // others are working, so there should be no blocking and our final result won't require adding by the main thread
-         if(pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->Add(*pBooster->GetSmallChangeToModelOverwriteSingleSamplingSet())) {
+         if(pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->Add(*pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet())) {
             if(LIKELY(nullptr != pGainReturn)) {
                *pGainReturn = FloatEbmType { 0 };
             }
@@ -865,12 +865,12 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
 
          const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
          if(bDividing) {
-            bBad = pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
+            bBad = pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
          } else {
-            bBad = pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+            bBad = pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
          }
       } else {
-         bBad = pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+         bBad = pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
       }
 
       // handle the case where totalGain is either +infinity or -infinity (very rare, see above), or NaN
@@ -881,8 +881,8 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
          UNLIKELY(totalGain <= std::numeric_limits<FloatEbmType>::lowest()) ||
          UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= totalGain)
       )) {
-         pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
-         pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
+         pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
+         pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
          // declare there is no gain, so that our caller will think there is no benefit in splitting us, which there isn't since we're zeroed.
          totalGain = FloatEbmType { 0 };
       } else if(UNLIKELY(totalGain < FloatEbmType { 0 })) {
@@ -901,7 +901,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
          acDivisionIntegersEnd[iDimension] = pFeatureGroupEntry[iDimension].m_pFeature->GetCountBins();
          ++iDimension;
       } while(iDimension < cDimensions);
-      if(pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
+      if(pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
          if(LIKELY(nullptr != pGainReturn)) {
             *pGainReturn = FloatEbmType { 0 };
          }
@@ -914,7 +914,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    }
 
    LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureGroupUpdatePerTargetClasses");
-   return pBooster->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+   return pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
 }
 
 // we made this a global because if we had put this variable inside the Booster object, then we would need to dereference that before getting 
