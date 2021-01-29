@@ -56,7 +56,6 @@ jobs:
 
 - job: 'Test_ebm_native'
   dependsOn: 'Build_ebm_native'
-  condition: or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master'))
   strategy:
     matrix:
       Linux:
