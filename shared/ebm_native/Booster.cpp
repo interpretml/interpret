@@ -27,12 +27,11 @@
 
 #include "Booster.h"
 
-extern void InitializeResiduals(
+extern bool InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
-   FloatEbmType * const aTempFloatVector,
    FloatEbmType * pResidualError
 );
 
@@ -127,8 +126,6 @@ void Booster::Free(Booster * const pBooster) {
    if(nullptr != pBooster) {
       pBooster->m_trainingSet.Destruct();
       pBooster->m_validationSet.Destruct();
-
-      ThreadStateBoosting::Free(pBooster->m_pThreadStateBoosting);
 
       SamplingSet::FreeSamplingSets(pBooster->m_cSamplingSets, pBooster->m_apSamplingSets);
 
@@ -422,15 +419,7 @@ Booster * Booster::Allocate(
    }
    LOG_0(TraceLevelInfo, "Booster::Initialize finished feature group processing");
 
-   pBooster->m_pThreadStateBoosting = ThreadStateBoosting::Allocate(
-      runtimeLearningTypeOrCountTargetClasses,
-      cBytesArrayEquivalentSplitMax
-   );
-   if(UNLIKELY(nullptr == pBooster->m_pThreadStateBoosting)) {
-      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pBooster->m_pThreadStateBoosting");
-      Booster::Free(pBooster);
-      return nullptr;
-   }
+   pBooster->m_cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplitMax;
 
    if(pBooster->m_trainingSet.Initialize(
       true, 
@@ -481,36 +470,45 @@ Booster * Booster::Allocate(
 
    if(bClassification) {
       if(0 != cTrainingSamples) {
-         InitializeResiduals(
+         if(InitializeResiduals(
             runtimeLearningTypeOrCountTargetClasses,
             cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
-            pBooster->GetThreadStateBoosting()->GetTempFloatVector(),
             pBooster->m_trainingSet.GetResidualPointer()
-         );
+         )) {
+            // error already logged
+            Booster::Free(pBooster);
+            return nullptr;
+         }
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       if(0 != cTrainingSamples) {
+#ifndef NDEBUG
+         const bool isFailed = 
+#endif // NDEBUG
          InitializeResiduals(
             k_regression,
             cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
-            nullptr,
             pBooster->m_trainingSet.GetResidualPointer()
          );
+         EBM_ASSERT(!isFailed);
       }
       if(0 != cValidationSamples) {
+#ifndef NDEBUG
+         const bool isFailed =
+#endif // NDEBUG
          InitializeResiduals(
             k_regression,
             cValidationSamples,
             aValidationTargets,
             aValidationPredictorScores,
-            nullptr,
             pBooster->m_validationSet.GetResidualPointer()
          );
+         EBM_ASSERT(!isFailed);
       }
    }
 
@@ -877,58 +875,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    ));
    LOG_N(TraceLevelInfo, "Exited CreateRegressionBooster %p", static_cast<void *>(boosterHandle));
    return boosterHandle;
-}
-
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
-   BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
-   GenerateUpdateOptionsType options,
-   FloatEbmType learningRate,
-   IntEbmType countSamplesRequiredForChildSplitMin,
-   const IntEbmType * leavesMax,
-   FloatEbmType * validationMetricOut
-) {
-   Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
-   if(nullptr == pBooster) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep boosterHandle cannot be nullptr");
-      return 1;
-   }
-
-   if(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses())) {
-      // we need to special handle this case because if we call GenerateModelUpdate, we'll get back a nullptr for the model (since there is no model) 
-      // and we'll return 1 from this function.  We'd like to return 0 (success) here, so we handle it ourselves
-      if(pBooster->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
-         // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
-         // length array logits, which means for our representation that we have zero items in the array total.
-         // since we can predit the output with 100% accuracy, our gain will be 0.
-         if(nullptr != validationMetricOut) {
-            *validationMetricOut = FloatEbmType { 0 };
-         }
-         LOG_0(TraceLevelWarning, "WARNING BoostingStep pBooster->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }");
-         return 0;
-      }
-   }
-
-   FloatEbmType gain; // we toss this value, but we still need to get it
-   FloatEbmType * pModelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
-      boosterHandle, 
-      indexFeatureGroup, 
-      options,
-      learningRate,
-      countSamplesRequiredForChildSplitMin, 
-      leavesMax, 
-      &gain
-   );
-   if(nullptr == pModelFeatureGroupUpdateTensor) {
-      // if we get back a nullptr from GenerateModelFeatureGroupUpdate it either means that there's only
-      // 1 class in our classification problem, or it means we encountered an error.  We assume here that
-      // it was an error since the caller can check ahead of time if there was only 1 class before calling us
-      if(nullptr != validationMetricOut) {
-         *validationMetricOut = FloatEbmType { 0 };
-      }
-      return 1;
-   }
-   return ApplyModelFeatureGroupUpdate(boosterHandle, indexFeatureGroup, pModelFeatureGroupUpdateTensor, validationMetricOut);
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(

@@ -18,6 +18,7 @@
 #include "DataSetBoosting.h"
 
 #include "Booster.h"
+#include "ThreadStateBoosting.h"
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
@@ -29,6 +30,7 @@ public:
 
    static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
@@ -36,7 +38,7 @@ public:
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
-      FloatEbmType * const aTempFloatVector = pBooster->GetThreadStateBoosting()->GetTempFloatVector();
+      FloatEbmType * const aTempFloatVector = pThreadStateBoosting->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
          k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
@@ -118,8 +120,11 @@ public:
 
    static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
+      UNUSED(pThreadStateBoosting);
+
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
@@ -152,8 +157,11 @@ public:
 
    static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
+      UNUSED(pThreadStateBoosting);
+
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
@@ -178,6 +186,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
@@ -190,6 +199,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          ApplyModelUpdateTrainingZeroFeatures<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pBooster,
+            pThreadStateBoosting,
             aModelFeatureGroupUpdateTensor
          );
       } else {
@@ -197,6 +207,7 @@ public:
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBooster,
+            pThreadStateBoosting,
             aModelFeatureGroupUpdateTensor
          );
       }
@@ -211,6 +222,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
@@ -220,6 +232,7 @@ public:
 
       ApplyModelUpdateTrainingZeroFeatures<k_dynamicClassification>::Func(
          pBooster,
+         pThreadStateBoosting,
          aModelFeatureGroupUpdateTensor
       );
    }
@@ -233,6 +246,7 @@ public:
 
    static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
@@ -241,7 +255,7 @@ public:
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
-      FloatEbmType * const aTempFloatVector = pBooster->GetThreadStateBoosting()->GetTempFloatVector();
+      FloatEbmType * const aTempFloatVector = pThreadStateBoosting->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
          k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
@@ -364,9 +378,12 @@ public:
 
    static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
+      UNUSED(pThreadStateBoosting);
+
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
 
@@ -447,9 +464,12 @@ public:
 
    static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
+      UNUSED(pThreadStateBoosting);
+
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
 
@@ -522,6 +542,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
@@ -535,6 +556,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
             pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
             aModelFeatureGroupUpdateTensor
          );
@@ -543,6 +565,7 @@ public:
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
             aModelFeatureGroupUpdateTensor
          );
@@ -558,6 +581,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
@@ -568,6 +592,7 @@ public:
 
       ApplyModelUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
          aModelFeatureGroupUpdateTensor
       );
@@ -582,6 +607,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
@@ -593,6 +619,7 @@ public:
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
          ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
             pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
             aModelFeatureGroupUpdateTensor
          );
@@ -602,6 +629,7 @@ public:
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::Func(
             pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
             aModelFeatureGroupUpdateTensor
          );
@@ -617,6 +645,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
@@ -624,6 +653,7 @@ public:
       EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
       ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
          aModelFeatureGroupUpdateTensor
       );
@@ -638,6 +668,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
@@ -654,6 +685,7 @@ public:
             k_cItemsPerBitPackedDataUnitMax
          >::Func(
             pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
             aModelFeatureGroupUpdateTensor
          );
@@ -662,6 +694,7 @@ public:
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
             aModelFeatureGroupUpdateTensor
          );
@@ -677,6 +710,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
@@ -690,6 +724,7 @@ public:
          k_cItemsPerBitPackedDataUnitMax
       >::Func(
          pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
          aModelFeatureGroupUpdateTensor
       );
@@ -698,6 +733,7 @@ public:
 
 extern void ApplyModelUpdateTraining(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const FloatEbmType * const aModelFeatureGroupUpdateTensor
 ) {
@@ -709,12 +745,14 @@ extern void ApplyModelUpdateTraining(
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          ApplyModelUpdateTrainingZeroFeaturesTarget<2>::Func(
             pBooster,
+            pThreadStateBoosting,
             aModelFeatureGroupUpdateTensor
          );
       } else {
          EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
          ApplyModelUpdateTrainingZeroFeatures<k_regression>::Func(
             pBooster,
+            pThreadStateBoosting,
             aModelFeatureGroupUpdateTensor
          );
       }
@@ -735,6 +773,7 @@ extern void ApplyModelUpdateTraining(
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             ApplyModelUpdateTrainingSIMDTarget<2>::Func(
                pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
                aModelFeatureGroupUpdateTensor
             );
@@ -745,6 +784,7 @@ extern void ApplyModelUpdateTraining(
                k_cItemsPerBitPackedDataUnitMax
             >::Func(
                pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
                aModelFeatureGroupUpdateTensor
             );
@@ -759,6 +799,7 @@ extern void ApplyModelUpdateTraining(
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             ApplyModelUpdateTrainingNormalTarget<2>::Func(
                pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
                aModelFeatureGroupUpdateTensor
             );
@@ -766,6 +807,7 @@ extern void ApplyModelUpdateTraining(
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             ApplyModelUpdateTrainingInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
                pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
                aModelFeatureGroupUpdateTensor
             );

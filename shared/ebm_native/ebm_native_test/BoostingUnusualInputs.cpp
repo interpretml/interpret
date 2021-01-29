@@ -34,16 +34,26 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       0,
       nullptr
    );
-   const IntEbmType ret = BoostingStep(
+   const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
+   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
       boosterHandle,
-      0,
+      threadStateBoostingHandle,
+      IntEbmType { 0 },
       GenerateUpdateOptions_Default,
       k_learningRateDefault,
       k_countSamplesRequiredForChildSplitMinDefault,
       &k_leavesMaxDefault[0],
       nullptr
    );
+   const IntEbmType ret = ApplyModelFeatureGroupUpdate(
+      boosterHandle,
+      threadStateBoostingHandle,
+      IntEbmType { 0 },
+      modelFeatureGroupUpdateTensor,
+      nullptr
+   );
    CHECK(0 == ret);
+   FreeThreadStateBoosting(threadStateBoostingHandle);
    FreeBooster(boosterHandle);
 }
 
@@ -73,16 +83,26 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       0,
       nullptr
    );
-   const IntEbmType ret = BoostingStep(
+   const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
+   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
       boosterHandle,
-      0,
+      threadStateBoostingHandle,
+      IntEbmType { 0 },
       GenerateUpdateOptions_Default,
       k_learningRateDefault,
       k_countSamplesRequiredForChildSplitMinDefault,
       &k_leavesMaxDefault[0],
       nullptr
    );
+   const IntEbmType ret = ApplyModelFeatureGroupUpdate(
+      boosterHandle,
+      threadStateBoostingHandle,
+      IntEbmType { 0 },
+      modelFeatureGroupUpdateTensor,
+      nullptr
+   );
    CHECK(0 == ret);
+   FreeThreadStateBoosting(threadStateBoostingHandle);
    FreeBooster(boosterHandle);
 }
 
@@ -112,16 +132,26 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       0,
       nullptr
    );
-   const IntEbmType ret = BoostingStep(
+   const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
+   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
       boosterHandle,
-      0,
+      threadStateBoostingHandle,
+      IntEbmType { 0 },
       GenerateUpdateOptions_Default,
       k_learningRateDefault,
       k_countSamplesRequiredForChildSplitMinDefault,
       &k_leavesMaxDefault[0],
       nullptr
    );
+   const IntEbmType ret = ApplyModelFeatureGroupUpdate(
+      boosterHandle,
+      threadStateBoostingHandle,
+      IntEbmType { 0 },
+      modelFeatureGroupUpdateTensor,
+      nullptr
+   );
    CHECK(0 == ret);
+   FreeThreadStateBoosting(threadStateBoostingHandle);
    FreeBooster(boosterHandle);
 }
 
@@ -572,39 +602,114 @@ TEST_CASE("features with 0 states, interaction") {
 
 TEST_CASE("classification with 0 possible target states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
-   TestApi test = TestApi(0);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingSamples(std::vector<ClassificationSample> {});
-   test.AddValidationSamples(std::vector<ClassificationSample> {});
-   test.InitializeBoosting();
 
-   CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
-   CHECK(nullptr == test.GetCurrentModelFeatureGroupRaw(0));
+   FloatEbmType gain = 9.99;
 
-   FloatEbmType validationMetric = test.Boost(0);
-   CHECK(0 == validationMetric);
+   // TODO: ideally we'd have at least one feature here (but no data since any data is illegal)
 
-   CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
-   CHECK(nullptr == test.GetCurrentModelFeatureGroupRaw(0));
+   IntEbmType featureGroupsFeatureCount[1];
+   featureGroupsFeatureCount[0] = 0;
+
+   const BoosterHandle boosterHandle = CreateClassificationBooster(
+      k_randomSeed,
+      0,
+      0,
+      nullptr,
+      nullptr,
+      1,
+      featureGroupsFeatureCount,
+      nullptr,
+      0,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
+      0,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
+      0,
+      nullptr
+   );
+
+   CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));
+   CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
+
+   const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
+   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
+      boosterHandle,
+      threadStateBoostingHandle,
+      IntEbmType { 0 },
+      GenerateUpdateOptions_Default,
+      k_learningRateDefault,
+      k_countSamplesRequiredForChildSplitMinDefault,
+      &k_leavesMaxDefault[0],
+      &gain
+   );
+   CHECK(nullptr == modelFeatureGroupUpdateTensor);
+   CHECK(0 == gain);
+   FreeThreadStateBoosting(threadStateBoostingHandle);
+
+   CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));
+   CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
+
+   FreeBooster(boosterHandle);
 }
 
 TEST_CASE("classification with 1 possible target, boosting") {
-   TestApi test = TestApi(1);
-   test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingSamples({ ClassificationSample(0, { 1 }) });
-   test.AddValidationSamples({ ClassificationSample(0, { 1 }) });
-   test.InitializeBoosting();
+   // TODO: add some data here that we can boost on (with 1 possible state so not really useful)
 
-   CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
-   CHECK(nullptr == test.GetCurrentModelFeatureGroupRaw(0));
+   FloatEbmType gain = 9.99;
 
-   FloatEbmType validationMetric = test.Boost(0);
-   CHECK(0 == validationMetric);
+   IntEbmType featureGroupsFeatureCount[1];
+   featureGroupsFeatureCount[0] = 0;
 
-   CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
-   CHECK(nullptr == test.GetCurrentModelFeatureGroupRaw(0));
+   const BoosterHandle boosterHandle = CreateClassificationBooster(
+      k_randomSeed,
+      1,
+      0,
+      nullptr,
+      nullptr,
+      1,
+      featureGroupsFeatureCount,
+      nullptr,
+      0,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
+      0,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
+      0,
+      nullptr
+   );
+
+   CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));
+   CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
+
+   const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
+   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
+      boosterHandle,
+      threadStateBoostingHandle,
+      IntEbmType { 0 },
+      GenerateUpdateOptions_Default,
+      k_learningRateDefault,
+      k_countSamplesRequiredForChildSplitMinDefault,
+      &k_leavesMaxDefault[0],
+      &gain
+   );
+   CHECK(nullptr == modelFeatureGroupUpdateTensor);
+   CHECK(0 == gain);
+   FreeThreadStateBoosting(threadStateBoostingHandle);
+
+   CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));
+   CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
+
+   FreeBooster(boosterHandle);
 }
 
 TEST_CASE("features with 1 state in various positions, boosting") {

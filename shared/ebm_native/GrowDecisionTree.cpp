@@ -78,6 +78,7 @@ static void Flatten(
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -90,9 +91,10 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    LOG_N(
       TraceLevelVerbose,
-      "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pBooster=%p, aHistogramBucket=%p, pTreeNode=%p, "
+      "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pBooster=%p, pThreadStateBoosting=%p, aHistogramBucket=%p, pTreeNode=%p, "
       "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cSamplesRequiredForChildSplitMin=%zu",
       static_cast<const void *>(pBooster),
+      static_cast<const void *>(pThreadStateBoosting),
       static_cast<const void *>(aHistogramBucket),
       static_cast<void *>(pTreeNode),
       static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur),
@@ -106,8 +108,6 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       runtimeLearningTypeOrCountTargetClasses
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-
-   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
       pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray()->GetHistogramBucketVectorEntry<bClassification>();
@@ -404,6 +404,7 @@ public:
 
    static bool Func(
       Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const size_t cHistogramBuckets,
       const HistogramBucketBase * const aHistogramBucketBase,
       const size_t cSamplesTotal,
@@ -448,8 +449,6 @@ public:
 
    retry_with_bigger_tree_node_children_array:
 
-      ThreadStateBoosting * pThreadStateBoosting = pBooster->GetThreadStateBoosting();
-
       size_t cBytesBuffer2 = pThreadStateBoosting->GetThreadByteBuffer2Size();
       // we need 1 TreeNode for the root, 1 for the left child of the root and 1 for the right child of the root
       const size_t cBytesInitialNeededAllocation = 3 * cBytesPerTreeNode;
@@ -492,6 +491,7 @@ public:
       size_t cLeaves;
       if(ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
          pBooster,
+         pThreadStateBoosting,
          aHistogramBucket,
          pRootTreeNode,
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
@@ -672,6 +672,7 @@ public:
                // because splitting sets splitGain to a non-illegalGain value
                if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
                   pBooster,
+                  pThreadStateBoosting,
                   aHistogramBucket,
                   pLeftChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -719,6 +720,7 @@ public:
                // because splitting sets splitGain to a non-NaN value
                if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
                   pBooster,
+                  pThreadStateBoosting,
                   aHistogramBucket,
                   pRightChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -797,6 +799,7 @@ public:
 
 extern bool GrowDecisionTree(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const size_t cHistogramBuckets,
    const HistogramBucketBase * const aHistogramBucketBase,
    const size_t cSamplesTotal,
@@ -818,6 +821,7 @@ extern bool GrowDecisionTree(
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
          bRet = GrowDecisionTreeInternal<2>::Func(
             pBooster,
+            pThreadStateBoosting,
             cHistogramBuckets,
             aHistogramBucketBase,
             cSamplesTotal,
@@ -833,6 +837,7 @@ extern bool GrowDecisionTree(
       } else {
          bRet = GrowDecisionTreeInternal<k_dynamicClassification>::Func(
             pBooster,
+            pThreadStateBoosting,
             cHistogramBuckets,
             aHistogramBucketBase,
             cSamplesTotal,
@@ -850,6 +855,7 @@ extern bool GrowDecisionTree(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       bRet = GrowDecisionTreeInternal<k_regression>::Func(
          pBooster,
+         pThreadStateBoosting,
          cHistogramBuckets,
          aHistogramBucketBase,
          cSamplesTotal,

@@ -13,12 +13,11 @@
 #include "FeatureAtomic.h"
 #include "DataSetInteraction.h"
 
-extern void InitializeResiduals(
+extern bool InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
-   FloatEbmType * const aTempFloatVector,
    FloatEbmType * pResidualError
 );
 
@@ -39,38 +38,31 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructResidualErrors(
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(1 <= cVectorLength);
 
-   if(IsMultiplyError(cSamples, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(cSamples, cVectorLength)");
+   if(UNLIKELY(IsMultiplyError(cSamples, cVectorLength))) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructResidualErrors IsMultiplyError(cSamples, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cSamples * cVectorLength;
    FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType>(cElements);
-
-   FloatEbmType * aTempFloatVector = nullptr;
-   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      if(!IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
-         if(UNLIKELY(nullptr == aTempFloatVector)) {
-            LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors nullptr == aTempFloatVector");
-            free(aResidualErrors);
-            return nullptr;
-         }
-      }
+   if(UNLIKELY(nullptr == aResidualErrors)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructResidualErrors nullptr == aResidualErrors");
+      return nullptr;
    }
-   if(0 != cSamples) {
-      InitializeResiduals(
-         runtimeLearningTypeOrCountTargetClasses,
-         cSamples,
-         aTargetData,
-         aPredictorScores,
-         aTempFloatVector,
-         aResidualErrors
-      );
-   }
-   free(aTempFloatVector);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructResidualErrors");
+   if(UNLIKELY(InitializeResiduals(
+      runtimeLearningTypeOrCountTargetClasses,
+      cSamples,
+      aTargetData,
+      aPredictorScores,
+      aResidualErrors
+   ))) {
+      // error already logged
+      free(aResidualErrors);
+      return nullptr;
+   }
+
+   LOG_0(TraceLevelInfo, "Exited ConstructResidualErrors");
    return aResidualErrors;
 }
 

@@ -16,9 +16,11 @@
 #include "FeatureGroup.h"
 
 #include "Booster.h"
+#include "ThreadStateBoosting.h"
 
 extern void ApplyModelUpdateTraining(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const FloatEbmType * const aModelFeatureGroupUpdateTensor
 );
@@ -34,6 +36,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
 // a*PredictorScores = predictedValue for regression
 static IntEbmType ApplyModelFeatureGroupUpdateInternal(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const size_t iFeatureGroup,
    const FloatEbmType * const aModelFeatureGroupUpdateTensor,
    FloatEbmType * const pValidationMetricReturn
@@ -68,6 +71,7 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
    if(0 != pBooster->GetTrainingSet()->GetCountSamples()) {
       ApplyModelUpdateTraining(
          pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
          aModelFeatureGroupUpdateTensor
       );
@@ -135,6 +139,7 @@ static int g_cLogApplyModelFeatureGroupUpdateParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
    BoosterHandle boosterHandle,
+   ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
    const FloatEbmType * modelFeatureGroupUpdateTensor,
    FloatEbmType * validationMetricOut
@@ -143,9 +148,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       &g_cLogApplyModelFeatureGroupUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "ApplyModelFeatureGroupUpdate parameters: boosterHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf
+      "ApplyModelFeatureGroupUpdate parameters: boosterHandle=%p, threadStateBoostingHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf
       ", modelFeatureGroupUpdateTensor=%p, validationMetricOut=%p",
       static_cast<void *>(boosterHandle),
+      static_cast<void *>(threadStateBoostingHandle),
       indexFeatureGroup,
       static_cast<const void *>(modelFeatureGroupUpdateTensor),
       static_cast<void *>(validationMetricOut)
@@ -159,6 +165,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate boosterHandle cannot be nullptr");
       return 1;
    }
+   ThreadStateBoosting * pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
+   if(nullptr == pThreadStateBoosting) {
+      if(LIKELY(nullptr != validationMetricOut)) {
+         *validationMetricOut = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate threadStateBoosting cannot be nullptr");
+      return 1;
+   }
+
    if(indexFeatureGroup < 0) {
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
@@ -225,6 +240,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
 
    IntEbmType ret = ApplyModelFeatureGroupUpdateInternal(
       pBooster,
+      pThreadStateBoosting,
       iFeatureGroup,
       modelFeatureGroupUpdateTensor,
       validationMetricOut

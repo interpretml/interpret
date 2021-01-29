@@ -83,12 +83,19 @@ extern "C" {
 #endif // compiler type
 
 typedef struct _BoosterHandle {
-   // this struct exists to enforce that our caller doesn't mix BoosterHandle and InteractionDetectorHandle types.
+   // this struct exists to enforce that our caller doesn't mix handle types.
    // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
 } * BoosterHandle;
+
+typedef struct _ThreadStateBoostingHandle {
+   // this struct exists to enforce that our caller doesn't mix handle types.
+   // In C/C++ languages the caller will get an error if they try to mix these pointer types.
+   char unused;
+} *ThreadStateBoostingHandle;
+
 typedef struct _InteractionDetectorHandle {
-   // this struct exists to enforce that our caller doesn't mix BoosterHandle and InteractionDetectorHandle types.
+   // this struct exists to enforce that our caller doesn't mix handle types.
    // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
 } * InteractionDetectorHandle;
@@ -439,7 +446,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
    BoosterHandle boosterHandle, 
-   IntEbmType indexFeatureGroup, 
+   ThreadStateBoostingHandle threadStateBoostingHandle,
+   IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options, 
    FloatEbmType learningRate, 
    IntEbmType countSamplesRequiredForChildSplitMin, 
@@ -448,19 +456,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
    BoosterHandle boosterHandle, 
-   IntEbmType indexFeatureGroup, 
-   const FloatEbmType * modelFeatureGroupUpdateTensor,
-   FloatEbmType * validationMetricOut
-);
-// TODO: we can remove BoostingStep if we change R so that R passes us in a model_feature_group vector
-// and we fill that vector with the results from GenerateModelFeatureGroupUpdate
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
-   BoosterHandle boosterHandle,
+   ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
-   GenerateUpdateOptionsType options,
-   FloatEbmType learningRate,
-   IntEbmType countSamplesRequiredForChildSplitMin,
-   const IntEbmType * leavesMax,
+   const FloatEbmType * modelFeatureGroupUpdateTensor,
    FloatEbmType * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
@@ -473,6 +471,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ThreadStateBoostingHandle EBM_NATIVE_CALLING_CONVENTION CreateThreadStateBoosting(
+   BoosterHandle boosterHandle
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeThreadStateBoosting(
+   ThreadStateBoostingHandle threadStateBoostingHandle
 );
 
 

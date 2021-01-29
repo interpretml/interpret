@@ -15,8 +15,6 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
-// this depends on TreeNode pointers, but doesn't require the full definition of TreeNode
-#include "ThreadStateBoosting.h"
 // feature includes
 #include "FeatureAtomic.h"
 // FeatureGroup.h depends on FeatureInternal.h
@@ -46,7 +44,7 @@ class Booster final {
 
    FloatEbmType m_bestModelMetric;
 
-   ThreadStateBoosting * m_pThreadStateBoosting;
+   size_t m_cBytesArrayEquivalentSplitMax;
 
    RandomStream m_randomStream;
 
@@ -85,11 +83,15 @@ public:
 
       m_bestModelMetric = FloatEbmType { 0 };
 
-      m_pThreadStateBoosting = nullptr;
+      m_cBytesArrayEquivalentSplitMax = size_t { 0 };
    }
 
    INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() const {
       return m_runtimeLearningTypeOrCountTargetClasses;
+   }
+
+   INLINE_ALWAYS size_t GetCountBytesArrayEquivalentSplitMax() const {
+      return m_cBytesArrayEquivalentSplitMax;
    }
 
    INLINE_ALWAYS size_t GetCountFeatureGroups() const {
@@ -130,10 +132,6 @@ public:
 
    INLINE_ALWAYS void SetBestModelMetric(const FloatEbmType bestModelMetric) {
       m_bestModelMetric = bestModelMetric;
-   }
-
-   INLINE_ALWAYS ThreadStateBoosting * GetThreadStateBoosting() const {
-      return m_pThreadStateBoosting;
    }
 
    INLINE_ALWAYS RandomStream * GetRandomStream() {

@@ -480,6 +480,8 @@ class Native:
         self._unsafe.GenerateModelFeatureGroupUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
+            # void * threadStateBoosting
+            ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
             # GenerateUpdateOptionsType options 
@@ -497,6 +499,8 @@ class Native:
 
         self._unsafe.ApplyModelFeatureGroupUpdate.argtypes = [
             # void * boosterHandle
+            ct.c_void_p,
+            # void * threadStateBoosting
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
@@ -528,6 +532,19 @@ class Native:
             ct.c_void_p
         ]
         self._unsafe.FreeBooster.restype = None
+
+
+        self._unsafe.CreateThreadStateBoosting.argtypes = [
+            # void * boosterHandle
+            ct.c_void_p
+        ]
+        self._unsafe.CreateThreadStateBoosting.restype = ct.c_void_p
+
+        self._unsafe.FreeThreadStateBoosting.argtypes = [
+            # void * threadStateBoosting
+            ct.c_void_p
+        ]
+        self._unsafe.FreeThreadStateBoosting.restype = None
 
 
         self._unsafe.CreateClassificationInteractionDetector.argtypes = [
@@ -665,6 +682,7 @@ class NativeEBMBooster:
 
         # first set the one thing that we will close on
         self._booster_handle = None
+        self._thread_state_boosting = None
 
         # check inputs for important inputs or things that would segfault in C
         if not isinstance(features_categorical, np.ndarray):  # pragma: no cover
@@ -832,11 +850,17 @@ class NativeEBMBooster:
         else:  # pragma: no cover
             raise AttributeError("Unrecognized model_type")
 
+        self._thread_state_boosting = self._native._unsafe.CreateThreadStateBoosting(self._booster_handle)
+        if not self._thread_state_boosting:  # pragma: no cover
+            self._native._unsafe.FreeBooster(self._booster_handle)
+            raise MemoryError("Out of memory in CreateThreadStateBoosting")
+
         log.info("Allocation boosting end")
 
     def close(self):
         """ Deallocates C objects used to boost EBM. """
         log.info("Deallocation boosting start")
+        self._native._unsafe.FreeThreadStateBoosting(self._thread_state_boosting)
         self._native._unsafe.FreeBooster(self._booster_handle)
         log.info("Deallocation boosting end")
 
@@ -880,6 +904,7 @@ class NativeEBMBooster:
 
             model_update_tensor_pointer = self._native._unsafe.GenerateModelFeatureGroupUpdate(
                 self._booster_handle,
+                self._thread_state_boosting, 
                 feature_group_index,
                 generate_update_options,
                 learning_rate,
@@ -900,6 +925,7 @@ class NativeEBMBooster:
 
             return_code = self._native._unsafe.ApplyModelFeatureGroupUpdate(
                 self._booster_handle,
+                self._thread_state_boosting, 
                 feature_group_index,
                 model_update_tensor,
                 ct.byref(metric_output),

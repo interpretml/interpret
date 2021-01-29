@@ -7,10 +7,11 @@
       CreateRegressionBooster;
       GenerateModelFeatureGroupUpdate;
       ApplyModelFeatureGroupUpdate;
-      BoostingStep;
       GetBestModelFeatureGroup;
       GetCurrentModelFeatureGroup;
       FreeBooster;
+      CreateThreadStateBoosting;
+      FreeThreadStateBoosting;
       CreateClassificationInteractionDetector;
       CreateRegressionInteractionDetector;
       CalculateInteractionScore;

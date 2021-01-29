@@ -57,7 +57,8 @@ extern void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, con
 #endif // _MSC_VER
 
 void EBM_NATIVE_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
-   strlen(message); // test that the string memory is accessible
+   const size_t cChars = strlen(message); // test that the string memory is accessible
+   UNUSED(cChars);
    if(traceLevel <= TraceLevelOff) {
       // don't display log messages during tests, but having this code here makes it easy to turn on when needed
       printf("\n%s: %s\n", GetTraceLevelString(traceLevel), message);
@@ -270,7 +271,7 @@ void TestApi::AddFeatures(const std::vector<FeatureTest> features) {
       exit(1);
    }
 
-   for(const FeatureTest oneFeature : features) {
+   for(const FeatureTest & oneFeature : features) {
       m_featuresCategorical.push_back(oneFeature.m_bCategorical ? EBM_TRUE : EBM_FALSE);
       m_featuresBinCount.push_back(oneFeature.m_countBins);
    }
@@ -727,15 +728,30 @@ FloatEbmType TestApi::Boost(
    }
 
    FloatEbmType validationMetricOut = FloatEbmType { 0 };
-   const IntEbmType ret = BoostingStep(
+
+   const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(m_boosterHandle);
+   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
       m_boosterHandle,
+      threadStateBoostingHandle,
       indexFeatureGroup,
       options,
       learningRate,
       countSamplesRequiredForChildSplitMin,
       0 == leavesMax.size() ? nullptr : &leavesMax[0],
+      nullptr
+   );
+   if(nullptr == modelFeatureGroupUpdateTensor) {
+      exit(1);
+   }
+   const IntEbmType ret = ApplyModelFeatureGroupUpdate(
+      m_boosterHandle,
+      threadStateBoostingHandle,
+      indexFeatureGroup,
+      modelFeatureGroupUpdateTensor,
       &validationMetricOut
    );
+   FreeThreadStateBoosting(threadStateBoostingHandle);
+
    if(0 != ret) {
       exit(1);
    }

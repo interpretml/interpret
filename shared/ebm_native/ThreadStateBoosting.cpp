@@ -14,6 +14,8 @@
 
 #include "HistogramTargetEntry.h"
 
+#include "Booster.h"
+
 #include "ThreadStateBoosting.h"
 
 void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting) {
@@ -119,3 +121,43 @@ bool ThreadStateBoosting::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    return false;
 }
 
+EBM_NATIVE_IMPORT_EXPORT_BODY ThreadStateBoostingHandle EBM_NATIVE_CALLING_CONVENTION CreateThreadStateBoosting(
+   BoosterHandle boosterHandle
+) {
+   LOG_N(TraceLevelInfo, "Entered CreateThreadStateBoosting: boosterHandle=%p", static_cast<void *>(boosterHandle));
+
+   const Booster * const pBooster = reinterpret_cast<Booster *>(boosterHandle);
+   if(nullptr == pBooster) {
+      LOG_0(TraceLevelError, "ERROR CreateThreadStateBoosting boosterHandle cannot be nullptr");
+      return nullptr;
+   }
+
+   ThreadStateBoosting * const pThreadStateBoosting = ThreadStateBoosting::Allocate(
+      pBooster->GetRuntimeLearningTypeOrCountTargetClasses(),
+      pBooster->GetCountBytesArrayEquivalentSplitMax()
+   );
+   if(UNLIKELY(nullptr == pThreadStateBoosting)) {
+      LOG_0(TraceLevelWarning, "WARNING CreateThreadStateBoosting nullptr == pThreadStateBoosting");
+      return nullptr;
+   }
+
+   LOG_N(TraceLevelInfo, "Exited CreateThreadStateBoosting: %p", static_cast<void *>(pThreadStateBoosting));
+   return reinterpret_cast<ThreadStateBoostingHandle>(pThreadStateBoosting);
+}
+
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeThreadStateBoosting(
+   ThreadStateBoostingHandle threadStateBoostingHandle
+) {
+   LOG_N(TraceLevelInfo, 
+      "Entered FreeThreadStateBoosting: threadStateBoostingHandle=%p", 
+      static_cast<void *>(threadStateBoostingHandle)
+   );
+
+   ThreadStateBoosting * const pThreadStateBoostingHandle = 
+      reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
+
+   // it's legal to call free on nullptr, just like for free().  This is checked inside ThreadStateBoostingHandle::Free()
+   ThreadStateBoosting::Free(pThreadStateBoostingHandle);
+
+   LOG_0(TraceLevelInfo, "Exited FreeThreadStateBoosting");
+}

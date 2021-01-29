@@ -26,6 +26,7 @@
 #include "HistogramBucket.h"
 
 #include "Booster.h"
+#include "ThreadStateBoosting.h"
 
 #include "TensorTotalsSum.h"
 
@@ -52,6 +53,7 @@ extern void SumHistogramBuckets(
 
 extern bool GrowDecisionTree(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const size_t cHistogramBuckets,
    const HistogramBucketBase * const aHistogramBucketBase,
    const size_t cSamplesTotal,
@@ -95,6 +97,7 @@ extern bool CutRandom(
 
 static bool BoostZeroDimensional(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting, 
    const SamplingSet * const pTrainingSet,
    const GenerateUpdateOptionsType options,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet
@@ -111,8 +114,6 @@ static bool BoostZeroDimensional(
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-
-   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
    HistogramBucketBase * const pHistogramBucket =
       pThreadStateBoosting->GetThreadByteBuffer1(cBytesPerHistogramBucket);
@@ -180,6 +181,7 @@ static bool BoostZeroDimensional(
 
 static bool BoostSingleDimensional(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    const size_t cSamplesRequiredForChildSplitMin,
@@ -215,8 +217,6 @@ static bool BoostSingleDimensional(
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
-
-   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
    HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
@@ -287,6 +287,7 @@ static bool BoostSingleDimensional(
 
    bool bRet = GrowDecisionTree(
       pBooster,
+      pThreadStateBoosting,
       cHistogramBuckets,
       aHistogramBuckets,
       cSamplesTotal,
@@ -309,6 +310,7 @@ static bool BoostSingleDimensional(
 //    go back to our original tensor after splits to determine the denominator
 static bool BoostMultiDimensional(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    const size_t cSamplesRequiredForChildSplitMin,
@@ -364,8 +366,6 @@ static bool BoostMultiDimensional(
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
-
-   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
    // we don't need to free this!  It's tracked and reused by pThreadStateBoosting
    HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetThreadByteBuffer1(cBytesBuffer);
@@ -600,6 +600,7 @@ static bool BoostMultiDimensional(
 
 static bool BoostRandom(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    const GenerateUpdateOptionsType options,
@@ -640,8 +641,6 @@ static bool BoostRandom(
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
-
-   ThreadStateBoosting * const pThreadStateBoosting = pBooster->GetThreadStateBoosting();
 
    // we don't need to free this!  It's tracked and reused by pThreadStateBoosting
    HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetThreadByteBuffer1(cBytesBuffer);
@@ -713,6 +712,7 @@ static bool BoostRandom(
 // a*PredictorScores = predictedValue for regression
 static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const size_t iFeatureGroup,
    const GenerateUpdateOptionsType options,
    const FloatEbmType learningRate,
@@ -729,15 +729,15 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
    const size_t cDimensions = pFeatureGroup->GetCountFeatures();
 
-   pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
-   pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
+   pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
+   pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
 
    // if pBooster->m_apSamplingSets is nullptr, then we should have zero training samples
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
    FloatEbmType totalGain = FloatEbmType { 0 };
    if(nullptr != pBooster->GetSamplingSets()) {
-      pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet()->SetCountDimensions(cDimensions);
+      pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet()->SetCountDimensions(cDimensions);
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain;
@@ -749,9 +749,10 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
 
             if(BoostZeroDimensional(
                pBooster,
+               pThreadStateBoosting,
                pBooster->GetSamplingSets()[iSamplingSet],
                options,
-               pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet()
+               pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet()
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -768,11 +769,12 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
             // THIS RANDOM CUT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
             if(BoostRandom(
                pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
                pBooster->GetSamplingSets()[iSamplingSet],
                options,
                aLeavesMax, 
-               pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet(),
+               pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -784,11 +786,12 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
             EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
             if(BoostSingleDimensional(
                pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
                pBooster->GetSamplingSets()[iSamplingSet],
                cSamplesRequiredForChildSplitMin,
                *aLeavesMax,
-               pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet(),
+               pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -799,10 +802,11 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
          } else {
             if(BoostMultiDimensional(
                pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
                pBooster->GetSamplingSets()[iSamplingSet],
                cSamplesRequiredForChildSplitMin,
-               pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet(),
+               pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -817,7 +821,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
          totalGain += gain;
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
          // others are working, so there should be no blocking and our final result won't require adding by the main thread
-         if(pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->Add(*pBooster->GetThreadStateBoosting()->GetSmallChangeToModelOverwriteSingleSamplingSet())) {
+         if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Add(*pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet())) {
             if(LIKELY(nullptr != pGainReturn)) {
                *pGainReturn = FloatEbmType { 0 };
             }
@@ -865,12 +869,12 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
 
          const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
          if(bDividing) {
-            bBad = pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
+            bBad = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
          } else {
-            bBad = pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+            bBad = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
          }
       } else {
-         bBad = pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+         bBad = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
       }
 
       // handle the case where totalGain is either +infinity or -infinity (very rare, see above), or NaN
@@ -881,8 +885,8 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
          UNLIKELY(totalGain <= std::numeric_limits<FloatEbmType>::lowest()) ||
          UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= totalGain)
       )) {
-         pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
-         pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
+         pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
+         pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
          // declare there is no gain, so that our caller will think there is no benefit in splitting us, which there isn't since we're zeroed.
          totalGain = FloatEbmType { 0 };
       } else if(UNLIKELY(totalGain < FloatEbmType { 0 })) {
@@ -901,7 +905,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
          acDivisionIntegersEnd[iDimension] = pFeatureGroupEntry[iDimension].m_pFeature->GetCountBins();
          ++iDimension;
       } while(iDimension < cDimensions);
-      if(pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
+      if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
          if(LIKELY(nullptr != pGainReturn)) {
             *pGainReturn = FloatEbmType { 0 };
          }
@@ -914,7 +918,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    }
 
    LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureGroupUpdatePerTargetClasses");
-   return pBooster->GetThreadStateBoosting()->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+   return pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
 }
 
 // we made this a global because if we had put this variable inside the Booster object, then we would need to dereference that before getting 
@@ -944,6 +948,7 @@ static int g_cLogGenerateModelFeatureGroupUpdateParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
    BoosterHandle boosterHandle,
+   ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options,
    FloatEbmType learningRate,
@@ -967,6 +972,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       TraceLevelVerbose,
       "GenerateModelFeatureGroupUpdate: "
       "boosterHandle=%p, "
+      "threadStateBoostingHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
       "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
       "learningRate=%" FloatEbmTypePrintf ", "
@@ -975,6 +981,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       "gainOut=%p"
       ,
       static_cast<void *>(boosterHandle),
+      static_cast<void *>(threadStateBoostingHandle),
       indexFeatureGroup,
       static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
       learningRate,
@@ -991,6 +998,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate boosterHandle cannot be nullptr");
       return nullptr;
    }
+   ThreadStateBoosting * pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
+   if(nullptr == pThreadStateBoosting) {
+      if(LIKELY(nullptr != gainOut)) {
+         *gainOut = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate threadStateBoosting cannot be nullptr");
+      return nullptr;
+   }
+
    if(indexFeatureGroup < 0) {
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
@@ -1070,6 +1086,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
 
    FloatEbmType * aModelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdateInternal(
       pBooster,
+      pThreadStateBoosting,
       iFeatureGroup,
       options,
       learningRate,

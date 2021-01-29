@@ -19,12 +19,11 @@ public:
 
    InitializeResidualsInternal() = delete; // this is a static class.  Do not construct
 
-   static void Func(
+   static bool Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * const aTempFloatVector,
       FloatEbmType * pResidualError
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
@@ -41,16 +40,20 @@ public:
       EBM_ASSERT(nullptr != aPredictorScores);
       EBM_ASSERT(nullptr != pResidualError);
 
-      FloatEbmType aLocalExpVector[
-         k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
-      ];
-      FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
-
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+
+      FloatEbmType aLocalExpVector[
+         k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
+      ];
+      FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? EbmMalloc<FloatEbmType>(cVectorLength) : aLocalExpVector;
+      if(UNLIKELY(nullptr == aExpVector)) {
+         LOG_0(TraceLevelWarning, "WARNING InitializeResiduals nullptr == aExpVector");
+         return true;
+      }
 
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
@@ -109,7 +112,12 @@ public:
          }
       } while(pResidualErrorEnd != pResidualError);
 
+      if(UNLIKELY(aExpVector != aLocalExpVector)) {
+         free(aExpVector);
+      }
+
       LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+      return false;
    }
 };
 
@@ -120,16 +128,14 @@ public:
 
    InitializeResidualsInternal() = delete; // this is a static class.  Do not construct
 
-   static void Func(
+   static bool Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * const aTempFloatVector,
       FloatEbmType * pResidualError
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      UNUSED(aTempFloatVector);
       LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
       // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
@@ -160,6 +166,7 @@ public:
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
       LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+      return false;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -170,16 +177,14 @@ public:
 
    InitializeResidualsInternal() = delete; // this is a static class.  Do not construct
 
-   static void Func(
+   static bool Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * const aTempFloatVector,
       FloatEbmType * pResidualError
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      UNUSED(aTempFloatVector);
       LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
       // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
@@ -212,45 +217,42 @@ public:
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
       LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+      return false;
    }
 };
 
-extern void InitializeResiduals(
+extern bool InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
-   FloatEbmType * const aTempFloatVector,
    FloatEbmType * pResidualError
 ) {
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         InitializeResidualsInternal<2>::Func(
+         return InitializeResidualsInternal<2>::Func(
             runtimeLearningTypeOrCountTargetClasses,
             cSamples,
             aTargetData,
             aPredictorScores,
-            aTempFloatVector,
             pResidualError
          );
       } else {
-         InitializeResidualsInternal<k_dynamicClassification>::Func(
+         return InitializeResidualsInternal<k_dynamicClassification>::Func(
             runtimeLearningTypeOrCountTargetClasses,
             cSamples,
             aTargetData,
             aPredictorScores,
-            aTempFloatVector,
             pResidualError
          );
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      InitializeResidualsInternal<k_regression>::Func(
+      return InitializeResidualsInternal<k_regression>::Func(
          runtimeLearningTypeOrCountTargetClasses,
          cSamples,
          aTargetData,
          aPredictorScores,
-         aTempFloatVector,
          pResidualError
       );
    }
