@@ -730,7 +730,7 @@ FloatEbmType TestApi::Boost(
    FloatEbmType validationMetricOut = FloatEbmType { 0 };
 
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(m_boosterHandle);
-   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
+   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
       m_boosterHandle,
       threadStateBoostingHandle,
       indexFeatureGroup,
@@ -740,14 +740,13 @@ FloatEbmType TestApi::Boost(
       0 == leavesMax.size() ? nullptr : &leavesMax[0],
       nullptr
    );
-   if(nullptr == modelFeatureGroupUpdateTensor) {
+   if(0 != retGenerate) {
       exit(1);
    }
    const IntEbmType ret = ApplyModelFeatureGroupUpdate(
       m_boosterHandle,
       threadStateBoostingHandle,
       indexFeatureGroup,
-      modelFeatureGroupUpdateTensor,
       &validationMetricOut
    );
    FreeThreadStateBoosting(threadStateBoostingHandle);

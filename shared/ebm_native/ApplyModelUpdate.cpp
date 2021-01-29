@@ -38,7 +38,6 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
    Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t iFeatureGroup,
-   const FloatEbmType * const aModelFeatureGroupUpdateTensor,
    FloatEbmType * const pValidationMetricReturn
 ) {
    LOG_0(TraceLevelVerbose, "Entered ApplyModelFeatureGroupUpdateInternal");
@@ -49,7 +48,9 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
    // m_apCurrentModel can be null if there are no featureGroups (but we have an feature group index), 
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != pBooster->GetBestModel());
-   EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor); // aModelFeatureGroupUpdateTensor is checked for nullptr before calling this function   
+
+   const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+   EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
    // our caller can give us one of these bad types of inputs:
    //  1) NaN values
@@ -141,7 +142,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
    BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
-   const FloatEbmType * modelFeatureGroupUpdateTensor,
    FloatEbmType * validationMetricOut
 ) {
    LOG_COUNTED_N(
@@ -149,11 +149,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       TraceLevelInfo,
       TraceLevelVerbose,
       "ApplyModelFeatureGroupUpdate parameters: boosterHandle=%p, threadStateBoostingHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf
-      ", modelFeatureGroupUpdateTensor=%p, validationMetricOut=%p",
+      ", validationMetricOut=%p",
       static_cast<void *>(boosterHandle),
       static_cast<void *>(threadStateBoostingHandle),
       indexFeatureGroup,
-      static_cast<const void *>(modelFeatureGroupUpdateTensor),
       static_cast<void *>(validationMetricOut)
    );
 
@@ -206,21 +205,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       TraceLevelVerbose,
       "Entered ApplyModelFeatureGroupUpdate"
    );
-   if(nullptr == modelFeatureGroupUpdateTensor) {
-      // modelFeatureGroupUpdateTensor can be nullptr (then nothing gets updated).  This could happen for
-      // if there was only 1 class, meaning we would be 100% confident in the outcome and no tensor would be retunred
-      // since we can eliminate one class, and if there's only 1 class then we eliminate all logits
-      if(nullptr != validationMetricOut) {
-         *validationMetricOut = FloatEbmType { 0 };
-      }
-      LOG_COUNTED_0(
-         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
-         TraceLevelInfo,
-         TraceLevelVerbose,
-         "Exited ApplyModelFeatureGroupUpdate from null modelFeatureGroupUpdateTensor"
-      );
-      return 0;
-   }
 
    if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) {
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
@@ -242,7 +226,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       pBooster,
       pThreadStateBoosting,
       iFeatureGroup,
-      modelFeatureGroupUpdateTensor,
       validationMetricOut
    );
    if(0 != ret) {

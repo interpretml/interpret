@@ -710,7 +710,7 @@ static bool BoostRandom(
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
+static IntEbmType GenerateModelFeatureGroupUpdateInternal(
    Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t iFeatureGroup,
@@ -757,7 +757,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
                }
-               return nullptr;
+               return IntEbmType { 1 };
             }
             gain = FloatEbmType { 0 };
          } else if(0 != (GenerateUpdateOptions_RandomSplits & options)) {
@@ -780,7 +780,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
                }
-               return nullptr;
+               return IntEbmType { 1 };
             }
          } else if(1 == pFeatureGroup->GetCountFeatures()) {
             EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
@@ -797,7 +797,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
                }
-               return nullptr;
+               return IntEbmType { 1 };
             }
          } else {
             if(BoostMultiDimensional(
@@ -812,7 +812,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
                }
-               return nullptr;
+               return IntEbmType { 1 };
             }
          }
          // regression can be -infinity or slightly negative in extremely rare circumstances.  
@@ -825,7 +825,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
             if(LIKELY(nullptr != pGainReturn)) {
                *pGainReturn = FloatEbmType { 0 };
             }
-            return nullptr;
+            return IntEbmType { 1 };
          }
       }
       totalGain /= static_cast<FloatEbmType>(cSamplingSetsAfterZero);
@@ -909,7 +909,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
          if(LIKELY(nullptr != pGainReturn)) {
             *pGainReturn = FloatEbmType { 0 };
          }
-         return nullptr;
+         return IntEbmType { 1 };
       }
    }
 
@@ -918,7 +918,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    }
 
    LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureGroupUpdatePerTargetClasses");
-   return pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+   return IntEbmType { 0 };
 }
 
 // we made this a global because if we had put this variable inside the Booster object, then we would need to dereference that before getting 
@@ -946,7 +946,7 @@ static int g_cLogGenerateModelFeatureGroupUpdateParametersMessages = 10;
 //        Lastly, with the memory allocated by our caller, we can call GenerateModelFeatureGroupUpdate in parallel on multiple feature_groups.  
 //        Right now you can't call it in parallel since we're updating our internal single tensor
 
-EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
    BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
@@ -996,7 +996,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          *gainOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate boosterHandle cannot be nullptr");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    ThreadStateBoosting * pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
    if(nullptr == pThreadStateBoosting) {
@@ -1004,7 +1004,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          *gainOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate threadStateBoosting cannot be nullptr");
-      return nullptr;
+      return IntEbmType { 1 };
    }
 
    if(indexFeatureGroup < 0) {
@@ -1012,7 +1012,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          *gainOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup must be positive");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
@@ -1020,7 +1020,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          *gainOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup is too high to index");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
    if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
@@ -1028,7 +1028,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          *gainOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup above the number of feature groups that we have");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    // this is true because 0 < pBooster->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
@@ -1081,10 +1081,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          TraceLevelWarning,
          "WARNING GenerateModelFeatureGroupUpdate pBooster->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
       );
-      return nullptr;
+      return IntEbmType { 0 };
    }
 
-   FloatEbmType * aModelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdateInternal(
+   const IntEbmType ret = GenerateModelFeatureGroupUpdateInternal(
       pBooster,
       pThreadStateBoosting,
       iFeatureGroup,
@@ -1115,9 +1115,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          "Exited GenerateModelFeatureGroupUpdate no gain"
       );
    }
-   if(nullptr == aModelFeatureGroupUpdateTensor) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate returned nullptr");
-   }
-   return aModelFeatureGroupUpdateTensor;
+   return ret;
 }
 

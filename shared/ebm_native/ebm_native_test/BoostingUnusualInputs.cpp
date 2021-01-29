@@ -35,7 +35,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr
    );
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
-   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
+   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -45,11 +45,11 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       &k_leavesMaxDefault[0],
       nullptr
    );
+   CHECK(0 == retGenerate);
    const IntEbmType ret = ApplyModelFeatureGroupUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
-      modelFeatureGroupUpdateTensor,
       nullptr
    );
    CHECK(0 == ret);
@@ -84,7 +84,7 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr
    );
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
-   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
+   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -94,11 +94,11 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       &k_leavesMaxDefault[0],
       nullptr
    );
+   CHECK(0 == retGenerate);
    const IntEbmType ret = ApplyModelFeatureGroupUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
-      modelFeatureGroupUpdateTensor,
       nullptr
    );
    CHECK(0 == ret);
@@ -133,7 +133,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr
    );
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
-   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
+   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -143,11 +143,11 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       &k_leavesMaxDefault[0],
       nullptr
    );
+   CHECK(0 == retGenerate);
    const IntEbmType ret = ApplyModelFeatureGroupUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
-      modelFeatureGroupUpdateTensor,
       nullptr
    );
    CHECK(0 == ret);
@@ -603,10 +603,6 @@ TEST_CASE("features with 0 states, interaction") {
 TEST_CASE("classification with 0 possible target states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
 
-   FloatEbmType gain = 9.99;
-
-   // TODO: ideally we'd have at least one feature here (but no data since any data is illegal)
-
    IntEbmType featureGroupsFeatureCount[1];
    featureGroupsFeatureCount[0] = 0;
 
@@ -637,7 +633,9 @@ TEST_CASE("classification with 0 possible target states, boosting") {
    CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
 
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
-   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
+
+   FloatEbmType gain = 9.99;
+   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -647,8 +645,9 @@ TEST_CASE("classification with 0 possible target states, boosting") {
       &k_leavesMaxDefault[0],
       &gain
    );
-   CHECK(nullptr == modelFeatureGroupUpdateTensor);
+   CHECK(0 == retGenerate);
    CHECK(0 == gain);
+
    FreeThreadStateBoosting(threadStateBoostingHandle);
 
    CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));
@@ -658,10 +657,6 @@ TEST_CASE("classification with 0 possible target states, boosting") {
 }
 
 TEST_CASE("classification with 1 possible target, boosting") {
-   // TODO: add some data here that we can boost on (with 1 possible state so not really useful)
-
-   FloatEbmType gain = 9.99;
-
    IntEbmType featureGroupsFeatureCount[1];
    featureGroupsFeatureCount[0] = 0;
 
@@ -692,7 +687,9 @@ TEST_CASE("classification with 1 possible target, boosting") {
    CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
 
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
-   FloatEbmType * modelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdate(
+
+   FloatEbmType gain = 9.99;
+   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -702,8 +699,9 @@ TEST_CASE("classification with 1 possible target, boosting") {
       &k_leavesMaxDefault[0],
       &gain
    );
-   CHECK(nullptr == modelFeatureGroupUpdateTensor);
+   CHECK(0 == retGenerate);
    CHECK(0 == gain);
+
    FreeThreadStateBoosting(threadStateBoostingHandle);
 
    CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));

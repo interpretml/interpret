@@ -495,7 +495,7 @@ class Native:
             # double * gainOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.GenerateModelFeatureGroupUpdate.restype = ct.POINTER(ct.c_double)
+        self._unsafe.GenerateModelFeatureGroupUpdate.restype = ct.c_int64
 
         self._unsafe.ApplyModelFeatureGroupUpdate.argtypes = [
             # void * boosterHandle
@@ -504,8 +504,6 @@ class Native:
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
-            # double * modelFeatureGroupUpdateTensor
-            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
             # double * validationMetricOut
             ct.POINTER(ct.c_double),
         ]
@@ -902,7 +900,7 @@ class NativeEBMBooster:
             n_features = len(self._feature_groups[feature_group_index])
             max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
-            model_update_tensor_pointer = self._native._unsafe.GenerateModelFeatureGroupUpdate(
+            return_code = self._native._unsafe.GenerateModelFeatureGroupUpdate(
                 self._booster_handle,
                 self._thread_state_boosting, 
                 feature_group_index,
@@ -912,22 +910,15 @@ class NativeEBMBooster:
                 max_leaves_arr,
                 ct.byref(gain),
             )
-            if not model_update_tensor_pointer:  # pragma: no cover
+            if return_code:  # pragma: no cover
                 raise MemoryError(
                     "Out of memory in GenerateModelFeatureGroupUpdate"
                 )
-
-            shape = self._get_feature_group_shape(feature_group_index)
-            # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureGroupUpdate
-            model_update_tensor = NativeEBMBooster._make_ndarray(
-                model_update_tensor_pointer, shape, dtype=ct.c_double, copy_data=False
-            )
 
             return_code = self._native._unsafe.ApplyModelFeatureGroupUpdate(
                 self._booster_handle,
                 self._thread_state_boosting, 
                 feature_group_index,
-                model_update_tensor,
                 ct.byref(metric_output),
             )
             if return_code != 0:  # pragma: no cover
