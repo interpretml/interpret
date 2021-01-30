@@ -102,14 +102,14 @@ class Native:
     def generate_random_number(self, random_seed, stage_randomization_mix):
         return self._unsafe.GenerateRandomNumber(random_seed, stage_randomization_mix)
 
-    def generate_quantile_bin_cuts(
+    def generate_quantile_cuts(
         self, 
         col_data, 
         min_samples_bin, 
         is_humanized, 
         max_cuts, 
     ):
-        bin_cuts = np.empty(max_cuts, dtype=np.float64, order="C")
+        cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
         count_missing = ct.c_int64(0)
         min_val = ct.c_double(0)
@@ -117,13 +117,13 @@ class Native:
         max_val = ct.c_double(0)
         count_inf = ct.c_int64(0)
 
-        return_code = self._unsafe.GenerateQuantileBinCuts(
+        return_code = self._unsafe.GenerateQuantileCuts(
             col_data.shape[0],
             col_data, 
             min_samples_bin,
             is_humanized,
             ct.byref(count_cuts),
-            bin_cuts,
+            cuts,
             ct.byref(count_missing),
             ct.byref(min_val),
             ct.byref(count_neg_inf),
@@ -132,21 +132,21 @@ class Native:
         )
 
         if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in GenerateQuantileBinCuts")
+            raise Exception("Out of memory in GenerateQuantileCuts")
 
-        bin_cuts = bin_cuts[:count_cuts.value]
+        cuts = cuts[:count_cuts.value]
         count_missing = count_missing.value
         min_val = min_val.value
         max_val = max_val.value
 
-        return bin_cuts, count_missing, min_val, max_val
+        return cuts, count_missing, min_val, max_val
 
-    def generate_uniform_bin_cuts(
+    def generate_uniform_cuts(
         self, 
         col_data, 
         max_cuts, 
     ):
-        bin_cuts = np.empty(max_cuts, dtype=np.float64, order="C")
+        cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
         count_missing = ct.c_int64(0)
         min_val = ct.c_double(0)
@@ -154,11 +154,11 @@ class Native:
         max_val = ct.c_double(0)
         count_inf = ct.c_int64(0)
 
-        self._unsafe.GenerateUniformBinCuts(
+        self._unsafe.GenerateUniformCuts(
             col_data.shape[0],
             col_data, 
             ct.byref(count_cuts),
-            bin_cuts,
+            cuts,
             ct.byref(count_missing),
             ct.byref(min_val),
             ct.byref(count_neg_inf),
@@ -166,24 +166,24 @@ class Native:
             ct.byref(count_inf)
         )
 
-        bin_cuts = bin_cuts[:count_cuts.value]
+        cuts = cuts[:count_cuts.value]
         count_missing = count_missing.value
         min_val = min_val.value
         max_val = max_val.value
 
-        return bin_cuts, count_missing, min_val, max_val
+        return cuts, count_missing, min_val, max_val
 
     def discretize(
         self, 
         col_data, 
-        bin_cuts, 
+        cuts, 
     ):
         discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")
         return_code = self._unsafe.Discretize(
             col_data.shape[0],
             col_data,
-            bin_cuts.shape[0],
-            bin_cuts,
+            cuts.shape[0],
+            cuts,
             discretized
         )
 
@@ -267,7 +267,7 @@ class Native:
         self._unsafe.SampleWithoutReplacement.restype = None
 
 
-        self._unsafe.GenerateQuantileBinCuts.argtypes = [
+        self._unsafe.GenerateQuantileCuts.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
@@ -276,9 +276,9 @@ class Native:
             ct.c_int64,
             # int64_t isHumanized
             ct.c_int64,
-            # int64_t * countBinCutsInOut
+            # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),
-            # double * binCutsLowerBoundInclusiveOut
+            # double * cutsLowerBoundInclusiveOut
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * countMissingValuesOut
             ct.POINTER(ct.c_int64),
@@ -291,16 +291,16 @@ class Native:
             # int64_t * countPositiveInfinityOut
             ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.GenerateQuantileBinCuts.restype = ct.c_int64
+        self._unsafe.GenerateQuantileCuts.restype = ct.c_int64
 
-        self._unsafe.GenerateUniformBinCuts.argtypes = [
+        self._unsafe.GenerateUniformCuts.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * countBinCutsInOut
+            # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),
-            # double * binCutsLowerBoundInclusiveOut
+            # double * cutsLowerBoundInclusiveOut
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * countMissingValuesOut
             ct.POINTER(ct.c_int64),
@@ -313,16 +313,16 @@ class Native:
             # int64_t * countPositiveInfinityOut
             ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.GenerateUniformBinCuts.restype = None
+        self._unsafe.GenerateUniformCuts.restype = None
 
-        self._unsafe.GenerateWinsorizedBinCuts.argtypes = [
+        self._unsafe.GenerateWinsorizedCuts.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * countBinCutsInOut
+            # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),
-            # double * binCutsLowerBoundInclusiveOut
+            # double * cutsLowerBoundInclusiveOut
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * countMissingValuesOut
             ct.POINTER(ct.c_int64),
@@ -335,15 +335,15 @@ class Native:
             # int64_t * countPositiveInfinityOut
             ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.GenerateWinsorizedBinCuts.restype = ct.c_int64
+        self._unsafe.GenerateWinsorizedCuts.restype = ct.c_int64
 
 
         self._unsafe.SuggestGraphBounds.argtypes = [
-            # int64_t countBinCuts
+            # int64_t countCuts
             ct.c_int64,
-            # double lowestBinCut
+            # double lowestCut
             ct.c_double,
-            # double highestBinCut
+            # double highestCut
             ct.c_double,
             # double minValue
             ct.c_double,
@@ -362,9 +362,9 @@ class Native:
             ct.c_int64,
             # double * featureValues
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countBinCuts
+            # int64_t countCuts
             ct.c_int64,
-            # double * binCutsLowerBoundInclusive
+            # double * cutsLowerBoundInclusive
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * discretizedOut
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),

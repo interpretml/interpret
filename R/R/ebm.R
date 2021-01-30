@@ -69,7 +69,7 @@ ebm_classify <- function(
       col_names <- 1:n_features
    }
 
-   bin_cuts <- vector("list")
+   cuts <- vector("list")
 
    features_categorical <- vector("logical", n_features)
    features_bin_count <- vector("numeric", n_features)
@@ -79,21 +79,21 @@ ebm_classify <- function(
    discretized <- vector("numeric", length(y))
    for(i_feature in 1:n_features) {
       X_feature <- X[, i_feature] # if our originator X matrix is byrow, pay the transpose cost once
-      feature_bin_cuts <- generate_quantile_bin_cuts(
+      feature_cuts <- generate_quantile_cuts(
          X_feature, 
          min_samples_bin, 
          humanized, 
          max_bins
       )
       col_name <- col_names[i_feature]
-      bin_cuts[[col_name]] <- feature_bin_cuts
+      cuts[[col_name]] <- feature_cuts
 
       features_categorical[[i_feature]] <- FALSE
       # one more bin than cuts plus one more for the missing value
-      features_bin_count[[i_feature]] <- length(feature_bin_cuts) + 2
+      features_bin_count[[i_feature]] <- length(feature_cuts) + 2
 
       # WARNING: discretized is modified in-place
-      discretize(X_feature, feature_bin_cuts, discretized)
+      discretize(X_feature, feature_cuts, discretized)
       X_binned[, i_feature] <- discretized
    }
 
@@ -102,7 +102,7 @@ ebm_classify <- function(
 
    additive_terms <- vector("list")
    for(col_name in col_names) {
-      additive_terms[[col_name]] <- vector("numeric", length(bin_cuts[[col_name]]) + 1)
+      additive_terms[[col_name]] <- vector("numeric", length(cuts[[col_name]]) + 1)
    }
 
    sample_counts <- vector("numeric", length(y))
@@ -162,10 +162,10 @@ ebm_classify <- function(
 
    # TODO PK : we're going to need to modify this structure in the future to handle interaction terms by making
    #           the additivie_terms by feature_group index instead of by feature name.  And also change the
-   #           bin_cuts to be per-feature_group as well to support stage fitting in the future
+   #           cuts to be per-feature_group as well to support stage fitting in the future
    #           For now though, this is just a simple and nice way to present it since we just support mains
 
-   model <- structure(list(bin_cuts = bin_cuts, additive_terms = additive_terms), class = "ebm_model")
+   model <- structure(list(cuts = cuts, additive_terms = additive_terms), class = "ebm_model")
    return(model)
 }
 
@@ -190,7 +190,7 @@ ebm_predict_proba <- function (model, X) {
       X_feature <- X[, i_feature]
 
       # WARNING: discretized is modified in-place
-      discretize(X_feature, model$bin_cuts[[col_name]], discretized)
+      discretize(X_feature, model$cuts[[col_name]], discretized)
 
       additive_terms <- model$additive_terms[[col_name]]
       update_scores <- additive_terms[discretized + 1]
@@ -202,28 +202,28 @@ ebm_predict_proba <- function (model, X) {
 }
 
 ebm_show <- function (model, name) {
-   bin_cuts <- model$bin_cuts[[name]]
+   cuts <- model$cuts[[name]]
    additive_terms <- model$additive_terms[[name]]
 
-   if(0 == length(bin_cuts)) {
+   if(0 == length(cuts)) {
       # plot seems to overflow if the values are higher
       low_val <- -1e307
       high_val <- 1e307
-   } else if(1 == length(bin_cuts)) {
-      if(0 == bin_cuts[1]) {
+   } else if(1 == length(cuts)) {
+      if(0 == cuts[1]) {
          low_val <- -1
          high_val <- 1
       } else {
-         low_val <- bin_cuts[1] * 0.9
-         high_val <- bin_cuts[1] * 1.1
+         low_val <- cuts[1] * 0.9
+         high_val <- cuts[1] * 1.1
       }
    } else {
-      dist <- 0.1 * (bin_cuts[length(bin_cuts)] - bin_cuts[1])
-      low_val <- bin_cuts[1] - dist
-      high_val <- bin_cuts[length(bin_cuts)] + dist
+      dist <- 0.1 * (cuts[length(cuts)] - cuts[1])
+      low_val <- cuts[1] - dist
+      high_val <- cuts[length(cuts)] + dist
    }
 
-   x <- append(append(low_val, rep(bin_cuts, each = 2)), high_val)
+   x <- append(append(low_val, rep(cuts, each = 2)), high_val)
    # remove the missing bin at the start
    y <- rep(additive_terms[2:length(additive_terms)], each = 2)
 

@@ -243,13 +243,13 @@ SEXP GenerateRandomNumber_R(
    EBM_ASSERT(nullptr != stageRandomizationMix);
 
    if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleIntVector(randomSeed)");
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
    const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    if(!IsSingleIntVector(stageRandomizationMix)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleIntVector(stageRandomizationMix)");
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts_R !IsSingleIntVector(stageRandomizationMix)");
       return R_NilValue;
    }
    const SeedEbmType stageRandomizationMixLocal = INTEGER(stageRandomizationMix)[0];
@@ -262,16 +262,16 @@ SEXP GenerateRandomNumber_R(
    return ret;
 }
 
-SEXP GenerateQuantileBinCuts_R(
+SEXP GenerateQuantileCuts_R(
    SEXP featureValues,
    SEXP countSamplesPerBinMin,
    SEXP isHumanized,
-   SEXP countBinCuts
+   SEXP countCuts
 ) {
    EBM_ASSERT(nullptr != featureValues);
    EBM_ASSERT(nullptr != countSamplesPerBinMin);
    EBM_ASSERT(nullptr != isHumanized);
-   EBM_ASSERT(nullptr != countBinCuts);
+   EBM_ASSERT(nullptr != countCuts);
 
    const FloatEbmType * aFeatureValues = nullptr;
    size_t cFeatureValues;
@@ -282,51 +282,51 @@ SEXP GenerateQuantileBinCuts_R(
    EBM_ASSERT(IsNumberConvertable<IntEbmType>(cFeatureValues)); // ConvertDoublesToDoubles checks this
 
    if(!IsSingleDoubleVector(countSamplesPerBinMin)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleDoubleVector(countSamplesPerBinMin)");
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts_R !IsSingleDoubleVector(countSamplesPerBinMin)");
       return R_NilValue;
    }
    const double countSamplesPerBinMinDouble = REAL(countSamplesPerBinMin)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(countSamplesPerBinMinDouble)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsDoubleToIntEbmTypeIndexValid(countSamplesPerBinMinDouble)");
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts_R !IsDoubleToIntEbmTypeIndexValid(countSamplesPerBinMinDouble)");
       return R_NilValue;
    }
    const IntEbmType countSamplesPerBinMinIntEbmType = static_cast<IntEbmType>(countSamplesPerBinMinDouble);
 
    if(!IsSingleBoolVector(isHumanized)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleBoolVector(isHumanized)");
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts_R !IsSingleBoolVector(isHumanized)");
       return R_NilValue;
    }
 
    const Rboolean isHumanizedR = static_cast<Rboolean>(LOGICAL(isHumanized)[0]);
    if(Rboolean::FALSE != isHumanizedR && Rboolean::TRUE != isHumanizedR) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R Rboolean::FALSE != isHumanizedR && Rboolean::TRUE != isHumanizedR");
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts_R Rboolean::FALSE != isHumanizedR && Rboolean::TRUE != isHumanizedR");
       return R_NilValue;
    }
    const bool bHumanized = Rboolean::FALSE != isHumanizedR;
 
-   if(!IsSingleDoubleVector(countBinCuts)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsSingleDoubleVector(countBinCuts)");
+   if(!IsSingleDoubleVector(countCuts)) {
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts_R !IsSingleDoubleVector(countCuts)");
       return R_NilValue;
    }
-   const double countBinCutsDouble = REAL(countBinCuts)[0];
-   if(!IsDoubleToIntEbmTypeIndexValid(countBinCutsDouble)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileBinCuts_R !IsDoubleToIntEbmTypeIndexValid(countBinCutsDouble)");
+   const double countCutsDouble = REAL(countCuts)[0];
+   if(!IsDoubleToIntEbmTypeIndexValid(countCutsDouble)) {
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts_R !IsDoubleToIntEbmTypeIndexValid(countCutsDouble)");
       return R_NilValue;
    }
-   IntEbmType countBinCutsIntEbmType = static_cast<IntEbmType>(countBinCutsDouble);
-   EBM_ASSERT(IsNumberConvertable<size_t>(countBinCuts)); // IsDoubleToIntEbmTypeIndexValid checks this
+   IntEbmType countCutsIntEbmType = static_cast<IntEbmType>(countCutsDouble);
+   EBM_ASSERT(IsNumberConvertable<size_t>(countCuts)); // IsDoubleToIntEbmTypeIndexValid checks this
 
-   FloatEbmType * const binCutsLowerBoundInclusive = reinterpret_cast<FloatEbmType *>(
-      R_alloc(static_cast<size_t>(countBinCutsIntEbmType), static_cast<int>(sizeof(FloatEbmType))));
+   FloatEbmType * const cutsLowerBoundInclusive = reinterpret_cast<FloatEbmType *>(
+      R_alloc(static_cast<size_t>(countCutsIntEbmType), static_cast<int>(sizeof(FloatEbmType))));
    // R_alloc doesn't return nullptr, so we don't need to check aItems
 
-   const IntEbmType ret = GenerateQuantileBinCuts(
+   const IntEbmType ret = GenerateQuantileCuts(
       static_cast<IntEbmType>(cFeatureValues),
       aFeatureValues,
       countSamplesPerBinMinIntEbmType,
       bHumanized ? EBM_TRUE : EBM_FALSE,
-      &countBinCutsIntEbmType,
-      binCutsLowerBoundInclusive,
+      &countCutsIntEbmType,
+      cutsLowerBoundInclusive,
       nullptr,
       nullptr,
       nullptr,
@@ -337,13 +337,13 @@ SEXP GenerateQuantileBinCuts_R(
    if(0 != ret) {
       return R_NilValue;
    } else {
-      if(!IsNumberConvertable<R_xlen_t>(countBinCutsIntEbmType)) {
+      if(!IsNumberConvertable<R_xlen_t>(countCutsIntEbmType)) {
          return R_NilValue;
       }
-      SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(countBinCutsIntEbmType)));
+      SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(countCutsIntEbmType)));
       // we've allocated this memory, so it should be reachable, so these numbers should multiply
-      EBM_ASSERT(!IsMultiplyError(sizeof(*binCutsLowerBoundInclusive), static_cast<size_t>(countBinCutsIntEbmType)));
-      memcpy(REAL(ret), binCutsLowerBoundInclusive, sizeof(*binCutsLowerBoundInclusive) * static_cast<size_t>(countBinCutsIntEbmType));
+      EBM_ASSERT(!IsMultiplyError(sizeof(*cutsLowerBoundInclusive), static_cast<size_t>(countCutsIntEbmType)));
+      memcpy(REAL(ret), cutsLowerBoundInclusive, sizeof(*cutsLowerBoundInclusive) * static_cast<size_t>(countCutsIntEbmType));
       UNPROTECT(1);
       return ret;
    }
@@ -351,11 +351,11 @@ SEXP GenerateQuantileBinCuts_R(
 
 SEXP Discretize_R(
    SEXP featureValues,
-   SEXP binCutsLowerBoundInclusive,
+   SEXP cutsLowerBoundInclusive,
    SEXP discretizedOut
 ) {
    EBM_ASSERT(nullptr != featureValues);
-   EBM_ASSERT(nullptr != binCutsLowerBoundInclusive);
+   EBM_ASSERT(nullptr != cutsLowerBoundInclusive);
    EBM_ASSERT(nullptr != discretizedOut);
 
    const FloatEbmType * aFeatureValues = nullptr;
@@ -366,13 +366,13 @@ SEXP Discretize_R(
    }
    EBM_ASSERT(IsNumberConvertable<IntEbmType>(cFeatureValues)); // ConvertDoublesToDoubles checks this
 
-   const FloatEbmType * aBinCutsLowerBoundInclusive = nullptr;
-   size_t cBinCuts;
-   if(ConvertDoublesToDoubles(binCutsLowerBoundInclusive, &cBinCuts, &aBinCutsLowerBoundInclusive)) {
+   const FloatEbmType * aCutsLowerBoundInclusive = nullptr;
+   size_t cCuts;
+   if(ConvertDoublesToDoubles(cutsLowerBoundInclusive, &cCuts, &aCutsLowerBoundInclusive)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cBinCuts)); // ConvertDoublesToDoubles checks this
+   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cCuts)); // ConvertDoublesToDoubles checks this
 
    if(REALSXP != TYPEOF(discretizedOut)) {
       LOG_0(TraceLevelError, "ERROR Discretize_R REALSXP != TYPEOF(discretizedOut)");
@@ -396,8 +396,8 @@ SEXP Discretize_R(
       if(0 != Discretize(
          static_cast<IntEbmType>(cFeatureValues),
          aFeatureValues,
-         static_cast<IntEbmType>(cBinCuts),
-         aBinCutsLowerBoundInclusive,
+         static_cast<IntEbmType>(cCuts),
+         aCutsLowerBoundInclusive,
          aDiscretized
       )) {
          // we've already logged any errors
@@ -1559,7 +1559,7 @@ SEXP FreeInteractionDetector_R(
 
 static const R_CallMethodDef g_exposedFunctions[] = {
    { "GenerateRandomNumber_R", (DL_FUNC)&GenerateRandomNumber_R, 2 },
-   { "GenerateQuantileBinCuts_R", (DL_FUNC)&GenerateQuantileBinCuts_R, 4 },
+   { "GenerateQuantileCuts_R", (DL_FUNC)&GenerateQuantileCuts_R, 4 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
    { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 15 },

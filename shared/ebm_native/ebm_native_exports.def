@@ -17,9 +17,9 @@ EXPORTS
   CreateRegressionInteractionDetector
   CalculateInteractionScore
   FreeInteractionDetector
-  GenerateQuantileBinCuts
-  GenerateWinsorizedBinCuts
-  GenerateUniformBinCuts
+  GenerateQuantileCuts
+  GenerateWinsorizedCuts
+  GenerateUniformCuts
   Discretize
   Softmax
   SuggestGraphBounds

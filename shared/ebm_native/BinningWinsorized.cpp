@@ -27,15 +27,15 @@ extern FloatEbmType ArithmeticMean(
 ) noexcept;
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterGenerateWinsorizedBinCutsParametersMessages = 25;
-static int g_cLogExitGenerateWinsorizedBinCutsParametersMessages = 25;
+static int g_cLogEnterGenerateWinsorizedCutsParametersMessages = 25;
+static int g_cLogExitGenerateWinsorizedCutsParametersMessages = 25;
 
 // TODO: add this as a python/R option "winsorized"
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateWinsorizedBinCuts(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateWinsorizedCuts(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
-   IntEbmType * countBinCutsInOut,
-   FloatEbmType * binCutsLowerBoundInclusiveOut,
+   IntEbmType * countCutsInOut,
+   FloatEbmType * cutsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
    FloatEbmType * minNonInfinityValueOut,
    IntEbmType * countNegativeInfinityOut,
@@ -43,14 +43,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
    IntEbmType * countPositiveInfinityOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogEnterGenerateWinsorizedBinCutsParametersMessages,
+      &g_cLogEnterGenerateWinsorizedCutsParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered GenerateWinsorizedBinCuts: "
+      "Entered GenerateWinsorizedCuts: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
-      "countBinCutsInOut=%p, "
-      "binCutsLowerBoundInclusiveOut=%p, "
+      "countCutsInOut=%p, "
+      "cutsLowerBoundInclusiveOut=%p, "
       "countMissingValuesOut=%p, "
       "minNonInfinityValueOut=%p, "
       "countNegativeInfinityOut=%p, "
@@ -59,8 +59,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
       ,
       countSamples,
       static_cast<const void *>(featureValues),
-      static_cast<void *>(countBinCutsInOut),
-      static_cast<void *>(binCutsLowerBoundInclusiveOut),
+      static_cast<void *>(countCutsInOut),
+      static_cast<void *>(cutsLowerBoundInclusiveOut),
       static_cast<void *>(countMissingValuesOut),
       static_cast<void *>(minNonInfinityValueOut),
       static_cast<void *>(countNegativeInfinityOut),
@@ -68,7 +68,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
       static_cast<void *>(countPositiveInfinityOut)
    );
 
-   IntEbmType countBinCutsRet = IntEbmType { 0 };
+   IntEbmType countCutsRet = IntEbmType { 0 };
    IntEbmType countMissingValuesRet;
    FloatEbmType minNonInfinityValueRet;
    IntEbmType countNegativeInfinityRet;
@@ -76,8 +76,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
    IntEbmType countPositiveInfinityRet;
    IntEbmType ret;
 
-   if(UNLIKELY(nullptr == countBinCutsInOut)) {
-      LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == countBinCutsInOut");
+   if(UNLIKELY(nullptr == countCutsInOut)) {
+      LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts nullptr == countCutsInOut");
       countMissingValuesRet = IntEbmType { 0 };
       minNonInfinityValueRet = FloatEbmType { 0 };
       countNegativeInfinityRet = IntEbmType { 0 };
@@ -96,12 +96,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
          countPositiveInfinityRet = IntEbmType { 0 };
          ret = IntEbmType { 0 };
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countSamples < IntEbmType { 0 }");
+            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts countSamples < IntEbmType { 0 }");
             ret = IntEbmType { 1 };
          }
       } else {
          if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedBinCuts !IsNumberConvertable<size_t>(countSamples)");
+            LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedCuts !IsNumberConvertable<size_t>(countSamples)");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -113,7 +113,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
          }
 
          if(UNLIKELY(nullptr == featureValues)) {
-            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == featureValues");
+            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts nullptr == featureValues");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -128,7 +128,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
          FloatEbmType * const aFeatureValues = EbmMalloc<FloatEbmType>(cSamplesIncludingMissingValues);
          if(UNLIKELY(nullptr == aFeatureValues)) {
-            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == aFeatureValues");
+            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts nullptr == aFeatureValues");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -164,37 +164,37 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
          // we can't really split 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
          // or if there was only 1 non-missing value
          if(LIKELY(size_t { 1 } < cSamples)) {
-            EBM_ASSERT(nullptr != countBinCutsInOut);
-            const IntEbmType countBinCuts = *countBinCutsInOut;
+            EBM_ASSERT(nullptr != countCutsInOut);
+            const IntEbmType countCuts = *countCutsInOut;
 
-            if(UNLIKELY(countBinCuts <= IntEbmType { 0 })) {
+            if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
                free(aFeatureValues);
                ret = IntEbmType { 0 };
-               if(UNLIKELY(countBinCuts < IntEbmType { 0 })) {
-                  LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countBinCuts can't be negative.");
+               if(UNLIKELY(countCuts < IntEbmType { 0 })) {
+                  LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts countCuts can't be negative.");
                   ret = IntEbmType { 1 };
                }
                goto exit_with_log;
             }
 
-            if(UNLIKELY(!IsNumberConvertable<size_t>(countBinCuts))) {
-               LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedBinCuts !IsNumberConvertable<size_t>(countBinCuts)");
+            if(UNLIKELY(!IsNumberConvertable<size_t>(countCuts))) {
+               LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedCuts !IsNumberConvertable<size_t>(countCuts)");
                free(aFeatureValues);
                ret = IntEbmType { 1 };
                goto exit_with_log;
             }
-            const size_t cBinCuts = static_cast<size_t>(countBinCuts);
+            const size_t cCuts = static_cast<size_t>(countCuts);
 
-            if(UNLIKELY(IsMultiplyError(sizeof(*binCutsLowerBoundInclusiveOut), cBinCuts))) {
-               LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts countBinCuts was too large to fit into binCutsLowerBoundInclusiveOut");
+            if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
+               LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts countCuts was too large to fit into cutsLowerBoundInclusiveOut");
                free(aFeatureValues);
                ret = IntEbmType { 1 };
                goto exit_with_log;
             }
 
-            if(UNLIKELY(nullptr == binCutsLowerBoundInclusiveOut)) {
-               // if we have a potential bin cut, then binCutsLowerBoundInclusiveOut shouldn't be nullptr
-               LOG_0(TraceLevelError, "ERROR GenerateWinsorizedBinCuts nullptr == binCutsLowerBoundInclusiveOut");
+            if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
+               // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
+               LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts nullptr == cutsLowerBoundInclusiveOut");
                free(aFeatureValues);
                ret = IntEbmType { 1 };
                goto exit_with_log;
@@ -208,7 +208,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
             std::sort(aFeatureValues, aFeatureValues + cSamples);
 
-            if(UNLIKELY(size_t { 1 } == cBinCuts)) {
+            if(UNLIKELY(size_t { 1 } == cCuts)) {
                // if we're only given 1 cut, then we need do so something special since we can't have an upper and
                // lower cut from which to range between.  We want to find the best central cut and use that
 
@@ -257,15 +257,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                   // winsorized binning is senitive to the values and not invariant to operations, so this is fine
 
                   const FloatEbmType avg = ArithmeticMean(lowCur, highCur);
-                  *binCutsLowerBoundInclusiveOut = avg;
-                  countBinCutsRet = IntEbmType { 1 };
+                  *cutsLowerBoundInclusiveOut = avg;
+                  countCutsRet = IntEbmType { 1 };
                }
             } else {
-               // we check that cBinCuts can be multiplied with sizeof(*binCutsLowerBoundInclusiveOut), and since
-               // there is no way an element of binCutsLowerBoundInclusiveOut is as small as 1 byte, we should
-               // be able to add one to cBinCuts
-               EBM_ASSERT(!IsAddError(cBinCuts, size_t { 1 }));
-               const size_t cBins = cBinCuts + size_t { 1 };
+               // we check that cCuts can be multiplied with sizeof(*cutsLowerBoundInclusiveOut), and since
+               // there is no way an element of cutsLowerBoundInclusiveOut is as small as 1 byte, we should
+               // be able to add one to cCuts
+               EBM_ASSERT(!IsAddError(cCuts, size_t { 1 }));
+               const size_t cBins = cCuts + size_t { 1 };
                EBM_ASSERT(size_t { 1 } < cSamples);
                const size_t iOuterBound = (cSamples - size_t { 1 }) / cBins;
                EBM_ASSERT(iOuterBound < cSamples);
@@ -309,7 +309,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                   EBM_ASSERT(maxValue == maxValueCompare);
 #endif // NDEBUG
 
-                  FloatEbmType * pBinCutsLowerBoundInclusive = binCutsLowerBoundInclusiveOut;
+                  FloatEbmType * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
                   if(PREDICTABLE(minValue != centerVal)) {
                      // there's a transition somewhere on the low side
                      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < centerVal);
@@ -324,9 +324,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                      EBM_ASSERT(valCur < centerVal);
 
                      const FloatEbmType avg = ArithmeticMean(valCur, centerVal);
-                     *pBinCutsLowerBoundInclusive = avg;
-                     ++pBinCutsLowerBoundInclusive;
-                     ++countBinCutsRet;
+                     *pCutsLowerBoundInclusive = avg;
+                     ++pCutsLowerBoundInclusive;
+                     ++countCutsRet;
                   }
                   if(PREDICTABLE(maxValue != centerVal)) {
                      // there's a transition somewhere on the high side
@@ -342,8 +342,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                      EBM_ASSERT(centerVal < valCur);
 
                      const FloatEbmType avg = ArithmeticMean(centerVal, valCur);
-                     *pBinCutsLowerBoundInclusive = avg;
-                     ++countBinCutsRet;
+                     *pCutsLowerBoundInclusive = avg;
+                     ++countCutsRet;
                   }
                } else {
                   // because lowVal != highVal, we know there's a transition that'll exit our loops somewhere in between
@@ -365,8 +365,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
                      EBM_ASSERT(lowOuterVal < highOuterVal);
                      const FloatEbmType avg = ArithmeticMean(lowOuterVal, highOuterVal);
-                     *binCutsLowerBoundInclusiveOut = avg;
-                     countBinCutsRet = IntEbmType { 1 };
+                     *cutsLowerBoundInclusiveOut = avg;
+                     countCutsRet = IntEbmType { 1 };
                   } else {
                      FloatEbmType highInnerVal;
                      do {
@@ -387,13 +387,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
                         EBM_ASSERT(lowOuterVal < centerVal);
                         const FloatEbmType avg1 = ArithmeticMean(lowOuterVal, centerVal);
-                        binCutsLowerBoundInclusiveOut[0] = avg1;
+                        cutsLowerBoundInclusiveOut[0] = avg1;
 
                         EBM_ASSERT(centerVal < highOuterVal);
                         const FloatEbmType avg2 = ArithmeticMean(centerVal, highOuterVal);
-                        binCutsLowerBoundInclusiveOut[1] = avg2;
+                        cutsLowerBoundInclusiveOut[1] = avg2;
 
-                        countBinCutsRet = IntEbmType { 2 };
+                        countCutsRet = IntEbmType { 2 };
                      } else {
                         // move one up from the highVal since if we put a cut exactly there the high-low value will
                         // be included in the highest bin, and we don't want that
@@ -405,15 +405,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                         highInnerVal = std::nextafter(highInnerVal, std::numeric_limits<FloatEbmType>::max());
 
                         EBM_ASSERT(lowInnerVal < highInnerVal);
-                        EBM_ASSERT(size_t { 2 } <= cBinCuts); // we can put down the low and high ones at least
+                        EBM_ASSERT(size_t { 2 } <= cCuts); // we can put down the low and high ones at least
 
-                        FloatEbmType * pBinCutsLowerBoundInclusive = binCutsLowerBoundInclusiveOut;
-                        *pBinCutsLowerBoundInclusive = lowInnerVal;
-                        ++pBinCutsLowerBoundInclusive;
+                        FloatEbmType * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
+                        *pCutsLowerBoundInclusive = lowInnerVal;
+                        ++pCutsLowerBoundInclusive;
 
-                        if(size_t { 2 } < cBinCuts) {
+                        if(size_t { 2 } < cCuts) {
                            while(true) {
-                              const size_t cInternalRanges = cBinCuts - size_t { 1 };
+                              const size_t cInternalRanges = cCuts - size_t { 1 };
                               const FloatEbmType cInternalRangesFloat = static_cast<FloatEbmType>(cInternalRanges);
                               FloatEbmType stepValue = (highInnerVal - lowInnerVal) / cInternalRangesFloat;
                               if(std::isinf(stepValue)) {
@@ -433,8 +433,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                                     // separations, so it shouldn't be possible to get something even close to 
                                     // highInnerVal
                                     EBM_ASSERT(highInnerVal != cut);
-                                    *pBinCutsLowerBoundInclusive = cut;
-                                    ++pBinCutsLowerBoundInclusive;
+                                    *pCutsLowerBoundInclusive = cut;
+                                    ++pCutsLowerBoundInclusive;
                                     break;
                                  }
                               }
@@ -449,11 +449,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                                  }
                                  if(LIKELY(cutPrev != cut)) {
                                     EBM_ASSERT(cutPrev < cut);
-                                    EBM_ASSERT(binCutsLowerBoundInclusiveOut < pBinCutsLowerBoundInclusive &&
-                                       pBinCutsLowerBoundInclusive < binCutsLowerBoundInclusiveOut + cBinCuts - size_t { 1 });
+                                    EBM_ASSERT(cutsLowerBoundInclusiveOut < pCutsLowerBoundInclusive &&
+                                       pCutsLowerBoundInclusive < cutsLowerBoundInclusiveOut + cCuts - size_t { 1 });
 
-                                    *pBinCutsLowerBoundInclusive = cut;
-                                    ++pBinCutsLowerBoundInclusive;
+                                    *pCutsLowerBoundInclusive = cut;
+                                    ++pCutsLowerBoundInclusive;
                                     cutPrev = cut;
                                  }
                                  ++iCut;
@@ -462,20 +462,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                            }
                         }
 
-                        EBM_ASSERT(binCutsLowerBoundInclusiveOut < pBinCutsLowerBoundInclusive &&
-                           pBinCutsLowerBoundInclusive < binCutsLowerBoundInclusiveOut + cBinCuts);
+                        EBM_ASSERT(cutsLowerBoundInclusiveOut < pCutsLowerBoundInclusive &&
+                           pCutsLowerBoundInclusive < cutsLowerBoundInclusiveOut + cCuts);
 
                         // write the last one manually without resorting to a formula.  We don't allow our loop 
                         // above to write out the highVal, so we're guarnateed that we can write it here
-                        *pBinCutsLowerBoundInclusive = highInnerVal;
+                        *pCutsLowerBoundInclusive = highInnerVal;
 
-                        const size_t cBinCutsRet = 
-                           pBinCutsLowerBoundInclusive - binCutsLowerBoundInclusiveOut + size_t { 1 };
+                        const size_t cCutsRet = 
+                           pCutsLowerBoundInclusive - cutsLowerBoundInclusiveOut + size_t { 1 };
 
                         // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
                         // specified, and that value came to us as an IntEbmType
-                        countBinCutsRet = static_cast<IntEbmType>(cBinCutsRet);
-                        EBM_ASSERT(countBinCutsRet <= countBinCuts);
+                        countCutsRet = static_cast<IntEbmType>(cCutsRet);
+                        EBM_ASSERT(countCutsRet <= countCuts);
                      }
                   }
                }
@@ -487,8 +487,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
    exit_with_log:;
 
-      EBM_ASSERT(nullptr != countBinCutsInOut);
-      *countBinCutsInOut = countBinCutsRet;
+      EBM_ASSERT(nullptr != countCutsInOut);
+      *countCutsInOut = countCutsRet;
    }
 
    if(LIKELY(nullptr != countMissingValuesOut)) {
@@ -508,11 +508,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
    }
 
    LOG_COUNTED_N(
-      &g_cLogExitGenerateWinsorizedBinCutsParametersMessages,
+      &g_cLogExitGenerateWinsorizedCutsParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Exited GenerateWinsorizedBinCuts: "
-      "countBinCuts=%" IntEbmTypePrintf ", "
+      "Exited GenerateWinsorizedCuts: "
+      "countCuts=%" IntEbmTypePrintf ", "
       "countMissingValues=%" IntEbmTypePrintf ", "
       "minNonInfinityValue=%" FloatEbmTypePrintf ", "
       "countNegativeInfinity=%" IntEbmTypePrintf ", "
@@ -520,7 +520,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
       "countPositiveInfinity=%" IntEbmTypePrintf ", "
       "return=%" IntEbmTypePrintf
       ,
-      countBinCutsRet,
+      countCutsRet,
       countMissingValuesRet,
       minNonInfinityValueRet,
       countNegativeInfinityRet,

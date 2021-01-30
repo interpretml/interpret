@@ -833,9 +833,9 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
-   IntEbmType countBinCuts,
-   FloatEbmType lowestBinCut,
-   FloatEbmType highestBinCut,
+   IntEbmType countCuts,
+   FloatEbmType lowestCut,
+   FloatEbmType highestCut,
    FloatEbmType minValue,
    FloatEbmType maxValue,
    FloatEbmType * lowGraphBoundOut,
@@ -852,9 +852,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBou
 
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
-   if(countBinCuts <= IntEbmType { 0 }) {
-      if(countBinCuts < IntEbmType { 0 }) {
-         LOG_0(TraceLevelWarning, "ERROR SuggestGraphBounds countBinCuts < IntEbmType { 0 }");
+   if(countCuts <= IntEbmType { 0 }) {
+      if(countCuts < IntEbmType { 0 }) {
+         LOG_0(TraceLevelWarning, "ERROR SuggestGraphBounds countCuts < IntEbmType { 0 }");
          lowGraphBound = FloatEbmType { 0 };
          highGraphBound = FloatEbmType { 0 };
       } else {
@@ -880,29 +880,29 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBou
             maxValue = tmp;
          }
 
-         // if countBinCuts was zero, we can ignore lowestBinCut and highestBinCut since they have no meaning.
+         // if countCuts was zero, we can ignore lowestCut and highestCut since they have no meaning.
          // Since there are no cuts, don't turn these into interpretable values.  We show 
          // the most information on the graph by showing the true bounds on the graph.
          lowGraphBound = minValue;
          highGraphBound = maxValue;
       }
-   } else if(IntEbmType { 1 } == countBinCuts) {
-      if(std::isnan(lowestBinCut)) {
-         LOG_0(TraceLevelWarning, "WARNING SuggestGraphBounds std::isnan(lowestBinCut)");
+   } else if(IntEbmType { 1 } == countCuts) {
+      if(std::isnan(lowestCut)) {
+         LOG_0(TraceLevelWarning, "WARNING SuggestGraphBounds std::isnan(lowestCut)");
          goto use_just_min_max;
       }
-      if(std::isnan(highestBinCut)) {
-         LOG_0(TraceLevelWarning, "WARNING SuggestGraphBounds std::isnan(highestBinCut)");
+      if(std::isnan(highestCut)) {
+         LOG_0(TraceLevelWarning, "WARNING SuggestGraphBounds std::isnan(highestCut)");
          goto use_just_min_max;
       }
-      if(lowestBinCut != highestBinCut) {
-         // if there's only one cut then the lowestBinCut should be the same as the highestBinCut.  If they aren't
+      if(lowestCut != highestCut) {
+         // if there's only one cut then the lowestCut should be the same as the highestCut.  If they aren't
          // the same, then there's a serious problem and we can't really know which to trust, so ignore them
          LOG_0(TraceLevelError, 
-            "ERROR SuggestGraphBounds when 1 == countBinCuts, then lowestBinCut and highestBinCut should be identical");
+            "ERROR SuggestGraphBounds when 1 == countCuts, then lowestCut and highestCut should be identical");
          goto use_just_min_max;
       }
-      const FloatEbmType center = lowestBinCut;
+      const FloatEbmType center = lowestCut;
       if(maxValue < minValue) {
          // silly caller, these should be reversed
          LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < minValue");
@@ -966,28 +966,28 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBou
       // ignore the min and max value.  We have complexity in our graph with multiple cuts so we want to focus on that
       // part.  
 
-      if(std::isnan(lowestBinCut) || -std::numeric_limits<FloatEbmType>::infinity() == lowestBinCut) {
-         lowestBinCut = std::numeric_limits<FloatEbmType>::lowest();
-      } else if(std::numeric_limits<FloatEbmType>::infinity() == lowestBinCut) {
-         lowestBinCut = std::numeric_limits<FloatEbmType>::max();
+      if(std::isnan(lowestCut) || -std::numeric_limits<FloatEbmType>::infinity() == lowestCut) {
+         lowestCut = std::numeric_limits<FloatEbmType>::lowest();
+      } else if(std::numeric_limits<FloatEbmType>::infinity() == lowestCut) {
+         lowestCut = std::numeric_limits<FloatEbmType>::max();
       }
 
-      if(std::isnan(highestBinCut) || std::numeric_limits<FloatEbmType>::infinity() == highestBinCut) {
-         highestBinCut = std::numeric_limits<FloatEbmType>::max();
-      } else if(-std::numeric_limits<FloatEbmType>::infinity() == highestBinCut) {
-         highestBinCut = std::numeric_limits<FloatEbmType>::lowest();
+      if(std::isnan(highestCut) || std::numeric_limits<FloatEbmType>::infinity() == highestCut) {
+         highestCut = std::numeric_limits<FloatEbmType>::max();
+      } else if(-std::numeric_limits<FloatEbmType>::infinity() == highestCut) {
+         highestCut = std::numeric_limits<FloatEbmType>::lowest();
       }
 
-      if(highestBinCut < lowestBinCut) {
+      if(highestCut < lowestCut) {
          // silly caller, these should be reversed
-         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds highestBinCut < lowestBinCut");
-         const FloatEbmType tmp = lowestBinCut;
-         lowestBinCut = highestBinCut;
-         highestBinCut = tmp;
+         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds highestCut < lowestCut");
+         const FloatEbmType tmp = lowestCut;
+         lowestCut = highestCut;
+         highestCut = tmp;
       }
 
-      const FloatEbmType scaleMin = highestBinCut - lowestBinCut;
-      // scaleMin can be +infinity if highestBinCut is max and lowestBinCut is lowest.  We can handle it.
+      const FloatEbmType scaleMin = highestCut - lowestCut;
+      // scaleMin can be +infinity if highestCut is max and lowestCut is lowest.  We can handle it.
       EBM_ASSERT(!std::isnan(scaleMin));
       // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
       EBM_ASSERT(FloatEbmType { 0 } <= scaleMin);
@@ -996,7 +996,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBou
       // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
       // 1.5% on the right)
 
-      const size_t cBinCutsLimited = static_cast<size_t>(IntEbmType { 32 } < countBinCuts ? IntEbmType { 32 } : countBinCuts);
+      const size_t cCutsLimited = static_cast<size_t>(IntEbmType { 32 } < countCuts ? IntEbmType { 32 } : countCuts);
 
       // the leftmost and rightmost cuts can legally be right outside of the bounds between scaleHighLow and
       // scaleLowHigh, so we subtract these two cuts, leaving us the number of ranges between the two end
@@ -1005,31 +1005,31 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBou
       // cut though from the previous inner cut.  We want to move outwards from the scaleHighLow and
       // scaleLowHigh values, which should be half a cut inwards (not exactly but in spirit), so we
       // divide by two, which is the same as multiplying the divisor by 2, which is the right shift below
-      EBM_ASSERT(IntEbmType { 2 } <= countBinCuts); // if there's just one cut then suggest bounds surrounding it
-      const size_t denominator = (cBinCutsLimited - size_t { 1 }) << 1;
+      EBM_ASSERT(IntEbmType { 2 } <= countCuts); // if there's just one cut then suggest bounds surrounding it
+      const size_t denominator = (cCutsLimited - size_t { 1 }) << 1;
       EBM_ASSERT(size_t { 0 } < denominator);
       const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
       // movementFromEnds can be +infinity if scaleMin is infinity. We can handle it.
       EBM_ASSERT(!std::isnan(movementFromEnds));
       EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
 
-      lowestBinCut = lowestBinCut - movementFromEnds;
-      // lowestBinCut can be -infinity if movementFromEnds is +infinity.  We can handle it.
-      EBM_ASSERT(!std::isnan(lowestBinCut));
-      EBM_ASSERT(lowestBinCut <= std::numeric_limits<FloatEbmType>::max());
+      lowestCut = lowestCut - movementFromEnds;
+      // lowestCut can be -infinity if movementFromEnds is +infinity.  We can handle it.
+      EBM_ASSERT(!std::isnan(lowestCut));
+      EBM_ASSERT(lowestCut <= std::numeric_limits<FloatEbmType>::max());
       // GetInterpretableEndpoint can accept -infinity, but it'll return -infinity in that case
-      lowGraphBound = GetInterpretableEndpoint(lowestBinCut, movementFromEnds);
+      lowGraphBound = GetInterpretableEndpoint(lowestCut, movementFromEnds);
       // lowGraphBound can legally be -infinity and we handle this scenario below
       if(-std::numeric_limits<FloatEbmType>::infinity() == lowGraphBound) {
          lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
       }
 
-      highestBinCut = highestBinCut + movementFromEnds;
-      // highestBinCut can be +infinity if movementFromEnds is +infinity.  We can handle it.
-      EBM_ASSERT(!std::isnan(highestBinCut));
-      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() <= highestBinCut);
+      highestCut = highestCut + movementFromEnds;
+      // highestCut can be +infinity if movementFromEnds is +infinity.  We can handle it.
+      EBM_ASSERT(!std::isnan(highestCut));
+      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() <= highestCut);
       // GetInterpretableEndpoint can accept infinity, but it'll return infinity in that case
-      highGraphBound = GetInterpretableEndpoint(highestBinCut, movementFromEnds);
+      highGraphBound = GetInterpretableEndpoint(highestCut, movementFromEnds);
       // highGraphBound can legally be +infinity and we handle this scenario below
       if(std::numeric_limits<FloatEbmType>::infinity() == highGraphBound) {
          highGraphBound = std::numeric_limits<FloatEbmType>::max();

@@ -15,9 +15,9 @@ enum class TestPriority {
    RandomNumbers,
    SuggestGraphBounds,
    Discretize,
-   GenerateUniformBinCuts,
-   GenerateWinsorizedBinCuts,
-   GenerateQuantileBinCuts
+   GenerateUniformCuts,
+   GenerateWinsorizedCuts,
+   GenerateQuantileCuts
 };
 
 class TestCaseHidden;
@@ -387,8 +387,8 @@ void DisplayCuts(
    FloatEbmType * featureValues,
    IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
-   IntEbmType countBinCuts,
-   FloatEbmType * binCutsLowerBoundInclusive,
+   IntEbmType countCuts,
+   FloatEbmType * cutsLowerBoundInclusive,
    IntEbmType isMissingPresent,
    FloatEbmType minValue,
    FloatEbmType maxValue

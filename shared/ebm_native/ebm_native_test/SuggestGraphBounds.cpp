@@ -14,16 +14,16 @@ TEST_CASE("SuggestGraphBounds, 0 cuts, min -inf, max nan") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 0;
+   constexpr IntEbmType countCuts = 0;
    constexpr FloatEbmType minValue = -std::numeric_limits<FloatEbmType>::infinity();
-   constexpr FloatEbmType lowestBinCut = -1;
-   constexpr FloatEbmType highestBinCut = -1;
+   constexpr FloatEbmType lowestCut = -1;
+   constexpr FloatEbmType highestCut = -1;
    constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::quiet_NaN();
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -38,16 +38,16 @@ TEST_CASE("SuggestGraphBounds, 0 cuts, min nan, max inf") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 0;
+   constexpr IntEbmType countCuts = 0;
    constexpr FloatEbmType minValue = std::numeric_limits<FloatEbmType>::quiet_NaN();
-   constexpr FloatEbmType lowestBinCut = -1;
-   constexpr FloatEbmType highestBinCut = -1;
+   constexpr FloatEbmType lowestCut = -1;
+   constexpr FloatEbmType highestCut = -1;
    constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::infinity();
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -62,16 +62,16 @@ TEST_CASE("SuggestGraphBounds, 0 cuts, min inf, max -inf") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 0;
+   constexpr IntEbmType countCuts = 0;
    constexpr FloatEbmType minValue = std::numeric_limits<FloatEbmType>::infinity();
-   constexpr FloatEbmType lowestBinCut = -1;
-   constexpr FloatEbmType highestBinCut = -1;
+   constexpr FloatEbmType lowestCut = -1;
+   constexpr FloatEbmType highestCut = -1;
    constexpr FloatEbmType maxValue = -std::numeric_limits<FloatEbmType>::infinity();
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -86,16 +86,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, low nan, high 0") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = -1;
-   constexpr FloatEbmType lowestBinCut = std::numeric_limits<FloatEbmType>::quiet_NaN();
-   constexpr FloatEbmType highestBinCut = 0;
+   constexpr FloatEbmType lowestCut = std::numeric_limits<FloatEbmType>::quiet_NaN();
+   constexpr FloatEbmType highestCut = 0;
    constexpr FloatEbmType maxValue = 1;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -110,16 +110,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, low 0, high nan") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = -1;
-   constexpr FloatEbmType lowestBinCut = 0;
-   constexpr FloatEbmType highestBinCut = std::numeric_limits<FloatEbmType>::quiet_NaN();
+   constexpr FloatEbmType lowestCut = 0;
+   constexpr FloatEbmType highestCut = std::numeric_limits<FloatEbmType>::quiet_NaN();
    constexpr FloatEbmType maxValue = 1;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -134,16 +134,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, mismatched low high") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = -1;
-   constexpr FloatEbmType lowestBinCut = -0.5;
-   constexpr FloatEbmType highestBinCut = 0.5;
+   constexpr FloatEbmType lowestCut = -0.5;
+   constexpr FloatEbmType highestCut = 0.5;
    constexpr FloatEbmType maxValue = 1;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -158,16 +158,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, out of range low") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = -2;
-   constexpr FloatEbmType lowestBinCut = 0;
-   constexpr FloatEbmType highestBinCut = 0;
+   constexpr FloatEbmType lowestCut = 0;
+   constexpr FloatEbmType highestCut = 0;
    constexpr FloatEbmType maxValue = -1;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -182,16 +182,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, out of range high") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = 1;
-   constexpr FloatEbmType lowestBinCut = 0;
-   constexpr FloatEbmType highestBinCut = 0;
+   constexpr FloatEbmType lowestCut = 0;
+   constexpr FloatEbmType highestCut = 0;
    constexpr FloatEbmType maxValue = 2;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -206,16 +206,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, min -inf") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = -std::numeric_limits<FloatEbmType>::infinity();
-   constexpr FloatEbmType lowestBinCut = std::numeric_limits<FloatEbmType>::lowest() + FloatEbmType { 1e300 };
-   constexpr FloatEbmType highestBinCut = std::numeric_limits<FloatEbmType>::lowest() + FloatEbmType { 1e300 };
+   constexpr FloatEbmType lowestCut = std::numeric_limits<FloatEbmType>::lowest() + FloatEbmType { 1e300 };
+   constexpr FloatEbmType highestCut = std::numeric_limits<FloatEbmType>::lowest() + FloatEbmType { 1e300 };
    constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::lowest() + FloatEbmType { 1.5e300 };
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -230,16 +230,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, max +inf") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = std::numeric_limits<FloatEbmType>::max() - 1.5e300;
-   constexpr FloatEbmType lowestBinCut = std::numeric_limits<FloatEbmType>::max() - 1e300;
-   constexpr FloatEbmType highestBinCut = std::numeric_limits<FloatEbmType>::max() - 1e300;
+   constexpr FloatEbmType lowestCut = std::numeric_limits<FloatEbmType>::max() - 1e300;
+   constexpr FloatEbmType highestCut = std::numeric_limits<FloatEbmType>::max() - 1e300;
    constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::infinity();
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -254,16 +254,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow diff") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = std::numeric_limits<FloatEbmType>::lowest() + 1e300;
-   constexpr FloatEbmType lowestBinCut = std::numeric_limits<FloatEbmType>::max() - 2e300;
-   constexpr FloatEbmType highestBinCut = std::numeric_limits<FloatEbmType>::max() - 2e300;
+   constexpr FloatEbmType lowestCut = std::numeric_limits<FloatEbmType>::max() - 2e300;
+   constexpr FloatEbmType highestCut = std::numeric_limits<FloatEbmType>::max() - 2e300;
    constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::max() - 1e300;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -278,16 +278,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, min longest") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = 98;
-   constexpr FloatEbmType lowestBinCut = 100;
-   constexpr FloatEbmType highestBinCut = 100;
+   constexpr FloatEbmType lowestCut = 100;
+   constexpr FloatEbmType highestCut = 100;
    constexpr FloatEbmType maxValue = 101;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -302,16 +302,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, max longest") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = 99;
-   constexpr FloatEbmType lowestBinCut = 100;
-   constexpr FloatEbmType highestBinCut = 100;
+   constexpr FloatEbmType lowestCut = 100;
+   constexpr FloatEbmType highestCut = 100;
    constexpr FloatEbmType maxValue = 102;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -326,16 +326,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow high") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = std::numeric_limits<FloatEbmType>::max() - 1e307;
-   constexpr FloatEbmType lowestBinCut = std::numeric_limits<FloatEbmType>::max() - 1e306;
-   constexpr FloatEbmType highestBinCut = std::numeric_limits<FloatEbmType>::max() - 1e306;
+   constexpr FloatEbmType lowestCut = std::numeric_limits<FloatEbmType>::max() - 1e306;
+   constexpr FloatEbmType highestCut = std::numeric_limits<FloatEbmType>::max() - 1e306;
    constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::max();
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -350,16 +350,16 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow low") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 1;
+   constexpr IntEbmType countCuts = 1;
    constexpr FloatEbmType minValue = std::numeric_limits<FloatEbmType>::lowest();
-   constexpr FloatEbmType lowestBinCut = std::numeric_limits<FloatEbmType>::lowest() + 1e306;
-   constexpr FloatEbmType highestBinCut = std::numeric_limits<FloatEbmType>::lowest() + 1e306;
+   constexpr FloatEbmType lowestCut = std::numeric_limits<FloatEbmType>::lowest() + 1e306;
+   constexpr FloatEbmType highestCut = std::numeric_limits<FloatEbmType>::lowest() + 1e306;
    constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::lowest() + 1e307;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -374,16 +374,16 @@ TEST_CASE("SuggestGraphBounds, 2 cuts") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 2;
+   constexpr IntEbmType countCuts = 2;
    constexpr FloatEbmType minValue = 5;
-   constexpr FloatEbmType lowestBinCut = 6;
-   constexpr FloatEbmType highestBinCut = 7;
+   constexpr FloatEbmType lowestCut = 6;
+   constexpr FloatEbmType highestCut = 7;
    constexpr FloatEbmType maxValue = 8;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -398,16 +398,16 @@ TEST_CASE("SuggestGraphBounds, 4 cuts") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 4;
+   constexpr IntEbmType countCuts = 4;
    constexpr FloatEbmType minValue = 5;
-   constexpr FloatEbmType lowestBinCut = 6;
-   constexpr FloatEbmType highestBinCut = 7;
+   constexpr FloatEbmType lowestCut = 6;
+   constexpr FloatEbmType highestCut = 7;
    constexpr FloatEbmType maxValue = 8;
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,
@@ -422,16 +422,16 @@ TEST_CASE("SuggestGraphBounds, 2 cuts, overflow diff") {
    FloatEbmType lowGraphBound;
    FloatEbmType highGraphBound;
 
-   constexpr IntEbmType countBinCuts = 2;
+   constexpr IntEbmType countCuts = 2;
    constexpr FloatEbmType minValue = std::numeric_limits<FloatEbmType>::lowest();
-   constexpr FloatEbmType lowestBinCut = std::numeric_limits<FloatEbmType>::lowest();
-   constexpr FloatEbmType highestBinCut = std::numeric_limits<FloatEbmType>::max();
+   constexpr FloatEbmType lowestCut = std::numeric_limits<FloatEbmType>::lowest();
+   constexpr FloatEbmType highestCut = std::numeric_limits<FloatEbmType>::max();
    constexpr FloatEbmType maxValue = std::numeric_limits<FloatEbmType>::max();
 
    SuggestGraphBounds(
-      countBinCuts,
-      lowestBinCut,
-      highestBinCut,
+      countCuts,
+      lowestCut,
+      highestCut,
       minValue,
       maxValue,
       &lowGraphBound,

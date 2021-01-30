@@ -198,11 +198,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         is_humanized = 1
 
                     (
-                        bin_cuts, 
+                        cuts, 
                         count_missing, 
                         min_val, 
                         max_val, 
-                    ) = native.generate_quantile_bin_cuts(
+                    ) = native.generate_quantile_cuts(
                         col_data, 
                         min_samples_bin, 
                         is_humanized, 
@@ -210,18 +210,18 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     )
                 elif self.binning == "uniform":
                     (
-                        bin_cuts, 
+                        cuts, 
                         count_missing, 
                         min_val, 
                         max_val,
-                    ) = native.generate_uniform_bin_cuts(
+                    ) = native.generate_uniform_cuts(
                         col_data, 
                         self.max_bins - 2, # one bin for missing, and # of cuts is one less again
                     )
                 else:
                     raise ValueError(f"Unrecognized bin type: {self.binning}")
 
-                discretized = native.discretize(col_data, bin_cuts)
+                discretized = native.discretize(col_data, cuts)
 
                 _, bin_counts = np.unique(discretized, return_counts=True)
 
@@ -231,7 +231,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     col_data = col_data[~np.isnan(col_data)]
                 
                 self.col_bin_counts_.append(bin_counts)
-                self.col_bin_edges_[col_idx] = bin_cuts
+                self.col_bin_edges_[col_idx] = cuts
                 self.col_min_[col_idx] = min_val
                 self.col_max_[col_idx] = max_val
 
@@ -281,9 +281,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
             if col_type == "continuous":
                 col_data = col_data.astype(float)
-                bin_cuts = self.col_bin_edges_[col_idx]
+                cuts = self.col_bin_edges_[col_idx]
 
-                discretized = native.discretize(col_data, bin_cuts)
+                discretized = native.discretize(col_data, cuts)
                 
                 X_new[:, col_idx] = discretized
 
@@ -343,9 +343,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         col_type = self.col_types_[feature_index]
         if col_type == "continuous":
             min_val = self.col_min_[feature_index]
-            bin_cuts = self.col_bin_edges_[feature_index]
+            cuts = self.col_bin_edges_[feature_index]
             max_val = self.col_max_[feature_index]
-            return list(np.concatenate(([min_val], bin_cuts, [max_val])))
+            return list(np.concatenate(([min_val], cuts, [max_val])))
         elif col_type == "ordinal":
             map = self.col_mapping_[feature_index]
             return list(map.keys())
