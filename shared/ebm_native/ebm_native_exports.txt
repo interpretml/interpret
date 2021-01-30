@@ -6,6 +6,9 @@
       CreateClassificationBooster;
       CreateRegressionBooster;
       GenerateModelUpdate;
+      GetModelUpdateCuts;
+      GetModelUpdateExpanded;
+      SetModelUpdateExpanded;
       ApplyModelUpdate;
       GetBestModelFeatureGroup;
       GetCurrentModelFeatureGroup;

@@ -148,8 +148,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       &g_cLogApplyModelUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "ApplyModelUpdate parameters: boosterHandle=%p, threadStateBoostingHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf
-      ", validationMetricOut=%p",
+      "ApplyModelUpdate: "
+      "boosterHandle=%p, "
+      "threadStateBoostingHandle=%p, "
+      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "validationMetricOut=%p"
+      ,
       static_cast<void *>(boosterHandle),
       static_cast<void *>(threadStateBoostingHandle),
       indexFeatureGroup,
@@ -252,4 +256,179 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       );
    }
    return ret;
+}
+
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateCuts(
+   BoosterHandle boosterHandle,
+   ThreadStateBoostingHandle threadStateBoostingHandle,
+   IntEbmType indexFeatureGroup,
+   IntEbmType indexDimension,
+   IntEbmType * countCutsOut,
+   IntEbmType * cutIndexesOut
+) {
+   UNUSED(boosterHandle);
+   UNUSED(threadStateBoostingHandle);
+   UNUSED(indexFeatureGroup);
+   UNUSED(indexDimension);
+   UNUSED(countCutsOut);
+   UNUSED(cutIndexesOut);
+
+   // TODO: complete
+
+   return IntEbmType { 0 };
+}
+
+
+// we made this a global because if we had put this variable inside the Booster object, then we would need to dereference that before 
+// getting the count.  By making this global we can send a log message incase a bad Booster object is sent into us
+// we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
+// times than desired, but we can live with that
+static int g_cLogGetModelUpdateExpandedParametersMessages = 10;
+
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
+   BoosterHandle boosterHandle,
+   ThreadStateBoostingHandle threadStateBoostingHandle,
+   IntEbmType indexFeatureGroup,
+   FloatEbmType * modelFeatureGroupUpdateTensor
+) {
+   LOG_COUNTED_N(
+      &g_cLogGetModelUpdateExpandedParametersMessages,
+      TraceLevelInfo,
+      TraceLevelVerbose,
+      "GetModelUpdateExpanded: "
+      "boosterHandle=%p, "
+      "threadStateBoostingHandle=%p, "
+      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "modelFeatureGroupUpdateTensor=%p",
+      static_cast<void *>(boosterHandle),
+      static_cast<void *>(threadStateBoostingHandle),
+      indexFeatureGroup,
+      static_cast<void *>(modelFeatureGroupUpdateTensor)
+   );
+
+   Booster * const pBooster = reinterpret_cast<Booster *>(boosterHandle);
+   if(nullptr == pBooster) {
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded boosterHandle cannot be nullptr");
+      return IntEbmType { 1 };
+   }
+   ThreadStateBoosting * const pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
+   if(nullptr == pThreadStateBoosting) {
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded threadStateBoosting cannot be nullptr");
+      return IntEbmType { 1 };
+   }
+
+   if(indexFeatureGroup < 0) {
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded indexFeatureGroup must be positive");
+      return IntEbmType { 1 };
+   }
+   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
+      // we wouldn't have allowed the creation of an feature set larger than size_t
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded indexFeatureGroup is too high to index");
+      return IntEbmType { 1 };
+   }
+   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded indexFeatureGroup above the number of feature groups that we have");
+      return IntEbmType { 1 };
+   }
+   // this is true because 0 < pBooster->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
+   EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
+
+   if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) {
+      return IntEbmType { 0 };
+   }
+
+   size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+   const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
+   const size_t cFeatures = pFeatureGroup->GetCountFeatures();
+   if(0 != cFeatures) {
+      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
+      do {
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         cValues *= cBins;
+         ++pFeatureGroupEntry;
+      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+   }
+   const FloatEbmType * const pValues = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+   memcpy(modelFeatureGroupUpdateTensor, pValues, sizeof(*pValues) * cValues);
+   return IntEbmType { 0 };
+}
+
+// we made this a global because if we had put this variable inside the Booster object, then we would need to dereference that before 
+// getting the count.  By making this global we can send a log message incase a bad Booster object is sent into us
+// we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
+// times than desired, but we can live with that
+static int g_cLogSetModelUpdateExpandedParametersMessages = 10;
+
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
+   BoosterHandle boosterHandle,
+   ThreadStateBoostingHandle threadStateBoostingHandle,
+   IntEbmType indexFeatureGroup,
+   FloatEbmType * modelFeatureGroupUpdateTensor
+) {
+   LOG_COUNTED_N(
+      &g_cLogSetModelUpdateExpandedParametersMessages,
+      TraceLevelInfo,
+      TraceLevelVerbose,
+      "SetModelUpdateExpanded: "
+      "boosterHandle=%p, "
+      "threadStateBoostingHandle=%p, "
+      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "modelFeatureGroupUpdateTensor=%p",
+      static_cast<void *>(boosterHandle),
+      static_cast<void *>(threadStateBoostingHandle),
+      indexFeatureGroup,
+      static_cast<void *>(modelFeatureGroupUpdateTensor)
+   );
+
+   Booster * const pBooster = reinterpret_cast<Booster *>(boosterHandle);
+   if(nullptr == pBooster) {
+      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded boosterHandle cannot be nullptr");
+      return IntEbmType { 1 };
+   }
+   ThreadStateBoosting * const pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
+   if(nullptr == pThreadStateBoosting) {
+      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded threadStateBoosting cannot be nullptr");
+      return IntEbmType { 1 };
+   }
+
+   if(indexFeatureGroup < 0) {
+      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup must be positive");
+      return IntEbmType { 1 };
+   }
+   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
+      // we wouldn't have allowed the creation of an feature set larger than size_t
+      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup is too high to index");
+      return IntEbmType { 1 };
+   }
+   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
+      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup above the number of feature groups that we have");
+      return IntEbmType { 1 };
+   }
+   // this is true because 0 < pBooster->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
+   EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
+
+   if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) {
+      return IntEbmType { 0 };
+   }
+
+   size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+   const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
+   const size_t cFeatures = pFeatureGroup->GetCountFeatures();
+   if(0 != cFeatures) {
+      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
+      do {
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         cValues *= cBins;
+         ++pFeatureGroupEntry;
+      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+   }
+   FloatEbmType * const pValues = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+   memcpy(pValues, modelFeatureGroupUpdateTensor, sizeof(*pValues) * cValues);
+   return IntEbmType { 0 };
 }
