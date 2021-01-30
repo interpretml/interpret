@@ -444,7 +444,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelUpdate(
    BoosterHandle boosterHandle, 
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
@@ -454,7 +454,27 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    const IntEbmType * leavesMax, 
    FloatEbmType * gainOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateCuts(
+   BoosterHandle boosterHandle,
+   ThreadStateBoostingHandle threadStateBoostingHandle,
+   IntEbmType indexFeatureGroup,
+   IntEbmType indexDimension,
+   IntEbmType * countCutsOut,
+   IntEbmType * cutIndexesOut
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
+   BoosterHandle boosterHandle,
+   ThreadStateBoostingHandle threadStateBoostingHandle,
+   IntEbmType indexFeatureGroup,
+   FloatEbmType * modelFeatureGroupUpdateTensor
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
+   BoosterHandle boosterHandle,
+   ThreadStateBoostingHandle threadStateBoostingHandle,
+   IntEbmType indexFeatureGroup,
+   FloatEbmType * modelFeatureGroupUpdateTensor
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
    BoosterHandle boosterHandle, 
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,

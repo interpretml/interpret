@@ -35,7 +35,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr
    );
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
-   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
+   const IntEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -46,7 +46,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr
    );
    CHECK(0 == retGenerate);
-   const IntEbmType ret = ApplyModelFeatureGroupUpdate(
+   const IntEbmType ret = ApplyModelUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -84,7 +84,7 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr
    );
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
-   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
+   const IntEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -95,7 +95,7 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr
    );
    CHECK(0 == retGenerate);
-   const IntEbmType ret = ApplyModelFeatureGroupUpdate(
+   const IntEbmType ret = ApplyModelUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -133,7 +133,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr
    );
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
-   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
+   const IntEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -144,7 +144,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr
    );
    CHECK(0 == retGenerate);
-   const IntEbmType ret = ApplyModelFeatureGroupUpdate(
+   const IntEbmType ret = ApplyModelUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -635,7 +635,7 @@ TEST_CASE("classification with 0 possible target states, boosting") {
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
 
    FloatEbmType gain = 9.99;
-   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
+   const IntEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },
@@ -689,7 +689,7 @@ TEST_CASE("classification with 1 possible target, boosting") {
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
 
    FloatEbmType gain = 9.99;
-   const IntEbmType retGenerate = GenerateModelFeatureGroupUpdate(
+   const IntEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       threadStateBoostingHandle,
       IntEbmType { 0 },

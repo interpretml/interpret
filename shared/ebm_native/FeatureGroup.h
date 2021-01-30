@@ -31,10 +31,10 @@ class FeatureGroup final {
    size_t m_cItemsPerBitPackedDataUnit;
    size_t m_cFeatures;
    size_t m_iInputData;
-   int m_cLogEnterGenerateModelFeatureGroupUpdateMessages;
-   int m_cLogExitGenerateModelFeatureGroupUpdateMessages;
-   int m_cLogEnterApplyModelFeatureGroupUpdateMessages;
-   int m_cLogExitApplyModelFeatureGroupUpdateMessages;
+   int m_cLogEnterGenerateModelUpdateMessages;
+   int m_cLogExitGenerateModelUpdateMessages;
+   int m_cLogEnterApplyModelUpdateMessages;
+   int m_cLogExitApplyModelUpdateMessages;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_FeatureGroupEntry must be the last item in this struct
@@ -61,10 +61,10 @@ public:
    INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureGroup) {
       m_cFeatures = cFeatures;
       m_iInputData = iFeatureGroup;
-      m_cLogEnterGenerateModelFeatureGroupUpdateMessages = 2;
-      m_cLogExitGenerateModelFeatureGroupUpdateMessages = 2;
-      m_cLogEnterApplyModelFeatureGroupUpdateMessages = 2;
-      m_cLogExitApplyModelFeatureGroupUpdateMessages = 2;
+      m_cLogEnterGenerateModelUpdateMessages = 2;
+      m_cLogExitGenerateModelUpdateMessages = 2;
+      m_cLogEnterApplyModelUpdateMessages = 2;
+      m_cLogExitApplyModelUpdateMessages = 2;
    }
 
    static FeatureGroup * Allocate(const size_t cFeatures, const size_t iFeatureGroup);
@@ -94,20 +94,20 @@ public:
       return ArrayToPointer(m_FeatureGroupEntry);
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogEnterGenerateModelFeatureGroupUpdateMessages() {
-      return &m_cLogEnterGenerateModelFeatureGroupUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogEnterGenerateModelUpdateMessages() {
+      return &m_cLogEnterGenerateModelUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitGenerateModelFeatureGroupUpdateMessages() {
-      return &m_cLogExitGenerateModelFeatureGroupUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogExitGenerateModelUpdateMessages() {
+      return &m_cLogExitGenerateModelUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogEnterApplyModelFeatureGroupUpdateMessages() {
-      return &m_cLogEnterApplyModelFeatureGroupUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogEnterApplyModelUpdateMessages() {
+      return &m_cLogEnterApplyModelUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages() {
-      return &m_cLogExitApplyModelFeatureGroupUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogExitApplyModelUpdateMessages() {
+      return &m_cLogExitApplyModelUpdateMessages;
    }
 };
 static_assert(std::is_standard_layout<FeatureGroup>::value,

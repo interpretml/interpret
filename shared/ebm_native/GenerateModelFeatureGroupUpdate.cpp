@@ -710,7 +710,7 @@ static bool BoostRandom(
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static IntEbmType GenerateModelFeatureGroupUpdateInternal(
+static IntEbmType GenerateModelUpdateInternal(
    Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t iFeatureGroup,
@@ -723,7 +723,7 @@ static IntEbmType GenerateModelFeatureGroupUpdateInternal(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
-   LOG_0(TraceLevelVerbose, "Entered GenerateModelFeatureGroupUpdateInternal");
+   LOG_0(TraceLevelVerbose, "Entered GenerateModelUpdateInternal");
 
    const size_t cSamplingSetsAfterZero = (0 == pBooster->GetCountSamplingSets()) ? 1 : pBooster->GetCountSamplingSets();
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
@@ -763,7 +763,7 @@ static IntEbmType GenerateModelFeatureGroupUpdateInternal(
          } else if(0 != (GenerateUpdateOptions_RandomSplits & options)) {
             if(size_t { 1 } != cSamplesRequiredForChildSplitMin) {
                LOG_0(TraceLevelWarning, 
-                  "WARNING GenerateModelFeatureGroupUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"
+                  "WARNING GenerateModelUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"
                );
             }
             // THIS RANDOM CUT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
@@ -833,7 +833,7 @@ static IntEbmType GenerateModelFeatureGroupUpdateInternal(
       // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
       EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
 
-      LOG_0(TraceLevelVerbose, "GenerateModelFeatureGroupUpdatePerTargetClasses done sampling set loop");
+      LOG_0(TraceLevelVerbose, "GenerateModelUpdatePerTargetClasses done sampling set loop");
 
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
@@ -917,14 +917,14 @@ static IntEbmType GenerateModelFeatureGroupUpdateInternal(
       *pGainReturn = totalGain;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureGroupUpdatePerTargetClasses");
+   LOG_0(TraceLevelVerbose, "Exited GenerateModelUpdatePerTargetClasses");
    return IntEbmType { 0 };
 }
 
 // we made this a global because if we had put this variable inside the Booster object, then we would need to dereference that before getting 
 // the count.  By making this global we can send a log message incase a bad Booster object is sent into us we only decrease the count if the 
 // count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
-static int g_cLogGenerateModelFeatureGroupUpdateParametersMessages = 10;
+static int g_cLogGenerateModelUpdateParametersMessages = 10;
 
 // TODO : change this so that our caller allocates the memory that contains the update, but this is complicated in various ways
 //        we don't want to just copy the internal tensor into the memory region that our caller provides, and we want to work with
@@ -938,15 +938,15 @@ static int g_cLogGenerateModelFeatureGroupUpdateParametersMessages = 10;
 //             (return the exact size that we require to the caller for copying)
 //          3) if caller wants a simplified tensor, then they call a separate function that expands the tensor 
 //             and returns a pointer to the memory inside the opaque object
-//          4) ApplyModelFeatureGroupUpdate will take an opaque SegmentedTensor, and expand it if needed
+//          4) ApplyModelUpdate will take an opaque SegmentedTensor, and expand it if needed
 //        The benefit of returning a compressed object is that we don't have to do the work of expanding it if the caller decides not to use it 
 //        (which might happen in greedy algorithms)
 //        The other benefit of returning a compressed object is that our caller can store/copy it faster
 //        The other benefit of returning a compressed object is that it can be copied from process to process faster
-//        Lastly, with the memory allocated by our caller, we can call GenerateModelFeatureGroupUpdate in parallel on multiple feature_groups.  
+//        Lastly, with the memory allocated by our caller, we can call GenerateModelUpdate in parallel on multiple feature_groups.  
 //        Right now you can't call it in parallel since we're updating our internal single tensor
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelUpdate(
    BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
@@ -967,10 +967,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
    //                  if we eliminate a dimension then we just refer to less dimensions and that's ok
 
    LOG_COUNTED_N(
-      &g_cLogGenerateModelFeatureGroupUpdateParametersMessages,
+      &g_cLogGenerateModelUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "GenerateModelFeatureGroupUpdate: "
+      "GenerateModelUpdate: "
       "boosterHandle=%p, "
       "threadStateBoostingHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
@@ -995,7 +995,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate boosterHandle cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate boosterHandle cannot be nullptr");
       return IntEbmType { 1 };
    }
    ThreadStateBoosting * pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
@@ -1003,7 +1003,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate threadStateBoosting cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate threadStateBoosting cannot be nullptr");
       return IntEbmType { 1 };
    }
 
@@ -1011,7 +1011,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup must be positive");
       return IntEbmType { 1 };
    }
    if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
@@ -1019,7 +1019,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup is too high to index");
       return IntEbmType { 1 };
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
@@ -1027,29 +1027,29 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup above the number of feature groups that we have");
       return IntEbmType { 1 };
    }
    // this is true because 0 < pBooster->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
 
    LOG_COUNTED_0(
-      pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterGenerateModelFeatureGroupUpdateMessages(),
+      pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterGenerateModelUpdateMessages(),
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered GenerateModelFeatureGroupUpdate"
+      "Entered GenerateModelUpdate"
    );
 
    // TODO : test if our GenerateUpdateOptionsType options flags only include flags that we use
 
    if(std::isnan(learningRate)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is NaN");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is NaN");
    } else if(std::isinf(learningRate)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is infinity");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is infinity");
    } else if(0 == learningRate) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is zero");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is zero");
    } else if(learningRate < FloatEbmType { 0 }) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is negative");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is negative");
    }
 
    size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
@@ -1061,11 +1061,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
          cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
    if(nullptr == leavesMax) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate leavesMax was null, so there won't be any splits");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate leavesMax was null, so there won't be any splits");
    }
 
    // gainOut can be nullptr
@@ -1079,12 +1079,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       }
       LOG_0(
          TraceLevelWarning,
-         "WARNING GenerateModelFeatureGroupUpdate pBooster->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
+         "WARNING GenerateModelUpdate pBooster->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
       );
       return IntEbmType { 0 };
    }
 
-   const IntEbmType ret = GenerateModelFeatureGroupUpdateInternal(
+   const IntEbmType ret = GenerateModelUpdateInternal(
       pBooster,
       pThreadStateBoosting,
       iFeatureGroup,
@@ -1101,18 +1101,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       // no epsilon required.  We make it zero if the value is less than zero for floating point instability reasons
       EBM_ASSERT(FloatEbmType { 0 } <= *gainOut);
       LOG_COUNTED_N(
-         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelFeatureGroupUpdateMessages(),
+         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited GenerateModelFeatureGroupUpdate %" FloatEbmTypePrintf,
+         "Exited GenerateModelUpdate %" FloatEbmTypePrintf,
          *gainOut
       );
    } else {
       LOG_COUNTED_0(
-         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelFeatureGroupUpdateMessages(),
+         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited GenerateModelFeatureGroupUpdate no gain"
+         "Exited GenerateModelUpdate no gain"
       );
    }
    return ret;

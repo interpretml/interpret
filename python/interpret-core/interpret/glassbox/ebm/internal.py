@@ -477,7 +477,7 @@ class Native:
         ]
         self._unsafe.CreateRegressionBooster.restype = ct.c_void_p
 
-        self._unsafe.GenerateModelFeatureGroupUpdate.argtypes = [
+        self._unsafe.GenerateModelUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # void * threadStateBoosting
@@ -495,9 +495,9 @@ class Native:
             # double * gainOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.GenerateModelFeatureGroupUpdate.restype = ct.c_int64
+        self._unsafe.GenerateModelUpdate.restype = ct.c_int64
 
-        self._unsafe.ApplyModelFeatureGroupUpdate.argtypes = [
+        self._unsafe.ApplyModelUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # void * threadStateBoosting
@@ -507,7 +507,7 @@ class Native:
             # double * validationMetricOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.ApplyModelFeatureGroupUpdate.restype = ct.c_int64
+        self._unsafe.ApplyModelUpdate.restype = ct.c_int64
 
         self._unsafe.GetBestModelFeatureGroup.argtypes = [
             # void * boosterHandle
@@ -896,11 +896,11 @@ class NativeEBMBooster:
             #        match the dimensionality of the max_leaves_arr that we pass in here.  If all the numbers are the
             #        same though as they currently are below, we're safe since we just access one less item in the
             #        array, and still get the same numbers in the C++ code
-            #        Look at GenerateModelFeatureGroupUpdate in the C++ for more details on resolving this issue
+            #        Look at GenerateModelUpdate in the C++ for more details on resolving this issue
             n_features = len(self._feature_groups[feature_group_index])
             max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
-            return_code = self._native._unsafe.GenerateModelFeatureGroupUpdate(
+            return_code = self._native._unsafe.GenerateModelUpdate(
                 self._booster_handle,
                 self._thread_state_boosting, 
                 feature_group_index,
@@ -912,17 +912,17 @@ class NativeEBMBooster:
             )
             if return_code:  # pragma: no cover
                 raise MemoryError(
-                    "Out of memory in GenerateModelFeatureGroupUpdate"
+                    "Out of memory in GenerateModelUpdate"
                 )
 
-            return_code = self._native._unsafe.ApplyModelFeatureGroupUpdate(
+            return_code = self._native._unsafe.ApplyModelUpdate(
                 self._booster_handle,
                 self._thread_state_boosting, 
                 feature_group_index,
                 ct.byref(metric_output),
             )
             if return_code != 0:  # pragma: no cover
-                raise Exception("Out of memory in ApplyModelFeatureGroupUpdate")
+                raise Exception("Out of memory in ApplyModelUpdate")
 
         # log.debug("Boosting step end")
         return metric_output.value

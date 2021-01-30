@@ -34,13 +34,13 @@ extern FloatEbmType ApplyModelUpdateValidation(
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static IntEbmType ApplyModelFeatureGroupUpdateInternal(
+static IntEbmType ApplyModelUpdateInternal(
    Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t iFeatureGroup,
    FloatEbmType * const pValidationMetricReturn
 ) {
-   LOG_0(TraceLevelVerbose, "Entered ApplyModelFeatureGroupUpdateInternal");
+   LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateInternal");
 
    // m_apCurrentModel can be null if there are no featureGroups (but we have an feature group index), 
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
@@ -117,7 +117,7 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
                if(nullptr != pValidationMetricReturn) {
                   *pValidationMetricReturn = FloatEbmType { 0 }; // on error set it to something instead of random bits
                }
-               LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureGroupUpdateInternal with memory allocation error in copy");
+               LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateInternal with memory allocation error in copy");
                return 1;
             }
             ++iModel;
@@ -128,7 +128,7 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
       *pValidationMetricReturn = modelMetric;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureGroupUpdateInternal");
+   LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateInternal");
    return 0;
 }
 
@@ -136,19 +136,19 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
 // getting the count.  By making this global we can send a log message incase a bad Booster object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogApplyModelFeatureGroupUpdateParametersMessages = 10;
+static int g_cLogApplyModelUpdateParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
    BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
    FloatEbmType * validationMetricOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogApplyModelFeatureGroupUpdateParametersMessages,
+      &g_cLogApplyModelUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "ApplyModelFeatureGroupUpdate parameters: boosterHandle=%p, threadStateBoostingHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf
+      "ApplyModelUpdate parameters: boosterHandle=%p, threadStateBoostingHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf
       ", validationMetricOut=%p",
       static_cast<void *>(boosterHandle),
       static_cast<void *>(threadStateBoostingHandle),
@@ -161,7 +161,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate boosterHandle cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate boosterHandle cannot be nullptr");
       return 1;
    }
    ThreadStateBoosting * pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
@@ -169,7 +169,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate threadStateBoosting cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate threadStateBoosting cannot be nullptr");
       return 1;
    }
 
@@ -177,7 +177,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate indexFeatureGroup must be positive");
       return 1;
    }
    if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
@@ -185,7 +185,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate indexFeatureGroup is too high to index");
       return 1;
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
@@ -193,17 +193,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate indexFeatureGroup above the number of feature groups that we have");
       return 1;
    }
    // this is true because 0 < pBooster->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
 
    LOG_COUNTED_0(
-      pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterApplyModelFeatureGroupUpdateMessages(),
+      pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterApplyModelUpdateMessages(),
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered ApplyModelFeatureGroupUpdate"
+      "Entered ApplyModelUpdate"
    );
 
    if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) {
@@ -214,22 +214,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
          *validationMetricOut = 0;
       }
       LOG_COUNTED_0(
-         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
+         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelFeatureGroupUpdate from runtimeLearningTypeOrCountTargetClasses <= 1"
+         "Exited ApplyModelUpdate from runtimeLearningTypeOrCountTargetClasses <= 1"
       );
       return 0;
    }
 
-   IntEbmType ret = ApplyModelFeatureGroupUpdateInternal(
+   IntEbmType ret = ApplyModelUpdateInternal(
       pBooster,
       pThreadStateBoosting,
       iFeatureGroup,
       validationMetricOut
    );
    if(0 != ret) {
-      LOG_N(TraceLevelWarning, "WARNING ApplyModelFeatureGroupUpdate returned %" IntEbmTypePrintf, ret);
+      LOG_N(TraceLevelWarning, "WARNING ApplyModelUpdate returned %" IntEbmTypePrintf, ret);
    }
 
    if(nullptr != validationMetricOut) {
@@ -238,17 +238,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       // both log loss and RMSE need to be above zero.  We previously zero any values below zero, which can happen due to floating point instability.
       EBM_ASSERT(FloatEbmType { 0 } <= *validationMetricOut);
       LOG_COUNTED_N(
-         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
+         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelFeatureGroupUpdate %" FloatEbmTypePrintf, *validationMetricOut
+         "Exited ApplyModelUpdate %" FloatEbmTypePrintf, *validationMetricOut
       );
    } else {
       LOG_COUNTED_0(
-         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
+         pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelFeatureGroupUpdate.  No validation pointer."
+         "Exited ApplyModelUpdate.  No validation pointer."
       );
    }
    return ret;

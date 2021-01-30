@@ -5,8 +5,8 @@
       GetTraceLevelString;
       CreateClassificationBooster;
       CreateRegressionBooster;
-      GenerateModelFeatureGroupUpdate;
-      ApplyModelFeatureGroupUpdate;
+      GenerateModelUpdate;
+      ApplyModelUpdate;
       GetBestModelFeatureGroup;
       GetCurrentModelFeatureGroup;
       FreeBooster;
