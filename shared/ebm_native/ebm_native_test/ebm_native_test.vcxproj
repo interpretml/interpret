@@ -240,9 +240,9 @@ EXIT /B 0
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Discretize.cpp" />
-    <ClCompile Include="GenerateQuantileBinCuts.cpp" />
-    <ClCompile Include="GenerateUniformBinCuts.cpp" />
-    <ClCompile Include="GenerateWinsorizedBinCuts.cpp" />
+    <ClCompile Include="GenerateQuantileCuts.cpp" />
+    <ClCompile Include="GenerateUniformCuts.cpp" />
+    <ClCompile Include="GenerateWinsorizedCuts.cpp" />
     <ClCompile Include="InteractionUnusualInputs.cpp" />
     <ClCompile Include="PrecompiledHeaderEbmNativeTest.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

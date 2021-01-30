@@ -12,12 +12,12 @@
     <ClCompile Include="Discretize.cpp" />
     <ClCompile Include="InteractionUnusualInputs.cpp" />
     <ClCompile Include="Rehydration.cpp" />
-    <ClCompile Include="GenerateQuantileBinCuts.cpp" />
-    <ClCompile Include="GenerateWinsorizedBinCuts.cpp" />
-    <ClCompile Include="GenerateUniformBinCuts.cpp" />
     <ClCompile Include="SuggestGraphBounds.cpp" />
     <ClCompile Include="RandomNumbers.cpp" />
     <ClCompile Include="CIncludeTest.c" />
+    <ClCompile Include="GenerateQuantileCuts.cpp" />
+    <ClCompile Include="GenerateUniformCuts.cpp" />
+    <ClCompile Include="GenerateWinsorizedCuts.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EbmNativeTest.h">
