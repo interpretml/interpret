@@ -497,6 +497,46 @@ class Native:
         ]
         self._unsafe.GenerateModelUpdate.restype = ct.c_int64
 
+        self._unsafe.GetModelUpdateCuts.argtypes = [
+            # void * boosterHandle
+            ct.c_void_p,
+            # void * threadStateBoosting
+            ct.c_void_p,
+            # int64_t indexFeatureGroup
+            ct.c_int64,
+            # int64_t indexDimension
+            ct.c_int64,
+            # int64_t * countCutsOut
+            ct.POINTER(ct.c_int64),
+            # int64_t * cutIndexesOut
+            ndpointer(dtype=ct.c_int64, ndim=1),
+        ]
+        self._unsafe.GetModelUpdateCuts.restype = ct.c_int64
+
+        self._unsafe.GetModelUpdateExpanded.argtypes = [
+            # void * boosterHandle
+            ct.c_void_p,
+            # void * threadStateBoosting
+            ct.c_void_p,
+            # int64_t indexFeatureGroup
+            ct.c_int64,
+            # double * modelFeatureGroupUpdateTensor
+            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
+        ]
+        self._unsafe.GetModelUpdateExpanded.restype = ct.c_int64
+
+        self._unsafe.SetModelUpdateExpanded.argtypes = [
+            # void * boosterHandle
+            ct.c_void_p,
+            # void * threadStateBoosting
+            ct.c_void_p,
+            # int64_t indexFeatureGroup
+            ct.c_int64,
+            # double * modelFeatureGroupUpdateTensor
+            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
+        ]
+        self._unsafe.SetModelUpdateExpanded.restype = ct.c_int64
+
         self._unsafe.ApplyModelUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
@@ -1090,6 +1130,87 @@ class NativeEBMBooster:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0)))
 
         return array
+
+    def _get_model_update_cuts(self, feature_group_index, dimension_index):
+        feature_index = self._feature_groups[feature_group_index][dimension_index]
+        n_bins = self._features_bin_count[feature_index]
+
+        cuts = np.empty(n_bins - 1, dtype=np.int64, order="C")
+        count_cuts = ct.c_int64(0)
+
+        return_code = self._native._unsafe.GetModelUpdateCuts(
+            self._booster_handle, 
+            self._thread_state_boosting, 
+            feature_group_index, 
+            dimension_index, 
+            ct.byref(count_cuts), 
+            cuts
+        )
+
+        if return_code:  # pragma: no cover
+            raise MemoryError("Out of memory in GetModelUpdateExpanded")
+
+        cuts = cuts[:count_cuts.value]
+        return cuts
+
+    def _get_model_update_expanded(self, feature_group_index):
+        if self._model_type == "classification" and self._n_classes <= 1:
+            # if there is only one legal state for a classification problem, then we know with 100%
+            # certainty what the result will be, and our logits for that result should be infinity
+            # since we reduce the number of logits by 1, we would get back an empty array from the C code
+            # after we expand the model for our caller, the tensor's dimensions should match
+            # the features for the feature_group, but the last class_index should have a dimension
+            # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
+            # a None value here for now and handle in the upper levels
+            #
+            # If we were to allow datasets with zero samples, then it would also be legal for there
+            # to be 0 states.  We can probably handle this the same as having 1 state though since
+            # any samples in any evaluations need to have a state
+
+            # TODO PK make sure the None value here is handled by our caller
+            return None
+
+        shape = self._get_feature_group_shape(feature_group_index)
+        model_update = np.empty(shape, dtype=np.float64, order="C")
+
+        return_code = self._native._unsafe.GetModelUpdateExpanded(
+            self._booster_handle, self._thread_state_boosting, feature_group_index, model_update
+        )
+
+        if return_code:  # pragma: no cover
+            raise MemoryError("Out of memory in GetModelUpdateExpanded")
+
+        if len(self._feature_groups[feature_group_index]) == 2:
+            if 2 < self._n_classes:
+                model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0, 2)))
+            else:
+                model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0)))
+
+        return model_update
+
+    def _set_model_update_expanded(self, feature_group_index, model_update):
+        if self._model_type == "classification" and self._n_classes <= 1:
+            raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
+
+        if len(self._feature_groups[feature_group_index]) == 2:
+            if 2 < self._n_classes:
+                model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0, 2)))
+            else:
+                model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0)))
+
+        shape = self._get_feature_group_shape(feature_group_index)
+
+        if shape != model_update.shape:
+            raise ValueError("incorrect tensor shape in call to set_model_update_expanded")
+
+        return_code = self._native._unsafe.SetModelUpdateExpanded(
+            self._booster_handle, self._thread_state_boosting, feature_group_index, model_update
+        )
+
+        if return_code:  # pragma: no cover
+            raise MemoryError("Out of memory in SetModelUpdateExpanded")
+
+        return
 
 
 class NativeEBMInteraction:

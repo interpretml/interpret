@@ -894,25 +894,6 @@ static IntEbmType GenerateModelUpdateInternal(
       }
    }
 
-   if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-
-      // pBooster->m_pSmallChangeToModelAccumulatedFromSamplingSets was reset above, so it isn't expanded.  We want to expand it before 
-      // calling ValidationSetInputFeatureLoop so that we can more efficiently lookup the results by index rather than do a binary search
-      size_t acDivisionIntegersEnd[k_cDimensionsMax];
-      size_t iDimension = 0;
-      do {
-         acDivisionIntegersEnd[iDimension] = pFeatureGroupEntry[iDimension].m_pFeature->GetCountBins();
-         ++iDimension;
-      } while(iDimension < cDimensions);
-      if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
-         if(LIKELY(nullptr != pGainReturn)) {
-            *pGainReturn = FloatEbmType { 0 };
-         }
-         return IntEbmType { 1 };
-      }
-   }
-
    if(nullptr != pGainReturn) {
       *pGainReturn = totalGain;
    }

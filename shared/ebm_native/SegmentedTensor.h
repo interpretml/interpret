@@ -205,6 +205,11 @@ public:
       return GetDimensions()[iDimension].m_aDivisions;
    }
 
+   INLINE_ALWAYS size_t GetCountDivisions(const size_t iDimension) {
+      EBM_ASSERT(iDimension < m_cDimensions);
+      return GetDimensions()[iDimension].m_cDivisions;
+   }
+
    INLINE_ALWAYS FloatEbmType * GetValuePointer() {
       return m_aValues;
    }
