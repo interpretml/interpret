@@ -913,33 +913,30 @@ class NativeEBMBooster:
         # log.debug("Boosting step start")
 
         self._feature_group_index = -1
-
         gain = ct.c_double(0.0)
-        # for a classification problem with only 1 target value, we will always predict the answer perfectly
-        if self._model_type != "classification" or 2 <= self._n_classes:
 
-            # TODO : !WARNING! currently we can only accept a single number for max_leaves because in C++ we eliminate
-            #        dimensions that have only 1 state.  If a dimension in C++ is eliminated this way then it won't
-            #        match the dimensionality of the max_leaves_arr that we pass in here.  If all the numbers are the
-            #        same though as they currently are below, we're safe since we just access one less item in the
-            #        array, and still get the same numbers in the C++ code
-            #        Look at GenerateModelUpdate in the C++ for more details on resolving this issue
-            n_features = len(self._feature_groups[feature_group_index])
-            max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
+        # TODO : !WARNING! currently we can only accept a single number for max_leaves because in C++ we eliminate
+        #        dimensions that have only 1 state.  If a dimension in C++ is eliminated this way then it won't
+        #        match the dimensionality of the max_leaves_arr that we pass in here.  If all the numbers are the
+        #        same though as they currently are below, we're safe since we just access one less item in the
+        #        array, and still get the same numbers in the C++ code
+        #        Look at GenerateModelUpdate in the C++ for more details on resolving this issue
+        n_features = len(self._feature_groups[feature_group_index])
+        max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
-            return_code = self._native._unsafe.GenerateModelUpdate(
-                self._thread_state_boosting, 
-                feature_group_index,
-                generate_update_options,
-                learning_rate,
-                min_samples_leaf,
-                max_leaves_arr,
-                ct.byref(gain),
-            )
-            if return_code:  # pragma: no cover
-                raise MemoryError("Out of memory in GenerateModelUpdate")
+        return_code = self._native._unsafe.GenerateModelUpdate(
+            self._thread_state_boosting, 
+            feature_group_index,
+            generate_update_options,
+            learning_rate,
+            min_samples_leaf,
+            max_leaves_arr,
+            ct.byref(gain),
+        )
+        if return_code:  # pragma: no cover
+            raise MemoryError("Out of memory in GenerateModelUpdate")
             
-            self._feature_group_index = feature_group_index
+        self._feature_group_index = feature_group_index
 
         # log.debug("Boosting step end")
         return gain.value
@@ -958,14 +955,12 @@ class NativeEBMBooster:
         self._feature_group_index = -1
 
         metric_output = ct.c_double(0.0)
-        # for a classification problem with only 1 target value, we will always predict the answer perfectly
-        if self._model_type != "classification" or 2 <= self._n_classes:
-            return_code = self._native._unsafe.ApplyModelUpdate(
-                self._thread_state_boosting, 
-                ct.byref(metric_output),
-            )
-            if return_code:  # pragma: no cover
-                raise Exception("Out of memory in ApplyModelUpdate")
+        return_code = self._native._unsafe.ApplyModelUpdate(
+            self._thread_state_boosting, 
+            ct.byref(metric_output),
+        )
+        if return_code:  # pragma: no cover
+            raise Exception("Out of memory in ApplyModelUpdate")
 
         # log.debug("Boosting step end")
         return metric_output.value
@@ -989,6 +984,17 @@ class NativeEBMBooster:
 
         return model
 
+    def get_model_update_cuts(self):
+        if self._feature_group_index < 0:
+            raise RuntimeError("invalid internal self._feature_group_index")
+
+        cuts = []
+        feature_indexes = self._feature_groups[self._feature_group_index]
+        for dimension_idx, _ in enumerate(feature_indexes):
+            cuts_dimension = self._get_model_update_cuts_dimension(dimension_idx)
+            cuts.append(cuts_dimension)
+
+        return cuts
 
     @staticmethod
     def _make_ndarray(c_pointer, shape, dtype, writable=False, copy_data=True):
@@ -1135,9 +1141,6 @@ class NativeEBMBooster:
         return array
 
     def _get_model_update_cuts_dimension(self, dimension_index):
-        if self._feature_group_index < 0:
-            raise RuntimeError("invalid internal _feature_group_index")
-
         feature_index = self._feature_groups[self._feature_group_index][dimension_index]
         n_bins = self._features_bin_count[feature_index]
 
@@ -1151,7 +1154,6 @@ class NativeEBMBooster:
             ct.byref(count_cuts), 
             cuts
         )
-
         if return_code:  # pragma: no cover
             raise MemoryError("Out of memory in GetModelUpdateCuts")
 
@@ -1185,6 +1187,9 @@ class NativeEBMBooster:
         self._feature_group_index = -1
 
         if self._model_type == "classification" and self._n_classes <= 1:
+            if model_update is None:
+                self._feature_group_index = feature_group_index
+                return
             raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
 
         if len(self._feature_groups[feature_group_index]) == 2:
@@ -1201,7 +1206,6 @@ class NativeEBMBooster:
         return_code = self._native._unsafe.SetModelUpdateExpanded(
             self._thread_state_boosting, feature_group_index, model_update
         )
-
         if return_code:  # pragma: no cover
             raise MemoryError("Out of memory in SetModelUpdateExpanded")
 
