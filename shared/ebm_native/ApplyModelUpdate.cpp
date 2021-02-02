@@ -353,7 +353,7 @@ static int g_cLogGetModelUpdateExpandedParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
    ThreadStateBoostingHandle threadStateBoostingHandle,
-   FloatEbmType * modelFeatureGroupUpdateTensor
+   FloatEbmType * modelFeatureGroupUpdateTensorOut
 ) {
    LOG_COUNTED_N(
       &g_cLogGetModelUpdateExpandedParametersMessages,
@@ -361,9 +361,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       TraceLevelVerbose,
       "GetModelUpdateExpanded: "
       "threadStateBoostingHandle=%p, "
-      "modelFeatureGroupUpdateTensor=%p",
+      "modelFeatureGroupUpdateTensorOut=%p",
       static_cast<void *>(threadStateBoostingHandle),
-      static_cast<void *>(modelFeatureGroupUpdateTensor)
+      static_cast<void *>(modelFeatureGroupUpdateTensorOut)
    );
 
    ThreadStateBoosting * const pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
@@ -411,7 +411,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
    const FloatEbmType * const pValues = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
-   memcpy(modelFeatureGroupUpdateTensor, pValues, sizeof(*pValues) * cValues);
+   memcpy(modelFeatureGroupUpdateTensorOut, pValues, sizeof(*pValues) * cValues);
    return IntEbmType { 0 };
 }
 
@@ -465,7 +465,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
       LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup above the number of feature groups that we have");
       return IntEbmType { 1 };
    }
-   // this is true because 0 < pBooster->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
+   // pBooster->GetFeatureGroups() can be null if 0 == pBooster->m_cFeatureGroups, but we checked that condition above
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
 
    if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) {
@@ -497,7 +497,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
       }
    }
    FloatEbmType * const pValues = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
-   // we've allocated this memory, so it should be reachable, so these numbers should multiply
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
    memcpy(pValues, modelFeatureGroupUpdateTensor, sizeof(*pValues) * cValues);
 

@@ -510,7 +510,7 @@ class Native:
         self._unsafe.GetModelUpdateExpanded.argtypes = [
             # void * threadStateBoosting
             ct.c_void_p,
-            # double * modelFeatureGroupUpdateTensor
+            # double * modelFeatureGroupUpdateTensorOut
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.GetModelUpdateExpanded.restype = ct.c_int64
@@ -538,16 +538,20 @@ class Native:
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
+            # double * modelFeatureGroupTensorOut
+            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.GetBestModelFeatureGroup.restype = ct.POINTER(ct.c_double)
+        self._unsafe.GetBestModelFeatureGroup.restype = ct.c_int64
 
         self._unsafe.GetCurrentModelFeatureGroup.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
+            # double * modelFeatureGroupTensorOut
+            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.GetCurrentModelFeatureGroup.restype = ct.POINTER(ct.c_double)
+        self._unsafe.GetCurrentModelFeatureGroup.restype = ct.c_int64
 
         self._unsafe.FreeBooster.argtypes = [
             # void * boosterHandle
@@ -996,39 +1000,6 @@ class NativeEBMBooster:
 
         return cuts
 
-    @staticmethod
-    def _make_ndarray(c_pointer, shape, dtype, writable=False, copy_data=True):
-        """ Returns an ndarray based from a C array.
-
-        Code largely borrowed from:
-        https://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
-
-        Args:
-            c_pointer: Pointer to C array.
-            shape: Shape of ndarray to form.
-            dtype: Numpy data type.
-
-        Returns:
-            An ndarray.
-        """
-
-        arr_size = np.prod(shape[:]) * np.dtype(dtype).itemsize
-        buf_from_mem = ct.pythonapi.PyMemoryView_FromMemory
-        buf_from_mem.restype = ct.py_object
-        buf_from_mem.argtypes = (ct.c_void_p, ct.c_ssize_t, ct.c_int)
-        PyBUF_READ = 0x100
-        PyBUF_WRITE = 0x200
-        access = (PyBUF_READ | PyBUF_WRITE) if writable else PyBUF_READ
-        buffer = buf_from_mem(c_pointer, arr_size, access)
-        # from https://github.com/python/cpython/blob/master/Objects/memoryobject.c , PyMemoryView_FromMemory can return null
-        if not buffer:
-            raise MemoryError("Out of memory in PyMemoryView_FromMemory")
-        arr = np.ndarray(tuple(shape[:]), dtype, buffer, order="C")
-        if copy_data:
-            return arr.copy()
-        else:
-            return arr
-
     def _get_feature_group_shape(self, feature_group_index):
         # TODO PK do this once during construction so that we don't have to do it again
         #         and so that we don't have to store self._features & self._feature_groups
@@ -1077,23 +1048,22 @@ class NativeEBMBooster:
             # TODO PK make sure the None value here is handled by our caller
             return None
 
-        array_p = self._native._unsafe.GetBestModelFeatureGroup(
-            self._booster_handle, feature_group_index
-        )
+        shape = self._get_feature_group_shape(feature_group_index)
+        model_feature_group = np.empty(shape, dtype=np.float64, order="C")
 
-        if not array_p:  # pragma: no cover
+        return_code = self._native._unsafe.GetBestModelFeatureGroup(
+            self._booster_handle, feature_group_index, model_feature_group
+        )
+        if return_code:  # pragma: no cover
             raise MemoryError("Out of memory in GetBestModelFeatureGroup")
 
-        shape = self._get_feature_group_shape(feature_group_index)
-
-        array = NativeEBMBooster._make_ndarray(array_p, shape, dtype=ct.c_double)
         if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
-                array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
+                model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0, 2)))
             else:
-                array = np.ascontiguousarray(np.transpose(array, (1, 0)))
+                model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0)))
 
-        return array
+        return model_feature_group
 
     def _get_current_model_feature_group(self, feature_group_index):
         """ Returns current model/function according to validation set
@@ -1122,23 +1092,22 @@ class NativeEBMBooster:
             # TODO PK make sure the None value here is handled by our caller
             return None
 
-        array_p = self._native._unsafe.GetCurrentModelFeatureGroup(
-            self._booster_handle, feature_group_index
-        )
+        shape = self._get_feature_group_shape(feature_group_index)
+        model_feature_group = np.empty(shape, dtype=np.float64, order="C")
 
-        if not array_p:  # pragma: no cover
+        return_code = self._native._unsafe.GetCurrentModelFeatureGroup(
+            self._booster_handle, feature_group_index, model_feature_group
+        )
+        if return_code:  # pragma: no cover
             raise MemoryError("Out of memory in GetCurrentModelFeatureGroup")
 
-        shape = self._get_feature_group_shape(feature_group_index)
-
-        array = NativeEBMBooster._make_ndarray(array_p, shape, dtype=ct.c_double)
         if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
-                array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
+                model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0, 2)))
             else:
-                array = np.ascontiguousarray(np.transpose(array, (1, 0)))
+                model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0)))
 
-        return array
+        return model_feature_group
 
     def _get_model_update_cuts_dimension(self, dimension_index):
         feature_index = self._feature_groups[self._feature_group_index][dimension_index]

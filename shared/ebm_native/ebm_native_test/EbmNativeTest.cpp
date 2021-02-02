@@ -762,55 +762,86 @@ FloatEbmType TestApi::GetBestModelPredictorScore(
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
+
+   if(m_countBinsByFeatureGroup.size() <= iFeatureGroup) {
       exit(1);
    }
-   FloatEbmType * pModelFeatureGroup = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup);
-   FloatEbmType predictorScore = GetPredictorScore(iFeatureGroup, pModelFeatureGroup, indexes, iScore);
+   const std::vector<size_t> countBins = m_countBinsByFeatureGroup[iFeatureGroup];
+
+   const size_t cDimensions = countBins.size();
+   size_t multiple = GetVectorLength(m_learningTypeOrCountTargetClasses);
+   for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
+      multiple *= countBins[iDimension];
+   }
+
+   std::vector<FloatEbmType> model;
+   model.resize(multiple);
+
+   const IntEbmType ret = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   if(0 != ret) {
+      exit(1);
+   }
+
+   const FloatEbmType predictorScore = GetPredictorScore(iFeatureGroup, &model[0], indexes, iScore);
    return predictorScore;
 }
 
-const FloatEbmType * TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup) const {
+const void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
    if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
       exit(1);
    }
-   FloatEbmType * pModel = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup);
-   return pModel;
+   const IntEbmType ret = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   if(0 != ret) {
+      exit(1);
+   }
 }
 
 FloatEbmType TestApi::GetCurrentModelPredictorScore(
    const size_t iFeatureGroup,
-   const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
-   const size_t iTargetClassOrZero)
-   const {
+   const std::vector<size_t> indexes,
+   const size_t iScore
+) const {
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
+
+   if(m_countBinsByFeatureGroup.size() <= iFeatureGroup) {
       exit(1);
    }
-   FloatEbmType * pModelFeatureGroup = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup);
-   FloatEbmType predictorScore = GetPredictorScore(
-      iFeatureGroup,
-      pModelFeatureGroup,
-      perDimensionIndexArrayForBinnedFeatures,
-      iTargetClassOrZero
-   );
+   const std::vector<size_t> countBins = m_countBinsByFeatureGroup[iFeatureGroup];
+
+   const size_t cDimensions = countBins.size();
+   size_t multiple = GetVectorLength(m_learningTypeOrCountTargetClasses);
+   for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
+      multiple *= countBins[iDimension];
+   }
+
+   std::vector<FloatEbmType> model;
+   model.resize(multiple);
+
+   const IntEbmType ret = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   if(0 != ret) {
+      exit(1);
+   }
+
+   const FloatEbmType predictorScore = GetPredictorScore(iFeatureGroup, &model[0], indexes, iScore);
    return predictorScore;
 }
 
-const FloatEbmType * TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup) const {
+const void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
    if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
       exit(1);
    }
-   FloatEbmType * pModel = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup);
-   return pModel;
+   const IntEbmType ret = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   if(0 != ret) {
+      exit(1);
+   }
 }
 
 void TestApi::AddInteractionSamples(const std::vector<RegressionSample> samples) {

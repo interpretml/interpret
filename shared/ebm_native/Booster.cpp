@@ -877,116 +877,181 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    return boosterHandle;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup
+   IntEbmType indexFeatureGroup,
+   FloatEbmType * modelFeatureGroupTensorOut
 ) {
    LOG_N(
-      TraceLevelInfo, 
-      "Entered GetBestModelFeatureGroup: boosterHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf, 
-      static_cast<void *>(boosterHandle), 
-      indexFeatureGroup
+      TraceLevelInfo,
+      "Entered GetBestModelFeatureGroup: "
+      "boosterHandle=%p, "
+      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "modelFeatureGroupTensorOut=%p, "
+      ,
+      static_cast<void *>(boosterHandle),
+      indexFeatureGroup,
+      modelFeatureGroupTensorOut
    );
 
    Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
    if(nullptr == pBooster) {
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup boosterHandle cannot be nullptr");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    if(indexFeatureGroup < 0) {
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup must be positive");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup is too high to index");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
    if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
-      return nullptr;
+      return IntEbmType { 1 };
    }
-   if(nullptr == pBooster->GetBestModel()) {
-      // if pBooster->m_apBestModel is nullptr, then either:
-      //    1) m_cFeatureGroups was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
-      //       indexFeatureGroup, which is impossible, so we can do anything we like, include the below actions.
-      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), 
-      //       which is legal, which we need to handle here
-      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  If there were logits in this model, 
-      // they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one 
-      // less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  We want to return a tensor 
-      // with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  
-      // We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
 
+   if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() ||
+      ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) {
+      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
+      // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
+      // model as having no logits, since the number of logits can be one less than the number of target classes.
       LOG_0(TraceLevelInfo, "Exited GetBestModelFeatureGroup no model");
-      return nullptr;
+      return IntEbmType { 0 };
    }
 
-   SegmentedTensor * pBestModel = pBooster->GetBestModel()[iFeatureGroup];
+   if(nullptr == modelFeatureGroupTensorOut) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup modelFeatureGroupTensorOut cannot be nullptr");
+      return IntEbmType { 1 };
+   }
+
+   // if pBooster->GetFeatureGroups() is nullptr, then m_cFeatureGroups was 0, but we checked above that 
+   // iFeatureGroup was less than cFeatureGroups
+   EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
+
+   const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
+   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
+   size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+   if(0 != cDimensions) {
+      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      do {
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         EBM_ASSERT(!IsMultiplyError(cBins, cValues));
+         cValues *= cBins;
+         ++pFeatureGroupEntry;
+      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+   }
+
+   // if pBooster->GetBestModel() is nullptr, then either:
+   //    1) m_cFeatureGroups was 0, but we checked above that iFeatureGroup was less than cFeatureGroups
+   //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
+   EBM_ASSERT(nullptr != pBooster->GetBestModel());
+
+   SegmentedTensor * const pBestModel = pBooster->GetBestModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pBestModel);
    EBM_ASSERT(pBestModel->GetExpanded()); // the model should have been expanded at startup
-   FloatEbmType * pRet = pBestModel->GetValuePointer();
-   EBM_ASSERT(nullptr != pRet);
+   FloatEbmType * const pValues = pBestModel->GetValuePointer();
+   EBM_ASSERT(nullptr != pValues);
 
-   LOG_N(TraceLevelInfo, "Exited GetBestModelFeatureGroup %p", static_cast<void *>(pRet));
-   return pRet;
+   EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
+   memcpy(modelFeatureGroupTensorOut, pValues, sizeof(*pValues) * cValues);
+
+   LOG_0(TraceLevelInfo, "Exited GetBestModelFeatureGroup");
+   return IntEbmType { 0 };
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup
+   IntEbmType indexFeatureGroup,
+   FloatEbmType * modelFeatureGroupTensorOut
 ) {
    LOG_N(
-      TraceLevelInfo, 
-      "Entered GetCurrentModelFeatureGroup: boosterHandle=%p, indexFeatureGroup=%" IntEbmTypePrintf, 
-      static_cast<void *>(boosterHandle), 
-      indexFeatureGroup
+      TraceLevelInfo,
+      "Entered GetCurrentModelFeatureGroup: "
+      "boosterHandle=%p, "
+      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "modelFeatureGroupTensorOut=%p, "
+      ,
+      static_cast<void *>(boosterHandle),
+      indexFeatureGroup,
+      modelFeatureGroupTensorOut
    );
 
    Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
    if(nullptr == pBooster) {
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup boosterHandle cannot be nullptr");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    if(indexFeatureGroup < 0) {
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup must be positive");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup is too high to index");
-      return nullptr;
+      return IntEbmType { 1 };
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
    if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
-      return nullptr;
+      return IntEbmType { 1 };
    }
-   if(nullptr == pBooster->GetCurrentModel()) {
-      // if pBooster->m_apCurrentModel is nullptr, then either:
-      //    1) m_cFeatureGroups was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
-      //       indexFeatureGroup, which is impossible, so we can do anything we like, include the below actions.
-      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, 
-      //       which we need to handle here
-      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  If there were logits 
-      // in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of 
-      // logits can be one less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  
-      // We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, 
-      // or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
 
+   if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() || 
+      ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) 
+   {
+      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
+      // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
+      // model as having no logits, since the number of logits can be one less than the number of target classes.
       LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureGroup no model");
-      return nullptr;
+      return IntEbmType { 0 };
    }
 
-   SegmentedTensor * pCurrentModel = pBooster->GetCurrentModel()[iFeatureGroup];
+   if(nullptr == modelFeatureGroupTensorOut) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup modelFeatureGroupTensorOut cannot be nullptr");
+      return IntEbmType { 1 };
+   }
+
+   // if pBooster->GetFeatureGroups() is nullptr, then m_cFeatureGroups was 0, but we checked above that 
+   // iFeatureGroup was less than cFeatureGroups
+   EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
+
+   const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
+   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
+   size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+   if(0 != cDimensions) {
+      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      do {
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         EBM_ASSERT(!IsMultiplyError(cBins, cValues));
+         cValues *= cBins;
+         ++pFeatureGroupEntry;
+      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+   }
+
+   // if pBooster->GetCurrentModel() is nullptr, then either:
+   //    1) m_cFeatureGroups was 0, but we checked above that iFeatureGroup was less than cFeatureGroups
+   //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
+   EBM_ASSERT(nullptr != pBooster->GetCurrentModel());
+
+   SegmentedTensor * const pCurrentModel = pBooster->GetCurrentModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pCurrentModel);
    EBM_ASSERT(pCurrentModel->GetExpanded()); // the model should have been expanded at startup
-   FloatEbmType * pRet = pCurrentModel->GetValuePointer();
-   EBM_ASSERT(nullptr != pRet);
+   FloatEbmType * const pValues = pCurrentModel->GetValuePointer();
+   EBM_ASSERT(nullptr != pValues);
 
-   LOG_N(TraceLevelInfo, "Exited GetCurrentModelFeatureGroup %p", static_cast<void *>(pRet));
-   return pRet;
+   EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
+   memcpy(modelFeatureGroupTensorOut, pValues, sizeof(*pValues) * cValues);
+
+   LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureGroup");
+   return IntEbmType { 0 };
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBooster(

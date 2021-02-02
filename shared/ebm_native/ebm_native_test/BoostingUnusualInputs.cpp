@@ -575,10 +575,16 @@ TEST_CASE("features with 0 states, boosting") {
    FloatEbmType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
+   FloatEbmType model[1];
+
    // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure 
    // calling to get the models doesn't crash
-   test.GetBestModelFeatureGroupRaw(0);
-   test.GetCurrentModelFeatureGroupRaw(0);
+   model[0] = 9.99;
+   test.GetBestModelFeatureGroupRaw(0, model);
+   CHECK(0 == model[0]);
+   model[0] = 9.99;
+   test.GetCurrentModelFeatureGroupRaw(0, model);
+   CHECK(0 == model[0]);
 }
 
 TEST_CASE("features with 0 states, interaction") {
@@ -620,8 +626,8 @@ TEST_CASE("classification with 0 possible target states, boosting") {
       nullptr
    );
 
-   CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));
-   CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
+   CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
 
@@ -638,27 +644,61 @@ TEST_CASE("classification with 0 possible target states, boosting") {
    CHECK(0 == retGenerate);
    CHECK(0 == gain);
 
+   IntEbmType countCuts = 0;
+   IntEbmType cutIndexes[1];
+   IntEbmType retCuts = GetModelUpdateCuts(
+      threadStateBoostingHandle,
+      0,
+      &countCuts,
+      cutIndexes
+   );
+   CHECK(1 == retCuts); // we have no dimensions, so 0 is invalid
+   CHECK(0 == countCuts);
+   
+   IntEbmType retGetModel = GetModelUpdateExpanded(threadStateBoostingHandle, nullptr);
+   CHECK(0 == retGetModel);
+
+   IntEbmType retSetModel = SetModelUpdateExpanded(threadStateBoostingHandle, 0, nullptr);
+   CHECK(0 == retSetModel);
+
+   FloatEbmType metric = 9.99;
+   const IntEbmType retApply = ApplyModelUpdate(
+      threadStateBoostingHandle,
+      &metric
+   );
+   CHECK(0 == retApply);
+   CHECK(0 == metric);
+
    FreeThreadStateBoosting(threadStateBoostingHandle);
 
-   CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));
-   CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
+   CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
    FreeBooster(boosterHandle);
 }
 
 TEST_CASE("classification with 1 possible target, boosting") {
+   BoolEbmType featuresCategorical[1];
+   featuresCategorical[0] = EBM_FALSE;
+
+   IntEbmType featuresBinCount[1];
+   featuresBinCount[0] = 2;
+
    IntEbmType featureGroupsFeatureCount[1];
-   featureGroupsFeatureCount[0] = 0;
+   featureGroupsFeatureCount[0] = 1;
+
+   IntEbmType featureGroupsFeatureIndexes[1];
+   featureGroupsFeatureIndexes[0] = 0;
 
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
       1,
-      0,
-      nullptr,
-      nullptr,
+      1,
+      featuresCategorical,
+      featuresBinCount,
       1,
       featureGroupsFeatureCount,
-      nullptr,
+      featureGroupsFeatureIndexes,
       0,
       nullptr,
       nullptr,
@@ -673,8 +713,8 @@ TEST_CASE("classification with 1 possible target, boosting") {
       nullptr
    );
 
-   CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));
-   CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
+   CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(boosterHandle);
 
@@ -691,10 +731,35 @@ TEST_CASE("classification with 1 possible target, boosting") {
    CHECK(0 == retGenerate);
    CHECK(0 == gain);
 
+   IntEbmType countCuts = 1;
+   IntEbmType cutIndexes[1];
+   IntEbmType retCuts = GetModelUpdateCuts(
+      threadStateBoostingHandle,
+      0,
+      &countCuts,
+      cutIndexes
+   );
+   CHECK(0 == retCuts);
+   CHECK(0 == countCuts);
+
+   IntEbmType retGetModel = GetModelUpdateExpanded(threadStateBoostingHandle, nullptr);
+   CHECK(0 == retGetModel);
+
+   IntEbmType retSetModel = SetModelUpdateExpanded(threadStateBoostingHandle, 0, nullptr);
+   CHECK(0 == retSetModel);
+
+   FloatEbmType metric = 9.99;
+   const IntEbmType retApply = ApplyModelUpdate(
+      threadStateBoostingHandle,
+      &metric
+   );
+   CHECK(0 == retApply);
+   CHECK(0 == metric);
+
    FreeThreadStateBoosting(threadStateBoostingHandle);
 
-   CHECK(nullptr == GetBestModelFeatureGroup(boosterHandle, 0));
-   CHECK(nullptr == GetCurrentModelFeatureGroup(boosterHandle, 0));
+   CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
    FreeBooster(boosterHandle);
 }

@@ -366,13 +366,13 @@ public:
       const std::vector<size_t> indexes, 
       const size_t iScore
    ) const;
-   const FloatEbmType * GetBestModelFeatureGroupRaw(const size_t iFeatureGroup) const;
+   const void GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
    FloatEbmType GetCurrentModelPredictorScore(
       const size_t iFeatureGroup,
-      const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
-      const size_t iTargetClassOrZero)
-      const;
-   const FloatEbmType * GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup) const;
+      const std::vector<size_t> indexes,
+      const size_t iScore
+   ) const;
+   const void GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
    void AddInteractionSamples(const std::vector<RegressionSample> samples);
    void AddInteractionSamples(const std::vector<ClassificationSample> samples);
    void InitializeInteraction();
