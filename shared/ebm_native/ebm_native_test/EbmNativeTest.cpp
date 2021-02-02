@@ -731,7 +731,6 @@ FloatEbmType TestApi::Boost(
 
    const ThreadStateBoostingHandle threadStateBoostingHandle = CreateThreadStateBoosting(m_boosterHandle);
    const IntEbmType retGenerate = GenerateModelUpdate(
-      m_boosterHandle,
       threadStateBoostingHandle,
       indexFeatureGroup,
       options,
@@ -744,9 +743,7 @@ FloatEbmType TestApi::Boost(
       exit(1);
    }
    const IntEbmType ret = ApplyModelUpdate(
-      m_boosterHandle,
       threadStateBoostingHandle,
-      indexFeatureGroup,
       &validationMetricOut
    );
    FreeThreadStateBoosting(threadStateBoostingHandle);

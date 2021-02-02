@@ -52,7 +52,6 @@ extern void SumHistogramBuckets(
 );
 
 extern bool GrowDecisionTree(
-   Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t cHistogramBuckets,
    const HistogramBucketBase * const aHistogramBucketBase,
@@ -96,7 +95,6 @@ extern bool CutRandom(
 );
 
 static bool BoostZeroDimensional(
-   Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting, 
    const SamplingSet * const pTrainingSet,
    const GenerateUpdateOptionsType options,
@@ -104,6 +102,7 @@ static bool BoostZeroDimensional(
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
 
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
@@ -180,7 +179,6 @@ static bool BoostZeroDimensional(
 }
 
 static bool BoostSingleDimensional(
-   Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
@@ -202,6 +200,7 @@ static bool BoostSingleDimensional(
       cLeavesMax = std::numeric_limits<size_t>::max();
    }
 
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
@@ -286,7 +285,6 @@ static bool BoostSingleDimensional(
    EBM_ASSERT(1 <= cSamplesTotal);
 
    bool bRet = GrowDecisionTree(
-      pBooster,
       pThreadStateBoosting,
       cHistogramBuckets,
       aHistogramBuckets,
@@ -309,7 +307,6 @@ static bool BoostSingleDimensional(
 //   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then 
 //    go back to our original tensor after splits to determine the denominator
 static bool BoostMultiDimensional(
-   Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
@@ -350,6 +347,7 @@ static bool BoostMultiDimensional(
    }
    const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
@@ -599,7 +597,6 @@ static bool BoostMultiDimensional(
 }
 
 static bool BoostRandom(
-   Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
@@ -625,6 +622,7 @@ static bool BoostRandom(
       cTotalBuckets *= cBins;
    }
 
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
@@ -711,7 +709,6 @@ static bool BoostRandom(
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 static IntEbmType GenerateModelUpdateInternal(
-   Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t iFeatureGroup,
    const GenerateUpdateOptionsType options,
@@ -720,6 +717,7 @@ static IntEbmType GenerateModelUpdateInternal(
    const IntEbmType * const aLeavesMax, 
    FloatEbmType * const pGainReturn
 ) {
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
@@ -748,7 +746,6 @@ static IntEbmType GenerateModelUpdateInternal(
             // TODO: add a log warning here that we're boosting zero dimensionally for whatever reason
 
             if(BoostZeroDimensional(
-               pBooster,
                pThreadStateBoosting,
                pBooster->GetSamplingSets()[iSamplingSet],
                options,
@@ -768,7 +765,6 @@ static IntEbmType GenerateModelUpdateInternal(
             }
             // THIS RANDOM CUT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
             if(BoostRandom(
-               pBooster,
                pThreadStateBoosting,
                pFeatureGroup,
                pBooster->GetSamplingSets()[iSamplingSet],
@@ -785,7 +781,6 @@ static IntEbmType GenerateModelUpdateInternal(
          } else if(1 == pFeatureGroup->GetCountFeatures()) {
             EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
             if(BoostSingleDimensional(
-               pBooster,
                pThreadStateBoosting,
                pFeatureGroup,
                pBooster->GetSamplingSets()[iSamplingSet],
@@ -801,7 +796,6 @@ static IntEbmType GenerateModelUpdateInternal(
             }
          } else {
             if(BoostMultiDimensional(
-               pBooster,
                pThreadStateBoosting,
                pFeatureGroup,
                pBooster->GetSamplingSets()[iSamplingSet],
@@ -894,6 +888,8 @@ static IntEbmType GenerateModelUpdateInternal(
       }
    }
 
+   pThreadStateBoosting->SetFeatureGroupIndex(iFeatureGroup);
+
    if(nullptr != pGainReturn) {
       *pGainReturn = totalGain;
    }
@@ -928,7 +924,6 @@ static int g_cLogGenerateModelUpdateParametersMessages = 10;
 //        Right now you can't call it in parallel since we're updating our internal single tensor
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelUpdate(
-   BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options,
@@ -952,7 +947,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       TraceLevelInfo,
       TraceLevelVerbose,
       "GenerateModelUpdate: "
-      "boosterHandle=%p, "
       "threadStateBoostingHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
       "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
@@ -961,7 +955,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       "leavesMax=%p, "
       "gainOut=%p"
       ,
-      static_cast<void *>(boosterHandle),
       static_cast<void *>(threadStateBoostingHandle),
       indexFeatureGroup,
       static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
@@ -971,15 +964,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       static_cast<void *>(gainOut)
    );
 
-   Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
-   if(nullptr == pBooster) {
-      if(LIKELY(nullptr != gainOut)) {
-         *gainOut = FloatEbmType { 0 };
-      }
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate boosterHandle cannot be nullptr");
-      return IntEbmType { 1 };
-   }
-   ThreadStateBoosting * pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
+   ThreadStateBoosting * const pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
    if(nullptr == pThreadStateBoosting) {
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
@@ -987,6 +972,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       LOG_0(TraceLevelError, "ERROR GenerateModelUpdate threadStateBoosting cannot be nullptr");
       return IntEbmType { 1 };
    }
+
+   // set this to illegal so if we exit with an error we have an invalid index
+   pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
+
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
+   EBM_ASSERT(nullptr != pBooster);
 
    if(indexFeatureGroup < 0) {
       if(LIKELY(nullptr != gainOut)) {
@@ -1058,6 +1049,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
       }
+      pThreadStateBoosting->SetFeatureGroupIndex(iFeatureGroup);
+
       LOG_0(
          TraceLevelWarning,
          "WARNING GenerateModelUpdate pBooster->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
@@ -1066,7 +1059,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
    }
 
    const IntEbmType ret = GenerateModelUpdateInternal(
-      pBooster,
       pThreadStateBoosting,
       iFeatureGroup,
       options,

@@ -478,8 +478,6 @@ class Native:
         self._unsafe.CreateRegressionBooster.restype = ct.c_void_p
 
         self._unsafe.GenerateModelUpdate.argtypes = [
-            # void * boosterHandle
-            ct.c_void_p,
             # void * threadStateBoosting
             ct.c_void_p,
             # int64_t indexFeatureGroup
@@ -498,15 +496,11 @@ class Native:
         self._unsafe.GenerateModelUpdate.restype = ct.c_int64
 
         self._unsafe.GetModelUpdateCuts.argtypes = [
-            # void * boosterHandle
-            ct.c_void_p,
             # void * threadStateBoosting
             ct.c_void_p,
-            # int64_t indexFeatureGroup
-            ct.c_int64,
             # int64_t indexDimension
             ct.c_int64,
-            # int64_t * countCutsOut
+            # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),
             # int64_t * cutIndexesOut
             ndpointer(dtype=ct.c_int64, ndim=1),
@@ -514,20 +508,14 @@ class Native:
         self._unsafe.GetModelUpdateCuts.restype = ct.c_int64
 
         self._unsafe.GetModelUpdateExpanded.argtypes = [
-            # void * boosterHandle
-            ct.c_void_p,
             # void * threadStateBoosting
             ct.c_void_p,
-            # int64_t indexFeatureGroup
-            ct.c_int64,
             # double * modelFeatureGroupUpdateTensor
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.GetModelUpdateExpanded.restype = ct.c_int64
 
         self._unsafe.SetModelUpdateExpanded.argtypes = [
-            # void * boosterHandle
-            ct.c_void_p,
             # void * threadStateBoosting
             ct.c_void_p,
             # int64_t indexFeatureGroup
@@ -538,12 +526,8 @@ class Native:
         self._unsafe.SetModelUpdateExpanded.restype = ct.c_int64
 
         self._unsafe.ApplyModelUpdate.argtypes = [
-            # void * boosterHandle
-            ct.c_void_p,
             # void * threadStateBoosting
             ct.c_void_p,
-            # int64_t indexFeatureGroup
-            ct.c_int64,
             # double * validationMetricOut
             ct.POINTER(ct.c_double),
         ]
@@ -721,6 +705,7 @@ class NativeEBMBooster:
         # first set the one thing that we will close on
         self._booster_handle = None
         self._thread_state_boosting = None
+        self._feature_group_index = -1
 
         # check inputs for important inputs or things that would segfault in C
         if not isinstance(features_categorical, np.ndarray):  # pragma: no cover
@@ -902,7 +887,7 @@ class NativeEBMBooster:
         self._native._unsafe.FreeBooster(self._booster_handle)
         log.info("Deallocation boosting end")
 
-    def boosting_step(
+    def generate_model_update(
         self, 
         feature_group_index, 
         generate_update_options, 
@@ -911,25 +896,27 @@ class NativeEBMBooster:
         max_leaves, 
     ):
 
-        """ Conducts a boosting step per feature
+        """ Generates a boosting step update per feature
             by growing a shallow decision tree.
 
         Args:
-            feature_group_index: The index for the feature group
-                to boost on.
+            feature_group_index: The index for the feature group to generate the update for
+            generate_update_options: C interface options
             learning_rate: Learning rate as a float.
-            max_leaves: Max leaf nodes on feature step.
             min_samples_leaf: Min observations required to split.
+            max_leaves: Max leaf nodes on feature step.
 
         Returns:
-            Validation loss for the boosting step.
+            gain for the generated boosting step.
         """
+
         # log.debug("Boosting step start")
 
-        metric_output = ct.c_double(0.0)
+        self._feature_group_index = -1
+
+        gain = ct.c_double(0.0)
         # for a classification problem with only 1 target value, we will always predict the answer perfectly
         if self._model_type != "classification" or 2 <= self._n_classes:
-            gain = ct.c_double(0.0)
 
             # TODO : !WARNING! currently we can only accept a single number for max_leaves because in C++ we eliminate
             #        dimensions that have only 1 state.  If a dimension in C++ is eliminated this way then it won't
@@ -941,7 +928,6 @@ class NativeEBMBooster:
             max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
             return_code = self._native._unsafe.GenerateModelUpdate(
-                self._booster_handle,
                 self._thread_state_boosting, 
                 feature_group_index,
                 generate_update_options,
@@ -951,17 +937,34 @@ class NativeEBMBooster:
                 ct.byref(gain),
             )
             if return_code:  # pragma: no cover
-                raise MemoryError(
-                    "Out of memory in GenerateModelUpdate"
-                )
+                raise MemoryError("Out of memory in GenerateModelUpdate")
+            
+            self._feature_group_index = feature_group_index
 
+        # log.debug("Boosting step end")
+        return gain.value
+
+    def apply_model_update(self):
+
+        """ Updates the interal C state with the last model update
+
+        Args:
+
+        Returns:
+            Validation loss for the boosting step.
+        """
+        # log.debug("Boosting step start")
+
+        self._feature_group_index = -1
+
+        metric_output = ct.c_double(0.0)
+        # for a classification problem with only 1 target value, we will always predict the answer perfectly
+        if self._model_type != "classification" or 2 <= self._n_classes:
             return_code = self._native._unsafe.ApplyModelUpdate(
-                self._booster_handle,
                 self._thread_state_boosting, 
-                feature_group_index,
                 ct.byref(metric_output),
             )
-            if return_code != 0:  # pragma: no cover
+            if return_code:  # pragma: no cover
                 raise Exception("Out of memory in ApplyModelUpdate")
 
         # log.debug("Boosting step end")
@@ -1131,56 +1134,46 @@ class NativeEBMBooster:
 
         return array
 
-    def _get_model_update_cuts(self, feature_group_index, dimension_index):
-        feature_index = self._feature_groups[feature_group_index][dimension_index]
+    def _get_model_update_cuts_dimension(self, dimension_index):
+        if self._feature_group_index < 0:
+            raise RuntimeError("invalid internal _feature_group_index")
+
+        feature_index = self._feature_groups[self._feature_group_index][dimension_index]
         n_bins = self._features_bin_count[feature_index]
 
-        cuts = np.empty(n_bins - 1, dtype=np.int64, order="C")
-        count_cuts = ct.c_int64(0)
+        count_cuts = n_bins - 1
+        cuts = np.empty(count_cuts, dtype=np.int64, order="C")
+        count_cuts = ct.c_int64(count_cuts)
 
         return_code = self._native._unsafe.GetModelUpdateCuts(
-            self._booster_handle, 
             self._thread_state_boosting, 
-            feature_group_index, 
             dimension_index, 
             ct.byref(count_cuts), 
             cuts
         )
 
         if return_code:  # pragma: no cover
-            raise MemoryError("Out of memory in GetModelUpdateExpanded")
+            raise MemoryError("Out of memory in GetModelUpdateCuts")
 
         cuts = cuts[:count_cuts.value]
         return cuts
 
-    def _get_model_update_expanded(self, feature_group_index):
-        if self._model_type == "classification" and self._n_classes <= 1:
-            # if there is only one legal state for a classification problem, then we know with 100%
-            # certainty what the result will be, and our logits for that result should be infinity
-            # since we reduce the number of logits by 1, we would get back an empty array from the C code
-            # after we expand the model for our caller, the tensor's dimensions should match
-            # the features for the feature_group, but the last class_index should have a dimension
-            # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
-            # a None value here for now and handle in the upper levels
-            #
-            # If we were to allow datasets with zero samples, then it would also be legal for there
-            # to be 0 states.  We can probably handle this the same as having 1 state though since
-            # any samples in any evaluations need to have a state
+    def get_model_update_expanded(self):
+        if self._feature_group_index < 0:
+            raise RuntimeError("invalid internal self._feature_group_index")
 
-            # TODO PK make sure the None value here is handled by our caller
+        if self._model_type == "classification" and self._n_classes <= 1:
             return None
 
-        shape = self._get_feature_group_shape(feature_group_index)
+        shape = self._get_feature_group_shape(self._feature_group_index)
         model_update = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = self._native._unsafe.GetModelUpdateExpanded(
-            self._booster_handle, self._thread_state_boosting, feature_group_index, model_update
-        )
+        return_code = self._native._unsafe.GetModelUpdateExpanded(self._thread_state_boosting, model_update)
 
         if return_code:  # pragma: no cover
             raise MemoryError("Out of memory in GetModelUpdateExpanded")
 
-        if len(self._feature_groups[feature_group_index]) == 2:
+        if len(self._feature_groups[self._feature_group_index]) == 2:
             if 2 < self._n_classes:
                 model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0, 2)))
             else:
@@ -1188,7 +1181,9 @@ class NativeEBMBooster:
 
         return model_update
 
-    def _set_model_update_expanded(self, feature_group_index, model_update):
+    def set_model_update_expanded(self, feature_group_index, model_update):
+        self._feature_group_index = -1
+
         if self._model_type == "classification" and self._n_classes <= 1:
             raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
 
@@ -1204,11 +1199,13 @@ class NativeEBMBooster:
             raise ValueError("incorrect tensor shape in call to set_model_update_expanded")
 
         return_code = self._native._unsafe.SetModelUpdateExpanded(
-            self._booster_handle, self._thread_state_boosting, feature_group_index, model_update
+            self._thread_state_boosting, feature_group_index, model_update
         )
 
         if return_code:  # pragma: no cover
             raise MemoryError("Out of memory in SetModelUpdateExpanded")
+
+        self._feature_group_index = feature_group_index
 
         return
 
@@ -1415,13 +1412,15 @@ class NativeHelper:
                     log.debug("Metric: {0}".format(min_metric))
 
                 for feature_group_index in range(len(feature_groups)):
-                    curr_metric = native_ebm_booster.boosting_step(
+                    gain = native_ebm_booster.generate_model_update(
                         feature_group_index=feature_group_index,
                         generate_update_options=generate_update_options,
                         learning_rate=learning_rate,
                         min_samples_leaf=min_samples_leaf,
                         max_leaves=max_leaves,
                     )
+
+                    curr_metric = native_ebm_booster.apply_model_update()
 
                     min_metric = min(curr_metric, min_metric)
 

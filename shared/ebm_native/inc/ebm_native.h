@@ -445,7 +445,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelUpdate(
-   BoosterHandle boosterHandle, 
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options, 
@@ -455,29 +454,22 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    FloatEbmType * gainOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateCuts(
-   BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
-   IntEbmType indexFeatureGroup,
    IntEbmType indexDimension,
-   IntEbmType * countCutsOut,
+   IntEbmType * countCutsInOut,
    IntEbmType * cutIndexesOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
-   BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
-   IntEbmType indexFeatureGroup,
    FloatEbmType * modelFeatureGroupUpdateTensor
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
-   BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
    FloatEbmType * modelFeatureGroupUpdateTensor
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
-   BoosterHandle boosterHandle, 
    ThreadStateBoostingHandle threadStateBoostingHandle,
-   IntEbmType indexFeatureGroup,
    FloatEbmType * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(

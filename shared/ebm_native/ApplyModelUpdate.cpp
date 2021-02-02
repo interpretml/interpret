@@ -19,7 +19,6 @@
 #include "ThreadStateBoosting.h"
 
 extern void ApplyModelUpdateTraining(
-   Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const FloatEbmType * const aModelFeatureGroupUpdateTensor
@@ -35,13 +34,13 @@ extern FloatEbmType ApplyModelUpdateValidation(
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 static IntEbmType ApplyModelUpdateInternal(
-   Booster * const pBooster,
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t iFeatureGroup,
    FloatEbmType * const pValidationMetricReturn
 ) {
    LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateInternal");
 
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
    const size_t cDimensions = pFeatureGroup->GetCountFeatures();
 
@@ -88,7 +87,6 @@ static IntEbmType ApplyModelUpdateInternal(
 
    if(0 != pBooster->GetTrainingSet()->GetCountSamples()) {
       ApplyModelUpdateTraining(
-         pBooster,
          pThreadStateBoosting,
          pFeatureGroup,
          aModelFeatureGroupUpdateTensor
@@ -156,9 +154,7 @@ static IntEbmType ApplyModelUpdateInternal(
 static int g_cLogApplyModelUpdateParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
-   BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
-   IntEbmType indexFeatureGroup,
    FloatEbmType * validationMetricOut
 ) {
    LOG_COUNTED_N(
@@ -166,25 +162,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       TraceLevelInfo,
       TraceLevelVerbose,
       "ApplyModelUpdate: "
-      "boosterHandle=%p, "
       "threadStateBoostingHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
       "validationMetricOut=%p"
       ,
-      static_cast<void *>(boosterHandle),
       static_cast<void *>(threadStateBoostingHandle),
-      indexFeatureGroup,
       static_cast<void *>(validationMetricOut)
    );
 
-   Booster * pBooster = reinterpret_cast<Booster *>(boosterHandle);
-   if(nullptr == pBooster) {
-      if(LIKELY(nullptr != validationMetricOut)) {
-         *validationMetricOut = FloatEbmType { 0 };
-      }
-      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate boosterHandle cannot be nullptr");
-      return 1;
-   }
    ThreadStateBoosting * pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
    if(nullptr == pThreadStateBoosting) {
       if(LIKELY(nullptr != validationMetricOut)) {
@@ -194,30 +178,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       return 1;
    }
 
-   if(indexFeatureGroup < 0) {
+   const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
+   if(ThreadStateBoosting::k_illegalFeatureGroupIndex == iFeatureGroup) {
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate indexFeatureGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate bad internal state.  No FeatureGroupIndex set");
       return 1;
    }
-   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
-      // we wouldn't have allowed the creation of an feature set larger than size_t
-      if(LIKELY(nullptr != validationMetricOut)) {
-         *validationMetricOut = FloatEbmType { 0 };
-      }
-      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate indexFeatureGroup is too high to index");
-      return 1;
-   }
-   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
-   if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
-      if(LIKELY(nullptr != validationMetricOut)) {
-         *validationMetricOut = FloatEbmType { 0 };
-      }
-      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate indexFeatureGroup above the number of feature groups that we have");
-      return 1;
-   }
-   // this is true because 0 < pBooster->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
+   EBM_ASSERT(nullptr != pBooster);
+   EBM_ASSERT(iFeatureGroup < pBooster->GetCountFeatureGroups());
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
 
    LOG_COUNTED_0(
@@ -234,6 +205,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       if(nullptr != validationMetricOut) {
          *validationMetricOut = 0;
       }
+      pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
       LOG_COUNTED_0(
          pBooster->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
          TraceLevelInfo,
@@ -244,7 +216,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
    }
 
    IntEbmType ret = ApplyModelUpdateInternal(
-      pBooster,
       pThreadStateBoosting,
       iFeatureGroup,
       validationMetricOut
@@ -252,6 +223,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING ApplyModelUpdate returned %" IntEbmTypePrintf, ret);
    }
+
+   pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
 
    if(nullptr != validationMetricOut) {
       EBM_ASSERT(!std::isnan(*validationMetricOut)); // NaNs can happen, but we should have edited those before here
@@ -282,11 +255,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
 static int g_cLogGetModelUpdateCutsParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateCuts(
-   BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
-   IntEbmType indexFeatureGroup,
    IntEbmType indexDimension,
-   IntEbmType * countCutsOut,
+   IntEbmType * countCutsInOut,
    IntEbmType * cutIndexesOut
 ) {
    LOG_COUNTED_N(
@@ -294,74 +265,83 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       TraceLevelInfo,
       TraceLevelVerbose,
       "GetModelUpdateCuts: "
-      "boosterHandle=%p, "
       "threadStateBoostingHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
       "indexDimension=%" IntEbmTypePrintf ", "
-      "countCutsOut=%p"
+      "countCutsInOut=%p"
       "cutIndexesOut=%p"
       ,
-      static_cast<void *>(boosterHandle),
       static_cast<void *>(threadStateBoostingHandle),
-      indexFeatureGroup,
       indexDimension, 
-      static_cast<void *>(countCutsOut),
+      static_cast<void *>(countCutsInOut),
       static_cast<void *>(cutIndexesOut)
    );
 
-   Booster * const pBooster = reinterpret_cast<Booster *>(boosterHandle);
-   if(nullptr == pBooster) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts boosterHandle cannot be nullptr");
+   if(nullptr == countCutsInOut) {
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts countCutsInOut cannot be nullptr");
       return IntEbmType { 1 };
    }
+
+   if(nullptr == cutIndexesOut) {
+      *countCutsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts cutIndexesOut cannot be nullptr");
+      return IntEbmType { 1 };
+   }
+
    ThreadStateBoosting * const pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
    if(nullptr == pThreadStateBoosting) {
+      *countCutsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts threadStateBoosting cannot be nullptr");
       return IntEbmType { 1 };
    }
 
-   if(indexFeatureGroup < 0) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexFeatureGroup must be positive");
+   const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
+   if(ThreadStateBoosting::k_illegalFeatureGroupIndex == iFeatureGroup) {
+      *countCutsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts bad internal state.  No FeatureGroupIndex set");
       return IntEbmType { 1 };
    }
-   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
-      // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexFeatureGroup is too high to index");
-      return IntEbmType { 1 };
-   }
-   const size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
-   if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexFeatureGroup above the number of feature groups that we have");
-      return IntEbmType { 1 };
-   }
-   // this is true because 0 < pBooster->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
+   EBM_ASSERT(nullptr != pBooster);
+   EBM_ASSERT(iFeatureGroup < pBooster->GetCountFeatureGroups());
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
 
    if(indexDimension < 0) {
+      *countCutsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension must be positive");
       return IntEbmType { 1 };
    }
    if(!IsNumberConvertable<size_t>(indexDimension)) {
-      // we wouldn't have allowed the creation of an feature set larger than size_t
+      *countCutsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension is too high to index");
       return IntEbmType { 1 };
    }
-   size_t iDimension = static_cast<size_t>(indexDimension);
+   const size_t iDimension = static_cast<size_t>(indexDimension);
    if(pFeatureGroup->GetCountFeatures() <= iDimension) {
+      *countCutsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension above the number of dimensions that we have");
       return IntEbmType { 1 };
    }
 
-   const size_t cCuts = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetCountDivisions(iDimension);
-   ActiveDataType * const aCutIndexes = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetDivisionPointer(iDimension);
+   // cBins started from IntEbmType, so we should be able to convert back safely
+   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
+   if(*countCutsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
+      *countCutsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts bad cut array length");
+      return IntEbmType { 1 };
+   }
 
+   const size_t cCuts = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetCountDivisions(iDimension);
+   EBM_ASSERT(cCuts < cBins);
+   const ActiveDataType * const aCutIndexes = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetDivisionPointer(iDimension);
 
    // TODO: handle this better where we handle mismatches in index types
    static_assert(sizeof(*cutIndexesOut) == sizeof(*aCutIndexes), "not same type for cuts");
    memcpy(cutIndexesOut, aCutIndexes, sizeof(*aCutIndexes) * cCuts);
-   // TODO: verify that we can copy this to an IntEbmType
-   *countCutsOut = cCuts;
+
+   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cCuts)); // cCuts originally came from an IntEbmType
+
+   *countCutsInOut = static_cast<IntEbmType>(cCuts);
    return IntEbmType { 0 };
 }
 
@@ -372,9 +352,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
 static int g_cLogGetModelUpdateExpandedParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
-   BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
-   IntEbmType indexFeatureGroup,
    FloatEbmType * modelFeatureGroupUpdateTensor
 ) {
    LOG_COUNTED_N(
@@ -382,42 +360,26 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       TraceLevelInfo,
       TraceLevelVerbose,
       "GetModelUpdateExpanded: "
-      "boosterHandle=%p, "
       "threadStateBoostingHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
       "modelFeatureGroupUpdateTensor=%p",
-      static_cast<void *>(boosterHandle),
       static_cast<void *>(threadStateBoostingHandle),
-      indexFeatureGroup,
       static_cast<void *>(modelFeatureGroupUpdateTensor)
    );
 
-   Booster * const pBooster = reinterpret_cast<Booster *>(boosterHandle);
-   if(nullptr == pBooster) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded boosterHandle cannot be nullptr");
-      return IntEbmType { 1 };
-   }
    ThreadStateBoosting * const pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
    if(nullptr == pThreadStateBoosting) {
       LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded threadStateBoosting cannot be nullptr");
       return IntEbmType { 1 };
    }
 
-   if(indexFeatureGroup < 0) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded indexFeatureGroup must be positive");
-      return IntEbmType { 1 };
+   const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
+   if(ThreadStateBoosting::k_illegalFeatureGroupIndex == iFeatureGroup) {
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded bad internal state.  No FeatureGroupIndex set");
+      return 1;
    }
-   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
-      // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded indexFeatureGroup is too high to index");
-      return IntEbmType { 1 };
-   }
-   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
-   if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded indexFeatureGroup above the number of feature groups that we have");
-      return IntEbmType { 1 };
-   }
-   // this is true because 0 < pBooster->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
+   EBM_ASSERT(nullptr != pBooster);
+   EBM_ASSERT(iFeatureGroup < pBooster->GetCountFeatureGroups());
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
 
    if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) {
@@ -460,7 +422,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
 static int g_cLogSetModelUpdateExpandedParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
-   BoosterHandle boosterHandle,
    ThreadStateBoostingHandle threadStateBoostingHandle,
    IntEbmType indexFeatureGroup,
    FloatEbmType * modelFeatureGroupUpdateTensor
@@ -470,38 +431,37 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
       TraceLevelInfo,
       TraceLevelVerbose,
       "SetModelUpdateExpanded: "
-      "boosterHandle=%p, "
       "threadStateBoostingHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
       "modelFeatureGroupUpdateTensor=%p",
-      static_cast<void *>(boosterHandle),
       static_cast<void *>(threadStateBoostingHandle),
       indexFeatureGroup,
       static_cast<void *>(modelFeatureGroupUpdateTensor)
    );
 
-   Booster * const pBooster = reinterpret_cast<Booster *>(boosterHandle);
-   if(nullptr == pBooster) {
-      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded boosterHandle cannot be nullptr");
-      return IntEbmType { 1 };
-   }
    ThreadStateBoosting * const pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
    if(nullptr == pThreadStateBoosting) {
       LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded threadStateBoosting cannot be nullptr");
       return IntEbmType { 1 };
    }
 
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
+   EBM_ASSERT(nullptr != pBooster);
+
    if(indexFeatureGroup < 0) {
+      pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
       LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup must be positive");
       return IntEbmType { 1 };
    }
    if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
+      pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup is too high to index");
       return IntEbmType { 1 };
    }
-   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   const size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
    if(pBooster->GetCountFeatureGroups() <= iFeatureGroup) {
+      pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
       LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup above the number of feature groups that we have");
       return IntEbmType { 1 };
    }
@@ -509,6 +469,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
 
    if(ptrdiff_t { 0 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBooster->GetRuntimeLearningTypeOrCountTargetClasses()) {
+      pThreadStateBoosting->SetFeatureGroupIndex(iFeatureGroup);
       return IntEbmType { 0 };
    }
 
@@ -531,6 +492,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
       if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
+         pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
          return IntEbmType { 1 };
       }
    }
@@ -538,5 +500,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
    memcpy(pValues, modelFeatureGroupUpdateTensor, sizeof(*pValues) * cValues);
+
+   pThreadStateBoosting->SetFeatureGroupIndex(iFeatureGroup);
+
    return IntEbmType { 0 };
 }

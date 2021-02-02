@@ -12,10 +12,14 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 
 #include "HistogramTargetEntry.h"
+#include "Booster.h"
 
 struct HistogramBucketBase;
 
 class ThreadStateBoosting final {
+
+   Booster * m_pBooster;
+   size_t m_iFeatureGroup;
 
    SegmentedTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
    SegmentedTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
@@ -40,7 +44,11 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
+   constexpr static size_t k_illegalFeatureGroupIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
+
    INLINE_ALWAYS void InitializeZero() {
+      m_pBooster = nullptr;
+      m_iFeatureGroup = k_illegalFeatureGroupIndex;
       m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
       m_pSmallChangeToModelOverwriteSingleSamplingSet = nullptr;
       m_aThreadByteBuffer1 = nullptr;
@@ -54,9 +62,22 @@ public:
 
    static void Free(ThreadStateBoosting * const pThreadStateBoosting);
    static ThreadStateBoosting * Allocate(
+      Booster * const pBooster,
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cBytesArrayEquivalentSplitMax
    );
+
+   INLINE_ALWAYS Booster * GetBooster() {
+      return m_pBooster;
+   }
+
+   INLINE_ALWAYS size_t GetFeatureGroupIndex() {
+      return m_iFeatureGroup;
+   }
+
+   INLINE_ALWAYS void SetFeatureGroupIndex(const size_t val) {
+      m_iFeatureGroup = val;
+   }
 
    INLINE_ALWAYS SegmentedTensor * GetSmallChangeToModelAccumulatedFromSamplingSets() {
       return m_pSmallChangeToModelAccumulatedFromSamplingSets;

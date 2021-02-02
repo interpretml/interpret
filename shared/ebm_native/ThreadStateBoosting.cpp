@@ -37,6 +37,7 @@ void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting)
 }
 
 ThreadStateBoosting * ThreadStateBoosting::Allocate(
+   Booster * const pBooster,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cBytesArrayEquivalentSplitMax
 ) {
@@ -72,6 +73,7 @@ ThreadStateBoosting * ThreadStateBoosting::Allocate(
                      }
                      pNew->m_aEquivalentSplits = aEquivalentSplits;
                   }
+                  pNew->m_pBooster = pBooster;
 
                   LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Allocate");
                   return pNew;
@@ -126,13 +128,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ThreadStateBoostingHandle EBM_NATIVE_CALLING_CONVE
 ) {
    LOG_N(TraceLevelInfo, "Entered CreateThreadStateBoosting: boosterHandle=%p", static_cast<void *>(boosterHandle));
 
-   const Booster * const pBooster = reinterpret_cast<Booster *>(boosterHandle);
+   Booster * const pBooster = reinterpret_cast<Booster *>(boosterHandle);
    if(nullptr == pBooster) {
       LOG_0(TraceLevelError, "ERROR CreateThreadStateBoosting boosterHandle cannot be nullptr");
       return nullptr;
    }
 
    ThreadStateBoosting * const pThreadStateBoosting = ThreadStateBoosting::Allocate(
+      pBooster,
       pBooster->GetRuntimeLearningTypeOrCountTargetClasses(),
       pBooster->GetCountBytesArrayEquivalentSplitMax()
    );
