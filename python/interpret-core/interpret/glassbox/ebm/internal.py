@@ -208,15 +208,15 @@ class Native:
 
         debug_str = "_debug" if debug else ""
         log.info("Loading native on {0} | debug = {1}".format(platform, debug))
-        if platform == "linux" or platform == "linux2" and is_64_bit:
+        if platform == "linux" or platform == "linux2" and is_64_bit:  # pragma: no cover
             return os.path.join(
                 package_path, "lib", "lib_ebm_native_linux_x64{0}.so".format(debug_str)
             )
-        elif platform == "win32" and is_64_bit:
+        elif platform == "win32" and is_64_bit:  # pragma: no cover
             return os.path.join(
                 package_path, "lib", "lib_ebm_native_win_x64{0}.dll".format(debug_str)
             )
-        elif platform == "darwin" and is_64_bit:
+        elif platform == "darwin" and is_64_bit:  # pragma: no cover
             return os.path.join(
                 package_path, "lib", "lib_ebm_native_mac_x64{0}.dylib".format(debug_str)
             )
@@ -819,7 +819,7 @@ class NativeEBMBooster:
                         "scores_val does not have the same number of logit scores as n_scores"
                     )
 
-        if optional_temp_params is not None:
+        if optional_temp_params is not None:  # pragma: no cover
             optional_temp_params = (ct.c_double * len(optional_temp_params))(
                 *optional_temp_params
             )
@@ -989,7 +989,7 @@ class NativeEBMBooster:
         return model
 
     def get_model_update_cuts(self):
-        if self._feature_group_index < 0:
+        if self._feature_group_index < 0:  # pragma: no cover
             raise RuntimeError("invalid internal self._feature_group_index")
 
         cuts = []
@@ -1032,20 +1032,10 @@ class NativeEBMBooster:
             An ndarray that represents the model.
         """
 
-        if self._model_type == "classification" and self._n_classes <= 1:
+        if self._model_type == "classification" and self._n_classes <= 1:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
-            # certainty what the result will be, and our logits for that result should be infinity
-            # since we reduce the number of logits by 1, we would get back an empty array from the C code
-            # after we expand the model for our caller, the tensor's dimensions should match
-            # the features for the feature_group, but the last class_index should have a dimension
-            # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
-            # a None value here for now and handle in the upper levels
-            #
-            # If we were to allow datasets with zero samples, then it would also be legal for there
-            # to be 0 states.  We can probably handle this the same as having 1 state though since
-            # any samples in any evaluations need to have a state
-
-            # TODO PK make sure the None value here is handled by our caller
+            # certainty what the result will be, and our model has no information since we always predict
+            # the only output
             return None
 
         shape = self._get_feature_group_shape(feature_group_index)
@@ -1076,20 +1066,10 @@ class NativeEBMBooster:
             An ndarray that represents the model.
         """
 
-        if self._model_type == "classification" and self._n_classes <= 1:
+        if self._model_type == "classification" and self._n_classes <= 1:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
-            # certainty what the result will be, and our logits for that result should be infinity
-            # since we reduce the number of logits by 1, we would get back an empty array from the C code
-            # after we expand the model for our caller, the tensor's dimensions should match
-            # the features for the feature_group, but the last class_index should have a dimension
-            # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
-            # a None value here for now and handle in the upper levels
-            #
-            # If we were to allow datasets with zero samples, then it would also be legal for there
-            # to be 0 states.  We can probably handle this the same as having 1 state though since
-            # any samples in any evaluations need to have a state
-
-            # TODO PK make sure the None value here is handled by our caller
+            # certainty what the result will be, and our model has no information since we always predict
+            # the only output
             return None
 
         shape = self._get_feature_group_shape(feature_group_index)
@@ -1130,10 +1110,13 @@ class NativeEBMBooster:
         return cuts
 
     def get_model_update_expanded(self):
-        if self._feature_group_index < 0:
+        if self._feature_group_index < 0:  # pragma: no cover
             raise RuntimeError("invalid internal self._feature_group_index")
 
-        if self._model_type == "classification" and self._n_classes <= 1:
+        if self._model_type == "classification" and self._n_classes <= 1:  # pragma: no cover
+            # if there is only one legal state for a classification problem, then we know with 100%
+            # certainty what the result will be, and our model has no information since we always predict
+            # the only output
             return None
 
         shape = self._get_feature_group_shape(self._feature_group_index)
@@ -1155,8 +1138,8 @@ class NativeEBMBooster:
     def set_model_update_expanded(self, feature_group_index, model_update):
         self._feature_group_index = -1
 
-        if self._model_type == "classification" and self._n_classes <= 1:
-            if model_update is None:
+        if self._model_type == "classification" and self._n_classes <= 1:  # pragma: no cover
+            if model_update is None:  # pragma: no cover
                 self._feature_group_index = feature_group_index
                 return
             raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
@@ -1169,7 +1152,7 @@ class NativeEBMBooster:
 
         shape = self._get_feature_group_shape(feature_group_index)
 
-        if shape != model_update.shape:
+        if shape != model_update.shape:  # pragma: no cover
             raise ValueError("incorrect tensor shape in call to set_model_update_expanded")
 
         return_code = self._native._unsafe.SetModelUpdateExpanded(
@@ -1264,7 +1247,7 @@ class NativeEBMInteraction:
                         "scores does not have the same number of logit scores as n_scores"
                     )
 
-        if optional_temp_params is not None:
+        if optional_temp_params is not None:  # pragma: no cover
             optional_temp_params = (ct.c_double * len(optional_temp_params))(
                 *optional_temp_params
             )
