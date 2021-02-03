@@ -19,6 +19,9 @@
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
 
+#include "Booster.h"
+#include "ThreadStateBoosting.h"
+
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 class CutRandomInternal final {
 public:
@@ -26,16 +29,11 @@ public:
    CutRandomInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      HistogramBucketBase * const aHistogramBucketsBase,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
-      SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
       FloatEbmType * const pTotalGain
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
    ) {
       // THIS RANDOM CUT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
@@ -49,6 +47,8 @@ public:
       // TODO: accept 0 == countSamplesRequiredForChildSplitMin as a minimum number of items so that we can always choose to allow a tensor cut (for DP)
       // TODO: move most of this code out of this function into a non-templated place
 
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
+
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
          pBooster->GetRuntimeLearningTypeOrCountTargetClasses()
@@ -58,10 +58,14 @@ public:
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
+      HistogramBucketBase * const aHistogramBucketsBase = pThreadStateBoosting->GetHistogramBucketBase();
       HistogramBucket<bClassification> * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<bClassification>();
 
       const size_t cDimensions = pFeatureGroup->GetCountFeatures();
       EBM_ASSERT(1 <= cDimensions);
+
+      SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
+         pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet();
 
       const IntEbmType * pLeavesMax1 = aLeavesMax;
       const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
@@ -361,7 +365,7 @@ public:
                reinterpret_cast<const char *>(pHistogramBucket) + *pcItemsInNextSliceOrBytesInCurrentSlice);
 
             do {
-               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
+               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, pThreadStateBoosting->GetHistogramBucketsEndDebug());
                pCollapsedHistogramBucket1->Add(*pHistogramBucket, cVectorLength);
 
                // we're walking through all buckets, so just move to the next one in the flat array, 
@@ -549,49 +553,35 @@ public:
    CutRandomTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static bool Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      HistogramBucketBase * const aHistogramBuckets,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
-      SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
       FloatEbmType * const pTotalGain
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          return CutRandomInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
-            pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
-            aHistogramBuckets,
             options,
             aLeavesMax,
-            pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
          );
       } else {
          return CutRandomTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
-            aHistogramBuckets,
             options,
             aLeavesMax,
-            pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
          );
       }
    }
@@ -604,77 +594,53 @@ public:
    CutRandomTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static bool Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      HistogramBucketBase * const aHistogramBuckets,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
-      SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
       FloatEbmType * const pTotalGain
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
       return CutRandomInternal<k_dynamicClassification>::Func(
-         pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
-         aHistogramBuckets,
          options,
          aLeavesMax,
-         pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
-#ifndef NDEBUG
-         , aHistogramBucketsEndDebug
-#endif // NDEBUG
       );
    }
 };
 
 extern bool CutRandom(
-   Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
-   HistogramBucketBase * const aHistogramBuckets,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
-#ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
 ) {
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       return CutRandomTarget<2>::Func(
-         pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
-         aHistogramBuckets,
          options,
          aLeavesMax,
-         pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
-#ifndef NDEBUG
-         , aHistogramBucketsEndDebug
-#endif // NDEBUG
       );
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       return CutRandomInternal<k_regression>::Func(
-         pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
-         aHistogramBuckets,
          options,
          aLeavesMax,
-         pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
-#ifndef NDEBUG
-         , aHistogramBucketsEndDebug
-#endif // NDEBUG
       );
    }
 }

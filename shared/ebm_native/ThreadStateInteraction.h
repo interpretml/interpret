@@ -31,7 +31,7 @@ public:
 
    static void Free(ThreadStateInteraction * const pThreadStateInteraction);
    static ThreadStateInteraction * Allocate();
-   HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired);
+   HistogramBucketBase * GetHistogramBucketBase(const size_t cBytesRequired);
 
 };
 static_assert(std::is_standard_layout<ThreadStateInteraction>::value,

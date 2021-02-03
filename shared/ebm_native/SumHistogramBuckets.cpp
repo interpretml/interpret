@@ -16,6 +16,9 @@
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
 
+#include "Booster.h"
+#include "ThreadStateBoosting.h"
+
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 class SumHistogramBucketsInternal final {
 public:
@@ -23,16 +26,21 @@ public:
    SumHistogramBucketsInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cHistogramBuckets,
-      const HistogramBucketBase * const aHistogramBucketsBase,
-      HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const size_t cHistogramBuckets
 #ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
       , const size_t cSamplesTotal
 #endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+
+      HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase =
+         pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray();
+
+      HistogramBucketBase * const aHistogramBucketsBase = pThreadStateBoosting->GetHistogramBucketBase();
 
       const HistogramBucket<bClassification> * const aHistogramBuckets = 
          aHistogramBucketsBase->GetHistogramBucket<bClassification>();
@@ -62,7 +70,7 @@ public:
       // and have many different labels, we are more likley to find bins with zero items, and that's where we get a win by compressing it down to just the 
       // non-zero binned buckets, even though this requires one more member variable in the binned bucket array
       do {
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
+         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, pThreadStateBoosting->GetHistogramBucketsEndDebug());
 #ifndef NDEBUG
          cSamplesTotalDebug += pCopyFrom->GetCountSamplesInBucket();
 #endif // NDEBUG
@@ -93,37 +101,31 @@ public:
 };
 
 extern void SumHistogramBuckets(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cHistogramBuckets,
-   const HistogramBucketBase * const aHistogramBucketsBase,
-   HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase
+   ThreadStateBoosting * const pThreadStateBoosting,
+   const size_t cHistogramBuckets
 #ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
    , const size_t cSamplesTotal
 #endif // NDEBUG
 ) {
    LOG_0(TraceLevelVerbose, "Entered SumHistogramBuckets");
 
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
          SumHistogramBucketsInternal<2>::Func(
-            2,
-            cHistogramBuckets,
-            aHistogramBucketsBase,
-            aSumHistogramBucketVectorEntryBase
+            pThreadStateBoosting,
+            cHistogramBuckets
 #ifndef NDEBUG
-            , aHistogramBucketsEndDebug
             , cSamplesTotal
 #endif // NDEBUG
          );
       } else {
          SumHistogramBucketsInternal<k_dynamicClassification>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
-            cHistogramBuckets,
-            aHistogramBucketsBase,
-            aSumHistogramBucketVectorEntryBase
+            pThreadStateBoosting,
+            cHistogramBuckets
 #ifndef NDEBUG
-            , aHistogramBucketsEndDebug
             , cSamplesTotal
 #endif // NDEBUG
          );
@@ -131,12 +133,9 @@ extern void SumHistogramBuckets(
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       SumHistogramBucketsInternal<k_regression>::Func(
-         k_regression,
-         cHistogramBuckets,
-         aHistogramBucketsBase,
-         aSumHistogramBucketVectorEntryBase
+         pThreadStateBoosting,
+         cHistogramBuckets
 #ifndef NDEBUG
-         , aHistogramBucketsEndDebug
          , cSamplesTotal
 #endif // NDEBUG
       );

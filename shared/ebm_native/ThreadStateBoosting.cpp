@@ -36,17 +36,14 @@ void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting)
    LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Free");
 }
 
-ThreadStateBoosting * ThreadStateBoosting::Allocate(
-   Booster * const pBooster,
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cBytesArrayEquivalentSplitMax
-) {
+ThreadStateBoosting * ThreadStateBoosting::Allocate(Booster * const pBooster) {
    LOG_0(TraceLevelInfo, "Entered ThreadStateBoosting::Allocate");
 
    ThreadStateBoosting * const pNew = EbmMalloc<ThreadStateBoosting>();
    if(LIKELY(nullptr != pNew)) {
       pNew->InitializeZero();
 
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
       const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
          sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>);
@@ -66,6 +63,7 @@ ThreadStateBoosting * ThreadStateBoosting::Allocate(
                FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
                if(LIKELY(nullptr != aTempFloatVector)) {
                   pNew->m_aTempFloatVector = aTempFloatVector;
+                  const size_t cBytesArrayEquivalentSplitMax = pBooster->GetCountBytesArrayEquivalentSplitMax();
                   if(0 != cBytesArrayEquivalentSplitMax) {
                      void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
                      if(UNLIKELY(nullptr == aEquivalentSplits)) {
@@ -88,7 +86,7 @@ ThreadStateBoosting * ThreadStateBoosting::Allocate(
    return nullptr;
 }
 
-HistogramBucketBase * ThreadStateBoosting::GetThreadByteBuffer1(const size_t cBytesRequired) {
+HistogramBucketBase * ThreadStateBoosting::GetHistogramBucketBase(const size_t cBytesRequired) {
    HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
    if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
       m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
@@ -134,11 +132,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ThreadStateBoostingHandle EBM_NATIVE_CALLING_CONVE
       return nullptr;
    }
 
-   ThreadStateBoosting * const pThreadStateBoosting = ThreadStateBoosting::Allocate(
-      pBooster,
-      pBooster->GetRuntimeLearningTypeOrCountTargetClasses(),
-      pBooster->GetCountBytesArrayEquivalentSplitMax()
-   );
+   ThreadStateBoosting * const pThreadStateBoosting = ThreadStateBoosting::Allocate(pBooster);
    if(UNLIKELY(nullptr == pThreadStateBoosting)) {
       LOG_0(TraceLevelWarning, "WARNING CreateThreadStateBoosting nullptr == pThreadStateBoosting");
       return nullptr;

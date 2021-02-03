@@ -18,29 +18,21 @@
 #include "Booster.h"
 #include "ThreadStateBoosting.h"
 
-extern void ApplyModelUpdateTraining(
-   ThreadStateBoosting * const pThreadStateBoosting,
-   const FeatureGroup * const pFeatureGroup,
-   const FloatEbmType * const aModelFeatureGroupUpdateTensor
-);
+extern void ApplyModelUpdateTraining(ThreadStateBoosting * const pThreadStateBoosting);
 
-extern FloatEbmType ApplyModelUpdateValidation(
-   Booster * const pBooster,
-   const FeatureGroup * const pFeatureGroup,
-   const FloatEbmType * const aModelFeatureGroupUpdateTensor
-);
+extern FloatEbmType ApplyModelUpdateValidation(ThreadStateBoosting * const pThreadStateBoosting);
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 static IntEbmType ApplyModelUpdateInternal(
    ThreadStateBoosting * const pThreadStateBoosting,
-   const size_t iFeatureGroup,
    FloatEbmType * const pValidationMetricReturn
 ) {
    LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateInternal");
 
    Booster * const pBooster = pThreadStateBoosting->GetBooster();
+   const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
    const size_t cDimensions = pFeatureGroup->GetCountFeatures();
 
@@ -86,11 +78,7 @@ static IntEbmType ApplyModelUpdateInternal(
    pBooster->GetCurrentModel()[iFeatureGroup]->AddExpandedWithBadValueProtection(aModelFeatureGroupUpdateTensor);
 
    if(0 != pBooster->GetTrainingSet()->GetCountSamples()) {
-      ApplyModelUpdateTraining(
-         pThreadStateBoosting,
-         pFeatureGroup,
-         aModelFeatureGroupUpdateTensor
-      );
+      ApplyModelUpdateTraining(pThreadStateBoosting);
    }
 
    FloatEbmType modelMetric = FloatEbmType { 0 };
@@ -106,11 +94,7 @@ static IntEbmType ApplyModelUpdateInternal(
       // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      modelMetric = ApplyModelUpdateValidation(
-         pBooster,
-         pFeatureGroup,
-         aModelFeatureGroupUpdateTensor
-      );
+      modelMetric = ApplyModelUpdateValidation(pThreadStateBoosting);
 
       EBM_ASSERT(!std::isnan(modelMetric)); // NaNs can happen, but we should have converted them
       EBM_ASSERT(!std::isinf(modelMetric)); // +infinity can happen, but we should have converted it
@@ -217,7 +201,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
 
    IntEbmType ret = ApplyModelUpdateInternal(
       pThreadStateBoosting,
-      iFeatureGroup,
       validationMetricOut
    );
    if(0 != ret) {

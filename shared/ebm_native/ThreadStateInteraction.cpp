@@ -35,7 +35,7 @@ ThreadStateInteraction * ThreadStateInteraction::Allocate() {
    return pNew;
 }
 
-HistogramBucketBase * ThreadStateInteraction::GetThreadByteBuffer1(const size_t cBytesRequired) {
+HistogramBucketBase * ThreadStateInteraction::GetHistogramBucketBase(const size_t cBytesRequired) {
    HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
    if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
       m_cThreadByteBufferCapacity1 = cBytesRequired << 1;

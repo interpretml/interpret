@@ -78,22 +78,17 @@ static void Flatten(
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    ThreadStateBoosting * const pThreadStateBoosting,
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
    const size_t cSamplesRequiredForChildSplitMin
-#ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
 ) {
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
    LOG_N(
       TraceLevelVerbose,
-      "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pThreadStateBoosting=%p, aHistogramBucket=%p, pTreeNode=%p, "
+      "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pThreadStateBoosting=%p, pTreeNode=%p, "
       "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cSamplesRequiredForChildSplitMin=%zu",
       static_cast<const void *>(pThreadStateBoosting),
-      static_cast<const void *>(aHistogramBucket),
       static_cast<void *>(pTreeNode),
       static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur),
       cSamplesRequiredForChildSplitMin
@@ -157,7 +152,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
    EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
    do {
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, aHistogramBucketsEndDebug);
+      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, pThreadStateBoosting->GetHistogramBucketsEndDebug());
 
       const size_t CHANGE_cSamples = pHistogramBucketEntryCur->GetCountSamplesInBucket();
       cSamplesRight -= CHANGE_cSamples;
@@ -295,7 +290,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntryNext =
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
-   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, aHistogramBucketsEndDebug);
+   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, pThreadStateBoosting->GetHistogramBucketsEndDebug());
 
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
@@ -366,6 +361,11 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
    EBM_ASSERT(std::isnan(splitGain) || (!bClassification) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
    pTreeNode->AFTER_SetSplitGain(splitGain);
+
+   HistogramBucketBase * const aHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
+   const HistogramBucket<bClassification> * const aHistogramBucket =
+      aHistogramBucketBase->GetHistogramBucket<bClassification>();
+
    EBM_ASSERT(reinterpret_cast<const char *>(aHistogramBucket) <= reinterpret_cast<const char *>(BEST_pHistogramBucketEntry));
    EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) % cBytesPerHistogramBucket);
    pTreeNode->AFTER_SetDivisionValue((reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - 
@@ -404,21 +404,19 @@ public:
    static bool Func(
       ThreadStateBoosting * const pThreadStateBoosting,
       const size_t cHistogramBuckets,
-      const HistogramBucketBase * const aHistogramBucketBase,
       const size_t cSamplesTotal,
-      const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
       const size_t cSamplesRequiredForChildSplitMin,
       const size_t cLeavesMax,
-      SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
       FloatEbmType * const pTotalGain
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
+      HistogramBucketBase * const aHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
       const HistogramBucket<bClassification> * const aHistogramBucket =
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
+
+      HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase =
+         pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray();
       const HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
          aSumHistogramBucketVectorEntryBase->GetHistogramBucketVectorEntry<bClassification>();
 
@@ -476,7 +474,7 @@ public:
       ASSERT_BINNED_BUCKET_OK(
          cBytesPerHistogramBucket,
          pRootTreeNode->BEFORE_GetHistogramBucketEntryLast(),
-         aHistogramBucketsEndDebug
+         pThreadStateBoosting->GetHistogramBucketsEndDebug()
       );
       pRootTreeNode->AMBIGUOUS_SetSamples(cSamplesTotal);
 
@@ -487,17 +485,16 @@ public:
          cVectorLength * sizeof(*aSumHistogramBucketVectorEntry)
       );
 
+      SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
+         pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet();
+
       size_t cLeaves;
       if(ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
          pThreadStateBoosting,
-         aHistogramBucket,
          pRootTreeNode,
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
          cSamplesRequiredForChildSplitMin
-#ifndef NDEBUG
-         , aHistogramBucketsEndDebug
-#endif // NDEBUG
-         )) {
+      )) {
          // there will be no splits at all
          if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
             LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
@@ -670,14 +667,10 @@ public:
                // because splitting sets splitGain to a non-illegalGain value
                if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
                   pThreadStateBoosting,
-                  aHistogramBucket,
                   pLeftChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
                   cSamplesRequiredForChildSplitMin
-#ifndef NDEBUG
-                  , aHistogramBucketsEndDebug
-#endif // NDEBUG
-                  )) {
+               )) {
                   pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
                   bestTreeNodeToSplit.push(pLeftChild);
                } else {
@@ -717,14 +710,10 @@ public:
                // because splitting sets splitGain to a non-NaN value
                if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
                   pThreadStateBoosting,
-                  aHistogramBucket,
                   pRightChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
                   cSamplesRequiredForChildSplitMin
-#ifndef NDEBUG
-                  , aHistogramBucketsEndDebug
-#endif // NDEBUG
-                  )) {
+               )) {
                   pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
                   bestTreeNodeToSplit.push(pRightChild);
                } else {
@@ -796,16 +785,10 @@ public:
 extern bool GrowDecisionTree(
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t cHistogramBuckets,
-   const HistogramBucketBase * const aHistogramBucketBase,
    const size_t cSamplesTotal,
-   const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
-#ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
 ) {
    LOG_0(TraceLevelVerbose, "Entered GrowDecisionTree");
 
@@ -818,31 +801,19 @@ extern bool GrowDecisionTree(
          bRet = GrowDecisionTreeInternal<2>::Func(
             pThreadStateBoosting,
             cHistogramBuckets,
-            aHistogramBucketBase,
             cSamplesTotal,
-            aSumHistogramBucketVectorEntryBase,
             cSamplesRequiredForChildSplitMin,
             cLeavesMax,
-            pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
          );
       } else {
          bRet = GrowDecisionTreeInternal<k_dynamicClassification>::Func(
             pThreadStateBoosting,
             cHistogramBuckets,
-            aHistogramBucketBase,
             cSamplesTotal,
-            aSumHistogramBucketVectorEntryBase,
             cSamplesRequiredForChildSplitMin,
             cLeavesMax,
-            pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
          );
       }
    } else {
@@ -850,16 +821,10 @@ extern bool GrowDecisionTree(
       bRet = GrowDecisionTreeInternal<k_regression>::Func(
          pThreadStateBoosting,
          cHistogramBuckets,
-         aHistogramBucketBase,
          cSamplesTotal,
-         aSumHistogramBucketVectorEntryBase,
          cSamplesRequiredForChildSplitMin,
          cLeavesMax,
-         pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
-#ifndef NDEBUG
-         , aHistogramBucketsEndDebug
-#endif // NDEBUG
       );
    }
 

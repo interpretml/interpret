@@ -112,7 +112,7 @@ static bool CalculateInteractionScoreInternal(
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
    // this doesn't need to be freed since it's tracked and re-used by the class ThreadStateInteraction
-   HistogramBucketBase * const aHistogramBuckets = pThreadStateInteraction->GetThreadByteBuffer1(cBytesBuffer);
+   HistogramBucketBase * const aHistogramBuckets = pThreadStateInteraction->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal nullptr == aHistogramBuckets");
       return true;

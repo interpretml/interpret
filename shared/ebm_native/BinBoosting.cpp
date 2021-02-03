@@ -17,6 +17,7 @@
 #include "DataSetBoosting.h"
 
 #include "Booster.h"
+#include "ThreadStateBoosting.h"
 
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
@@ -28,17 +29,18 @@ public:
    BinBoostingZeroDimensions() = delete; // this is a static class.  Do not construct
 
    static void Func(
-      Booster * const pBooster,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const pHistogramBucketEntryBase
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const SamplingSet * const pTrainingSet
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
       LOG_0(TraceLevelVerbose, "Entered BinDataSetTrainingZeroDimensions");
 
+      HistogramBucketBase * const pHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry =
-         pHistogramBucketEntryBase->GetHistogramBucket<bClassification>();
+         pHistogramBucketBase->GetHistogramBucket<bClassification>();
 
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -130,28 +132,26 @@ public:
    BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      Booster * const pBooster,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const pHistogramBucketEntryBase
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const SamplingSet * const pTrainingSet
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          BinBoostingZeroDimensions<compilerLearningTypeOrCountTargetClassesPossible>::Func(
-            pBooster,
-            pTrainingSet,
-            pHistogramBucketEntryBase
+            pThreadStateBoosting,
+            pTrainingSet
          );
       } else {
          BinBoostingZeroDimensionsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pBooster,
-            pTrainingSet,
-            pHistogramBucketEntryBase
+            pThreadStateBoosting,
+            pTrainingSet
          );
       }
    }
@@ -164,19 +164,17 @@ public:
    BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      Booster * const pBooster,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const pHistogramBucketEntryBase
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const SamplingSet * const pTrainingSet
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
       BinBoostingZeroDimensions<k_dynamicClassification>::Func(
-         pBooster,
-         pTrainingSet,
-         pHistogramBucketEntryBase
+         pThreadStateBoosting,
+         pTrainingSet
       );
    }
 };
@@ -188,21 +186,19 @@ public:
    BinBoostingInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const aHistogramBucketBase
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
+      const SamplingSet * const pTrainingSet
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
       LOG_0(TraceLevelVerbose, "Entered BinDataSetTraining");
 
+      HistogramBucketBase * const aHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets =
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -270,7 +266,7 @@ public:
                iTensorBin
             );
 
-            ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
+            ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pThreadStateBoosting->GetHistogramBucketsEndDebug());
             const size_t cOccurences = *pCountOccurrences;
             ++pCountOccurrences;
             pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
@@ -357,40 +353,29 @@ public:
    BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const aHistogramBucketBase
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
+      const SamplingSet * const pTrainingSet
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          BinBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-            pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
-            pTrainingSet,
-            aHistogramBucketBase
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
+            pTrainingSet
          );
       } else {
          BinBoostingNormalTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
-            pTrainingSet,
-            aHistogramBucketBase
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
+            pTrainingSet
          );
       }
    }
@@ -403,27 +388,19 @@ public:
    BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const aHistogramBucketBase
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
+      const SamplingSet * const pTrainingSet
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
       BinBoostingInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-         pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
-         pTrainingSet,
-         aHistogramBucketBase
-#ifndef NDEBUG
-         , aHistogramBucketsEndDebug
-#endif // NDEBUG
+         pTrainingSet
       );
    }
 };
@@ -435,13 +412,9 @@ public:
    BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const aHistogramBucketBase
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
+      const SamplingSet * const pTrainingSet
    ) {
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
 
@@ -450,26 +423,18 @@ public:
       static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
          BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
-            pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
-            pTrainingSet,
-            aHistogramBucketBase
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
+            pTrainingSet
          );
       } else {
          BinBoostingSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::Func(
-            pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
-            pTrainingSet,
-            aHistogramBucketBase
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
+            pTrainingSet
          );
       }
    }
@@ -482,24 +447,16 @@ public:
    BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const aHistogramBucketBase
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
+      const SamplingSet * const pTrainingSet
    ) {
       EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
       EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
       BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-         pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
-         pTrainingSet,
-         aHistogramBucketBase
-#ifndef NDEBUG
-         , aHistogramBucketsEndDebug
-#endif // NDEBUG
+         pTrainingSet
       );
    }
 };
@@ -511,17 +468,14 @@ public:
    BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const aHistogramBucketBase
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
+      const SamplingSet * const pTrainingSet
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
@@ -531,23 +485,15 @@ public:
             compilerLearningTypeOrCountTargetClassesPossible,
             k_cItemsPerBitPackedDataUnitMax
          >::Func(
-            pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
-            pTrainingSet,
-            aHistogramBucketBase
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
+            pTrainingSet
          );
       } else {
          BinBoostingSIMDTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pBooster,
+            pThreadStateBoosting,
             pFeatureGroup,
-            pTrainingSet,
-            aHistogramBucketBase
-#ifndef NDEBUG
-            , aHistogramBucketsEndDebug
-#endif // NDEBUG
+            pTrainingSet
          );
       }
    }
@@ -560,57 +506,44 @@ public:
    BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
-      Booster * const pBooster,
+      ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
-      const SamplingSet * const pTrainingSet,
-      HistogramBucketBase * const aHistogramBucketBase
-#ifndef NDEBUG
-      , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
+      const SamplingSet * const pTrainingSet
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pBooster->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
       BinBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackedDataUnitMax>::Func(
-         pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
-         pTrainingSet,
-         aHistogramBucketBase
-#ifndef NDEBUG
-         , aHistogramBucketsEndDebug
-#endif // NDEBUG
+         pTrainingSet
       );
    }
 };
 
 extern void BinBoosting(
-   Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
-   const SamplingSet * const pTrainingSet,
-   HistogramBucketBase * const aHistogramBucketBase
-#ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
+   const SamplingSet * const pTrainingSet
 ) {
    LOG_0(TraceLevelVerbose, "Entered BinBoosting");
 
+   Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(nullptr == pFeatureGroup) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          BinBoostingZeroDimensionsTarget<2>::Func(
-            pBooster,
-            pTrainingSet,
-            aHistogramBucketBase
+            pThreadStateBoosting,
+            pTrainingSet
          );
       } else {
          EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
          BinBoostingZeroDimensions<k_regression>::Func(
-            pBooster,
-            pTrainingSet,
-            aHistogramBucketBase
+            pThreadStateBoosting,
+            pTrainingSet
          );
       }
    } else {
@@ -630,24 +563,16 @@ extern void BinBoosting(
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             BinBoostingSIMDTarget<2>::Func(
-               pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
-               pTrainingSet,
-               aHistogramBucketBase
-#ifndef NDEBUG
-               , aHistogramBucketsEndDebug
-#endif // NDEBUG
+               pTrainingSet
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             BinBoostingSIMDPacking<k_regression, k_cItemsPerBitPackedDataUnitMax>::Func(
-               pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
-               pTrainingSet,
-               aHistogramBucketBase
-#ifndef NDEBUG
-               , aHistogramBucketsEndDebug
-#endif // NDEBUG
+               pTrainingSet
             );
          }
       } else {
@@ -659,24 +584,16 @@ extern void BinBoosting(
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             BinBoostingNormalTarget<2>::Func(
-               pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
-               pTrainingSet,
-               aHistogramBucketBase
-#ifndef NDEBUG
-               , aHistogramBucketsEndDebug
-#endif // NDEBUG
+               pTrainingSet
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             BinBoostingInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-               pBooster,
+               pThreadStateBoosting,
                pFeatureGroup,
-               pTrainingSet,
-               aHistogramBucketBase
-#ifndef NDEBUG
-               , aHistogramBucketsEndDebug
-#endif // NDEBUG
+               pTrainingSet
             );
          }
       }

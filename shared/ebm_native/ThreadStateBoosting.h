@@ -37,6 +37,10 @@ class ThreadStateBoosting final {
 
    HistogramBucketVectorEntryBase * m_aSumHistogramBucketVectorEntry;
 
+#ifndef NDEBUG
+   const unsigned char * m_aHistogramBucketsEndDebug;
+#endif // NDEBUG
+
 public:
 
    ThreadStateBoosting() = default; // preserve our POD status
@@ -61,11 +65,7 @@ public:
    }
 
    static void Free(ThreadStateBoosting * const pThreadStateBoosting);
-   static ThreadStateBoosting * Allocate(
-      Booster * const pBooster,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cBytesArrayEquivalentSplitMax
-   );
+   static ThreadStateBoosting * Allocate(Booster * const pBooster);
 
    INLINE_ALWAYS Booster * GetBooster() {
       return m_pBooster;
@@ -87,7 +87,13 @@ public:
       return m_pSmallChangeToModelOverwriteSingleSamplingSet;
    }
 
-   HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired);
+   HistogramBucketBase * GetHistogramBucketBase(const size_t cBytesRequired);
+
+   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBase() {
+      // call this if the histograms were already allocated and we just need the pointer
+      return m_aThreadByteBuffer1;
+   }
+
    bool GrowThreadByteBuffer2(const size_t cByteBoundaries);
 
    INLINE_ALWAYS void * GetThreadByteBuffer2() {
@@ -109,6 +115,16 @@ public:
    INLINE_ALWAYS HistogramBucketVectorEntryBase * GetSumHistogramBucketVectorEntryArray() {
       return m_aSumHistogramBucketVectorEntry;
    }
+
+#ifndef NDEBUG
+   INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebug() const {
+      return m_aHistogramBucketsEndDebug;
+   }
+
+   INLINE_ALWAYS void SetHistogramBucketsEndDebug(const unsigned char * const val) {
+      m_aHistogramBucketsEndDebug = val;
+   }
+#endif // NDEBUG
 };
 static_assert(std::is_standard_layout<ThreadStateBoosting>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

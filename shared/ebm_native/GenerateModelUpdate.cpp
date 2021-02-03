@@ -31,22 +31,15 @@
 #include "TensorTotalsSum.h"
 
 extern void BinBoosting(
-   Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
-   const SamplingSet * const pTrainingSet,
-   HistogramBucketBase * const aHistogramBucketBase
-#ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
+   const SamplingSet * const pTrainingSet
 );
 
 extern void SumHistogramBuckets(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cHistogramBuckets,
-   const HistogramBucketBase * const aHistogramBucketsBase,
-   HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase
+   ThreadStateBoosting * const pThreadStateBoosting,
+   const size_t cHistogramBuckets
 #ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
    , const size_t cSamplesTotal
 #endif // NDEBUG
 );
@@ -54,51 +47,36 @@ extern void SumHistogramBuckets(
 extern bool GrowDecisionTree(
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t cHistogramBuckets,
-   const HistogramBucketBase * const aHistogramBucketBase,
    const size_t cSamplesTotal,
-   const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
-#ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
 );
 
 extern bool FindBestBoostingSplitPairs(
-   Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
    HistogramBucketBase * const pTotal,
-   HistogramBucketBase * const aHistogramBuckets,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
    , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 );
 
 extern bool CutRandom(
-   Booster * const pBooster,
+   ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
-   HistogramBucketBase * const aHistogramBuckets,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
-#ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
 );
 
 static bool BoostZeroDimensional(
    ThreadStateBoosting * const pThreadStateBoosting, 
    const SamplingSet * const pTrainingSet,
-   const GenerateUpdateOptionsType options,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet
+   const GenerateUpdateOptionsType options
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
 
@@ -115,7 +93,7 @@ static bool BoostZeroDimensional(
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
    HistogramBucketBase * const pHistogramBucket =
-      pThreadStateBoosting->GetThreadByteBuffer1(cBytesPerHistogramBucket);
+      pThreadStateBoosting->GetHistogramBucketBase(cBytesPerHistogramBucket);
 
    if(UNLIKELY(nullptr == pHistogramBucket)) {
       LOG_0(TraceLevelWarning, "WARNING nullptr == pHistogramBucket");
@@ -128,16 +106,18 @@ static bool BoostZeroDimensional(
       pHistogramBucket->GetHistogramBucket<false>()->Zero(cVectorLength);
    }
 
-   BinBoosting(
-      pBooster,
-      nullptr,
-      pTrainingSet,
-      pHistogramBucket
 #ifndef NDEBUG
-      , nullptr
+   pThreadStateBoosting->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(pHistogramBucket) + cBytesPerHistogramBucket);
 #endif // NDEBUG
+
+   BinBoosting(
+      pThreadStateBoosting,
+      nullptr,
+      pTrainingSet
    );
 
+   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet = 
+      pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet();
    FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(bClassification) {
       const HistogramBucket<true> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<true>();
@@ -184,7 +164,6 @@ static bool BoostSingleDimensional(
    const SamplingSet * const pTrainingSet,
    const size_t cSamplesRequiredForChildSplitMin,
    const IntEbmType countLeavesMax,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
@@ -217,7 +196,7 @@ static bool BoostSingleDimensional(
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
-   HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetThreadByteBuffer1(cBytesBuffer);
+   HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional nullptr == aHistogramBuckets");
       return true;
@@ -253,17 +232,13 @@ static bool BoostSingleDimensional(
    }
 
 #ifndef NDEBUG
-   const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
+   pThreadStateBoosting->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer);
 #endif // NDEBUG
 
    BinBoosting(
-      pBooster,
+      pThreadStateBoosting,
       pFeatureGroup,
-      pTrainingSet,
-      aHistogramBuckets
-#ifndef NDEBUG
-      , aHistogramBucketsEndDebug
-#endif // NDEBUG
+      pTrainingSet
    );
 
    size_t cHistogramBuckets = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
@@ -271,12 +246,9 @@ static bool BoostSingleDimensional(
    // so we pre-filter these out and handle them separately
    EBM_ASSERT(2 <= cHistogramBuckets);
    SumHistogramBuckets(
-      runtimeLearningTypeOrCountTargetClasses,
-      cHistogramBuckets,
-      aHistogramBuckets,
-      aSumHistogramBucketVectorEntry
+      pThreadStateBoosting,
+      cHistogramBuckets
 #ifndef NDEBUG
-      , aHistogramBucketsEndDebug
       , pTrainingSet->GetTotalCountSampleOccurrences()
 #endif // NDEBUG
    );
@@ -287,16 +259,10 @@ static bool BoostSingleDimensional(
    bool bRet = GrowDecisionTree(
       pThreadStateBoosting,
       cHistogramBuckets,
-      aHistogramBuckets,
       cSamplesTotal,
-      aSumHistogramBucketVectorEntry,
       cSamplesRequiredForChildSplitMin,
       cLeavesMax, 
-      pSmallChangeToModelOverwriteSingleSamplingSet,
       pTotalGain
-#ifndef NDEBUG
-      , aHistogramBucketsEndDebug
-#endif // NDEBUG
    );
 
    LOG_0(TraceLevelVerbose, "Exited BoostSingleDimensional");
@@ -311,7 +277,6 @@ static bool BoostMultiDimensional(
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    const size_t cSamplesRequiredForChildSplitMin,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
@@ -366,7 +331,7 @@ static bool BoostMultiDimensional(
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
    // we don't need to free this!  It's tracked and reused by pThreadStateBoosting
-   HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetThreadByteBuffer1(cBytesBuffer);
+   HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional nullptr == aHistogramBuckets");
       return true;
@@ -397,16 +362,13 @@ static bool BoostMultiDimensional(
 
 #ifndef NDEBUG
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
+   pThreadStateBoosting->SetHistogramBucketsEndDebug(aHistogramBucketsEndDebug);
 #endif // NDEBUG
 
    BinBoosting(
-      pBooster,
+      pThreadStateBoosting,
       pFeatureGroup,
-      pTrainingSet,
-      aHistogramBuckets
-#ifndef NDEBUG
-      , aHistogramBucketsEndDebug
-#endif // NDEBUG
+      pTrainingSet
    );
 
 #ifndef NDEBUG
@@ -535,11 +497,6 @@ static bool BoostMultiDimensional(
    //   move_next_permutation:
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
-
-
-
-
-
    if(2 == cDimensions) {
       HistogramBucketBase * const pTotal = GetHistogramBucketByIndex(
          cBytesPerHistogramBucket,
@@ -548,17 +505,14 @@ static bool BoostMultiDimensional(
       );
 
       bool bError = FindBestBoostingSplitPairs(
-         pBooster,
+         pThreadStateBoosting,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          pTotal,
-         aHistogramBuckets,
-         pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
 #ifndef NDEBUG
          , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebug
 #endif // NDEBUG
       );
       if(bError) {
@@ -602,7 +556,6 @@ static bool BoostRandom(
    const SamplingSet * const pTrainingSet,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
    // THIS RANDOM CUT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
@@ -641,7 +594,7 @@ static bool BoostRandom(
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
    // we don't need to free this!  It's tracked and reused by pThreadStateBoosting
-   HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetThreadByteBuffer1(cBytesBuffer);
+   HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostRandom nullptr == aHistogramBuckets");
       return true;
@@ -664,30 +617,21 @@ static bool BoostRandom(
    }
 
 #ifndef NDEBUG
-   const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
+   pThreadStateBoosting->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer);
 #endif // NDEBUG
 
    BinBoosting(
-      pBooster,
+      pThreadStateBoosting,
       pFeatureGroup,
-      pTrainingSet,
-      aHistogramBuckets
-#ifndef NDEBUG
-      , aHistogramBucketsEndDebug
-#endif // NDEBUG
+      pTrainingSet
    );
 
    bool bError = CutRandom(
-      pBooster,
+      pThreadStateBoosting,
       pFeatureGroup,
-      aHistogramBuckets,
       options,
       aLeavesMax,
-      pSmallChangeToModelOverwriteSingleSamplingSet,
       pTotalGain
-#ifndef NDEBUG
-      , aHistogramBucketsEndDebug
-#endif // NDEBUG
    );
    if(bError) {
       LOG_0(TraceLevelVerbose, "Exited BoostRandom with Error code");
@@ -745,12 +689,7 @@ static IntEbmType GenerateModelUpdateInternal(
          {
             // TODO: add a log warning here that we're boosting zero dimensionally for whatever reason
 
-            if(BoostZeroDimensional(
-               pThreadStateBoosting,
-               pBooster->GetSamplingSets()[iSamplingSet],
-               options,
-               pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet()
-            )) {
+            if(BoostZeroDimensional(pThreadStateBoosting, pBooster->GetSamplingSets()[iSamplingSet], options)) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
                }
@@ -770,7 +709,6 @@ static IntEbmType GenerateModelUpdateInternal(
                pBooster->GetSamplingSets()[iSamplingSet],
                options,
                aLeavesMax, 
-               pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -786,7 +724,6 @@ static IntEbmType GenerateModelUpdateInternal(
                pBooster->GetSamplingSets()[iSamplingSet],
                cSamplesRequiredForChildSplitMin,
                *aLeavesMax,
-               pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -800,7 +737,6 @@ static IntEbmType GenerateModelUpdateInternal(
                pFeatureGroup,
                pBooster->GetSamplingSets()[iSamplingSet],
                cSamplesRequiredForChildSplitMin,
-               pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
