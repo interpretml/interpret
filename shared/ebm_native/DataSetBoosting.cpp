@@ -178,8 +178,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    do {
       const FeatureGroup * const pFeatureGroup = *ppFeatureGroup;
       EBM_ASSERT(nullptr != pFeatureGroup);
-      const size_t cFeatures = pFeatureGroup->GetCountFeatures();
-      if(0 == cFeatures) {
+      if(0 == pFeatureGroup->GetCountSignificantFeatures()) {
          *paInputDataTo = nullptr; // free will skip over these later
          ++paInputDataTo;
       } else {
@@ -210,17 +209,22 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          EBM_ASSERT(nullptr != aInputDataFrom);
 
          const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+         EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
+         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
-         InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
-         EBM_ASSERT(0 < cFeatures);
-         const InputDataPointerAndCountBins * const pDimensionInfoEnd = &dimensionInfo[cFeatures];
+         InputDataPointerAndCountBins * pDimensionInfoInit = &dimensionInfo[0];
          do {
             const Feature * const pFeature = pFeatureGroupEntry->m_pFeature;
-            pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cSamples];
-            pDimensionInfo->m_cBins = pFeature->GetCountBins();
+            const size_t cBins = pFeature->GetCountBins();
+            if(size_t { 1 } < cBins) {
+               pDimensionInfoInit->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cSamples];
+               pDimensionInfoInit->m_cBins = cBins;
+               ++pDimensionInfoInit;
+            }
             ++pFeatureGroupEntry;
-            ++pDimensionInfo;
-         } while(pDimensionInfoEnd != pDimensionInfo);
+         } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pFeatureGroup->GetCountSignificantFeatures()]);
 
          // THIS IS NOT A CONSTANT FOR A REASON.. WE CHANGE IT ON OUR LAST ITERATION
          // if we ever template this function on cItemsPerBitPackedDataUnit, then we'd want
@@ -237,7 +241,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             do {
                size_t tensorMultiple = 1;
                size_t tensorIndex = 0;
-               pDimensionInfo = &dimensionInfo[0];
+               InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
                do {
                   const IntEbmType * pInputData = pDimensionInfo->m_pInputData;
                   const IntEbmType inputData = *pInputData;
@@ -264,7 +268,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                   tensorMultiple *= pDimensionInfo->m_cBins;
 
                   ++pDimensionInfo;
-               } while(pDimensionInfoEnd != pDimensionInfo);
+               } while(pDimensionInfoInit != pDimensionInfo);
                // put our first item in the least significant bits.  We do this so that later when
                // unpacking the indexes, we can just AND our mask with the bitfield to get the index and in subsequent loops
                // we can just shift down.  This eliminates one extra shift that we'd otherwise need to make if the first

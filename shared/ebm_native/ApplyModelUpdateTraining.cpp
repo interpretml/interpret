@@ -48,7 +48,7 @@ public:
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cSamples = pTrainingSet->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
+      EBM_ASSERT(1 <= cSamples);
 
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
@@ -124,7 +124,7 @@ public:
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
       const size_t cSamples = pTrainingSet->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
+      EBM_ASSERT(1 <= cSamples);
 
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
@@ -161,7 +161,7 @@ public:
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
       const size_t cSamples = pTrainingSet->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
+      EBM_ASSERT(1 <= cSamples);
 
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
@@ -252,8 +252,8 @@ public:
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cSamples = pTrainingSet->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
-      EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(1 <= cSamples);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -374,8 +374,8 @@ public:
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
-      EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(1 <= cSamples);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -462,8 +462,8 @@ public:
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
-      EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(1 <= cSamples);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -700,7 +700,7 @@ extern void ApplyModelUpdateTraining(
    Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
-   if(0 == pFeatureGroup->GetCountFeatures()) {
+   if(0 == pFeatureGroup->GetCountSignificantFeatures()) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          ApplyModelUpdateTrainingZeroFeaturesTarget<2>::Func(pThreadStateBoosting);
       } else {

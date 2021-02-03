@@ -61,28 +61,26 @@ public:
       HistogramBucketBase * const aHistogramBucketsBase = pThreadStateBoosting->GetHistogramBucketBase();
       HistogramBucket<bClassification> * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<bClassification>();
 
-      const size_t cDimensions = pFeatureGroup->GetCountFeatures();
-      EBM_ASSERT(1 <= cDimensions);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
 
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
          pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet();
 
       const IntEbmType * pLeavesMax1 = aLeavesMax;
       const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry1 + cDimensions;
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry1 + pFeatureGroup->GetCountFeatures();
       size_t cSlicesTotal = 0;
       size_t cSlicesPlusRandomMax = 0;
       size_t cCollapsedTensorCells = 1;
       do {
          size_t cLeavesMax;
          if(nullptr == pLeavesMax1) {
-            LOG_0(TraceLevelWarning, "WARNING CutRandomInternal aLeavesMax is null.  Setting to one.");
             cLeavesMax = size_t { 1 };
          } else {
             const IntEbmType countLeavesMax = *pLeavesMax1;
             ++pLeavesMax1;
             if(countLeavesMax <= IntEbmType { 1 }) {
-               LOG_0(TraceLevelWarning, "WARNING CutRandomInternal countLeavesMax is 1 or less.");
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
@@ -96,27 +94,28 @@ public:
 
          const Feature * const pFeature = pFeatureGroupEntry1->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
-         EBM_ASSERT(2 <= cBins); // otherwise this dimension would have been eliminated
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
          const size_t cPossibleCutLocations = cBins - size_t { 1 };
+         if(size_t { 0 } < cPossibleCutLocations) {
+            // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
-         if(IsAddError(cSlicesTotal, cPossibleCutLocations)) {
-            LOG_0(TraceLevelWarning, "WARNING CutRandomInternal IsAddError(cSlicesTotal, cPossibleCutLocations)");
-            return true;
+            if(IsAddError(cSlicesTotal, cPossibleCutLocations)) {
+               LOG_0(TraceLevelWarning, "WARNING CutRandomInternal IsAddError(cSlicesTotal, cPossibleCutLocations)");
+               return true;
+            }
+            const size_t cSlicesPlusRandom = cSlicesTotal + cPossibleCutLocations;
+            cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesPlusRandom);
+
+            // our histogram is a tensor where we multiply the number of cells on each pass.  Addition of those 
+            // same numbers can't be bigger than multiplication unless one of the dimensions is less than 2 wide.  
+            // At 2, multiplication and addition would yield the same size.  All other numbers will be bigger for 
+            // multiplication, so we can conclude that addition won't overflow since the multiplication didn't
+            EBM_ASSERT(!IsAddError(cSlicesTotal, cSlices));
+            cSlicesTotal += cSlices;
+
+            EBM_ASSERT(!IsMultiplyError(cCollapsedTensorCells, cSlices)); // our allocated histogram is bigger
+            cCollapsedTensorCells *= cSlices;
          }
-         const size_t cSlicesPlusRandom = cSlicesTotal + cPossibleCutLocations;
-         cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesPlusRandom);
-
-         // our histogram is a tensor where we multiply the number of cells on each pass.  Addition of those 
-         // same numbers can't be bigger than multiplication unless one of the dimensions is less than 2 wide.  
-         // At 2, multiplication and addition would yield the same size.  All other numbers will be bigger for 
-         // multiplication, so we can conclude that addition won't overflow since the multiplication didn't
-         EBM_ASSERT(!IsAddError(cSlicesTotal, cSlices));
-         cSlicesTotal += cSlices;
-
-         EBM_ASSERT(!IsMultiplyError(cCollapsedTensorCells, cSlices)); // our allocated histogram is bigger
-         cCollapsedTensorCells *= cSlices;
-
          ++pFeatureGroupEntry1;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry1);
 
@@ -187,37 +186,39 @@ public:
 
          const Feature * const pFeature = pFeatureGroupEntry2->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
-         EBM_ASSERT(2 <= cBins); // otherwise this dimension would have been eliminated
+         size_t cPossibleCutLocations = cBins - size_t { 1 };
+         if(size_t { 0 } < cPossibleCutLocations) {
+            // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
-         if(size_t { 0 } != cTreeSplitsMax) {
-            size_t cPossibleCutLocations = cBins - size_t { 1 };
-            size_t * pFillIndexes = pcItemsInNextSliceOrBytesInCurrentSlice2;
-            size_t iPossibleCutLocation = cPossibleCutLocations; // 1 means cut between bin 0 and bin 1
-            do {
-               *pFillIndexes = iPossibleCutLocation;
-               ++pFillIndexes;
-               --iPossibleCutLocation;
-            } while(size_t { 0 } != iPossibleCutLocation);
+            if(size_t { 0 } != cTreeSplitsMax) {
+               size_t * pFillIndexes = pcItemsInNextSliceOrBytesInCurrentSlice2;
+               size_t iPossibleCutLocation = cPossibleCutLocations; // 1 means cut between bin 0 and bin 1
+               do {
+                  *pFillIndexes = iPossibleCutLocation;
+                  ++pFillIndexes;
+                  --iPossibleCutLocation;
+               } while(size_t { 0 } != iPossibleCutLocation);
 
-            size_t * pOriginal = pcItemsInNextSliceOrBytesInCurrentSlice2;
+               size_t * pOriginal = pcItemsInNextSliceOrBytesInCurrentSlice2;
 
-            const size_t cCuts = EbmMin(cTreeSplitsMax, cPossibleCutLocations);
-            EBM_ASSERT(1 <= cCuts);
-            const size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cCuts;
-            do {
-               const size_t iRandom = pRandomStream->Next(cPossibleCutLocations);
-               size_t * const pRandomSwap = pcItemsInNextSliceOrBytesInCurrentSlice2 + iRandom;
-               const size_t temp = *pRandomSwap;
-               *pRandomSwap = *pcItemsInNextSliceOrBytesInCurrentSlice2;
-               *pcItemsInNextSliceOrBytesInCurrentSlice2 = temp;
-               --cPossibleCutLocations;
-               ++pcItemsInNextSliceOrBytesInCurrentSlice2;
-            } while(pcItemsInNextSliceOrBytesInCurrentSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice2);
+               const size_t cCuts = EbmMin(cTreeSplitsMax, cPossibleCutLocations);
+               EBM_ASSERT(1 <= cCuts);
+               const size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cCuts;
+               do {
+                  const size_t iRandom = pRandomStream->Next(cPossibleCutLocations);
+                  size_t * const pRandomSwap = pcItemsInNextSliceOrBytesInCurrentSlice2 + iRandom;
+                  const size_t temp = *pRandomSwap;
+                  *pRandomSwap = *pcItemsInNextSliceOrBytesInCurrentSlice2;
+                  *pcItemsInNextSliceOrBytesInCurrentSlice2 = temp;
+                  --cPossibleCutLocations;
+                  ++pcItemsInNextSliceOrBytesInCurrentSlice2;
+               } while(pcItemsInNextSliceOrBytesInCurrentSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice2);
 
-            std::sort(pOriginal, pcItemsInNextSliceOrBytesInCurrentSlice2);
+               std::sort(pOriginal, pcItemsInNextSliceOrBytesInCurrentSlice2);
+            }
+            *pcItemsInNextSliceOrBytesInCurrentSlice2 = cBins; // index 1 past the last item
+            ++pcItemsInNextSliceOrBytesInCurrentSlice2;
          }
-         *pcItemsInNextSliceOrBytesInCurrentSlice2 = cBins; // index 1 past the last item
-         ++pcItemsInNextSliceOrBytesInCurrentSlice2;
          ++pFeatureGroupEntry2;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry2);
 
@@ -226,7 +227,9 @@ public:
       const FeatureGroupEntry * pFeatureGroupEntry3 = pFeatureGroup->GetFeatureGroupEntries();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice3 = acItemsInNextSliceOrBytesInCurrentSlice;
       size_t cBytesCollapsedTensor3;
-      {
+      while(true) {
+         EBM_ASSERT(pFeatureGroupEntry3 < pFeatureGroupEntryEnd);
+
          size_t cLeavesMax;
          if(nullptr == pLeavesMax3) {
             cLeavesMax = size_t { 1 };
@@ -247,21 +250,29 @@ public:
 
          // the first dimension is special.  we put byte until next item into it instead of counts remaining
          const Feature * const pFirstFeature = pFeatureGroupEntry3->m_pFeature;
+         ++pFeatureGroupEntry3;
          const size_t cFirstBins = pFirstFeature->GetCountBins();
-         EBM_ASSERT(2 <= cFirstBins); // otherwise this dimension would have been eliminated
-         const size_t cFirstSlices = EbmMin(cLeavesMax, cFirstBins);
-         cBytesCollapsedTensor3 = cBytesPerHistogramBucket * cFirstSlices;
+         if(size_t { 1 } < cFirstBins) {
+            // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
-         pcBytesInSliceEnd = acItemsInNextSliceOrBytesInCurrentSlice + cFirstSlices;
-         size_t iPrev = size_t { 0 };
-         do {
-            const size_t iCur = *pcItemsInNextSliceOrBytesInCurrentSlice3;
-            EBM_ASSERT(iPrev < iCur);
-            // turn these into bytes from the previous
-            *pcItemsInNextSliceOrBytesInCurrentSlice3 = (iCur - iPrev) * cBytesPerHistogramBucket;
-            iPrev = iCur;
-            ++pcItemsInNextSliceOrBytesInCurrentSlice3;
-         } while(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice3);
+            const size_t cFirstSlices = EbmMin(cLeavesMax, cFirstBins);
+            cBytesCollapsedTensor3 = cBytesPerHistogramBucket * cFirstSlices;
+
+            pcBytesInSliceEnd = acItemsInNextSliceOrBytesInCurrentSlice + cFirstSlices;
+            size_t iPrev = size_t { 0 };
+            do {
+               const size_t iCur = *pcItemsInNextSliceOrBytesInCurrentSlice3;
+               EBM_ASSERT(iPrev < iCur);
+               // turn these into bytes from the previous
+               *pcItemsInNextSliceOrBytesInCurrentSlice3 = (iCur - iPrev) * cBytesPerHistogramBucket;
+               iPrev = iCur;
+               ++pcItemsInNextSliceOrBytesInCurrentSlice3;
+            } while(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice3);
+
+            // we found a non-eliminated dimension.  We treat the first dimension differently from others, so
+            // if our first dimension is eliminated we need to keep looking until we find our first REAL dimension
+            break;
+         }
       }
 
       struct RandomCutState {
@@ -274,7 +285,7 @@ public:
       RandomCutState randomCutState[k_cDimensionsMax - size_t { 1 }]; // the first dimension is special cased
       RandomCutState * pStateInit = &randomCutState[0];
 
-      for(++pFeatureGroupEntry3; pFeatureGroupEntryEnd != pFeatureGroupEntry3; ++pFeatureGroupEntry3) {
+      for(; pFeatureGroupEntryEnd != pFeatureGroupEntry3; ++pFeatureGroupEntry3) {
          size_t cLeavesMax;
          if(nullptr == pLeavesMax3) {
             cLeavesMax = size_t { 1 };
@@ -295,32 +306,35 @@ public:
 
          const Feature * const pFeature = pFeatureGroupEntry3->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
-         EBM_ASSERT(2 <= cBins); // otherwise this dimension would have been eliminated
-         size_t cSlices = EbmMin(cLeavesMax, cBins);
+         if(size_t { 1 } < cBins) {
+            // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
-         pStateInit->m_cBytesSubtractResetCollapsedHistogramBucket = cBytesCollapsedTensor3;
+            size_t cSlices = EbmMin(cLeavesMax, cBins);
 
-         EBM_ASSERT(!IsMultiplyError(cBytesCollapsedTensor3, cSlices)); // our allocated histogram is bigger
-         cBytesCollapsedTensor3 *= cSlices;
+            pStateInit->m_cBytesSubtractResetCollapsedHistogramBucket = cBytesCollapsedTensor3;
 
-         const size_t iFirst = *pcItemsInNextSliceOrBytesInCurrentSlice3;
-         EBM_ASSERT(1 <= iFirst);
-         pStateInit->m_cItemsInSliceRemaining = iFirst;
-         pStateInit->m_pcItemsInNextSlice = pcItemsInNextSliceOrBytesInCurrentSlice3;
+            EBM_ASSERT(!IsMultiplyError(cBytesCollapsedTensor3, cSlices)); // our allocated histogram is bigger
+            cBytesCollapsedTensor3 *= cSlices;
 
-         size_t iPrev = iFirst;
-         for(--cSlices; LIKELY(size_t { 0 } != cSlices); --cSlices) {
-            size_t * const pCur = pcItemsInNextSliceOrBytesInCurrentSlice3 + size_t { 1 };
-            const size_t iCur = *pCur;
-            EBM_ASSERT(iPrev < iCur);
-            *pcItemsInNextSliceOrBytesInCurrentSlice3 = iCur - iPrev;
-            iPrev = iCur;
-            pcItemsInNextSliceOrBytesInCurrentSlice3 = pCur;
+            const size_t iFirst = *pcItemsInNextSliceOrBytesInCurrentSlice3;
+            EBM_ASSERT(1 <= iFirst);
+            pStateInit->m_cItemsInSliceRemaining = iFirst;
+            pStateInit->m_pcItemsInNextSlice = pcItemsInNextSliceOrBytesInCurrentSlice3;
+
+            size_t iPrev = iFirst;
+            for(--cSlices; LIKELY(size_t { 0 } != cSlices); --cSlices) {
+               size_t * const pCur = pcItemsInNextSliceOrBytesInCurrentSlice3 + size_t { 1 };
+               const size_t iCur = *pCur;
+               EBM_ASSERT(iPrev < iCur);
+               *pcItemsInNextSliceOrBytesInCurrentSlice3 = iCur - iPrev;
+               iPrev = iCur;
+               pcItemsInNextSliceOrBytesInCurrentSlice3 = pCur;
+            }
+            *pcItemsInNextSliceOrBytesInCurrentSlice3 = iFirst;
+            ++pcItemsInNextSliceOrBytesInCurrentSlice3;
+            pStateInit->m_pcItemsInNextSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice3;
+            ++pStateInit;
          }
-         *pcItemsInNextSliceOrBytesInCurrentSlice3 = iFirst;
-         ++pcItemsInNextSliceOrBytesInCurrentSlice3;
-         pStateInit->m_pcItemsInNextSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice3;
-         ++pStateInit;
       }
 
       // put the histograms right after our slice array
@@ -345,7 +359,7 @@ public:
             cBytesCollapsedTensor3);
 
       // we special case the first dimension, so drop it by subtracting
-      const RandomCutState * const pStateEnd = &randomCutState[cDimensions - size_t { 1 }];
+      EBM_ASSERT(&randomCutState[pFeatureGroup->GetCountSignificantFeatures() - size_t { 1 }] == pStateInit);
 
       const HistogramBucket<bClassification> * pHistogramBucket = aHistogramBuckets;
       HistogramBucket<bClassification> * pCollapsedHistogramBucket1 = aCollapsedHistogramBuckets;
@@ -381,7 +395,7 @@ public:
             ++pcItemsInNextSliceOrBytesInCurrentSlice;
          } while(PREDICTABLE(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice));
 
-         for(RandomCutState * pState = randomCutState; PREDICTABLE(pStateEnd != pState); ++pState) {
+         for(RandomCutState * pState = randomCutState; PREDICTABLE(pStateInit != pState); ++pState) {
             EBM_ASSERT(size_t { 1 } <= pState->m_cItemsInSliceRemaining);
             const size_t cItemsInSliceRemaining = pState->m_cItemsInSliceRemaining - size_t { 1 };
             if(LIKELY(size_t { 0 } != cItemsInSliceRemaining)) {
@@ -433,10 +447,8 @@ public:
       const size_t cFirstCuts = pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice;
       // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 cuts and 
       // one last item to indicate the termination point
-      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(
-         0, cFirstCuts)))
-      {
-         LOG_0(TraceLevelWarning, "WARNING CutRandomInternal SetCountDivisions(0, )");
+      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cFirstCuts))) {
+         LOG_0(TraceLevelWarning, "WARNING CutRandomInternal SetCountDivisions(0, cFirstCuts)");
          free(pBuffer);
          return true;
       }
@@ -458,7 +470,7 @@ public:
       }
 
       RandomCutState * pState = randomCutState;
-      if(PREDICTABLE(pStateEnd != pState)) {
+      if(PREDICTABLE(pStateInit != pState)) {
          size_t iDivision = 0;
          do {
             ++iDivision;
@@ -485,7 +497,7 @@ public:
                ++pcBytesInSlice2;
             }
             ++pState;
-         } while(PREDICTABLE(pStateEnd != pState));
+         } while(PREDICTABLE(pStateInit != pState));
       }
 
       FloatEbmType * pUpdate = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();

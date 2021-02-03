@@ -295,24 +295,48 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension is too high to index");
       return IntEbmType { 1 };
    }
-   const size_t iDimension = static_cast<size_t>(indexDimension);
-   if(pFeatureGroup->GetCountFeatures() <= iDimension) {
+   const size_t iAllDimension = static_cast<size_t>(indexDimension);
+   if(pFeatureGroup->GetCountFeatures() <= iAllDimension) {
       *countCutsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension above the number of dimensions that we have");
       return IntEbmType { 1 };
    }
 
+   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iAllDimension].m_pFeature->GetCountBins();
+   EBM_ASSERT(1 <= cBins);
    // cBins started from IntEbmType, so we should be able to convert back safely
-   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
    if(*countCutsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
       *countCutsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts bad cut array length");
       return IntEbmType { 1 };
    }
 
-   const size_t cCuts = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetCountDivisions(iDimension);
+   if(size_t { 1 } == cBins) {
+      // we have 1 bin, so this dimension will be stripped from the SegmentedTensor.  Let's return the empty result now
+      *countCutsInOut = IntEbmType { 0 };
+      return IntEbmType { 0 };
+   }
+
+   size_t iSignficantDimension = 0;
+   if(0 != iAllDimension) {
+      // TODO: consider moving iSignficantDimension into the FeatureGroupEntry
+
+      // each time we extract a dimension we iterate this loop so technically it's N^2, but dimensions shouldn't really
+      // be bigger than 2-3, and memory limits normal dimensions to 2^64, so we should be ok.  The only time this
+      // would be a problem is if an adversary created something with many many dimensions having 1 bin
+      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[iAllDimension];
+      do {
+         if(size_t { 1 } < pFeatureGroupEntry->m_pFeature->GetCountBins()) {
+            ++iSignficantDimension;
+         }
+         ++pFeatureGroupEntry;
+      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+   }
+
+   const size_t cCuts = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetCountDivisions(iSignficantDimension);
    EBM_ASSERT(cCuts < cBins);
-   const ActiveDataType * const aCutIndexes = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetDivisionPointer(iDimension);
+   const ActiveDataType * const aCutIndexes = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetDivisionPointer(iSignficantDimension);
 
    // TODO: handle this better where we handle mismatches in index types
    static_assert(sizeof(*cutIndexesOut) == sizeof(*aCutIndexes), "not same type for cuts");

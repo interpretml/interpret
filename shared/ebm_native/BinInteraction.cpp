@@ -56,8 +56,9 @@ public:
       const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountSamples();
 
-      EBM_ASSERT(2 <= pFeatureGroup->GetCountFeatures()); // for interactions, we just return 0 for interactions with zero features
-      const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(pFeatureGroup->GetCountFeatures() == pFeatureGroup->GetCountSignificantFeatures()); // for interactions, we just return 0 for interactions with zero features
+      const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantFeatures());
+      EBM_ASSERT(1 <= cDimensions); // for interactions, we just return 0 for interactions with zero features
 
       for(size_t iSample = 0; pResidualErrorEnd != pResidualError; ++iSample) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -80,6 +81,10 @@ public:
          do {
             const Feature * const pInputFeature = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature;
             const size_t cBins = pInputFeature->GetCountBins();
+            // interactions return interaction score of zero earlier on any useless dimensions
+            // we strip dimensions from the tensors with 1 bin, so if 1 bin was accepted here, we'd need to strip
+            // the bin too
+            EBM_ASSERT(2 <= cBins);
             const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
             pInputData += iSample;
             StorageDataType iBinOriginal = *pInputData;
@@ -154,12 +159,12 @@ public:
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(2 <= compilerCountDimensionsPossible, "can't have less than 2 dimensions for interactions");
+      static_assert(1 <= compilerCountDimensionsPossible, "can't have less than 1 dimension for interactions");
       static_assert(compilerCountDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      const size_t runtimeCountDimensions = pFeatureGroup->GetCountFeatures();
+      const size_t runtimeCountDimensions = pFeatureGroup->GetCountSignificantFeatures();
 
-      EBM_ASSERT(2 <= runtimeCountDimensions);
+      EBM_ASSERT(1 <= runtimeCountDimensions);
       EBM_ASSERT(runtimeCountDimensions <= k_cDimensionsMax);
       if(compilerCountDimensionsPossible == runtimeCountDimensions) {
          BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, compilerCountDimensionsPossible>::Func(
@@ -197,8 +202,8 @@ public:
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      EBM_ASSERT(2 <= pFeatureGroup->GetCountFeatures());
-      EBM_ASSERT(pFeatureGroup->GetCountFeatures() <= k_cDimensionsMax);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
+      EBM_ASSERT(pFeatureGroup->GetCountSignificantFeatures() <= k_cDimensionsMax);
       BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(
          pInteractionDetector,
          pFeatureGroup,

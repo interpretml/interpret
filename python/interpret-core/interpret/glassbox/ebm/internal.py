@@ -918,13 +918,6 @@ class NativeEBMBooster:
 
         self._feature_group_index = -1
         gain = ct.c_double(0.0)
-
-        # TODO : !WARNING! currently we can only accept a single number for max_leaves because in C++ we eliminate
-        #        dimensions that have only 1 state.  If a dimension in C++ is eliminated this way then it won't
-        #        match the dimensionality of the max_leaves_arr that we pass in here.  If all the numbers are the
-        #        same though as they currently are below, we're safe since we just access one less item in the
-        #        array, and still get the same numbers in the C++ code
-        #        Look at GenerateModelUpdate in the C++ for more details on resolving this issue
         n_features = len(self._feature_groups[feature_group_index])
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 

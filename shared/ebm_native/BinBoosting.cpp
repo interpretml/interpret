@@ -547,7 +547,7 @@ extern void BinBoosting(
          );
       }
    } else {
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
       if(k_bUseSIMD) {
          // TODO : enable SIMD(AVX-512) to work
 

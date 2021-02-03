@@ -80,7 +80,7 @@ SegmentedTensor ** Booster::InitializeSegmentedTensors(
    for(size_t iFeatureGroup = 0; iFeatureGroup < cFeatureGroups; ++iFeatureGroup) {
       const FeatureGroup * const pFeatureGroup = apFeatureGroups[iFeatureGroup];
       SegmentedTensor * const pSegmentedTensors = 
-         SegmentedTensor::Allocate(pFeatureGroup->GetCountFeatures(), cVectorLength);
+         SegmentedTensor::Allocate(pFeatureGroup->GetCountSignificantFeatures(), cVectorLength);
       if(UNLIKELY(nullptr == pSegmentedTensors)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedTensors");
          DeleteSegmentedTensors(cFeatureGroups, apSegmentedTensors);

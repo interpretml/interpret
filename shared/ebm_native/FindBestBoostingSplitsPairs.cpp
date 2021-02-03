@@ -30,6 +30,7 @@ static FloatEbmType SweepMultiDiemensional(
    size_t * const aiPoint,
    const size_t directionVectorLow,
    const unsigned int iDimensionSweep,
+   const size_t cSweepBins,
    const size_t cSamplesRequiredForChildSplitMin,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp,
@@ -45,8 +46,8 @@ static FloatEbmType SweepMultiDiemensional(
 
    // TODO : optimize this function
 
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
-   EBM_ASSERT(iDimensionSweep < pFeatureGroup->GetCountFeatures());
+   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
+   EBM_ASSERT(iDimensionSweep < pFeatureGroup->GetCountSignificantFeatures());
    EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -63,8 +64,7 @@ static FloatEbmType SweepMultiDiemensional(
    *piBin = 0;
    size_t directionVectorHigh = directionVectorLow | size_t { 1 } << iDimensionSweep;
 
-   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionSweep].m_pFeature->GetCountBins();
-   EBM_ASSERT(2 <= cBins);
+   EBM_ASSERT(2 <= cSweepBins);
 
    size_t iBestCut = 0;
 
@@ -83,6 +83,7 @@ static FloatEbmType SweepMultiDiemensional(
    do {
       *piBin = iBin;
 
+      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
       TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
          runtimeLearningTypeOrCountTargetClasses,
          pFeatureGroup,
@@ -96,6 +97,7 @@ static FloatEbmType SweepMultiDiemensional(
 #endif // NDEBUG
          );
       if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLow->GetCountSamplesInBucket())) {
+         EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
          TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
             runtimeLearningTypeOrCountTargetClasses,
             pFeatureGroup,
@@ -161,7 +163,7 @@ static FloatEbmType SweepMultiDiemensional(
          }
       }
       ++iBin;
-   } while(iBin < cBins - 1);
+   } while(iBin < cSweepBins - 1);
    *piBestCut = iBestCut;
 
    EBM_ASSERT(std::isnan(bestSplit) || bestSplit == k_illegalGain || FloatEbmType { 0 } <= bestSplit); // sumation of positive numbers should be positive
@@ -218,8 +220,24 @@ public:
 
       FloatEbmType splittingScore;
 
-      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
-      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->GetCountBins();
+      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures());
+      size_t cBinsDimension1 = 0;
+      size_t cBinsDimension2 = 0;
+      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+      do {
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         EBM_ASSERT(1 <= cBins);
+         if(size_t { 1 } < cBins) {
+            EBM_ASSERT(0 == cBinsDimension2);
+            if(0 == cBinsDimension1) {
+               cBinsDimension1 = cBins;
+            } else {
+               cBinsDimension2 = cBins;
+            }
+         }
+         ++pFeatureGroupEntry;
+      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
@@ -280,6 +298,7 @@ public:
             aiStart,
             0x0,
             1,
+            cBinsDimension2,
             cSamplesRequiredForChildSplitMin,
             runtimeLearningTypeOrCountTargetClasses,
             pTotals2LowLowBest,
@@ -308,6 +327,7 @@ public:
                aiStart,
                0x1,
                1,
+               cBinsDimension2,
                cSamplesRequiredForChildSplitMin,
                runtimeLearningTypeOrCountTargetClasses,
                pTotals2HighLowBest,
@@ -386,6 +406,7 @@ public:
             aiStart,
             0x0,
             0,
+            cBinsDimension1,
             cSamplesRequiredForChildSplitMin,
             runtimeLearningTypeOrCountTargetClasses,
             pTotals1LowLowBestInner,
@@ -414,6 +435,7 @@ public:
                aiStart,
                0x2,
                0,
+               cBinsDimension1,
                cSamplesRequiredForChildSplitMin,
                runtimeLearningTypeOrCountTargetClasses,
                pTotals1HighLowBestInner,

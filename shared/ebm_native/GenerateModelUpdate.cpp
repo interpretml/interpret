@@ -161,6 +161,7 @@ static bool BoostZeroDimensional(
 static bool BoostSingleDimensional(
    ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
+   const size_t cHistogramBuckets,
    const SamplingSet * const pTrainingSet,
    const size_t cSamplesRequiredForChildSplitMin,
    const IntEbmType countLeavesMax,
@@ -168,8 +169,7 @@ static bool BoostSingleDimensional(
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
-   EBM_ASSERT(1 == pFeatureGroup->GetCountFeatures());
-   size_t cTotalBuckets = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
+   EBM_ASSERT(1 == pFeatureGroup->GetCountSignificantFeatures());
 
    EBM_ASSERT(IntEbmType { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
    size_t cLeavesMax = static_cast<size_t>(countLeavesMax);
@@ -189,12 +189,12 @@ static bool BoostSingleDimensional(
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
+   if(IsMultiplyError(cHistogramBuckets, cBytesPerHistogramBucket)) {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
+      LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cHistogramBuckets, cBytesPerHistogramBucket)");
       return true;
    }
-   const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
+   const size_t cBytesBuffer = cHistogramBuckets * cBytesPerHistogramBucket;
 
    HistogramBucketBase * const aHistogramBuckets = pThreadStateBoosting->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
@@ -207,7 +207,7 @@ static bool BoostSingleDimensional(
 
    if(bClassification) {
       HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
+      for(size_t i = 0; i < cHistogramBuckets; ++i) {
          HistogramBucket<true> * const pHistogramBucket =
             GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
@@ -219,7 +219,7 @@ static bool BoostSingleDimensional(
       }
    } else {
       HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
+      for(size_t i = 0; i < cHistogramBuckets; ++i) {
          HistogramBucket<false> * const pHistogramBucket =
             GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
@@ -241,10 +241,6 @@ static bool BoostSingleDimensional(
       pTrainingSet
    );
 
-   size_t cHistogramBuckets = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
-   // dimensions with 1 bin don't contribute anything since they always have the same value, 
-   // so we pre-filter these out and handle them separately
-   EBM_ASSERT(2 <= cHistogramBuckets);
    SumHistogramBuckets(
       pThreadStateBoosting,
       cHistogramBuckets
@@ -281,27 +277,31 @@ static bool BoostMultiDimensional(
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
-   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
-   EBM_ASSERT(2 <= cDimensions);
+   EBM_ASSERT(2 <= pFeatureGroup->GetCountFeatures());
+   EBM_ASSERT(2 <= pFeatureGroup->GetCountSignificantFeatures());
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
-   for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
-      // we filer out 1 == cBins in allocation.  If cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
-      EBM_ASSERT(2 <= cBins);
-      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-      // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at 
-      // allocation that cTotalBucketsMainSpace would not overflow
-      EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
-      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-      // we check for simple multiplication overflow from m_cBins in Booster->Initialize when we unpack featureGroupsFeatureIndexes
-      EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins));
-      cTotalBucketsMainSpace *= cBins;
-      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-   }
+
+   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+   do {
+      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      if(size_t { 1 } < cBins) {
+         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
+         EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
+         // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at 
+         // allocation that cTotalBucketsMainSpace would not overflow
+         EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
+         cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
+         // we check for simple multiplication overflow from m_cBins in Booster->Initialize when we unpack featureGroupsFeatureIndexes
+         EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins));
+         cTotalBucketsMainSpace *= cBins;
+         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
+         EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
+      }
+      ++pFeatureGroupEntry;
+   } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
    const size_t cAuxillaryBucketsForSplitting = 24;
    const size_t cAuxillaryBuckets =
@@ -336,7 +336,6 @@ static bool BoostMultiDimensional(
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional nullptr == aHistogramBuckets");
       return true;
    }
-
 
    if(bClassification) {
       HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
@@ -373,19 +372,12 @@ static bool BoostMultiDimensional(
 
 #ifndef NDEBUG
    // make a copy of the original binned buckets for debugging purposes
-   size_t cTotalBucketsDebug = 1;
-   for(size_t iDimensionDebug = 0; iDimensionDebug < cDimensions; ++iDimensionDebug) {
-      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionDebug].m_pFeature->GetCountBins();
-      EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
-      cTotalBucketsDebug *= cBins;
-   }
-   // we wouldn't have been able to allocate our main buffer above if this wasn't ok
-   EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket));
+
    HistogramBucketBase * const aHistogramBucketsDebugCopy =
-      EbmMalloc<HistogramBucketBase>(cTotalBucketsDebug, cBytesPerHistogramBucket);
+      EbmMalloc<HistogramBucketBase>(cTotalBucketsMainSpace, cBytesPerHistogramBucket);
    if(nullptr != aHistogramBucketsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
+      const size_t cBytesBufferDebug = cTotalBucketsMainSpace * cBytesPerHistogramBucket;
       memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
    }
 #endif // NDEBUG
@@ -497,7 +489,7 @@ static bool BoostMultiDimensional(
    //   move_next_permutation:
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
-   if(2 == cDimensions) {
+   if(2 == pFeatureGroup->GetCountSignificantFeatures()) {
       HistogramBucketBase * const pTotal = GetHistogramBucketByIndex(
          cBytesPerHistogramBucket,
          aHistogramBuckets,
@@ -532,7 +524,7 @@ static bool BoostMultiDimensional(
       EBM_ASSERT(std::isnan(*pTotalGain) || (!bClassification) && std::isinf(*pTotalGain) ||
          k_epsilonNegativeGainAllowed <= *pTotalGain);
    } else {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional 2 != dimensions");
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional 2 != pFeatureGroup->GetCountSignificantFeatures()");
 
       // TODO: handle this better
 #ifndef NDEBUG
@@ -568,8 +560,7 @@ static bool BoostRandom(
    size_t cTotalBuckets = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
-      // we filer out 1 == cBins in allocation.
-      EBM_ASSERT(2 <= cBins);
+      EBM_ASSERT(1 <= cBins);
       // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes
       EBM_ASSERT(!IsMultiplyError(cTotalBuckets, cBins));
       cTotalBuckets *= cBins;
@@ -649,6 +640,9 @@ static bool BoostRandom(
    return false;
 }
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
+
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
@@ -669,9 +663,43 @@ static IntEbmType GenerateModelUpdateInternal(
 
    const size_t cSamplingSetsAfterZero = (0 == pBooster->GetCountSamplingSets()) ? 1 : pBooster->GetCountSamplingSets();
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
+   const size_t cSignificantDimensions = pFeatureGroup->GetCountSignificantFeatures();
 
-   pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
+   IntEbmType lastDimensionLeavesMax = IntEbmType { 0 };
+   size_t cSignificantBinCount;
+   if(nullptr == aLeavesMax) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal aLeavesMax was null, so there won't be any splits");
+   } else {
+      if(0 != cSignificantDimensions) {
+         const IntEbmType * pLeavesMax = aLeavesMax;
+         const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+         EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
+         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+         do {
+            const Feature * pFeature = pFeatureGroupEntry->m_pFeature;
+            const size_t cBins = pFeature->GetCountBins();
+            if(size_t { 1 } < cBins) {
+               EBM_ASSERT(size_t { 2 } <= cSignificantDimensions || IntEbmType { 0 } == lastDimensionLeavesMax);
+
+               cSignificantBinCount = cBins;
+               EBM_ASSERT(nullptr != pLeavesMax);
+               const IntEbmType countLeavesMax = *pLeavesMax;
+               if(countLeavesMax <= IntEbmType { 1 }) {
+                  LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal countLeavesMax is 1 or less.");
+               } else {
+                  // keep iteration even once we find this so that we output logs for any bins of 1
+                  lastDimensionLeavesMax = countLeavesMax;
+               }
+            }
+            ++pLeavesMax;
+            ++pFeatureGroupEntry;
+         } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         
+         EBM_ASSERT(size_t { 2 } <= cSignificantBinCount);
+      }
+   }
+
+   pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cSignificantDimensions);
    pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
 
    // if pBooster->m_apSamplingSets is nullptr, then we should have zero training samples
@@ -679,16 +707,12 @@ static IntEbmType GenerateModelUpdateInternal(
 
    FloatEbmType totalGain = FloatEbmType { 0 };
    if(nullptr != pBooster->GetSamplingSets()) {
-      pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet()->SetCountDimensions(cDimensions);
+      pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet()->SetCountDimensions(cSignificantDimensions);
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain;
-         if(UNLIKELY(UNLIKELY(0 == pFeatureGroup->GetCountFeatures()) || 
-            UNLIKELY(PREDICTABLE(1 == pFeatureGroup->GetCountFeatures()) && 
-            UNLIKELY(UNLIKELY(nullptr == aLeavesMax) || UNLIKELY(*aLeavesMax <= IntEbmType { 1 })))))
-         {
-            // TODO: add a log warning here that we're boosting zero dimensionally for whatever reason
-
+         if(UNLIKELY(IntEbmType { 0 } == lastDimensionLeavesMax)) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal boosting zero dimensional");
             if(BoostZeroDimensional(pThreadStateBoosting, pBooster->GetSamplingSets()[iSamplingSet], options)) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -716,14 +740,17 @@ static IntEbmType GenerateModelUpdateInternal(
                }
                return IntEbmType { 1 };
             }
-         } else if(1 == pFeatureGroup->GetCountFeatures()) {
+         } else if(1 == cSignificantDimensions) {
             EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
+            EBM_ASSERT(size_t { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
+            EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
             if(BoostSingleDimensional(
                pThreadStateBoosting,
                pFeatureGroup,
+               cSignificantBinCount,
                pBooster->GetSamplingSets()[iSamplingSet],
                cSamplesRequiredForChildSplitMin,
-               *aLeavesMax,
+               lastDimensionLeavesMax,
                &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -815,7 +842,7 @@ static IntEbmType GenerateModelUpdateInternal(
          UNLIKELY(totalGain <= std::numeric_limits<FloatEbmType>::lowest()) ||
          UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= totalGain)
       )) {
-         pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
+         pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cSignificantDimensions);
          pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
          // declare there is no gain, so that our caller will think there is no benefit in splitting us, which there isn't since we're zeroed.
          totalGain = FloatEbmType { 0 };
@@ -833,6 +860,8 @@ static IntEbmType GenerateModelUpdateInternal(
    LOG_0(TraceLevelVerbose, "Exited GenerateModelUpdatePerTargetClasses");
    return IntEbmType { 0 };
 }
+
+WARNING_POP
 
 // we made this a global because if we had put this variable inside the Booster object, then we would need to dereference that before getting 
 // the count.  By making this global we can send a log message incase a bad Booster object is sent into us we only decrease the count if the 
@@ -868,16 +897,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
    const IntEbmType * leavesMax,
    FloatEbmType * gainOut
 ) {
-   // TODO: BIG ISSUE: if we reduced the number of dimensions because one of the dimensions had only 1 state,
-   //                  then the dimensions of leavesMax won't match up with the dimensions in our FeatureGroup
-   //                  we need to either re-include the AtomicFeatures back into the Feature group array OR
-   //                  we need to have a bool array of some kind to indicate which ones were eliminated.  I think
-   //                  keeping the AtomicFeature in the FeatureGroup would be better
-   //                  OR we could introduce a dimension remapping function, which could actually be the best since
-   //                  it would give us flexibility.  For the time being this issue isn't causing any bugs since
-   //                  in python/R we only allow a single value for leaveMax, so they should all be the same and
-   //                  if we eliminate a dimension then we just refer to less dimensions and that's ok
-
    LOG_COUNTED_N(
       &g_cLogGenerateModelUpdateParametersMessages,
       TraceLevelInfo,
@@ -972,9 +991,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
-   if(nullptr == leavesMax) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate leavesMax was null, so there won't be any splits");
-   }
+   // leavesMax is handled in GenerateModelUpdateInternal
 
    // gainOut can be nullptr
 

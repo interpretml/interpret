@@ -17,7 +17,7 @@ struct FeatureGroupEntry final {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   // TODO : we can copy the entire Feature data into this location instead of using a pointer
+   // TODO : we can put the entire Feature data into this location instead of using a pointer
    const Feature * m_pFeature;
 };
 static_assert(std::is_standard_layout<FeatureGroupEntry>::value,
@@ -30,6 +30,7 @@ static_assert(std::is_pod<FeatureGroupEntry>::value,
 class FeatureGroup final {
    size_t m_cItemsPerBitPackedDataUnit;
    size_t m_cFeatures;
+   size_t m_cSignificantFeatures;
    size_t m_iInputData;
    int m_cLogEnterGenerateModelUpdateMessages;
    int m_cLogExitGenerateModelUpdateMessages;
@@ -60,6 +61,7 @@ public:
 
    INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureGroup) {
       m_cFeatures = cFeatures;
+      m_cSignificantFeatures = cFeatures;
       m_iInputData = iFeatureGroup;
       m_cLogEnterGenerateModelUpdateMessages = 2;
       m_cLogExitGenerateModelUpdateMessages = 2;
@@ -84,7 +86,13 @@ public:
    }
 
    INLINE_ALWAYS size_t GetCountFeatures() const {
+      EBM_ASSERT(m_cSignificantFeatures <= m_cFeatures);
       return m_cFeatures;
+   }
+
+   INLINE_ALWAYS size_t GetCountSignificantFeatures() const {
+      EBM_ASSERT(m_cSignificantFeatures <= m_cFeatures);
+      return m_cSignificantFeatures;
    }
 
    INLINE_ALWAYS const FeatureGroupEntry * GetFeatureGroupEntries() const {

@@ -227,8 +227,8 @@ public:
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cSamples = pValidationSet->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
-      EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(1 <= cSamples);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -326,8 +326,8 @@ public:
       DataSetByFeatureGroup * const pValidationSet = pBooster->GetValidationSet();
 
       const size_t cSamples = pValidationSet->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
-      EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(1 <= cSamples);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -413,8 +413,8 @@ public:
       DataSetByFeatureGroup * const pValidationSet = pBooster->GetValidationSet();
 
       const size_t cSamples = pValidationSet->GetCountSamples();
-      EBM_ASSERT(0 < cSamples);
-      EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(1 <= cSamples);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -659,7 +659,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
    FloatEbmType ret;
-   if(0 == pFeatureGroup->GetCountFeatures()) {
+   if(0 == pFeatureGroup->GetCountSignificantFeatures()) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          ret = ApplyModelUpdateValidationZeroFeaturesTarget<2>::Func(pThreadStateBoosting);
       } else {

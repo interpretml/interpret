@@ -58,14 +58,20 @@ static bool CalculateInteractionScoreInternal(
 
    LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScoreInternal");
 
-   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
-   EBM_ASSERT(1 <= cDimensions); // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
+   // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
+   EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
+   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
+   EBM_ASSERT(pFeatureGroup->GetCountFeatures() == pFeatureGroup->GetCountSignificantFeatures());
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
-   for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
-      EBM_ASSERT(2 <= cBins); // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
+   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+   do {
+      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
+      // our tensor code strips out features with 1 bin, and we'd need to do that here too if cBins was 1
+      EBM_ASSERT(2 <= cBins);
       // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
       EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
@@ -84,7 +90,9 @@ static bool CalculateInteractionScoreInternal(
       cTotalBucketsMainSpace *= cBins;
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
       EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-   }
+
+      ++pFeatureGroupEntry;
+   } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
 
    const size_t cAuxillaryBucketsForSplitting = 4;
    const size_t cAuxillaryBuckets =
@@ -152,19 +160,11 @@ static bool CalculateInteractionScoreInternal(
 
 #ifndef NDEBUG
    // make a copy of the original binned buckets for debugging purposes
-   size_t cTotalBucketsDebug = 1;
-   for(size_t iDimensionDebug = 0; iDimensionDebug < cDimensions; ++iDimensionDebug) {
-      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionDebug].m_pFeature->GetCountBins();
-      EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
-      cTotalBucketsDebug *= cBins;
-   }
-   // we wouldn't have been able to allocate our main buffer above if this wasn't ok
-   EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket));
    HistogramBucketBase * const aHistogramBucketsDebugCopy =
-      EbmMalloc<HistogramBucketBase>(cTotalBucketsDebug, cBytesPerHistogramBucket);
+      EbmMalloc<HistogramBucketBase>(cTotalBucketsMainSpace, cBytesPerHistogramBucket);
    if(nullptr != aHistogramBucketsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
+      const size_t cBytesBufferDebug = cTotalBucketsMainSpace * cBytesPerHistogramBucket;
       memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
    }
 #endif // NDEBUG
@@ -180,7 +180,7 @@ static bool CalculateInteractionScoreInternal(
 #endif // NDEBUG
    );
 
-   if(2 == cDimensions) {
+   if(2 == pFeatureGroup->GetCountSignificantFeatures()) {
       LOG_0(TraceLevelVerbose, "CalculateInteractionScoreInternal Starting bin sweep loop");
 
       FloatEbmType bestSplittingScore = FindBestInteractionGainPairs(
@@ -219,7 +219,7 @@ static bool CalculateInteractionScoreInternal(
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal 2 != cDimensions");
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal 2 != pFeatureGroup->GetCountFeatures()");
 
       // TODO: handle this better
       if(nullptr != pInteractionScoreReturn) {
@@ -354,13 +354,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          return 1;
       }
       const Feature * const pFeature = &aFeatures[iFeatureInGroup];
-      if(pFeature->GetCountBins() <= 1) {
+      if(pFeature->GetCountBins() <= size_t { 1 }) {
          if(nullptr != interactionScoreOut) {
             // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
             // our caler be smarter about this condition
             *interactionScoreOut = 0;
          }
-         LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore feature with 0/1 value");
+         LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore feature group contains a feature with only 1 bin");
          return 0;
       }
       ++pFeatureIndexes;
@@ -371,6 +371,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore k_cDimensionsMax < cFeaturesInGroup");
       return 1;
    }
+
+   // TODO: instead of putting the FeatureGroup into a character buffer, consider putting k_cDimensionsMax
+   //       items in the array by default and dynamically allocate less if we need less, or use a template that
+   //       allows specification of the number of items with a default of 1 (this would be the cleanest!)
 
    // put the pFeatureGroup object on the stack. We want to put it into a FeatureGroup object since we want to share code with boosting, 
    // which calls things like building the tensor totals (which is templated to be compiled many times)

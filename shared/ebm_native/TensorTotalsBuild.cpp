@@ -173,8 +173,13 @@ public:
       HistogramBucket<bClassification> * const aHistogramBuckets = 
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
-      const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());
-      EBM_ASSERT(1 <= cDimensions);
+      // TODO: we can get rid of the compilerCountDimensions aspect here by making the 1 or 2 inner loops register/pointer
+      //       based and then having a stack based pointer system like the RandomCutState class in CutRandomInternal
+      //       to handle any dimensions at the 3rd level and above.  We'll never need to make any additional checks 
+      //       on main memory until we reach the 3rd dimension which should be enough for any performance geek
+      const size_t cSignificantDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantFeatures());
+      EBM_ASSERT(1 <= cSignificantDimensions);
+      EBM_ASSERT(cSignificantDimensions <= pFeatureGroup->GetCountFeatures());
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -185,61 +190,59 @@ public:
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
       FastTotalState fastTotalState[k_cDimensionsMax];
-      const FastTotalState * const pFastTotalStateEnd = &fastTotalState[cDimensions];
+      FastTotalState * pFastTotalStateInitialize = fastTotalState;
       {
-         FastTotalState * pFastTotalStateInitialize = fastTotalState;
          const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
          size_t multiply = 1;
-         EBM_ASSERT(0 < cDimensions);
          do {
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, aHistogramBucketsEndDebug);
 
-            size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
-            // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
-            // (dimensions with 1 bin don't contribute anything since they always have the same value)
+            const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
             EBM_ASSERT(1 <= cBins);
+            if(size_t { 1 } < cBins) {
+               pFastTotalStateInitialize->m_iCur = 0;
+               pFastTotalStateInitialize->m_cBins = cBins;
 
-            pFastTotalStateInitialize->m_iCur = 0;
-            pFastTotalStateInitialize->m_cBins = cBins;
-
-            pFastTotalStateInitialize->m_pDimensionalFirst = pBucketAuxiliaryBuildZone;
-            pFastTotalStateInitialize->m_pDimensionalCur = pBucketAuxiliaryBuildZone;
-            // when we exit, pBucketAuxiliaryBuildZone should be == to aHistogramBucketsEndDebug, which is legal in C++ since it doesn't extend beyond 1 
-            // item past the end of the array
-            pBucketAuxiliaryBuildZone = GetHistogramBucketByIndex<bClassification>(
-               cBytesPerHistogramBucket,
-               pBucketAuxiliaryBuildZone,
-               multiply
-            );
+               pFastTotalStateInitialize->m_pDimensionalFirst = pBucketAuxiliaryBuildZone;
+               pFastTotalStateInitialize->m_pDimensionalCur = pBucketAuxiliaryBuildZone;
+               // when we exit, pBucketAuxiliaryBuildZone should be == to aHistogramBucketsEndDebug, which is legal in C++ since it doesn't extend beyond 1 
+               // item past the end of the array
+               pBucketAuxiliaryBuildZone = GetHistogramBucketByIndex<bClassification>(
+                  cBytesPerHistogramBucket,
+                  pBucketAuxiliaryBuildZone,
+                  multiply
+               );
 
 #ifndef NDEBUG
-            if(pFastTotalStateEnd == pFastTotalStateInitialize + 1) {
-               // this is the last iteration, so pBucketAuxiliaryBuildZone should normally point to the memory address one byte past the legal buffer 
-               // (normally aHistogramBucketsEndDebug), BUT in rare cases we allocate more memory for the BucketAuxiliaryBuildZone than we use in this 
-               // function, so the only thing that we can guarantee is that we're equal or less than aHistogramBucketsEndDebug
-               EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) <= aHistogramBucketsEndDebug);
-            } else {
-               // if this isn't the last iteration, then we'll actually be using this memory, so the entire bucket had better be useable
-               EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) + cBytesPerHistogramBucket <= aHistogramBucketsEndDebug);
-            }
-            for(HistogramBucket<bClassification> * pDimensionalCur = pFastTotalStateInitialize->m_pDimensionalCur;
-               pBucketAuxiliaryBuildZone != pDimensionalCur;
-               pDimensionalCur = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pDimensionalCur, 1)) 
-            {
-               pDimensionalCur->AssertZero(cVectorLength);
-            }
+               if(&fastTotalState[cSignificantDimensions] == pFastTotalStateInitialize + 1) {
+                  // this is the last iteration, so pBucketAuxiliaryBuildZone should normally point to the memory address one byte past the legal buffer 
+                  // (normally aHistogramBucketsEndDebug), BUT in rare cases we allocate more memory for the BucketAuxiliaryBuildZone than we use in this 
+                  // function, so the only thing that we can guarantee is that we're equal or less than aHistogramBucketsEndDebug
+                  EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) <= aHistogramBucketsEndDebug);
+               } else {
+                  // if this isn't the last iteration, then we'll actually be using this memory, so the entire bucket had better be useable
+                  EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) + cBytesPerHistogramBucket <= aHistogramBucketsEndDebug);
+               }
+               for(HistogramBucket<bClassification> * pDimensionalCur = pFastTotalStateInitialize->m_pDimensionalCur;
+                  pBucketAuxiliaryBuildZone != pDimensionalCur;
+                  pDimensionalCur = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pDimensionalCur, 1)) 
+               {
+                  pDimensionalCur->AssertZero(cVectorLength);
+               }
 #endif // NDEBUG
 
-            // TODO : we don't need either the first or the wrap values since they are the next ones in the list.. we may need to populate one item past 
-            // the end and make the list one larger
-            pFastTotalStateInitialize->m_pDimensionalWrap = pBucketAuxiliaryBuildZone;
+               // TODO : we don't need either the first or the wrap values since they are the next ones in the list.. we may need to populate one item past 
+               // the end and make the list one larger
+               pFastTotalStateInitialize->m_pDimensionalWrap = pBucketAuxiliaryBuildZone;
 
-            multiply *= cBins;
-
+               multiply *= cBins;
+               ++pFastTotalStateInitialize;
+            }
             ++pFeatureGroupEntry;
-            ++pFastTotalStateInitialize;
-         } while(LIKELY(pFastTotalStateEnd != pFastTotalStateInitialize));
+         } while(LIKELY(pFeatureGroupEntryEnd != pFeatureGroupEntry));
       }
+      EBM_ASSERT(pFastTotalStateInitialize == &fastTotalState[cSignificantDimensions]);
 
 #ifndef NDEBUG
 
@@ -257,7 +260,7 @@ public:
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
 
          HistogramBucket<bClassification> * pAddPrev = pHistogramBucket;
-         size_t iDimension = cDimensions;
+         size_t iDimension = cSignificantDimensions;
          do {
             --iDimension;
             HistogramBucket<bClassification> * pAddTo = fastTotalState[iDimension].m_pDimensionalCur;
@@ -275,7 +278,7 @@ public:
          if(nullptr != aHistogramBucketsDebugCopy && nullptr != pDebugBucket) {
             size_t aiStart[k_cDimensionsMax];
             size_t aiLast[k_cDimensionsMax];
-            for(size_t iDebugDimension = 0; iDebugDimension < cDimensions; ++iDebugDimension) {
+            for(size_t iDebugDimension = 0; iDebugDimension < cSignificantDimensions; ++iDebugDimension) {
                aiStart[iDebugDimension] = 0;
                aiLast[iDebugDimension] = fastTotalState[iDebugDimension].m_iCur;
             }
@@ -286,7 +289,7 @@ public:
                aiStart,
                aiLast,
                pDebugBucket
-               );
+            );
             EBM_ASSERT(pDebugBucket->GetCountSamplesInBucket() == pHistogramBucket->GetCountSamplesInBucket());
          }
 #endif // NDEBUG
@@ -316,7 +319,7 @@ public:
 
             ++pFastTotalState;
 
-            if(UNLIKELY(pFastTotalStateEnd == pFastTotalState)) {
+            if(UNLIKELY(pFastTotalStateInitialize == pFastTotalState)) {
 #ifndef NDEBUG
                free(pDebugBucket);
 #endif // NDEBUG
@@ -345,12 +348,12 @@ public:
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(2 <= compilerCountDimensionsPossible, "can't have less than 2 dimensions for interactions");
+      static_assert(1 <= compilerCountDimensionsPossible, "can't have less than 1 dimension");
       static_assert(compilerCountDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      const size_t runtimeCountDimensions = pFeatureGroup->GetCountFeatures();
+      const size_t runtimeCountDimensions = pFeatureGroup->GetCountSignificantFeatures();
 
-      EBM_ASSERT(2 <= runtimeCountDimensions);
+      EBM_ASSERT(1 <= runtimeCountDimensions);
       EBM_ASSERT(runtimeCountDimensions <= k_cDimensionsMax);
       if(compilerCountDimensionsPossible == runtimeCountDimensions) {
          TensorTotalsBuildInternal<compilerLearningTypeOrCountTargetClasses, compilerCountDimensionsPossible>::Func(
@@ -394,8 +397,8 @@ public:
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      EBM_ASSERT(2 <= pFeatureGroup->GetCountFeatures());
-      EBM_ASSERT(pFeatureGroup->GetCountFeatures() <= k_cDimensionsMax);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
+      EBM_ASSERT(pFeatureGroup->GetCountSignificantFeatures() <= k_cDimensionsMax);
       TensorTotalsBuildInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(
          runtimeLearningTypeOrCountTargetClasses,
          pFeatureGroup,

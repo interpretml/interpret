@@ -68,14 +68,18 @@ public:
       HistogramBucket<bClassification> * pTotalsHighHigh =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
+      // for interactions we return an interaction score of 0 if any of the dimensions are useless
+      EBM_ASSERT(2 == pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures());
+
+      // we return an interaction score of 0 if any features are useless before calling here
+      EBM_ASSERT(pFeatureGroup->GetCountFeatures() == pFeatureGroup->GetCountSignificantFeatures());
       const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
       const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->GetCountBins();
-      // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
-      // (dimensions with 1 bin don't contribute anything since they always have the same value)
-      EBM_ASSERT(1 <= cBinsDimension1);
-      // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
-      // (dimensions with 1 bin don't contribute anything since they always have the same value)
-      EBM_ASSERT(1 <= cBinsDimension2);
+
+      // any pair with a feature with 1 cBins returns an interaction score of 0
+      EBM_ASSERT(2 <= cBinsDimension1);
+      EBM_ASSERT(2 <= cBinsDimension2);
 
       EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
@@ -93,6 +97,7 @@ public:
          do {
             aiStart[1] = iBin2;
 
+            EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
             TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                learningTypeOrCountTargetClasses,
                pFeatureGroup,
@@ -106,6 +111,7 @@ public:
 #endif // NDEBUG
                );
             if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLowLow->GetCountSamplesInBucket())) {
+               EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                   learningTypeOrCountTargetClasses,
                   pFeatureGroup,
@@ -119,6 +125,7 @@ public:
 #endif // NDEBUG
                   );
                if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLowHigh->GetCountSamplesInBucket())) {
+                  EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                   TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                      learningTypeOrCountTargetClasses,
                      pFeatureGroup,
@@ -132,6 +139,7 @@ public:
 #endif // NDEBUG
                      );
                   if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHighLow->GetCountSamplesInBucket())) {
+                     EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                         learningTypeOrCountTargetClasses,
                         pFeatureGroup,
