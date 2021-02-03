@@ -87,30 +87,10 @@ SegmentedTensor ** Booster::InitializeSegmentedTensors(
          return nullptr;
       }
 
-      if(0 == pFeatureGroup->GetCountFeatures()) {
-         // if there are zero dimensions, then we have a tensor with 1 item, and we're already expanded
-         pSegmentedTensors->SetExpanded();
-      } else {
-         // if our segmented region has no dimensions, then it's already a fully expanded with 1 bin
-
-         // TODO optimize the next few lines
-         // TODO there might be a nicer way to expand this at allocation time (fill with zeros is easier)
-         // we want to return a pointer to our interior state in the GetCurrentModelFeatureGroup and GetBestModelFeatureGroup functions.  
-         // For simplicity we don't transmit the divions, so we need to expand our SegmentedRegion before returning the easiest way to ensure that the 
-         // SegmentedRegion is expanded is to start it off expanded, and then we don't have to check later since anything merged into an expanded 
-         // SegmentedRegion will itself be expanded
-         size_t acDivisionIntegersEnd[k_cDimensionsMax];
-         size_t iDimension = 0;
-         do {
-            acDivisionIntegersEnd[iDimension] = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
-            ++iDimension;
-         } while(iDimension < pFeatureGroup->GetCountFeatures());
-
-         if(pSegmentedTensors->Expand(acDivisionIntegersEnd)) {
-            LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors pSegmentedTensors->Expand(acDivisionIntegersEnd)");
-            DeleteSegmentedTensors(cFeatureGroups, apSegmentedTensors);
-            return nullptr;
-         }
+      if(pSegmentedTensors->Expand(pFeatureGroup)) {
+         LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors pSegmentedTensors->Expand(pFeatureGroup)");
+         DeleteSegmentedTensors(cFeatureGroups, apSegmentedTensors);
+         return nullptr;
       }
 
       *ppSegmentedTensors = pSegmentedTensors;

@@ -40,22 +40,12 @@ static IntEbmType ApplyModelUpdateInternal(
    Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
 
-   if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      size_t acDivisionIntegersEnd[k_cDimensionsMax];
-      size_t iDimension = 0;
-      do {
-         acDivisionIntegersEnd[iDimension] = pFeatureGroupEntry[iDimension].m_pFeature->GetCountBins();
-         ++iDimension;
-      } while(iDimension < cDimensions);
-      if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
-         if(nullptr != pValidationMetricReturn) {
-            *pValidationMetricReturn = FloatEbmType { 0 };
-         }
-         return IntEbmType { 1 };
+   if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(pFeatureGroup)) {
+      if(nullptr != pValidationMetricReturn) {
+         *pValidationMetricReturn = FloatEbmType { 0 };
       }
+      return IntEbmType { 1 };
    }
 
    // m_apCurrentModel can be null if there are no featureGroups (but we have an feature group index), 
@@ -376,26 +366,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
    }
 
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
+   if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(pFeatureGroup)) {
+      return IntEbmType { 1 };
+   }
+
    const size_t cDimensions = pFeatureGroup->GetCountFeatures();
    size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
-
-      size_t acDivisionIntegersEnd[k_cDimensionsMax];
-      size_t * pcDivisionIntegersEnd = acDivisionIntegersEnd;
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cBins, cValues));
          cValues *= cBins;
-         *pcDivisionIntegersEnd = cBins;
-         ++pcDivisionIntegersEnd;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
-      if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
-         return IntEbmType { 1 };
-      }
    }
    const FloatEbmType * const pValues = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -463,27 +449,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
    }
 
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
+   if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(pFeatureGroup)) {
+      pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
+      return IntEbmType { 1 };
+   }
+
    const size_t cDimensions = pFeatureGroup->GetCountFeatures();
    size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
-
-      size_t acDivisionIntegersEnd[k_cDimensionsMax];
-      size_t * pcDivisionIntegersEnd = acDivisionIntegersEnd;
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cBins, cValues));
          cValues *= cBins;
-         *pcDivisionIntegersEnd = cBins;
-         ++pcDivisionIntegersEnd;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
-      if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
-         pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
-         return IntEbmType { 1 };
-      }
    }
    FloatEbmType * const pValues = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));

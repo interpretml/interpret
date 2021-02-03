@@ -13,6 +13,8 @@
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
+#include "FeatureGroup.h"
+
 // TODO: we need to radically change this data structure so that we can efficiently pass it between machines in a 
 // cluster AND within/between a GPU/CPU.  This stucture should be:
 //
@@ -179,17 +181,13 @@ public:
    bool EnsureValueCapacity(const size_t cValues);
    bool Copy(const SegmentedTensor & rhs);
    bool MultiplyAndCheckForIssues(const FloatEbmType v);
-   bool Expand(const size_t * const acValuesPerDimension);
+   bool Expand(const FeatureGroup * const pFeatureGroup);
    void AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues);
    bool Add(const SegmentedTensor & rhs);
 
 #ifndef NDEBUG
    bool IsEqual(const SegmentedTensor & rhs) const;
 #endif // NDEBUG
-
-   INLINE_ALWAYS void SetExpanded() {
-      m_bExpanded = true;
-   }
 
    INLINE_ALWAYS bool GetExpanded() {
       return m_bExpanded;
