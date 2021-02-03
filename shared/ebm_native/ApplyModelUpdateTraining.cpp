@@ -229,7 +229,10 @@ public:
 
    ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
 
-   static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
+   static void Func(
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const FeatureGroup * const pFeatureGroup
+   ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
@@ -250,10 +253,6 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
-
-      const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
-      FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
-
       EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
@@ -364,12 +363,13 @@ public:
 
    ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
 
-   static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
+   static void Func(
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const FeatureGroup * const pFeatureGroup
+   ) {
       UNUSED(pThreadStateBoosting);
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
-      FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
 
@@ -451,12 +451,13 @@ public:
 
    ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
 
-   static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
+   static void Func(
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const FeatureGroup * const pFeatureGroup
+   ) {
       UNUSED(pThreadStateBoosting);
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
-      FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
 
@@ -529,7 +530,10 @@ public:
 
    ApplyModelUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
+   INLINE_ALWAYS static void Func(
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const FeatureGroup * const pFeatureGroup
+   ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
@@ -540,13 +544,15 @@ public:
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-            pThreadStateBoosting
+            pThreadStateBoosting,
+            pFeatureGroup
          );
       } else {
          ApplyModelUpdateTrainingNormalTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
-            pThreadStateBoosting
+            pThreadStateBoosting,
+            pFeatureGroup
          );
       }
    }
@@ -558,14 +564,18 @@ public:
 
    ApplyModelUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
+   INLINE_ALWAYS static void Func(
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const FeatureGroup * const pFeatureGroup
+   ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
       EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
       ApplyModelUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-         pThreadStateBoosting
+         pThreadStateBoosting,
+         pFeatureGroup
       );
    }
 };
@@ -576,10 +586,11 @@ public:
 
    ApplyModelUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
+   INLINE_ALWAYS static void Func(
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const FeatureGroup * const pFeatureGroup
+   ) {
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
-      FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
 
       EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
@@ -587,14 +598,16 @@ public:
       static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
          ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
-            pThreadStateBoosting
+            pThreadStateBoosting,
+            pFeatureGroup
          );
       } else {
          ApplyModelUpdateTrainingSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::Func(
-            pThreadStateBoosting
+            pThreadStateBoosting,
+            pFeatureGroup
          );
       }
    }
@@ -606,11 +619,15 @@ public:
 
    ApplyModelUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
-      EBM_ASSERT(1 <= pThreadStateBoosting->GetBooster()->GetFeatureGroups()[pThreadStateBoosting->GetFeatureGroupIndex()]->GetCountItemsPerBitPackedDataUnit());
-      EBM_ASSERT(pThreadStateBoosting->GetBooster()->GetFeatureGroups()[pThreadStateBoosting->GetFeatureGroupIndex()]->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
+   INLINE_ALWAYS static void Func(
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const FeatureGroup * const pFeatureGroup
+   ) {
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
+      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
       ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-         pThreadStateBoosting
+         pThreadStateBoosting,
+         pFeatureGroup
       );
    }
 };
@@ -621,7 +638,10 @@ public:
 
    ApplyModelUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
+   INLINE_ALWAYS static void Func(
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const FeatureGroup * const pFeatureGroup
+   ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
@@ -635,13 +655,15 @@ public:
             compilerLearningTypeOrCountTargetClassesPossible,
             k_cItemsPerBitPackedDataUnitMax
          >::Func(
-            pThreadStateBoosting
+            pThreadStateBoosting,
+            pFeatureGroup
          );
       } else {
          ApplyModelUpdateTrainingSIMDTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
-            pThreadStateBoosting
+            pThreadStateBoosting,
+            pFeatureGroup
          );
       }
    }
@@ -653,26 +675,30 @@ public:
 
    ApplyModelUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
+   INLINE_ALWAYS static void Func(
+      ThreadStateBoosting * const pThreadStateBoosting,
+      const FeatureGroup * const pFeatureGroup
+   ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
       EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
       ApplyModelUpdateTrainingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackedDataUnitMax>::Func(
-         pThreadStateBoosting
+         pThreadStateBoosting,
+         pFeatureGroup
       );
    }
 };
 
-extern void ApplyModelUpdateTraining(ThreadStateBoosting * const pThreadStateBoosting) {
+extern void ApplyModelUpdateTraining(
+   ThreadStateBoosting * const pThreadStateBoosting,
+   const FeatureGroup * const pFeatureGroup
+) {
    LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateTraining");
 
    Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
-
-   const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
-   FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
 
    if(0 == pFeatureGroup->GetCountFeatures()) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
@@ -696,11 +722,12 @@ extern void ApplyModelUpdateTraining(ThreadStateBoosting * const pThreadStateBoo
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-            ApplyModelUpdateTrainingSIMDTarget<2>::Func(pThreadStateBoosting);
+            ApplyModelUpdateTrainingSIMDTarget<2>::Func(pThreadStateBoosting, pFeatureGroup);
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             ApplyModelUpdateTrainingSIMDPacking<k_regression, k_cItemsPerBitPackedDataUnitMax>::Func(
-               pThreadStateBoosting
+               pThreadStateBoosting,
+               pFeatureGroup
             );
          }
       } else {
@@ -711,11 +738,12 @@ extern void ApplyModelUpdateTraining(ThreadStateBoosting * const pThreadStateBoo
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-            ApplyModelUpdateTrainingNormalTarget<2>::Func(pThreadStateBoosting);
+            ApplyModelUpdateTrainingNormalTarget<2>::Func(pThreadStateBoosting, pFeatureGroup);
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             ApplyModelUpdateTrainingInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-               pThreadStateBoosting
+               pThreadStateBoosting,
+               pFeatureGroup
             );
          }
       }

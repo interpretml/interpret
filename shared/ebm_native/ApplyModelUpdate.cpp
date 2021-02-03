@@ -18,9 +18,15 @@
 #include "Booster.h"
 #include "ThreadStateBoosting.h"
 
-extern void ApplyModelUpdateTraining(ThreadStateBoosting * const pThreadStateBoosting);
+extern void ApplyModelUpdateTraining(
+   ThreadStateBoosting * const pThreadStateBoosting,
+   const FeatureGroup * const pFeatureGroup
+);
 
-extern FloatEbmType ApplyModelUpdateValidation(ThreadStateBoosting * const pThreadStateBoosting);
+extern FloatEbmType ApplyModelUpdateValidation(
+   ThreadStateBoosting * const pThreadStateBoosting,
+   const FeatureGroup * const pFeatureGroup
+);
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
@@ -78,7 +84,7 @@ static IntEbmType ApplyModelUpdateInternal(
    pBooster->GetCurrentModel()[iFeatureGroup]->AddExpandedWithBadValueProtection(aModelFeatureGroupUpdateTensor);
 
    if(0 != pBooster->GetTrainingSet()->GetCountSamples()) {
-      ApplyModelUpdateTraining(pThreadStateBoosting);
+      ApplyModelUpdateTraining(pThreadStateBoosting, pFeatureGroup);
    }
 
    FloatEbmType modelMetric = FloatEbmType { 0 };
@@ -94,7 +100,7 @@ static IntEbmType ApplyModelUpdateInternal(
       // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      modelMetric = ApplyModelUpdateValidation(pThreadStateBoosting);
+      modelMetric = ApplyModelUpdateValidation(pThreadStateBoosting, pFeatureGroup);
 
       EBM_ASSERT(!std::isnan(modelMetric)); // NaNs can happen, but we should have converted them
       EBM_ASSERT(!std::isinf(modelMetric)); // +infinity can happen, but we should have converted it
