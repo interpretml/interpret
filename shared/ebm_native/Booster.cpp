@@ -260,9 +260,17 @@ Booster * Booster::Allocate(
             Booster::Free(pBooster);
             return nullptr;
          }
-         size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
+         const size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
+         FeatureGroup * const pFeatureGroup = FeatureGroup::Allocate(cFeaturesInGroup, iFeatureGroup);
+         if(nullptr == pFeatureGroup) {
+            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pFeatureGroup");
+            Booster::Free(pBooster);
+            return nullptr;
+         }
+         // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
+         pBooster->m_apFeatureGroups[iFeatureGroup] = pFeatureGroup;
+
          size_t cSignificantFeaturesInGroup = 0;
-         const IntEbmType * pFeatureGroupFeatureIndexesEnd = pFeatureGroupFeatureIndexes;
          if(UNLIKELY(0 == cFeaturesInGroup)) {
             LOG_0(TraceLevelInfo, "INFO Booster::Initialize empty feature group");
          } else {
@@ -271,10 +279,12 @@ Booster * Booster::Allocate(
                Booster::Free(pBooster);
                return nullptr;
             }
-            pFeatureGroupFeatureIndexesEnd += cFeaturesInGroup;
-            const IntEbmType * pFeatureGroupFeatureIndexesTemp = pFeatureGroupFeatureIndexes;
+            size_t cEquivalentSplits = 1;
+            size_t cTensorBins = 1;
+            FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+            FeatureGroupEntry * pFeatureGroupEntryEnd = pFeatureGroupEntry + cFeaturesInGroup;
             do {
-               const IntEbmType indexFeatureInterop = *pFeatureGroupFeatureIndexesTemp;
+               const IntEbmType indexFeatureInterop = *pFeatureGroupFeatureIndexes;
                if(indexFeatureInterop < 0) {
                   LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureIndexes value cannot be negative");
                   Booster::Free(pBooster);
@@ -297,51 +307,13 @@ Booster * Booster::Allocate(
                EBM_ASSERT(nullptr != pBooster->m_aFeatures);
 
                Feature * const pInputFeature = &pBooster->m_aFeatures[iFeatureInGroup];
-               if(LIKELY(1 < pInputFeature->GetCountBins())) {
+               pFeatureGroupEntry->m_pFeature = pInputFeature;
+
+               const size_t cBins = pInputFeature->GetCountBins();
+               if(LIKELY(size_t { 1 } < cBins)) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
                   // otherwise indistinquishable from the original data
                   ++cSignificantFeaturesInGroup;
-               } else {
-                  LOG_0(TraceLevelInfo, "INFO Booster::Initialize feature group with no useful features");
-               }
-               ++pFeatureGroupFeatureIndexesTemp;
-            } while(pFeatureGroupFeatureIndexesEnd != pFeatureGroupFeatureIndexesTemp);
-
-            if(k_cDimensionsMax < cSignificantFeaturesInGroup) {
-               // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
-               LOG_0(TraceLevelWarning, "WARNING Booster::Initialize k_cDimensionsMax < cSignificantFeaturesInGroup");
-               Booster::Free(pBooster);
-               return nullptr;
-            }
-         }
-
-         FeatureGroup * pFeatureGroup = FeatureGroup::Allocate(cSignificantFeaturesInGroup, iFeatureGroup);
-         if(nullptr == pFeatureGroup) {
-            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pFeatureGroup");
-            Booster::Free(pBooster);
-            return nullptr;
-         }
-         // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
-         pBooster->m_apFeatureGroups[iFeatureGroup] = pFeatureGroup;
-
-         if(UNLIKELY(0 != cSignificantFeaturesInGroup)) {
-            EBM_ASSERT(nullptr != aFeatureGroupsFeatureIndexes);
-            size_t cEquivalentSplits = 1;
-            size_t cTensorBins = 1;
-            FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-            do {
-               const IntEbmType indexFeatureInterop = *pFeatureGroupFeatureIndexes;
-               EBM_ASSERT(0 <= indexFeatureInterop);
-               EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureInterop)); // this was checked above
-               const size_t iFeatureInGroup = static_cast<size_t>(indexFeatureInterop);
-               EBM_ASSERT(iFeatureInGroup < cFeatures);
-               const Feature * const pInputFeature = &pBooster->m_aFeatures[iFeatureInGroup];
-               const size_t cBins = pInputFeature->GetCountBins();
-               if(LIKELY(1 < cBins)) {
-                  // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
-                  // otherwise indistinquishable from the original data
-                  pFeatureGroupEntry->m_pFeature = pInputFeature;
-                  ++pFeatureGroupEntry;
                   if(IsMultiplyError(cTensorBins, cBins)) {
                      // if this overflows, we definetly won't be able to allocate it
                      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize IsMultiplyError(cTensorStates, cBins)");
@@ -350,34 +322,48 @@ Booster * Booster::Allocate(
                   }
                   cTensorBins *= cBins;
                   cEquivalentSplits *= cBins - 1; // we can only split between the bins
+               } else {
+                  LOG_0(TraceLevelInfo, "INFO Booster::Initialize feature group with no useful features");
                }
-               ++pFeatureGroupFeatureIndexes;
-            } while(pFeatureGroupFeatureIndexesEnd != pFeatureGroupFeatureIndexes);
-            EBM_ASSERT(1 < cTensorBins);
 
-            size_t cBytesArrayEquivalentSplit;
-            if(1 == cSignificantFeaturesInGroup) {
-               if(IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)) {
-                  LOG_0(TraceLevelWarning, "WARNING Booster::Initialize IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)");
+               ++pFeatureGroupFeatureIndexes;
+               ++pFeatureGroupEntry;
+            } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+
+            if(LIKELY(0 != cSignificantFeaturesInGroup)) {
+               EBM_ASSERT(1 < cTensorBins);
+
+               if(k_cDimensionsMax < cSignificantFeaturesInGroup) {
+                  // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
+                  LOG_0(TraceLevelWarning, "WARNING Booster::Initialize k_cDimensionsMax < cSignificantFeaturesInGroup");
                   Booster::Free(pBooster);
                   return nullptr;
                }
-               cBytesArrayEquivalentSplit = cEquivalentSplits * cBytesPerSweepTreeNode;
-            } else {
-               // TODO : someday add equal gain multidimensional randomized picking.  It's rather hard though with the existing sweep functions for 
-               // multidimensional right now
-               cBytesArrayEquivalentSplit = 0;
-            }
-            if(cBytesArrayEquivalentSplitMax < cBytesArrayEquivalentSplit) {
-               cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplit;
-            }
 
-            // if cSignificantFeaturesInGroup is zero, don't both initializing pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
-            const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
-            EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
-            pFeatureGroup->SetCountItemsPerBitPackedDataUnit(GetCountItemsBitPacked(cBitsRequiredMin));
+               size_t cBytesArrayEquivalentSplit;
+               if(1 == cSignificantFeaturesInGroup) {
+                  if(IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)) {
+                     LOG_0(TraceLevelWarning, "WARNING Booster::Initialize IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)");
+                     Booster::Free(pBooster);
+                     return nullptr;
+                  }
+                  cBytesArrayEquivalentSplit = cEquivalentSplits * cBytesPerSweepTreeNode;
+               } else {
+                  // TODO : someday add equal gain multidimensional randomized picking.  It's rather hard though with the existing sweep functions for 
+                  // multidimensional right now
+                  cBytesArrayEquivalentSplit = 0;
+               }
+               if(cBytesArrayEquivalentSplitMax < cBytesArrayEquivalentSplit) {
+                  cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplit;
+               }
+
+               // if cSignificantFeaturesInGroup is zero, don't both initializing pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
+               const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
+               EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
+               pFeatureGroup->SetCountItemsPerBitPackedDataUnit(GetCountItemsBitPacked(cBitsRequiredMin));
+            }
          }
-         pFeatureGroupFeatureIndexes = pFeatureGroupFeatureIndexesEnd;
+         pFeatureGroup->SetCountSignificantFeatures(cSignificantFeaturesInGroup);
 
          ++iFeatureGroup;
       } while(iFeatureGroup < cFeatureGroups);

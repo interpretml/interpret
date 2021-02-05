@@ -249,28 +249,22 @@ bool SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
    if(size_t { 0 } != cFeatures) {
       const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry1 + cFeatures;
-
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
-
-      const DimensionInfo * pDimensionFirst1 = GetDimensions();
-
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
-
+      const DimensionInfo * pDimensionFirst1 = GetDimensions();
       size_t cValues1 = 1;
       size_t cNewValues = 1;
 
       // first, get basic counts of how many divisions and values we'll have in our final result
       do {
          const size_t cBins = pFeatureGroupEntry1->m_pFeature->GetCountBins();
-         EBM_ASSERT(1 <= cBins);
 
-         // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes 
-         // and in CalculateInteractionScore for interactions
+         // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack 
+         // featureGroupsFeatureIndexes and in CalculateInteractionScore for interactions
          EBM_ASSERT(!IsMultiplyError(cNewValues, cBins));
          cNewValues *= cBins;
 
-         const size_t cCuts = cBins - size_t { 1 };
-         if(size_t { 0 } < cCuts) {
+         if(size_t { 1 } < cBins) {
             // strip any dimensions which have 1 bin since the tensor shape doesn't change and we 
             // have limited stack memory to store dimension information
 
@@ -281,6 +275,7 @@ bool SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
 
             pDimensionInfoStackFirst->m_pDivision1 = &pDimensionFirst1->m_aDivisions[cDivisions1];
 
+            const size_t cCuts = cBins - size_t { 1 };
             pDimensionInfoStackFirst->m_iDivision2 = cCuts;
             pDimensionInfoStackFirst->m_cNewDivisions = cCuts;
 
@@ -289,131 +284,142 @@ bool SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
          }
          ++pFeatureGroupEntry1;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry1);
-
-      if(IsMultiplyError(cNewValues, m_cVectorLength)) {
-         LOG_0(TraceLevelWarning, "WARNING Expand IsMultiplyError(cNewValues, m_cVectorLength)");
-         return true;
-      }
-      const size_t cVectoredNewValues = cNewValues * m_cVectorLength;
-      // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
-      if(UNLIKELY(EnsureValueCapacity(cVectoredNewValues))) {
-         LOG_0(TraceLevelWarning, "WARNING Expand EnsureValueCapacity(cVectoredNewValues))");
-         return true;
-      }
-
-      FloatEbmType * const aValues = m_aValues;
-      const DimensionInfo * const aDimension1 = GetDimensions();
-
-      EBM_ASSERT(cValues1 <= cNewValues);
-      EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
-      const FloatEbmType * pValue1 = &aValues[m_cVectorLength * cValues1];
-      FloatEbmType * pValueTop = &aValues[cVectoredNewValues];
-
-      // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
-      // existing values which we still need to copy first do the values because we need to refer to the old divisions when making decisions about 
-      // where to move next
-      while(true) {
-         const FloatEbmType * pValue1Move = pValue1;
-         const FloatEbmType * const pValueTopEnd = pValueTop - m_cVectorLength;
-         do {
-            --pValue1Move;
-            --pValueTop;
-            *pValueTop = *pValue1Move;
-         } while(pValueTopEnd != pValueTop);
-
-         // For a single dimensional SegmentedRegion checking here is best.  
-         // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
-         // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
-         // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
-         // multi-dimensioncal SegmentedTensors
-         if(UNLIKELY(aValues == pValueTop)) {
-            // we've written our final tensor cell, so we're done
-            break;
+      
+      if(size_t { 0 } == cNewValues) {
+         // there's a really degenerate case where we have zero training and zero validation samples, and the user 
+         // specifies zero bins which is legal since there are no bins in the training or validation, in this case
+         // the tensor has zero bins in one dimension, so there are zero bins in the entire tensor.  In this case
+         // the dimension is still stripped from our view, but we should not expand
+         LOG_0(TraceLevelWarning, "WARNING Expand Zero sized tensor");
+      } else {
+         if(IsMultiplyError(cNewValues, m_cVectorLength)) {
+            LOG_0(TraceLevelWarning, "WARNING Expand IsMultiplyError(cNewValues, m_cVectorLength)");
+            return true;
+         }
+         const size_t cVectoredNewValues = cNewValues * m_cVectorLength;
+         // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
+         if(UNLIKELY(EnsureValueCapacity(cVectoredNewValues))) {
+            LOG_0(TraceLevelWarning, "WARNING Expand EnsureValueCapacity(cVectoredNewValues))");
+            return true;
          }
 
-         DimensionInfoStackExpand * pDimensionInfoStackSecond = aDimensionInfoStackExpand;
-         const DimensionInfo * pDimensionSecond1 = aDimension1;
+         FloatEbmType * const aValues = m_aValues;
+         const DimensionInfo * const aDimension1 = GetDimensions();
 
-         size_t multiplication1 = m_cVectorLength;
+         EBM_ASSERT(cValues1 <= cNewValues);
+         EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
+         const FloatEbmType * pValue1 = &aValues[m_cVectorLength * cValues1];
+         FloatEbmType * pValueTop = &aValues[cVectoredNewValues];
 
+         // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
+         // existing values which we still need to copy first do the values because we need to refer to the old divisions when making decisions about 
+         // where to move next
          while(true) {
-            const ActiveDataType * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
-            size_t iDivision2 = pDimensionInfoStackSecond->m_iDivision2;
+            const FloatEbmType * pValue1Move = pValue1;
+            const FloatEbmType * const pValueTopEnd = pValueTop - m_cVectorLength;
+            do {
+               --pValue1Move;
+               --pValueTop;
+               EBM_ASSERT(aValues <= pValue1Move);
+               EBM_ASSERT(aValues <= pValueTop);
+               *pValueTop = *pValue1Move;
+            } while(pValueTopEnd != pValueTop);
 
-            ActiveDataType * const aDivisions1 = pDimensionSecond1->m_aDivisions;
-
-            if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
-               EBM_ASSERT(0 < iDivision2);
-
-               const ActiveDataType * const pDivision1MinusOne = pDivision1 - 1;
-
-               const size_t d1 = static_cast<size_t>(*pDivision1MinusOne);
-
-               --iDivision2;
-
-               const bool bMove = UNPREDICTABLE(iDivision2 <= d1);
-               pDimensionInfoStackSecond->m_pDivision1 = bMove ? pDivision1MinusOne : pDivision1;
-               pValue1 = bMove ? pValue1 - multiplication1 : pValue1;
-
-               pDimensionInfoStackSecond->m_iDivision2 = iDivision2;
+            // For a single dimensional SegmentedRegion checking here is best.  
+            // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
+            // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
+            // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
+            // multi-dimensioncal SegmentedTensors
+            if(UNLIKELY(aValues == pValueTop)) {
+               // we've written our final tensor cell, so we're done
                break;
-            } else {
-               if(UNPREDICTABLE(0 < iDivision2)) {
-                  pDimensionInfoStackSecond->m_iDivision2 = iDivision2 - 1;
+            }
+
+            DimensionInfoStackExpand * pDimensionInfoStackSecond = aDimensionInfoStackExpand;
+            const DimensionInfo * pDimensionSecond1 = aDimension1;
+
+            size_t multiplication1 = m_cVectorLength;
+
+            while(true) {
+               const ActiveDataType * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
+               size_t iDivision2 = pDimensionInfoStackSecond->m_iDivision2;
+
+               ActiveDataType * const aDivisions1 = pDimensionSecond1->m_aDivisions;
+
+               if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
+                  EBM_ASSERT(0 < iDivision2);
+
+                  const ActiveDataType * const pDivision1MinusOne = pDivision1 - 1;
+
+                  const size_t d1 = static_cast<size_t>(*pDivision1MinusOne);
+
+                  --iDivision2;
+
+                  const bool bMove = UNPREDICTABLE(iDivision2 <= d1);
+                  pDimensionInfoStackSecond->m_pDivision1 = bMove ? pDivision1MinusOne : pDivision1;
+                  pValue1 = bMove ? pValue1 - multiplication1 : pValue1;
+
+                  pDimensionInfoStackSecond->m_iDivision2 = iDivision2;
                   break;
                } else {
-                  pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
+                  if(UNPREDICTABLE(0 < iDivision2)) {
+                     pDimensionInfoStackSecond->m_iDivision2 = iDivision2 - 1;
+                     break;
+                  } else {
+                     pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
 
-                  const size_t cDivisions1 = pDimensionSecond1->m_cDivisions;
+                     const size_t cDivisions1 = pDimensionSecond1->m_cDivisions;
 
-                  // we're already allocated values, so this is accessing what we've already allocated, so it must not overflow
-                  EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1));
-                  multiplication1 *= 1 + cDivisions1;
+                     // we're already allocated values, so this is accessing what we've already allocated, so it must not overflow
+                     EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1));
+                     multiplication1 *= 1 + cDivisions1;
 
-                  // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
-                  pValue1 += multiplication1;
+                     // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
+                     pValue1 += multiplication1;
 
-                  pDimensionInfoStackSecond->m_pDivision1 = &aDivisions1[cDivisions1];
-                  pDimensionInfoStackSecond->m_iDivision2 = pDimensionInfoStackSecond->m_cNewDivisions;
+                     pDimensionInfoStackSecond->m_pDivision1 = &aDivisions1[cDivisions1];
+                     pDimensionInfoStackSecond->m_iDivision2 = pDimensionInfoStackSecond->m_cNewDivisions;
 
-                  ++pDimensionSecond1;
-                  ++pDimensionInfoStackSecond;
-                  continue;
+                     ++pDimensionSecond1;
+                     ++pDimensionInfoStackSecond;
+                     continue;
+                  }
                }
             }
          }
+
+         EBM_ASSERT(pValueTop == m_aValues);
+         EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength);
+
+         const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
+         size_t iDimension = 0;
+         do {
+            const size_t cBins = pFeatureGroupEntry2->m_pFeature->GetCountBins();
+            EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
+            const size_t cDivisions = cBins - size_t { 1 };
+            if(size_t { 0 } < cDivisions) {
+               // strip any dimensions which have 1 bin since the tensor shape doesn't change and we 
+               // have limited stack memory to store dimension information
+
+               const DimensionInfo * const pDimension = &aDimension1[iDimension];
+               if(cDivisions != pDimension->m_cDivisions) {
+                  if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
+                     LOG_0(TraceLevelWarning, "WARNING Expand SetCountDivisions(iDimension, cDivisions)");
+                     return true;
+                  }
+
+                  ActiveDataType * const aDivision = pDimension->m_aDivisions;
+                  size_t iDivision = 0;
+                  do {
+                     aDivision[iDivision] = iDivision;
+                     ++iDivision;
+                  } while(cDivisions != iDivision);
+               }
+               ++iDimension;
+            }
+            ++pFeatureGroupEntry2;
+         } while(pFeatureGroupEntryEnd != pFeatureGroupEntry2);
       }
-
-      EBM_ASSERT(pValueTop == m_aValues);
-      EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength);
-
-      const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
-      size_t iDimension = 0;
-      do {
-         EBM_ASSERT(1 <= pFeatureGroupEntry2->m_pFeature->GetCountBins());
-         const size_t cDivisions = pFeatureGroupEntry2->m_pFeature->GetCountBins() - size_t { 1 };
-         if(size_t { 0 } < cDivisions) {
-            // strip any dimensions which have 1 bin since the tensor shape doesn't change and we 
-            // have limited stack memory to store dimension information
-
-            const DimensionInfo * const pDimension = &aDimension1[iDimension];
-            if(cDivisions != pDimension->m_cDivisions) {
-               if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
-                  LOG_0(TraceLevelWarning, "WARNING Expand SetCountDivisions(iDimension, cDivisions)");
-                  return true;
-               }
-
-               ActiveDataType * const aDivision = pDimension->m_aDivisions;
-               size_t iDivision = 0;
-               do {
-                  aDivision[iDivision] = iDivision;
-                  ++iDivision;
-               } while(cDivisions != iDivision);
-            }
-            ++iDimension;
-         }
-         ++pFeatureGroupEntry2;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry2);
    }
    m_bExpanded = true;
    

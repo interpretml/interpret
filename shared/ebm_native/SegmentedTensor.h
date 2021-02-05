@@ -33,9 +33,13 @@
 // NO m_cDimensions; -> we can pass in the FeatureGroup object to know the # of dimensions
 // FloatEbmType m_values[]; // a space for our values
 // UIntEbmType DIMENSION_1_CUT_POINTS
-// UIntEbmType DIMENSION_1_COUNT -> we find this by traversing the 0th dimension items
+// UIntEbmType DIMENSION_1_BIN_COUNT -> we find this by traversing the 0th dimension items
 // UIntEbmType DIMENSION_0_CUT_POINTS -> we travel backwards by the count
-// UIntEbmType DIMENSION_0_COUNT -> we find this using m_cBytes to find the end, then subtract sizeof(UIntEbmType)
+// UIntEbmType DIMENSION_0_BIN_COUNT -> we find this using m_cBytes to find the end, then subtract sizeof(UIntEbmType)
+//
+// - use BIN_COUNT instead of CUT_COUNT because then we can express tensors with zero bins AND we can still
+//   get to the End pointer because our bin dount and cut points are both 64 bit numbers, so subtracting from
+//   the current pointer gets us to the next BIN_COUNT value since a bin count of 1 means zero cuts, so subtract 1
 //
 // Reasons:
 //   - our super-parallel algorithm needs to split up the data and have separate processing cores process their data
@@ -117,6 +121,10 @@ class SegmentedTensor final {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
+      // TODO : change m_cDivisions to m_cBins to fit the rest of our framework where we always use bin, but also
+      //        to represent tensors with bins that are 0 (truely empty without even 1 bin), and because we need
+      //        to multiply by cBins when calculating the tensor volume, so we can never get away or optimize the
+      //        need away for cBins, unlike perhaps cCuts which might in some cases allow for tricks to optimize
       size_t m_cDivisions;
       ActiveDataType * m_aDivisions;
       size_t m_cDivisionCapacity;

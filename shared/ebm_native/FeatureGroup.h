@@ -61,7 +61,6 @@ public:
 
    INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureGroup) {
       m_cFeatures = cFeatures;
-      m_cSignificantFeatures = cFeatures;
       m_iInputData = iFeatureGroup;
       m_cLogEnterGenerateModelUpdateMessages = 2;
       m_cLogExitGenerateModelUpdateMessages = 2;
@@ -93,6 +92,10 @@ public:
    INLINE_ALWAYS size_t GetCountSignificantFeatures() const {
       EBM_ASSERT(m_cSignificantFeatures <= m_cFeatures);
       return m_cSignificantFeatures;
+   }
+
+   INLINE_ALWAYS void SetCountSignificantFeatures(const size_t cSignificantFeatures) {
+      m_cSignificantFeatures = cSignificantFeatures;
    }
 
    INLINE_ALWAYS const FeatureGroupEntry * GetFeatureGroupEntries() const {

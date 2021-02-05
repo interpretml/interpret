@@ -199,6 +199,8 @@ public:
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, aHistogramBucketsEndDebug);
 
             const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+            // cBins can only be 0 if there are zero training and zero validation samples
+            // we don't boost or allow interaction updates if there are zero training samples
             EBM_ASSERT(1 <= cBins);
             if(size_t { 1 } < cBins) {
                pFastTotalStateInitialize->m_iCur = 0;

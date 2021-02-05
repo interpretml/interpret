@@ -217,6 +217,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          do {
             const Feature * const pFeature = pFeatureGroupEntry->m_pFeature;
             const size_t cBins = pFeature->GetCountBins();
+            EBM_ASSERT(size_t { 1 } <= cBins); // we don't construct datasets on empty training sets
             if(size_t { 1 } < cBins) {
                pDimensionInfoInit->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cSamples];
                pDimensionInfoInit->m_cBins = cBins;

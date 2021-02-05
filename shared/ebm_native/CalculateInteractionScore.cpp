@@ -71,7 +71,7 @@ static bool CalculateInteractionScoreInternal(
       const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
       // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // our tensor code strips out features with 1 bin, and we'd need to do that here too if cBins was 1
-      EBM_ASSERT(2 <= cBins);
+      EBM_ASSERT(size_t { 2 } <= cBins);
       // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
       EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
@@ -358,10 +358,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          if(nullptr != interactionScoreOut) {
             // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
             // our caler be smarter about this condition
-            *interactionScoreOut = 0;
+            *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore feature group contains a feature with only 1 bin");
-         return 0;
+         return IntEbmType { 0 };
       }
       ++pFeatureIndexes;
    } while(pFeatureIndexesEnd != pFeatureIndexes);
@@ -381,10 +381,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    char FeatureGroupBuffer[FeatureGroup::GetFeatureGroupCountBytes(k_cDimensionsMax)];
    FeatureGroup * const pFeatureGroup = reinterpret_cast<FeatureGroup *>(&FeatureGroupBuffer);
    pFeatureGroup->Initialize(cFeaturesInGroup, 0);
+   pFeatureGroup->SetCountSignificantFeatures(cFeaturesInGroup);
 
    pFeatureIndexes = featureIndexes; // restart from the start
    FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
    do {
+      // TODO: move this into the loop above
+
       const IntEbmType indexFeatureInterop = *pFeatureIndexes;
       EBM_ASSERT(0 <= indexFeatureInterop);
       EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureInterop)); // we already checked indexFeatureInterop was good above

@@ -84,7 +84,7 @@ public:
             // interactions return interaction score of zero earlier on any useless dimensions
             // we strip dimensions from the tensors with 1 bin, so if 1 bin was accepted here, we'd need to strip
             // the bin too
-            EBM_ASSERT(2 <= cBins);
+            EBM_ASSERT(size_t { 2 } <= cBins);
             const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
             pInputData += iSample;
             StorageDataType iBinOriginal = *pInputData;

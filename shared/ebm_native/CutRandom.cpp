@@ -94,6 +94,7 @@ public:
 
          const Feature * const pFeature = pFeatureGroupEntry1->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
+         EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
          const size_t cPossibleCutLocations = cBins - size_t { 1 };
          if(size_t { 0 } < cPossibleCutLocations) {
@@ -186,6 +187,7 @@ public:
 
          const Feature * const pFeature = pFeatureGroupEntry2->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
+         EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          size_t cPossibleCutLocations = cBins - size_t { 1 };
          if(size_t { 0 } < cPossibleCutLocations) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
@@ -252,6 +254,7 @@ public:
          const Feature * const pFirstFeature = pFeatureGroupEntry3->m_pFeature;
          ++pFeatureGroupEntry3;
          const size_t cFirstBins = pFirstFeature->GetCountBins();
+         EBM_ASSERT(size_t { 1 } <= cFirstBins); // we don't boost on empty training sets
          if(size_t { 1 } < cFirstBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
@@ -306,6 +309,7 @@ public:
 
          const Feature * const pFeature = pFeatureGroupEntry3->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
+         EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 

@@ -287,6 +287,7 @@ static bool BoostMultiDimensional(
    const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
    do {
       const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
       if(size_t { 1 } < cBins) {
          // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
          EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
@@ -560,7 +561,7 @@ static bool BoostRandom(
    size_t cTotalBuckets = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
-      EBM_ASSERT(1 <= cBins);
+      EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
       // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes
       EBM_ASSERT(!IsMultiplyError(cTotalBuckets, cBins));
       cTotalBuckets *= cBins;

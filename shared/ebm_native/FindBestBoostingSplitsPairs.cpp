@@ -227,7 +227,7 @@ public:
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
-         EBM_ASSERT(1 <= cBins);
+         EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
             EBM_ASSERT(0 == cBinsDimension2);
             if(0 == cBinsDimension1) {

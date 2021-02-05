@@ -581,10 +581,10 @@ TEST_CASE("features with 0 states, boosting") {
    // calling to get the models doesn't crash
    model[0] = 9.99;
    test.GetBestModelFeatureGroupRaw(0, model);
-   CHECK(0 == model[0]);
+   CHECK(9.99 == model[0]); // the model is a tensor with zero values since one of the dimensions is non-existant
    model[0] = 9.99;
    test.GetCurrentModelFeatureGroupRaw(0, model);
-   CHECK(0 == model[0]);
+   CHECK(9.99 == model[0]); // the model is a tensor with zero values since one of the dimensions is non-existant
 }
 
 TEST_CASE("features with 0 states, interaction") {

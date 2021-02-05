@@ -51,6 +51,9 @@ void TensorTotalsSumDebugSlow(
    const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntryInit + pFeatureGroup->GetCountFeatures();
    do {
       const size_t cBins = pFeatureGroupEntryInit->m_pFeature->GetCountBins();
+      // cBins can only be 0 if there are zero training and zero validation samples
+      // we don't boost or allow interaction updates if there are zero training samples
+      EBM_ASSERT(size_t { 1 } <= cBins);
       if(size_t { 1 } < cBins) {
          EBM_ASSERT(aiStart[iDimensionInitialize] < cBins);
          EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
@@ -92,6 +95,9 @@ void TensorTotalsSumDebugSlow(
          size_t cBins;
          do {
             cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+            // cBins can only be 0 if there are zero training and zero validation samples
+            // we don't boost or allow interaction updates if there are zero training samples
+            EBM_ASSERT(size_t { 1 } <= cBins);
             ++pFeatureGroupEntry;
          } while(cBins <= size_t { 1 }); // skip anything with 1 bin
 
@@ -132,6 +138,9 @@ void TensorTotalsCompareDebug(
    size_t iDimensionDebug = 0;
    do {
       const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      // cBins can only be 0 if there are zero training and zero validation samples
+      // we don't boost or allow interaction updates if there are zero training samples
+      EBM_ASSERT(size_t { 1 } <= cBins);
       if(size_t { 1 } < cBins) {
          if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
             aiStart[iDimensionDebug] = aiPoint[iDimensionDebug] + 1;
@@ -214,6 +223,9 @@ void TensorTotalsSum(
       // we would require a check in our inner loop below to handle the case of zero FeatureGroupEntry items, so let's handle it separetly here instead
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         // cBins can only be 0 if there are zero training and zero validation samples
+         // we don't boost or allow interaction updates if there are zero training samples
+         EBM_ASSERT(size_t { 1 } <= cBins);
          if(size_t { 1 } < cBins) {
             EBM_ASSERT(*piPointInitialize < cBins);
             EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
@@ -251,6 +263,9 @@ void TensorTotalsSum(
       size_t directionVectorDestroy = directionVector;
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         // cBins can only be 0 if there are zero training and zero validation samples
+         // we don't boost or allow interaction updates if there are zero training samples
+         EBM_ASSERT(size_t { 1 } <= cBins);
          if(size_t { 1 } < cBins) {
             if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
                EBM_ASSERT(!IsMultiplyError(cBins - 1, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply

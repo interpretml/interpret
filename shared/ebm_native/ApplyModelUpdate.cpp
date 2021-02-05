@@ -56,7 +56,6 @@ static IntEbmType ApplyModelUpdateInternal(
    EBM_ASSERT(nullptr != pBooster->GetBestModel());
 
    const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
-   EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
    // our caller can give us one of these bad types of inputs:
    //  1) NaN values
@@ -195,7 +194,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       return 0;
    }
 
-   IntEbmType ret = ApplyModelUpdateInternal(
+   const IntEbmType ret = ApplyModelUpdateInternal(
       pThreadStateBoosting,
       validationMetricOut
    );
@@ -260,12 +259,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       return IntEbmType { 1 };
    }
 
-   if(nullptr == cutIndexesOut) {
-      *countCutsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts cutIndexesOut cannot be nullptr");
-      return IntEbmType { 1 };
-   }
-
    ThreadStateBoosting * const pThreadStateBoosting = reinterpret_cast<ThreadStateBoosting *>(threadStateBoostingHandle);
    if(nullptr == pThreadStateBoosting) {
       *countCutsInOut = IntEbmType { 0 };
@@ -303,7 +296,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
    }
 
    const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iAllDimension].m_pFeature->GetCountBins();
-   EBM_ASSERT(1 <= cBins);
+   if(cBins <= size_t { 1 }) {
+      // we have 1 bin, or 0, so this dimension will be stripped from the SegmentedTensor.  Let's return the empty result now
+      *countCutsInOut = IntEbmType { 0 };
+      return IntEbmType { 0 };
+   }
+
+   if(nullptr == cutIndexesOut) {
+      *countCutsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts cutIndexesOut cannot be nullptr");
+      return IntEbmType { 1 };
+   }
+
    // cBins started from IntEbmType, so we should be able to convert back safely
    if(*countCutsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
       *countCutsInOut = IntEbmType { 0 };
@@ -311,19 +315,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       return IntEbmType { 1 };
    }
 
-   if(size_t { 1 } == cBins) {
-      // we have 1 bin, so this dimension will be stripped from the SegmentedTensor.  Let's return the empty result now
-      *countCutsInOut = IntEbmType { 0 };
-      return IntEbmType { 0 };
-   }
-
    size_t iSignficantDimension = 0;
    if(0 != iAllDimension) {
-      // TODO: consider moving iSignficantDimension into the FeatureGroupEntry
-
-      // each time we extract a dimension we iterate this loop so technically it's N^2, but dimensions shouldn't really
-      // be bigger than 2-3, and memory limits normal dimensions to 2^64, so we should be ok.  The only time this
-      // would be a problem is if an adversary created something with many many dimensions having 1 bin
+      // each time we extract a dimension we iterate this loop so technically it's N^2, but dimensions shouldn't 
+      // realistically be more than 2-3, and tensors with 64 dimensions consume all memory on a 64 bit machine, so
+      // even under unrealistic conditions this loop should be fine.  Only if we get a tensor with dimensions having
+      // 1 bin each and thousands of dimensions could this become an issue, but that would need to be an adversarial
+      // dataset, and adversaries can consume CPU in other ways like asking for 32 dimension tensor cutting, so 
+      // the caller will need to filter out unreasonable dimension requests if necessary.  We don't need to handle it.
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[iAllDimension];
       do {
