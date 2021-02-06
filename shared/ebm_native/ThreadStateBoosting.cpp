@@ -27,6 +27,7 @@ void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting)
       free(pThreadStateBoosting->m_aThreadByteBuffer1);
       free(pThreadStateBoosting->m_aThreadByteBuffer2);
       free(pThreadStateBoosting->m_aSumHistogramBucketVectorEntry);
+      free(pThreadStateBoosting->m_aSumHistogramBucketVectorEntry1);
       free(pThreadStateBoosting->m_aTempFloatVector);
       free(pThreadStateBoosting->m_aEquivalentSplits);
 
@@ -60,21 +61,26 @@ ThreadStateBoosting * ThreadStateBoosting::Allocate(Booster * const pBooster) {
                EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
             if(LIKELY(nullptr != aSumHistogramBucketVectorEntry)) {
                pNew->m_aSumHistogramBucketVectorEntry = aSumHistogramBucketVectorEntry;
-               FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
-               if(LIKELY(nullptr != aTempFloatVector)) {
-                  pNew->m_aTempFloatVector = aTempFloatVector;
-                  const size_t cBytesArrayEquivalentSplitMax = pBooster->GetCountBytesArrayEquivalentSplitMax();
-                  if(0 != cBytesArrayEquivalentSplitMax) {
-                     void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
-                     if(UNLIKELY(nullptr == aEquivalentSplits)) {
-                        goto exit_error;
+               HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry1 =
+                  EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
+               if(LIKELY(nullptr != aSumHistogramBucketVectorEntry1)) {
+                  pNew->m_aSumHistogramBucketVectorEntry1 = aSumHistogramBucketVectorEntry1;
+                  FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
+                  if(LIKELY(nullptr != aTempFloatVector)) {
+                     pNew->m_aTempFloatVector = aTempFloatVector;
+                     const size_t cBytesArrayEquivalentSplitMax = pBooster->GetCountBytesArrayEquivalentSplitMax();
+                     if(0 != cBytesArrayEquivalentSplitMax) {
+                        void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
+                        if(UNLIKELY(nullptr == aEquivalentSplits)) {
+                           goto exit_error;
+                        }
+                        pNew->m_aEquivalentSplits = aEquivalentSplits;
                      }
-                     pNew->m_aEquivalentSplits = aEquivalentSplits;
-                  }
-                  pNew->m_pBooster = pBooster;
+                     pNew->m_pBooster = pBooster;
 
-                  LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Allocate");
-                  return pNew;
+                     LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Allocate");
+                     return pNew;
+                  }
                }
             }
          }

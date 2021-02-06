@@ -103,8 +103,16 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
+   // it's tempting to want to use GetSumHistogramBucketVectorEntryArray here instead of 
+   // GetSumHistogramBucketVectorEntry1Array, but the problem with that is that we sometimes re-do our work
+   // when we exceed our memory size by goto retry_with_bigger_tree_node_children_array.  When that happens
+   // we need to retrieve the original sum which resides at GetSumHistogramBucketVectorEntryArray
+   // since the memory pointed to at pRootTreeNode is freed and re-allocated.
+   // So, DO NOT DO: pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray()->
+   //   GetHistogramBucketVectorEntry<bClassification>();
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
-      pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray()->GetHistogramBucketVectorEntry<bClassification>();
+      pThreadStateBoosting->GetSumHistogramBucketVectorEntry1Array<bClassification>();
+
    for(size_t i = 0; i < cVectorLength; ++i) {
       aSumHistogramBucketVectorEntryLeft[i].Zero();
    }

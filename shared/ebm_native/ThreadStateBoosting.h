@@ -36,6 +36,7 @@ class ThreadStateBoosting final {
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
    HistogramBucketVectorEntryBase * m_aSumHistogramBucketVectorEntry;
+   HistogramBucketVectorEntryBase * m_aSumHistogramBucketVectorEntry1;
 
 #ifndef NDEBUG
    const unsigned char * m_aHistogramBucketsEndDebug;
@@ -62,6 +63,7 @@ public:
       m_aTempFloatVector = nullptr;
       m_aEquivalentSplits = nullptr;
       m_aSumHistogramBucketVectorEntry = nullptr;
+      m_aSumHistogramBucketVectorEntry1 = nullptr;
    }
 
    static void Free(ThreadStateBoosting * const pThreadStateBoosting);
@@ -114,6 +116,11 @@ public:
 
    INLINE_ALWAYS HistogramBucketVectorEntryBase * GetSumHistogramBucketVectorEntryArray() {
       return m_aSumHistogramBucketVectorEntry;
+   }
+
+   template<bool bClassification>
+   INLINE_ALWAYS HistogramBucketVectorEntry<bClassification> * GetSumHistogramBucketVectorEntry1Array() {
+      return static_cast<HistogramBucketVectorEntry<bClassification> *>(m_aSumHistogramBucketVectorEntry1);
    }
 
 #ifndef NDEBUG
