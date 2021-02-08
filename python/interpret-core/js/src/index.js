@@ -9,6 +9,7 @@ import * as ReactDOM from "react-dom";
 import Plot from "react-plotly.js";
 import Select from "react-select";
 import { useState } from "react";
+import CytoscapeComponent from 'react-cytoscapejs';
 import "./styles.scss";
 
 const App = props => {
@@ -48,7 +49,6 @@ const App = props => {
 
     return options;
   };
-  // console.log("Building options");
   const options = buildOptions(props.explanations.selector);
   const select = (
     <Select
@@ -60,8 +60,6 @@ const App = props => {
 
   let renderable = <div className={"empty-space"} />;
   let name = "";
-
-  // console.log("Selecting plot");
 
   if (selectedOption !== null) {
     name = props.explanations.name;
@@ -77,8 +75,6 @@ const App = props => {
       figure = specific.figure;
       type = specific.type;
     }
-    // console.log(type);
-    // console.log(figure);
 
     if (type === "none") {
       renderable = (
@@ -106,6 +102,15 @@ const App = props => {
           referrerPolicy="no-referrer"
           sandbox="allow-same-origin allow-scripts"
           className="renderable-frame"
+        />
+      );
+    } else if (type === "cytoscape") {
+      renderable = (
+        <CytoscapeComponent
+          elements={figure.elements}
+          style={figure.style}
+          stylesheet={figure.stylesheet}
+          layout={figure.layout}
         />
       );
     } else {

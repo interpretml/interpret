@@ -41,8 +41,18 @@ def _build_base64_frame_src(html_str):
     html_hex64 = base64.b64encode(html_str.encode("utf-8")).decode("ascii")
     return "data:text/html;base64,{}".format(html_hex64)
 
+def _build_cytoscape_json(cytoscape):
+    json_di = {
+        "elements": cytoscape.elements,
+        "layout": cytoscape.layout,
+        "style": cytoscape.style,
+        "stylesheet": cytoscape.stylesheet,
+    }
+    return json.dumps(json_di)
 
 def _build_viz_figure(visualization):
+    import dash_cytoscape as cyto
+
     if visualization is None:
         _type = "none"
         figure = "null"
@@ -52,6 +62,9 @@ def _build_viz_figure(visualization):
     elif isinstance(visualization, str):
         _type = "html"
         figure = _build_base64_frame_src(visualization)
+    elif isinstance(visualization, cyto.Cytoscape):
+        _type = "cytoscape"
+        figure = _build_cytoscape_json(visualization)
     else:
         # NOTE: This error is largely specific to Dash components,
         #       all Dash component visualizations are being replaced with D3 soon.

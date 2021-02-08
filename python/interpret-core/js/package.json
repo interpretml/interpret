@@ -13,8 +13,10 @@
     "start": "webpack-dev-server --hot --mode development"
   },
   "dependencies": {
+    "cytoscape": "^3.18.0",
     "plotly.js": "^1.54.6",
     "react": "^17.0.1",
+    "react-cytoscapejs": "^1.2.1",
     "react-dom": "^17.0.1",
     "react-hot-loader": "^4.12.12",
     "react-plotly.js": "^2.3.0",
