@@ -34,7 +34,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      LOG_0(TraceLevelVerbose, "Entered BinDataSetTrainingZeroDimensions");
+      LOG_0(TraceLevelVerbose, "Entered BinBoostingZeroDimensions");
 
       HistogramBucketBase * const pHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry =
@@ -121,7 +121,7 @@ public:
             -k_epsilonResidualError < residualTotalDebug && residualTotalDebug < k_epsilonResidualError
          );
       } while(pResidualErrorEnd != pResidualError);
-      LOG_0(TraceLevelVerbose, "Exited BinDataSetTrainingZeroDimensions");
+      LOG_0(TraceLevelVerbose, "Exited BinBoostingZeroDimensions");
    }
 };
 
@@ -192,7 +192,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      LOG_0(TraceLevelVerbose, "Entered BinDataSetTraining");
+      LOG_0(TraceLevelVerbose, "Entered BinBoostingInternal");
 
       HistogramBucketBase * const aHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets =
@@ -330,7 +330,7 @@ public:
 
       // first time through?
       if(pResidualErrorTrueEnd != pResidualError) {
-         LOG_0(TraceLevelVerbose, "Handling last BinDataSetTraining loop");
+         LOG_0(TraceLevelVerbose, "Handling last BinBoostingInternal loop");
 
          EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
          cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
@@ -342,7 +342,7 @@ public:
          goto one_last_loop;
       }
 
-      LOG_0(TraceLevelVerbose, "Exited BinDataSetTraining");
+      LOG_0(TraceLevelVerbose, "Exited BinBoostingInternal");
    }
 };
 

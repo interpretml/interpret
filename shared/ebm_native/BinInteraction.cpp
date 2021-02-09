@@ -52,9 +52,9 @@ public:
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-      const DataFrameInteraction * const pDataSet = pInteractionDetector->GetDataFrameInteraction();
-      const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountSamples();
+      const DataFrameInteraction * const pDataFrame = pInteractionDetector->GetDataFrameInteraction();
+      const FloatEbmType * pResidualError = pDataFrame->GetResidualPointer();
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataFrame->GetCountSamples();
 
       EBM_ASSERT(pFeatureGroup->GetCountFeatures() == pFeatureGroup->GetCountSignificantFeatures()); // for interactions, we just return 0 for interactions with zero features
       const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantFeatures());
@@ -85,7 +85,7 @@ public:
             // we strip dimensions from the tensors with 1 bin, so if 1 bin was accepted here, we'd need to strip
             // the bin too
             EBM_ASSERT(size_t { 2 } <= cBins);
-            const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
+            const StorageDataType * pInputData = pDataFrame->GetInputDataPointer(pInputFeature);
             pInputData += iSample;
             StorageDataType iBinOriginal = *pInputData;
             EBM_ASSERT(IsNumberConvertable<size_t>(iBinOriginal));

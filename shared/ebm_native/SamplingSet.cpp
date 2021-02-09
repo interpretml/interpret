@@ -15,14 +15,14 @@
 
 SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    RandomStream * const pRandomStream, 
-   const DataFrameBoosting * const pOriginDataSet
+   const DataFrameBoosting * const pOriginDataFrame
 ) {
    LOG_0(TraceLevelVerbose, "Entered SamplingSet::GenerateSingleSamplingSet");
 
    EBM_ASSERT(nullptr != pRandomStream);
-   EBM_ASSERT(nullptr != pOriginDataSet);
+   EBM_ASSERT(nullptr != pOriginDataFrame);
 
-   const size_t cSamples = pOriginDataSet->GetCountSamples();
+   const size_t cSamples = pOriginDataFrame->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
@@ -46,19 +46,19 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
       return nullptr;
    }
 
-   pRet->m_pOriginDataSet = pOriginDataSet;
+   pRet->m_pOriginDataFrame = pOriginDataFrame;
    pRet->m_aCountOccurrences = aCountOccurrences;
 
    LOG_0(TraceLevelVerbose, "Exited SamplingSet::GenerateSingleSamplingSet");
    return pRet;
 }
 
-SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataFrameBoosting * const pOriginDataSet) {
+SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataFrameBoosting * const pOriginDataFrame) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateFlatSamplingSet");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
-   EBM_ASSERT(nullptr != pOriginDataSet);
-   const size_t cSamples = pOriginDataSet->GetCountSamples();
+   EBM_ASSERT(nullptr != pOriginDataFrame);
+   const size_t cSamples = pOriginDataFrame->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
@@ -78,7 +78,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataFrameBoosting * con
       return nullptr;
    }
 
-   pRet->m_pOriginDataSet = pOriginDataSet;
+   pRet->m_pOriginDataFrame = pOriginDataFrame;
    pRet->m_aCountOccurrences = aCountOccurrences;
 
    LOG_0(TraceLevelInfo, "Exited SamplingSet::GenerateFlatSamplingSet");
@@ -105,13 +105,13 @@ WARNING_POP
 
 SamplingSet ** SamplingSet::GenerateSamplingSets(
    RandomStream * const pRandomStream, 
-   const DataFrameBoosting * const pOriginDataSet, 
+   const DataFrameBoosting * const pOriginDataFrame, 
    const size_t cSamplingSets
 ) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateSamplingSets");
 
    EBM_ASSERT(nullptr != pRandomStream);
-   EBM_ASSERT(nullptr != pOriginDataSet);
+   EBM_ASSERT(nullptr != pOriginDataFrame);
 
    const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
 
@@ -126,7 +126,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
 
    if(0 == cSamplingSets) {
       // zero is a special value that really means allocate one set that contains all samples.
-      SamplingSet * const pSingleSamplingSet = GenerateFlatSamplingSet(pOriginDataSet);
+      SamplingSet * const pSingleSamplingSet = GenerateFlatSamplingSet(pOriginDataFrame);
       if(UNLIKELY(nullptr == pSingleSamplingSet)) {
          LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");
          free(apSamplingSets);
@@ -135,7 +135,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
       apSamplingSets[0] = pSingleSamplingSet;
    } else {
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSets; ++iSamplingSet) {
-         SamplingSet * const pSingleSamplingSet = GenerateSingleSamplingSet(pRandomStream, pOriginDataSet);
+         SamplingSet * const pSingleSamplingSet = GenerateSingleSamplingSet(pRandomStream, pOriginDataFrame);
          if(UNLIKELY(nullptr == pSingleSamplingSet)) {
             LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");
             FreeSamplingSets(cSamplingSets, apSamplingSets);

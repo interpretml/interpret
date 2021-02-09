@@ -338,8 +338,8 @@ EXIT /B 0
     <ClCompile Include="SegmentedTensor.cpp" />
     <ClCompile Include="SumHistogramBuckets.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
-    <ClCompile Include="DataSetInteraction.cpp" />
-    <ClCompile Include="DataSetBoosting.cpp" />
+    <ClCompile Include="DataFrameInteraction.cpp" />
+    <ClCompile Include="DataFrameBoosting.cpp" />
     <ClCompile Include="Discretization.cpp" />
     <ClCompile Include="DllMainEbmNative.cpp" />
     <ClCompile Include="InteractionDetector.cpp" />

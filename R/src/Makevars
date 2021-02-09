@@ -21,8 +21,9 @@ OBJECTS = interpret_R.o \
    $(NATIVEDIR)/Booster.o \
    $(NATIVEDIR)/CalculateInteractionScore.o \
    $(NATIVEDIR)/CutRandom.o \
-   $(NATIVEDIR)/DataSetBoosting.o \
-   $(NATIVEDIR)/DataSetInteraction.o \
+   $(NATIVEDIR)/DataFrameBoosting.o \
+   $(NATIVEDIR)/DataFrameInteraction.o \
+   $(NATIVEDIR)/DataFrameShared.o \
    $(NATIVEDIR)/Discretization.o \
    $(NATIVEDIR)/FeatureGroup.o \
    $(NATIVEDIR)/FindBestBoostingSplitsPairs.o \

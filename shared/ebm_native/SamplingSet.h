@@ -18,20 +18,20 @@ class SamplingSet final {
    // we need to keep a count of the number of times each sample is selected in the dataset.  
    // Sampling without replacement would require 1 bit per case, so it can be faster.
 
-   const DataFrameBoosting * m_pOriginDataSet;
+   const DataFrameBoosting * m_pOriginDataFrame;
 
    // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or 
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
    // the raw data in both formats since it is never converted anyways, but this count is!
    size_t * m_aCountOccurrences;
 
-   // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataSet since many 
+   // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataFrame since many 
    // SamplingSet objects will refer to the original one
    static SamplingSet * GenerateSingleSamplingSet(
       RandomStream * const pRandomStream, 
-      const DataFrameBoosting * const pOriginDataSet
+      const DataFrameBoosting * const pOriginDataFrame
    );
-   static SamplingSet * GenerateFlatSamplingSet(const DataFrameBoosting * const pOriginDataSet);
+   static SamplingSet * GenerateFlatSamplingSet(const DataFrameBoosting * const pOriginDataFrame);
 
 public:
 
@@ -42,10 +42,10 @@ public:
 
    size_t GetTotalCountSampleOccurrences() const {
       // for SamplingSet (bootstrap sampling), we have the same number of samples as our original dataset
-      size_t cTotalCountSampleOccurrences = m_pOriginDataSet->GetCountSamples();
+      size_t cTotalCountSampleOccurrences = m_pOriginDataFrame->GetCountSamples();
 #ifndef NDEBUG
       size_t cTotalCountSampleOccurrencesDebug = 0;
-      for(size_t i = 0; i < m_pOriginDataSet->GetCountSamples(); ++i) {
+      for(size_t i = 0; i < m_pOriginDataFrame->GetCountSamples(); ++i) {
          cTotalCountSampleOccurrencesDebug += m_aCountOccurrences[i];
       }
       EBM_ASSERT(cTotalCountSampleOccurrencesDebug == cTotalCountSampleOccurrences);
@@ -54,7 +54,7 @@ public:
    }
 
    const DataFrameBoosting * GetDataFrameBoosting() const {
-      return m_pOriginDataSet;
+      return m_pOriginDataFrame;
    }
 
    const size_t * GetCountOccurrences() const {
@@ -64,7 +64,7 @@ public:
    static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);
    static SamplingSet ** GenerateSamplingSets(
       RandomStream * const pRandomStream, 
-      const DataFrameBoosting * const pOriginDataSet, 
+      const DataFrameBoosting * const pOriginDataFrame, 
       const size_t cSamplingSets
    );
 };
