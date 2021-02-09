@@ -16,7 +16,7 @@ class DataFrameInteraction final {
    FloatEbmType * m_aResidualErrors;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
-   size_t m_cFeatures;
+   size_t m_cFeatureAtomics;
 
 public:
 
@@ -31,12 +31,12 @@ public:
       m_aResidualErrors = nullptr;
       m_aaInputData = nullptr;
       m_cSamples = 0;
-      m_cFeatures = 0;
+      m_cFeatureAtomics = 0;
    }
 
    bool Initialize(
-      const size_t cFeatures, 
-      const Feature * const aFeatures, 
+      const size_t cFeatureAtomics, 
+      const FeatureAtomic * const aFeatureAtomics, 
       const size_t cSamples, 
       const IntEbmType * const aInputDataFrom, 
       const void * const aTargetData, 
@@ -49,17 +49,17 @@ public:
       return m_aResidualErrors;
    }
    // TODO: we can change this to take the m_iFeatureData value directly, which we get from a loop index
-   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const Feature * const pFeature) const {
-      EBM_ASSERT(nullptr != pFeature);
-      EBM_ASSERT(pFeature->GetIndexFeatureData() < m_cFeatures);
+   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const FeatureAtomic * const pFeatureAtomic) const {
+      EBM_ASSERT(nullptr != pFeatureAtomic);
+      EBM_ASSERT(pFeatureAtomic->GetIndexFeatureAtomicData() < m_cFeatureAtomics);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pFeature->GetIndexFeatureData()];
+      return m_aaInputData[pFeatureAtomic->GetIndexFeatureAtomicData()];
    }
    INLINE_ALWAYS size_t GetCountSamples() const {
       return m_cSamples;
    }
-   INLINE_ALWAYS size_t GetCountFeatures() const {
-      return m_cFeatures;
+   INLINE_ALWAYS size_t GetCountFeatureAtomics() const {
+      return m_cFeatureAtomics;
    }
 };
 static_assert(std::is_standard_layout<DataFrameInteraction>::value,

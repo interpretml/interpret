@@ -177,9 +177,9 @@ public:
       //       based and then having a stack based pointer system like the RandomCutState class in CutRandomInternal
       //       to handle any dimensions at the 3rd level and above.  We'll never need to make any additional checks 
       //       on main memory until we reach the 3rd dimension which should be enough for any performance geek
-      const size_t cSignificantDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantFeatures());
+      const size_t cSignificantDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= cSignificantDimensions);
-      EBM_ASSERT(cSignificantDimensions <= pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(cSignificantDimensions <= pFeatureGroup->GetCountDimensions());
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -193,12 +193,12 @@ public:
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
       {
          const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
          size_t multiply = 1;
          do {
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, aHistogramBucketsEndDebug);
 
-            const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+            const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
             // cBins can only be 0 if there are zero training and zero validation samples
             // we don't boost or allow interaction updates if there are zero training samples
             EBM_ASSERT(1 <= cBins);
@@ -353,7 +353,7 @@ public:
       static_assert(1 <= compilerCountDimensionsPossible, "can't have less than 1 dimension");
       static_assert(compilerCountDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      const size_t runtimeCountDimensions = pFeatureGroup->GetCountSignificantFeatures();
+      const size_t runtimeCountDimensions = pFeatureGroup->GetCountSignificantDimensions();
 
       EBM_ASSERT(1 <= runtimeCountDimensions);
       EBM_ASSERT(runtimeCountDimensions <= k_cDimensionsMax);
@@ -399,8 +399,8 @@ public:
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
-      EBM_ASSERT(pFeatureGroup->GetCountSignificantFeatures() <= k_cDimensionsMax);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(pFeatureGroup->GetCountSignificantDimensions() <= k_cDimensionsMax);
       TensorTotalsBuildInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(
          runtimeLearningTypeOrCountTargetClasses,
          pFeatureGroup,
@@ -544,14 +544,14 @@ extern void TensorTotalsBuild(
 //void BuildFastTotals(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureGroup * const pFeatureGroup, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets) {
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
-//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());
+//   const size_t cDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountDimensions());
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
-//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureGroup->GetCountFeatures(); ++iDimensionDebug) {
+//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureGroup->GetCountDimensions(); ++iDimensionDebug) {
 //      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cBins;
@@ -673,14 +673,14 @@ extern void TensorTotalsBuild(
 //void BuildFastTotals(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureGroup * const pFeatureGroup, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets) {
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
-//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());
+//   const size_t cDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountDimensions());
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
-//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureGroup->GetCountFeatures(); ++iDimensionDebug) {
+//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureGroup->GetCountDimensions(); ++iDimensionDebug) {
 //      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cBins;
@@ -815,7 +815,7 @@ extern void TensorTotalsBuild(
 //
 //   DO: ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
-//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());
+//   const size_t cDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountDimensions());
 //   EBM_ASSERT(1 <= cDimensions);
 //
 //   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
@@ -984,7 +984,7 @@ extern void TensorTotalsBuild(
 //
 //   BuildFastTotals(pTargetFeature, pFeatureGroup, aHistogramBuckets);
 //
-//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());
+//   const size_t cDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountDimensions());
 //   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);

@@ -10,8 +10,8 @@
 static const TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
 
 TEST_CASE("null validationMetricOut, boosting, regression") {
-   IntEbmType featureGroupsFeatureCount[1];
-   featureGroupsFeatureCount[0] = 0;
+   IntEbmType featureGroupsDimensionCount[1];
+   featureGroupsDimensionCount[0] = 0;
 
    const BoosterHandle boosterHandle = CreateRegressionBooster(
       k_randomSeed,
@@ -19,7 +19,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr,
       nullptr,
       1,
-      featureGroupsFeatureCount,
+      featureGroupsDimensionCount,
       nullptr,
       0,
       nullptr,
@@ -55,8 +55,8 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
 }
 
 TEST_CASE("null validationMetricOut, boosting, binary") {
-   IntEbmType featureGroupsFeatureCount[1];
-   featureGroupsFeatureCount[0] = 0;
+   IntEbmType featureGroupsDimensionCount[1];
+   featureGroupsDimensionCount[0] = 0;
 
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
@@ -65,7 +65,7 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr,
       nullptr,
       1,
-      featureGroupsFeatureCount,
+      featureGroupsDimensionCount,
       nullptr,
       0,
       nullptr,
@@ -101,8 +101,8 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
 }
 
 TEST_CASE("null validationMetricOut, boosting, multiclass") {
-   IntEbmType featureGroupsFeatureCount[1];
-   featureGroupsFeatureCount[0] = 0;
+   IntEbmType featureGroupsDimensionCount[1];
+   featureGroupsDimensionCount[0] = 0;
 
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
@@ -111,7 +111,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr,
       nullptr,
       1,
-      featureGroupsFeatureCount,
+      featureGroupsDimensionCount,
       nullptr,
       0,
       nullptr,
@@ -600,8 +600,8 @@ TEST_CASE("features with 0 states, interaction") {
 TEST_CASE("classification with 0 possible target states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
 
-   IntEbmType featureGroupsFeatureCount[1];
-   featureGroupsFeatureCount[0] = 0;
+   IntEbmType featureGroupsDimensionCount[1];
+   featureGroupsDimensionCount[0] = 0;
 
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
@@ -610,7 +610,7 @@ TEST_CASE("classification with 0 possible target states, boosting") {
       nullptr,
       nullptr,
       1,
-      featureGroupsFeatureCount,
+      featureGroupsDimensionCount,
       nullptr,
       0,
       nullptr,
@@ -678,27 +678,27 @@ TEST_CASE("classification with 0 possible target states, boosting") {
 }
 
 TEST_CASE("classification with 1 possible target, boosting") {
-   BoolEbmType featuresCategorical[1];
-   featuresCategorical[0] = EBM_FALSE;
+   BoolEbmType featureAtomicsCategorical[1];
+   featureAtomicsCategorical[0] = EBM_FALSE;
 
-   IntEbmType featuresBinCount[1];
-   featuresBinCount[0] = 2;
+   IntEbmType featureAtomicsBinCount[1];
+   featureAtomicsBinCount[0] = 2;
 
-   IntEbmType featureGroupsFeatureCount[1];
-   featureGroupsFeatureCount[0] = 1;
+   IntEbmType featureGroupsDimensionCount[1];
+   featureGroupsDimensionCount[0] = 1;
 
-   IntEbmType featureGroupsFeatureIndexes[1];
-   featureGroupsFeatureIndexes[0] = 0;
+   IntEbmType featureGroupsFeatureAtomicIndexes[1];
+   featureGroupsFeatureAtomicIndexes[0] = 0;
 
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
       1,
       1,
-      featuresCategorical,
-      featuresBinCount,
+      featureAtomicsCategorical,
+      featureAtomicsBinCount,
       1,
-      featureGroupsFeatureCount,
-      featureGroupsFeatureIndexes,
+      featureGroupsDimensionCount,
+      featureGroupsFeatureAtomicIndexes,
       0,
       nullptr,
       nullptr,
@@ -992,12 +992,12 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
 }
 
 TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, regression") {
-   TestApi testZeroFeaturesInGroup = TestApi(k_learningTypeRegression);
-   testZeroFeaturesInGroup.AddFeatures({});
-   testZeroFeaturesInGroup.AddFeatureGroups({ {} });
-   testZeroFeaturesInGroup.AddTrainingSamples({ RegressionSample(10, {}) });
-   testZeroFeaturesInGroup.AddValidationSamples({ RegressionSample(12, {}) });
-   testZeroFeaturesInGroup.InitializeBoosting();
+   TestApi testZeroDimensions = TestApi(k_learningTypeRegression);
+   testZeroDimensions.AddFeatures({});
+   testZeroDimensions.AddFeatureGroups({ {} });
+   testZeroDimensions.AddTrainingSamples({ RegressionSample(10, {}) });
+   testZeroDimensions.AddValidationSamples({ RegressionSample(12, {}) });
+   testZeroDimensions.InitializeBoosting();
 
    TestApi testOneState = TestApi(k_learningTypeRegression);
    testOneState.AddFeatures({ FeatureTest(1) });
@@ -1014,31 +1014,31 @@ TEST_CASE("FeatureGroup with one feature with one or two states is the exact sam
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
-      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
-      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroFeaturesInGroup.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         FloatEbmType validationMetricZeroFeaturesInGroup = testZeroFeaturesInGroup.Boost(iFeatureGroup);
+      assert(testZeroDimensions.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
+      assert(testZeroDimensions.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
+      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroDimensions.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         FloatEbmType validationMetricZeroDimensions = testZeroDimensions.Boost(iFeatureGroup);
          FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureGroup);
-         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricOneState);
+         CHECK_APPROX(validationMetricZeroDimensions, validationMetricOneState);
          FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureGroup);
-         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricTwoStates);
+         CHECK_APPROX(validationMetricZeroDimensions, validationMetricTwoStates);
 
-         FloatEbmType modelValueZeroFeaturesInGroup = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+         FloatEbmType modelValueZeroDimensions = testZeroDimensions.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
          FloatEbmType modelValueOneState = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup, modelValueOneState);
+         CHECK_APPROX(modelValueZeroDimensions, modelValueOneState);
          FloatEbmType modelValueTwoStates = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup, modelValueTwoStates);
+         CHECK_APPROX(modelValueZeroDimensions, modelValueTwoStates);
       }
    }
 }
 
 TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, binary") {
-   TestApi testZeroFeaturesInGroup = TestApi(2, 0);
-   testZeroFeaturesInGroup.AddFeatures({});
-   testZeroFeaturesInGroup.AddFeatureGroups({ {} });
-   testZeroFeaturesInGroup.AddTrainingSamples({ ClassificationSample(0, {}) });
-   testZeroFeaturesInGroup.AddValidationSamples({ ClassificationSample(0, {}) });
-   testZeroFeaturesInGroup.InitializeBoosting();
+   TestApi testZeroDimensions = TestApi(2, 0);
+   testZeroDimensions.AddFeatures({});
+   testZeroDimensions.AddFeatureGroups({ {} });
+   testZeroDimensions.AddTrainingSamples({ ClassificationSample(0, {}) });
+   testZeroDimensions.AddValidationSamples({ ClassificationSample(0, {}) });
+   testZeroDimensions.InitializeBoosting();
 
    TestApi testOneState = TestApi(2, 0);
    testOneState.AddFeatures({ FeatureTest(1) });
@@ -1055,37 +1055,37 @@ TEST_CASE("FeatureGroup with one feature with one or two states is the exact sam
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
-      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
-      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroFeaturesInGroup.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         FloatEbmType validationMetricZeroFeaturesInGroup = testZeroFeaturesInGroup.Boost(iFeatureGroup);
+      assert(testZeroDimensions.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
+      assert(testZeroDimensions.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
+      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroDimensions.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         FloatEbmType validationMetricZeroDimensions = testZeroDimensions.Boost(iFeatureGroup);
          FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureGroup);
-         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricOneState);
+         CHECK_APPROX(validationMetricZeroDimensions, validationMetricOneState);
          FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureGroup);
-         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricTwoStates);
+         CHECK_APPROX(validationMetricZeroDimensions, validationMetricTwoStates);
 
-         FloatEbmType modelValueZeroFeaturesInGroup0 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+         FloatEbmType modelValueZeroDimensions0 = testZeroDimensions.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
          FloatEbmType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup0, modelValueOneState0);
+         CHECK_APPROX(modelValueZeroDimensions0, modelValueOneState0);
          FloatEbmType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup0, modelValueTwoStates0);
+         CHECK_APPROX(modelValueZeroDimensions0, modelValueTwoStates0);
 
-         FloatEbmType modelValueZeroFeaturesInGroup1 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
+         FloatEbmType modelValueZeroDimensions1 = testZeroDimensions.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
          FloatEbmType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 1);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup1, modelValueOneState1);
+         CHECK_APPROX(modelValueZeroDimensions1, modelValueOneState1);
          FloatEbmType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup1, modelValueTwoStates1);
+         CHECK_APPROX(modelValueZeroDimensions1, modelValueTwoStates1);
       }
    }
 }
 
 TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, multiclass") {
-   TestApi testZeroFeaturesInGroup = TestApi(3);
-   testZeroFeaturesInGroup.AddFeatures({});
-   testZeroFeaturesInGroup.AddFeatureGroups({ {} });
-   testZeroFeaturesInGroup.AddTrainingSamples({ ClassificationSample(0, {}) });
-   testZeroFeaturesInGroup.AddValidationSamples({ ClassificationSample(0, {}) });
-   testZeroFeaturesInGroup.InitializeBoosting();
+   TestApi testZeroDimensions = TestApi(3);
+   testZeroDimensions.AddFeatures({});
+   testZeroDimensions.AddFeatureGroups({ {} });
+   testZeroDimensions.AddTrainingSamples({ ClassificationSample(0, {}) });
+   testZeroDimensions.AddValidationSamples({ ClassificationSample(0, {}) });
+   testZeroDimensions.InitializeBoosting();
 
    TestApi testOneState = TestApi(3);
    testOneState.AddFeatures({ FeatureTest(1) });
@@ -1102,32 +1102,32 @@ TEST_CASE("FeatureGroup with one feature with one or two states is the exact sam
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
-      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
-      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroFeaturesInGroup.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         FloatEbmType validationMetricZeroFeaturesInGroup = testZeroFeaturesInGroup.Boost(iFeatureGroup);
+      assert(testZeroDimensions.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
+      assert(testZeroDimensions.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
+      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroDimensions.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         FloatEbmType validationMetricZeroDimensions = testZeroDimensions.Boost(iFeatureGroup);
          FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureGroup);
-         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricOneState);
+         CHECK_APPROX(validationMetricZeroDimensions, validationMetricOneState);
          FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureGroup);
-         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricTwoStates);
+         CHECK_APPROX(validationMetricZeroDimensions, validationMetricTwoStates);
 
-         FloatEbmType modelValueZeroFeaturesInGroup0 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+         FloatEbmType modelValueZeroDimensions0 = testZeroDimensions.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
          FloatEbmType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup0, modelValueOneState0);
+         CHECK_APPROX(modelValueZeroDimensions0, modelValueOneState0);
          FloatEbmType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup0, modelValueTwoStates0);
+         CHECK_APPROX(modelValueZeroDimensions0, modelValueTwoStates0);
 
-         FloatEbmType modelValueZeroFeaturesInGroup1 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
+         FloatEbmType modelValueZeroDimensions1 = testZeroDimensions.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
          FloatEbmType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 1);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup1, modelValueOneState1);
+         CHECK_APPROX(modelValueZeroDimensions1, modelValueOneState1);
          FloatEbmType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup1, modelValueTwoStates1);
+         CHECK_APPROX(modelValueZeroDimensions1, modelValueTwoStates1);
 
-         FloatEbmType modelValueZeroFeaturesInGroup2 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
+         FloatEbmType modelValueZeroDimensions2 = testZeroDimensions.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
          FloatEbmType modelValueOneState2 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 2);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup2, modelValueOneState2);
+         CHECK_APPROX(modelValueZeroDimensions2, modelValueOneState2);
          FloatEbmType modelValueTwoStates2 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
-         CHECK_APPROX(modelValueZeroFeaturesInGroup2, modelValueTwoStates2);
+         CHECK_APPROX(modelValueZeroDimensions2, modelValueTwoStates2);
       }
    }
 }

@@ -20,8 +20,8 @@
 class InteractionDetector final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
-   size_t m_cFeatures;
-   Feature * m_aFeatures;
+   size_t m_cFeatureAtomics;
+   FeatureAtomic * m_aFeatureAtomics;
 
    DataFrameInteraction m_dataSet;
 
@@ -38,8 +38,8 @@ public:
    INLINE_ALWAYS void InitializeZero() {
       m_runtimeLearningTypeOrCountTargetClasses = 0;
 
-      m_cFeatures = 0;
-      m_aFeatures = nullptr;
+      m_cFeatureAtomics = 0;
+      m_aFeatureAtomics = nullptr;
 
       m_dataSet.InitializeZero();
 
@@ -63,21 +63,21 @@ public:
       return &m_dataSet;
    }
 
-   INLINE_ALWAYS const Feature * GetFeatures() const {
-      return m_aFeatures;
+   INLINE_ALWAYS const FeatureAtomic * GetFeatureAtomics() const {
+      return m_aFeatureAtomics;
    }
 
-   INLINE_ALWAYS size_t GetCountFeatures() const {
-      return m_cFeatures;
+   INLINE_ALWAYS size_t GetCountFeatureAtomics() const {
+      return m_cFeatureAtomics;
    }
 
    static void Free(InteractionDetector * const pInteractionDetector);
    static InteractionDetector * Allocate(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cFeatures,
+      const size_t cFeatureAtomics,
       const FloatEbmType * const optionalTempParams,
-      const BoolEbmType * const aFeaturesCategorical,
-      const IntEbmType * const aFeaturesBinCount,
+      const BoolEbmType * const aFeatureAtomicsCategorical,
+      const IntEbmType * const aFeatureAtomicsBinCount,
       const size_t cSamples,
       const void * const aTargets,
       const IntEbmType * const aBinnedData,

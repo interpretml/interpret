@@ -169,7 +169,7 @@ static bool BoostSingleDimensional(
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
-   EBM_ASSERT(1 == pFeatureGroup->GetCountSignificantFeatures());
+   EBM_ASSERT(1 == pFeatureGroup->GetCountSignificantDimensions());
 
    EBM_ASSERT(IntEbmType { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
    size_t cLeavesMax = static_cast<size_t>(countLeavesMax);
@@ -277,16 +277,16 @@ static bool BoostMultiDimensional(
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
-   EBM_ASSERT(2 <= pFeatureGroup->GetCountFeatures());
-   EBM_ASSERT(2 <= pFeatureGroup->GetCountSignificantFeatures());
+   EBM_ASSERT(2 <= pFeatureGroup->GetCountDimensions());
+   EBM_ASSERT(2 <= pFeatureGroup->GetCountSignificantDimensions());
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
 
    const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
    do {
-      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
       EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
       if(size_t { 1 } < cBins) {
          // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -295,7 +295,7 @@ static bool BoostMultiDimensional(
          // allocation that cTotalBucketsMainSpace would not overflow
          EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
          cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-         // we check for simple multiplication overflow from m_cBins in Booster->Initialize when we unpack featureGroupsFeatureIndexes
+         // we check for simple multiplication overflow from m_cBins in Booster->Initialize when we unpack featureGroupsFeatureAtomicIndexes
          EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins));
          cTotalBucketsMainSpace *= cBins;
          // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -490,7 +490,7 @@ static bool BoostMultiDimensional(
    //   move_next_permutation:
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
-   if(2 == pFeatureGroup->GetCountSignificantFeatures()) {
+   if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
       HistogramBucketBase * const pTotal = GetHistogramBucketByIndex(
          cBytesPerHistogramBucket,
          aHistogramBuckets,
@@ -555,14 +555,14 @@ static bool BoostRandom(
 
    LOG_0(TraceLevelVerbose, "Entered BoostRandom");
 
-   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
+   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
    EBM_ASSERT(1 <= cDimensions);
 
    size_t cTotalBuckets = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeatureAtomic->GetCountBins();
       EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
-      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes
+      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureAtomicIndexes
       EBM_ASSERT(!IsMultiplyError(cTotalBuckets, cBins));
       cTotalBuckets *= cBins;
    }
@@ -664,7 +664,7 @@ static IntEbmType GenerateModelUpdateInternal(
 
    const size_t cSamplingSetsAfterZero = (0 == pBooster->GetCountSamplingSets()) ? 1 : pBooster->GetCountSamplingSets();
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
-   const size_t cSignificantDimensions = pFeatureGroup->GetCountSignificantFeatures();
+   const size_t cSignificantDimensions = pFeatureGroup->GetCountSignificantDimensions();
 
    IntEbmType lastDimensionLeavesMax = IntEbmType { 0 };
    size_t cSignificantBinCount;
@@ -674,11 +674,11 @@ static IntEbmType GenerateModelUpdateInternal(
       if(0 != cSignificantDimensions) {
          const IntEbmType * pLeavesMax = aLeavesMax;
          const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-         EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
-         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+         EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
+         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
          do {
-            const Feature * pFeature = pFeatureGroupEntry->m_pFeature;
-            const size_t cBins = pFeature->GetCountBins();
+            const FeatureAtomic * pFeatureAtomic = pFeatureGroupEntry->m_pFeatureAtomic;
+            const size_t cBins = pFeatureAtomic->GetCountBins();
             if(size_t { 1 } < cBins) {
                EBM_ASSERT(size_t { 2 } <= cSignificantDimensions || IntEbmType { 0 } == lastDimensionLeavesMax);
 

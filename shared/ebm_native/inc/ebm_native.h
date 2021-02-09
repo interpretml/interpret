@@ -404,12 +404,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SampleWithou
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
+   IntEbmType countFeatureAtomics,
+   const BoolEbmType * featureAtomicsCategorical,
+   const IntEbmType * featureAtomicsBinCount,
    IntEbmType countFeatureGroups,
-   const IntEbmType * featureGroupsFeatureCount,
-   const IntEbmType * featureGroupsFeatureIndexes,
+   const IntEbmType * featureGroupsDimensionCount,
+   const IntEbmType * featureGroupsFeatureAtomicIndexes,
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
@@ -425,12 +425,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
    SeedEbmType randomSeed,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
+   IntEbmType countFeatureAtomics,
+   const BoolEbmType * featureAtomicsCategorical,
+   const IntEbmType * featureAtomicsBinCount,
    IntEbmType countFeatureGroups,
-   const IntEbmType * featureGroupsFeatureCount, 
-   const IntEbmType * featureGroupsFeatureIndexes, 
+   const IntEbmType * featureGroupsDimensionCount, 
+   const IntEbmType * featureGroupsFeatureAtomicIndexes, 
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData, 
    const FloatEbmType * trainingTargets,
@@ -496,9 +496,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeThreadSt
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
+   IntEbmType countFeatureAtomics,
+   const BoolEbmType * featureAtomicsCategorical,
+   const IntEbmType * featureAtomicsBinCount,
    IntEbmType countSamples,
    const IntEbmType * binnedData,
    const IntEbmType * targets,
@@ -507,9 +507,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
-   IntEbmType countFeatures, 
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
+   IntEbmType countFeatureAtomics, 
+   const BoolEbmType * featureAtomicsCategorical,
+   const IntEbmType * featureAtomicsBinCount,
    IntEbmType countSamples,
    const IntEbmType * binnedData, 
    const FloatEbmType * targets,
@@ -519,8 +519,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
    InteractionDetectorHandle interactionDetectorHandle, 
-   IntEbmType countFeaturesInGroup,
-   const IntEbmType * featureIndexes,
+   IntEbmType countDimensions,
+   const IntEbmType * featureAtomicIndexes,
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 );

@@ -272,8 +272,8 @@ void TestApi::AddFeatures(const std::vector<FeatureTest> features) {
    }
 
    for(const FeatureTest & oneFeature : features) {
-      m_featuresCategorical.push_back(oneFeature.m_bCategorical ? EBM_TRUE : EBM_FALSE);
-      m_featuresBinCount.push_back(oneFeature.m_countBins);
+      m_featureAtomicsCategorical.push_back(oneFeature.m_bCategorical ? EBM_TRUE : EBM_FALSE);
+      m_featureAtomicsBinCount.push_back(oneFeature.m_countBins);
    }
 
    m_stage = Stage::FeaturesAdded;
@@ -285,14 +285,14 @@ void TestApi::AddFeatureGroups(const std::vector<std::vector<size_t>> featureGro
    }
 
    for(const std::vector<size_t> oneFeatureGroup : featureGroups) {
-      m_featureGroupsFeatureCount.push_back(oneFeatureGroup.size());
+      m_featureGroupsDimensionCount.push_back(oneFeatureGroup.size());
       std::vector<size_t> countBins;
       for(const size_t oneIndex : oneFeatureGroup) {
-         if(m_featuresBinCount.size() <= oneIndex) {
+         if(m_featureAtomicsBinCount.size() <= oneIndex) {
             exit(1);
          }
-         m_featureGroupsFeatureIndexes.push_back(oneIndex);
-         countBins.push_back(static_cast<size_t>(m_featuresBinCount[oneIndex]));
+         m_featureGroupsFeatureAtomicIndexes.push_back(oneIndex);
+         countBins.push_back(static_cast<size_t>(m_featureAtomicsBinCount[oneIndex]));
       }
       m_countBinsByFeatureGroup.push_back(countBins);
    }
@@ -309,7 +309,7 @@ void TestApi::AddTrainingSamples(const std::vector<RegressionSample> samples) {
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatures = m_featureAtomicsBinCount.size();
       const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
       m_bNullTrainingPredictionScores = bNullPredictionScores;
 
@@ -340,7 +340,7 @@ void TestApi::AddTrainingSamples(const std::vector<RegressionSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureAtomicsBinCount[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -365,7 +365,7 @@ void TestApi::AddTrainingSamples(const std::vector<ClassificationSample> samples
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatures = m_featureAtomicsBinCount.size();
       const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
       m_bNullTrainingPredictionScores = bNullPredictionScores;
 
@@ -446,7 +446,7 @@ void TestApi::AddTrainingSamples(const std::vector<ClassificationSample> samples
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureAtomicsBinCount[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -471,7 +471,7 @@ void TestApi::AddValidationSamples(const std::vector<RegressionSample> samples) 
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatures = m_featureAtomicsBinCount.size();
       const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
       m_bNullValidationPredictionScores = bNullPredictionScores;
 
@@ -502,7 +502,7 @@ void TestApi::AddValidationSamples(const std::vector<RegressionSample> samples) 
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureAtomicsBinCount[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -527,7 +527,7 @@ void TestApi::AddValidationSamples(const std::vector<ClassificationSample> sampl
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatures = m_featureAtomicsBinCount.size();
       const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
       m_bNullValidationPredictionScores = bNullPredictionScores;
 
@@ -608,7 +608,7 @@ void TestApi::AddValidationSamples(const std::vector<ClassificationSample> sampl
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureAtomicsBinCount[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -643,12 +643,12 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       m_boosterHandle = CreateClassificationBooster(
          k_randomSeed,
          m_learningTypeOrCountTargetClasses,
-         m_featuresBinCount.size(),
-         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
-         0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
-         m_featureGroupsFeatureCount.size(),
-         0 == m_featureGroupsFeatureCount.size() ? nullptr : &m_featureGroupsFeatureCount[0],
-         0 == m_featureGroupsFeatureIndexes.size() ? nullptr : &m_featureGroupsFeatureIndexes[0],
+         m_featureAtomicsBinCount.size(),
+         0 == m_featureAtomicsCategorical.size() ? nullptr : &m_featureAtomicsCategorical[0],
+         0 == m_featureAtomicsBinCount.size() ? nullptr : &m_featureAtomicsBinCount[0],
+         m_featureGroupsDimensionCount.size(),
+         0 == m_featureGroupsDimensionCount.size() ? nullptr : &m_featureGroupsDimensionCount[0],
+         0 == m_featureGroupsFeatureAtomicIndexes.size() ? nullptr : &m_featureGroupsFeatureAtomicIndexes[0],
          m_trainingClassificationTargets.size(),
          0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0],
          0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0],
@@ -671,12 +671,12 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       }
       m_boosterHandle = CreateRegressionBooster(
          k_randomSeed,
-         m_featuresBinCount.size(),
-         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
-         0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
-         m_featureGroupsFeatureCount.size(),
-         0 == m_featureGroupsFeatureCount.size() ? nullptr : &m_featureGroupsFeatureCount[0],
-         0 == m_featureGroupsFeatureIndexes.size() ? nullptr : &m_featureGroupsFeatureIndexes[0],
+         m_featureAtomicsBinCount.size(),
+         0 == m_featureAtomicsCategorical.size() ? nullptr : &m_featureAtomicsCategorical[0],
+         0 == m_featureAtomicsBinCount.size() ? nullptr : &m_featureAtomicsBinCount[0],
+         m_featureGroupsDimensionCount.size(),
+         0 == m_featureGroupsDimensionCount.size() ? nullptr : &m_featureGroupsDimensionCount[0],
+         0 == m_featureGroupsFeatureAtomicIndexes.size() ? nullptr : &m_featureGroupsFeatureAtomicIndexes[0],
          m_trainingRegressionTargets.size(),
          0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0],
          0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0],
@@ -714,7 +714,7 @@ FloatEbmType TestApi::Boost(
    if(indexFeatureGroup < IntEbmType { 0 }) {
       exit(1);
    }
-   if(m_featureGroupsFeatureCount.size() <= static_cast<size_t>(indexFeatureGroup)) {
+   if(m_featureGroupsDimensionCount.size() <= static_cast<size_t>(indexFeatureGroup)) {
       exit(1);
    }
    if(std::isnan(learningRate)) {
@@ -790,7 +790,7 @@ const void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, Floa
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
+   if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
       exit(1);
    }
    const IntEbmType ret = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
@@ -835,7 +835,7 @@ const void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, F
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroupsFeatureCount.size() <= iFeatureGroup) {
+   if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
       exit(1);
    }
    const IntEbmType ret = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
@@ -853,12 +853,12 @@ void TestApi::AddInteractionSamples(const std::vector<RegressionSample> samples)
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatureAtomics = m_featureAtomicsBinCount.size();
       const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
       m_bNullInteractionPredictionScores = bNullPredictionScores;
 
       for(const RegressionSample oneSample : samples) {
-         if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
+         if(cFeatureAtomics != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
          if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
@@ -883,8 +883,8 @@ void TestApi::AddInteractionSamples(const std::vector<RegressionSample> samples)
             m_interactionPredictionScores.push_back(score);
          }
       }
-      for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+      for(size_t iFeature = 0; iFeature < cFeatureAtomics; ++iFeature) {
+         const IntEbmType countBins = m_featureAtomicsBinCount[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -909,12 +909,12 @@ void TestApi::AddInteractionSamples(const std::vector<ClassificationSample> samp
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatureAtomics = m_featureAtomicsBinCount.size();
       const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
       m_bNullInteractionPredictionScores = bNullPredictionScores;
 
       for(const ClassificationSample oneSample : samples) {
-         if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
+         if(cFeatureAtomics != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
          if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
@@ -990,10 +990,10 @@ void TestApi::AddInteractionSamples(const std::vector<ClassificationSample> samp
             }
          }
       }
-      for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+      for(size_t iFeatureAtomic = 0; iFeatureAtomic < cFeatureAtomics; ++iFeatureAtomic) {
+         const IntEbmType countBins = m_featureAtomicsBinCount[iFeatureAtomic];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-            const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
+            const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeatureAtomic];
             if(data < 0) {
                exit(1);
             }
@@ -1019,9 +1019,9 @@ void TestApi::InitializeInteraction() {
       }
       m_interactionDetectorHandle = CreateClassificationInteractionDetector(
          m_learningTypeOrCountTargetClasses,
-         m_featuresBinCount.size(),
-         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
-         0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
+         m_featureAtomicsBinCount.size(),
+         0 == m_featureAtomicsCategorical.size() ? nullptr : &m_featureAtomicsCategorical[0],
+         0 == m_featureAtomicsBinCount.size() ? nullptr : &m_featureAtomicsBinCount[0],
          m_interactionClassificationTargets.size(),
          0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0],
          0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0],
@@ -1034,9 +1034,9 @@ void TestApi::InitializeInteraction() {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionRegressionTargets.size());
       }
       m_interactionDetectorHandle = CreateRegressionInteractionDetector(
-         m_featuresBinCount.size(),
-         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
-         0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
+         m_featureAtomicsBinCount.size(),
+         0 == m_featureAtomicsCategorical.size() ? nullptr : &m_featureAtomicsCategorical[0],
+         0 == m_featureAtomicsBinCount.size() ? nullptr : &m_featureAtomicsBinCount[0],
          m_interactionRegressionTargets.size(),
          0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0],
          0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0],
@@ -1065,7 +1065,7 @@ FloatEbmType TestApi::InteractionScore(
       if(oneFeatureIndex < IntEbmType { 0 }) {
          exit(1);
       }
-      if(m_featuresBinCount.size() <= static_cast<size_t>(oneFeatureIndex)) {
+      if(m_featureAtomicsBinCount.size() <= static_cast<size_t>(oneFeatureIndex)) {
          exit(1);
       }
    }

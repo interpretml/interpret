@@ -40,7 +40,7 @@ void TensorTotalsSumDebugSlow(
    const size_t * const aiLast,
    HistogramBucket<bClassification> * const pRet
 ) {
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures()); // why bother getting totals if we just have 1 bin
+   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions()); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
 
    size_t iTensorBin = 0;
@@ -48,9 +48,9 @@ void TensorTotalsSumDebugSlow(
    size_t iDimensionInitialize = 0;
 
    const FeatureGroupEntry * pFeatureGroupEntryInit = pFeatureGroup->GetFeatureGroupEntries();
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntryInit + pFeatureGroup->GetCountFeatures();
+   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntryInit + pFeatureGroup->GetCountDimensions();
    do {
-      const size_t cBins = pFeatureGroupEntryInit->m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureGroupEntryInit->m_pFeatureAtomic->GetCountBins();
       // cBins can only be 0 if there are zero training and zero validation samples
       // we don't boost or allow interaction updates if there are zero training samples
       EBM_ASSERT(size_t { 1 } <= cBins);
@@ -75,7 +75,7 @@ void TensorTotalsSumDebugSlow(
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
    pRet->Zero(cVectorLength);
 
-   const size_t cSignficantDimensions = pFeatureGroup->GetCountSignificantFeatures();
+   const size_t cSignficantDimensions = pFeatureGroup->GetCountSignificantDimensions();
 
    while(true) {
       const HistogramBucket<bClassification> * const pHistogramBucket =
@@ -94,7 +94,7 @@ void TensorTotalsSumDebugSlow(
 
          size_t cBins;
          do {
-            cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+            cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
             // cBins can only be 0 if there are zero training and zero validation samples
             // we don't boost or allow interaction updates if there are zero training samples
             EBM_ASSERT(size_t { 1 } <= cBins);
@@ -133,11 +133,11 @@ void TensorTotalsCompareDebug(
    size_t directionVectorDestroy = directionVector;
 
    const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
 
    size_t iDimensionDebug = 0;
    do {
-      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
       // cBins can only be 0 if there are zero training and zero validation samples
       // we don't boost or allow interaction updates if there are zero training samples
       EBM_ASSERT(size_t { 1 } <= cBins);
@@ -200,7 +200,7 @@ void TensorTotalsSum(
    //       be optimized away.  We should probably build special cases for this function for pairs (only 4 options
    //       in an if statement), and tripples (only 8 options in an if statement) and then keep this more general one 
    //       for higher dimensions
-   const size_t cSignficantDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantFeatures());
+   const size_t cSignficantDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantDimensions());
    EBM_ASSERT(1 <= cSignficantDimensions);
    EBM_ASSERT(cSignficantDimensions <= k_cDimensionsMax);
 
@@ -215,14 +215,14 @@ void TensorTotalsSum(
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
    const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[pFeatureGroup->GetCountFeatures()];
+   EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
+   const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[pFeatureGroup->GetCountDimensions()];
    const size_t * piPointInitialize = aiPoint;
 
    if(0 == directionVector) {
       // we would require a check in our inner loop below to handle the case of zero FeatureGroupEntry items, so let's handle it separetly here instead
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
          // cBins can only be 0 if there are zero training and zero validation samples
          // we don't boost or allow interaction updates if there are zero training samples
          EBM_ASSERT(size_t { 1 } <= cBins);
@@ -262,7 +262,7 @@ void TensorTotalsSum(
    {
       size_t directionVectorDestroy = directionVector;
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
          // cBins can only be 0 if there are zero training and zero validation samples
          // we don't boost or allow interaction updates if there are zero training samples
          EBM_ASSERT(size_t { 1 } <= cBins);

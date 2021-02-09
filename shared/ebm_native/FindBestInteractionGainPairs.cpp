@@ -69,13 +69,13 @@ public:
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
       // for interactions we return an interaction score of 0 if any of the dimensions are useless
-      EBM_ASSERT(2 == pFeatureGroup->GetCountFeatures());
-      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures());
+      EBM_ASSERT(2 == pFeatureGroup->GetCountDimensions());
+      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions());
 
       // we return an interaction score of 0 if any features are useless before calling here
-      EBM_ASSERT(pFeatureGroup->GetCountFeatures() == pFeatureGroup->GetCountSignificantFeatures());
-      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
-      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->GetCountBins();
+      EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions());
+      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeatureAtomic->GetCountBins();
+      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeatureAtomic->GetCountBins();
 
       // any pair with a feature with 1 cBins returns an interaction score of 0
       EBM_ASSERT(2 <= cBinsDimension1);
@@ -97,7 +97,7 @@ public:
          do {
             aiStart[1] = iBin2;
 
-            EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+            EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
             TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                learningTypeOrCountTargetClasses,
                pFeatureGroup,
@@ -111,7 +111,7 @@ public:
 #endif // NDEBUG
                );
             if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLowLow->GetCountSamplesInBucket())) {
-               EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+               EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                   learningTypeOrCountTargetClasses,
                   pFeatureGroup,
@@ -125,7 +125,7 @@ public:
 #endif // NDEBUG
                   );
                if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLowHigh->GetCountSamplesInBucket())) {
-                  EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+                  EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                   TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                      learningTypeOrCountTargetClasses,
                      pFeatureGroup,
@@ -139,7 +139,7 @@ public:
 #endif // NDEBUG
                      );
                   if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHighLow->GetCountSamplesInBucket())) {
-                     EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+                     EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                         learningTypeOrCountTargetClasses,
                         pFeatureGroup,

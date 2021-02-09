@@ -68,14 +68,14 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructResidualErrors(
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cFeatures, 
-   const Feature * const aFeatures, 
+   const FeatureAtomic * const aFeatureAtomics, 
    const size_t cSamples, 
    const IntEbmType * const aBinnedData
 ) {
    LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
-   EBM_ASSERT(nullptr != aFeatures);
+   EBM_ASSERT(nullptr != aFeatureAtomics);
    EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(nullptr != aBinnedData);
 
@@ -86,8 +86,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    }
 
    StorageDataType ** paInputDataTo = aaInputDataTo;
-   const Feature * pFeature = aFeatures;
-   const Feature * const pFeatureEnd = aFeatures + cFeatures;
+   const FeatureAtomic * pFeatureAtomic = aFeatureAtomics;
+   const FeatureAtomic * const pFeatureAtomicEnd = aFeatureAtomics + cFeatures;
    do {
       StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cSamples);
       if(nullptr == pInputDataTo) {
@@ -97,7 +97,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      const IntEbmType * pInputDataFrom = &aBinnedData[pFeature->GetIndexFeatureData() * cSamples];
+      const IntEbmType * pInputDataFrom = &aBinnedData[pFeatureAtomic->GetIndexFeatureAtomicData() * cSamples];
       const IntEbmType * pInputDataFromEnd = &pInputDataFrom[cSamples];
       do {
          const IntEbmType inputData = *pInputDataFrom;
@@ -114,7 +114,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             goto free_all;
          }
          const size_t iData = static_cast<size_t>(inputData);
-         if(pFeature->GetCountBins() <= iData) {
+         if(pFeatureAtomic->GetCountBins() <= iData) {
             LOG_0(TraceLevelError, "ERROR DataFrameInteraction::ConstructInputData iData value must be less than the number of bins");
             goto free_all;
          }
@@ -123,8 +123,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          ++pInputDataFrom;
       } while(pInputDataFromEnd != pInputDataFrom);
 
-      ++pFeature;
-   } while(pFeatureEnd != pFeature);
+      ++pFeatureAtomic;
+   } while(pFeatureAtomicEnd != pFeatureAtomic);
 
    LOG_0(TraceLevelInfo, "Exited DataFrameInteraction::ConstructInputData");
    return aaInputDataTo;
@@ -145,9 +145,9 @@ void DataFrameInteraction::Destruct() {
 
    free(m_aResidualErrors);
    if(nullptr != m_aaInputData) {
-      EBM_ASSERT(1 <= m_cFeatures);
+      EBM_ASSERT(1 <= m_cFeatureAtomics);
       StorageDataType ** paInputData = m_aaInputData;
-      const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatures;
+      const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatureAtomics;
       do {
          EBM_ASSERT(nullptr != *paInputData);
          free(*paInputData);
@@ -161,8 +161,8 @@ void DataFrameInteraction::Destruct() {
 WARNING_POP
 
 bool DataFrameInteraction::Initialize(
-   const size_t cFeatures, 
-   const Feature * const aFeatures, 
+   const size_t cFeatureAtomics, 
+   const FeatureAtomic * const aFeatureAtomics, 
    const size_t cSamples, 
    const IntEbmType * const aBinnedData, 
    const void * const aTargetData, 
@@ -214,8 +214,8 @@ bool DataFrameInteraction::Initialize(
       if(nullptr == aResidualErrors) {
          goto exit_error;
       }
-      if(0 != cFeatures) {
-         StorageDataType ** const aaInputData = ConstructInputData(cFeatures, aFeatures, cSamples, aBinnedData);
+      if(0 != cFeatureAtomics) {
+         StorageDataType ** const aaInputData = ConstructInputData(cFeatureAtomics, aFeatureAtomics, cSamples, aBinnedData);
          if(nullptr == aaInputData) {
             free(aResidualErrors);
             goto exit_error;
@@ -225,7 +225,7 @@ bool DataFrameInteraction::Initialize(
       m_aResidualErrors = aResidualErrors;
       m_cSamples = cSamples;
    }
-   m_cFeatures = cFeatures;
+   m_cFeatureAtomics = cFeatureAtomics;
 
    LOG_0(TraceLevelInfo, "Exited DataFrameInteraction::Initialize");
    return false;

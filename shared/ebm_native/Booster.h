@@ -27,8 +27,8 @@
 class Booster final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
-   size_t m_cFeatures;
-   Feature * m_aFeatures;
+   size_t m_cFeatureAtomics;
+   FeatureAtomic * m_aFeatureAtomics;
 
    size_t m_cFeatureGroups;
    FeatureGroup ** m_apFeatureGroups;
@@ -66,8 +66,8 @@ public:
    INLINE_ALWAYS void InitializeZero() {
       m_runtimeLearningTypeOrCountTargetClasses = 0;
 
-      m_cFeatures = 0;
-      m_aFeatures = nullptr;
+      m_cFeatureAtomics = 0;
+      m_aFeatureAtomics = nullptr;
 
       m_cFeatureGroups = 0;
       m_apFeatureGroups = nullptr;
@@ -147,10 +147,10 @@ public:
       const size_t cFeatureGroups,
       const size_t cSamplingSets,
       const FloatEbmType * const optionalTempParams,
-      const BoolEbmType * const aFeaturesCategorical,
-      const IntEbmType * const aFeaturesBinCount,
-      const IntEbmType * const aFeatureGroupsFeatureCounts,
-      const IntEbmType * const aFeatureGroupsFeatureIndexes, 
+      const BoolEbmType * const aFeatureAtomicsCategorical,
+      const IntEbmType * const aFeatureAtomicsBinCount,
+      const IntEbmType * const aFeatureGroupsDimensionCounts,
+      const IntEbmType * const aFeatureGroupsFeatureAtomicIndexes, 
       const size_t cTrainingSamples, 
       const void * const aTrainingTargets, 
       const IntEbmType * const aTrainingBinnedData, 

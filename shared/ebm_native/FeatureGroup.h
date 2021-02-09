@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef FEATURE_COMBINATION_H
-#define FEATURE_COMBINATION_H
+#ifndef FEATURE_GROUP_H
+#define FEATURE_GROUP_H
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -18,7 +18,7 @@ struct FeatureGroupEntry final {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    // TODO : we can put the entire Feature data into this location instead of using a pointer
-   const Feature * m_pFeature;
+   const FeatureAtomic * m_pFeatureAtomic;
 };
 static_assert(std::is_standard_layout<FeatureGroupEntry>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -29,8 +29,8 @@ static_assert(std::is_pod<FeatureGroupEntry>::value,
 
 class FeatureGroup final {
    size_t m_cItemsPerBitPackedDataUnit;
-   size_t m_cFeatures;
-   size_t m_cSignificantFeatures;
+   size_t m_cDimensions;
+   size_t m_cSignificantDimensions;
    size_t m_iInputData;
    int m_cLogEnterGenerateModelUpdateMessages;
    int m_cLogExitGenerateModelUpdateMessages;
@@ -60,7 +60,7 @@ public:
    }
 
    INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureGroup) {
-      m_cFeatures = cFeatures;
+      m_cDimensions = cFeatures;
       m_iInputData = iFeatureGroup;
       m_cLogEnterGenerateModelUpdateMessages = 2;
       m_cLogExitGenerateModelUpdateMessages = 2;
@@ -84,18 +84,18 @@ public:
       return m_iInputData;
    }
 
-   INLINE_ALWAYS size_t GetCountFeatures() const {
-      EBM_ASSERT(m_cSignificantFeatures <= m_cFeatures);
-      return m_cFeatures;
+   INLINE_ALWAYS size_t GetCountDimensions() const {
+      EBM_ASSERT(m_cSignificantDimensions <= m_cDimensions);
+      return m_cDimensions;
    }
 
-   INLINE_ALWAYS size_t GetCountSignificantFeatures() const {
-      EBM_ASSERT(m_cSignificantFeatures <= m_cFeatures);
-      return m_cSignificantFeatures;
+   INLINE_ALWAYS size_t GetCountSignificantDimensions() const {
+      EBM_ASSERT(m_cSignificantDimensions <= m_cDimensions);
+      return m_cSignificantDimensions;
    }
 
-   INLINE_ALWAYS void SetCountSignificantFeatures(const size_t cSignificantFeatures) {
-      m_cSignificantFeatures = cSignificantFeatures;
+   INLINE_ALWAYS void SetCountSignificantFeatures(const size_t cSignificantDimensions) {
+      m_cSignificantDimensions = cSignificantDimensions;
    }
 
    INLINE_ALWAYS const FeatureGroupEntry * GetFeatureGroupEntries() const {
@@ -129,4 +129,4 @@ static_assert(std::is_pod<FeatureGroup>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 
-#endif // FEATURE_COMBINATION_H
+#endif // FEATURE_GROUP_H

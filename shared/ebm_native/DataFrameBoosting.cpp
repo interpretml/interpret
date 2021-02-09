@@ -178,7 +178,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    do {
       const FeatureGroup * const pFeatureGroup = *ppFeatureGroup;
       EBM_ASSERT(nullptr != pFeatureGroup);
-      if(0 == pFeatureGroup->GetCountSignificantFeatures()) {
+      if(0 == pFeatureGroup->GetCountSignificantDimensions()) {
          *paInputDataTo = nullptr; // free will skip over these later
          ++paInputDataTo;
       } else {
@@ -209,23 +209,23 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          EBM_ASSERT(nullptr != aInputDataFrom);
 
          const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-         EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
-         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+         EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
+         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
 
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfoInit = &dimensionInfo[0];
          do {
-            const Feature * const pFeature = pFeatureGroupEntry->m_pFeature;
-            const size_t cBins = pFeature->GetCountBins();
+            const FeatureAtomic * const pFeatureAtomic = pFeatureGroupEntry->m_pFeatureAtomic;
+            const size_t cBins = pFeatureAtomic->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we don't construct datasets on empty training sets
             if(size_t { 1 } < cBins) {
-               pDimensionInfoInit->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cSamples];
+               pDimensionInfoInit->m_pInputData = &aInputDataFrom[pFeatureAtomic->GetIndexFeatureAtomicData() * cSamples];
                pDimensionInfoInit->m_cBins = cBins;
                ++pDimensionInfoInit;
             }
             ++pFeatureGroupEntry;
          } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
-         EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pFeatureGroup->GetCountSignificantFeatures()]);
+         EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pFeatureGroup->GetCountSignificantDimensions()]);
 
          // THIS IS NOT A CONSTANT FOR A REASON.. WE CHANGE IT ON OUR LAST ITERATION
          // if we ever template this function on cItemsPerBitPackedDataUnit, then we'd want

@@ -290,10 +290,10 @@ class TestApi {
    const ptrdiff_t m_learningTypeOrCountTargetClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<BoolEbmType> m_featuresCategorical;
-   std::vector<IntEbmType> m_featuresBinCount;
-   std::vector<IntEbmType> m_featureGroupsFeatureCount;
-   std::vector<IntEbmType> m_featureGroupsFeatureIndexes;
+   std::vector<BoolEbmType> m_featureAtomicsCategorical;
+   std::vector<IntEbmType> m_featureAtomicsBinCount;
+   std::vector<IntEbmType> m_featureGroupsDimensionCount;
+   std::vector<IntEbmType> m_featureGroupsFeatureAtomicIndexes;
 
    std::vector<std::vector<size_t>> m_countBinsByFeatureGroup;
 
@@ -344,7 +344,7 @@ public:
    ~TestApi();
 
    inline size_t GetFeatureGroupsCount() const {
-      return m_featureGroupsFeatureCount.size();
+      return m_featureGroupsDimensionCount.size();
    }
 
    void AddFeatures(const std::vector<FeatureTest> features);

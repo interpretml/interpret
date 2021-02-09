@@ -46,8 +46,8 @@ static FloatEbmType SweepMultiDiemensional(
 
    // TODO : optimize this function
 
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
-   EBM_ASSERT(iDimensionSweep < pFeatureGroup->GetCountSignificantFeatures());
+   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+   EBM_ASSERT(iDimensionSweep < pFeatureGroup->GetCountSignificantDimensions());
    EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -83,7 +83,7 @@ static FloatEbmType SweepMultiDiemensional(
    do {
       *piBin = iBin;
 
-      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
       TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
          runtimeLearningTypeOrCountTargetClasses,
          pFeatureGroup,
@@ -97,7 +97,7 @@ static FloatEbmType SweepMultiDiemensional(
 #endif // NDEBUG
          );
       if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLow->GetCountSamplesInBucket())) {
-         EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+         EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
          TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
             runtimeLearningTypeOrCountTargetClasses,
             pFeatureGroup,
@@ -220,13 +220,13 @@ public:
 
       FloatEbmType splittingScore;
 
-      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantFeatures());
+      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions());
       size_t cBinsDimension1 = 0;
       size_t cBinsDimension2 = 0;
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
             EBM_ASSERT(0 == cBinsDimension2);

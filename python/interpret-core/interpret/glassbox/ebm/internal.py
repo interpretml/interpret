@@ -390,17 +390,17 @@ class Native:
             ct.c_int32,
             # int64_t countTargetClasses
             ct.c_int64,
-            # int64_t countFeatures
+            # int64_t countFeatureAtomics
             ct.c_int64,
-            # int64_t * featuresCategorical
+            # int64_t * featureAtomicsCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featuresBinCount
+            # int64_t * featureAtomicsBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countFeatureGroups
             ct.c_int64,
-            # int64_t * featureGroupsFeatureCount
+            # int64_t * featureGroupsDimensionCount
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featureGroupsFeatureIndexes
+            # int64_t * featureGroupsFeatureAtomicIndexes
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countTrainingSamples
             ct.c_int64,
@@ -436,17 +436,17 @@ class Native:
         self._unsafe.CreateRegressionBooster.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
-            # int64_t countFeatures
+            # int64_t countFeatureAtomics
             ct.c_int64,
-            # int64_t * featuresCategorical
+            # int64_t * featureAtomicsCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featuresBinCount
+            # int64_t * featureAtomicsBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countFeatureGroups
             ct.c_int64,
-            # int64_t * featureGroupsFeatureCount
+            # int64_t * featureGroupsDimensionCount
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featureGroupsFeatureIndexes
+            # int64_t * featureGroupsFeatureAtomicIndexes
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countTrainingSamples
             ct.c_int64,
@@ -576,11 +576,11 @@ class Native:
         self._unsafe.CreateClassificationInteractionDetector.argtypes = [
             # int64_t countTargetClasses
             ct.c_int64,
-            # int64_t countFeatures
+            # int64_t countFeatureAtomics
             ct.c_int64,
-            # int64_t * featuresCategorical
+            # int64_t * featureAtomicsCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featuresBinCount
+            # int64_t * featureAtomicsBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countSamples
             ct.c_int64,
@@ -600,11 +600,11 @@ class Native:
         self._unsafe.CreateClassificationInteractionDetector.restype = ct.c_void_p
 
         self._unsafe.CreateRegressionInteractionDetector.argtypes = [
-            # int64_t countFeatures
+            # int64_t countFeatureAtomics
             ct.c_int64,
-            # int64_t * featuresCategorical
+            # int64_t * featureAtomicsCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featuresBinCount
+            # int64_t * featureAtomicsBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countSamples
             ct.c_int64,
@@ -625,9 +625,9 @@ class Native:
         self._unsafe.CalculateInteractionScore.argtypes = [
             # void * interactionDetectorHandle
             ct.c_void_p,
-            # int64_t countFeaturesInGroup
+            # int64_t countDimensions
             ct.c_int64,
-            # int64_t * featureIndexes
+            # int64_t * featureAtomicIndexes
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_int64,

@@ -289,13 +289,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       return IntEbmType { 1 };
    }
    const size_t iAllDimension = static_cast<size_t>(indexDimension);
-   if(pFeatureGroup->GetCountFeatures() <= iAllDimension) {
+   if(pFeatureGroup->GetCountDimensions() <= iAllDimension) {
       *countCutsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension above the number of dimensions that we have");
       return IntEbmType { 1 };
    }
 
-   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iAllDimension].m_pFeature->GetCountBins();
+   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iAllDimension].m_pFeatureAtomic->GetCountBins();
    if(cBins <= size_t { 1 }) {
       // we have 1 bin, or 0, so this dimension will be stripped from the SegmentedTensor.  Let's return the empty result now
       *countCutsInOut = IntEbmType { 0 };
@@ -326,7 +326,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[iAllDimension];
       do {
-         if(size_t { 1 } < pFeatureGroupEntry->m_pFeature->GetCountBins()) {
+         if(size_t { 1 } < pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins()) {
             ++iSignficantDimension;
          }
          ++pFeatureGroupEntry;
@@ -393,13 +393,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       return IntEbmType { 1 };
    }
 
-   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
+   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
    size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cBins, cValues));
          cValues *= cBins;
@@ -477,13 +477,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
       return IntEbmType { 1 };
    }
 
-   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
+   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
    size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cBins, cValues));
          cValues *= cBins;

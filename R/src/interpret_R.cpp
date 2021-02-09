@@ -93,29 +93,29 @@ void InteractionFinalizer(SEXP interactionDetectorHandleWrapped) {
    }
 }
 
-size_t CountFeatureGroupsFeatureIndexes(const size_t cFeatureGroups, const IntEbmType * const aFeatureGroupsFeatureCount) {
-   EBM_ASSERT(nullptr != aFeatureGroupsFeatureCount);
+size_t CountFeatureGroupsFeatureAtomicIndexes(const size_t cFeatureGroups, const IntEbmType * const aFeatureGroupsDimensionCount) {
+   EBM_ASSERT(nullptr != aFeatureGroupsDimensionCount);
 
-   size_t cFeatureGroupsFeatureIndexes = size_t { 0 };
+   size_t cFeatureGroupsFeatureAtomicIndexes = size_t { 0 };
    if(0 != cFeatureGroups) {
-      const IntEbmType * pFeatureGroupFeatureCount = aFeatureGroupsFeatureCount;
-      const IntEbmType * const pFeatureGroupFeatureCountEnd = aFeatureGroupsFeatureCount + cFeatureGroups;
+      const IntEbmType * pFeatureGroupDimensionCount = aFeatureGroupsDimensionCount;
+      const IntEbmType * const pFeatureGroupDimensionCountEnd = aFeatureGroupsDimensionCount + cFeatureGroups;
       do {
-         const IntEbmType countFeaturesInGroup = *pFeatureGroupFeatureCount;
-         if(!IsNumberConvertable<size_t>(countFeaturesInGroup)) {
-            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsFeatureIndexes !IsNumberConvertable<size_t>(countFeaturesInGroup)");
+         const IntEbmType countDimensions = *pFeatureGroupDimensionCount;
+         if(!IsNumberConvertable<size_t>(countDimensions)) {
+            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsFeatureAtomicIndexes !IsNumberConvertable<size_t>(countDimensions)");
             return SIZE_MAX;
          }
-         const size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
-         if(IsAddError(cFeatureGroupsFeatureIndexes, cFeaturesInGroup)) {
-            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsFeatureIndexes IsAddError(cFeatureGroupsFeatureIndexes, cFeaturesInGroup)");
+         const size_t cDimensions = static_cast<size_t>(countDimensions);
+         if(IsAddError(cFeatureGroupsFeatureAtomicIndexes, cDimensions)) {
+            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsFeatureAtomicIndexes IsAddError(cFeatureGroupsFeatureAtomicIndexes, cDimensions)");
             return SIZE_MAX;
          }
-         cFeatureGroupsFeatureIndexes += cFeaturesInGroup;
-         ++pFeatureGroupFeatureCount;
-      } while(pFeatureGroupFeatureCountEnd != pFeatureGroupFeatureCount);
+         cFeatureGroupsFeatureAtomicIndexes += cDimensions;
+         ++pFeatureGroupDimensionCount;
+      } while(pFeatureGroupDimensionCountEnd != pFeatureGroupDimensionCount);
    }
-   return cFeatureGroupsFeatureIndexes;
+   return cFeatureGroupsFeatureAtomicIndexes;
 }
 
 bool ConvertLogicalsToBools(const SEXP items, size_t * const pcItems, const BoolEbmType ** const pRet) {
@@ -510,10 +510,10 @@ SEXP SampleWithoutReplacement_R(
 SEXP CreateClassificationBooster_R(
    SEXP randomSeed,
    SEXP countTargetClasses,
-   SEXP featuresCategorical,
-   SEXP featuresBinCount,
-   SEXP featureGroupsFeatureCount,
-   SEXP featureGroupsFeatureIndexes,
+   SEXP featureAtomicsCategorical,
+   SEXP featureAtomicsBinCount,
+   SEXP featureGroupsDimensionCount,
+   SEXP featureGroupsFeatureAtomicIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingWeights,
@@ -526,10 +526,10 @@ SEXP CreateClassificationBooster_R(
 ) {
    EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != countTargetClasses);
-   EBM_ASSERT(nullptr != featuresCategorical);
-   EBM_ASSERT(nullptr != featuresBinCount);
-   EBM_ASSERT(nullptr != featureGroupsFeatureCount);
-   EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
+   EBM_ASSERT(nullptr != featureAtomicsCategorical);
+   EBM_ASSERT(nullptr != featureAtomicsBinCount);
+   EBM_ASSERT(nullptr != featureGroupsDimensionCount);
+   EBM_ASSERT(nullptr != featureGroupsFeatureAtomicIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingWeights);
@@ -563,49 +563,49 @@ SEXP CreateClassificationBooster_R(
    }
    const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
 
-   size_t cFeatures;
-   const BoolEbmType * aFeaturesCategorical;
-   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
+   size_t cFeatureAtomics;
+   const BoolEbmType * aFeatureAtomicsCategorical;
+   if(ConvertLogicalsToBools(featureAtomicsCategorical, &cFeatureAtomics, &aFeatureAtomicsCategorical)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
+   const IntEbmType countFeatureAtomics = static_cast<IntEbmType>(cFeatureAtomics);
 
-   size_t cFeaturesFromBinCount;
-   const IntEbmType * aFeaturesBinCount;
-   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
+   size_t cFeatureAtomicsFromBinCount;
+   const IntEbmType * aFeatureAtomicsBinCount;
+   if(ConvertDoublesToIndexes(featureAtomicsBinCount, &cFeatureAtomicsFromBinCount, &aFeatureAtomicsBinCount)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatures != cFeaturesFromBinCount) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatures != cFeaturesFromBinCount");
+   if(cFeatureAtomics != cFeatureAtomicsFromBinCount) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatureAtomics != cFeatureAtomicsFromBinCount");
       return R_NilValue;
    }
 
    size_t cFeatureGroups;
-   const IntEbmType * aFeatureGroupsFeatureCount;
-   if(ConvertDoublesToIndexes(featureGroupsFeatureCount, &cFeatureGroups, &aFeatureGroupsFeatureCount)) {
+   const IntEbmType * aFeatureGroupsDimensionCount;
+   if(ConvertDoublesToIndexes(featureGroupsDimensionCount, &cFeatureGroups, &aFeatureGroupsDimensionCount)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
    const IntEbmType countFeatureGroups = static_cast<IntEbmType>(cFeatureGroups);
 
-   const size_t cFeatureGroupsFeatureIndexesCheck = CountFeatureGroupsFeatureIndexes(cFeatureGroups, aFeatureGroupsFeatureCount);
-   if(SIZE_MAX == cFeatureGroupsFeatureIndexesCheck) {
+   const size_t cFeatureGroupsFeatureAtomicIndexesCheck = CountFeatureGroupsFeatureAtomicIndexes(cFeatureGroups, aFeatureGroupsDimensionCount);
+   if(SIZE_MAX == cFeatureGroupsFeatureAtomicIndexesCheck) {
       // we've already logged any errors
       return R_NilValue;
    }
 
-   size_t cFeatureGroupsFeatureIndexesActual;
-   const IntEbmType * aFeatureGroupsFeatureIndexes;
-   if(ConvertDoublesToIndexes(featureGroupsFeatureIndexes, &cFeatureGroupsFeatureIndexesActual, &aFeatureGroupsFeatureIndexes)) {
+   size_t cFeatureGroupsFeatureAtomicIndexesActual;
+   const IntEbmType * aFeatureGroupsFeatureAtomicIndexes;
+   if(ConvertDoublesToIndexes(featureGroupsFeatureAtomicIndexes, &cFeatureGroupsFeatureAtomicIndexesActual, &aFeatureGroupsFeatureAtomicIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck");
+   if(cFeatureGroupsFeatureAtomicIndexesActual != cFeatureGroupsFeatureAtomicIndexesCheck) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatureGroupsFeatureAtomicIndexesActual != cFeatureGroupsFeatureAtomicIndexesCheck");
       return R_NilValue;
    }
 
@@ -624,12 +624,12 @@ SEXP CreateClassificationBooster_R(
    }
    const IntEbmType countTrainingSamples = static_cast<IntEbmType>(cTrainingSamples);
 
-   if(IsMultiplyError(cTrainingSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cTrainingSamples, cFeatures)");
+   if(IsMultiplyError(cTrainingSamples, cFeatureAtomics)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cTrainingSamples, cFeatureAtomics)");
       return R_NilValue;
    }
-   if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cTrainingSamples * cFeatures != cTrainingBinnedData");
+   if(cTrainingSamples * cFeatureAtomics != cTrainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cTrainingSamples * cFeatureAtomics != cTrainingBinnedData");
       return R_NilValue;
    }
 
@@ -663,12 +663,12 @@ SEXP CreateClassificationBooster_R(
    }
    const IntEbmType countValidationSamples = static_cast<IntEbmType>(cValidationSamples);
 
-   if(IsMultiplyError(cValidationSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cValidationSamples, cFeatures)");
+   if(IsMultiplyError(cValidationSamples, cFeatureAtomics)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cValidationSamples, cFeatureAtomics)");
       return R_NilValue;
    }
-   if(cValidationSamples * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cValidationSamples * cFeatures != cValidationBinnedData");
+   if(cValidationSamples * cFeatureAtomics != cValidationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cValidationSamples * cFeatureAtomics != cValidationBinnedData");
       return R_NilValue;
    }
 
@@ -737,12 +737,12 @@ SEXP CreateClassificationBooster_R(
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       randomSeedLocal,
       static_cast<IntEbmType>(cTargetClasses),
-      countFeatures, 
-      aFeaturesCategorical,
-      aFeaturesBinCount,
+      countFeatureAtomics, 
+      aFeatureAtomicsCategorical,
+      aFeatureAtomicsBinCount,
       countFeatureGroups, 
-      aFeatureGroupsFeatureCount,
-      aFeatureGroupsFeatureIndexes,
+      aFeatureGroupsDimensionCount,
+      aFeatureGroupsFeatureAtomicIndexes,
       countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
@@ -772,10 +772,10 @@ SEXP CreateClassificationBooster_R(
 
 SEXP CreateRegressionBooster_R(
    SEXP randomSeed,
-   SEXP featuresCategorical,
-   SEXP featuresBinCount,
-   SEXP featureGroupsFeatureCount,
-   SEXP featureGroupsFeatureIndexes,
+   SEXP featureAtomicsCategorical,
+   SEXP featureAtomicsBinCount,
+   SEXP featureGroupsDimensionCount,
+   SEXP featureGroupsFeatureAtomicIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingWeights,
@@ -787,10 +787,10 @@ SEXP CreateRegressionBooster_R(
    SEXP countInnerBags
 ) {
    EBM_ASSERT(nullptr != randomSeed);
-   EBM_ASSERT(nullptr != featuresCategorical);
-   EBM_ASSERT(nullptr != featuresBinCount);
-   EBM_ASSERT(nullptr != featureGroupsFeatureCount);
-   EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
+   EBM_ASSERT(nullptr != featureAtomicsCategorical);
+   EBM_ASSERT(nullptr != featureAtomicsBinCount);
+   EBM_ASSERT(nullptr != featureGroupsDimensionCount);
+   EBM_ASSERT(nullptr != featureGroupsFeatureAtomicIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingWeights);
@@ -807,50 +807,50 @@ SEXP CreateRegressionBooster_R(
    }
    const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
-   size_t cFeatures;
-   const BoolEbmType * aFeaturesCategorical;
-   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
+   size_t cFeatureAtomics;
+   const BoolEbmType * aFeatureAtomicsCategorical;
+   if(ConvertLogicalsToBools(featureAtomicsCategorical, &cFeatureAtomics, &aFeatureAtomicsCategorical)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
+   const IntEbmType countFeatureAtomics = static_cast<IntEbmType>(cFeatureAtomics);
 
 
-   size_t cFeaturesFromBinCount;
-   const IntEbmType * aFeaturesBinCount;
-   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
+   size_t cFeatureAtomicsFromBinCount;
+   const IntEbmType * aFeatureAtomicsBinCount;
+   if(ConvertDoublesToIndexes(featureAtomicsBinCount, &cFeatureAtomicsFromBinCount, &aFeatureAtomicsBinCount)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatures != cFeaturesFromBinCount) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatures != cFeaturesFromBinCount");
+   if(cFeatureAtomics != cFeatureAtomicsFromBinCount) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatureAtomics != cFeatureAtomicsFromBinCount");
       return R_NilValue;
    }
 
    size_t cFeatureGroups;
-   const IntEbmType * aFeatureGroupsFeatureCount;
-   if(ConvertDoublesToIndexes(featureGroupsFeatureCount, &cFeatureGroups, &aFeatureGroupsFeatureCount)) {
+   const IntEbmType * aFeatureGroupsDimensionCount;
+   if(ConvertDoublesToIndexes(featureGroupsDimensionCount, &cFeatureGroups, &aFeatureGroupsDimensionCount)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
    const IntEbmType countFeatureGroups = static_cast<IntEbmType>(cFeatureGroups);
 
-   const size_t cFeatureGroupsFeatureIndexesCheck = CountFeatureGroupsFeatureIndexes(cFeatureGroups, aFeatureGroupsFeatureCount);
-   if(SIZE_MAX == cFeatureGroupsFeatureIndexesCheck) {
+   const size_t cFeatureGroupsFeatureAtomicIndexesCheck = CountFeatureGroupsFeatureAtomicIndexes(cFeatureGroups, aFeatureGroupsDimensionCount);
+   if(SIZE_MAX == cFeatureGroupsFeatureAtomicIndexesCheck) {
       // we've already logged any errors
       return R_NilValue;
    }
 
-   size_t cFeatureGroupsFeatureIndexesActual;
-   const IntEbmType * aFeatureGroupsFeatureIndexes;
-   if(ConvertDoublesToIndexes(featureGroupsFeatureIndexes, &cFeatureGroupsFeatureIndexesActual, &aFeatureGroupsFeatureIndexes)) {
+   size_t cFeatureGroupsFeatureAtomicIndexesActual;
+   const IntEbmType * aFeatureGroupsFeatureAtomicIndexes;
+   if(ConvertDoublesToIndexes(featureGroupsFeatureAtomicIndexes, &cFeatureGroupsFeatureAtomicIndexesActual, &aFeatureGroupsFeatureAtomicIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck");
+   if(cFeatureGroupsFeatureAtomicIndexesActual != cFeatureGroupsFeatureAtomicIndexesCheck) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatureGroupsFeatureAtomicIndexesActual != cFeatureGroupsFeatureAtomicIndexesCheck");
       return R_NilValue;
    }
 
@@ -869,12 +869,12 @@ SEXP CreateRegressionBooster_R(
    }
    const IntEbmType countTrainingSamples = static_cast<IntEbmType>(cTrainingSamples);
 
-   if(IsMultiplyError(cTrainingSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R IsMultiplyError(cTrainingSamples, cFeatures)");
+   if(IsMultiplyError(cTrainingSamples, cFeatureAtomics)) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R IsMultiplyError(cTrainingSamples, cFeatureAtomics)");
       return R_NilValue;
    }
-   if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTrainingSamples * cFeatures != cTrainingBinnedData");
+   if(cTrainingSamples * cFeatureAtomics != cTrainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTrainingSamples * cFeatureAtomics != cTrainingBinnedData");
       return R_NilValue;
    }
 
@@ -904,12 +904,12 @@ SEXP CreateRegressionBooster_R(
    }
    const IntEbmType countValidationSamples = static_cast<IntEbmType>(cValidationSamples);
 
-   if(IsMultiplyError(cValidationSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R IsMultiplyError(cValidationSamples, cFeatures)");
+   if(IsMultiplyError(cValidationSamples, cFeatureAtomics)) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R IsMultiplyError(cValidationSamples, cFeatureAtomics)");
       return R_NilValue;
    }
-   if(cValidationSamples * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cValidationSamples * cFeatures != cValidationBinnedData");
+   if(cValidationSamples * cFeatureAtomics != cValidationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cValidationSamples * cFeatureAtomics != cValidationBinnedData");
       return R_NilValue;
    }
 
@@ -973,12 +973,12 @@ SEXP CreateRegressionBooster_R(
 
    const BoosterHandle boosterHandle = CreateRegressionBooster(
       randomSeedLocal,
-      countFeatures,
-      aFeaturesCategorical,
-      aFeaturesBinCount,
+      countFeatureAtomics,
+      aFeatureAtomicsCategorical,
+      aFeatureAtomicsBinCount,
       countFeatureGroups,
-      aFeatureGroupsFeatureCount,
-      aFeatureGroupsFeatureIndexes,
+      aFeatureGroupsDimensionCount,
+      aFeatureGroupsFeatureAtomicIndexes,
       countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
@@ -1072,8 +1072,8 @@ SEXP BoostingStep_R(
       return R_NilValue;
    }
    // TODO: check that iFeatureGroup is below pBooster->GetCountFeatureGroups()
-   if(cDimensions < pBooster->GetFeatureGroups()[iFeatureGroup]->GetCountFeatures()) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep_R cDimensions < pBooster->GetFeatureGroups()[iFeatureGroup]->GetCountFeatures()");
+   if(cDimensions < pBooster->GetFeatureGroups()[iFeatureGroup]->GetCountDimensions()) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R cDimensions < pBooster->GetFeatureGroups()[iFeatureGroup]->GetCountDimensions()");
       return R_NilValue;
    }
 
@@ -1144,10 +1144,10 @@ SEXP GetBestModelFeatureGroup_R(
    }
    size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[static_cast<size_t>(iFeatureGroup)];
-   const size_t cFeatures = pFeatureGroup->GetCountFeatures();
-   if(0 != cFeatures) {
+   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -1212,10 +1212,10 @@ SEXP GetCurrentModelFeatureGroup_R(
    }
    size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[static_cast<size_t>(iFeatureGroup)];
-   const size_t cFeatures = pFeatureGroup->GetCountFeatures();
-   if(0 != cFeatures) {
+   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -1243,16 +1243,16 @@ SEXP FreeBooster_R(
 
 SEXP CreateClassificationInteractionDetector_R(
    SEXP countTargetClasses,
-   SEXP featuresCategorical,
-   SEXP featuresBinCount,
+   SEXP featureAtomicsCategorical,
+   SEXP featureAtomicsBinCount,
    SEXP binnedData,
    SEXP targets,
    SEXP weights,
    SEXP predictorScores
 ) {
    EBM_ASSERT(nullptr != countTargetClasses);
-   EBM_ASSERT(nullptr != featuresCategorical);
-   EBM_ASSERT(nullptr != featuresBinCount);
+   EBM_ASSERT(nullptr != featureAtomicsCategorical);
+   EBM_ASSERT(nullptr != featureAtomicsBinCount);
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
@@ -1274,23 +1274,23 @@ SEXP CreateClassificationInteractionDetector_R(
    }
    const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
 
-   size_t cFeatures;
-   const BoolEbmType * aFeaturesCategorical;
-   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
+   size_t cFeatureAtomics;
+   const BoolEbmType * aFeatureAtomicsCategorical;
+   if(ConvertLogicalsToBools(featureAtomicsCategorical, &cFeatureAtomics, &aFeatureAtomicsCategorical)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
+   const IntEbmType countFeatureAtomics = static_cast<IntEbmType>(cFeatureAtomics);
 
-   size_t cFeaturesFromBinCount;
-   const IntEbmType * aFeaturesBinCount;
-   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
+   size_t cFeatureAtomicsFromBinCount;
+   const IntEbmType * aFeatureAtomicsBinCount;
+   if(ConvertDoublesToIndexes(featureAtomicsBinCount, &cFeatureAtomicsFromBinCount, &aFeatureAtomicsBinCount)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatures != cFeaturesFromBinCount) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cFeatures != cFeaturesFromBinCount");
+   if(cFeatureAtomics != cFeatureAtomicsFromBinCount) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cFeatureAtomics != cFeatureAtomicsFromBinCount");
       return R_NilValue;
    }
 
@@ -1309,12 +1309,12 @@ SEXP CreateClassificationInteractionDetector_R(
    }
    const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
 
-   if(IsMultiplyError(cSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cSamples, cFeatures)");
+   if(IsMultiplyError(cSamples, cFeatureAtomics)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cSamples, cFeatureAtomics)");
       return R_NilValue;
    }
-   if(cSamples * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cSamples * cFeatures != cBinnedData");
+   if(cSamples * cFeatureAtomics != cBinnedData) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cSamples * cFeatureAtomics != cBinnedData");
       return R_NilValue;
    }
 
@@ -1354,9 +1354,9 @@ SEXP CreateClassificationInteractionDetector_R(
 
    const InteractionDetectorHandle interactionDetectorHandle = CreateClassificationInteractionDetector(
       static_cast<IntEbmType>(cTargetClasses),
-      countFeatures,
-      aFeaturesCategorical,
-      aFeaturesBinCount,
+      countFeatureAtomics,
+      aFeatureAtomicsCategorical,
+      aFeatureAtomicsBinCount,
       countSamples,
       aBinnedData,
       aTargets,
@@ -1379,37 +1379,37 @@ SEXP CreateClassificationInteractionDetector_R(
 }
 
 SEXP CreateRegressionInteractionDetector_R(
-   SEXP featuresCategorical,
-   SEXP featuresBinCount,
+   SEXP featureAtomicsCategorical,
+   SEXP featureAtomicsBinCount,
    SEXP binnedData,
    SEXP targets,
    SEXP weights,
    SEXP predictorScores
 ) {
-   EBM_ASSERT(nullptr != featuresCategorical);
-   EBM_ASSERT(nullptr != featuresBinCount);
+   EBM_ASSERT(nullptr != featureAtomicsCategorical);
+   EBM_ASSERT(nullptr != featureAtomicsBinCount);
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
    EBM_ASSERT(nullptr != predictorScores);
 
-   size_t cFeatures;
-   const BoolEbmType * aFeaturesCategorical;
-   if(ConvertLogicalsToBools(featuresCategorical, &cFeatures, &aFeaturesCategorical)) {
+   size_t cFeatureAtomics;
+   const BoolEbmType * aFeatureAtomicsCategorical;
+   if(ConvertLogicalsToBools(featureAtomicsCategorical, &cFeatureAtomics, &aFeatureAtomicsCategorical)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures);
+   const IntEbmType countFeatureAtomics = static_cast<IntEbmType>(cFeatureAtomics);
 
-   size_t cFeaturesFromBinCount;
-   const IntEbmType * aFeaturesBinCount;
-   if(ConvertDoublesToIndexes(featuresBinCount, &cFeaturesFromBinCount, &aFeaturesBinCount)) {
+   size_t cFeatureAtomicsFromBinCount;
+   const IntEbmType * aFeatureAtomicsBinCount;
+   if(ConvertDoublesToIndexes(featureAtomicsBinCount, &cFeatureAtomicsFromBinCount, &aFeatureAtomicsBinCount)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatures != cFeaturesFromBinCount) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cFeatures != cFeaturesFromBinCount");
+   if(cFeatureAtomics != cFeatureAtomicsFromBinCount) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cFeatureAtomics != cFeatureAtomicsFromBinCount");
       return R_NilValue;
    }
 
@@ -1428,12 +1428,12 @@ SEXP CreateRegressionInteractionDetector_R(
    }
    const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
 
-   if(IsMultiplyError(cSamples, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R IsMultiplyError(cSamples, cFeatures)");
+   if(IsMultiplyError(cSamples, cFeatureAtomics)) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R IsMultiplyError(cSamples, cFeatureAtomics)");
       return R_NilValue;
    }
-   if(cSamples * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cSamples * cFeatures != cBinnedData");
+   if(cSamples * cFeatureAtomics != cBinnedData) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cSamples * cFeatureAtomics != cBinnedData");
       return R_NilValue;
    }
 
@@ -1468,9 +1468,9 @@ SEXP CreateRegressionInteractionDetector_R(
    }
 
    const InteractionDetectorHandle interactionDetectorHandle = CreateRegressionInteractionDetector(
-      countFeatures, 
-      aFeaturesCategorical,
-      aFeaturesBinCount,
+      countFeatureAtomics, 
+      aFeatureAtomicsCategorical,
+      aFeatureAtomicsBinCount,
       countSamples,
       aBinnedData, 
       aTargets, 
@@ -1494,11 +1494,11 @@ SEXP CreateRegressionInteractionDetector_R(
 
 SEXP CalculateInteractionScore_R(
    SEXP interactionDetectorHandleWrapped,
-   SEXP featureIndexes,
+   SEXP featureAtomicIndexes,
    SEXP countSamplesRequiredForChildSplitMin
 ) {
    EBM_ASSERT(nullptr != interactionDetectorHandleWrapped); // shouldn't be possible
-   EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
+   EBM_ASSERT(nullptr != featureAtomicIndexes); // shouldn't be possible
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
 
    if(EXTPTRSXP != TYPEOF(interactionDetectorHandleWrapped)) {
@@ -1511,13 +1511,13 @@ SEXP CalculateInteractionScore_R(
       return R_NilValue;
    }
 
-   size_t cFeaturesInGroup;
+   size_t cDimensions;
    const IntEbmType * aFeatureIndexes;
-   if(ConvertDoublesToIndexes(featureIndexes, &cFeaturesInGroup, &aFeatureIndexes)) {
+   if(ConvertDoublesToIndexes(featureAtomicIndexes, &cDimensions, &aFeatureIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   IntEbmType countFeaturesInGroup = static_cast<IntEbmType>(cFeaturesInGroup);
+   IntEbmType countDimensions = static_cast<IntEbmType>(cDimensions);
 
    if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
@@ -1539,7 +1539,7 @@ SEXP CalculateInteractionScore_R(
    }
 
    FloatEbmType interactionScoreOut;
-   if(0 != CalculateInteractionScore(reinterpret_cast<InteractionDetectorHandle>(pInteractionDetector), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
+   if(0 != CalculateInteractionScore(reinterpret_cast<InteractionDetectorHandle>(pInteractionDetector), countDimensions, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R CalculateInteractionScore returned error code");
       return R_NilValue;
    }

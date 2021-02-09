@@ -80,7 +80,7 @@ SegmentedTensor ** Booster::InitializeSegmentedTensors(
    for(size_t iFeatureGroup = 0; iFeatureGroup < cFeatureGroups; ++iFeatureGroup) {
       const FeatureGroup * const pFeatureGroup = apFeatureGroups[iFeatureGroup];
       SegmentedTensor * const pSegmentedTensors = 
-         SegmentedTensor::Allocate(pFeatureGroup->GetCountSignificantFeatures(), cVectorLength);
+         SegmentedTensor::Allocate(pFeatureGroup->GetCountSignificantDimensions(), cVectorLength);
       if(UNLIKELY(nullptr == pSegmentedTensors)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedTensors");
          DeleteSegmentedTensors(cFeatureGroups, apSegmentedTensors);
@@ -111,7 +111,7 @@ void Booster::Free(Booster * const pBooster) {
 
       FeatureGroup::FreeFeatureGroups(pBooster->m_cFeatureGroups, pBooster->m_apFeatureGroups);
 
-      free(pBooster->m_aFeatures);
+      free(pBooster->m_aFeatureAtomics);
 
       DeleteSegmentedTensors(pBooster->m_cFeatureGroups, pBooster->m_apCurrentModel);
       DeleteSegmentedTensors(pBooster->m_cFeatureGroups, pBooster->m_apBestModel);
@@ -124,14 +124,14 @@ void Booster::Free(Booster * const pBooster) {
 Booster * Booster::Allocate(
    const SeedEbmType randomSeed,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cFeatures,
+   const size_t cFeatureAtomics,
    const size_t cFeatureGroups,
    const size_t cSamplingSets,
    const FloatEbmType * const optionalTempParams,
-   const BoolEbmType * const aFeaturesCategorical,
-   const IntEbmType * const aFeaturesBinCount,
-   const IntEbmType * const aFeatureGroupsFeatureCount,
-   const IntEbmType * const aFeatureGroupsFeatureIndexes, 
+   const BoolEbmType * const aFeatureAtomicsCategorical,
+   const IntEbmType * const aFeatureAtomicsBinCount,
+   const IntEbmType * const aFeatureGroupsDimensionCount,
+   const IntEbmType * const aFeatureGroupsFeatureAtomicIndexes, 
    const size_t cTrainingSamples, 
    const void * const aTrainingTargets, 
    const IntEbmType * const aTrainingBinnedData, 
@@ -165,20 +165,20 @@ Booster * Booster::Allocate(
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelInfo, "Booster::Initialize starting feature processing");
-   if(0 != cFeatures) {
-      pBooster->m_aFeatures = EbmMalloc<Feature>(cFeatures);
-      if(nullptr == pBooster->m_aFeatures) {
+   if(0 != cFeatureAtomics) {
+      pBooster->m_aFeatureAtomics = EbmMalloc<FeatureAtomic>(cFeatureAtomics);
+      if(nullptr == pBooster->m_aFeatureAtomics) {
          LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pBooster->m_aFeatures");
          Booster::Free(pBooster);
          return nullptr;
       }
-      pBooster->m_cFeatures = cFeatures;
+      pBooster->m_cFeatureAtomics = cFeatureAtomics;
 
-      const BoolEbmType * pFeatureCategorical = aFeaturesCategorical;
-      const IntEbmType * pFeatureBinCount = aFeaturesBinCount;
-      size_t iFeatureInitialize = size_t { 0 };
+      const BoolEbmType * pFeatureAtomicCategorical = aFeatureAtomicsCategorical;
+      const IntEbmType * pFeatureAtomicBinCount = aFeatureAtomicsBinCount;
+      size_t iFeatureAtomicInitialize = size_t { 0 };
       do {
-         const IntEbmType countBins = *pFeatureBinCount;
+         const IntEbmType countBins = *pFeatureAtomicBinCount;
          if(countBins < 0) {
             LOG_0(TraceLevelError, "ERROR Booster::Initialize countBins cannot be negative");
             Booster::Free(pBooster);
@@ -205,19 +205,19 @@ Booster * Booster::Allocate(
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(TraceLevelInfo, "INFO Booster::Initialize feature with 1 value");
          }
-         const BoolEbmType isCategorical = *pFeatureCategorical;
+         const BoolEbmType isCategorical = *pFeatureAtomicCategorical;
          if(EBM_FALSE != isCategorical && EBM_TRUE != isCategorical) {
-            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize featuresCategorical should either be EBM_TRUE or EBM_FALSE");
+            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize featureAtomicsCategorical should either be EBM_TRUE or EBM_FALSE");
          }
          const bool bCategorical = EBM_FALSE != isCategorical;
 
-         pBooster->m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, bCategorical);
+         pBooster->m_aFeatureAtomics[iFeatureAtomicInitialize].Initialize(cBins, iFeatureAtomicInitialize, bCategorical);
 
-         ++pFeatureCategorical;
-         ++pFeatureBinCount;
+         ++pFeatureAtomicCategorical;
+         ++pFeatureAtomicBinCount;
 
-         ++iFeatureInitialize;
-      } while(cFeatures != iFeatureInitialize);
+         ++iFeatureAtomicInitialize;
+      } while(cFeatureAtomics != iFeatureAtomicInitialize);
    }
    LOG_0(TraceLevelInfo, "Booster::Initialize done feature processing");
 
@@ -244,24 +244,24 @@ Booster * Booster::Allocate(
       }
       size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize(bClassification, cVectorLength);
 
-      const IntEbmType * pFeatureGroupFeatureIndexes = aFeatureGroupsFeatureIndexes;
+      const IntEbmType * pFeatureGroupFeatureAtomicIndexes = aFeatureGroupsFeatureAtomicIndexes;
       size_t iFeatureGroup = 0;
       do {
-         const IntEbmType countFeaturesInGroup = aFeatureGroupsFeatureCount[iFeatureGroup];
-         if(countFeaturesInGroup < 0) {
-            LOG_0(TraceLevelError, "ERROR Booster::Initialize countFeaturesInGroup cannot be negative");
+         const IntEbmType countDimensions = aFeatureGroupsDimensionCount[iFeatureGroup];
+         if(countDimensions < 0) {
+            LOG_0(TraceLevelError, "ERROR Booster::Initialize countDimensions cannot be negative");
             Booster::Free(pBooster);
             return nullptr;
          }
-         if(!IsNumberConvertable<size_t>(countFeaturesInGroup)) {
-            // if countFeaturesInGroup exceeds the size of size_t, then we wouldn't be able to find it
+         if(!IsNumberConvertable<size_t>(countDimensions)) {
+            // if countDimensions exceeds the size of size_t, then we wouldn't be able to find it
             // in the array passed to us
-            LOG_0(TraceLevelError, "ERROR Booster::Initialize countFeaturesInGroup is too high to index");
+            LOG_0(TraceLevelError, "ERROR Booster::Initialize countDimensions is too high to index");
             Booster::Free(pBooster);
             return nullptr;
          }
-         const size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
-         FeatureGroup * const pFeatureGroup = FeatureGroup::Allocate(cFeaturesInGroup, iFeatureGroup);
+         const size_t cDimensions = static_cast<size_t>(countDimensions);
+         FeatureGroup * const pFeatureGroup = FeatureGroup::Allocate(cDimensions, iFeatureGroup);
          if(nullptr == pFeatureGroup) {
             LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pFeatureGroup");
             Booster::Free(pBooster);
@@ -270,50 +270,50 @@ Booster * Booster::Allocate(
          // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
          pBooster->m_apFeatureGroups[iFeatureGroup] = pFeatureGroup;
 
-         size_t cSignificantFeaturesInGroup = 0;
-         if(UNLIKELY(0 == cFeaturesInGroup)) {
+         size_t cSignificantDimensions = 0;
+         if(UNLIKELY(0 == cDimensions)) {
             LOG_0(TraceLevelInfo, "INFO Booster::Initialize empty feature group");
          } else {
-            if(nullptr == pFeatureGroupFeatureIndexes) {
-               LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureIndexes is null when there are FeatureGroups with non-zero numbers of features");
+            if(nullptr == pFeatureGroupFeatureAtomicIndexes) {
+               LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureAtomicIndexes is null when there are FeatureGroups with non-zero numbers of features");
                Booster::Free(pBooster);
                return nullptr;
             }
             size_t cEquivalentSplits = 1;
             size_t cTensorBins = 1;
             FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-            FeatureGroupEntry * pFeatureGroupEntryEnd = pFeatureGroupEntry + cFeaturesInGroup;
+            FeatureGroupEntry * pFeatureGroupEntryEnd = pFeatureGroupEntry + cDimensions;
             do {
-               const IntEbmType indexFeatureInterop = *pFeatureGroupFeatureIndexes;
-               if(indexFeatureInterop < 0) {
-                  LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureIndexes value cannot be negative");
+               const IntEbmType indexFeatureAtomicInterop = *pFeatureGroupFeatureAtomicIndexes;
+               if(indexFeatureAtomicInterop < 0) {
+                  LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureAtomicIndexes value cannot be negative");
                   Booster::Free(pBooster);
                   return nullptr;
                }
-               if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
-                  LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureIndexes value too big to reference memory");
+               if(!IsNumberConvertable<size_t>(indexFeatureAtomicInterop)) {
+                  LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureAtomicIndexes value too big to reference memory");
                   Booster::Free(pBooster);
                   return nullptr;
                }
-               const size_t iFeatureInGroup = static_cast<size_t>(indexFeatureInterop);
+               const size_t iFeatureAtomic = static_cast<size_t>(indexFeatureAtomicInterop);
 
-               if(cFeatures <= iFeatureInGroup) {
-                  LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureIndexes value must be less than the number of features");
+               if(cFeatureAtomics <= iFeatureAtomic) {
+                  LOG_0(TraceLevelError, "ERROR Booster::Initialize aFeatureGroupsFeatureAtomicIndexes value must be less than the number of features");
                   Booster::Free(pBooster);
                   return nullptr;
                }
 
-               EBM_ASSERT(1 <= cFeatures);
-               EBM_ASSERT(nullptr != pBooster->m_aFeatures);
+               EBM_ASSERT(1 <= cFeatureAtomics);
+               EBM_ASSERT(nullptr != pBooster->m_aFeatureAtomics);
 
-               Feature * const pInputFeature = &pBooster->m_aFeatures[iFeatureInGroup];
-               pFeatureGroupEntry->m_pFeature = pInputFeature;
+               FeatureAtomic * const pInputFeatureAtomic = &pBooster->m_aFeatureAtomics[iFeatureAtomic];
+               pFeatureGroupEntry->m_pFeatureAtomic = pInputFeatureAtomic;
 
-               const size_t cBins = pInputFeature->GetCountBins();
+               const size_t cBins = pInputFeatureAtomic->GetCountBins();
                if(LIKELY(size_t { 1 } < cBins)) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
                   // otherwise indistinquishable from the original data
-                  ++cSignificantFeaturesInGroup;
+                  ++cSignificantDimensions;
                   if(IsMultiplyError(cTensorBins, cBins)) {
                      // if this overflows, we definetly won't be able to allocate it
                      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize IsMultiplyError(cTensorStates, cBins)");
@@ -326,22 +326,22 @@ Booster * Booster::Allocate(
                   LOG_0(TraceLevelInfo, "INFO Booster::Initialize feature group with no useful features");
                }
 
-               ++pFeatureGroupFeatureIndexes;
+               ++pFeatureGroupFeatureAtomicIndexes;
                ++pFeatureGroupEntry;
             } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
 
-            if(LIKELY(0 != cSignificantFeaturesInGroup)) {
+            if(LIKELY(0 != cSignificantDimensions)) {
                EBM_ASSERT(1 < cTensorBins);
 
-               if(k_cDimensionsMax < cSignificantFeaturesInGroup) {
+               if(k_cDimensionsMax < cSignificantDimensions) {
                   // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
-                  LOG_0(TraceLevelWarning, "WARNING Booster::Initialize k_cDimensionsMax < cSignificantFeaturesInGroup");
+                  LOG_0(TraceLevelWarning, "WARNING Booster::Initialize k_cDimensionsMax < cSignificantDimensions");
                   Booster::Free(pBooster);
                   return nullptr;
                }
 
                size_t cBytesArrayEquivalentSplit;
-               if(1 == cSignificantFeaturesInGroup) {
+               if(1 == cSignificantDimensions) {
                   if(IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)) {
                      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)");
                      Booster::Free(pBooster);
@@ -357,13 +357,13 @@ Booster * Booster::Allocate(
                   cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplit;
                }
 
-               // if cSignificantFeaturesInGroup is zero, don't both initializing pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
+               // if cSignificantDimensions is zero, don't both initializing pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
                const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
                EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
                pFeatureGroup->SetCountItemsPerBitPackedDataUnit(GetCountItemsBitPacked(cBitsRequiredMin));
             }
          }
-         pFeatureGroup->SetCountSignificantFeatures(cSignificantFeaturesInGroup);
+         pFeatureGroup->SetCountSignificantFeatures(cSignificantDimensions);
 
          ++iFeatureGroup;
       } while(iFeatureGroup < cFeatureGroups);
@@ -490,12 +490,12 @@ Booster * Booster::Allocate(
 // a*PredictorScores = predictedValue for regression
 static Booster * AllocateBoosting(
    const SeedEbmType randomSeed,
-   const IntEbmType countFeatures, 
-   const BoolEbmType * const aFeaturesCategorical,
-   const IntEbmType * const aFeaturesBinCount,
+   const IntEbmType countFeatureAtomics, 
+   const BoolEbmType * const aFeatureAtomicsCategorical,
+   const IntEbmType * const aFeatureAtomicsBinCount,
    const IntEbmType countFeatureGroups,
-   const IntEbmType * const aFeatureGroupsFeatureCount,
-   const IntEbmType * const aFeatureGroupsFeatureIndexes, 
+   const IntEbmType * const aFeatureGroupsDimensionCount,
+   const IntEbmType * const aFeatureGroupsFeatureAtomicIndexes, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
    const IntEbmType countTrainingSamples, 
    const void * const trainingTargets, 
@@ -512,29 +512,29 @@ static Booster * AllocateBoosting(
 ) {
    // TODO : give AllocateBoosting the same calling parameter order as CreateClassificationBooster
 
-   if(countFeatures < 0) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting countFeatures must be positive");
+   if(countFeatureAtomics < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting countFeatureAtomics must be positive");
       return nullptr;
    }
-   if(0 != countFeatures && nullptr == aFeaturesCategorical) {
-      // TODO: in the future maybe accept null aFeaturesCategorical and assume there are no missing values
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeaturesCategorical cannot be nullptr if 0 < countFeatures");
+   if(0 != countFeatureAtomics && nullptr == aFeatureAtomicsCategorical) {
+      // TODO: in the future maybe accept null aFeatureAtomicsCategorical and assume there are no missing values
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeatureAtomicsCategorical cannot be nullptr if 0 < countFeatureAtomics");
       return nullptr;
    }
-   if(0 != countFeatures && nullptr == aFeaturesBinCount) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeaturesBinCount cannot be nullptr if 0 < countFeatures");
+   if(0 != countFeatureAtomics && nullptr == aFeatureAtomicsBinCount) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeatureAtomicsBinCount cannot be nullptr if 0 < countFeatureAtomics");
       return nullptr;
    }
    if(countFeatureGroups < 0) {
       LOG_0(TraceLevelError, "ERROR AllocateBoosting countFeatureGroups must be positive");
       return nullptr;
    }
-   if(0 != countFeatureGroups && nullptr == aFeatureGroupsFeatureCount) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeatureGroupsFeatureCount cannot be nullptr if 0 < countFeatureGroups");
+   if(0 != countFeatureGroups && nullptr == aFeatureGroupsDimensionCount) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting aFeatureGroupsDimensionCount cannot be nullptr if 0 < countFeatureGroups");
       return nullptr;
    }
-   // aFeatureGroupsFeatureIndexes -> it's legal for aFeatureGroupsFeatureIndexes to be nullptr if there are no features indexed by our featureGroups.  
-   // FeatureGroups can have zero features, so it could be legal for this to be null even if there are aFeatureGroupsFeatureCount
+   // aFeatureGroupsFeatureAtomicIndexes -> it's legal for aFeatureGroupsFeatureAtomicIndexes to be nullptr if there are no features indexed by our featureGroups.  
+   // FeatureGroups can have zero features, so it could be legal for this to be null even if there are aFeatureGroupsDimensionCount
    if(countTrainingSamples < 0) {
       LOG_0(TraceLevelError, "ERROR AllocateBoosting countTrainingSamples must be positive");
       return nullptr;
@@ -543,8 +543,8 @@ static Booster * AllocateBoosting(
       LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingTargets cannot be nullptr if 0 < countTrainingSamples");
       return nullptr;
    }
-   if(0 != countTrainingSamples && 0 != countFeatures && nullptr == trainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingBinnedData cannot be nullptr if 0 < countTrainingSamples AND 0 < countFeatures");
+   if(0 != countTrainingSamples && 0 != countFeatureAtomics && nullptr == trainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingBinnedData cannot be nullptr if 0 < countTrainingSamples AND 0 < countFeatureAtomics");
       return nullptr;
    }
    if(0 != countTrainingSamples && nullptr == trainingPredictorScores) {
@@ -559,8 +559,8 @@ static Booster * AllocateBoosting(
       LOG_0(TraceLevelError, "ERROR AllocateBoosting validationTargets cannot be nullptr if 0 < countValidationSamples");
       return nullptr;
    }
-   if(0 != countValidationSamples && 0 != countFeatures && nullptr == validationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationBinnedData cannot be nullptr if 0 < countValidationSamples AND 0 < countFeatures");
+   if(0 != countValidationSamples && 0 != countFeatureAtomics && nullptr == validationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationBinnedData cannot be nullptr if 0 < countValidationSamples AND 0 < countFeatureAtomics");
       return nullptr;
    }
    if(0 != countValidationSamples && nullptr == validationPredictorScores) {
@@ -572,13 +572,13 @@ static Booster * AllocateBoosting(
       LOG_0(TraceLevelError, "ERROR AllocateBoosting countInnerBags must be positive");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t>(countFeatures)) {
+   if(!IsNumberConvertable<size_t>(countFeatureAtomics)) {
       // the caller should not have been able to allocate enough memory in "features" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t>(countFeatures)");
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t>(countFeatureAtomics)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t>(countFeatureGroups)) {
-      // the caller should not have been able to allocate enough memory in "aFeatureGroupsFeatureCount" if this didn't fit in memory
+      // the caller should not have been able to allocate enough memory in "aFeatureGroupsDimensionCount" if this didn't fit in memory
       LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t>(countFeatureGroups)");
       return nullptr;
    }
@@ -599,7 +599,7 @@ static Booster * AllocateBoosting(
       return nullptr;
    }
 
-   size_t cFeatures = static_cast<size_t>(countFeatures);
+   size_t cFeatureAtomics = static_cast<size_t>(countFeatureAtomics);
    size_t cFeatureGroups = static_cast<size_t>(countFeatureGroups);
    size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
    size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
@@ -621,14 +621,14 @@ static Booster * AllocateBoosting(
    Booster * const pBooster = Booster::Allocate(
       randomSeed,
       runtimeLearningTypeOrCountTargetClasses,
-      cFeatures,
+      cFeatureAtomics,
       cFeatureGroups,
       cInnerBags,
       optionalTempParams,
-      aFeaturesCategorical,
-      aFeaturesBinCount,
-      aFeatureGroupsFeatureCount,
-      aFeatureGroupsFeatureIndexes,
+      aFeatureAtomicsCategorical,
+      aFeatureAtomicsBinCount,
+      aFeatureGroupsDimensionCount,
+      aFeatureGroupsFeatureAtomicIndexes,
       cTrainingSamples,
       trainingTargets,
       trainingBinnedData,
@@ -650,12 +650,12 @@ static Booster * AllocateBoosting(
 EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
+   IntEbmType countFeatureAtomics,
+   const BoolEbmType * featureAtomicsCategorical,
+   const IntEbmType * featureAtomicsBinCount,
    IntEbmType countFeatureGroups,
-   const IntEbmType * featureGroupsFeatureCount,
-   const IntEbmType * featureGroupsFeatureIndexes,
+   const IntEbmType * featureGroupsDimensionCount,
+   const IntEbmType * featureGroupsFeatureAtomicIndexes,
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
@@ -674,12 +674,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       "Entered CreateClassificationBooster: "
       "randomSeed=%" SeedEbmTypePrintf ", "
       "countTargetClasses=%" IntEbmTypePrintf ", "
-      "countFeatures=%" IntEbmTypePrintf ", "
-      "featuresCategorical=%p, "
-      "featuresBinCount=%p, "
+      "countFeatureAtomics=%" IntEbmTypePrintf ", "
+      "featureAtomicsCategorical=%p, "
+      "featureAtomicsBinCount=%p, "
       "countFeatureGroups=%" IntEbmTypePrintf ", "
-      "featureGroupsFeatureCount=%p, "
-      "featureGroupsFeatureIndexes=%p, "
+      "featureGroupsDimensionCount=%p, "
+      "featureGroupsFeatureAtomicIndexes=%p, "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "trainingBinnedData=%p, "
       "trainingTargets=%p, "
@@ -695,12 +695,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       ,
       randomSeed,
       countTargetClasses,
-      countFeatures, 
-      static_cast<const void *>(featuresCategorical),
-      static_cast<const void *>(featuresBinCount),
+      countFeatureAtomics, 
+      static_cast<const void *>(featureAtomicsCategorical),
+      static_cast<const void *>(featureAtomicsBinCount),
       countFeatureGroups,
-      static_cast<const void *>(featureGroupsFeatureCount),
-      static_cast<const void *>(featureGroupsFeatureIndexes), 
+      static_cast<const void *>(featureGroupsDimensionCount),
+      static_cast<const void *>(featureGroupsFeatureAtomicIndexes), 
       countTrainingSamples, 
       static_cast<const void *>(trainingBinnedData), 
       static_cast<const void *>(trainingTargets), 
@@ -729,12 +729,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
    const BoosterHandle boosterHandle = reinterpret_cast<BoosterHandle>(AllocateBoosting(
       randomSeed, 
-      countFeatures, 
-      featuresCategorical,
-      featuresBinCount,
+      countFeatureAtomics, 
+      featureAtomicsCategorical,
+      featureAtomicsBinCount,
       countFeatureGroups,
-      featureGroupsFeatureCount,
-      featureGroupsFeatureIndexes, 
+      featureGroupsDimensionCount,
+      featureGroupsFeatureAtomicIndexes, 
       runtimeLearningTypeOrCountTargetClasses, 
       countTrainingSamples, 
       trainingTargets, 
@@ -755,12 +755,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
 
 EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
    SeedEbmType randomSeed,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
+   IntEbmType countFeatureAtomics,
+   const BoolEbmType * featureAtomicsCategorical,
+   const IntEbmType * featureAtomicsBinCount,
    IntEbmType countFeatureGroups,
-   const IntEbmType * featureGroupsFeatureCount,
-   const IntEbmType * featureGroupsFeatureIndexes,
+   const IntEbmType * featureGroupsDimensionCount,
+   const IntEbmType * featureGroupsFeatureAtomicIndexes,
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const FloatEbmType * trainingTargets,
@@ -778,12 +778,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       TraceLevelInfo, 
       "Entered CreateRegressionBooster: "
       "randomSeed=%" SeedEbmTypePrintf ", "
-      "countFeatures=%" IntEbmTypePrintf ", "
-      "featuresCategorical=%p, "
-      "featuresBinCount=%p, "
+      "countFeatureAtomics=%" IntEbmTypePrintf ", "
+      "featureAtomicsCategorical=%p, "
+      "featureAtomicsBinCount=%p, "
       "countFeatureGroups=%" IntEbmTypePrintf ", "
-      "featureGroupsFeatureCount=%p, "
-      "featureGroupsFeatureIndexes=%p, "
+      "featureGroupsDimensionCount=%p, "
+      "featureGroupsFeatureAtomicIndexes=%p, "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "trainingBinnedData=%p, "
       "trainingTargets=%p, "
@@ -798,12 +798,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
       "optionalTempParams=%p"
       ,
       randomSeed,
-      countFeatures,
-      static_cast<const void *>(featuresCategorical),
-      static_cast<const void *>(featuresBinCount),
+      countFeatureAtomics,
+      static_cast<const void *>(featureAtomicsCategorical),
+      static_cast<const void *>(featureAtomicsBinCount),
       countFeatureGroups,
-      static_cast<const void *>(featureGroupsFeatureCount),
-      static_cast<const void *>(featureGroupsFeatureIndexes), 
+      static_cast<const void *>(featureGroupsDimensionCount),
+      static_cast<const void *>(featureGroupsFeatureAtomicIndexes), 
       countTrainingSamples, 
       static_cast<const void *>(trainingBinnedData), 
       static_cast<const void *>(trainingTargets), 
@@ -819,12 +819,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    );
    const BoosterHandle boosterHandle = reinterpret_cast<BoosterHandle>(AllocateBoosting(
       randomSeed, 
-      countFeatures, 
-      featuresCategorical,
-      featuresBinCount,
+      countFeatureAtomics, 
+      featureAtomicsCategorical,
+      featureAtomicsBinCount,
       countFeatureGroups, 
-      featureGroupsFeatureCount,
-      featureGroupsFeatureIndexes, 
+      featureGroupsDimensionCount,
+      featureGroupsFeatureAtomicIndexes, 
       k_regression, 
       countTrainingSamples, 
       trainingTargets, 
@@ -899,13 +899,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetBestMo
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
 
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
+   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
    size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cBins, cValues));
          cValues *= cBins;
@@ -988,13 +988,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetCurren
    EBM_ASSERT(nullptr != pBooster->GetFeatureGroups());
 
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
+   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
    size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cBins, cValues));
          cValues *= cBins;

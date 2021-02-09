@@ -59,16 +59,16 @@ static bool CalculateInteractionScoreInternal(
    LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScoreInternal");
 
    // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
-   EBM_ASSERT(pFeatureGroup->GetCountFeatures() == pFeatureGroup->GetCountSignificantFeatures());
+   EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
+   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+   EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions());
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountFeatures();
+   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
    do {
-      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
       // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // our tensor code strips out features with 1 bin, and we'd need to do that here too if cBins was 1
       EBM_ASSERT(size_t { 2 } <= cBins);
@@ -180,7 +180,7 @@ static bool CalculateInteractionScoreInternal(
 #endif // NDEBUG
    );
 
-   if(2 == pFeatureGroup->GetCountSignificantFeatures()) {
+   if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
       LOG_0(TraceLevelVerbose, "CalculateInteractionScoreInternal Starting bin sweep loop");
 
       FloatEbmType bestSplittingScore = FindBestInteractionGainPairs(
@@ -219,7 +219,7 @@ static bool CalculateInteractionScoreInternal(
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal 2 != pFeatureGroup->GetCountFeatures()");
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal 2 != pFeatureGroup->GetCountSignificantDimensions()");
 
       // TODO: handle this better
       if(nullptr != pInteractionScoreReturn) {
@@ -243,8 +243,8 @@ static int g_cLogCalculateInteractionScoreParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
    InteractionDetectorHandle interactionDetectorHandle,
-   IntEbmType countFeaturesInGroup,
-   const IntEbmType * featureIndexes,
+   IntEbmType countDimensions,
+   const IntEbmType * featureAtomicIndexes,
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 ) {
@@ -252,10 +252,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       &g_cLogCalculateInteractionScoreParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "CalculateInteractionScore parameters: interactionDetectorHandle=%p, countFeaturesInGroup=%" IntEbmTypePrintf ", featureIndexes=%p, countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
+      "CalculateInteractionScore parameters: interactionDetectorHandle=%p, countDimensions=%" IntEbmTypePrintf ", featureAtomicIndexes=%p, countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
       static_cast<void *>(interactionDetectorHandle),
-      countFeaturesInGroup,
-      static_cast<const void *>(featureIndexes),
+      countDimensions,
+      static_cast<const void *>(featureAtomicIndexes),
       countSamplesRequiredForChildSplitMin,
       static_cast<void *>(interactionScoreOut)
    );
@@ -271,29 +271,29 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
 
    LOG_COUNTED_0(pInteractionDetector->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered CalculateInteractionScore");
 
-   if(countFeaturesInGroup < 0) {
+   if(countDimensions < 0) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countFeaturesInGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countDimensions must be positive");
       return 1;
    }
-   if(0 != countFeaturesInGroup && nullptr == featureIndexes) {
+   if(0 != countDimensions && nullptr == featureAtomicIndexes) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes cannot be nullptr if 0 < countFeaturesInGroup");
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureAtomicIndexes cannot be nullptr if 0 < countDimensions");
       return 1;
    }
-   if(!IsNumberConvertable<size_t>(countFeaturesInGroup)) {
+   if(!IsNumberConvertable<size_t>(countDimensions)) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countFeaturesInGroup too large to index");
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countDimensions too large to index");
       return 1;
    }
-   size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
-   if(0 == cFeaturesInGroup) {
+   size_t cDimensions = static_cast<size_t>(countDimensions);
+   if(0 == cDimensions) {
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore empty feature group");
       if(nullptr != interactionScoreOut) {
          // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 
@@ -325,36 +325,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
-   const Feature * const aFeatures = pInteractionDetector->GetFeatures();
-   const IntEbmType * pFeatureIndexes = featureIndexes;
-   const IntEbmType * const pFeatureIndexesEnd = featureIndexes + cFeaturesInGroup;
+   const FeatureAtomic * const aFeatureAtomics = pInteractionDetector->GetFeatureAtomics();
+   const IntEbmType * pFeatureAtomicIndexes = featureAtomicIndexes;
+   const IntEbmType * const pFeatureAtomicIndexesEnd = featureAtomicIndexes + cDimensions;
 
    do {
-      const IntEbmType indexFeatureInterop = *pFeatureIndexes;
-      if(indexFeatureInterop < 0) {
+      const IntEbmType indexFeatureAtomicInterop = *pFeatureAtomicIndexes;
+      if(indexFeatureAtomicInterop < 0) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value cannot be negative");
+         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureAtomicIndexes value cannot be negative");
          return 1;
       }
-      if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
+      if(!IsNumberConvertable<size_t>(indexFeatureAtomicInterop)) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value too big to reference memory");
+         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureAtomicIndexes value too big to reference memory");
          return 1;
       }
-      const size_t iFeatureInGroup = static_cast<size_t>(indexFeatureInterop);
-      if(pInteractionDetector->GetCountFeatures() <= iFeatureInGroup) {
+      const size_t iFeatureAtomic = static_cast<size_t>(indexFeatureAtomicInterop);
+      if(pInteractionDetector->GetCountFeatureAtomics() <= iFeatureAtomic) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value must be less than the number of features");
+         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureAtomicIndexes value must be less than the number of features");
          return 1;
       }
-      const Feature * const pFeature = &aFeatures[iFeatureInGroup];
-      if(pFeature->GetCountBins() <= size_t { 1 }) {
+      const FeatureAtomic * const pFeatureAtomic = &aFeatureAtomics[iFeatureAtomic];
+      if(pFeatureAtomic->GetCountBins() <= size_t { 1 }) {
          if(nullptr != interactionScoreOut) {
             // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
             // our caler be smarter about this condition
@@ -363,12 +363,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore feature group contains a feature with only 1 bin");
          return IntEbmType { 0 };
       }
-      ++pFeatureIndexes;
-   } while(pFeatureIndexesEnd != pFeatureIndexes);
+      ++pFeatureAtomicIndexes;
+   } while(pFeatureAtomicIndexesEnd != pFeatureAtomicIndexes);
 
-   if(k_cDimensionsMax < cFeaturesInGroup) {
+   if(k_cDimensionsMax < cDimensions) {
       // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore k_cDimensionsMax < cFeaturesInGroup");
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore k_cDimensionsMax < cDimensions");
       return 1;
    }
 
@@ -380,26 +380,26 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    // which calls things like building the tensor totals (which is templated to be compiled many times)
    char FeatureGroupBuffer[FeatureGroup::GetFeatureGroupCountBytes(k_cDimensionsMax)];
    FeatureGroup * const pFeatureGroup = reinterpret_cast<FeatureGroup *>(&FeatureGroupBuffer);
-   pFeatureGroup->Initialize(cFeaturesInGroup, 0);
-   pFeatureGroup->SetCountSignificantFeatures(cFeaturesInGroup);
+   pFeatureGroup->Initialize(cDimensions, 0);
+   pFeatureGroup->SetCountSignificantFeatures(cDimensions);
 
-   pFeatureIndexes = featureIndexes; // restart from the start
+   pFeatureAtomicIndexes = featureAtomicIndexes; // restart from the start
    FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
    do {
       // TODO: move this into the loop above
 
-      const IntEbmType indexFeatureInterop = *pFeatureIndexes;
-      EBM_ASSERT(0 <= indexFeatureInterop);
-      EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureInterop)); // we already checked indexFeatureInterop was good above
-      size_t iFeatureInGroup = static_cast<size_t>(indexFeatureInterop);
-      EBM_ASSERT(iFeatureInGroup < pInteractionDetector->GetCountFeatures());
-      const Feature * const pFeature = &aFeatures[iFeatureInGroup];
-      EBM_ASSERT(2 <= pFeature->GetCountBins()); // we should have filtered out anything with 1 bin above
+      const IntEbmType indexFeatureAtomicInterop = *pFeatureAtomicIndexes;
+      EBM_ASSERT(0 <= indexFeatureAtomicInterop);
+      EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureAtomicInterop)); // we already checked indexFeatureInterop was good above
+      size_t iFeatureAtomic = static_cast<size_t>(indexFeatureAtomicInterop);
+      EBM_ASSERT(iFeatureAtomic < pInteractionDetector->GetCountFeatureAtomics());
+      const FeatureAtomic * const pFeatureAtomic = &aFeatureAtomics[iFeatureAtomic];
+      EBM_ASSERT(2 <= pFeatureAtomic->GetCountBins()); // we should have filtered out anything with 1 bin above
 
-      pFeatureGroupEntry->m_pFeature = pFeature;
+      pFeatureGroupEntry->m_pFeatureAtomic = pFeatureAtomic;
       ++pFeatureGroupEntry;
-      ++pFeatureIndexes;
-   } while(pFeatureIndexesEnd != pFeatureIndexes);
+      ++pFeatureAtomicIndexes;
+   } while(pFeatureAtomicIndexesEnd != pFeatureAtomicIndexes);
 
    if(ptrdiff_t { 0 } == pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses()) {
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore target with 0/1 classes");

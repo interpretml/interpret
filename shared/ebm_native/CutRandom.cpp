@@ -61,15 +61,15 @@ public:
       HistogramBucketBase * const aHistogramBucketsBase = pThreadStateBoosting->GetHistogramBucketBase();
       HistogramBucket<bClassification> * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<bClassification>();
 
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantFeatures());
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
 
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
          pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet();
 
       const IntEbmType * pLeavesMax1 = aLeavesMax;
       const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry1 + pFeatureGroup->GetCountFeatures();
+      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry1 + pFeatureGroup->GetCountDimensions();
       size_t cSlicesTotal = 0;
       size_t cSlicesPlusRandomMax = 0;
       size_t cCollapsedTensorCells = 1;
@@ -92,8 +92,8 @@ public:
             }
          }
 
-         const Feature * const pFeature = pFeatureGroupEntry1->m_pFeature;
-         const size_t cBins = pFeature->GetCountBins();
+         const FeatureAtomic * const pFeatureAtomic = pFeatureGroupEntry1->m_pFeatureAtomic;
+         const size_t cBins = pFeatureAtomic->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
          const size_t cPossibleCutLocations = cBins - size_t { 1 };
@@ -185,8 +185,8 @@ public:
             }
          }
 
-         const Feature * const pFeature = pFeatureGroupEntry2->m_pFeature;
-         const size_t cBins = pFeature->GetCountBins();
+         const FeatureAtomic * const pFeatureAtomic = pFeatureGroupEntry2->m_pFeatureAtomic;
+         const size_t cBins = pFeatureAtomic->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          size_t cPossibleCutLocations = cBins - size_t { 1 };
          if(size_t { 0 } < cPossibleCutLocations) {
@@ -251,9 +251,9 @@ public:
          }
 
          // the first dimension is special.  we put byte until next item into it instead of counts remaining
-         const Feature * const pFirstFeature = pFeatureGroupEntry3->m_pFeature;
+         const FeatureAtomic * const pFirstFeatureAtomic = pFeatureGroupEntry3->m_pFeatureAtomic;
          ++pFeatureGroupEntry3;
-         const size_t cFirstBins = pFirstFeature->GetCountBins();
+         const size_t cFirstBins = pFirstFeatureAtomic->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cFirstBins); // we don't boost on empty training sets
          if(size_t { 1 } < cFirstBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
@@ -307,8 +307,8 @@ public:
             }
          }
 
-         const Feature * const pFeature = pFeatureGroupEntry3->m_pFeature;
-         const size_t cBins = pFeature->GetCountBins();
+         const FeatureAtomic * const pFeatureAtomic = pFeatureGroupEntry3->m_pFeatureAtomic;
+         const size_t cBins = pFeatureAtomic->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
@@ -363,7 +363,7 @@ public:
             cBytesCollapsedTensor3);
 
       // we special case the first dimension, so drop it by subtracting
-      EBM_ASSERT(&randomCutState[pFeatureGroup->GetCountSignificantFeatures() - size_t { 1 }] == pStateInit);
+      EBM_ASSERT(&randomCutState[pFeatureGroup->GetCountSignificantDimensions() - size_t { 1 }] == pStateInit);
 
       const HistogramBucket<bClassification> * pHistogramBucket = aHistogramBuckets;
       HistogramBucket<bClassification> * pCollapsedHistogramBucket1 = aCollapsedHistogramBuckets;
