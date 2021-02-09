@@ -52,20 +52,20 @@ static void Flatten(
       FloatEbmType * const pValuesNext = pValuesCur + cVectorLength;
       *ppValues = pValuesNext;
 
-      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
-         pTreeNode->GetHistogramBucketVectorEntry();
+      const HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
+         pTreeNode->GetHistogramTargetEntry();
       do {
          FloatEbmType smallChangeToModel;
          if(bClassification) {
             smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-               pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
+               pHistogramTargetEntry->m_sumResidualError, pHistogramTargetEntry->GetSumDenominator());
          } else {
             smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-               pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FloatEbmType>(pTreeNode->AMBIGUOUS_GetSamples()));
+               pHistogramTargetEntry->m_sumResidualError, static_cast<FloatEbmType>(pTreeNode->AMBIGUOUS_GetSamples()));
          }
          *pValuesCur = smallChangeToModel;
 
-         ++pHistogramBucketVectorEntry;
+         ++pHistogramTargetEntry;
          ++pValuesCur;
       } while(pValuesNext != pValuesCur);
    }
@@ -103,25 +103,25 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
-   // it's tempting to want to use GetSumHistogramBucketVectorEntryArray here instead of 
-   // GetSumHistogramBucketVectorEntry1Array, but the problem with that is that we sometimes re-do our work
+   // it's tempting to want to use GetSumHistogramTargetEntryArray here instead of 
+   // GetSumHistogramTargetEntry1Array, but the problem with that is that we sometimes re-do our work
    // when we exceed our memory size by goto retry_with_bigger_tree_node_children_array.  When that happens
-   // we need to retrieve the original sum which resides at GetSumHistogramBucketVectorEntryArray
+   // we need to retrieve the original sum which resides at GetSumHistogramTargetEntryArray
    // since the memory pointed to at pRootTreeNode is freed and re-allocated.
-   // So, DO NOT DO: pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray()->
-   //   GetHistogramBucketVectorEntry<bClassification>();
-   HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
-      pThreadStateBoosting->GetSumHistogramBucketVectorEntry1Array<bClassification>();
+   // So, DO NOT DO: pThreadStateBoosting->GetSumHistogramTargetEntryArray()->
+   //   GetHistogramTargetEntry<bClassification>();
+   HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntryLeft =
+      pThreadStateBoosting->GetSumHistogramTargetEntry1Array<bClassification>();
 
    for(size_t i = 0; i < cVectorLength; ++i) {
-      aSumHistogramBucketVectorEntryLeft[i].Zero();
+      aSumHistogramTargetEntryLeft[i].Zero();
    }
 
    FloatEbmType * const aSumResidualErrorsRight = pThreadStateBoosting->GetTempFloatVector();
-   const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryInit = 
-      pTreeNode->GetHistogramBucketVectorEntry();
+   const HistogramTargetEntry<bClassification> * pHistogramTargetEntryInit = 
+      pTreeNode->GetHistogramTargetEntry();
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      aSumResidualErrorsRight[iVector] = pHistogramBucketVectorEntryInit[iVector].m_sumResidualError;
+      aSumResidualErrorsRight[iVector] = pHistogramTargetEntryInit[iVector].m_sumResidualError;
    }
 
    const HistogramBucket<bClassification> * pHistogramBucketEntryCur =
@@ -169,8 +169,8 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       }
       cSamplesLeft += CHANGE_cSamples;
 
-      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry =
-         pHistogramBucketEntryCur->GetHistogramBucketVectorEntry();
+      const HistogramTargetEntry<bClassification> * pHistogramTargetEntry =
+         pHistogramBucketEntryCur->GetHistogramTargetEntry();
 
       if(LIKELY(cSamplesRequiredForChildSplitMin <= cSamplesLeft)) {
          EBM_ASSERT(0 < cSamplesRight);
@@ -181,7 +181,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          FloatEbmType nodeSplittingScore = 0;
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType CHANGE_sumResidualError = pHistogramBucketVectorEntry[iVector].m_sumResidualError;
+            const FloatEbmType CHANGE_sumResidualError = pHistogramTargetEntry[iVector].m_sumResidualError;
 
             const FloatEbmType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
             aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
@@ -192,8 +192,8 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             EBM_ASSERT(std::isnan(nodeSplittingScoreRight) || FloatEbmType { 0 } <= nodeSplittingScoreRight);
             nodeSplittingScore += nodeSplittingScoreRight;
 
-            const FloatEbmType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError + CHANGE_sumResidualError;
-            aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
+            const FloatEbmType sumResidualErrorLeft = aSumHistogramTargetEntryLeft[iVector].m_sumResidualError + CHANGE_sumResidualError;
+            aSumHistogramTargetEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
@@ -202,9 +202,9 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             nodeSplittingScore += nodeSplittingScoreLeft;
 
             if(bClassification) {
-               aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(
-                  aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() +
-                  pHistogramBucketVectorEntry[iVector].GetSumDenominator()
+               aSumHistogramTargetEntryLeft[iVector].SetSumDenominator(
+                  aSumHistogramTargetEntryLeft[iVector].GetSumDenominator() +
+                  pHistogramTargetEntry[iVector].GetSumDenominator()
                );
             }
          }
@@ -245,8 +245,8 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             pSweepTreeNodeCur->SetBestHistogramBucketEntry(pHistogramBucketEntryCur);
             pSweepTreeNodeCur->SetCountBestSamplesLeft(cSamplesLeft);
             memcpy(
-               pSweepTreeNodeCur->GetBestHistogramBucketVectorEntry(), aSumHistogramBucketVectorEntryLeft,
-               sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength
+               pSweepTreeNodeCur->GetBestHistogramTargetEntry(), aSumHistogramTargetEntryLeft,
+               sizeof(*aSumHistogramTargetEntryLeft) * cVectorLength
             );
 
             pSweepTreeNodeCur = AddBytesSweepTreeNode(pSweepTreeNodeCur, cBytesPerSweepTreeNode);
@@ -254,14 +254,14 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatEbmType CHANGE_sumResidualError =
-               pHistogramBucketVectorEntry[iVector].m_sumResidualError;
+               pHistogramTargetEntry[iVector].m_sumResidualError;
 
             aSumResidualErrorsRight[iVector] -= CHANGE_sumResidualError;
-            aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError += CHANGE_sumResidualError;
+            aSumHistogramTargetEntryLeft[iVector].m_sumResidualError += CHANGE_sumResidualError;
             if(bClassification) {
-               aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(
-                  aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() +
-                  pHistogramBucketVectorEntry[iVector].GetSumDenominator()
+               aSumHistogramTargetEntryLeft[iVector].SetSumDenominator(
+                  aSumHistogramTargetEntryLeft[iVector].GetSumDenominator() +
+                  pHistogramTargetEntry[iVector].GetSumDenominator()
                );
             }
          }
@@ -313,36 +313,36 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // parent should ever have zero samples
    EBM_ASSERT(0 < cSamplesParent);
 
-   HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryLeftChild =
-      pLeftChild->GetHistogramBucketVectorEntry();
+   HistogramTargetEntry<bClassification> * pHistogramTargetEntryLeftChild =
+      pLeftChild->GetHistogramTargetEntry();
 
-   HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryRightChild =
-      pRightChild->GetHistogramBucketVectorEntry();
+   HistogramTargetEntry<bClassification> * pHistogramTargetEntryRightChild =
+      pRightChild->GetHistogramTargetEntry();
 
-   const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryTreeNode =
-      pTreeNode->GetHistogramBucketVectorEntry();
+   const HistogramTargetEntry<bClassification> * pHistogramTargetEntryTreeNode =
+      pTreeNode->GetHistogramTargetEntry();
 
-   const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntrySweep =
-      pSweepTreeNodeStart->GetBestHistogramBucketVectorEntry();
+   const HistogramTargetEntry<bClassification> * pHistogramTargetEntrySweep =
+      pSweepTreeNodeStart->GetBestHistogramTargetEntry();
 
    // TODO: usually we've done this calculation for the parent already.  Why not keep the result arround to avoid extra work?
    FloatEbmType originalParentScore = 0;
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      const FloatEbmType BEST_sumResidualErrorLeft = pHistogramBucketVectorEntrySweep[iVector].m_sumResidualError;
-      pHistogramBucketVectorEntryLeftChild[iVector].m_sumResidualError = BEST_sumResidualErrorLeft;
+      const FloatEbmType BEST_sumResidualErrorLeft = pHistogramTargetEntrySweep[iVector].m_sumResidualError;
+      pHistogramTargetEntryLeftChild[iVector].m_sumResidualError = BEST_sumResidualErrorLeft;
 
-      const FloatEbmType sumResidualErrorParent = pHistogramBucketVectorEntryTreeNode[iVector].m_sumResidualError;
-      pHistogramBucketVectorEntryRightChild[iVector].m_sumResidualError = sumResidualErrorParent - BEST_sumResidualErrorLeft;
+      const FloatEbmType sumResidualErrorParent = pHistogramTargetEntryTreeNode[iVector].m_sumResidualError;
+      pHistogramTargetEntryRightChild[iVector].m_sumResidualError = sumResidualErrorParent - BEST_sumResidualErrorLeft;
 
       const FloatEbmType originalParentScoreUpdate = EbmStats::ComputeNodeSplittingScore(sumResidualErrorParent, cSamplesParentFloatEbmType);
       EBM_ASSERT(std::isnan(originalParentScoreUpdate) || FloatEbmType { 0 } <= originalParentScoreUpdate);
       originalParentScore += originalParentScoreUpdate;
 
       if(bClassification) {
-         const FloatEbmType BEST_sumDenominatorLeft = pHistogramBucketVectorEntrySweep[iVector].GetSumDenominator();
-         pHistogramBucketVectorEntryLeftChild[iVector].SetSumDenominator(BEST_sumDenominatorLeft);
-         pHistogramBucketVectorEntryRightChild[iVector].SetSumDenominator(
-            pHistogramBucketVectorEntryTreeNode[iVector].GetSumDenominator() - BEST_sumDenominatorLeft
+         const FloatEbmType BEST_sumDenominatorLeft = pHistogramTargetEntrySweep[iVector].GetSumDenominator();
+         pHistogramTargetEntryLeftChild[iVector].SetSumDenominator(BEST_sumDenominatorLeft);
+         pHistogramTargetEntryRightChild[iVector].SetSumDenominator(
+            pHistogramTargetEntryTreeNode[iVector].GetSumDenominator() - BEST_sumDenominatorLeft
          );
       }
    }
@@ -423,10 +423,10 @@ public:
       const HistogramBucket<bClassification> * const aHistogramBucket =
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
-      HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase =
-         pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray();
-      const HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
-         aSumHistogramBucketVectorEntryBase->GetHistogramBucketVectorEntry<bClassification>();
+      HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
+         pThreadStateBoosting->GetSumHistogramTargetEntryArray();
+      const HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntry =
+         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<bClassification>();
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -488,9 +488,9 @@ public:
 
       // copying existing mem
       memcpy(
-         pRootTreeNode->GetHistogramBucketVectorEntry(),
-         aSumHistogramBucketVectorEntry,
-         cVectorLength * sizeof(*aSumHistogramBucketVectorEntry)
+         pRootTreeNode->GetHistogramTargetEntry(),
+         aSumHistogramTargetEntry,
+         cVectorLength * sizeof(*aSumHistogramTargetEntry)
       );
 
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
@@ -514,14 +514,14 @@ public:
             FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  pRootTreeNode->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pRootTreeNode->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator()
+                  pRootTreeNode->GetHistogramTargetEntry()[iVector].m_sumResidualError, pRootTreeNode->GetHistogramTargetEntry()[iVector].GetSumDenominator()
                );
                aValues[iVector] = smallChangeToModel;
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-               pRootTreeNode->GetHistogramBucketVectorEntry()[0].m_sumResidualError, static_cast<FloatEbmType>(cSamplesTotal)
+               pRootTreeNode->GetHistogramTargetEntry()[0].m_sumResidualError, static_cast<FloatEbmType>(cSamplesTotal)
             );
             FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
             pValues[0] = smallChangeToModel;
@@ -562,32 +562,32 @@ public:
             cBytesPerTreeNode
             );
 
-         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryLeftChild =
-            pLeftChild->GetHistogramBucketVectorEntry();
+         const HistogramTargetEntry<bClassification> * pHistogramTargetEntryLeftChild =
+            pLeftChild->GetHistogramTargetEntry();
 
-         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryRightChild =
-            pRightChild->GetHistogramBucketVectorEntry();
+         const HistogramTargetEntry<bClassification> * pHistogramTargetEntryRightChild =
+            pRightChild->GetHistogramTargetEntry();
 
          FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          if(bClassification) {
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                aValues[iVector] = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  pHistogramBucketVectorEntryLeftChild[iVector].m_sumResidualError,
-                  pHistogramBucketVectorEntryLeftChild[iVector].GetSumDenominator()
+                  pHistogramTargetEntryLeftChild[iVector].m_sumResidualError,
+                  pHistogramTargetEntryLeftChild[iVector].GetSumDenominator()
                );
                aValues[cVectorLength + iVector] = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  pHistogramBucketVectorEntryRightChild[iVector].m_sumResidualError,
-                  pHistogramBucketVectorEntryRightChild[iVector].GetSumDenominator()
+                  pHistogramTargetEntryRightChild[iVector].m_sumResidualError,
+                  pHistogramTargetEntryRightChild[iVector].GetSumDenominator()
                );
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             aValues[0] = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-               pHistogramBucketVectorEntryLeftChild[0].m_sumResidualError,
+               pHistogramTargetEntryLeftChild[0].m_sumResidualError,
                static_cast<FloatEbmType>(pLeftChild->AMBIGUOUS_GetSamples())
             );
             aValues[1] = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-               pHistogramBucketVectorEntryRightChild[0].m_sumResidualError,
+               pHistogramTargetEntryRightChild[0].m_sumResidualError,
                static_cast<FloatEbmType>(pRightChild->AMBIGUOUS_GetSamples())
             );
          }

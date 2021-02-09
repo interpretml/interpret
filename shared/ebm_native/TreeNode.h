@@ -153,11 +153,11 @@ struct TreeNodeData<true> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = divisionValue;
    }
 
-   INLINE_ALWAYS const HistogramBucketVectorEntry<true> * GetHistogramBucketVectorEntry() const {
-      return ArrayToPointer(m_aHistogramBucketVectorEntry);
+   INLINE_ALWAYS const HistogramTargetEntry<true> * GetHistogramTargetEntry() const {
+      return ArrayToPointer(m_aHistogramTargetEntry);
    }
-   INLINE_ALWAYS HistogramBucketVectorEntry<true> * GetHistogramBucketVectorEntry() {
-      return ArrayToPointer(m_aHistogramBucketVectorEntry);
+   INLINE_ALWAYS HistogramTargetEntry<true> * GetHistogramTargetEntry() {
+      return ArrayToPointer(m_aHistogramTargetEntry);
    }
 
 #ifndef NDEBUG
@@ -182,11 +182,11 @@ private:
 
    TreeNodeDataUnion m_UNION;
    // use the "struct hack" since Flexible array member method is not available in C++
-   // m_aHistogramBucketVectorEntry must be the last item in this struct
+   // m_aHistogramTargetEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramBucketVectorEntry<true> m_aHistogramBucketVectorEntry[1];
+   HistogramTargetEntry<true> m_aHistogramTargetEntry[1];
 };
 static_assert(std::is_standard_layout<TreeNodeData<true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -326,11 +326,11 @@ struct TreeNodeData<false> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = divisionValue;
    }
 
-   INLINE_ALWAYS const HistogramBucketVectorEntry<false> * GetHistogramBucketVectorEntry() const {
-      return ArrayToPointer(m_aHistogramBucketVectorEntry);
+   INLINE_ALWAYS const HistogramTargetEntry<false> * GetHistogramTargetEntry() const {
+      return ArrayToPointer(m_aHistogramTargetEntry);
    }
-   INLINE_ALWAYS HistogramBucketVectorEntry<false> * GetHistogramBucketVectorEntry() {
-      return ArrayToPointer(m_aHistogramBucketVectorEntry);
+   INLINE_ALWAYS HistogramTargetEntry<false> * GetHistogramTargetEntry() {
+      return ArrayToPointer(m_aHistogramTargetEntry);
    }
 
 #ifndef NDEBUG
@@ -357,11 +357,11 @@ private:
 
    size_t m_cSamples;
    // use the "struct hack" since Flexible array member method is not available in C++
-   // m_aHistogramBucketVectorEntry must be the last item in this struct
+   // m_aHistogramTargetEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramBucketVectorEntry<false> m_aHistogramBucketVectorEntry[1];
+   HistogramTargetEntry<false> m_aHistogramTargetEntry[1];
 };
 static_assert(std::is_standard_layout<TreeNodeData<false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -422,16 +422,16 @@ static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>
 
 INLINE_ALWAYS size_t GetTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramBucketVectorEntry<true>) :
-      sizeof(HistogramBucketVectorEntry<false>);
+      sizeof(HistogramTargetEntry<true>) :
+      sizeof(HistogramTargetEntry<false>);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
    }
 
    const size_t cBytesTreeNodeComponent = bClassification ?
-      (sizeof(TreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>)) :
-      (sizeof(TreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>));
+      (sizeof(TreeNode<true>) - sizeof(HistogramTargetEntry<true>)) :
+      (sizeof(TreeNode<false>) - sizeof(HistogramTargetEntry<false>));
 
    if(UNLIKELY(IsAddError(cBytesTreeNodeComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
@@ -442,12 +442,12 @@ INLINE_ALWAYS size_t GetTreeNodeSizeOverflow(const bool bClassification, const s
 
 INLINE_ALWAYS size_t GetTreeNodeSize(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesTreeNodeComponent = bClassification ?
-      sizeof(TreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>) :
-      sizeof(TreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>);
+      sizeof(TreeNode<true>) - sizeof(HistogramTargetEntry<true>) :
+      sizeof(TreeNode<false>) - sizeof(HistogramTargetEntry<false>);
 
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramBucketVectorEntry<true>) :
-      sizeof(HistogramBucketVectorEntry<false>);
+      sizeof(HistogramTargetEntry<true>) :
+      sizeof(HistogramTargetEntry<false>);
 
    return cBytesTreeNodeComponent + cBytesHistogramTargetEntry * cVectorLength;
 }

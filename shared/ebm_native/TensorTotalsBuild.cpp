@@ -880,14 +880,14 @@ extern void TensorTotalsBuild(
 //      pHistogramBucket->m_cSamplesInBucket = cSamplesInBucket;
 //      pPrevious->m_cSamplesInBucket = cSamplesInBucket;
 //      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//         const FloatEbmType sumResidualError = pHistogramBucket->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError + pPrevious->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError;
-//         pHistogramBucket->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError = sumResidualError;
-//         pPrevious->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError = sumResidualError;
+//         const FloatEbmType sumResidualError = pHistogramBucket->GetHistogramTargetEntry()[iVector].m_sumResidualError + pPrevious->GetHistogramTargetEntry()[iVector].m_sumResidualError;
+//         pHistogramBucket->GetHistogramTargetEntry()[iVector].m_sumResidualError = sumResidualError;
+//         pPrevious->GetHistogramTargetEntry()[iVector].m_sumResidualError = sumResidualError;
 //
 //         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-//            const FloatEbmType sumDenominator = pHistogramBucket->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator() + pPrevious->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator();
-//            pHistogramBucket->GetHistogramBucketVectorEntry()[iVector].SetSumDenominator(sumDenominator);
-//            pPrevious->GetHistogramBucketVectorEntry()[iVector].SetSumDenominator(sumDenominator);
+//            const FloatEbmType sumDenominator = pHistogramBucket->GetHistogramTargetEntry()[iVector].GetSumDenominator() + pPrevious->GetHistogramTargetEntry()[iVector].GetSumDenominator();
+//            pHistogramBucket->GetHistogramTargetEntry()[iVector].SetSumDenominator(sumDenominator);
+//            pPrevious->GetHistogramTargetEntry()[iVector].SetSumDenominator(sumDenominator);
 //         }
 //      }
 //
@@ -1082,13 +1082,13 @@ extern void TensorTotalsBuild(
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsTarget->GetHistogramTargetEntry()[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsOther->GetHistogramTargetEntry()[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -1125,13 +1125,13 @@ extern void TensorTotalsBuild(
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsTarget->GetHistogramTargetEntry()[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsOther->GetHistogramTargetEntry()[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -1168,13 +1168,13 @@ extern void TensorTotalsBuild(
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsTarget->GetHistogramTargetEntry()[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsOther->GetHistogramTargetEntry()[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -1210,13 +1210,13 @@ extern void TensorTotalsBuild(
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsTarget->GetHistogramTargetEntry()[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumResidualError, pTotalsOther->GetHistogramTargetEntry()[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE

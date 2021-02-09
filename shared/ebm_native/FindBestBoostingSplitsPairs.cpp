@@ -118,22 +118,22 @@ static FloatEbmType SweepMultiDiemensional(
             FloatEbmType cLowSamplesInBucket = static_cast<FloatEbmType>(pTotalsLow->GetCountSamplesInBucket());
             FloatEbmType cHighSamplesInBucket = static_cast<FloatEbmType>(pTotalsHigh->GetCountSamplesInBucket());
 
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryLow =
-               pTotalsLow->GetHistogramBucketVectorEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryLow =
+               pTotalsLow->GetHistogramTargetEntry();
 
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryHigh =
-               pTotalsHigh->GetHistogramBucketVectorEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryHigh =
+               pTotalsHigh->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                const FloatEbmType splittingScoreUpdate1 = EbmStats::ComputeNodeSplittingScore(
-                  pHistogramBucketVectorEntryLow[iVector].m_sumResidualError, cLowSamplesInBucket);
+                  pHistogramTargetEntryLow[iVector].m_sumResidualError, cLowSamplesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                splittingScore += splittingScoreUpdate1;
                const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeNodeSplittingScore(
-                  pHistogramBucketVectorEntryHigh[iVector].m_sumResidualError, cHighSamplesInBucket);
+                  pHistogramTargetEntryHigh[iVector].m_sumResidualError, cHighSamplesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                splittingScore += splittingScoreUpdate2;
             }
@@ -264,15 +264,15 @@ public:
       EBM_ASSERT(0 < pTotal->GetCountSamplesInBucket());
       const FloatEbmType cSamplesInParentBucket = static_cast<FloatEbmType>(pTotal->GetCountSamplesInBucket());
 
-      HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotal =
-         pTotal->GetHistogramBucketVectorEntry();
+      HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotal =
+         pTotal->GetHistogramTargetEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          // TODO : we can make this faster by doing the division in ComputeNodeSplittingScoreParent after we add all the numerators 
          // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
          const FloatEbmType splittingScoreParentUpdate = EbmStats::ComputeNodeSplittingScore(
-            pHistogramBucketVectorEntryTotal[iVector].m_sumResidualError,
+            pHistogramTargetEntryTotal[iVector].m_sumResidualError,
             cSamplesInParentBucket
          );
          EBM_ASSERT(std::isnan(splittingScoreParentUpdate) || FloatEbmType { 0 } <= splittingScoreParentUpdate);
@@ -511,13 +511,13 @@ public:
 
             if(bClassification) {
                prediction = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  pHistogramBucketVectorEntryTotal[iVector].m_sumResidualError,
-                  pHistogramBucketVectorEntryTotal[iVector].GetSumDenominator()
+                  pHistogramTargetEntryTotal[iVector].m_sumResidualError,
+                  pHistogramTargetEntryTotal[iVector].GetSumDenominator()
                );
             } else {
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                prediction = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                  pHistogramBucketVectorEntryTotal[iVector].m_sumResidualError,
+                  pHistogramTargetEntryTotal[iVector].m_sumResidualError,
                   cSamplesInParentBucket
                );
             }
@@ -579,14 +579,14 @@ public:
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
             }
 
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotals2LowLowBest =
-               pTotals2LowLowBest->GetHistogramBucketVectorEntry();
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotals2LowHighBest =
-               pTotals2LowHighBest->GetHistogramBucketVectorEntry();
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotals2HighLowBest =
-               pTotals2HighLowBest->GetHistogramBucketVectorEntry();
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotals2HighHighBest =
-               pTotals2HighHighBest->GetHistogramBucketVectorEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowLowBest =
+               pTotals2LowLowBest->GetHistogramTargetEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowHighBest =
+               pTotals2LowHighBest->GetHistogramTargetEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2HighLowBest =
+               pTotals2HighLowBest->GetHistogramTargetEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2HighHighBest =
+               pTotals2HighHighBest->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                FloatEbmType predictionLowLow;
@@ -596,37 +596,37 @@ public:
 
                if(bClassification) {
                   predictionLowLow = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     pHistogramBucketVectorEntryTotals2LowLowBest[iVector].m_sumResidualError,
-                     pHistogramBucketVectorEntryTotals2LowLowBest[iVector].GetSumDenominator()
+                     pHistogramTargetEntryTotals2LowLowBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals2LowLowBest[iVector].GetSumDenominator()
                   );
                   predictionLowHigh = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     pHistogramBucketVectorEntryTotals2LowHighBest[iVector].m_sumResidualError,
-                     pHistogramBucketVectorEntryTotals2LowHighBest[iVector].GetSumDenominator()
+                     pHistogramTargetEntryTotals2LowHighBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals2LowHighBest[iVector].GetSumDenominator()
                   );
                   predictionHighLow = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     pHistogramBucketVectorEntryTotals2HighLowBest[iVector].m_sumResidualError,
-                     pHistogramBucketVectorEntryTotals2HighLowBest[iVector].GetSumDenominator()
+                     pHistogramTargetEntryTotals2HighLowBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals2HighLowBest[iVector].GetSumDenominator()
                   );
                   predictionHighHigh = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     pHistogramBucketVectorEntryTotals2HighHighBest[iVector].m_sumResidualError,
-                     pHistogramBucketVectorEntryTotals2HighHighBest[iVector].GetSumDenominator()
+                     pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals2HighHighBest[iVector].GetSumDenominator()
                   );
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                     pHistogramBucketVectorEntryTotals2LowLowBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals2LowLowBest[iVector].m_sumResidualError,
                      static_cast<FloatEbmType>(pTotals2LowLowBest->GetCountSamplesInBucket())
                   );
                   predictionLowHigh = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                     pHistogramBucketVectorEntryTotals2LowHighBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals2LowHighBest[iVector].m_sumResidualError,
                      static_cast<FloatEbmType>(pTotals2LowHighBest->GetCountSamplesInBucket())
                   );
                   predictionHighLow = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                     pHistogramBucketVectorEntryTotals2HighLowBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals2HighLowBest[iVector].m_sumResidualError,
                      static_cast<FloatEbmType>(pTotals2HighLowBest->GetCountSamplesInBucket())
                   );
                   predictionHighHigh = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                     pHistogramBucketVectorEntryTotals2HighHighBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumResidualError,
                      static_cast<FloatEbmType>(pTotals2HighHighBest->GetCountSamplesInBucket())
                   );
                }
@@ -704,14 +704,14 @@ public:
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
             }
 
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotals1LowLowBest =
-               pTotals1LowLowBest->GetHistogramBucketVectorEntry();
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotals1LowHighBest =
-               pTotals1LowHighBest->GetHistogramBucketVectorEntry();
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotals1HighLowBest =
-               pTotals1HighLowBest->GetHistogramBucketVectorEntry();
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotals1HighHighBest =
-               pTotals1HighHighBest->GetHistogramBucketVectorEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowLowBest =
+               pTotals1LowLowBest->GetHistogramTargetEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowHighBest =
+               pTotals1LowHighBest->GetHistogramTargetEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1HighLowBest =
+               pTotals1HighLowBest->GetHistogramTargetEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1HighHighBest =
+               pTotals1HighHighBest->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                FloatEbmType predictionLowLow;
@@ -721,37 +721,37 @@ public:
 
                if(bClassification) {
                   predictionLowLow = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     pHistogramBucketVectorEntryTotals1LowLowBest[iVector].m_sumResidualError,
-                     pHistogramBucketVectorEntryTotals1LowLowBest[iVector].GetSumDenominator()
+                     pHistogramTargetEntryTotals1LowLowBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals1LowLowBest[iVector].GetSumDenominator()
                   );
                   predictionLowHigh = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     pHistogramBucketVectorEntryTotals1LowHighBest[iVector].m_sumResidualError,
-                     pHistogramBucketVectorEntryTotals1LowHighBest[iVector].GetSumDenominator()
+                     pHistogramTargetEntryTotals1LowHighBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals1LowHighBest[iVector].GetSumDenominator()
                   );
                   predictionHighLow = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     pHistogramBucketVectorEntryTotals1HighLowBest[iVector].m_sumResidualError,
-                     pHistogramBucketVectorEntryTotals1HighLowBest[iVector].GetSumDenominator()
+                     pHistogramTargetEntryTotals1HighLowBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals1HighLowBest[iVector].GetSumDenominator()
                   );
                   predictionHighHigh = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     pHistogramBucketVectorEntryTotals1HighHighBest[iVector].m_sumResidualError,
-                     pHistogramBucketVectorEntryTotals1HighHighBest[iVector].GetSumDenominator()
+                     pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals1HighHighBest[iVector].GetSumDenominator()
                   );
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                     pHistogramBucketVectorEntryTotals1LowLowBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals1LowLowBest[iVector].m_sumResidualError,
                      static_cast<FloatEbmType>(pTotals1LowLowBest->GetCountSamplesInBucket())
                   );
                   predictionLowHigh = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                     pHistogramBucketVectorEntryTotals1LowHighBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals1LowHighBest[iVector].m_sumResidualError,
                      static_cast<FloatEbmType>(pTotals1LowHighBest->GetCountSamplesInBucket())
                   );
                   predictionHighLow = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                     pHistogramBucketVectorEntryTotals1HighLowBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals1HighLowBest[iVector].m_sumResidualError,
                      static_cast<FloatEbmType>(pTotals1HighLowBest->GetCountSamplesInBucket())
                   );
                   predictionHighHigh = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                     pHistogramBucketVectorEntryTotals1HighHighBest[iVector].m_sumResidualError,
+                     pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumResidualError,
                      static_cast<FloatEbmType>(pTotals1HighHighBest->GetCountSamplesInBucket())
                   );
                }

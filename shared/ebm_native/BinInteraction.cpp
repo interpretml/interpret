@@ -101,15 +101,15 @@ public:
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
          pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + 1);
 
-         HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
-            pHistogramBucketEntry->GetHistogramBucketVectorEntry();
+         HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
+            pHistogramBucketEntry->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatEbmType residualError = *pResidualError;
             // residualError could be NaN
             // for classification, residualError can be anything from -1 to +1 (it cannot be infinity!)
             // for regression, residualError can be anything from +infinity or -infinity
-            pHistogramBucketVectorEntry[iVector].m_sumResidualError += residualError;
+            pHistogramTargetEntry[iVector].m_sumResidualError += residualError;
             // m_sumResidualError could be NaN, or anything from +infinity or -infinity in the case of regression
             if(bClassification) {
                EBM_ASSERT(
@@ -129,14 +129,14 @@ public:
                   !std::isinf(denominator) && -k_epsilonResidualError <= denominator && denominator <= FloatEbmType { 0.25 }
                ); // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
 
-               const FloatEbmType oldDenominator = pHistogramBucketVectorEntry[iVector].GetSumDenominator();
+               const FloatEbmType oldDenominator = pHistogramTargetEntry[iVector].GetSumDenominator();
                // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(oldDenominator) || !std::isinf(oldDenominator) && -k_epsilonResidualError <= oldDenominator);
                const FloatEbmType newDenominator = oldDenominator + denominator;
                // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(newDenominator) || !std::isinf(newDenominator) && -k_epsilonResidualError <= newDenominator);
                // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
-               pHistogramBucketVectorEntry[iVector].SetSumDenominator(newDenominator);
+               pHistogramTargetEntry[iVector].SetSumDenominator(newDenominator);
             }
             ++pResidualError;
          }

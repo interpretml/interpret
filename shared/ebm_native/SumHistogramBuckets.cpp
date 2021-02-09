@@ -37,15 +37,15 @@ public:
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
 
-      HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase =
-         pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray();
+      HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
+         pThreadStateBoosting->GetSumHistogramTargetEntryArray();
 
       HistogramBucketBase * const aHistogramBucketsBase = pThreadStateBoosting->GetHistogramBucketBase();
 
       const HistogramBucket<bClassification> * const aHistogramBuckets = 
          aHistogramBucketsBase->GetHistogramBucket<bClassification>();
-      HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry = 
-         aSumHistogramBucketVectorEntryBase->GetHistogramBucketVectorEntry<bClassification>();
+      HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntry = 
+         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<bClassification>();
 
       EBM_ASSERT(2 <= cHistogramBuckets); // we pre-filter out features with only one bucket
 
@@ -75,8 +75,8 @@ public:
          cSamplesTotalDebug += pCopyFrom->GetCountSamplesInBucket();
 #endif // NDEBUG
 
-         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
-            pCopyFrom->GetHistogramBucketVectorEntry();
+         const HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
+            pCopyFrom->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             // when building a tree, we start from one end and sweep to the other.  In order to caluculate
@@ -89,7 +89,7 @@ public:
             // and that is if almost all bins have either 0 or 1 samples, which would happen if we didn't bin at all
             // beforehand.  We'll still want this per-bin sumation though since it's unlikley that all data
             // will be continuous in an ML problem.
-            aSumHistogramBucketVectorEntry[iVector].Add(pHistogramBucketVectorEntry[iVector]);
+            aSumHistogramTargetEntry[iVector].Add(pHistogramTargetEntry[iVector]);
          }
 
          pCopyFrom = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyFrom, 1);

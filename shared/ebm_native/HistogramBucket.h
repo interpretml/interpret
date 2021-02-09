@@ -55,11 +55,11 @@ private:
    size_t m_cSamplesInBucket;
 
    // use the "struct hack" since Flexible array member method is not available in C++
-   // aHistogramBucketVectorEntry must be the last item in this struct
+   // aHistogramTargetEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramBucketVectorEntry<bClassification> m_aHistogramBucketVectorEntry[1];
+   HistogramTargetEntry<bClassification> m_aHistogramTargetEntry[1];
 
 public:
 
@@ -75,20 +75,20 @@ public:
       m_cSamplesInBucket = cSamplesInBucket;
    }
 
-   INLINE_ALWAYS const HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() const {
-      return ArrayToPointer(m_aHistogramBucketVectorEntry);
+   INLINE_ALWAYS const HistogramTargetEntry<bClassification> * GetHistogramTargetEntry() const {
+      return ArrayToPointer(m_aHistogramTargetEntry);
    }
-   INLINE_ALWAYS HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() {
-      return ArrayToPointer(m_aHistogramBucketVectorEntry);
+   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetHistogramTargetEntry() {
+      return ArrayToPointer(m_aHistogramTargetEntry);
    }
 
    INLINE_ALWAYS void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cSamplesInBucket += other.m_cSamplesInBucket;
 
-      HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramBucketVectorEntry();
+      HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
 
-      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorOther = 
-         other.GetHistogramBucketVectorEntry();
+      const HistogramTargetEntry<bClassification> * pHistogramBucketVectorOther = 
+         other.GetHistogramTargetEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketVectorThis[iVector].Add(pHistogramBucketVectorOther[iVector]);
@@ -98,10 +98,10 @@ public:
    INLINE_ALWAYS void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cSamplesInBucket -= other.m_cSamplesInBucket;
 
-      HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramBucketVectorEntry();
+      HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
 
-      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorOther =
-         other.GetHistogramBucketVectorEntry();
+      const HistogramTargetEntry<bClassification> * pHistogramBucketVectorOther =
+         other.GetHistogramTargetEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketVectorThis[iVector].Subtract(pHistogramBucketVectorOther[iVector]);
@@ -110,8 +110,8 @@ public:
 
    INLINE_ALWAYS void Copy(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       const size_t cBytesPerHistogramBucket = 
-         sizeof(HistogramBucket<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) +
-         sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
+         sizeof(HistogramBucket<bClassification>) - sizeof(HistogramTargetEntry<bClassification>) +
+         sizeof(HistogramTargetEntry<bClassification>) * cVectorLength;
 
       memcpy(this, &other, cBytesPerHistogramBucket);
    }
@@ -138,8 +138,8 @@ public:
 
 
       m_cSamplesInBucket = size_t { 0 };
-      HistogramBucketVectorEntry<bClassification> * pHistogramTargetEntry = GetHistogramBucketVectorEntry();
-      const HistogramBucketVectorEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
+      HistogramTargetEntry<bClassification> * pHistogramTargetEntry = GetHistogramTargetEntry();
+      const HistogramTargetEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
       EBM_ASSERT(1 <= cVectorLength);
       do {
          pHistogramTargetEntry->Zero();
@@ -154,7 +154,7 @@ public:
 #ifndef NDEBUG
       EBM_ASSERT(0 == m_cSamplesInBucket);
 
-      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVector = GetHistogramBucketVectorEntry();
+      const HistogramTargetEntry<bClassification> * pHistogramBucketVector = GetHistogramTargetEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketVector[iVector].AssertZero();
@@ -171,16 +171,16 @@ static_assert(std::is_pod<HistogramBucket<true>>::value && std::is_pod<Histogram
 
 INLINE_ALWAYS bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramBucketVectorEntry<true>) :
-      sizeof(HistogramBucketVectorEntry<false>);
+      sizeof(HistogramTargetEntry<true>) :
+      sizeof(HistogramTargetEntry<false>);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
    }
 
    const size_t cBytesHistogramBucketComponent = bClassification ?
-      (sizeof(HistogramBucket<true>) - sizeof(HistogramBucketVectorEntry<true>)) :
-      (sizeof(HistogramBucket<false>) - sizeof(HistogramBucketVectorEntry<false>));
+      (sizeof(HistogramBucket<true>) - sizeof(HistogramTargetEntry<true>)) :
+      (sizeof(HistogramBucket<false>) - sizeof(HistogramTargetEntry<false>));
 
    if(UNLIKELY(IsAddError(cBytesHistogramBucketComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
@@ -195,12 +195,12 @@ INLINE_ALWAYS size_t GetHistogramBucketSize(const bool bClassification, const si
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
 
    const size_t cBytesHistogramBucketComponent = bClassification ?
-      sizeof(HistogramBucket<true>) - sizeof(HistogramBucketVectorEntry<true>) :
-      sizeof(HistogramBucket<false>) - sizeof(HistogramBucketVectorEntry<false>);
+      sizeof(HistogramBucket<true>) - sizeof(HistogramTargetEntry<true>) :
+      sizeof(HistogramBucket<false>) - sizeof(HistogramTargetEntry<false>);
 
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramBucketVectorEntry<true>) :
-      sizeof(HistogramBucketVectorEntry<false>);
+      sizeof(HistogramTargetEntry<true>) :
+      sizeof(HistogramTargetEntry<false>);
 
    return cBytesHistogramBucketComponent + cBytesHistogramTargetEntry * cVectorLength;
 }

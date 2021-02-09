@@ -121,18 +121,18 @@ static bool BoostZeroDimensional(
    FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(bClassification) {
       const HistogramBucket<true> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<true>();
-      const HistogramBucketVectorEntry<true> * const aSumHistogramBucketVectorEntry =
-         pHistogramBucketLocal->GetHistogramBucketVectorEntry();
+      const HistogramTargetEntry<true> * const aSumHistogramTargetEntry =
+         pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType smallChangeToModel = aSumHistogramBucketVectorEntry[iVector].m_sumResidualError;
+            const FloatEbmType smallChangeToModel = aSumHistogramTargetEntry[iVector].m_sumResidualError;
             aValues[iVector] = smallChangeToModel;
          }
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-               aSumHistogramBucketVectorEntry[iVector].m_sumResidualError,
-               aSumHistogramBucketVectorEntry[iVector].GetSumDenominator()
+               aSumHistogramTargetEntry[iVector].m_sumResidualError,
+               aSumHistogramTargetEntry[iVector].GetSumDenominator()
             );
             aValues[iVector] = smallChangeToModel;
          }
@@ -140,14 +140,14 @@ static bool BoostZeroDimensional(
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       const HistogramBucket<false> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<false>();
-      const HistogramBucketVectorEntry<false> * const aSumHistogramBucketVectorEntry =
-         pHistogramBucketLocal->GetHistogramBucketVectorEntry();
+      const HistogramTargetEntry<false> * const aSumHistogramTargetEntry =
+         pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-         const FloatEbmType smallChangeToModel = aSumHistogramBucketVectorEntry[0].m_sumResidualError;
+         const FloatEbmType smallChangeToModel = aSumHistogramTargetEntry[0].m_sumResidualError;
          aValues[0] = smallChangeToModel;
       } else {
          const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-            aSumHistogramBucketVectorEntry[0].m_sumResidualError,
+            aSumHistogramTargetEntry[0].m_sumResidualError,
             static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
          );
          aValues[0] = smallChangeToModel;
@@ -202,8 +202,8 @@ static bool BoostSingleDimensional(
       return true;
    }
 
-   HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry =
-      pThreadStateBoosting->GetSumHistogramBucketVectorEntryArray();
+   HistogramTargetEntryBase * const aSumHistogramTargetEntry =
+      pThreadStateBoosting->GetSumHistogramTargetEntryArray();
 
    if(bClassification) {
       HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
@@ -213,9 +213,9 @@ static bool BoostSingleDimensional(
          pHistogramBucket->Zero(cVectorLength);
       }
 
-      HistogramBucketVectorEntry<true> * const aSumHistogramBucketVectorEntryLocal = aSumHistogramBucketVectorEntry->GetHistogramBucketVectorEntry<true>();
+      HistogramTargetEntry<true> * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<true>();
       for(size_t i = 0; i < cVectorLength; ++i) {
-         aSumHistogramBucketVectorEntryLocal[i].Zero();
+         aSumHistogramTargetEntryLocal[i].Zero();
       }
    } else {
       HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
@@ -225,9 +225,9 @@ static bool BoostSingleDimensional(
          pHistogramBucket->Zero(cVectorLength);
       }
 
-      HistogramBucketVectorEntry<false> * const aSumHistogramBucketVectorEntryLocal = aSumHistogramBucketVectorEntry->GetHistogramBucketVectorEntry<false>();
+      HistogramTargetEntry<false> * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<false>();
       for(size_t i = 0; i < cVectorLength; ++i) {
-         aSumHistogramBucketVectorEntryLocal[i].Zero();
+         aSumHistogramTargetEntryLocal[i].Zero();
       }
    }
 

@@ -22,11 +22,11 @@ private:
    const HistogramBucket<bClassification> * m_pBestHistogramBucketEntry;
 
    // use the "struct hack" since Flexible array member method is not available in C++
-   // m_aBestHistogramBucketVectorEntry must be the last item in this struct
+   // m_aBestHistogramTargetEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramBucketVectorEntry<bClassification> m_aBestHistogramBucketVectorEntry[1];
+   HistogramTargetEntry<bClassification> m_aBestHistogramTargetEntry[1];
 
 public:
 
@@ -51,8 +51,8 @@ public:
       m_pBestHistogramBucketEntry = pBestHistogramBucketEntry;
    }
 
-   INLINE_ALWAYS HistogramBucketVectorEntry<bClassification> * GetBestHistogramBucketVectorEntry() {
-      return ArrayToPointer(m_aBestHistogramBucketVectorEntry);
+   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetBestHistogramTargetEntry() {
+      return ArrayToPointer(m_aBestHistogramTargetEntry);
    }
 };
 static_assert(std::is_standard_layout<SweepTreeNode<true>>::value && std::is_standard_layout<SweepTreeNode<false>>::value,
@@ -64,16 +64,16 @@ static_assert(std::is_pod<SweepTreeNode<true>>::value && std::is_pod<SweepTreeNo
 
 INLINE_ALWAYS bool GetSweepTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramBucketVectorEntry<true>) :
-      sizeof(HistogramBucketVectorEntry<false>);
+      sizeof(HistogramTargetEntry<true>) :
+      sizeof(HistogramTargetEntry<false>);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
    }
 
    const size_t cBytesTreeSweepComponent = bClassification ?
-      (sizeof(SweepTreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>)) :
-      (sizeof(SweepTreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>));
+      (sizeof(SweepTreeNode<true>) - sizeof(HistogramTargetEntry<true>)) :
+      (sizeof(SweepTreeNode<false>) - sizeof(HistogramTargetEntry<false>));
 
    if(UNLIKELY(IsAddError(cBytesTreeSweepComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
@@ -84,12 +84,12 @@ INLINE_ALWAYS bool GetSweepTreeNodeSizeOverflow(const bool bClassification, cons
 
 INLINE_ALWAYS size_t GetSweepTreeNodeSize(bool bClassification, const size_t cVectorLength) {
    const size_t cBytesTreeSweepComponent = bClassification ?
-      sizeof(SweepTreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>) :
-      sizeof(SweepTreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>);
+      sizeof(SweepTreeNode<true>) - sizeof(HistogramTargetEntry<true>) :
+      sizeof(SweepTreeNode<false>) - sizeof(HistogramTargetEntry<false>);
 
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramBucketVectorEntry<true>) :
-      sizeof(HistogramBucketVectorEntry<false>);
+      sizeof(HistogramTargetEntry<true>) :
+      sizeof(HistogramTargetEntry<false>);
 
    return cBytesTreeSweepComponent + cBytesHistogramTargetEntry * cVectorLength;
 }

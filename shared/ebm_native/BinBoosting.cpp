@@ -58,8 +58,8 @@ public:
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cSamples;
 
-      HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
-         pHistogramBucketEntry->GetHistogramBucketVectorEntry();
+      HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
+         pHistogramBucketEntry->GetHistogramTargetEntry();
       do {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          //   in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
@@ -96,7 +96,7 @@ public:
 #ifndef NDEBUG
             residualTotalDebug += residualError;
 #endif // NDEBUG
-            pHistogramBucketVectorEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
+            pHistogramTargetEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
             if(bClassification) {
                // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the 
                //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might make 
@@ -104,7 +104,7 @@ public:
                //   MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if 
                //   not necssary and access it through an accessor so that we can make the change entirely via macro
                const FloatEbmType denominator = EbmStats::ComputeNewtonRaphsonStep(residualError);
-               pHistogramBucketVectorEntry[iVector].SetSumDenominator(pHistogramBucketVectorEntry[iVector].GetSumDenominator() + cFloatOccurences * denominator);
+               pHistogramTargetEntry[iVector].SetSumDenominator(pHistogramTargetEntry[iVector].GetSumDenominator() + cFloatOccurences * denominator);
             }
             ++pResidualError;
             ++iVector;
@@ -271,8 +271,8 @@ public:
             ++pCountOccurrences;
             pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
             const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
-            HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
-               pHistogramBucketEntry->GetHistogramBucketVectorEntry();
+            HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
+               pHistogramBucketEntry->GetHistogramTargetEntry();
 
             size_t iVector = 0;
 
@@ -295,7 +295,7 @@ public:
 #ifndef NDEBUG
                residualTotalDebug += residualError;
 #endif // NDEBUG
-               pHistogramBucketVectorEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
+               pHistogramTargetEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
                if(bClassification) {
                   // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the
                   //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might 
@@ -303,8 +303,8 @@ public:
                   //   done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the 
                   //   computation if not necssary and access it through an accessor so that we can make the change entirely via macro
                   const FloatEbmType denominator = EbmStats::ComputeNewtonRaphsonStep(residualError);
-                  pHistogramBucketVectorEntry[iVector].SetSumDenominator(
-                     pHistogramBucketVectorEntry[iVector].GetSumDenominator() + cFloatOccurences * denominator
+                  pHistogramTargetEntry[iVector].SetSumDenominator(
+                     pHistogramTargetEntry[iVector].GetSumDenominator() + cFloatOccurences * denominator
                   );
                }
                ++pResidualError;

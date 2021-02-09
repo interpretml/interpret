@@ -26,8 +26,8 @@ void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting)
       SegmentedTensor::Free(pThreadStateBoosting->m_pSmallChangeToModelOverwriteSingleSamplingSet);
       free(pThreadStateBoosting->m_aThreadByteBuffer1);
       free(pThreadStateBoosting->m_aThreadByteBuffer2);
-      free(pThreadStateBoosting->m_aSumHistogramBucketVectorEntry);
-      free(pThreadStateBoosting->m_aSumHistogramBucketVectorEntry1);
+      free(pThreadStateBoosting->m_aSumHistogramTargetEntry);
+      free(pThreadStateBoosting->m_aSumHistogramTargetEntry1);
       free(pThreadStateBoosting->m_aTempFloatVector);
       free(pThreadStateBoosting->m_aEquivalentSplits);
 
@@ -47,7 +47,7 @@ ThreadStateBoosting * ThreadStateBoosting::Allocate(Booster * const pBooster) {
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
       const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
-         sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>);
+         sizeof(HistogramTargetEntry<true>) : sizeof(HistogramTargetEntry<false>);
 
       SegmentedTensor * const pSmallChangeToModelAccumulatedFromSamplingSets =
          SegmentedTensor::Allocate(k_cDimensionsMax, cVectorLength);
@@ -57,14 +57,14 @@ ThreadStateBoosting * ThreadStateBoosting::Allocate(Booster * const pBooster) {
             SegmentedTensor::Allocate(k_cDimensionsMax, cVectorLength);
          if(LIKELY(nullptr != pSmallChangeToModelOverwriteSingleSamplingSet)) {
             pNew->m_pSmallChangeToModelOverwriteSingleSamplingSet = pSmallChangeToModelOverwriteSingleSamplingSet;
-            HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry =
-               EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
-            if(LIKELY(nullptr != aSumHistogramBucketVectorEntry)) {
-               pNew->m_aSumHistogramBucketVectorEntry = aSumHistogramBucketVectorEntry;
-               HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry1 =
-                  EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
-               if(LIKELY(nullptr != aSumHistogramBucketVectorEntry1)) {
-                  pNew->m_aSumHistogramBucketVectorEntry1 = aSumHistogramBucketVectorEntry1;
+            HistogramTargetEntryBase * const aSumHistogramTargetEntry =
+               EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
+            if(LIKELY(nullptr != aSumHistogramTargetEntry)) {
+               pNew->m_aSumHistogramTargetEntry = aSumHistogramTargetEntry;
+               HistogramTargetEntryBase * const aSumHistogramTargetEntry1 =
+                  EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
+               if(LIKELY(nullptr != aSumHistogramTargetEntry1)) {
+                  pNew->m_aSumHistogramTargetEntry1 = aSumHistogramTargetEntry1;
                   FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
                   if(LIKELY(nullptr != aTempFloatVector)) {
                      pNew->m_aTempFloatVector = aTempFloatVector;

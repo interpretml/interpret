@@ -49,7 +49,7 @@ static bool CalculateInteractionScoreInternal(
    const size_t cSamplesRequiredForChildSplitMin,
    FloatEbmType * const pInteractionScoreReturn
 ) {
-   // TODO : we NEVER use the denominator term in HistogramBucketVectorEntry when calculating interaction scores, but we're spending time calculating 
+   // TODO : we NEVER use the denominator term in HistogramTargetEntry when calculating interaction scores, but we're spending time calculating 
    // it, and it's taking up precious memory.  We should eliminate the denominator term HERE in our datastructures OR we should think whether we can 
    // use the denominator as part of the gain function!!!
 

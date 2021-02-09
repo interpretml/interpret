@@ -509,11 +509,11 @@ public:
 
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          do {
-            HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
-               pCollapsedHistogramBucket2->GetHistogramBucketVectorEntry();
+            HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
+               pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               *pUpdate = pHistogramBucketVectorEntry[iVector].m_sumResidualError;
+               *pUpdate = pHistogramTargetEntry[iVector].m_sumResidualError;
                ++pUpdate;
             }
             pCollapsedHistogramBucket2 = GetHistogramBucketByIndex<bClassification>(
@@ -530,20 +530,20 @@ public:
                   ++pUpdate;
                }
             } else {
-               HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
-                  pCollapsedHistogramBucket2->GetHistogramBucketVectorEntry();
+               HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
+                  pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                   FloatEbmType update;
                   if(bClassification) {
                      update = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                        pHistogramBucketVectorEntry[iVector].m_sumResidualError,
-                        pHistogramBucketVectorEntry[iVector].GetSumDenominator()
+                        pHistogramTargetEntry[iVector].m_sumResidualError,
+                        pHistogramTargetEntry[iVector].GetSumDenominator()
                      );
                   } else {
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                      update = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                        pHistogramBucketVectorEntry[iVector].m_sumResidualError,
+                        pHistogramTargetEntry[iVector].m_sumResidualError,
                         static_cast<FloatEbmType>(cSamples)
                      );
                   }
