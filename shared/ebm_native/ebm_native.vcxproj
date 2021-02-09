@@ -340,7 +340,7 @@ EXIT /B 0
     <ClCompile Include="TensorTotalsBuild.cpp" />
     <ClCompile Include="DataFrameInteraction.cpp" />
     <ClCompile Include="DataFrameBoosting.cpp" />
-    <ClCompile Include="Discretization.cpp" />
+    <ClCompile Include="Discretize.cpp" />
     <ClCompile Include="DllMainEbmNative.cpp" />
     <ClCompile Include="InteractionDetector.cpp" />
     <ClCompile Include="Logging.cpp" />

@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef DATA_SET_BY_FEATURE_H
-#define DATA_SET_BY_FEATURE_H
+#ifndef DATA_FRAME_INTERACTION_H
+#define DATA_FRAME_INTERACTION_H
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -69,4 +69,4 @@ static_assert(std::is_trivial<DataFrameInteraction>::value,
 static_assert(std::is_pod<DataFrameInteraction>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-#endif // DATA_SET_BY_FEATURE_H
+#endif // DATA_FRAME_INTERACTION_H
