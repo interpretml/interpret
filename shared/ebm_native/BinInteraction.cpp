@@ -14,7 +14,7 @@
 
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
-#include "DataSetInteraction.h"
+#include "DataFrameInteraction.h"
 
 #include "InteractionDetector.h"
 
@@ -37,7 +37,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      LOG_0(TraceLevelVerbose, "Entered BinDataSetInteraction");
+      LOG_0(TraceLevelVerbose, "Entered BinInteractionInternal");
 
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = 
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
@@ -141,7 +141,7 @@ public:
             ++pResidualError;
          }
       }
-      LOG_0(TraceLevelVerbose, "Exited BinDataSetInteraction");
+      LOG_0(TraceLevelVerbose, "Exited BinInteractionInternal");
    }
 };
 

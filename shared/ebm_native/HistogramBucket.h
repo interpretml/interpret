@@ -16,8 +16,8 @@
 #include "HistogramTargetEntry.h"
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
-#include "DataSetBoosting.h"
-#include "DataSetInteraction.h"
+#include "DataFrameBoosting.h"
+#include "DataFrameInteraction.h"
 #include "SamplingSet.h"
 
 #include "Booster.h"

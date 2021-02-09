@@ -11,7 +11,7 @@
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureAtomic.h"
-#include "DataSetInteraction.h"
+#include "DataFrameInteraction.h"
 
 extern bool InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,

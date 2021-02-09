@@ -14,7 +14,7 @@
 
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
-#include "DataSetBoosting.h"
+#include "DataFrameBoosting.h"
 
 #include "Booster.h"
 #include "ThreadStateBoosting.h"

@@ -20,7 +20,7 @@
 // FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
 // dataset depends on features
-#include "DataSetBoosting.h"
+#include "DataFrameBoosting.h"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingSet.h"
 

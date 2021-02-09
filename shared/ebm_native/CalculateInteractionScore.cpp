@@ -14,7 +14,7 @@
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
 // dataset depends on features
-#include "DataSetInteraction.h"
+#include "DataFrameInteraction.h"
 #include "ThreadStateInteraction.h"
 
 #include "InteractionDetector.h"

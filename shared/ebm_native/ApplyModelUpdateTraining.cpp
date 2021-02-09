@@ -15,7 +15,7 @@
 // FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
 // dataset depends on features
-#include "DataSetBoosting.h"
+#include "DataFrameBoosting.h"
 
 #include "Booster.h"
 #include "ThreadStateBoosting.h"

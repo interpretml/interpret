@@ -13,7 +13,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
-#include "DataSetBoosting.h"
+#include "DataFrameBoosting.h"
 
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructResidualErrors(const size_t cSamples, const size_t cVectorLength) {
    LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::ConstructResidualErrors");

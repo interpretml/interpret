@@ -15,7 +15,7 @@
 // feature includes
 #include "FeatureAtomic.h"
 // dataset depends on features
-#include "DataSetInteraction.h"
+#include "DataFrameInteraction.h"
 
 class InteractionDetector final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;

@@ -298,8 +298,8 @@ EXIT /B 0
     <ClInclude Include="FeatureGroup.h" />
     <ClInclude Include="HistogramBucket.h" />
     <ClInclude Include="ThreadStateBoosting.h" />
-    <ClInclude Include="DataSetInteraction.h" />
-    <ClInclude Include="DataSetBoosting.h" />
+    <ClInclude Include="DataFrameInteraction.h" />
+    <ClInclude Include="DataFrameBoosting.h" />
     <ClInclude Include="EbmInternal.h" />
     <ClInclude Include="EbmStats.h" />
     <ClInclude Include="Logging.h" />
