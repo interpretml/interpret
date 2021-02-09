@@ -329,7 +329,7 @@ EXIT /B 0
     <ClCompile Include="DebugEbm.cpp" />
     <ClCompile Include="FeatureGroup.cpp" />
     <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
-    <ClCompile Include="FindBestInteractionGainPairs.cpp" />
+    <ClCompile Include="FindBestInteractionScorePairs.cpp" />
     <ClCompile Include="GenerateModelUpdate.cpp" />
     <ClCompile Include="GrowDecisionTree.cpp" />
     <ClCompile Include="InitializeResiduals.cpp" />

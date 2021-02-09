@@ -303,7 +303,7 @@ static bool BoostMultiDimensional(
       }
       ++pFeatureGroupEntry;
    } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
-   // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
+   // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
    const size_t cAuxillaryBucketsForSplitting = 24;
    const size_t cAuxillaryBuckets =
       cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;

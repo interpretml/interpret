@@ -21,22 +21,22 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void Initialize(const size_t cBins, const size_t iFeatureAtomicData, const bool bCategorical) {
+   INLINE_ALWAYS void Initialize(const size_t cBins, const size_t iFeatureAtomicData, const bool bCategorical) noexcept {
       m_cBins = cBins;
       m_iFeatureAtomicData = iFeatureAtomicData;
       m_bCategorical = bCategorical;
    }
 
-   INLINE_ALWAYS size_t GetCountBins() const {
+   INLINE_ALWAYS size_t GetCountBins() const noexcept {
       StopClangAnalysis(); // clang seems to think we're reading uninitialized data here, but we aren't
       return m_cBins;
    }
 
-   INLINE_ALWAYS size_t GetIndexFeatureAtomicData() const {
+   INLINE_ALWAYS size_t GetIndexFeatureAtomicData() const noexcept {
       return m_iFeatureAtomicData;
    }
 
-   INLINE_ALWAYS bool GetIsCategorical() const {
+   INLINE_ALWAYS bool GetIsCategorical() const noexcept {
       return m_bCategorical;
    }
 };

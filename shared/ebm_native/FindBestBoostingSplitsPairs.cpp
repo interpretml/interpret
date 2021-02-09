@@ -24,7 +24,7 @@
 #include "TensorTotalsSum.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static FloatEbmType SweepMultiDiemensional(
+static FloatEbmType SweepMultiDimensional(
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
    const FeatureGroup * const pFeatureGroup,
    size_t * const aiPoint,
@@ -292,7 +292,7 @@ public:
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
          HistogramBucket<bClassification> * pTotals2LowHighBest =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
-         const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses>(
+         const FloatEbmType splittingScoreNew1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
             pFeatureGroup,
             aiStart,
@@ -321,7 +321,7 @@ public:
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
             HistogramBucket<bClassification> * pTotals2HighHighBest =
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
-            const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses>(
+            const FloatEbmType splittingScoreNew2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
                pFeatureGroup,
                aiStart,
@@ -400,7 +400,7 @@ public:
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
          HistogramBucket<bClassification> * pTotals1LowHighBestInner =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
-         const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses>(
+         const FloatEbmType splittingScoreNew1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
             pFeatureGroup,
             aiStart,
@@ -429,7 +429,7 @@ public:
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
             HistogramBucket<bClassification> * pTotals1HighHighBestInner =
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
-            const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses>(
+            const FloatEbmType splittingScoreNew2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
                pFeatureGroup,
                aiStart,

@@ -51,15 +51,15 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS static constexpr size_t GetFeatureGroupCountBytes(const size_t cFeatures) {
+   INLINE_ALWAYS static constexpr size_t GetFeatureGroupCountBytes(const size_t cFeatures) noexcept {
       return sizeof(FeatureGroup) - sizeof(FeatureGroupEntry) + sizeof(FeatureGroupEntry) * cFeatures;
    }
 
-   INLINE_ALWAYS static void Free(FeatureGroup * const pFeatureGroup) {
+   INLINE_ALWAYS static void Free(FeatureGroup * const pFeatureGroup) noexcept {
       free(pFeatureGroup);
    }
 
-   INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureGroup) {
+   INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureGroup) noexcept {
       m_cDimensions = cFeatures;
       m_iInputData = iFeatureGroup;
       m_cLogEnterGenerateModelUpdateMessages = 2;
@@ -68,56 +68,56 @@ public:
       m_cLogExitApplyModelUpdateMessages = 2;
    }
 
-   static FeatureGroup * Allocate(const size_t cFeatures, const size_t iFeatureGroup);
-   static FeatureGroup ** AllocateFeatureGroups(const size_t cFeatureGroups);
-   static void FreeFeatureGroups(const size_t cFeatureGroups, FeatureGroup ** apFeatureGroups);
+   static FeatureGroup * Allocate(const size_t cFeatures, const size_t iFeatureGroup) noexcept;
+   static FeatureGroup ** AllocateFeatureGroups(const size_t cFeatureGroups) noexcept;
+   static void FreeFeatureGroups(const size_t cFeatureGroups, FeatureGroup ** apFeatureGroups) noexcept;
 
-   INLINE_ALWAYS void SetCountItemsPerBitPackedDataUnit(const size_t cItemsPerBitPackedDataUnit) {
+   INLINE_ALWAYS void SetCountItemsPerBitPackedDataUnit(const size_t cItemsPerBitPackedDataUnit) noexcept {
       m_cItemsPerBitPackedDataUnit = cItemsPerBitPackedDataUnit;
    }
 
-   INLINE_ALWAYS size_t GetCountItemsPerBitPackedDataUnit() const {
+   INLINE_ALWAYS size_t GetCountItemsPerBitPackedDataUnit() const noexcept {
       return m_cItemsPerBitPackedDataUnit;
    }
 
-   INLINE_ALWAYS size_t GetIndexInputData() const {
+   INLINE_ALWAYS size_t GetIndexInputData() const noexcept {
       return m_iInputData;
    }
 
-   INLINE_ALWAYS size_t GetCountDimensions() const {
+   INLINE_ALWAYS size_t GetCountDimensions() const noexcept {
       EBM_ASSERT(m_cSignificantDimensions <= m_cDimensions);
       return m_cDimensions;
    }
 
-   INLINE_ALWAYS size_t GetCountSignificantDimensions() const {
+   INLINE_ALWAYS size_t GetCountSignificantDimensions() const noexcept {
       EBM_ASSERT(m_cSignificantDimensions <= m_cDimensions);
       return m_cSignificantDimensions;
    }
 
-   INLINE_ALWAYS void SetCountSignificantFeatures(const size_t cSignificantDimensions) {
+   INLINE_ALWAYS void SetCountSignificantFeatures(const size_t cSignificantDimensions) noexcept {
       m_cSignificantDimensions = cSignificantDimensions;
    }
 
-   INLINE_ALWAYS const FeatureGroupEntry * GetFeatureGroupEntries() const {
+   INLINE_ALWAYS const FeatureGroupEntry * GetFeatureGroupEntries() const noexcept {
       return ArrayToPointer(m_FeatureGroupEntry);
    }
-   INLINE_ALWAYS FeatureGroupEntry * GetFeatureGroupEntries() {
+   INLINE_ALWAYS FeatureGroupEntry * GetFeatureGroupEntries() noexcept {
       return ArrayToPointer(m_FeatureGroupEntry);
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogEnterGenerateModelUpdateMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogEnterGenerateModelUpdateMessages() noexcept {
       return &m_cLogEnterGenerateModelUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitGenerateModelUpdateMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogExitGenerateModelUpdateMessages() noexcept {
       return &m_cLogExitGenerateModelUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogEnterApplyModelUpdateMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogEnterApplyModelUpdateMessages() noexcept {
       return &m_cLogEnterApplyModelUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitApplyModelUpdateMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogExitApplyModelUpdateMessages() noexcept {
       return &m_cLogExitApplyModelUpdateMessages;
    }
 };

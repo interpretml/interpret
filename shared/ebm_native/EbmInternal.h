@@ -147,10 +147,10 @@
 #define INLINE_RELEASE_TEMPLATED
 #endif //NDEBUG
 
-INLINE_ALWAYS void StopClangAnalysis() ANALYZER_NORETURN {
+INLINE_ALWAYS void StopClangAnalysis() noexcept ANALYZER_NORETURN {
 }
 
-INLINE_RELEASE_UNTEMPLATED char * strcpy_NO_WARNINGS(char * dest, const char * src) {
+INLINE_ALWAYS char * strcpy_NO_WARNINGS(char * dest, const char * src) noexcept {
    StopClangAnalysis();
    return strcpy(dest, src);
 }
@@ -209,11 +209,11 @@ constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 // which is required in order to use the offsetof macro, or in our case array to pointer conversion.
 // 
 template<typename T>
-INLINE_ALWAYS T * ArrayToPointer(T * a) {
+INLINE_ALWAYS T * ArrayToPointer(T * a) noexcept {
    return a;
 }
 template<typename T>
-INLINE_ALWAYS const T * ArrayToPointer(const T * a) {
+INLINE_ALWAYS const T * ArrayToPointer(const T * a) noexcept {
    return a;
 }
 
@@ -232,7 +232,7 @@ constexpr INLINE_ALWAYS T EbmMax(T v1, T v2) noexcept {
 WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 template<typename TTo, typename TFrom>
-constexpr INLINE_ALWAYS bool IsNumberConvertable(const TFrom number) {
+constexpr INLINE_ALWAYS bool IsNumberConvertable(const TFrom number) noexcept {
    // the general rules of conversion are as follows:
    // calling std::numeric_limits<?>::max() returns an item of that type
    // casting and comparing will never give us undefined behavior.  It can give us implementation defined behavior or unspecified behavior, which is legal.
@@ -319,24 +319,24 @@ typedef UIntEbmType ActiveDataType;
 
 constexpr ptrdiff_t k_regression = -1;
 constexpr ptrdiff_t k_dynamicClassification = 0;
-constexpr INLINE_ALWAYS bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    return k_regression == learningTypeOrCountTargetClasses;
 }
-constexpr INLINE_ALWAYS bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    return 0 <= learningTypeOrCountTargetClasses;
 }
-constexpr INLINE_ALWAYS bool IsBinaryClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS bool IsBinaryClassification(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
 #ifdef EXPAND_BINARY_LOGITS
    return UNUSED(learningTypeOrCountTargetClasses), false;
 #else // EXPAND_BINARY_LOGITS
    return 2 == learningTypeOrCountTargetClasses;
 #endif // EXPAND_BINARY_LOGITS
 }
-constexpr INLINE_ALWAYS bool IsMulticlass(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS bool IsMulticlass(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    return IsClassification(learningTypeOrCountTargetClasses) && !IsBinaryClassification(learningTypeOrCountTargetClasses);
 }
 
-constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
    // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
@@ -376,12 +376,12 @@ constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCou
       (MACRO_runtimeCountItemsPerBitPackedDataUnit) : (MACRO_compilerCountItemsPerBitPackedDataUnit))
 
 template<typename T>
-constexpr size_t CountBitsRequired(const T maxValue) {
+constexpr size_t CountBitsRequired(const T maxValue) noexcept {
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
    return T { 0 } == maxValue ? size_t { 0 } : size_t { 1 } + CountBitsRequired<T>(maxValue / T { 2 });
 }
 template<typename T>
-constexpr INLINE_ALWAYS size_t CountBitsRequiredPositiveMax() {
+constexpr INLINE_ALWAYS size_t CountBitsRequiredPositiveMax() noexcept {
    return CountBitsRequired(std::numeric_limits<T>::max());
 }
 
@@ -413,13 +413,13 @@ constexpr size_t k_dynamicDimensions = 0;
 
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
-constexpr INLINE_ALWAYS size_t GetCountBits(const size_t cItemsBitPacked) {
+constexpr INLINE_ALWAYS size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
 constexpr size_t k_cItemsPerBitPackedDataUnitDynamic = 0;
 constexpr size_t k_cItemsPerBitPackedDataUnitMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
 constexpr size_t k_cItemsPerBitPackedDataUnitMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
-constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
+constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
    return k_cItemsPerBitPackedDataUnitMin == cItemsBitPackedPrev ? 
@@ -428,7 +428,7 @@ constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked(const size_t cItemsBit
 
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
-constexpr INLINE_ALWAYS bool IsMultiplyError(const size_t num1, const size_t num2) {
+constexpr INLINE_ALWAYS bool IsMultiplyError(const size_t num1, const size_t num2) noexcept {
    // algebraically, we want to know if this is true: std::numeric_limits<size_t>::max() + 1 <= num1 * num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 + 1 <= num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 < num2
@@ -440,7 +440,7 @@ constexpr INLINE_ALWAYS bool IsMultiplyError(const size_t num1, const size_t num
 }
 WARNING_POP
 
-constexpr INLINE_ALWAYS bool IsAddError(const size_t num1, const size_t num2) {
+constexpr INLINE_ALWAYS bool IsAddError(const size_t num1, const size_t num2) noexcept {
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
    return num1 + num2 < num1;
 }
@@ -459,13 +459,13 @@ constexpr INLINE_ALWAYS bool IsAddError(const size_t num1, const size_t num2) {
 // in which case we use pure malloc and then free instead of these helper functions.  In both cases we still
 // use free though, so it's less likely to create bugs by accident.
 template<typename T>
-INLINE_ALWAYS T * EbmMalloc() {
+INLINE_ALWAYS T * EbmMalloc() noexcept {
    static_assert(!std::is_same<T, void>::value, "don't try allocating a single void item with EbmMalloc");
    T * const a = static_cast<T *>(malloc(sizeof(T)));
    return a;
 }
 template<typename T>
-INLINE_ALWAYS T * EbmMalloc(const size_t cItems) {
+INLINE_ALWAYS T * EbmMalloc(const size_t cItems) noexcept {
    constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
    static_assert(0 < cBytesPerItem, "can't have a zero sized item");
    bool bOneByte = 1 == cBytesPerItem;
@@ -487,7 +487,7 @@ INLINE_ALWAYS T * EbmMalloc(const size_t cItems) {
    }
 }
 template<typename T>
-INLINE_ALWAYS T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) {
+INLINE_ALWAYS T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noexcept {
    if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
       return nullptr;
    } else {
