@@ -173,21 +173,21 @@ public:
                            // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
                            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-                           const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(
+                           const FloatEbmType splittingScoreUpdate1 = EbmStats::ComputeNodeSplittingScore(
                               pHistogramBucketVectorEntryTotalsLowLow[iVector].m_sumResidualError,
                               cLowLowSamplesInBucket
                            );
                            EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                            splittingScore += splittingScoreUpdate1;
-                           const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(
+                           const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeNodeSplittingScore(
                               pHistogramBucketVectorEntryTotalsLowHigh[iVector].m_sumResidualError, cLowHighSamplesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                            splittingScore += splittingScoreUpdate2;
-                           const FloatEbmType splittingScoreUpdate3 = EbmStatistics::ComputeNodeSplittingScore(
+                           const FloatEbmType splittingScoreUpdate3 = EbmStats::ComputeNodeSplittingScore(
                               pHistogramBucketVectorEntryTotalsHighLow[iVector].m_sumResidualError, cHighLowSamplesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
                            splittingScore += splittingScoreUpdate3;
-                           const FloatEbmType splittingScoreUpdate4 = EbmStatistics::ComputeNodeSplittingScore(
+                           const FloatEbmType splittingScoreUpdate4 = EbmStats::ComputeNodeSplittingScore(
                               pHistogramBucketVectorEntryTotalsHighHigh[iVector].m_sumResidualError, cHighHighSamplesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
                            splittingScore += splittingScoreUpdate4;

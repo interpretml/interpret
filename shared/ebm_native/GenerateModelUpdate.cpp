@@ -130,7 +130,7 @@ static bool BoostZeroDimensional(
          }
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+            const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
                aSumHistogramBucketVectorEntry[iVector].m_sumResidualError,
                aSumHistogramBucketVectorEntry[iVector].GetSumDenominator()
             );
@@ -146,7 +146,7 @@ static bool BoostZeroDimensional(
          const FloatEbmType smallChangeToModel = aSumHistogramBucketVectorEntry[0].m_sumResidualError;
          aValues[0] = smallChangeToModel;
       } else {
-         const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+         const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentRegression(
             aSumHistogramBucketVectorEntry[0].m_sumResidualError,
             static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
          );

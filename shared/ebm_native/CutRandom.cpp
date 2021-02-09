@@ -536,13 +536,13 @@ public:
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                   FloatEbmType update;
                   if(bClassification) {
-                     update = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                     update = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
                         pHistogramBucketVectorEntry[iVector].m_sumResidualError,
                         pHistogramBucketVectorEntry[iVector].GetSumDenominator()
                      );
                   } else {
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                     update = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                     update = EbmStats::ComputeSmallChangeForOneSegmentRegression(
                         pHistogramBucketVectorEntry[iVector].m_sumResidualError,
                         static_cast<FloatEbmType>(cSamples)
                      );

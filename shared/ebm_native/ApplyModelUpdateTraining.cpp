@@ -83,7 +83,7 @@ public:
          pExpVector -= cVectorLength;
          iVector = 0;
          do {
-            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(
+            const FloatEbmType residualError = EbmStats::ComputeResidualErrorMulticlass(
                sumExp,
                *pExpVector,
                targetData,
@@ -141,7 +141,7 @@ public:
          const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
          *pPredictorScores = predictorScore;
          ++pPredictorScores;
-         const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(predictorScore, targetData);
+         const FloatEbmType residualError = EbmStats::ComputeResidualErrorBinaryClassification(predictorScore, targetData);
          *pResidualError = residualError;
          ++pResidualError;
       } while(pPredictorScoresEnd != pPredictorScores);
@@ -171,7 +171,7 @@ public:
       const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
          // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
+         const FloatEbmType residualError = EbmStats::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
          *pResidualError = residualError;
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
@@ -318,7 +318,7 @@ public:
             pExpVector -= cVectorLength;
             iVector = 0;
             do {
-               const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(
+               const FloatEbmType residualError = EbmStats::ComputeResidualErrorMulticlass(
                   sumExp,
                   *pExpVector,
                   targetData,
@@ -426,7 +426,7 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(predictorScore, targetData);
+            const FloatEbmType residualError = EbmStats::ComputeResidualErrorBinaryClassification(predictorScore, targetData);
 
             *pResidualError = residualError;
             ++pResidualError;
@@ -506,7 +506,7 @@ public:
 
             const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
+            const FloatEbmType residualError = EbmStats::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
 
             *pResidualError = residualError;
             ++pResidualError;

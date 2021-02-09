@@ -90,7 +90,7 @@ public:
 
          iVector = 0;
          do {
-            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, *pExpVector, target, iVector);
+            const FloatEbmType residualError = EbmStats::ComputeResidualErrorMulticlass(sumExp, *pExpVector, target, iVector);
             ++pExpVector;
             *pResidualError = residualError;
             ++pResidualError;
@@ -161,7 +161,7 @@ public:
          EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
          const FloatEbmType predictionScore = *pPredictorScores;
          ++pPredictorScores;
-         const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(predictionScore, target);
+         const FloatEbmType residualError = EbmStats::ComputeResidualErrorBinaryClassification(predictionScore, target);
          *pResidualError = residualError;
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
@@ -212,7 +212,7 @@ public:
          //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
          const FloatEbmType predictionScore = *pPredictorScores;
          ++pPredictorScores;
-         const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegressionInit(predictionScore, data);
+         const FloatEbmType residualError = EbmStats::ComputeResidualErrorRegressionInit(predictionScore, data);
          *pResidualError = residualError;
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);

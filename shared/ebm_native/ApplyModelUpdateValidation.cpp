@@ -73,7 +73,7 @@ public:
             sumExp += oneExp;
             ++iVector;
          } while(iVector < cVectorLength);
-         const FloatEbmType sampleLogLoss = EbmStatistics::ComputeSingleSampleLogLossMulticlass(
+         const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(
             sumExp,
             itemExp
          );
@@ -114,7 +114,7 @@ public:
          const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
          *pPredictorScores = predictorScore;
          ++pPredictorScores;
-         const FloatEbmType sampleLogLoss = EbmStatistics::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
+         const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
          EBM_ASSERT(std::isnan(sampleLogLoss) || FloatEbmType { 0 } <= sampleLogLoss);
          sumLogLoss += sampleLogLoss;
       } while(pPredictorScoresEnd != pPredictorScores);
@@ -144,8 +144,8 @@ public:
       const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
          // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
-         const FloatEbmType sampleSquaredError = EbmStatistics::ComputeSingleSampleSquaredErrorRegression(residualError);
+         const FloatEbmType residualError = EbmStats::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
+         const FloatEbmType sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegression(residualError);
          EBM_ASSERT(std::isnan(sampleSquaredError) || FloatEbmType { 0 } <= sampleSquaredError);
          sumSquareError += sampleSquaredError;
          *pResidualError = residualError;
@@ -286,7 +286,7 @@ public:
                sumExp += oneExp;
                ++iVector;
             } while(iVector < cVectorLength);
-            const FloatEbmType sampleLogLoss = EbmStatistics::ComputeSingleSampleLogLossMulticlass(
+            const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(
                sumExp,
                itemExp
             );
@@ -375,7 +375,7 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType sampleLogLoss = EbmStatistics::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
+            const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
 
             EBM_ASSERT(std::isnan(sampleLogLoss) || FloatEbmType { 0 } <= sampleLogLoss);
             sumLogLoss += sampleLogLoss;
@@ -455,8 +455,8 @@ public:
 
             const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
-            const FloatEbmType sampleSquaredError = EbmStatistics::ComputeSingleSampleSquaredErrorRegression(residualError);
+            const FloatEbmType residualError = EbmStats::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
+            const FloatEbmType sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegression(residualError);
             EBM_ASSERT(std::isnan(sampleSquaredError) || FloatEbmType { 0 } <= sampleSquaredError);
             sumSquareError += sampleSquaredError;
             *pResidualError = residualError;

@@ -57,10 +57,10 @@ static void Flatten(
       do {
          FloatEbmType smallChangeToModel;
          if(bClassification) {
-            smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+            smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
                pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
          } else {
-            smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+            smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentRegression(
                pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FloatEbmType>(pTreeNode->AMBIGUOUS_GetSamples()));
          }
          *pValuesCur = smallChangeToModel;
@@ -188,7 +188,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType nodeSplittingScoreRight = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cSamplesRightFloatEbmType);
+            const FloatEbmType nodeSplittingScoreRight = EbmStats::ComputeNodeSplittingScore(sumResidualErrorRight, cSamplesRightFloatEbmType);
             EBM_ASSERT(std::isnan(nodeSplittingScoreRight) || FloatEbmType { 0 } <= nodeSplittingScoreRight);
             nodeSplittingScore += nodeSplittingScoreRight;
 
@@ -197,7 +197,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType nodeSplittingScoreLeft = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cSamplesLeftFloatEbmType);
+            const FloatEbmType nodeSplittingScoreLeft = EbmStats::ComputeNodeSplittingScore(sumResidualErrorLeft, cSamplesLeftFloatEbmType);
             EBM_ASSERT(std::isnan(nodeSplittingScoreLeft) || FloatEbmType { 0 } <= nodeSplittingScoreLeft);
             nodeSplittingScore += nodeSplittingScoreLeft;
 
@@ -334,7 +334,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       const FloatEbmType sumResidualErrorParent = pHistogramBucketVectorEntryTreeNode[iVector].m_sumResidualError;
       pHistogramBucketVectorEntryRightChild[iVector].m_sumResidualError = sumResidualErrorParent - BEST_sumResidualErrorLeft;
 
-      const FloatEbmType originalParentScoreUpdate = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cSamplesParentFloatEbmType);
+      const FloatEbmType originalParentScoreUpdate = EbmStats::ComputeNodeSplittingScore(sumResidualErrorParent, cSamplesParentFloatEbmType);
       EBM_ASSERT(std::isnan(originalParentScoreUpdate) || FloatEbmType { 0 } <= originalParentScoreUpdate);
       originalParentScore += originalParentScoreUpdate;
 
@@ -513,14 +513,14 @@ public:
          if(bClassification) {
             FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+               const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
                   pRootTreeNode->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pRootTreeNode->GetHistogramBucketVectorEntry()[iVector].GetSumDenominator()
                );
                aValues[iVector] = smallChangeToModel;
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+            const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentRegression(
                pRootTreeNode->GetHistogramBucketVectorEntry()[0].m_sumResidualError, static_cast<FloatEbmType>(cSamplesTotal)
             );
             FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
@@ -571,22 +571,22 @@ public:
          FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          if(bClassification) {
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               aValues[iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+               aValues[iVector] = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
                   pHistogramBucketVectorEntryLeftChild[iVector].m_sumResidualError,
                   pHistogramBucketVectorEntryLeftChild[iVector].GetSumDenominator()
                );
-               aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+               aValues[cVectorLength + iVector] = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
                   pHistogramBucketVectorEntryRightChild[iVector].m_sumResidualError,
                   pHistogramBucketVectorEntryRightChild[iVector].GetSumDenominator()
                );
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            aValues[0] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+            aValues[0] = EbmStats::ComputeSmallChangeForOneSegmentRegression(
                pHistogramBucketVectorEntryLeftChild[0].m_sumResidualError,
                static_cast<FloatEbmType>(pLeftChild->AMBIGUOUS_GetSamples())
             );
-            aValues[1] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+            aValues[1] = EbmStats::ComputeSmallChangeForOneSegmentRegression(
                pHistogramBucketVectorEntryRightChild[0].m_sumResidualError,
                static_cast<FloatEbmType>(pRightChild->AMBIGUOUS_GetSamples())
             );

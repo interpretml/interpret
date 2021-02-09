@@ -164,8 +164,6 @@ INLINE_RELEASE_UNTEMPLATED char * strcpy_NO_WARNINGS(char * dest, const char * s
 // when comparing floating point numbers, check this info out: https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 
 
-// TODO: do a full top to bottom review of EbmStatistics.h (not the diff, which we've already checked)
-// TODO: starting from the input functions, follow all places that we use/create floating point numbers and look for overflow possibilities
 // TODO: search on all my epsilon values and see if they are being used consistently
 
 // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small 

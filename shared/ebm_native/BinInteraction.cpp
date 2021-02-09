@@ -123,7 +123,7 @@ public:
                //   values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to 
                //   hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an 
                //   accessor so that we can make the change entirely via macro
-               const FloatEbmType denominator = EbmStatistics::ComputeNewtonRaphsonStep(residualError);
+               const FloatEbmType denominator = EbmStats::ComputeNewtonRaphsonStep(residualError);
                EBM_ASSERT(
                   std::isnan(denominator) ||
                   !std::isinf(denominator) && -k_epsilonResidualError <= denominator && denominator <= FloatEbmType { 0.25 }
