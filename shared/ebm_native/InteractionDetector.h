@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef EBM_INTERACTION_STATE_H
-#define EBM_INTERACTION_STATE_H
+#ifndef EBM_INTERACTION_DETECTOR_H
+#define EBM_INTERACTION_DETECTOR_H
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -23,7 +23,7 @@ class InteractionDetector final {
    size_t m_cFeatureAtomics;
    FeatureAtomic * m_aFeatureAtomics;
 
-   DataFrameInteraction m_dataSet;
+   DataFrameInteraction m_dataFrame;
 
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
@@ -41,7 +41,7 @@ public:
       m_cFeatureAtomics = 0;
       m_aFeatureAtomics = nullptr;
 
-      m_dataSet.InitializeZero();
+      m_dataFrame.InitializeZero();
 
       m_cLogEnterMessages = 0;
       m_cLogExitMessages = 0;
@@ -60,7 +60,7 @@ public:
    }
 
    INLINE_ALWAYS const DataFrameInteraction * GetDataFrameInteraction() const {
-      return &m_dataSet;
+      return &m_dataFrame;
    }
 
    INLINE_ALWAYS const FeatureAtomic * GetFeatureAtomics() const {
@@ -92,4 +92,4 @@ static_assert(std::is_trivial<InteractionDetector>::value,
 static_assert(std::is_pod<InteractionDetector>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-#endif // EBM_INTERACTION_STATE_H
+#endif // EBM_INTERACTION_DETECTOR_H

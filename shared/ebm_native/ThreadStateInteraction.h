@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef CACHED_INTERACTION_THREAD_RESOURCES_H
-#define CACHED_INTERACTION_THREAD_RESOURCES_H
+#ifndef THREAD_STATE_INTERACTION_H
+#define THREAD_STATE_INTERACTION_H
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -41,4 +41,4 @@ static_assert(std::is_trivial<ThreadStateInteraction>::value,
 static_assert(std::is_pod<ThreadStateInteraction>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-#endif // CACHED_INTERACTION_THREAD_RESOURCES_H
+#endif // THREAD_STATE_INTERACTION_H

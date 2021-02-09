@@ -24,7 +24,7 @@ void InteractionDetector::Free(InteractionDetector * const pInteractionDetector)
    LOG_0(TraceLevelInfo, "Entered InteractionDetector::Free");
 
    if(nullptr != pInteractionDetector) {
-      pInteractionDetector->m_dataSet.Destruct();
+      pInteractionDetector->m_dataFrame.Destruct();
       free(pInteractionDetector->m_aFeatureAtomics);
       free(pInteractionDetector);
    }
@@ -123,7 +123,7 @@ InteractionDetector * InteractionDetector::Allocate(
    pRet->m_cLogEnterMessages = 1000;
    pRet->m_cLogExitMessages = 1000;
 
-   if(pRet->m_dataSet.Initialize(
+   if(pRet->m_dataFrame.Initialize(
       cFeatureAtomics,
       aFeatureAtomics,
       cSamples,
@@ -132,7 +132,7 @@ InteractionDetector * InteractionDetector::Allocate(
       aPredictorScores,
       runtimeLearningTypeOrCountTargetClasses
    )) {
-      LOG_0(TraceLevelWarning, "WARNING InteractionDetector::Allocate m_dataSet.Initialize");
+      LOG_0(TraceLevelWarning, "WARNING InteractionDetector::Allocate m_dataFrame.Initialize");
       InteractionDetector::Free(pRet);
       return nullptr;
    }

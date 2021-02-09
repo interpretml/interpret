@@ -16,7 +16,7 @@ template<bool bClassification>
 struct HistogramBucket;
 
 template<bool bClassification>
-struct SweepTreeNode final {
+struct TreeSweep final {
 private:
    size_t m_cBestSamplesLeft;
    const HistogramBucket<bClassification> * m_pBestHistogramBucketEntry;
@@ -30,8 +30,8 @@ private:
 
 public:
 
-   SweepTreeNode() = default; // preserve our POD status
-   ~SweepTreeNode() = default; // preserve our POD status
+   TreeSweep() = default; // preserve our POD status
+   ~TreeSweep() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -55,14 +55,14 @@ public:
       return ArrayToPointer(m_aBestHistogramTargetEntry);
    }
 };
-static_assert(std::is_standard_layout<SweepTreeNode<true>>::value && std::is_standard_layout<SweepTreeNode<false>>::value,
+static_assert(std::is_standard_layout<TreeSweep<true>>::value && std::is_standard_layout<TreeSweep<false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<SweepTreeNode<true>>::value && std::is_trivial<SweepTreeNode<false>>::value,
+static_assert(std::is_trivial<TreeSweep<true>>::value && std::is_trivial<TreeSweep<false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<SweepTreeNode<true>>::value && std::is_pod<SweepTreeNode<false>>::value,
+static_assert(std::is_pod<TreeSweep<true>>::value && std::is_pod<TreeSweep<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-INLINE_ALWAYS bool GetSweepTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS bool GetTreeSweepSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?
       sizeof(HistogramTargetEntry<true>) :
       sizeof(HistogramTargetEntry<false>);
@@ -72,8 +72,8 @@ INLINE_ALWAYS bool GetSweepTreeNodeSizeOverflow(const bool bClassification, cons
    }
 
    const size_t cBytesTreeSweepComponent = bClassification ?
-      (sizeof(SweepTreeNode<true>) - sizeof(HistogramTargetEntry<true>)) :
-      (sizeof(SweepTreeNode<false>) - sizeof(HistogramTargetEntry<false>));
+      (sizeof(TreeSweep<true>) - sizeof(HistogramTargetEntry<true>)) :
+      (sizeof(TreeSweep<false>) - sizeof(HistogramTargetEntry<false>));
 
    if(UNLIKELY(IsAddError(cBytesTreeSweepComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
@@ -82,10 +82,10 @@ INLINE_ALWAYS bool GetSweepTreeNodeSizeOverflow(const bool bClassification, cons
    return false;
 }
 
-INLINE_ALWAYS size_t GetSweepTreeNodeSize(bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS size_t GetTreeSweepSize(bool bClassification, const size_t cVectorLength) {
    const size_t cBytesTreeSweepComponent = bClassification ?
-      sizeof(SweepTreeNode<true>) - sizeof(HistogramTargetEntry<true>) :
-      sizeof(SweepTreeNode<false>) - sizeof(HistogramTargetEntry<false>);
+      sizeof(TreeSweep<true>) - sizeof(HistogramTargetEntry<true>) :
+      sizeof(TreeSweep<false>) - sizeof(HistogramTargetEntry<false>);
 
    const size_t cBytesHistogramTargetEntry = bClassification ?
       sizeof(HistogramTargetEntry<true>) :
@@ -95,20 +95,20 @@ INLINE_ALWAYS size_t GetSweepTreeNodeSize(bool bClassification, const size_t cVe
 }
 
 template<bool bClassification>
-INLINE_ALWAYS SweepTreeNode<bClassification> * AddBytesSweepTreeNode(SweepTreeNode<bClassification> * const pSweepTreeNode, const size_t cBytesAdd) {
-   return reinterpret_cast<SweepTreeNode<bClassification> *>(reinterpret_cast<char *>(pSweepTreeNode) + cBytesAdd);
+INLINE_ALWAYS TreeSweep<bClassification> * AddBytesTreeSweep(TreeSweep<bClassification> * const pTreeSweep, const size_t cBytesAdd) {
+   return reinterpret_cast<TreeSweep<bClassification> *>(reinterpret_cast<char *>(pTreeSweep) + cBytesAdd);
 }
 
 template<bool bClassification>
-INLINE_ALWAYS size_t CountSweepTreeNode(
-   const SweepTreeNode<bClassification> * const pSweepTreeNodeStart,
-   const SweepTreeNode<bClassification> * const pSweepTreeNodeCur,
-   const size_t cBytesPerSweepTreeNode
+INLINE_ALWAYS size_t CountTreeSweep(
+   const TreeSweep<bClassification> * const pTreeSweepStart,
+   const TreeSweep<bClassification> * const pTreeSweepCur,
+   const size_t cBytesPerTreeSweep
 ) {
-   EBM_ASSERT(reinterpret_cast<const char *>(pSweepTreeNodeStart) <= reinterpret_cast<const char *>(pSweepTreeNodeCur));
-   const size_t cBytesDiff = reinterpret_cast<const char *>(pSweepTreeNodeCur) - reinterpret_cast<const char *>(pSweepTreeNodeStart);
-   EBM_ASSERT(0 == cBytesDiff % cBytesPerSweepTreeNode);
-   return cBytesDiff / cBytesPerSweepTreeNode;
+   EBM_ASSERT(reinterpret_cast<const char *>(pTreeSweepStart) <= reinterpret_cast<const char *>(pTreeSweepCur));
+   const size_t cBytesDiff = reinterpret_cast<const char *>(pTreeSweepCur) - reinterpret_cast<const char *>(pTreeSweepStart);
+   EBM_ASSERT(0 == cBytesDiff % cBytesPerTreeSweep);
+   return cBytesDiff / cBytesPerTreeSweep;
 }
 
 #endif // TREE_SWEEP_H

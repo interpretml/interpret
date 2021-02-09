@@ -22,10 +22,10 @@
 #include "TensorTotalsSum.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class FindBestInteractionGainPairsInternal final {
+class FindBestInteractionScorePairsInternal final {
 public:
 
-   FindBestInteractionGainPairsInternal() = delete; // this is a static class.  Do not construct
+   FindBestInteractionScorePairsInternal() = delete; // this is a static class.  Do not construct
 
    static FloatEbmType Func(
       InteractionDetector * const pInteractionDetector,
@@ -217,10 +217,10 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class FindBestInteractionGainPairsTarget final {
+class FindBestInteractionScorePairsTarget final {
 public:
 
-   FindBestInteractionGainPairsTarget() = delete; // this is a static class.  Do not construct
+   FindBestInteractionScorePairsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static FloatEbmType Func(
       InteractionDetector * const pInteractionDetector,
@@ -241,7 +241,7 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return FindBestInteractionGainPairsInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+         return FindBestInteractionScorePairsInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pInteractionDetector,
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
@@ -253,7 +253,7 @@ public:
 #endif // NDEBUG
          );
       } else {
-         return FindBestInteractionGainPairsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+         return FindBestInteractionScorePairsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pInteractionDetector,
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
@@ -269,10 +269,10 @@ public:
 };
 
 template<>
-class FindBestInteractionGainPairsTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class FindBestInteractionScorePairsTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   FindBestInteractionGainPairsTarget() = delete; // this is a static class.  Do not construct
+   FindBestInteractionScorePairsTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static FloatEbmType Func(
       InteractionDetector * const pInteractionDetector,
@@ -290,7 +290,7 @@ public:
       EBM_ASSERT(IsClassification(pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return FindBestInteractionGainPairsInternal<k_dynamicClassification>::Func(
+      return FindBestInteractionScorePairsInternal<k_dynamicClassification>::Func(
          pInteractionDetector,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
@@ -304,7 +304,7 @@ public:
    }
 };
 
-extern FloatEbmType FindBestInteractionGainPairs(
+extern FloatEbmType FindBestInteractionScorePairs(
    InteractionDetector * const pInteractionDetector,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
@@ -318,7 +318,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      return FindBestInteractionGainPairsTarget<2>::Func(
+      return FindBestInteractionScorePairsTarget<2>::Func(
          pInteractionDetector,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
@@ -331,7 +331,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
       );
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      return FindBestInteractionGainPairsInternal<k_regression>::Func(
+      return FindBestInteractionScorePairsInternal<k_regression>::Func(
          pInteractionDetector,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,

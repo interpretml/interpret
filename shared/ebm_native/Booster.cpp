@@ -237,12 +237,12 @@ Booster * Booster::Allocate(
          return nullptr;
       }
 
-      if(GetSweepTreeNodeSizeOverflow(bClassification, cVectorLength)) {
-         LOG_0(TraceLevelWarning, "WARNING Booster::Initialize GetSweepTreeNodeSizeOverflow(bClassification, cVectorLength)");
+      if(GetTreeSweepSizeOverflow(bClassification, cVectorLength)) {
+         LOG_0(TraceLevelWarning, "WARNING Booster::Initialize GetTreeSweepSizeOverflow(bClassification, cVectorLength)");
          Booster::Free(pBooster);
          return nullptr;
       }
-      size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize(bClassification, cVectorLength);
+      const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cVectorLength);
 
       const IntEbmType * pFeatureGroupFeatureAtomicIndexes = aFeatureGroupsFeatureAtomicIndexes;
       size_t iFeatureGroup = 0;
@@ -342,12 +342,12 @@ Booster * Booster::Allocate(
 
                size_t cBytesArrayEquivalentSplit;
                if(1 == cSignificantDimensions) {
-                  if(IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)) {
-                     LOG_0(TraceLevelWarning, "WARNING Booster::Initialize IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)");
+                  if(IsMultiplyError(cEquivalentSplits, cBytesPerTreeSweep)) {
+                     LOG_0(TraceLevelWarning, "WARNING Booster::Initialize IsMultiplyError(cEquivalentSplits, cBytesPerTreeSweep)");
                      Booster::Free(pBooster);
                      return nullptr;
                   }
-                  cBytesArrayEquivalentSplit = cEquivalentSplits * cBytesPerSweepTreeNode;
+                  cBytesArrayEquivalentSplit = cEquivalentSplits * cBytesPerTreeSweep;
                } else {
                   // TODO : someday add equal gain multidimensional randomized picking.  It's rather hard though with the existing sweep functions for 
                   // multidimensional right now

@@ -147,12 +147,12 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   EBM_ASSERT(!GetSweepTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize(bClassification, cVectorLength);
+   EBM_ASSERT(!GetTreeSweepSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cVectorLength);
 
-   SweepTreeNode<bClassification> * pSweepTreeNodeStart =
-      static_cast<SweepTreeNode<bClassification> *>(pThreadStateBoosting->GetEquivalentSplits());
-   SweepTreeNode<bClassification> * pSweepTreeNodeCur = pSweepTreeNodeStart;
+   TreeSweep<bClassification> * pTreeSweepStart =
+      static_cast<TreeSweep<bClassification> *>(pThreadStateBoosting->GetEquivalentSplits());
+   TreeSweep<bClassification> * pTreeSweepCur = pTreeSweepStart;
 
    size_t cSamplesRight = pTreeNode->AMBIGUOUS_GetSamples();
    size_t cSamplesLeft = 0;
@@ -237,19 +237,19 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
             // if nodeSplittingScore becomes NaN, the first time we come through here we're comparing the non-NaN value in BEST_nodeSplittingScore 
             // with nodeSplittingScore, which is false.  Next time we come through here, both BEST_nodeSplittingScore and nodeSplittingScore, 
-            // and that has a special case of being false!  So, we always choose pSweepTreeNodeStart, which is great because we don't waste 
+            // and that has a special case of being false!  So, we always choose pTreeSweepStart, which is great because we don't waste 
             // or fill memory unnessarily
-            pSweepTreeNodeCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pSweepTreeNodeCur : pSweepTreeNodeStart;
+            pTreeSweepCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pTreeSweepCur : pTreeSweepStart;
             BEST_nodeSplittingScore = nodeSplittingScore;
 
-            pSweepTreeNodeCur->SetBestHistogramBucketEntry(pHistogramBucketEntryCur);
-            pSweepTreeNodeCur->SetCountBestSamplesLeft(cSamplesLeft);
+            pTreeSweepCur->SetBestHistogramBucketEntry(pHistogramBucketEntryCur);
+            pTreeSweepCur->SetCountBestSamplesLeft(cSamplesLeft);
             memcpy(
-               pSweepTreeNodeCur->GetBestHistogramTargetEntry(), aSumHistogramTargetEntryLeft,
+               pTreeSweepCur->GetBestHistogramTargetEntry(), aSumHistogramTargetEntryLeft,
                sizeof(*aSumHistogramTargetEntryLeft) * cVectorLength
             );
 
-            pSweepTreeNodeCur = AddBytesSweepTreeNode(pSweepTreeNodeCur, cBytesPerSweepTreeNode);
+            pTreeSweepCur = AddBytesTreeSweep(pTreeSweepCur, cBytesPerTreeSweep);
          }
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -272,7 +272,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // handle the case where BEST_nodeSplittingScore is +infinity 
    // don't use std::inf because with some compiler flags on some compilers that isn't reliable
    // if we include a case that was equal to max, then ok, no harm done.
-   if(UNLIKELY(UNLIKELY(pSweepTreeNodeStart == pSweepTreeNodeCur) || UNLIKELY(std::isnan(BEST_nodeSplittingScore)) ||
+   if(UNLIKELY(UNLIKELY(pTreeSweepStart == pTreeSweepCur) || UNLIKELY(std::isnan(BEST_nodeSplittingScore)) ||
       UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= BEST_nodeSplittingScore))) {
 
       // we didn't find any valid splits, or we hit an overflow
@@ -282,18 +282,18 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    RandomStream * const pRandomStream = pBooster->GetRandomStream();
 
-   const size_t cSweepItems = CountSweepTreeNode(pSweepTreeNodeStart, pSweepTreeNodeCur, cBytesPerSweepTreeNode);
+   const size_t cSweepItems = CountTreeSweep(pTreeSweepStart, pTreeSweepCur, cBytesPerTreeSweep);
    if(UNLIKELY(1 < cSweepItems)) {
       const size_t iRandom = pRandomStream->Next(cSweepItems);
-      pSweepTreeNodeStart = AddBytesSweepTreeNode(pSweepTreeNodeStart, cBytesPerSweepTreeNode * iRandom);
+      pTreeSweepStart = AddBytesTreeSweep(pTreeSweepStart, cBytesPerTreeSweep * iRandom);
    }
 
    TreeNode<bClassification> * const pLeftChild =
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pSweepTreeNodeStart->GetBestHistogramBucketEntry();
+   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pTreeSweepStart->GetBestHistogramBucketEntry();
    pLeftChild->BEFORE_SetHistogramBucketEntryLast(BEST_pHistogramBucketEntry);
-   const size_t BEST_cSamplesLeft = pSweepTreeNodeStart->GetCountBestSamplesLeft();
+   const size_t BEST_cSamplesLeft = pTreeSweepStart->GetCountBestSamplesLeft();
    pLeftChild->AMBIGUOUS_SetSamples(BEST_cSamplesLeft);
 
    const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntryNext =
@@ -323,7 +323,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       pTreeNode->GetHistogramTargetEntry();
 
    const HistogramTargetEntry<bClassification> * pHistogramTargetEntrySweep =
-      pSweepTreeNodeStart->GetBestHistogramTargetEntry();
+      pTreeSweepStart->GetBestHistogramTargetEntry();
 
    // TODO: usually we've done this calculation for the parent already.  Why not keep the result arround to avoid extra work?
    FloatEbmType originalParentScore = 0;

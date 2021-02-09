@@ -30,7 +30,7 @@ extern void BinInteraction(
 #endif // NDEBUG
 );
 
-extern FloatEbmType FindBestInteractionGainPairs(
+extern FloatEbmType FindBestInteractionScorePairs(
    InteractionDetector * const pInteractionDetector,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
@@ -183,7 +183,7 @@ static bool CalculateInteractionScoreInternal(
    if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
       LOG_0(TraceLevelVerbose, "CalculateInteractionScoreInternal Starting bin sweep loop");
 
-      FloatEbmType bestSplittingScore = FindBestInteractionGainPairs(
+      FloatEbmType bestSplittingScore = FindBestInteractionScorePairs(
          pInteractionDetector,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,

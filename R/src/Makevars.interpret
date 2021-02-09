@@ -27,7 +27,7 @@ OBJECTS = interpret_R.o \
    $(NATIVEDIR)/Discretization.o \
    $(NATIVEDIR)/FeatureGroup.o \
    $(NATIVEDIR)/FindBestBoostingSplitsPairs.o \
-   $(NATIVEDIR)/FindBestInteractionGainPairs.o \
+   $(NATIVEDIR)/FindBestInteractionScorePairs.o \
    $(NATIVEDIR)/GenerateModelFeatureGroupUpdate.o \
    $(NATIVEDIR)/GrowDecisionTree.o \
    $(NATIVEDIR)/InitializeResiduals.o \
