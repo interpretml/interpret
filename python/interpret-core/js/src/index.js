@@ -105,12 +105,13 @@ const App = props => {
         />
       );
     } else if (type === "cytoscape") {
+      const figureJson = JSON.parse(figure);
       renderable = (
         <CytoscapeComponent
-          elements={figure.elements}
-          style={figure.style}
-          stylesheet={figure.stylesheet}
-          layout={figure.layout}
+          elements={figureJson.elements}
+          style={figureJson.style}
+          stylesheet={figureJson.stylesheet}
+          layout={figureJson.layout}
         />
       );
     } else {
