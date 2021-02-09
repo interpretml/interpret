@@ -302,7 +302,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       }
       return 0;
    }
-   if(0 == pInteractionDetector->GetDataSetByFeature()->GetCountSamples()) {
+   if(0 == pInteractionDetector->GetDataFrameInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore zero samples");
       if(nullptr != interactionScoreOut) {

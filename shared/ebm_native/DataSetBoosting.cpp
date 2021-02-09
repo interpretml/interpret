@@ -16,20 +16,20 @@
 #include "DataSetBoosting.h"
 
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructResidualErrors(const size_t cSamples, const size_t cVectorLength) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructResidualErrors");
+   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(1 <= cVectorLength);
 
    if(IsMultiplyError(cSamples, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructResidualErrors IsMultiplyError(cSamples, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructResidualErrors IsMultiplyError(cSamples, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cSamples * cVectorLength;
    FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType>(cElements);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::ConstructResidualErrors");
+   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::ConstructResidualErrors");
    return aResidualErrors;
 }
 
@@ -38,21 +38,21 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    const size_t cVectorLength, 
    const FloatEbmType * const aPredictorScoresFrom
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructPredictorScores");
+   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::ConstructPredictorScores");
 
    EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(0 < cVectorLength);
    EBM_ASSERT(nullptr != aPredictorScoresFrom);
 
    if(IsMultiplyError(cSamples, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructPredictorScores IsMultiplyError(cSamples, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructPredictorScores IsMultiplyError(cSamples, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cSamples * cVectorLength;
    FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType>(cElements);
    if(nullptr == aPredictorScoresTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructPredictorScores nullptr == aPredictorScoresTo");
+      LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
    }
 
@@ -74,7 +74,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
       } while(pScoreExteriorEnd != pScore);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::ConstructPredictorScores");
+   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::ConstructPredictorScores");
    return aPredictorScoresTo;
 }
 
@@ -83,7 +83,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    const IntEbmType * const aTargets, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructTargetData");
+   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::ConstructTargetData");
 
    EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(nullptr != aTargets);
@@ -102,27 +102,27 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    do {
       const IntEbmType data = *pTargetFrom;
       if(data < 0) {
-         LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData target value cannot be negative");
+         LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructTargetData target value cannot be negative");
          free(aTargetData);
          return nullptr;
       }
       if(!IsNumberConvertable<StorageDataType>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
-         LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData data target too big to reference memory");
+         LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructTargetData data target too big to reference memory");
          free(aTargetData);
          return nullptr;
       }
       if(!IsNumberConvertable<size_t>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
-         LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData data target too big to reference memory");
+         LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructTargetData data target too big to reference memory");
          free(aTargetData);
          return nullptr;
       }
       const StorageDataType iData = static_cast<StorageDataType>(data);
       if(countTargetClasses <= static_cast<size_t>(iData)) {
-         LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData target value larger than number of classes");
+         LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructTargetData target value larger than number of classes");
          free(aTargetData);
          return nullptr;
       }
@@ -131,7 +131,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
       ++pTargetFrom;
    } while(pTargetFromEnd != pTargetFrom);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::ConstructTargetData");
+   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::ConstructTargetData");
    return aTargetData;
 }
 
@@ -158,7 +158,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cSamples, 
    const IntEbmType * const aInputDataFrom
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatureGroups);
    EBM_ASSERT(nullptr != apFeatureGroup);
@@ -168,7 +168,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatureGroups);
    if(nullptr == aaInputDataTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -194,7 +194,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
          StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cDataUnits);
          if(nullptr == pInputDataTo) {
-            LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructInputData nullptr == pInputDataTo");
+            LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
@@ -248,17 +248,17 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                   const IntEbmType inputData = *pInputData;
                   pDimensionInfo->m_pInputData = pInputData + 1;
                   if(inputData < 0) {
-                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructInputData inputData value cannot be negative");
+                     LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructInputData inputData value cannot be negative");
                      goto free_all;
                   }
                   if(!IsNumberConvertable<size_t>(inputData)) {
-                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructInputData inputData value too big to reference memory");
+                     LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructInputData inputData value too big to reference memory");
                      goto free_all;
                   }
                   const size_t iData = static_cast<size_t>(inputData);
 
                   if(pDimensionInfo->m_cBins <= iData) {
-                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructInputData iData value must be less than the number of bins");
+                     LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructInputData iData value must be less than the number of bins");
                      goto free_all;
                   }
                   // we check for overflows during FeatureGroup construction, but let's check here again
@@ -292,7 +292,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       ++ppFeatureGroup;
    } while(ppFeatureGroupEnd != ppFeatureGroup);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -304,7 +304,7 @@ free_all:
    return nullptr;
 }
 
-bool DataSetByFeatureGroup::Initialize(
+bool DataFrameBoosting::Initialize(
    const bool bAllocateResidualErrors, 
    const bool bAllocatePredictorScores, 
    const bool bAllocateTargetData, 
@@ -321,7 +321,7 @@ bool DataSetByFeatureGroup::Initialize(
    EBM_ASSERT(nullptr == m_aTargetData);
    EBM_ASSERT(nullptr == m_aaInputData);
 
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::Initialize");
+   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::Initialize");
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
    if(0 != cSamples) {
@@ -329,7 +329,7 @@ bool DataSetByFeatureGroup::Initialize(
       if(bAllocateResidualErrors) {
          aResidualErrors = ConstructResidualErrors(cSamples, cVectorLength);
          if(nullptr == aResidualErrors) {
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aResidualErrors");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aResidualErrors");
             return true;
          }
       }
@@ -338,7 +338,7 @@ bool DataSetByFeatureGroup::Initialize(
          aPredictorScores = ConstructPredictorScores(cSamples, cVectorLength, aPredictorScoresFrom);
          if(nullptr == aPredictorScores) {
             free(aResidualErrors);
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aPredictorScores");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aPredictorScores");
             return true;
          }
       }
@@ -348,7 +348,7 @@ bool DataSetByFeatureGroup::Initialize(
          if(nullptr == aTargetData) {
             free(aResidualErrors);
             free(aPredictorScores);
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aTargetData");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aTargetData");
             return true;
          }
       }
@@ -359,7 +359,7 @@ bool DataSetByFeatureGroup::Initialize(
             free(aResidualErrors);
             free(aPredictorScores);
             free(aTargetData);
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aaInputData");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aaInputData");
             return true;
          }
       }
@@ -372,15 +372,15 @@ bool DataSetByFeatureGroup::Initialize(
       m_cFeatureGroups = cFeatureGroups;
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::Initialize");
+   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::Initialize");
 
    return false;
 }
 
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
-void DataSetByFeatureGroup::Destruct() {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::Destruct");
+void DataFrameBoosting::Destruct() {
+   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::Destruct");
 
    free(m_aResidualErrors);
    free(m_aPredictorScores);
@@ -397,6 +397,6 @@ void DataSetByFeatureGroup::Destruct() {
       free(m_aaInputData);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::Destruct");
+   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::Destruct");
 }
 WARNING_POP

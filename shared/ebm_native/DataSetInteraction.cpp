@@ -27,7 +27,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructResidualErrors(
    const FloatEbmType * const aPredictorScores, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
+   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aTargetData);
@@ -72,7 +72,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cSamples, 
    const IntEbmType * const aBinnedData
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
    EBM_ASSERT(nullptr != aFeatures);
@@ -81,7 +81,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatures);
    if(nullptr == aaInputDataTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -91,7 +91,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    do {
       StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cSamples);
       if(nullptr == pInputDataTo) {
-         LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == pInputDataTo");
+         LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::ConstructInputData nullptr == pInputDataTo");
          goto free_all;
       }
       *paInputDataTo = pInputDataTo;
@@ -102,20 +102,20 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       do {
          const IntEbmType inputData = *pInputDataFrom;
          if(inputData < 0) {
-            LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData inputData value cannot be negative");
+            LOG_0(TraceLevelError, "ERROR DataFrameInteraction::ConstructInputData inputData value cannot be negative");
             goto free_all;
          }
          if(!IsNumberConvertable<StorageDataType>(inputData)) {
-            LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData inputData value too big to reference memory");
+            LOG_0(TraceLevelError, "ERROR DataFrameInteraction::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
          if(!IsNumberConvertable<size_t>(inputData)) {
-            LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData inputData value too big to reference memory");
+            LOG_0(TraceLevelError, "ERROR DataFrameInteraction::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
          const size_t iData = static_cast<size_t>(inputData);
          if(pFeature->GetCountBins() <= iData) {
-            LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData iData value must be less than the number of bins");
+            LOG_0(TraceLevelError, "ERROR DataFrameInteraction::ConstructInputData iData value must be less than the number of bins");
             goto free_all;
          }
          *pInputDataTo = static_cast<StorageDataType>(inputData);
@@ -126,7 +126,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       ++pFeature;
    } while(pFeatureEnd != pFeature);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Exited DataFrameInteraction::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -140,8 +140,8 @@ free_all:
 
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
-void DataSetByFeature::Destruct() {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeature::Destruct");
+void DataFrameInteraction::Destruct() {
+   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::Destruct");
 
    free(m_aResidualErrors);
    if(nullptr != m_aaInputData) {
@@ -156,11 +156,11 @@ void DataSetByFeature::Destruct() {
       free(m_aaInputData);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeature::Destruct");
+   LOG_0(TraceLevelInfo, "Exited DataFrameInteraction::Destruct");
 }
 WARNING_POP
 
-bool DataSetByFeature::Initialize(
+bool DataFrameInteraction::Initialize(
    const size_t cFeatures, 
    const Feature * const aFeatures, 
    const size_t cSamples, 
@@ -173,7 +173,7 @@ bool DataSetByFeature::Initialize(
    EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
    EBM_ASSERT(0 == m_cSamples); // we expect to start with zeroed values
 
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeature::Initialize");
+   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::Initialize");
 
    if(0 != cSamples) {
       // runtimeLearningTypeOrCountTargetClasses can only be zero if 
@@ -190,20 +190,20 @@ bool DataSetByFeature::Initialize(
          do {
             const IntEbmType data = *pTargetFrom;
             if(data < 0) {
-               LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize target value cannot be negative");
+               LOG_0(TraceLevelError, "ERROR DataFrameInteraction::Initialize target value cannot be negative");
                return true;
             }
             if(!IsNumberConvertable<StorageDataType>(data)) {
-               LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize data target too big to reference memory");
+               LOG_0(TraceLevelError, "ERROR DataFrameInteraction::Initialize data target too big to reference memory");
                return true;
             }
             if(!IsNumberConvertable<size_t>(data)) {
-               LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize data target too big to reference memory");
+               LOG_0(TraceLevelError, "ERROR DataFrameInteraction::Initialize data target too big to reference memory");
                return true;
             }
             const size_t iData = static_cast<size_t>(data);
             if(countTargetClasses <= iData) {
-               LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize target value larger than number of classes");
+               LOG_0(TraceLevelError, "ERROR DataFrameInteraction::Initialize target value larger than number of classes");
                return true;
             }
             ++pTargetFrom;
@@ -227,10 +227,10 @@ bool DataSetByFeature::Initialize(
    }
    m_cFeatures = cFeatures;
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeature::Initialize");
+   LOG_0(TraceLevelInfo, "Exited DataFrameInteraction::Initialize");
    return false;
 
 exit_error:;
-   LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeature::Initialize");
+   LOG_0(TraceLevelWarning, "WARNING Exited DataFrameInteraction::Initialize");
    return true;
 }

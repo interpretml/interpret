@@ -318,6 +318,7 @@ EXIT /B 0
     <ClCompile Include="ApplyModelUpdateValidation.cpp" />
     <ClCompile Include="BinBoosting.cpp" />
     <ClCompile Include="BinInteraction.cpp" />
+    <ClCompile Include="DataFrameShared.cpp" />
     <ClCompile Include="GenerateQuantileCuts.cpp" />
     <ClCompile Include="GenerateUniformCuts.cpp" />
     <ClCompile Include="GenerateWinsorizedCuts.cpp" />

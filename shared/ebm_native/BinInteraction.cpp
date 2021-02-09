@@ -52,7 +52,7 @@ public:
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-      const DataSetByFeature * const pDataSet = pInteractionDetector->GetDataSetByFeature();
+      const DataFrameInteraction * const pDataSet = pInteractionDetector->GetDataFrameInteraction();
       const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountSamples();
 

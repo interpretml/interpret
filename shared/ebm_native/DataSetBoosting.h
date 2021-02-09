@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef DATA_SET_BY_FEATURE_COMBINATION_H
-#define DATA_SET_BY_FEATURE_COMBINATION_H
+#ifndef DATA_FRAME_BOOSTING_H
+#define DATA_FRAME_BOOSTING_H
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -13,7 +13,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureGroup.h"
 
-class DataSetByFeatureGroup final {
+class DataFrameBoosting final {
    FloatEbmType * m_aResidualErrors;
    FloatEbmType * m_aPredictorScores;
    StorageDataType * m_aTargetData;
@@ -23,8 +23,8 @@ class DataSetByFeatureGroup final {
 
 public:
 
-   DataSetByFeatureGroup() = default; // preserve our POD status
-   ~DataSetByFeatureGroup() = default; // preserve our POD status
+   DataFrameBoosting() = default; // preserve our POD status
+   ~DataFrameBoosting() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -82,11 +82,11 @@ public:
       return m_cFeatureGroups;
    }
 };
-static_assert(std::is_standard_layout<DataSetByFeatureGroup>::value,
+static_assert(std::is_standard_layout<DataFrameBoosting>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<DataSetByFeatureGroup>::value,
+static_assert(std::is_trivial<DataFrameBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<DataSetByFeatureGroup>::value,
+static_assert(std::is_pod<DataFrameBoosting>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-#endif // DATA_SET_BY_FEATURE_COMBINATION_H
+#endif // DATA_FRAME_BOOSTING_H

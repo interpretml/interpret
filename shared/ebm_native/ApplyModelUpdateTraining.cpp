@@ -34,7 +34,7 @@ public:
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
-      DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
+      DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
       FloatEbmType * const aTempFloatVector = pThreadStateBoosting->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
@@ -122,7 +122,7 @@ public:
       UNUSED(pThreadStateBoosting);
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
+      DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
@@ -159,7 +159,7 @@ public:
       UNUSED(pThreadStateBoosting);
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
+      DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
@@ -238,7 +238,7 @@ public:
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
-      DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
+      DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
       FloatEbmType * const aTempFloatVector = pThreadStateBoosting->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
@@ -371,7 +371,7 @@ public:
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
-      DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
+      DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
@@ -459,7 +459,7 @@ public:
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
-      DataSetByFeatureGroup * const pTrainingSet = pBooster->GetTrainingSet();
+      DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);

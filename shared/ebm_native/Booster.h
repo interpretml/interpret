@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef EBM_BOOSTING_STATE_H
-#define EBM_BOOSTING_STATE_H
+#ifndef BOOSTER_H
+#define BOOSTER_H
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -33,8 +33,8 @@ class Booster final {
    size_t m_cFeatureGroups;
    FeatureGroup ** m_apFeatureGroups;
 
-   DataSetByFeatureGroup m_trainingSet;
-   DataSetByFeatureGroup m_validationSet;
+   DataFrameBoosting m_trainingSet;
+   DataFrameBoosting m_validationSet;
 
    size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
@@ -102,11 +102,11 @@ public:
       return m_apFeatureGroups;
    }
 
-   INLINE_ALWAYS DataSetByFeatureGroup * GetTrainingSet() {
+   INLINE_ALWAYS DataFrameBoosting * GetTrainingSet() {
       return &m_trainingSet;
    }
 
-   INLINE_ALWAYS DataSetByFeatureGroup * GetValidationSet() {
+   INLINE_ALWAYS DataFrameBoosting * GetValidationSet() {
       return &m_validationSet;
    }
 
@@ -170,4 +170,4 @@ static_assert(std::is_trivial<Booster>::value,
 static_assert(std::is_pod<Booster>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-#endif // EBM_BOOSTING_STATE_H
+#endif // BOOSTER_H

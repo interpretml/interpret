@@ -23,7 +23,7 @@ class InteractionDetector final {
    size_t m_cFeatures;
    Feature * m_aFeatures;
 
-   DataSetByFeature m_dataSet;
+   DataFrameInteraction m_dataSet;
 
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
@@ -59,7 +59,7 @@ public:
       return &m_cLogExitMessages;
    }
 
-   INLINE_ALWAYS const DataSetByFeature * GetDataSetByFeature() const {
+   INLINE_ALWAYS const DataFrameInteraction * GetDataFrameInteraction() const {
       return &m_dataSet;
    }
 

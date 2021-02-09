@@ -12,7 +12,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureAtomic.h"
 
-class DataSetByFeature final {
+class DataFrameInteraction final {
    FloatEbmType * m_aResidualErrors;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
@@ -20,8 +20,8 @@ class DataSetByFeature final {
 
 public:
 
-   DataSetByFeature() = default; // preserve our POD status
-   ~DataSetByFeature() = default; // preserve our POD status
+   DataFrameInteraction() = default; // preserve our POD status
+   ~DataFrameInteraction() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -62,11 +62,11 @@ public:
       return m_cFeatures;
    }
 };
-static_assert(std::is_standard_layout<DataSetByFeature>::value,
+static_assert(std::is_standard_layout<DataFrameInteraction>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<DataSetByFeature>::value,
+static_assert(std::is_trivial<DataFrameInteraction>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<DataSetByFeature>::value,
+static_assert(std::is_pod<DataFrameInteraction>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // DATA_SET_BY_FEATURE_H

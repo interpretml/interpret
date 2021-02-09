@@ -37,7 +37,7 @@ public:
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
-      DataSetByFeatureGroup * const pValidationSet = pBooster->GetValidationSet();
+      DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -98,7 +98,7 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      DataSetByFeatureGroup * const pValidationSet = pBooster->GetValidationSet();
+      DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
@@ -134,7 +134,7 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      DataSetByFeatureGroup * const pValidationSet = pBooster->GetValidationSet();
+      DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
@@ -219,7 +219,7 @@ public:
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
-      DataSetByFeatureGroup * const pValidationSet = pBooster->GetValidationSet();
+      DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -323,7 +323,7 @@ public:
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
-      DataSetByFeatureGroup * const pValidationSet = pBooster->GetValidationSet();
+      DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
@@ -410,7 +410,7 @@ public:
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
-      DataSetByFeatureGroup * const pValidationSet = pBooster->GetValidationSet();
+      DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);

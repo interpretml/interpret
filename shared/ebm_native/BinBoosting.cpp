@@ -50,11 +50,11 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
 
-      const size_t cSamples = pTrainingSet->GetDataSetByFeatureGroup()->GetCountSamples();
+      const size_t cSamples = pTrainingSet->GetDataFrameBoosting()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureGroup()->GetResidualPointer();
+      const FloatEbmType * pResidualError = pTrainingSet->GetDataFrameBoosting()->GetResidualPointer();
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cSamples;
 
@@ -220,12 +220,12 @@ public:
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-      const size_t cSamples = pTrainingSet->GetDataSetByFeatureGroup()->GetCountSamples();
+      const size_t cSamples = pTrainingSet->GetDataFrameBoosting()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const StorageDataType * pInputData = pTrainingSet->GetDataSetByFeatureGroup()->GetInputDataPointer(pFeatureGroup);
-      const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureGroup()->GetResidualPointer();
+      const StorageDataType * pInputData = pTrainingSet->GetDataFrameBoosting()->GetInputDataPointer(pFeatureGroup);
+      const FloatEbmType * pResidualError = pTrainingSet->GetDataFrameBoosting()->GetResidualPointer();
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cSamples;
