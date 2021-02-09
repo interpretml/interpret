@@ -14,7 +14,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
-#include "EbmStatisticUtils.h"
+#include "EbmStats.h"
 // feature includes
 #include "FeatureAtomic.h"
 // FeatureGroup.h depends on FeatureInternal.h

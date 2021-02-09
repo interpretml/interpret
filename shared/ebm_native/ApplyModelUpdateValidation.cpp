@@ -11,7 +11,7 @@
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "ApproximateMath.h"
-#include "EbmStatisticUtils.h"
+#include "EbmStats.h"
 // FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
 // dataset depends on features

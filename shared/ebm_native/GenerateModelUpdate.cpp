@@ -13,7 +13,7 @@
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
-#include "EbmStatisticUtils.h"
+#include "EbmStats.h"
 // feature includes
 #include "FeatureAtomic.h"
 // FeatureGroup.h depends on FeatureInternal.h

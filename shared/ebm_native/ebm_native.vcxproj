@@ -301,7 +301,7 @@ EXIT /B 0
     <ClInclude Include="DataSetInteraction.h" />
     <ClInclude Include="DataSetBoosting.h" />
     <ClInclude Include="EbmInternal.h" />
-    <ClInclude Include="EbmStatisticUtils.h" />
+    <ClInclude Include="EbmStats.h" />
     <ClInclude Include="Logging.h" />
     <ClInclude Include="PrecompiledHeader.h" />
     <ClInclude Include="HistogramTargetEntry.h" />

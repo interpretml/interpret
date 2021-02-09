@@ -14,7 +14,7 @@
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
-#include "EbmStatisticUtils.h"
+#include "EbmStats.h"
 #include "ThreadStateBoosting.h"
 
 #include "FeatureAtomic.h"
