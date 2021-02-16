@@ -478,7 +478,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
    }
 
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
-   size_t cValues = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+   const size_t cVectorLength = GetVectorLength(pBooster->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cValues = cVectorLength;
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
@@ -493,6 +494,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
    FloatEbmType * const pValues = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
    memcpy(pValues, modelFeatureGroupUpdateTensor, sizeof(*pValues) * cValues);
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+
+   if(2 <= cVectorLength) {
+      FloatEbmType * pScore = pValues;
+      const FloatEbmType * const pScoreExteriorEnd = pScore + cValues;
+      do {
+         FloatEbmType scoreShift = pScore[0];
+         const FloatEbmType * const pScoreInteriorEnd = pScore + cVectorLength;
+         do {
+            *pScore -= scoreShift;
+            ++pScore;
+         } while(pScoreInteriorEnd != pScore);
+      } while(pScoreExteriorEnd != pScore);
+   }
+
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
 
    pThreadStateBoosting->SetFeatureGroupIndex(iFeatureGroup);
 

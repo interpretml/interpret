@@ -513,7 +513,13 @@ public:
                pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               *pUpdate = pHistogramTargetEntry[iVector].m_sumGradients;
+               FloatEbmType update = pHistogramTargetEntry[iVector].m_sumGradients;
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+               // for DP-EBMs, we can't zero one of the class scores as we can for logits since we're returning a sum
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
+               *pUpdate = update;
                ++pUpdate;
             }
             pCollapsedHistogramBucket2 = GetHistogramBucketByIndex<bClassification>(
@@ -526,12 +532,22 @@ public:
                // normally, we'd eliminate regions where the number of items was zero before putting down a cut
                // but for random cuts we can't know beforehand if there will be zero cuts, so we need to check
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  *pUpdate = FloatEbmType { 0 };
+                  FloatEbmType update = FloatEbmType { 0 };
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+                  // if we eliminated the space for the logit, we'd need to eliminate one assignment here
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
+                  *pUpdate = update;
                   ++pUpdate;
                }
             } else {
                HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
                   pCollapsedHistogramBucket2->GetHistogramTargetEntry();
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+               FloatEbmType zeroLogit = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
 
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                   FloatEbmType update;
@@ -540,6 +556,14 @@ public:
                         pHistogramTargetEntry[iVector].m_sumGradients,
                         pHistogramTargetEntry[iVector].GetSumHessians()
                      );
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+                     if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                        if(size_t { 0 } == iVector) {
+                           zeroLogit = update;
+                        }
+                        update -= zeroLogit;
+                     }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
                   } else {
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                      update = EbmStats::ComputeSinglePartitionUpdateRegression(

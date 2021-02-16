@@ -54,16 +54,31 @@ static void Flatten(
 
       const HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
          pTreeNode->GetHistogramTargetEntry();
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+      FloatEbmType zeroLogit = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
       do {
-         FloatEbmType smallChangeToModel;
+         FloatEbmType update;
          if(bClassification) {
-            smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateClassification(
+            update = EbmStats::ComputeSinglePartitionUpdateClassification(
                pHistogramTargetEntry->m_sumGradients, pHistogramTargetEntry->GetSumHessians());
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            if(2 <= cVectorLength) {
+               if(pTreeNode->GetHistogramTargetEntry() == pHistogramTargetEntry) {
+                  zeroLogit = update;
+               }
+               update -= zeroLogit;
+            }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
          } else {
-            smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateRegression(
+            update = EbmStats::ComputeSinglePartitionUpdateRegression(
                pHistogramTargetEntry->m_sumGradients, static_cast<FloatEbmType>(pTreeNode->AMBIGUOUS_GetCountSamples()));
          }
-         *pValuesCur = smallChangeToModel;
+         *pValuesCur = update;
 
          ++pHistogramTargetEntry;
          ++pValuesCur;
@@ -512,11 +527,26 @@ public:
          // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
          if(bClassification) {
             FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            FloatEbmType zeroLogit = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateClassification(
+               FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateClassification(
                   pRootTreeNode->GetHistogramTargetEntry()[iVector].m_sumGradients, pRootTreeNode->GetHistogramTargetEntry()[iVector].GetSumHessians()
                );
-               aValues[iVector] = smallChangeToModel;
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+               if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                  if(size_t { 0 } == iVector) {
+                     zeroLogit = update;
+                  }
+                  update -= zeroLogit;
+               }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
+               aValues[iVector] = update;
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
@@ -570,15 +600,35 @@ public:
 
          FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          if(bClassification) {
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            FloatEbmType zeroLogit0 = FloatEbmType { 0 };
+            FloatEbmType zeroLogit1 = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               aValues[iVector] = EbmStats::ComputeSinglePartitionUpdateClassification(
+               FloatEbmType update0 = EbmStats::ComputeSinglePartitionUpdateClassification(
                   pHistogramTargetEntryLeftChild[iVector].m_sumGradients,
                   pHistogramTargetEntryLeftChild[iVector].GetSumHessians()
                );
-               aValues[cVectorLength + iVector] = EbmStats::ComputeSinglePartitionUpdateClassification(
+               FloatEbmType update1 = EbmStats::ComputeSinglePartitionUpdateClassification(
                   pHistogramTargetEntryRightChild[iVector].m_sumGradients,
                   pHistogramTargetEntryRightChild[iVector].GetSumHessians()
                );
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+               if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                  if(size_t { 0 } == iVector) {
+                     zeroLogit0 = update0;
+                     zeroLogit1 = update1;
+                  }
+                  update0 -= zeroLogit0;
+                  update1 -= zeroLogit1;
+               }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
+               aValues[iVector] = update0;
+               aValues[cVectorLength + iVector] = update1;
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));

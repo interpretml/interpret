@@ -72,6 +72,16 @@ public:
             ++pValues;
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+               if(size_t { 0 } == iVector) {
+                  EBM_ASSERT(0 == smallChangeToPredictorScores);
+                  EBM_ASSERT(0 == predictorScore);
+               }
+            }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
             const FloatEbmType oneExp = ExpForMulticlass(predictorScore);
@@ -95,24 +105,10 @@ public:
             );
             ++pExpVector;
             *pGradientAndHessian = gradient;
-            // TODO: for multiclass, calculate the hessian from the probabilities instead of the gradients since we can avoid the call to std::abs
             *(pGradientAndHessian + 1) = hessian;
             pGradientAndHessian += 2;
             ++iVector;
          } while(iVector < cVectorLength);
-         // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
-         // 
-         // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
-         // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the first
-         // one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid set of 
-         // values insted of allowing them to be scaled.  
-         // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which 
-         // will be multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which cancels 
-         // eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-         constexpr bool bZeroingLogits = 0 <= k_iZeroLogit;
-         if(bZeroingLogits) {
-            *(pGradientAndHessian - 2 * (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroLogit)) = 0;
-         }
       } while(pPredictorScoresEnd != pPredictorScores);
    }
 };
@@ -311,6 +307,16 @@ public:
                ++pValues;
                // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
                const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+               if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                  if(size_t { 0 } == iVector) {
+                     EBM_ASSERT(0 == smallChangeToPredictorScores);
+                     EBM_ASSERT(0 == predictorScore);
+                  }
+               }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
                const FloatEbmType oneExp = ExpForMulticlass(predictorScore);
@@ -334,24 +340,10 @@ public:
                );
                ++pExpVector;
                *pGradientAndHessian = gradient;
-               // TODO: for multiclass, calculate the hessian from the probabilities instead of the gradients since we can avoid the call to std::abs
                *(pGradientAndHessian + 1) = hessian;
                pGradientAndHessian += 2;
                ++iVector;
             } while(iVector < cVectorLength);
-            // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
-            // 
-            // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
-            // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the 
-            // first one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid 
-            // set of values insted of allowing them to be scaled.  
-            // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which 
-            // will be multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which 
-            // cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-            constexpr bool bZeroingLogits = 0 <= k_iZeroLogit;
-            if(bZeroingLogits) {
-               *(pGradientAndHessian - 2 * (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroLogit)) = 0;
-            }
 
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pPredictorScoresInnerEnd != pPredictorScores);

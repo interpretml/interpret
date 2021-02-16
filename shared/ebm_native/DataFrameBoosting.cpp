@@ -66,13 +66,14 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    const size_t cBytes = sizeof(FloatEbmType) * cElements;
    // if there are any NaN or +- infinity values we should just propagate them and exit during boosting
    memcpy(aPredictorScoresTo, aPredictorScoresFrom, cBytes);
-   constexpr bool bZeroingLogits = 0 <= k_iZeroClassificationLogitAtInitialize;
-   if(bZeroingLogits) {
-      // TODO : integrate this subtraction into the copy instead of doing it afterwards
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+
+   if(2 <= cVectorLength) {
       FloatEbmType * pScore = aPredictorScoresTo;
       const FloatEbmType * const pScoreExteriorEnd = pScore + cVectorLength * cSamples;
       do {
-         FloatEbmType scoreShift = pScore[k_iZeroClassificationLogitAtInitialize];
+         FloatEbmType scoreShift = pScore[0];
          const FloatEbmType * const pScoreInteriorEnd = pScore + cVectorLength;
          do {
             *pScore -= scoreShift;
@@ -80,6 +81,8 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
          } while(pScoreInteriorEnd != pScore);
       } while(pScoreExteriorEnd != pScore);
    }
+
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
 
    LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::ConstructPredictorScores");
    return aPredictorScoresTo;

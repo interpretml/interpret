@@ -125,16 +125,37 @@ static bool BoostZeroDimensional(
          pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType smallChangeToModel = aSumHistogramTargetEntry[iVector].m_sumGradients;
-            aValues[iVector] = smallChangeToModel;
+            const FloatEbmType update = aSumHistogramTargetEntry[iVector].m_sumGradients;
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            // Hmmm.. for DP we need the sum, which means that we can't zero one of the class numbers as we
+            // could with one of the logits in multiclass.
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
+            aValues[iVector] = update;
          }
       } else {
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+         FloatEbmType zeroLogit = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateClassification(
+            FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateClassification(
                aSumHistogramTargetEntry[iVector].m_sumGradients,
                aSumHistogramTargetEntry[iVector].GetSumHessians()
             );
-            aValues[iVector] = smallChangeToModel;
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            if(IsMulticlass(runtimeLearningTypeOrCountTargetClasses)) {
+               if(size_t { 0 } == iVector) {
+                  zeroLogit = update;
+               }
+               update -= zeroLogit;
+            }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
+            aValues[iVector] = update;
          }
       }
    } else {

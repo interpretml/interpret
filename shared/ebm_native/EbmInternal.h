@@ -540,8 +540,6 @@ INLINE_ALWAYS T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noe
 //       We might also pay a penalty if our stride length for the outputs is too long, but we'll have to test that
 constexpr bool k_bUseSIMD = false;
 
-// TODO eventually, eliminate these variables, and make eliminating logits a part of our regular framework
-constexpr ptrdiff_t k_iZeroLogit = -1;
-constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
+//#define ZERO_FIRST_MULTICLASS_LOGIT
 
 #endif // EBM_INTERNAL_H

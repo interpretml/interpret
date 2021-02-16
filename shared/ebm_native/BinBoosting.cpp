@@ -90,9 +90,6 @@ public:
 #endif // NDEBUG
          do {
             const FloatEbmType gradient = *pGradientAndHessian;
-            EBM_ASSERT(!bClassification ||
-               ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
-               static_cast<ptrdiff_t>(iVector) != k_iZeroLogit || 0 == gradient);
 #ifndef NDEBUG
             sumGradientsDebug += gradient;
 #endif // NDEBUG
@@ -116,7 +113,6 @@ public:
          EBM_ASSERT(
             !bClassification ||
             ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
-            0 <= k_iZeroLogit ||
             std::isnan(sumGradientsDebug) ||
             -k_epsilonGradient < sumGradientsDebug && sumGradientsDebug < k_epsilonGradient
          );
@@ -286,12 +282,6 @@ public:
 #endif // NDEBUG
             do {
                const FloatEbmType gradient = *pGradientAndHessian;
-               EBM_ASSERT(
-                  !bClassification ||
-                  ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
-                  static_cast<ptrdiff_t>(iVector) != k_iZeroLogit ||
-                  0 == gradient
-               );
 #ifndef NDEBUG
                gradientTotalDebug += gradient;
 #endif // NDEBUG
@@ -317,7 +307,6 @@ public:
             EBM_ASSERT(
                !bClassification ||
                ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
-               0 <= k_iZeroLogit ||
                -k_epsilonGradient < gradientTotalDebug && gradientTotalDebug < k_epsilonGradient
             );
 

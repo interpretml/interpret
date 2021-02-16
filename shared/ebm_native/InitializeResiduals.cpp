@@ -33,10 +33,6 @@ public:
 
       LOG_0(TraceLevelInfo, "Entered InitializeGradients");
 
-      // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
-      //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
-      //   runtimeLearningTypeOrCountTargetClasses for some of the addition
-      // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
       EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
@@ -72,13 +68,24 @@ public:
          FloatEbmType * pExpVector = aExpVector;
 
          FloatEbmType sumExp = FloatEbmType { 0 };
-         // TODO : eventually eliminate this subtract variable once we've decided how to handle removing one logit
-         const FloatEbmType subtract = 
-            0 <= k_iZeroClassificationLogitAtInitialize ? pPredictorScores[k_iZeroClassificationLogitAtInitialize] : FloatEbmType { 0 };
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+         FloatEbmType zeroLogit = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
 
          size_t iVector = 0;
          do {
-            const FloatEbmType predictorScore = *pPredictorScores - subtract;
+            FloatEbmType predictorScore = *pPredictorScores;
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+               if(size_t { 0 } == iVector) {
+                  zeroLogit = predictorScore;
+               }
+               predictorScore -= zeroLogit;
+            }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
             ++pPredictorScores;
             const FloatEbmType oneExp = ExpForMulticlass(predictorScore);
             *pExpVector = oneExp;
@@ -97,25 +104,10 @@ public:
             EbmStats::TransformScoreToGradientAndHessianMulticlass(sumExp, *pExpVector, target, iVector, gradient, hessian);
             ++pExpVector;
             *pGradientAndHessian = gradient;
-            // TODO: for multiclass, calculate the hessian from the probabilities instead of the gradients since we can avoid the call to std::abs
             *(pGradientAndHessian + 1) = hessian;
             pGradientAndHessian += 2;
             ++iVector;
          } while(iVector < cVectorLength);
-
-         // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
-         // 
-         // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
-         // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the first
-         // one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid set of values
-         // insted of allowing them to be scaled.  
-         // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be 
-         // multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which cancels eachother out.
-         // We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-         constexpr bool bZeroingLogits = 0 <= k_iZeroLogit;
-         if(bZeroingLogits) {
-            pGradientAndHessian[2 * (k_iZeroLogit - static_cast<ptrdiff_t>(cVectorLength))] = 0;
-         }
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
 
       if(UNLIKELY(aExpVector != aLocalExpVector)) {

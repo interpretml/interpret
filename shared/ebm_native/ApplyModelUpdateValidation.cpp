@@ -66,6 +66,16 @@ public:
             ++pValues;
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+               if(size_t { 0 } == iVector) {
+                  EBM_ASSERT(0 == smallChangeToPredictorScores);
+                  EBM_ASSERT(0 == predictorScore);
+               }
+            }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
             const FloatEbmType oneExp = ExpForLogLossMulticlass(predictorScore);
@@ -280,6 +290,16 @@ public:
                ++pValues;
                // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
                const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+               if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                  if(size_t { 0 } == iVector) {
+                     EBM_ASSERT(0 == smallChangeToPredictorScores);
+                     EBM_ASSERT(0 == predictorScore);
+                  }
+               }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
                const FloatEbmType oneExp = ExpForLogLossMulticlass(predictorScore);

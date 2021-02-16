@@ -742,6 +742,32 @@ FloatEbmType TestApi::Boost(
    if(0 != retGenerate) {
       exit(1);
    }
+   if(0 != (GenerateUpdateOptions_GradientSums & options)) {
+      // if sums are on, then we MUST change the model update
+
+      size_t cValues = GetVectorLength(m_learningTypeOrCountTargetClasses);
+      std::vector<size_t> & countBinsByFeatureGroup = m_countBinsByFeatureGroup[indexFeatureGroup];
+
+      for(size_t iDimension = 0; iDimension < countBinsByFeatureGroup.size(); ++iDimension) {
+         size_t cBins = countBinsByFeatureGroup[iDimension];
+         cValues *= cBins;
+      }
+
+      FloatEbmType * aMem = new FloatEbmType[cValues];
+      memset(aMem, 0, sizeof(*aMem) * cValues);
+
+      const IntEbmType retSet = SetModelUpdateExpanded(
+         threadStateBoostingHandle,
+         indexFeatureGroup,
+         aMem
+      );
+
+      delete[] aMem;
+
+      if(0 != retSet) {
+         exit(1);
+      }
+   }
    const IntEbmType ret = ApplyModelUpdate(
       threadStateBoostingHandle,
       &validationMetricOut

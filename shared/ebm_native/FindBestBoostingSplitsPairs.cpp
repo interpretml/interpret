@@ -506,14 +506,27 @@ public:
          // we don't need to call pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity, 
          // since our value capacity would be 1, which is pre-allocated
 
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+         FloatEbmType zeroLogit = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             FloatEbmType update;
-
             if(bClassification) {
                update = EbmStats::ComputeSinglePartitionUpdateClassification(
                   pHistogramTargetEntryTotal[iVector].m_sumGradients,
                   pHistogramTargetEntryTotal[iVector].GetSumHessians()
                );
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+               if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                  if(size_t { 0 } == iVector) {
+                     zeroLogit = update;
+                  }
+                  update -= zeroLogit;
+               }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
             } else {
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                update = EbmStats::ComputeSinglePartitionUpdateRegression(
@@ -521,6 +534,7 @@ public:
                   cSamplesInParentBucket
                );
             }
+
             pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[iVector] = update;
          }
          gain = FloatEbmType { 0 }; // no splits means no gain
@@ -588,6 +602,13 @@ public:
             HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2HighHighBest =
                pTotals2HighHighBest->GetHistogramTargetEntry();
 
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            FloatEbmType zeroLogit0 = FloatEbmType { 0 };
+            FloatEbmType zeroLogit1 = FloatEbmType { 0 };
+            FloatEbmType zeroLogit2 = FloatEbmType { 0 };
+            FloatEbmType zeroLogit3 = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                FloatEbmType predictionLowLow;
                FloatEbmType predictionLowHigh;
@@ -611,6 +632,22 @@ public:
                      pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumGradients,
                      pHistogramTargetEntryTotals2HighHighBest[iVector].GetSumHessians()
                   );
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+                  if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                     if(size_t { 0 } == iVector) {
+                        zeroLogit0 = predictionLowLow;
+                        zeroLogit1 = predictionLowHigh;
+                        zeroLogit2 = predictionHighLow;
+                        zeroLogit3 = predictionHighHigh;
+                     }
+                     predictionLowLow -= zeroLogit0;
+                     predictionLowHigh -= zeroLogit1;
+                     predictionHighLow -= zeroLogit2;
+                     predictionHighHigh -= zeroLogit3;
+                  }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStats::ComputeSinglePartitionUpdateRegression(
@@ -713,6 +750,13 @@ public:
             HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1HighHighBest =
                pTotals1HighHighBest->GetHistogramTargetEntry();
 
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+            FloatEbmType zeroLogit0 = FloatEbmType { 0 };
+            FloatEbmType zeroLogit1 = FloatEbmType { 0 };
+            FloatEbmType zeroLogit2 = FloatEbmType { 0 };
+            FloatEbmType zeroLogit3 = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                FloatEbmType predictionLowLow;
                FloatEbmType predictionLowHigh;
@@ -736,6 +780,22 @@ public:
                      pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumGradients,
                      pHistogramTargetEntryTotals1HighHighBest[iVector].GetSumHessians()
                   );
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+                  if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                     if(size_t { 0 } == iVector) {
+                        zeroLogit0 = predictionLowLow;
+                        zeroLogit1 = predictionLowHigh;
+                        zeroLogit2 = predictionHighLow;
+                        zeroLogit3 = predictionHighHigh;
+                     }
+                     predictionLowLow -= zeroLogit0;
+                     predictionLowHigh -= zeroLogit1;
+                     predictionHighLow -= zeroLogit2;
+                     predictionHighHigh -= zeroLogit3;
+                  }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStats::ComputeSinglePartitionUpdateRegression(

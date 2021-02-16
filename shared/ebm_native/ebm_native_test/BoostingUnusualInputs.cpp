@@ -309,31 +309,28 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
          validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_Default, -k_learningRateDefault);
          if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.1288361512023379, double { 1e-1 });
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
-            CHECK_APPROX(modelValue, -0.03000000000000000);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX(modelValue, 0.01500000000000000);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
-            CHECK_APPROX(modelValue, 0.01500000000000000);
+            const FloatEbmType zeroLogit = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1) - zeroLogit;
+            CHECK_APPROX(modelValue, 0.04500000000000000);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2) - zeroLogit;
+            CHECK_APPROX(modelValue, 0.04500000000000000);
          }
          if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.1602122411839852, double { 1e-1 });
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
-            CHECK_APPROX_TOLERANCE(modelValue, -0.060920557198174352, double { 1e-2 });
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX_TOLERANCE(modelValue, 0.030112481019468545, double { 1e-2 });
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
-            CHECK_APPROX_TOLERANCE(modelValue, 0.030112481019468545, double { 1e-2 });
+            const FloatEbmType zeroLogit = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1) - zeroLogit;
+            CHECK_APPROX_TOLERANCE(modelValue, 0.091033038217642897, double { 1e-2 });
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2) - zeroLogit;
+            CHECK_APPROX_TOLERANCE(modelValue, 0.091033038217642897, double { 1e-2 });
          }
       }
    }
    CHECK_APPROX_TOLERANCE(validationMetric, 2.0611718475324357, double { 1e-1 });
-   modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
-   CHECK_APPROX_TOLERANCE(modelValue, -0.90755332487264362, double { 1e-2 });
-   modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
-   CHECK_APPROX_TOLERANCE(modelValue, 0.32430253082567057, double { 1e-2 });
-   modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
-   CHECK_APPROX_TOLERANCE(modelValue, 0.32430253082567057, double { 1e-2 });
+   const FloatEbmType zeroLogit1 = test.GetCurrentModelPredictorScore(0, {}, 0);
+   modelValue = test.GetCurrentModelPredictorScore(0, {}, 1) - zeroLogit1;
+   CHECK_APPROX_TOLERANCE(modelValue, 1.23185585569831419, double { 1e-1 });
+   modelValue = test.GetCurrentModelPredictorScore(0, {}, 2) - zeroLogit1;
+   CHECK_APPROX_TOLERANCE(modelValue, 1.23185585569831419, double { 1e-1 });
 }
 
 TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
@@ -529,26 +526,24 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
       // the current model will continue to update, even though we have no way of evaluating it
       FloatEbmType modelValue;
       if(0 == iEpoch) {
-         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
-         CHECK_APPROX(modelValue, 0.03000000000000000);
-         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
-         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
-         CHECK_APPROX(modelValue, -0.01500000000000000);
-         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
-         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 2);
-         CHECK_APPROX(modelValue, -0.01500000000000000);
-         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 2));
+         const FloatEbmType zeroLogit = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
+         CHECK_APPROX(zeroLogit, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
+         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1) - zeroLogit;
+         CHECK_APPROX(modelValue, -0.04500000000000000);
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1) - zeroLogit);
+         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 2) - zeroLogit;
+         CHECK_APPROX(modelValue, -0.04500000000000000);
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 2) - zeroLogit);
       }
       if(1 == iEpoch) {
-         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
-         CHECK_APPROX_TOLERANCE(modelValue, 0.059119949636662006, double { 1e-2 });
-         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
-         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
-         CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-2 });
-         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
-         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 2);
-         CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-2 });
-         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 2));
+         const FloatEbmType zeroLogit = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
+         CHECK_APPROX(zeroLogit, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
+         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1) - zeroLogit;
+         CHECK_APPROX_TOLERANCE(modelValue, -0.089007468617193456, double { 1e-2 });
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1) - zeroLogit);
+         modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 2) - zeroLogit;
+         CHECK_APPROX_TOLERANCE(modelValue, -0.089007468617193456, double { 1e-2 });
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 2) - zeroLogit);
       }
       // the best model doesn't update since we don't have any basis to validate any changes
       modelValue = test.GetBestModelPredictorScore(0, { 0 }, 0);
@@ -964,31 +959,28 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
          validationMetric = test.Boost(iFeatureGroup);
          if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0688384008227103, double { 1e-1 });
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
-            CHECK_APPROX(modelValue, 0.03000000000000000);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX(modelValue, -0.01500000000000000);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
-            CHECK_APPROX(modelValue, -0.01500000000000000);
+            FloatEbmType zeroLogit = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1) - zeroLogit;
+            CHECK_APPROX(modelValue, -0.04500000000000000);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2) - zeroLogit;
+            CHECK_APPROX(modelValue, -0.04500000000000000);
          }
          if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0401627411809615, double { 1e-1 });
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
-            CHECK_APPROX_TOLERANCE(modelValue, 0.059119949636662006, double { 1e-2 });
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
-            CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-2 });
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
-            CHECK_APPROX_TOLERANCE(modelValue, -0.029887518980531450, double { 1e-2 });
+            FloatEbmType zeroLogit = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1) - zeroLogit;
+            CHECK_APPROX_TOLERANCE(modelValue, -0.089007468617193456, double { 1e-2 });
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2) - zeroLogit;
+            CHECK_APPROX_TOLERANCE(modelValue, -0.089007468617193456, double { 1e-2 });
          }
       }
    }
    CHECK_APPROX_TOLERANCE(validationMetric, 1.7171897252232722e-09, double { 1e+1 });
-   modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
-   CHECK_APPROX_TOLERANCE(modelValue, 10.643234965479628, double { 1e-3 });
-   modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
-   CHECK_APPROX_TOLERANCE(modelValue, -10.232489007525166, double { 1e-3 });
-   modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
-   CHECK_APPROX_TOLERANCE(modelValue, -10.232489007525166, double { 1e-3 });
+   FloatEbmType zeroLogit1 = test.GetCurrentModelPredictorScore(0, {}, 0);
+   modelValue = test.GetCurrentModelPredictorScore(0, {}, 1) - zeroLogit1;
+   CHECK_APPROX_TOLERANCE(modelValue, -20.875723973004794, double { 1e-3 });
+   modelValue = test.GetCurrentModelPredictorScore(0, {}, 2) - zeroLogit1;
+   CHECK_APPROX_TOLERANCE(modelValue, -20.875723973004794, double { 1e-3 });
 }
 
 TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, regression") {
@@ -1226,16 +1218,15 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
          FloatEbmType validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax);
          if(0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 1.0340957641601563f);
+            CHECK_APPROX_TOLERANCE(validationMetric, 1.0340957641601563f, double { 1e-1 });
 
-            FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
-            CHECK_APPROX(modelValue0, 0.0075f);
+            FloatEbmType zeroLogit = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
 
-            FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
-            CHECK_APPROX(modelValue1, 0.0075f);
+            FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1) - zeroLogit;
+            CHECK_APPROX(modelValue1, 0.0f);
 
-            FloatEbmType modelValue2 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
-            CHECK_APPROX(modelValue2, -0.015f);
+            FloatEbmType modelValue2 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2) - zeroLogit;
+            CHECK_APPROX(modelValue2, -0.0225f);
          }
       }
    }
@@ -1262,16 +1253,18 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
          FloatEbmType validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax);
          if(0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 1.0372848510742188);
+            CHECK_APPROX_TOLERANCE(validationMetric, 1.0986122886681098, double { 1e-1 });
+
+            // we set our update to zero since this is for sums so we need to set it to something
 
             FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
-            CHECK_APPROX(modelValue0, 0.0033333333333333344f);
+            CHECK_APPROX(modelValue0, 0.0f);
 
             FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
-            CHECK_APPROX(modelValue1, 0.0033333333333333344f);
+            CHECK_APPROX(modelValue1, 0.0f);
 
             FloatEbmType modelValue2 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
-            CHECK_APPROX(modelValue2, -0.0066666666666666662f);
+            CHECK_APPROX(modelValue2, 0.0f);
          }
       }
    }
@@ -1313,7 +1306,7 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
       }
    }
 
-   CHECK_APPROX(validationMetric, 0.00017711094447544644f);
+   CHECK(validationMetric <= 0.00017711094447544644f * 1.1);
 
    for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
       for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
@@ -1370,8 +1363,7 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
          validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 1, k_leavesMax);
       }
    }
-
-   CHECK_APPROX(validationMetric, 0.0091562298922079986f);
+   CHECK(validationMetric <= 0.0091562298922079986f * 1.4);
 
    for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
       for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
@@ -1493,7 +1485,8 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
    }
 
    // it can't really benefit from cutting since we only allow the boosting rounds to have 1 leaf
-   CHECK_APPROX(validationMetric, 0.73616339235889672f);
+   CHECK(validationMetric <= 0.73616339235889672f * 1.1);
+   CHECK(0.73616339235889672f / 1.1 <= validationMetric);
 
    for(IntEbmType i0 = 0; i0 < k_cStates; ++i0) {
       for(IntEbmType i1 = 0; i1 < k_cStates; ++i1) {
@@ -1539,18 +1532,20 @@ TEST_CASE("Random splitting, no cuts, binary, sums") {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
          validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax);
          if(0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 0.67593383789062500f);
+            CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529f, double { 1e-1 });
+
+            // we set our update to zero since we're getting the sum
 
             FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 0);
-            CHECK_APPROX(modelValue0, 0.0000000000000000f);
+            CHECK_APPROX(modelValue0, 0.0f);
 
             FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 1);
-            CHECK_APPROX(modelValue1, 0.0050727631441970225f);
+            CHECK_APPROX(modelValue0, 0.0f);
          }
       }
    }
 
    // we're generating updates from gradient sums, which isn't good, so we expect a bad result
-   CHECK_APPROX(validationMetric, 0.87428283691406250f);
+   CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529f, double { 1e-1 });
 }
 
