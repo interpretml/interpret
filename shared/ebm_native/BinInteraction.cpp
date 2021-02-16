@@ -53,14 +53,14 @@ public:
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
       const DataFrameInteraction * const pDataFrame = pInteractionDetector->GetDataFrameInteraction();
-      const FloatEbmType * pResidualError = pDataFrame->GetResidualPointer();
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataFrame->GetCountSamples();
+      const FloatEbmType * pGradient = pDataFrame->GetGradientsPointer();
+      const FloatEbmType * const pGradientsEnd = pGradient + cVectorLength * pDataFrame->GetCountSamples();
 
       EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions()); // for interactions, we just return 0 for interactions with zero features
       const size_t cDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= cDimensions); // for interactions, we just return 0 for interactions with zero features
 
-      for(size_t iSample = 0; pResidualErrorEnd != pResidualError; ++iSample) {
+      for(size_t iSample = 0; pGradientsEnd != pGradient; ++iSample) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          // in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
          // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
@@ -105,40 +105,40 @@ public:
             pHistogramBucketEntry->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType residualError = *pResidualError;
-            // residualError could be NaN
-            // for classification, residualError can be anything from -1 to +1 (it cannot be infinity!)
-            // for regression, residualError can be anything from +infinity or -infinity
-            pHistogramTargetEntry[iVector].m_sumResidualError += residualError;
-            // m_sumResidualError could be NaN, or anything from +infinity or -infinity in the case of regression
+            const FloatEbmType gradient = *pGradient;
+            // gradient could be NaN
+            // for classification, gradient can be anything from -1 to +1 (it cannot be infinity!)
+            // for regression, gradient can be anything from +infinity or -infinity
+            pHistogramTargetEntry[iVector].m_sumGradients += gradient;
+            // m_sumGradients could be NaN, or anything from +infinity or -infinity in the case of regression
             if(bClassification) {
                EBM_ASSERT(
-                  std::isnan(residualError) ||
-                  !std::isinf(residualError) && 
-                  FloatEbmType { -1 } - k_epsilonResidualError <= residualError && residualError <= FloatEbmType { 1 }
+                  std::isnan(gradient) ||
+                  !std::isinf(gradient) && 
+                  FloatEbmType { -1 } - k_epsilonGradient <= gradient && gradient <= FloatEbmType { 1 }
                   );
 
                // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the SamplingSet
                //   sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this 
                //   values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to 
-               //   hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an 
+               //   hold the gradient and this computation from that value and then comment out the computation if not necssary and access it through an 
                //   accessor so that we can make the change entirely via macro
-               const FloatEbmType denominator = EbmStats::ComputeNewtonRaphsonStep(residualError);
+               const FloatEbmType hessian = EbmStats::CalculateHessianFromGradientClassification(gradient);
                EBM_ASSERT(
-                  std::isnan(denominator) ||
-                  !std::isinf(denominator) && -k_epsilonResidualError <= denominator && denominator <= FloatEbmType { 0.25 }
-               ); // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
+                  std::isnan(hessian) ||
+                  !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatEbmType { 0.25 }
+               ); // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
 
-               const FloatEbmType oldDenominator = pHistogramTargetEntry[iVector].GetSumDenominator();
-               // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
-               EBM_ASSERT(std::isnan(oldDenominator) || !std::isinf(oldDenominator) && -k_epsilonResidualError <= oldDenominator);
-               const FloatEbmType newDenominator = oldDenominator + denominator;
-               // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
-               EBM_ASSERT(std::isnan(newDenominator) || !std::isinf(newDenominator) && -k_epsilonResidualError <= newDenominator);
+               const FloatEbmType oldHessian = pHistogramTargetEntry[iVector].GetSumHessians();
+               // since any one hessian is limited to 0 <= gradient <= 0.25, the sum must be representable by a 64 bit number, 
+               EBM_ASSERT(std::isnan(oldHessian) || !std::isinf(oldHessian) && -k_epsilonGradient <= oldHessian);
+               const FloatEbmType newHessian = oldHessian + hessian;
+               // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
+               EBM_ASSERT(std::isnan(newHessian) || !std::isinf(newHessian) && -k_epsilonGradient <= newHessian);
                // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
-               pHistogramTargetEntry[iVector].SetSumDenominator(newDenominator);
+               pHistogramTargetEntry[iVector].SetSumHessians(newHessian);
             }
-            ++pResidualError;
+            ++pGradient;
          }
       }
       LOG_0(TraceLevelVerbose, "Exited BinInteractionInternal");

@@ -160,13 +160,13 @@
 // - according to the Schraudolph paper, if you choose a specific Schraudolph term, the mean relative absolute value of
 //   error for any particular exp value is 1.483%.  Again, we care more about softmax error and we use floats,
 //   but my experience is that we're in the same error range
-// - for boosting, we sum the residual terms in order to find the update direction (either positive or negative).  
+// - for boosting, we sum the gradient terms in order to find the update direction (either positive or negative).  
 //   As long as the direction has the correct sign, boosting will tend to make it continue to go in the right 
 //   direction, even if the speed has a little variation due to approximate exp noise.  This means that our primary 
 //   goal is to balance the errors in our softmax terms such that the positive errors balance the negative errors.
 //   Note: minimizing relative mean abs error does NOT lead to minimizing positive/negative bias
-// - the 2nd order derivate denominator Newton-Raphson term is summed separately and then divided by the sum of the
-//   residuals.  It affects the speed of convergence, but not the direction.  We choose to optimize our approximate
+// - the 2nd order derivate hessian Newton-Raphson term is summed separately and then divides the sum of the
+//   gradients.  It affects the speed of convergence, but not the direction.  We choose to optimize our approximate
 //   exp to obtain minimum error in the numerator where it will determine the sign and therefore direction of boosting
 // - any consistent bias in the error will probably show up as miscalibration.  Miscalibration can lead to us to
 //   trigger early stopping at an unideal point, but in general that seems to be a minor concern.  EBMs are well
@@ -520,7 +520,7 @@ INLINE_ALWAYS T ExpApproxBest(T val) {
 }
 
 template<typename T>
-INLINE_ALWAYS T ExpForResidualsBinaryClassification(const T val) {
+INLINE_ALWAYS T ExpForBinaryClassification(const T val) {
 #ifdef FAST_EXP
    // the optimal addExpSchraudolphTerm would be different between binary 
    // and multiclass since the softmax form we use is different
@@ -534,7 +534,7 @@ INLINE_ALWAYS T ExpForResidualsBinaryClassification(const T val) {
 }
 
 template<typename T>
-INLINE_ALWAYS T ExpForResidualsMulticlass(const T val) {
+INLINE_ALWAYS T ExpForMulticlass(const T val) {
 #ifdef FAST_EXP
    // the optimal addExpSchraudolphTerm would be different between binary
    // and multiclass since the softmax form we use is different

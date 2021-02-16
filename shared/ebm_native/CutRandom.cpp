@@ -65,7 +65,7 @@ public:
       EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
 
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
-         pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet();
+         pThreadStateBoosting->GetOverwritableModelUpdate();
 
       const IntEbmType * pLeavesMax1 = aLeavesMax;
       const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
@@ -513,7 +513,7 @@ public:
                pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               *pUpdate = pHistogramTargetEntry[iVector].m_sumResidualError;
+               *pUpdate = pHistogramTargetEntry[iVector].m_sumGradients;
                ++pUpdate;
             }
             pCollapsedHistogramBucket2 = GetHistogramBucketByIndex<bClassification>(
@@ -536,14 +536,14 @@ public:
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                   FloatEbmType update;
                   if(bClassification) {
-                     update = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                        pHistogramTargetEntry[iVector].m_sumResidualError,
-                        pHistogramTargetEntry[iVector].GetSumDenominator()
+                     update = EbmStats::ComputeSinglePartitionUpdateClassification(
+                        pHistogramTargetEntry[iVector].m_sumGradients,
+                        pHistogramTargetEntry[iVector].GetSumHessians()
                      );
                   } else {
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                     update = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-                        pHistogramTargetEntry[iVector].m_sumResidualError,
+                     update = EbmStats::ComputeSinglePartitionUpdateRegression(
+                        pHistogramTargetEntry[iVector].m_sumGradients,
                         static_cast<FloatEbmType>(cSamples)
                      );
                   }

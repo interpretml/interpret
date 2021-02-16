@@ -170,25 +170,25 @@ public:
                            pTotalsHighHigh->GetHistogramTargetEntry();
 
                         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                           // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
+                           // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
                            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-                           const FloatEbmType splittingScoreUpdate1 = EbmStats::ComputeNodeSplittingScore(
-                              pHistogramTargetEntryTotalsLowLow[iVector].m_sumResidualError,
+                           const FloatEbmType splittingScoreUpdate1 = EbmStats::ComputeSinglePartitionGain(
+                              pHistogramTargetEntryTotalsLowLow[iVector].m_sumGradients,
                               cLowLowSamplesInBucket
                            );
                            EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                            splittingScore += splittingScoreUpdate1;
-                           const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeNodeSplittingScore(
-                              pHistogramTargetEntryTotalsLowHigh[iVector].m_sumResidualError, cLowHighSamplesInBucket);
+                           const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeSinglePartitionGain(
+                              pHistogramTargetEntryTotalsLowHigh[iVector].m_sumGradients, cLowHighSamplesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                            splittingScore += splittingScoreUpdate2;
-                           const FloatEbmType splittingScoreUpdate3 = EbmStats::ComputeNodeSplittingScore(
-                              pHistogramTargetEntryTotalsHighLow[iVector].m_sumResidualError, cHighLowSamplesInBucket);
+                           const FloatEbmType splittingScoreUpdate3 = EbmStats::ComputeSinglePartitionGain(
+                              pHistogramTargetEntryTotalsHighLow[iVector].m_sumGradients, cHighLowSamplesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
                            splittingScore += splittingScoreUpdate3;
-                           const FloatEbmType splittingScoreUpdate4 = EbmStats::ComputeNodeSplittingScore(
-                              pHistogramTargetEntryTotalsHighHigh[iVector].m_sumResidualError, cHighHighSamplesInBucket);
+                           const FloatEbmType splittingScoreUpdate4 = EbmStats::ComputeSinglePartitionGain(
+                              pHistogramTargetEntryTotalsHighHigh[iVector].m_sumGradients, cHighHighSamplesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
                            splittingScore += splittingScoreUpdate4;
                         }

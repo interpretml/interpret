@@ -117,7 +117,7 @@ static bool BoostZeroDimensional(
    );
 
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet = 
-      pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet();
+      pThreadStateBoosting->GetOverwritableModelUpdate();
    FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(bClassification) {
       const HistogramBucket<true> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<true>();
@@ -125,14 +125,14 @@ static bool BoostZeroDimensional(
          pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType smallChangeToModel = aSumHistogramTargetEntry[iVector].m_sumResidualError;
+            const FloatEbmType smallChangeToModel = aSumHistogramTargetEntry[iVector].m_sumGradients;
             aValues[iVector] = smallChangeToModel;
          }
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-               aSumHistogramTargetEntry[iVector].m_sumResidualError,
-               aSumHistogramTargetEntry[iVector].GetSumDenominator()
+            const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateClassification(
+               aSumHistogramTargetEntry[iVector].m_sumGradients,
+               aSumHistogramTargetEntry[iVector].GetSumHessians()
             );
             aValues[iVector] = smallChangeToModel;
          }
@@ -143,11 +143,11 @@ static bool BoostZeroDimensional(
       const HistogramTargetEntry<false> * const aSumHistogramTargetEntry =
          pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-         const FloatEbmType smallChangeToModel = aSumHistogramTargetEntry[0].m_sumResidualError;
+         const FloatEbmType smallChangeToModel = aSumHistogramTargetEntry[0].m_sumGradients;
          aValues[0] = smallChangeToModel;
       } else {
-         const FloatEbmType smallChangeToModel = EbmStats::ComputeSmallChangeForOneSegmentRegression(
-            aSumHistogramTargetEntry[0].m_sumResidualError,
+         const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateRegression(
+            aSumHistogramTargetEntry[0].m_sumGradients,
             static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
          );
          aValues[0] = smallChangeToModel;
@@ -265,9 +265,9 @@ static bool BoostSingleDimensional(
    return bRet;
 }
 
-// TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about
-//   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then 
-//    go back to our original tensor after splits to determine the denominator
+// TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the hessian isn't required (yet) in order to make decisions about
+//   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the gradients and then 
+//    go back to our original tensor after splits to determine the hessian
 static bool BoostMultiDimensional(
    ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
@@ -700,15 +700,15 @@ static IntEbmType GenerateModelUpdateInternal(
       }
    }
 
-   pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cSignificantDimensions);
-   pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
+   pThreadStateBoosting->GetAccumulatedModelUpdate()->SetCountDimensions(cSignificantDimensions);
+   pThreadStateBoosting->GetAccumulatedModelUpdate()->Reset();
 
    // if pBooster->m_apSamplingSets is nullptr, then we should have zero training samples
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
    FloatEbmType totalGain = FloatEbmType { 0 };
    if(nullptr != pBooster->GetSamplingSets()) {
-      pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet()->SetCountDimensions(cSignificantDimensions);
+      pThreadStateBoosting->GetOverwritableModelUpdate()->SetCountDimensions(cSignificantDimensions);
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain;
@@ -779,7 +779,7 @@ static IntEbmType GenerateModelUpdateInternal(
          totalGain += gain;
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
          // others are working, so there should be no blocking and our final result won't require adding by the main thread
-         if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Add(*pThreadStateBoosting->GetSmallChangeToModelOverwriteSingleSamplingSet())) {
+         if(pThreadStateBoosting->GetAccumulatedModelUpdate()->Add(*pThreadStateBoosting->GetOverwritableModelUpdate())) {
             if(LIKELY(nullptr != pGainReturn)) {
                *pGainReturn = FloatEbmType { 0 };
             }
@@ -803,9 +803,9 @@ static IntEbmType GenerateModelUpdateInternal(
          constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
 
-         //if(0 <= k_iZeroResidual || ptrdiff_t { 2 } == pBooster->m_runtimeLearningTypeOrCountTargetClasses && bExpandBinaryLogits) {
+         //if(0 <= k_iZeroLogit || ptrdiff_t { 2 } == pBooster->m_runtimeLearningTypeOrCountTargetClasses && bExpandBinaryLogits) {
          //   EBM_ASSERT(ptrdiff_t { 2 } <= pBooster->m_runtimeLearningTypeOrCountTargetClasses);
-         //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as 
+         //   // TODO : for classification with logit zeroing, is our learning rate essentially being inflated as 
          //       pBooster->m_runtimeLearningTypeOrCountTargetClasses goes up?  If so, maybe we should divide by 
          //       pBooster->m_runtimeLearningTypeOrCountTargetClasses here to keep learning rates as equivalent as possible..  
          //       Actually, I think the real solution here is that 
@@ -827,12 +827,12 @@ static IntEbmType GenerateModelUpdateInternal(
 
          const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
          if(bDividing) {
-            bBad = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
+            bBad = pThreadStateBoosting->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
          } else {
-            bBad = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+            bBad = pThreadStateBoosting->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
          }
       } else {
-         bBad = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+         bBad = pThreadStateBoosting->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
       }
 
       // handle the case where totalGain is either +infinity or -infinity (very rare, see above), or NaN
@@ -843,8 +843,8 @@ static IntEbmType GenerateModelUpdateInternal(
          UNLIKELY(totalGain <= std::numeric_limits<FloatEbmType>::lowest()) ||
          UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= totalGain)
       )) {
-         pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cSignificantDimensions);
-         pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
+         pThreadStateBoosting->GetAccumulatedModelUpdate()->SetCountDimensions(cSignificantDimensions);
+         pThreadStateBoosting->GetAccumulatedModelUpdate()->Reset();
          // declare there is no gain, so that our caller will think there is no benefit in splitting us, which there isn't since we're zeroed.
          totalGain = FloatEbmType { 0 };
       } else if(UNLIKELY(totalGain < FloatEbmType { 0 })) {

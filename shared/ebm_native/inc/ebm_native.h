@@ -181,7 +181,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetT
 //     - prob_i = exp(logit_i) / SUM(logit_1 .. logit_N)
 //   - so non-negated logits are better for both binary classification and multiclass classification
 //   - TODO: is this a useful property, or in otherwords, do we want to keep negated logits in our "small update model" => the model logits that we expose
-//     to python are kept very separate from the "small update logits" that we use internally in C++ for calculating changes to residuals and for 
+//     to python are kept very separate from the "small update logits" that we use internally in C++ for calculating changes to scores and for 
 //     calculating metrics.  We could in theory keep the small update logits as negative internally in C++ if that was useful, and then when it came 
 //     time to update our public models, we could subtract the negated small update logits.  The code that merges the "small update logits" into the 
 //     public models is the SegmentedRegion::Add(..) function, but we could have a SegmentedRegion::Subtract(..) function that would be equally efficient 
@@ -256,7 +256,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetT
 //     that we can calculate the 0th bin value which we can write first to the [0]th bin in our new memory and then re-loop over our logits writing them 
 //     to the new memory.  In this case we don't need to store the [0]th bin value while we're looping again over the logits since we can just write it 
 //     to memory and forget about it.  This one is slightly better for having the 0 bin zeroed
-//   - if in the future when we get to zeroing residuals we find that it's better to zero the minor bin (or major), we can re-order the target numbers as 
+//   - if in the future when we get to zeroing logits we find that it's better to zero the minor bin (or major), we can re-order the target numbers as 
 //     we like since their order does not matter. We can put the major or minor class in the zero bin, and still get the benefits above.  If we find 
 //     that there is a consistent benefit through some metric, we'll want to always reorder anyways
 // - binary classification can be thought of as multiclass classification with 2 bins.  For binary classification, we probably also want to make the FIRST 
@@ -266,7 +266,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetT
 //     That means we want the default class zeroed [the 1st bin which is zero], and graph/report the 2nd bin [which is in the array index 1, and non-zero].
 //     Eg: in the age vs death graph, we want the prediction from the logit to predict death and we want it increasing with increasing age.  
 //     That means our logit should be the FIRST bin.
-// - which target to zero the residuals/logits for:
+// - which target to zero the logits for:
 //   - we should zero the 0th bin since when checking the target value we can do a comparison to zero which is easier than checking the .Length value
 //     which requires an extra register/variable
 //   - in the python code we should change the order of the targets for multiclass.  Everything else being equal, and assuming there is no benefit 

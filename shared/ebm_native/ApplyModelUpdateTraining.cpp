@@ -50,10 +50,10 @@ public:
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
+      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
       const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples * cVectorLength;
@@ -74,7 +74,7 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType oneExp = ExpForResidualsMulticlass(predictorScore);
+            const FloatEbmType oneExp = ExpForMulticlass(predictorScore);
             *pExpVector = oneExp;
             ++pExpVector;
             sumExp += oneExp;
@@ -83,15 +83,15 @@ public:
          pExpVector -= cVectorLength;
          iVector = 0;
          do {
-            const FloatEbmType residualError = EbmStats::ComputeResidualErrorMulticlass(
+            const FloatEbmType gradient = EbmStats::TransformScoreToGradientMulticlass(
                sumExp,
                *pExpVector,
                targetData,
                iVector
             );
             ++pExpVector;
-            *pResidualError = residualError;
-            ++pResidualError;
+            *pGradient = gradient;
+            ++pGradient;
             ++iVector;
          } while(iVector < cVectorLength);
          // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
@@ -103,9 +103,9 @@ public:
          // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which 
          // will be multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which cancels 
          // eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-         constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
-         if(bZeroingResiduals) {
-            *(pResidualError - (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroResidual)) = 0;
+         constexpr bool bZeroingLogits = 0 <= k_iZeroLogit;
+         if(bZeroingLogits) {
+            *(pGradient - (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroLogit)) = 0;
          }
       } while(pPredictorScoresEnd != pPredictorScores);
    }
@@ -119,17 +119,15 @@ public:
    ApplyModelUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
 
    static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
-      UNUSED(pThreadStateBoosting);
-
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
+      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
       const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples;
@@ -141,9 +139,9 @@ public:
          const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
          *pPredictorScores = predictorScore;
          ++pPredictorScores;
-         const FloatEbmType residualError = EbmStats::ComputeResidualErrorBinaryClassification(predictorScore, targetData);
-         *pResidualError = residualError;
-         ++pResidualError;
+         const FloatEbmType gradient = EbmStats::TransformScoreToGradientBinaryClassification(predictorScore, targetData);
+         *pGradient = gradient;
+         ++pGradient;
       } while(pPredictorScoresEnd != pPredictorScores);
    }
 };
@@ -156,25 +154,23 @@ public:
    ApplyModelUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
 
    static void Func(ThreadStateBoosting * const pThreadStateBoosting) {
-      UNUSED(pThreadStateBoosting);
-
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cSamples;
+      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
+      const FloatEbmType * const pGradientsEnd = pGradient + cSamples;
       const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
          // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType residualError = EbmStats::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
-         *pResidualError = residualError;
-         ++pResidualError;
-      } while(pResidualErrorEnd != pResidualError);
+         const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient - smallChangeToPrediction);
+         *pGradient = gradient;
+         ++pGradient;
+      } while(pGradientsEnd != pGradient);
    }
 };
 
@@ -266,10 +262,10 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
+      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
@@ -309,7 +305,7 @@ public:
                const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
-               const FloatEbmType oneExp = ExpForResidualsMulticlass(predictorScore);
+               const FloatEbmType oneExp = ExpForMulticlass(predictorScore);
                *pExpVector = oneExp;
                ++pExpVector;
                sumExp += oneExp;
@@ -318,15 +314,15 @@ public:
             pExpVector -= cVectorLength;
             iVector = 0;
             do {
-               const FloatEbmType residualError = EbmStats::ComputeResidualErrorMulticlass(
+               const FloatEbmType gradient = EbmStats::TransformScoreToGradientMulticlass(
                   sumExp,
                   *pExpVector,
                   targetData,
                   iVector
                );
                ++pExpVector;
-               *pResidualError = residualError;
-               ++pResidualError;
+               *pGradient = gradient;
+               ++pGradient;
                ++iVector;
             } while(iVector < cVectorLength);
             // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
@@ -338,9 +334,9 @@ public:
             // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which 
             // will be multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which 
             // cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-            constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
-            if(bZeroingResiduals) {
-               *(pResidualError - (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroResidual)) = 0;
+            constexpr bool bZeroingLogits = 0 <= k_iZeroLogit;
+            if(bZeroingLogits) {
+               *(pGradient - (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroLogit)) = 0;
             }
 
             iTensorBinCombined >>= cBitsPerItemMax;
@@ -367,8 +363,6 @@ public:
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup
    ) {
-      UNUSED(pThreadStateBoosting);
-
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
@@ -388,10 +382,10 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
+      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
@@ -426,10 +420,10 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType residualError = EbmStats::ComputeResidualErrorBinaryClassification(predictorScore, targetData);
+            const FloatEbmType gradient = EbmStats::TransformScoreToGradientBinaryClassification(predictorScore, targetData);
 
-            *pResidualError = residualError;
-            ++pResidualError;
+            *pGradient = gradient;
+            ++pGradient;
 
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pPredictorScoresInnerEnd != pPredictorScores);
@@ -455,8 +449,6 @@ public:
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup
    ) {
-      UNUSED(pThreadStateBoosting);
-
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
@@ -476,25 +468,25 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
+      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cSamples;
-      const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
-      const FloatEbmType * pResidualErrorInnerEnd = pResidualErrorTrueEnd;
+      const FloatEbmType * const pGradientTrueEnd = pGradient + cSamples;
+      const FloatEbmType * pGradientExit = pGradientTrueEnd;
+      const FloatEbmType * pGradientInnerEnd = pGradientTrueEnd;
       if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pResidualErrorExit = pResidualErrorTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
-      EBM_ASSERT(pResidualError < pResidualErrorExit);
-      EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
+      pGradientExit = pGradientTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
+      EBM_ASSERT(pGradient < pGradientExit);
+      EBM_ASSERT(pGradientExit < pGradientTrueEnd);
 
       do {
-         pResidualErrorInnerEnd = pResidualError + cItemsPerBitPackedDataUnit;
+         pGradientInnerEnd = pGradient + cItemsPerBitPackedDataUnit;
          // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
          // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
@@ -506,19 +498,19 @@ public:
 
             const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType residualError = EbmStats::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
+            const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient - smallChangeToPrediction);
 
-            *pResidualError = residualError;
-            ++pResidualError;
+            *pGradient = gradient;
+            ++pGradient;
 
             iTensorBinCombined >>= cBitsPerItemMax;
-         } while(pResidualErrorInnerEnd != pResidualError);
-      } while(pResidualErrorExit != pResidualError);
+         } while(pGradientInnerEnd != pGradient);
+      } while(pGradientExit != pGradient);
 
       // first time through?
-      if(pResidualErrorTrueEnd != pResidualError) {
-         pResidualErrorInnerEnd = pResidualErrorTrueEnd;
-         pResidualErrorExit = pResidualErrorTrueEnd;
+      if(pGradientTrueEnd != pGradient) {
+         pGradientInnerEnd = pGradientTrueEnd;
+         pGradientExit = pGradientTrueEnd;
          goto one_last_loop;
       }
    }

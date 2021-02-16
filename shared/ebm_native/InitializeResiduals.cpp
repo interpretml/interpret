@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
+// TODO: rename this file InitializeGradients.cpp
+
 #include "PrecompiledHeader.h"
 
 #include <stddef.h> // size_t, ptrdiff_t
@@ -14,31 +16,31 @@
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class InitializeResidualsInternal final {
+class InitializeGradientsInternal final {
 public:
 
-   InitializeResidualsInternal() = delete; // this is a static class.  Do not construct
+   InitializeGradientsInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pResidualError
+      FloatEbmType * pGradient
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
-      LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
+      LOG_0(TraceLevelInfo, "Entered InitializeGradients");
 
-      // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
+      // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
-      // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
+      // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
       EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
-      EBM_ASSERT(nullptr != pResidualError);
+      EBM_ASSERT(nullptr != pGradient);
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -51,13 +53,13 @@ public:
       ];
       FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? EbmMalloc<FloatEbmType>(cVectorLength) : aLocalExpVector;
       if(UNLIKELY(nullptr == aExpVector)) {
-         LOG_0(TraceLevelWarning, "WARNING InitializeResiduals nullptr == aExpVector");
+         LOG_0(TraceLevelWarning, "WARNING InitializeGradients nullptr == aExpVector");
          return true;
       }
 
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cSamples * cVectorLength;
+      const FloatEbmType * const pGradientsEnd = pGradient + cSamples * cVectorLength;
 
       do {
          const IntEbmType targetOriginal = *pTargetData;
@@ -78,7 +80,7 @@ public:
          do {
             const FloatEbmType predictorScore = *pPredictorScores - subtract;
             ++pPredictorScores;
-            const FloatEbmType oneExp = ExpForResidualsMulticlass(predictorScore);
+            const FloatEbmType oneExp = ExpForMulticlass(predictorScore);
             *pExpVector = oneExp;
             ++pExpVector;
             sumExp += oneExp;
@@ -90,10 +92,10 @@ public:
 
          iVector = 0;
          do {
-            const FloatEbmType residualError = EbmStats::ComputeResidualErrorMulticlass(sumExp, *pExpVector, target, iVector);
+            const FloatEbmType gradient = EbmStats::TransformScoreToGradientMulticlass(sumExp, *pExpVector, target, iVector);
             ++pExpVector;
-            *pResidualError = residualError;
-            ++pResidualError;
+            *pGradient = gradient;
+            ++pGradient;
             ++iVector;
          } while(iVector < cVectorLength);
 
@@ -106,50 +108,50 @@ public:
          // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be 
          // multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which cancels eachother out.
          // We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-         constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
-         if(bZeroingResiduals) {
-            pResidualError[k_iZeroResidual - static_cast<ptrdiff_t>(cVectorLength)] = 0;
+         constexpr bool bZeroingLogits = 0 <= k_iZeroLogit;
+         if(bZeroingLogits) {
+            pGradient[k_iZeroLogit - static_cast<ptrdiff_t>(cVectorLength)] = 0;
          }
-      } while(pResidualErrorEnd != pResidualError);
+      } while(pGradientsEnd != pGradient);
 
       if(UNLIKELY(aExpVector != aLocalExpVector)) {
          free(aExpVector);
       }
 
-      LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+      LOG_0(TraceLevelInfo, "Exited InitializeGradients");
       return false;
    }
 };
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class InitializeResidualsInternal<2> final {
+class InitializeGradientsInternal<2> final {
 public:
 
-   InitializeResidualsInternal() = delete; // this is a static class.  Do not construct
+   InitializeGradientsInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pResidualError
+      FloatEbmType * pGradient
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
+      LOG_0(TraceLevelInfo, "Entered InitializeGradients");
 
-      // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
+      // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
-      // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
+      // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
       EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
-      EBM_ASSERT(nullptr != pResidualError);
+      EBM_ASSERT(nullptr != pGradient);
 
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cSamples;
+      const FloatEbmType * const pGradientsEnd = pGradient + cSamples;
 
       do {
          const IntEbmType targetOriginal = *pTargetData;
@@ -161,44 +163,44 @@ public:
          EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
          const FloatEbmType predictionScore = *pPredictorScores;
          ++pPredictorScores;
-         const FloatEbmType residualError = EbmStats::ComputeResidualErrorBinaryClassification(predictionScore, target);
-         *pResidualError = residualError;
-         ++pResidualError;
-      } while(pResidualErrorEnd != pResidualError);
-      LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+         const FloatEbmType gradient = EbmStats::TransformScoreToGradientBinaryClassification(predictionScore, target);
+         *pGradient = gradient;
+         ++pGradient;
+      } while(pGradientsEnd != pGradient);
+      LOG_0(TraceLevelInfo, "Exited InitializeGradients");
       return false;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class InitializeResidualsInternal<k_regression> final {
+class InitializeGradientsInternal<k_regression> final {
 public:
 
-   InitializeResidualsInternal() = delete; // this is a static class.  Do not construct
+   InitializeGradientsInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pResidualError
+      FloatEbmType * pGradient
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
+      LOG_0(TraceLevelInfo, "Entered InitializeGradients");
 
-      // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
+      // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
-      // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
+      // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
       EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
-      EBM_ASSERT(nullptr != pResidualError);
+      EBM_ASSERT(nullptr != pGradient);
 
       const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cSamples;
+      const FloatEbmType * const pGradientsEnd = pGradient + cSamples;
       do {
          // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
          //   from the input data
@@ -212,48 +214,48 @@ public:
          //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
          const FloatEbmType predictionScore = *pPredictorScores;
          ++pPredictorScores;
-         const FloatEbmType residualError = EbmStats::ComputeResidualErrorRegressionInit(predictionScore, data);
-         *pResidualError = residualError;
-         ++pResidualError;
-      } while(pResidualErrorEnd != pResidualError);
-      LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+         const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEInit(predictionScore, data);
+         *pGradient = gradient;
+         ++pGradient;
+      } while(pGradientsEnd != pGradient);
+      LOG_0(TraceLevelInfo, "Exited InitializeGradients");
       return false;
    }
 };
 
-extern bool InitializeResiduals(
+extern bool InitializeGradients(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
-   FloatEbmType * pResidualError
+   FloatEbmType * pGradient
 ) {
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         return InitializeResidualsInternal<2>::Func(
+         return InitializeGradientsInternal<2>::Func(
             runtimeLearningTypeOrCountTargetClasses,
             cSamples,
             aTargetData,
             aPredictorScores,
-            pResidualError
+            pGradient
          );
       } else {
-         return InitializeResidualsInternal<k_dynamicClassification>::Func(
+         return InitializeGradientsInternal<k_dynamicClassification>::Func(
             runtimeLearningTypeOrCountTargetClasses,
             cSamples,
             aTargetData,
             aPredictorScores,
-            pResidualError
+            pGradient
          );
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      return InitializeResidualsInternal<k_regression>::Func(
+      return InitializeGradientsInternal<k_regression>::Func(
          runtimeLearningTypeOrCountTargetClasses,
          cSamples,
          aTargetData,
          aPredictorScores,
-         pResidualError
+         pGradient
       );
    }
 }

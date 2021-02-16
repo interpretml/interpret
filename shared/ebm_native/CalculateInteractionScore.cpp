@@ -49,9 +49,9 @@ static bool CalculateInteractionScoreInternal(
    const size_t cSamplesRequiredForChildSplitMin,
    FloatEbmType * const pInteractionScoreReturn
 ) {
-   // TODO : we NEVER use the denominator term in HistogramTargetEntry when calculating interaction scores, but we're spending time calculating 
-   // it, and it's taking up precious memory.  We should eliminate the denominator term HERE in our datastructures OR we should think whether we can 
-   // use the denominator as part of the gain function!!!
+   // TODO : we NEVER use the hessian term (currently) in HistogramTargetEntry when calculating interaction scores, but we're spending time calculating 
+   // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
+   // use the hessian as part of the gain function!!!
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);

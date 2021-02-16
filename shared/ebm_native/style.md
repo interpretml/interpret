@@ -61,7 +61,7 @@
       for reasons detailed below, so it would be more complicated to conform than if we could be mostly RAII 
       compatible.  It's probably cleaner and easier to eliminate most of the exceptions rather than RAIIing everything.
     - We tend to use the struct hack a lot in this code for supporting multiclass.  Multiclass requires an array
-      of residuals, and there are performance benefits to co-locating this kind of data in the same region
+      of gradients/hessians/logits, and there are performance benefits to co-locating this kind of data in the same region
       as the rest of the per-sample or per-bin or per-TreeNode data.  The struct hack requires using POD
       structures and those are incompatible with C++ classes, so for many data structures we end up using
       raw pointers to arrays of these POD structs.  Adding RAII wrappers arround these would add complexity.

@@ -54,9 +54,9 @@ public:
       EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const FloatEbmType * pResidualError = pTrainingSet->GetDataFrameBoosting()->GetResidualPointer();
+      const FloatEbmType * pGradient = pTrainingSet->GetDataFrameBoosting()->GetGradientsPointer();
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cSamples;
+      const FloatEbmType * const pGradientsEnd = pGradient + cVectorLength * cSamples;
 
       HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
          pHistogramBucketEntry->GetHistogramTargetEntry();
@@ -76,7 +76,7 @@ public:
          const size_t cOccurences = *pCountOccurrences;
          ++pCountOccurrences;
          pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
-         const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
+         const FloatEbmType weight = static_cast<FloatEbmType>(cOccurences);
 
          size_t iVector = 0;
 
@@ -86,27 +86,27 @@ public:
 #else // EXPAND_BINARY_LOGITS
          constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
-         FloatEbmType residualTotalDebug = 0;
+         FloatEbmType sumGradientsDebug = 0;
 #endif // NDEBUG
          do {
-            const FloatEbmType residualError = *pResidualError;
+            const FloatEbmType gradient = *pGradient;
             EBM_ASSERT(!bClassification ||
                ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
-               static_cast<ptrdiff_t>(iVector) != k_iZeroResidual || 0 == residualError);
+               static_cast<ptrdiff_t>(iVector) != k_iZeroLogit || 0 == gradient);
 #ifndef NDEBUG
-            residualTotalDebug += residualError;
+            sumGradientsDebug += gradient;
 #endif // NDEBUG
-            pHistogramTargetEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
+            pHistogramTargetEntry[iVector].m_sumGradients += gradient * weight;
             if(bClassification) {
                // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the 
                //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might make 
                //   more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a 
-               //   MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if 
+               //   MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the computation if 
                //   not necssary and access it through an accessor so that we can make the change entirely via macro
-               const FloatEbmType denominator = EbmStats::ComputeNewtonRaphsonStep(residualError);
-               pHistogramTargetEntry[iVector].SetSumDenominator(pHistogramTargetEntry[iVector].GetSumDenominator() + cFloatOccurences * denominator);
+               const FloatEbmType hessian = EbmStats::CalculateHessianFromGradientClassification(gradient);
+               pHistogramTargetEntry[iVector].SetSumHessians(pHistogramTargetEntry[iVector].GetSumHessians() + hessian * weight);
             }
-            ++pResidualError;
+            ++pGradient;
             ++iVector;
             // if we use this specific format where (iVector < cVectorLength) then the compiler collapses alway the loop for small cVectorLength values
             // if we make this (iVector != cVectorLength) then the loop is not collapsed
@@ -116,11 +116,11 @@ public:
          EBM_ASSERT(
             !bClassification ||
             ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
-            0 <= k_iZeroResidual ||
-            std::isnan(residualTotalDebug) ||
-            -k_epsilonResidualError < residualTotalDebug && residualTotalDebug < k_epsilonResidualError
+            0 <= k_iZeroLogit ||
+            std::isnan(sumGradientsDebug) ||
+            -k_epsilonGradient < sumGradientsDebug && sumGradientsDebug < k_epsilonGradient
          );
-      } while(pResidualErrorEnd != pResidualError);
+      } while(pGradientsEnd != pGradient);
       LOG_0(TraceLevelVerbose, "Exited BinBoostingZeroDimensions");
    }
 };
@@ -225,18 +225,18 @@ public:
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
       const StorageDataType * pInputData = pTrainingSet->GetDataFrameBoosting()->GetInputDataPointer(pFeatureGroup);
-      const FloatEbmType * pResidualError = pTrainingSet->GetDataFrameBoosting()->GetResidualPointer();
+      const FloatEbmType * pGradient = pTrainingSet->GetDataFrameBoosting()->GetGradientsPointer();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cSamples;
-      const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
+      const FloatEbmType * const pGradientsTrueEnd = pGradient + cVectorLength * cSamples;
+      const FloatEbmType * pGradientsExit = pGradientsTrueEnd;
       size_t cItemsRemaining = cSamples;
       if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
-      EBM_ASSERT(pResidualError < pResidualErrorExit);
-      EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
+      pGradientsExit = pGradientsTrueEnd - cVectorLength * ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
+      EBM_ASSERT(pGradient < pGradientsExit);
+      EBM_ASSERT(pGradientsExit < pGradientsTrueEnd);
 
       do {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -270,7 +270,7 @@ public:
             const size_t cOccurences = *pCountOccurrences;
             ++pCountOccurrences;
             pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
-            const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
+            const FloatEbmType weight = static_cast<FloatEbmType>(cOccurences);
             HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
                pHistogramBucketEntry->GetHistogramTargetEntry();
 
@@ -282,32 +282,32 @@ public:
 #else // EXPAND_BINARY_LOGITS
             constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
-            FloatEbmType residualTotalDebug = 0;
+            FloatEbmType gradientTotalDebug = 0;
 #endif // NDEBUG
             do {
-               const FloatEbmType residualError = *pResidualError;
+               const FloatEbmType gradient = *pGradient;
                EBM_ASSERT(
                   !bClassification ||
                   ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
-                  static_cast<ptrdiff_t>(iVector) != k_iZeroResidual ||
-                  0 == residualError
+                  static_cast<ptrdiff_t>(iVector) != k_iZeroLogit ||
+                  0 == gradient
                );
 #ifndef NDEBUG
-               residualTotalDebug += residualError;
+               gradientTotalDebug += gradient;
 #endif // NDEBUG
-               pHistogramTargetEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
+               pHistogramTargetEntry[iVector].m_sumGradients += gradient * weight;
                if(bClassification) {
                   // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the
                   //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might 
                   //   make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be 
-                  //   done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the 
+                  //   done in a MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the 
                   //   computation if not necssary and access it through an accessor so that we can make the change entirely via macro
-                  const FloatEbmType denominator = EbmStats::ComputeNewtonRaphsonStep(residualError);
-                  pHistogramTargetEntry[iVector].SetSumDenominator(
-                     pHistogramTargetEntry[iVector].GetSumDenominator() + cFloatOccurences * denominator
+                  const FloatEbmType hessian = EbmStats::CalculateHessianFromGradientClassification(gradient);
+                  pHistogramTargetEntry[iVector].SetSumHessians(
+                     pHistogramTargetEntry[iVector].GetSumHessians() + hessian * weight
                   );
                }
-               ++pResidualError;
+               ++pGradient;
                ++iVector;
                // if we use this specific format where (iVector < cVectorLength) then the compiler collapses alway the loop for small cVectorLength values
                // if we make this (iVector != cVectorLength) then the loop is not collapsed
@@ -317,27 +317,27 @@ public:
             EBM_ASSERT(
                !bClassification ||
                ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
-               0 <= k_iZeroResidual ||
-               -k_epsilonResidualError < residualTotalDebug && residualTotalDebug < k_epsilonResidualError
+               0 <= k_iZeroLogit ||
+               -k_epsilonGradient < gradientTotalDebug && gradientTotalDebug < k_epsilonGradient
             );
 
             iTensorBinCombined >>= cBitsPerItemMax;
-            // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for 
+            // TODO : try replacing cItemsRemaining with a pGradientsExit which eliminates one subtact operation, but might make it harder for 
             //   the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
-      } while(pResidualErrorExit != pResidualError);
+      } while(pGradientsExit != pGradient);
 
       // first time through?
-      if(pResidualErrorTrueEnd != pResidualError) {
+      if(pGradientsTrueEnd != pGradient) {
          LOG_0(TraceLevelVerbose, "Handling last BinBoostingInternal loop");
 
-         EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
-         cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
+         EBM_ASSERT(0 == (pGradientsTrueEnd - pGradient) % cVectorLength);
+         cItemsRemaining = (pGradientsTrueEnd - pGradient) / cVectorLength;
          EBM_ASSERT(0 < cItemsRemaining);
          EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
 
-         pResidualErrorExit = pResidualErrorTrueEnd;
+         pGradientsExit = pGradientsTrueEnd;
 
          goto one_last_loop;
       }

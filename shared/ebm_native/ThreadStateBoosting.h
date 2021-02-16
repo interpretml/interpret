@@ -81,11 +81,11 @@ public:
       m_iFeatureGroup = val;
    }
 
-   INLINE_ALWAYS SegmentedTensor * GetSmallChangeToModelAccumulatedFromSamplingSets() {
+   INLINE_ALWAYS SegmentedTensor * GetAccumulatedModelUpdate() {
       return m_pSmallChangeToModelAccumulatedFromSamplingSets;
    }
 
-   INLINE_ALWAYS SegmentedTensor * GetSmallChangeToModelOverwriteSingleSamplingSet() {
+   INLINE_ALWAYS SegmentedTensor * GetOverwritableModelUpdate() {
       return m_pSmallChangeToModelOverwriteSingleSamplingSet;
    }
 

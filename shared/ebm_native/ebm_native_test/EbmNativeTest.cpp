@@ -22,7 +22,7 @@
 //   classification by using certainty situations with big learning rates
 // TODO : add test for the condition where we overflow the result of adding the small model update to the existing model NaN or +-infinity for regression 
 //   by using exteme regression values and in classification by using certainty situations with big learning rates
-// TODO : add test for the condition where we overflow the validation regression or classification residuals without overflowing the model update or the 
+// TODO : add test for the condition where we overflow the validation regression or classification scores without overflowing the model update or the 
 //   model tensors.  We can do this by having two extreme features that will overflow together
 
 // TODO: write a test to compare gain from single vs multi-dimensional splitting (they use the same underlying function, so if we make a pair where one 

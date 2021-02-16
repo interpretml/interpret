@@ -27,12 +27,12 @@
 
 #include "Booster.h"
 
-extern bool InitializeResiduals(
+extern bool InitializeGradients(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
-   FloatEbmType * pResidualError
+   FloatEbmType * pGradient
 );
 
 INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
@@ -436,12 +436,12 @@ Booster * Booster::Allocate(
 
    if(bClassification) {
       if(0 != cTrainingSamples) {
-         if(InitializeResiduals(
+         if(InitializeGradients(
             runtimeLearningTypeOrCountTargetClasses,
             cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
-            pBooster->m_trainingSet.GetResidualPointer()
+            pBooster->m_trainingSet.GetGradientsPointer()
          )) {
             // error already logged
             Booster::Free(pBooster);
@@ -454,12 +454,12 @@ Booster * Booster::Allocate(
 #ifndef NDEBUG
          const bool isFailed = 
 #endif // NDEBUG
-         InitializeResiduals(
+         InitializeGradients(
             k_regression,
             cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
-            pBooster->m_trainingSet.GetResidualPointer()
+            pBooster->m_trainingSet.GetGradientsPointer()
          );
          EBM_ASSERT(!isFailed);
       }
@@ -467,12 +467,12 @@ Booster * Booster::Allocate(
 #ifndef NDEBUG
          const bool isFailed =
 #endif // NDEBUG
-         InitializeResiduals(
+         InitializeGradients(
             k_regression,
             cValidationSamples,
             aValidationTargets,
             aValidationPredictorScores,
-            pBooster->m_validationSet.GetResidualPointer()
+            pBooster->m_validationSet.GetGradientsPointer()
          );
          EBM_ASSERT(!isFailed);
       }

@@ -53,39 +53,43 @@ struct HistogramTargetEntry<true> final : HistogramTargetEntryBase {
 
 #endif // __SUNPRO_CC
 
-   FloatEbmType m_sumResidualError;
-   // TODO: for single features, we probably want to just do a single pass of the data and collect our m_sumDenominator during that sweep.  This is probably 
+   FloatEbmType m_sumGradients;
+   // TODO: for single features, we probably want to just do a single pass of the data and collect our m_sumHessians during that sweep.  This is probably 
    //   also true for pairs since calculating pair sums can be done fairly efficiently, but for tripples and higher dimensions we might be better off 
-   //   calculating JUST the sumResidualError which is the only thing required for choosing splits and we could then do a second pass of the data to 
-   //   find the denominators once we know the splits.  Tripples and higher dimensions tend to re-add/subtract the same cells many times over which is 
+   //   calculating JUST the m_sumGradients which is the only thing required for choosing splits and we could then do a second pass of the data to 
+   //   find the hessians once we know the splits.  Tripples and higher dimensions tend to re-add/subtract the same cells many times over which is 
    //   why it might be better there.  Test these theories out on large datasets
-   FloatEbmType m_sumDenominator;
+   FloatEbmType m_sumHessians;
 
-   INLINE_ALWAYS FloatEbmType GetSumDenominator() const {
-      return m_sumDenominator;
+   // If we end up adding a 3rd derivative here, call it ThirdDerivative.  I like how Gradient and Hessian separate
+   // nicely from eachother and match other package naming.  ThirdDerivative is nice since it's distinctly named
+   // and easy to see rather than Derivative1, Derivative2, Derivative3, etc..
+
+   INLINE_ALWAYS FloatEbmType GetSumHessians() const {
+      return m_sumHessians;
    }
-   INLINE_ALWAYS void SetSumDenominator(FloatEbmType sumDenominatorSet) {
-      m_sumDenominator = sumDenominatorSet;
+   INLINE_ALWAYS void SetSumHessians(const FloatEbmType sumHessians) {
+      m_sumHessians = sumHessians;
    }
    INLINE_ALWAYS void Add(const HistogramTargetEntry<true> & other) {
-      m_sumResidualError += other.m_sumResidualError;
-      m_sumDenominator += other.m_sumDenominator;
+      m_sumGradients += other.m_sumGradients;
+      m_sumHessians += other.m_sumHessians;
    }
    INLINE_ALWAYS void Subtract(const HistogramTargetEntry<true> & other) {
-      m_sumResidualError -= other.m_sumResidualError;
-      m_sumDenominator -= other.m_sumDenominator;
+      m_sumGradients -= other.m_sumGradients;
+      m_sumHessians -= other.m_sumHessians;
    }
    INLINE_ALWAYS void Copy(const HistogramTargetEntry<true> & other) {
-      m_sumResidualError = other.m_sumResidualError;
-      m_sumDenominator = other.m_sumDenominator;
+      m_sumGradients = other.m_sumGradients;
+      m_sumHessians = other.m_sumHessians;
    }
    INLINE_ALWAYS void AssertZero() const {
-      EBM_ASSERT(0 == m_sumResidualError);
-      EBM_ASSERT(0 == m_sumDenominator);
+      EBM_ASSERT(0 == m_sumGradients);
+      EBM_ASSERT(0 == m_sumHessians);
    }
    INLINE_ALWAYS void Zero() {
-      m_sumResidualError = FloatEbmType { 0 };
-      m_sumDenominator = FloatEbmType { 0 };
+      m_sumGradients = FloatEbmType { 0 };
+      m_sumHessians = FloatEbmType { 0 };
    }
 };
 static_assert(std::is_standard_layout<HistogramTargetEntry<true>>::value,
@@ -112,30 +116,30 @@ struct HistogramTargetEntry<false> final : HistogramTargetEntryBase {
 
 #endif // __SUNPRO_CC
 
-   FloatEbmType m_sumResidualError;
+   FloatEbmType m_sumGradients;
 
-   INLINE_ALWAYS FloatEbmType GetSumDenominator() const {
+   INLINE_ALWAYS FloatEbmType GetSumHessians() const {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
       return FloatEbmType { 0 };
    }
-   INLINE_ALWAYS void SetSumDenominator(FloatEbmType sumDenominator) {
-      UNUSED(sumDenominator);
+   INLINE_ALWAYS void SetSumHessians(const FloatEbmType sumHessians) {
+      UNUSED(sumHessians);
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
    INLINE_ALWAYS void Add(const HistogramTargetEntry<false> & other) {
-      m_sumResidualError += other.m_sumResidualError;
+      m_sumGradients += other.m_sumGradients;
    }
    INLINE_ALWAYS void Subtract(const HistogramTargetEntry<false> & other) {
-      m_sumResidualError -= other.m_sumResidualError;
+      m_sumGradients -= other.m_sumGradients;
    }
    INLINE_ALWAYS void Copy(const HistogramTargetEntry<false> & other) {
-      m_sumResidualError = other.m_sumResidualError;
+      m_sumGradients = other.m_sumGradients;
    }
    INLINE_ALWAYS void AssertZero() const {
-      EBM_ASSERT(0 == m_sumResidualError);
+      EBM_ASSERT(0 == m_sumGradients);
    }
    INLINE_ALWAYS void Zero() {
-      m_sumResidualError = FloatEbmType { 0 };
+      m_sumGradients = FloatEbmType { 0 };
    }
 };
 static_assert(std::is_standard_layout<HistogramTargetEntry<false>>::value,

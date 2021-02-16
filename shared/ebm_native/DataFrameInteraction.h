@@ -13,7 +13,7 @@
 #include "FeatureAtomic.h"
 
 class DataFrameInteraction final {
-   FloatEbmType * m_aResidualErrors;
+   FloatEbmType * m_aGradients;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
    size_t m_cFeatureAtomics;
@@ -28,7 +28,7 @@ public:
    void Destruct();
 
    INLINE_ALWAYS void InitializeZero() {
-      m_aResidualErrors = nullptr;
+      m_aGradients = nullptr;
       m_aaInputData = nullptr;
       m_cSamples = 0;
       m_cFeatureAtomics = 0;
@@ -44,9 +44,9 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
 
-   INLINE_ALWAYS const FloatEbmType * GetResidualPointer() const {
-      EBM_ASSERT(nullptr != m_aResidualErrors);
-      return m_aResidualErrors;
+   INLINE_ALWAYS const FloatEbmType * GetGradientsPointer() const {
+      EBM_ASSERT(nullptr != m_aGradients);
+      return m_aGradients;
    }
    // TODO: we can change this to take the m_iFeatureData value directly, which we get from a loop index
    INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const FeatureAtomic * const pFeatureAtomic) const {

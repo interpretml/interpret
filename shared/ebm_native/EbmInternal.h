@@ -171,12 +171,12 @@ INLINE_ALWAYS char * strcpy_NO_WARNINGS(char * dest, const char * src) noexcept 
 constexpr FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest();
 constexpr FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
 constexpr FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
-constexpr FloatEbmType k_epsilonResidualError = 1e-7;
+constexpr FloatEbmType k_epsilonGradient = 1e-7;
 #if defined(FAST_EXP) || defined(FAST_LOG)
 // with the approximate exp function we can expect a bit of noise.  We might need to increase this further
-constexpr FloatEbmType k_epsilonResidualErrorForBinaryToMulticlass = 1e-1;
+constexpr FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-1;
 #else // defined(FAST_EXP) || defined(FAST_LOG)
-constexpr FloatEbmType k_epsilonResidualErrorForBinaryToMulticlass = 1e-7;
+constexpr FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-7;
 #endif // defined(FAST_EXP) || defined(FAST_LOG)
 constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 
@@ -366,6 +366,7 @@ constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCou
 #define GET_DIMENSIONS(MACRO_compilerCountDimensions, MACRO_runtimeCountDimensions) \
    (k_dynamicDimensions == (MACRO_compilerCountDimensions) ? static_cast<size_t>(MACRO_runtimeCountDimensions) : static_cast<size_t>(MACRO_compilerCountDimensions))
 
+#ifndef TODO_remove_this
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
@@ -374,6 +375,7 @@ constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCou
 #define GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(MACRO_compilerCountItemsPerBitPackedDataUnit, MACRO_runtimeCountItemsPerBitPackedDataUnit) \
    (k_cItemsPerBitPackedDataUnitDynamic == (MACRO_compilerCountItemsPerBitPackedDataUnit) ? \
       (MACRO_runtimeCountItemsPerBitPackedDataUnit) : (MACRO_compilerCountItemsPerBitPackedDataUnit))
+#endif
 
 template<typename T>
 constexpr size_t CountBitsRequired(const T maxValue) noexcept {
@@ -416,15 +418,47 @@ constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDat
 constexpr INLINE_ALWAYS size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
+
+#ifndef TODO_remove_this
 constexpr size_t k_cItemsPerBitPackedDataUnitDynamic = 0;
 constexpr size_t k_cItemsPerBitPackedDataUnitMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
 constexpr size_t k_cItemsPerBitPackedDataUnitMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
 constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
-   return k_cItemsPerBitPackedDataUnitMin == cItemsBitPackedPrev ? 
+   return k_cItemsPerBitPackedDataUnitMin == cItemsBitPackedPrev ?
       k_cItemsPerBitPackedDataUnitDynamic : k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
 }
+#endif
+
+// TODO : remove the 2 suffixes from these, and verify these are being used!!
+constexpr size_t k_cItemsPerBitPackedDataUnitMax2 = k_cBitsForStorageType;
+static_assert(k_cItemsPerBitPackedDataUnitMax2 <= k_cBitsForStorageType, "k_cItemsPerBitPackedDataUnitMax too big");
+constexpr size_t k_cItemsPerBitPackedDataUnitMin2 = 1;
+static_assert(1 <= k_cItemsPerBitPackedDataUnitMin2, "k_cItemsPerBitPackedDataUnitMin cannot be zero");
+static_assert(k_cItemsPerBitPackedDataUnitMin2 <= k_cItemsPerBitPackedDataUnitMax2, "bit pack max less than min");
+static_assert(
+   k_cItemsPerBitPackedDataUnitMin2 == k_cBitsForStorageType / (k_cBitsForStorageType / k_cItemsPerBitPackedDataUnitMin2),
+   "k_cItemsPerBitPackedDataUnitMin needs to be on the progression series");
+static_assert(
+   k_cItemsPerBitPackedDataUnitMax2 == k_cBitsForStorageType / (k_cBitsForStorageType / k_cItemsPerBitPackedDataUnitMax2),
+   "k_cItemsPerBitPackedDataUnitMax needs to be on the progression series");
+constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked2(const size_t cItemsBitPackedPrev) noexcept {
+   // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1,0 [there are 15 of these + the empty case]
+   // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 [which are all included in 64 bits + the empty case]
+   //
+   // we continue the progression until we hit k_cItemsPerBitPackedDataUnitMin.  After that point we return 1
+   // so that we have a fallback case for handling any data size.  Then, following 1, we return 0 
+   // to handle feature groups that have only one legal state.  The caller can limit this last case by stopping at 1
+   return cItemsBitPackedPrev <= size_t { 1 } ? size_t { 0 } : (
+      k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1) < k_cItemsPerBitPackedDataUnitMin ?
+      size_t { 1 } :
+      k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1)
+   );
+}
+
+
+
 
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
@@ -507,7 +541,7 @@ INLINE_ALWAYS T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noe
 constexpr bool k_bUseSIMD = false;
 
 // TODO eventually, eliminate these variables, and make eliminating logits a part of our regular framework
-constexpr ptrdiff_t k_iZeroResidual = -1;
+constexpr ptrdiff_t k_iZeroLogit = -1;
 constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 
 #endif // EBM_INTERNAL_H

@@ -41,7 +41,7 @@ static IntEbmType ApplyModelUpdateInternal(
    const size_t iFeatureGroup = pThreadStateBoosting->GetFeatureGroupIndex();
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
 
-   if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(pFeatureGroup)) {
+   if(pThreadStateBoosting->GetAccumulatedModelUpdate()->Expand(pFeatureGroup)) {
       if(nullptr != pValidationMetricReturn) {
          *pValidationMetricReturn = FloatEbmType { 0 };
       }
@@ -55,7 +55,7 @@ static IntEbmType ApplyModelUpdateInternal(
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != pBooster->GetBestModel());
 
-   const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+   const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
 
    // our caller can give us one of these bad types of inputs:
    //  1) NaN values
@@ -333,9 +333,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
 
-   const size_t cCuts = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetCountDivisions(iSignficantDimension);
+   const size_t cCuts = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetCountDivisions(iSignficantDimension);
    EBM_ASSERT(cCuts < cBins);
-   const ActiveDataType * const aCutIndexes = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetDivisionPointer(iSignficantDimension);
+   const ActiveDataType * const aCutIndexes = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetDivisionPointer(iSignficantDimension);
 
    // TODO: handle this better where we handle mismatches in index types
    static_assert(sizeof(*cutIndexesOut) == sizeof(*aCutIndexes), "not same type for cuts");
@@ -389,7 +389,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
    }
 
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
-   if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(pFeatureGroup)) {
+   if(pThreadStateBoosting->GetAccumulatedModelUpdate()->Expand(pFeatureGroup)) {
       return IntEbmType { 1 };
    }
 
@@ -406,7 +406,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
-   const FloatEbmType * const pValues = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+   const FloatEbmType * const pValues = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
    memcpy(modelFeatureGroupUpdateTensorOut, pValues, sizeof(*pValues) * cValues);
@@ -472,7 +472,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
    }
 
    const FeatureGroup * const pFeatureGroup = pBooster->GetFeatureGroups()[iFeatureGroup];
-   if(pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(pFeatureGroup)) {
+   if(pThreadStateBoosting->GetAccumulatedModelUpdate()->Expand(pFeatureGroup)) {
       pThreadStateBoosting->SetFeatureGroupIndex(ThreadStateBoosting::k_illegalFeatureGroupIndex);
       return IntEbmType { 1 };
    }
@@ -490,7 +490,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
-   FloatEbmType * const pValues = pThreadStateBoosting->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValuePointer();
+   FloatEbmType * const pValues = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
    memcpy(pValues, modelFeatureGroupUpdateTensor, sizeof(*pValues) * cValues);
 

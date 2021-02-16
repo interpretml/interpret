@@ -14,7 +14,7 @@
 #include "FeatureGroup.h"
 
 class DataFrameBoosting final {
-   FloatEbmType * m_aResidualErrors;
+   FloatEbmType * m_aGradients;
    FloatEbmType * m_aPredictorScores;
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
@@ -29,7 +29,7 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS void InitializeZero() {
-      m_aResidualErrors = nullptr;
+      m_aGradients = nullptr;
       m_aPredictorScores = nullptr;
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
@@ -40,7 +40,7 @@ public:
    void Destruct();
 
    bool Initialize(
-      const bool bAllocateResidualErrors, 
+      const bool bAllocateGradients, 
       const bool bAllocatePredictorScores, 
       const bool bAllocateTargetData, 
       const size_t cFeatureGroups, 
@@ -52,13 +52,13 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
 
-   INLINE_ALWAYS FloatEbmType * GetResidualPointer() {
-      EBM_ASSERT(nullptr != m_aResidualErrors);
-      return m_aResidualErrors;
+   INLINE_ALWAYS FloatEbmType * GetGradientsPointer() {
+      EBM_ASSERT(nullptr != m_aGradients);
+      return m_aGradients;
    }
-   INLINE_ALWAYS const FloatEbmType * GetResidualPointer() const {
-      EBM_ASSERT(nullptr != m_aResidualErrors);
-      return m_aResidualErrors;
+   INLINE_ALWAYS const FloatEbmType * GetGradientsPointer() const {
+      EBM_ASSERT(nullptr != m_aGradients);
+      return m_aGradients;
    }
    INLINE_ALWAYS FloatEbmType * GetPredictorScores() {
       EBM_ASSERT(nullptr != m_aPredictorScores);

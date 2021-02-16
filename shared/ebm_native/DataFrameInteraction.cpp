@@ -13,21 +13,21 @@
 #include "FeatureAtomic.h"
 #include "DataFrameInteraction.h"
 
-extern bool InitializeResiduals(
+extern bool InitializeGradients(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
-   FloatEbmType * pResidualError
+   FloatEbmType * pGradient
 );
 
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructResidualErrors(
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradients(
    const size_t cSamples, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::ConstructResidualErrors");
+   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::ConstructGradients");
 
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aTargetData);
@@ -39,31 +39,31 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructResidualErrors(
    EBM_ASSERT(1 <= cVectorLength);
 
    if(UNLIKELY(IsMultiplyError(cSamples, cVectorLength))) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructResidualErrors IsMultiplyError(cSamples, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradients IsMultiplyError(cSamples, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cSamples * cVectorLength;
-   FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType>(cElements);
-   if(UNLIKELY(nullptr == aResidualErrors)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructResidualErrors nullptr == aResidualErrors");
+   FloatEbmType * aGradients = EbmMalloc<FloatEbmType>(cElements);
+   if(UNLIKELY(nullptr == aGradients)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradients nullptr == aGradients");
       return nullptr;
    }
 
-   if(UNLIKELY(InitializeResiduals(
+   if(UNLIKELY(InitializeGradients(
       runtimeLearningTypeOrCountTargetClasses,
       cSamples,
       aTargetData,
       aPredictorScores,
-      aResidualErrors
+      aGradients
    ))) {
       // error already logged
-      free(aResidualErrors);
+      free(aGradients);
       return nullptr;
    }
 
-   LOG_0(TraceLevelInfo, "Exited ConstructResidualErrors");
-   return aResidualErrors;
+   LOG_0(TraceLevelInfo, "Exited ConstructGradients");
+   return aGradients;
 }
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
@@ -143,7 +143,7 @@ WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void DataFrameInteraction::Destruct() {
    LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::Destruct");
 
-   free(m_aResidualErrors);
+   free(m_aGradients);
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(1 <= m_cFeatureAtomics);
       StorageDataType ** paInputData = m_aaInputData;
@@ -169,7 +169,7 @@ bool DataFrameInteraction::Initialize(
    const FloatEbmType * const aPredictorScores, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   EBM_ASSERT(nullptr == m_aResidualErrors); // we expect to start with zeroed values
+   EBM_ASSERT(nullptr == m_aGradients); // we expect to start with zeroed values
    EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
    EBM_ASSERT(0 == m_cSamples); // we expect to start with zeroed values
 
@@ -182,7 +182,7 @@ bool DataFrameInteraction::Initialize(
 
       // if cSamples is zero, then we don't need to allocate anything since we won't use them anyways
 
-      // check our targets since we don't use them other than for initializing residuals
+      // check our targets since we don't use them other than for initializing
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          const IntEbmType * pTargetFrom = static_cast<const IntEbmType *>(aTargetData);
          const IntEbmType * const pTargetFromEnd = pTargetFrom + cSamples;
@@ -210,19 +210,19 @@ bool DataFrameInteraction::Initialize(
          } while(pTargetFromEnd != pTargetFrom);
       }
 
-      FloatEbmType * aResidualErrors = ConstructResidualErrors(cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
-      if(nullptr == aResidualErrors) {
+      FloatEbmType * aGradients = ConstructGradients(cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
+      if(nullptr == aGradients) {
          goto exit_error;
       }
       if(0 != cFeatureAtomics) {
          StorageDataType ** const aaInputData = ConstructInputData(cFeatureAtomics, aFeatureAtomics, cSamples, aBinnedData);
          if(nullptr == aaInputData) {
-            free(aResidualErrors);
+            free(aGradients);
             goto exit_error;
          }
          m_aaInputData = aaInputData;
       }
-      m_aResidualErrors = aResidualErrors;
+      m_aGradients = aGradients;
       m_cSamples = cSamples;
    }
    m_cFeatureAtomics = cFeatureAtomics;

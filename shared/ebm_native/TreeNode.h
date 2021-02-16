@@ -90,11 +90,11 @@ struct TreeNodeData<true> {
    static_assert(std::is_pod<TreeNodeDataUnion>::value,
       "We use a lot of C constructs, so disallow non-POD types in general");
 
-   INLINE_ALWAYS size_t AMBIGUOUS_GetSamples() const {
+   INLINE_ALWAYS size_t AMBIGUOUS_GetCountSamples() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_cSamples;
    }
-   INLINE_ALWAYS void AMBIGUOUS_SetSamples(const size_t cSamples) {
+   INLINE_ALWAYS void AMBIGUOUS_SetCountSamples(const size_t cSamples) {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       m_UNION.m_beforeExaminationForPossibleSplitting.m_cSamples = cSamples;
    }
@@ -265,10 +265,10 @@ struct TreeNodeData<false> {
    static_assert(std::is_pod<TreeNodeDataUnion>::value,
       "We use a lot of C constructs, so disallow non-POD types in general");
 
-   INLINE_ALWAYS size_t AMBIGUOUS_GetSamples() const {
+   INLINE_ALWAYS size_t AMBIGUOUS_GetCountSamples() const {
       return m_cSamples;
    }
-   INLINE_ALWAYS void AMBIGUOUS_SetSamples(const size_t cSamples) {
+   INLINE_ALWAYS void AMBIGUOUS_SetCountSamples(const size_t cSamples) {
       m_cSamples = cSamples;
    }
 

@@ -145,9 +145,9 @@ static_assert(
 //   +-FINITE / +-infinity = +-0
 //
 // WHY NaN or infinity values can't happen in our code, except it truly exceptional, almost adversarial conditions:
-// - once we get a NaN value in almost any computation, even for a single sample's residual value, it'll 
+// - once we get a NaN value in almost any computation, even for a single sample's score, it'll 
 //   spread through our system like a wildfire making everything NaN
-// - once we get an infinity value in almost ANY computation, even for a single sample's residual value, 
+// - once we get an infinity value in almost ANY computation, even for a single sample's score, 
 //   it'll turn into a NaN soon, and then everything will become a NaN
 // - so, to evaluate the possibility of NaN or infinity values, we need to look everywhere that could generates 
 //   such values [see table of operations above that can these values]
@@ -169,11 +169,11 @@ static_assert(
 //   - In regression, if the user gives us regression targets (either positive or negative) with absolute 
 //     values greater than sqrt(std::numeric_limits<FloatEbmType>::max()), or if several rounds of boosting 
 //     leads to large square errors, then we'll overflow to +infinity in 
-//     ComputeSingleSampleSquaredErrorRegression. This won't infect any of our existing training sample 
-//     residuals, or model graphs, but it will lead to us returning to our caller a +infinity mean squared 
+//     ComputeSingleSampleSquaredErrorRegressionFromGradient. This won't infect any of our existing training sample 
+//     scores, or model graphs, but it will lead to us returning to our caller a +infinity mean squared 
 //     error value.  The normal response to any big mean squared error would be for our caller to terminate 
 //     via early stopping, which is a fine outcome.  If the caller ignores the +infinity mean squared error, 
-//     then they can continue to boost without issues, although all the validation residuals will end up as NaN.
+//     then they can continue to boost without issues, although all the validation scores will end up as NaN.
 //     Our caller can detect the +infinity means squared error themselves and optionally throw a nice 
 //     exception plus a message for the end user so that they understand what happened.  The user just needs to 
 //     not give us such high regression targets.  If we really wanted to, we could eliminate this error by 
@@ -182,16 +182,16 @@ static_assert(
 //     Since there must be less than 2^64 samples, the square of that number occurring 2^64 times won't overflow
 //     a double
 //   - In regression, if the user gives us regression targets (either positive or negative) with values below 
-//     but close to +-std::numeric_limits<FloatEbmType>::max(), the sumResidualError can reach +-infinity 
-//     since they are a sum.  After sumResidualError reaches +-infinity, we'll get a graph update with a 
-//     +infinity, and some samples with +-infinity residuals.  Then, on the next feature that we boost on, 
-//     we'll calculate a model update for some samples inside ComputeSmallChangeForOneSegmentRegression 
-//     as +-infinity/cSamples, which will be +-infinity (of the same sign). Then, when we go to calculate 
-//     our new sample residuals, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), which will 
+//     but close to +-std::numeric_limits<FloatEbmType>::max(), the sumGradient can reach +-infinity 
+//     since they are a sum.  After sumGradient reaches +-infinity, we'll get a graph update with a 
+//     +infinity, and some samples with +-infinity scores.  Then, on the next feature that we boost on, 
+//     we'll calculate a model update for some samples inside ComputeSinglePartitionUpdateRegression 
+//     as +-infinity/sumHessian, which will be +-infinity (of the same sign). Then, when we go to calculate 
+//     our new sample scores, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), which will 
 //     result in NaN.  After that, everything melts down to NaN.  The user just needs to not give us such 
 //     high regression targets.  If we really wanted to, we could eliminate all errors from large regression 
 //     targets by limiting the user to a maximum regression target value (of 7.2e+134)
-//   - In multiclass, in ComputeResidualErrorMulticlass, we could get either NaN or +infinity if sumExp was 0 
+//   - In multiclass, in TransformScoreToGradientMulticlass, we could get either NaN or +infinity if sumExp was 0 
 //     in the division "ourExp / sumExp", (NaN occurs if ourExp was also zero). This could in theory only 
 //     occur in multiclass if all the logits were very very negative.  e^(very_big_negative_logit) = 0.  
 //     This is VERY VERY unlikely in any normal dataset because all the logits would need to be very very negative. 
@@ -199,33 +199,33 @@ static_assert(
 //     shouldn't occur, except possibly in exceptionally contrived situations with extreme logits at 
 //     initialization.  Our higher level caller though should be getting the initialization logits from previous 
 //     boosting using this code, so this shouldn't happen if this code doesn't return such values, which is true.
-//   - In multiclass, In ComputeResidualErrorMulticlass NaN can come from infinity/infinity, which can happen 
+//   - In multiclass, In TransformScoreToGradientMulticlass NaN can come from infinity/infinity, which can happen 
 //     if any of the e^logits terms reach close to infinity. Doubles have a max value around 1.8e308, 
 //     and ln(1.8e308) = approx +709.79, so if any logit reaches above 709 we could have a problem.
 //     If ANY logit in any class reaches this high, we should get such a result.  We should also get this 
 //     result if the sum of a couple very big logits overflows, but the sum would require the terms to be in 
 //     the same neighborhood of logits with values around 709, like two with 708, etc.
 //     BUT, reaching logits in the range of 709 is almost impossible without adversarial inputs since boosting
-//     will always be working hard to push the residual error toward zero on the training set.
+//     will always be working hard to push the error toward zero on the training set.
 //     MORE INFO on why logits of 709 are virtually impossible:
-//     For computing the model update, when residualError is close to zero, at the limit the sums used in the 
-//     model update of numerator/denominator are mathematically at worst +-1 (before applying the learningRate):
-//     Segment_model_update = sumResidualError / sumDenominator => 
-//     residualError / [residualError * (1 - residualError)] => residualError / [residualError * (1)] => 1
-//     When our predictor is very certain, but wrong, we get residual errors like -1, and 1.  In those 
+//     For computing the model update, when gradient is close to zero, at the limit the sums used in the 
+//     model update of sumGradients/sumHessians are mathematically at worst +-1 (before applying the learningRate):
+//     Segment_model_update = sumGradients / sumHessians => 
+//     gradient / [gradient * (1 - gradient)] => gradient / [gradient * (1)] => 1
+//     When our predictor is very certain, but wrong, we get gradients like -1, and 1.  In those 
 //     cases we have a big numerator (relatively) and a small denominator, so those cases are weighted extra heavily, 
 //     and are weighted much higher than +-1.  The overall effect is that we train more on the errors, but 
 //     in these cases the movement is opposite to the existing value, so high positive numbers become more 
 //     negative, and vise versa, so they act in a restorative way and don't contribute to runaway logits.
-//     For wrong predictions: Update = sumResidualError / sumDenominator => +-1 / [1 * (1 - 1)] => 
-//     +-1 / 0 => +-infinity but the algorithm will fight against +-infinity since it won't let the residualError 
+//     For wrong predictions: Update = sumGradient / sumHessian => +-1 / [1 * (1 - 1)] => 
+//     +-1 / 0 => +-infinity but the algorithm will fight against +-infinity since it won't let the gradient 
 //     values get too large before it aggressively corrects them back in the direction of zero.  If the logits 
 //     are traveling in the correct direction, then the logit updates will go down to +-1.  Then, we apply the 
 //     learningRate, which is by default 0.01.  If those values hold, then the post-learningRate update is a 
 //     maximum of +-0.01, and it will take around 70,900 rounds of boosting for the logit to reach the 709 
 //     neighbourhood.  Our default number of rounds is 5000, so we won't get close under normal parameters.
 //   - For multiclass, in theory, if we got a big number of +-infinity as a logit update, we could 
-//     overflow a section of the graph. We'll hit overflows inside ComputeResidualErrorMulticlass though 
+//     overflow a section of the graph. We'll hit overflows inside TransformScoreToGradientMulticlass though 
 //     first when the logits get to 709-ish numbers, so it isn't really possible for the logits themselves
 //     to overflow first to +-infinity in the graphs for multiclass
 //   - For binary and multiclass classification, log loss can reach infinity if we are very certain of one or 
@@ -235,13 +235,13 @@ static_assert(
 //     It could happen though if the caller doesn't have early stopping, or specifies an exact number of 
 //     boosting rounds.  In any case, we might want to limit probabilities to within 1/number_of_samples since 
 //     we want to avoid scenarios that completely blow up and exit early
-//   - For binary and multiclass classification, ComputeSmallChangeForOneSegmentClassificationLogOdds has a 
+//   - For binary and multiclass classification, ComputeSinglePartitionUpdateClassification has a 
 //     division that can overflow to infinity or NaN values making the logits in our graph infinity or NaN.
 //   - for any learning, adversarial inputs like ridiculously huge learningRate parameters or NaN values 
 //     could cause these conditions
-//   - In ComputeResidualErrorBinaryClassification, the exp term could get to zero or +infinity, but division 
+//   - In TransformScoreToGradientBinaryClassification, the exp term could get to zero or +infinity, but division 
 //     by infinity leads to zero, so this shouldn't propagate the infinity term, or create new NaN values.  
-//     Even if our logits reached +-infinity ComputeResidualErrorBinaryClassification should 
+//     Even if our logits reached +-infinity TransformScoreToGradientBinaryClassification should 
 //     return valid numbers
 //   - if our boosting code gets passed NaN or +-infinity values as predictor scores 
 //     (regression predictions or logits)  Normally, our higher level library (python, R, etc..) calculates 
@@ -251,14 +251,14 @@ static_assert(
 // - Even before our first e^logit reaches +infinity, we might get a scenario where none of the e^logits 
 //   are infinity yet, BUT the sum reaches infinity and in that case we'll get BIG_NUMBER/infinity, 
 //   which will be zero, which is the opposite of the mathematical result we want of BIG_NUMBER/BIG_NUMBER, 
-//   which should be 1, and it will therefore drive that residual and logit update in the wrong direction, 
+//   which should be 1, and it will therefore drive that gradient and logit update in the wrong direction, 
 //   so if we ever see an infinity in any multiclass denominator term, we're already in a bad situation.  
 //   There is a solution where we could subtract a constant from all the multiclass logits, or make the highest
 //   one equal to zero and keep the rest as negative values, which is mathematical no-op, but... why?
 //
-// - ComputeSmallChangeForOneSegmentClassificationLogOdds will end with a divide by zero if the denominator is zero.
-//   The denominator will be zero if the residual error is 1.  For binary classification, if 1 + ? = 1, due to 
-//   numeracy issues, then the denominator term in ComputeResidualErrorBinaryClassification will be one, 
+// - ComputeSinglePartitionUpdateClassification will end with a divide by zero if the hessian is zero.
+//   The hessian can be zero if the gradient is +-1.  For binary classification, if 1 + ? = 1, due to 
+//   numeracy issues, then the denominator term in TransformScoreToGradientBinaryClassification will be one, 
 //   leading to numeracy issues later on due to the 1.  Epsilon is the smallest number that you can 
 //   add to 1 and get a non-1. For doubles epsilon is 2.2204460492503131e-016.  e^-36.043 and with an 
 //   update rate of 0.01, that means around 3604 rounds of boosting.  We're still good given that our default 
@@ -280,15 +280,15 @@ static_assert(
 //   no samples of a particular class in a bin.  By limiting beyond 1/number_of_samples probabilities
 //   we won't get completely wild in predicting samples in the validation set.
 // - for binary classification, we can just check that the absolute value of the logit doesn't exceed 
-//   either +-std::log(1/cSamples), and if it does we can just reduce it to that value.
+//   either +-std::log(1/sumHessian), and if it does we can just reduce it to that value.
 // - for multiclass, the correction is a bit harder.  We'd prefer not needing to calculate the true probability 
 //   of each class, but we can do an approximate job in logit space.  First off, there can only be one class 
-//   with a big probability at a time, so we first need to find out if any item exceeds (cSamples - 1) / cSamples 
+//   with a big probability at a time, so we first need to find out if any item exceeds (sumHessian - 1) / sumHessian 
 //   probability.  For the biggest probability, the only two values that matter are the biggest and second 
 //   biggest logits.  Reduce the biggest probability so that it doesn't exceed the second biggest probability 
-//   by std:log(1/cSamples).  There can be unlimited items with probabilities that are too low.  After fixing 
+//   by std:log(1/sumHessian).  There can be unlimited items with probabilities that are too low.  After fixing 
 //   the biggest probability, we need to check to see if any of these are too low.  If any are lower than 
-//   std:log(1/cSamples) from the max logit, the raise them to that level.
+//   std:log(1/sumHessian) from the max logit, the raise them to that level.
 // - even though multiclass logits won't average to zero, we can be somewhat confident that none of them will 
 //   change by more than learingRate logits per boosting round, so they can't diverge to more than 709 logits 
 //   difference for at least 70,900/2=35,400 rounds.  That's still acceptable.
@@ -330,33 +330,43 @@ public:
 
    EbmStats() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType ComputeNewtonRaphsonStep(const FloatEbmType residualError) {
-      // this function IS performance critical as it's called on every sample
+   INLINE_ALWAYS static FloatEbmType CalculateHessianFromGradientClassification(const FloatEbmType gradient) {
+      // this function IS performance critical as it's called on every sample * cClasses * cInnerBags
 
-      // residualError can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
-      //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
-      //   logit, and ComputeResidualErrorBinaryClassification will return a NaN value. Getting both sumResidualError and sumDenominator to zero is hard.  
-      //   sumResidualError can always be zero since it's a sum of positive and negative values sumDenominator is harder to get to zero, 
-      //   since it's a sum of positive numbers.  The sumDenominator is the sum of values returned from this function.  absResidualError 
-      //   must be -1, 0, or +1 to make the denominator zero.  -1 and +1 are hard, but not impossible to get to with really inputs, 
-      //   since boosting tends to push errors towards 0.  An error of 0 is most likely when the denominator term in either
-      //   ComputeResidualErrorBinaryClassification or ComputeResidualErrorMulticlass becomes close to epsilon.  Once that happens
-      //   for ComputeResidualErrorBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtrace 1 from 1.
+      // normally you would calculate the hessian from the class probability, but for classification it's possible
+      // to calculate from the gradient since our gradient is (r - p) where r is either 0 or 1, and our 
+      // hessian is p * (1 - p).  By taking the absolute value of (r - p) we're at a positive distance from either
+      // 0 or 1, and then we flip sides on "p" and "(1 - p)".  For binary classification this is useful since
+      // we can calcualte our gradient directly in a more exact way (especially when approximates are involved)
+      // and then calculate the hessian without subtracting from 1, which also introduces unbalanced floating point
+      // noise, unlike the more balanaced approach we're taking here
+
+
+
+      // gradient can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdateClassification
+      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
+      //   logit, and TransformScoreToGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
+      //   sumGradient can always be zero since it's a sum of positive and negative values sumHessian is harder to get to zero, 
+      //   since it's a sum of positive numbers.  The sumHessian is the sum of values returned from this function.  gradient 
+      //   must be -1, 0, or +1 to make the denominator zero.  -1 and +1 are hard, but not impossible to get to with really bad inputs, 
+      //   since boosting tends to push errors towards 0.  An error of 0 is most likely when the hessian term in either
+      //   TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
+      //   for TransformScoreToGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
       //   This can happen after as little as 3604 rounds of boosting, if learningRate is 0.01, and every boosting round we update by the limit of
       //   0.01 [see notes at top of EbmStats.h].  It might happen for a single sample even faster if multiple variables boost the logit
       //   upwards.  We just terminate boosting after that many rounds if this occurs.
 
-      // residualError CANNOT be +-infinity -> even with an +-infinity logit, see ComputeResidualErrorBinaryClassification and ComputeResidualErrorMulticlass
+      // gradient CANNOT be +-infinity -> even with an +-infinity logit, see TransformScoreToGradientBinaryClassification and TransformScoreToGradientMulticlass
 
-      // for binary classification, -1 <= residualError && residualError <= 1 -> see ComputeResidualErrorBinaryClassification
+      // for binary classification, -1 <= gradient && gradient <= 1 -> see TransformScoreToGradientBinaryClassification
 
-      // for multiclass, -1 - k_epsilonResidualError <= residualError && residualError <= 1 -> see ComputeResidualErrorMulticlass
+      // for multiclass, -1 - k_epsilonGradient <= gradient && gradient <= 1 -> see TransformScoreToGradientMulticlass
 
       // propagate NaN or deliver weird results if NaNs aren't properly propaged.  This is acceptable considering how hard you have to 
       // work to generate such an illegal value, and given that we won't crash
       EBM_ASSERT(
-         std::isnan(residualError) || 
-         !std::isinf(residualError) && FloatEbmType { -1 } - k_epsilonResidualError <= residualError && residualError <= FloatEbmType { 1 }
+         std::isnan(gradient) || 
+         !std::isinf(gradient) && FloatEbmType { -1 } - k_epsilonGradient <= gradient && gradient <= FloatEbmType { 1 }
       );
 
       // this function pre-computes a portion of an equation that we'll use later.  We're computing it now since we can share
@@ -373,13 +383,13 @@ public:
       // +0.999 -> 0.000999
       // +1     -> 0
 
-      // when we use this denominator term retuned inside ComputeSmallChangeForOneSegmentClassificationLogOdds, if there was only
-      //   a single denominator term, or multiple similar ones, at the limit we'd get the following for the following inputs:
+      // when we use this hessian term retuned inside ComputeSinglePartitionUpdateClassification, if there was only
+      //   a single hessian term, or multiple similar ones, at the limit we'd get the following for the following inputs:
       //   boosting is working propertly and we're close to zero error:
-      //     - segment_model_update = sumResidualError / sumDenominator => residualError / [residualError * (1 - residualError)] => 
-      //       residualError / [residualError * (1)] => +-1  but we multiply this by the learningRate of 0.01 (default), to get +-0.01               
+      //     - segment_model_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => 
+      //       gradient / [gradient * (1)] => +-1  but we multiply this by the learningRate of 0.01 (default), to get +-0.01               
       //   when boosting is making a mistake, but is certain about it's prediction:
-      //     - segment_model_update = sumResidualError / sumDenominator => residualError / [residualError * (1 - residualError)] => +-1 / [1 * (0)] => 
+      //     - segment_model_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => +-1 / [1 * (0)] => 
       //       +-infinity
       //       but this shouldn't really happen inside the training set, because as the error gets bigger our boosting algorithm will correct corse by
       //       updating in the opposite direction.  Divergence to infinity is a possibility in the validation set, but the training set pushes it's error to 
@@ -395,7 +405,7 @@ public:
       //          |   *  
       //      0.01|*     
       //          |      
-      //  -1-------------1--- residualError
+      //  -1-------------1--- gradient
       //          |
       //         *|-0.01
       //      *   |
@@ -406,20 +416,20 @@ public:
       //
       //   We have +-infinity asympotes at +-1
       //   We have a discontinuity at 0, where we flip from positive to negative
-      //   the overall effect is that we train more on errors (error is +-1), and less on things with close to zero residuals
+      //   the overall effect is that we train more on errors (error is +-1), and less on things with close to zero error
 
       // !!! IMPORTANT: Newton-Raphson step, as illustrated in Friedman's original paper (https://statweb.stanford.edu/~jhf/ftp/trebst.pdf, page 9). Note that
       //   they are using t * (2 - t) since they have a 2 in their objective
-      const FloatEbmType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
-      const FloatEbmType ret = absResidualError * (FloatEbmType { 1 } - absResidualError);
+      const FloatEbmType absGradient = std::abs(gradient); // abs will return the same type that it is given, either float or double
+      const FloatEbmType hessian = absGradient * (FloatEbmType { 1 } - absGradient);
 
-      // - it would be somewhat bad if absResidualError could get larger than 1, even if just due to floating point error reasons, 
-      //   since this would flip the sign on ret to negative.  Later in ComputeSmallChangeForOneSegmentClassificationLogOdds, 
+      // - it would be somewhat bad if absGradient could get larger than 1, even if just due to floating point error reasons, 
+      //   since this would flip the sign on ret to negative.  Later in ComputeSinglePartitionUpdateClassification, 
       //   The sign flip for ret will cause the update to be the opposite from what was desired.  This should only happen
       //   once we've overflowed our boosting rounds though such that 1 + epsilon = 1, after about 3604 boosting rounds
       //   At that point, undoing one round of boosting isn't going to hurt.
 
-      // the maximum return value occurs when residual error is 0.5 (which is exactly representable in floating points), which gives 0.25
+      // the maximum return value occurs when gradient is 0.5 (which is exactly representable in floating points), which gives 0.25
       // 0.25 has an exact representations in floating point numbers, at least in IEEE 754, which we statically check for at compile time
       // I don't think we need an espilon at the top figure.  Given that all three numbers invovled (0.5, 1, 0.25) have exact representations, 
       // we should get the exact return of 0.25 for 0.5, and never larger than 0.25
@@ -429,48 +439,50 @@ public:
       // our input allows values slightly larger than 1, after subtracting 1 from 1 + some_small_value, we can get a slight negative value
       // when we get to this point, we're already in a position where we'll get a NaN or infinity or something else that will stop boosting
 
-      // with our abs inputs confined to the range of -k_epsilonResidualError -> 1, we can't get a new NaN value here, so only check against propaged NaN 
-      // values from residualError
-      EBM_ASSERT(std::isnan(residualError) || !std::isinf(ret) && -k_epsilonResidualError <= ret && ret <= FloatEbmType { 0.25 });
+      // with our abs inputs confined to the range of -k_epsilonGradient -> 1, we can't get a new NaN value here, so only check against propaged NaN 
+      // values from gradient
+      EBM_ASSERT(std::isnan(gradient) || !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatEbmType { 0.25 });
 
-      return ret;
+      return hessian;
    }
 
-   INLINE_ALWAYS static FloatEbmType ComputeNodeSplittingScore(const FloatEbmType sumResidualError, const FloatEbmType cSamples) {
+   INLINE_ALWAYS static FloatEbmType ComputeSinglePartitionGain(const FloatEbmType sumGradient, const FloatEbmType sumHessian) {
       // this function can SOMETIMES be performance critical as it's called on every histogram bin
       // it will only be performance critical for truely continous numerical features that we're not binning, or for interactions where dimensionality
       // creates many bins
 
-      // for classification, sumResidualError can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
-      //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
-      //   logit, and ComputeResidualErrorBinaryClassification will return a NaN value. Getting both sumResidualError and sumDenominator to zero is hard.  
-      //   sumResidualError can always be zero since it's a sum of positive and negative values sumDenominator is harder to get to zero, 
-      //   since it's a sum of positive numbers.  The sumDenominator is the sum of values returned from this function.  absResidualError 
-      //   must be -1, 0, or +1 to make the denominator zero.  -1 and +1 are hard, but not impossible to get to with really inputs, 
+      // for MART, sumHessian will just be the count of samples
+
+      // for classification, sumGradient can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdateClassification
+      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
+      //   logit, and TransformScoreToGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
+      //   sumGradient can always be zero since it's a sum of positive and negative values sumHessian is harder to get to zero, 
+      //   since it's a sum of positive numbers.  The sumHessian is the sum of values returned from CalculateHessianFromGradientClassification.  gradient 
+      //   must be -1, 0, or +1 to make the hessian zero.  -1 and +1 are hard, but not impossible to get to with really bad inputs, 
       //   since boosting tends to push errors towards 0.  An error of 0 is most likely when the denominator term in either
-      //   ComputeResidualErrorBinaryClassification or ComputeResidualErrorMulticlass becomes close to epsilon.  Once that happens
-      //   for ComputeResidualErrorBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtrace 1 from 1.
+      //   TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
+      //   for TransformScoreToGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
       //   This can happen after as little as 3604 rounds of boosting, if learningRate is 0.01, and every boosting round we update by the limit of
       //   0.01 [see notes at top of EbmStats.h].  It might happen for a single sample even faster if multiple variables boost the logit
       //   upwards.  We just terminate boosting after that many rounds if this occurs.
 
-      // for regression, residualError can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
-      //   +-std::numeric_limits<FloatEbmType>::max(), the sumResidualError can reach +-infinity since they are a sum.
-      //   After sumResidualError reaches +-infinity, we'll get a graph update with a +infinity, and some samples with +-infinity residuals
+      // for regression, gradient can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
+      //   +-std::numeric_limits<FloatEbmType>::max(), the sumGradient can reach +-infinity since they are a sum.
+      //   After sumGradient reaches +-infinity, we'll get a graph update with a +infinity, and some samples with +-infinity scores
       //   Then, on the next feature that we boost on, we'll calculate a model update for some samples  
-      //   inside ComputeSmallChangeForOneSegmentRegression as +-infinity/cSamples, which will be +-infinity (of the same sign). 
-      //   Then, when we go to calculate our new sample residuals, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), 
+      //   inside ComputeSinglePartitionUpdateRegression as +-infinity/sumHessian, which will be +-infinity (of the same sign). 
+      //   Then, when we go to calculate our new sample scores, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), 
       //   which will result in NaN.  After that, everything melts down to NaN.  The user just needs to not give us such high regression targets.
       //   If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value 
       //   (of 7.2e+134)
 
-      // for classification, sumResidualError CANNOT be +-infinity-> even with an +-infinity logit, see ComputeResidualErrorBinaryClassification and 
-      //   ComputeResidualErrorMulticlass also, since -cSamples <= sumResidualError && sumResidualError <= cSamples, and since cSamples must be 64 bits 
+      // for classification, sumGradient CANNOT be +-infinity-> even with an +-infinity logit, see TransformScoreToGradientBinaryClassification and 
+      //   TransformScoreToGradientMulticlass also, since -cSamples <= sumGradient && sumGradient <= cSamples, and since cSamples must be 64 bits 
       //   or lower, we cann't overflow to infinity when taking the sum
 
-      // for classification -cSamples <= sumResidualError && sumResidualError <= cSamples
+      // for classification -cSamples <= sumGradient && sumGradient <= cSamples
       
-      // for regression sumResidualError can be any legal value, including +infinity or -infinity
+      // for regression sumGradient can be any legal value, including +infinity or -infinity
 
       // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the 
       //   derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
@@ -479,193 +491,199 @@ public:
       //    it for classification?  What about the possibility of using Newton-Raphson step in the gain?
       // TODO: we should also add an option to optimize for mean absolute error
 
-      EBM_ASSERT(!std::isnan(cSamples)); // this starts as an integer
-      EBM_ASSERT(!std::isinf(cSamples)); // this starts as an integer
+      EBM_ASSERT(!std::isnan(sumHessian)); // this starts as an integer
+      EBM_ASSERT(!std::isinf(sumHessian)); // this starts as an integer
 
-      EBM_ASSERT(FloatEbmType { 1 } <= cSamples); // we shouldn't be making splits with children with less than 1 sample
-      const FloatEbmType ret = sumResidualError / cSamples * sumResidualError;
+      EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
+      const FloatEbmType singlePartitionGain = sumGradient / sumHessian * sumGradient;
 
-      // for both classification and regression, we're squaring sumResidualError, and cSamples is positive.  No reasonable floating point implementation 
+      // for both classification and regression, we're squaring sumGradient, and sumHessian is positive.  No reasonable floating point implementation 
       // should turn this negative
 
-      // for both classification and regression, we shouldn't generate a new NaN value from our calculation since cSamples can't be zero or inifinity, 
-      //   but we might need to propagage a NaN sumResidualError value
+      // for both classification and regression, we shouldn't generate a new NaN value from our calculation since sumHessian can't be zero or inifinity, 
+      //   but we might need to propagage a NaN sumGradient value
 
-      // for classification, 0 <= ret && ret <= cSamples + some_epsilon, since sumResidualError can't be infinity or have absolute values above cSamples
+      // for classification, 0 <= singlePartitionGain && singlePartitionGain <= cSamples + some_epsilon, since sumGradient can't be infinity or have absolute values above cSamples
 
       // for regression, the output can be any positive number from zero to +infinity
 
-      EBM_ASSERT(std::isnan(sumResidualError) || FloatEbmType { 0 } <= ret);
-      return ret;
+      EBM_ASSERT(std::isnan(sumGradient) || FloatEbmType { 0 } <= singlePartitionGain);
+      return singlePartitionGain;
    }
 
    WARNING_PUSH
    WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
-   INLINE_ALWAYS static FloatEbmType ComputeSmallChangeForOneSegmentClassificationLogOdds(
-      const FloatEbmType sumResidualError, 
-      const FloatEbmType sumDenominator
+   INLINE_ALWAYS static FloatEbmType ComputeSinglePartitionUpdateClassification(
+      const FloatEbmType sumGradient, 
+      const FloatEbmType sumHessian
    ) {
       // this is NOT a performance critical function.  It only gets called AFTER we've decided where to split, so only a few times per Boosting step
 
-      // sumResidualError can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
-      //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
-      //   logit, and ComputeResidualErrorBinaryClassification will return a NaN value. Getting both sumResidualError and sumDenominator to zero is hard.  
-      //   sumResidualError can always be zero since it's a sum of positive and negative values sumDenominator is harder to get to zero, 
-      //   since it's a sum of positive numbers.  The sumDenominator is the sum of values returned from this function.  absResidualError 
+      // sumGradient can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdateClassification
+      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
+      //   logit, and TransformScoreToGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
+      //   sumGradient can always be zero since it's a sum of positive and negative values sumHessian is harder to get to zero, 
+      //   since it's a sum of positive numbers.  The sumHessian is the sum of values returned from this function.  gradient 
       //   must be -1, 0, or +1 to make the denominator zero.  -1 and +1 are hard, but not impossible to get to with really inputs, 
       //   since boosting tends to push errors towards 0.  An error of 0 is most likely when the denominator term in either
-      //   ComputeResidualErrorBinaryClassification or ComputeResidualErrorMulticlass becomes close to epsilon.  Once that happens
-      //   for ComputeResidualErrorBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtrace 1 from 1.
+      //   TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
+      //   for TransformScoreToGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
       //   This can happen after as little as 3604 rounds of boosting, if learningRate is 0.01, and every boosting round we update by the limit of
       //   0.01 [see notes at top of EbmStats.h].  It might happen for a single sample even faster if multiple variables boost the logit
       //   upwards.  We just terminate boosting after that many rounds if this occurs.
 
-      // sumDenominator can be NaN -> sumDenominator is calculated from residualError.  Since residualError can be NaN (as described above), then 
-      //   sumDenominator can be NaN
+      // sumHessian can be NaN -> sumHessian is calculated from gradient.  Since gradient can be NaN (as described above), then 
+      //   sumHessian can be NaN
 
-      // sumResidualError CANNOT be +-infinity-> even with an +-infinity logit, see ComputeResidualErrorBinaryClassification and ComputeResidualErrorMulticlass
-      //   also, since -cSamples <= sumResidualError && sumResidualError <= cSamples, and since cSamples must be 64 bits or lower, we cann't overflow 
+      // sumGradient CANNOT be +-infinity-> even with an +-infinity logit, see TransformScoreToGradientBinaryClassification and TransformScoreToGradientMulticlass
+      //   also, since -cSamples <= sumGradient && sumGradient <= cSamples, and since cSamples must be 64 bits or lower, we cann't overflow 
       //   to infinity when taking the sum
 
-      // sumDenominator cannot be infinity -> per the notes in ComputeNewtonRaphsonStep
+      // sumHessian cannot be infinity -> per the notes in CalculateHessianFromGradientClassification
 
-      // since this is classification, -cSamples <= sumResidualError && sumResidualError <= cSamples
-      EBM_ASSERT(!std::isinf(sumResidualError)); // a 64-bit number can't get a value larger than a double to overflow to infinity
+      // since this is classification, -cSamples <= sumGradient && sumGradient <= cSamples
+      EBM_ASSERT(!std::isinf(sumGradient)); // a 64-bit number can't get a value larger than a double to overflow to infinity
 
-      // since this is classification, 0 <= sumDenominator && sumDenominator <= 0.25 * cSamples (see notes in ComputeNewtonRaphsonStep), 
-      // so sumDenominator can't be infinity
-      EBM_ASSERT(!std::isinf(sumDenominator)); // a 64-bit number can't get a value larger than a double to overflow to infinity
+      // since this is classification, 0 <= sumHessian && sumHessian <= 0.25 * cSamples (see notes in CalculateHessianFromGradientClassification), 
+      // so sumHessian can't be infinity
+      EBM_ASSERT(!std::isinf(sumHessian)); // a 64-bit number can't get a value larger than a double to overflow to infinity
 
-      // sumDenominator can be very slightly negative, for floating point numeracy reasons.  On the face, this is bad because it flips the direction
+      // sumHessian can be very slightly negative, for floating point numeracy reasons.  On the face, this is bad because it flips the direction
       //   of our update.  We should only hit this condition when our error gets so close to zero that we should be hitting other numeracy issues though
       //   and even if it does happen, it should be EXTREMELY rare, and since we're using boosting, it will recover the lost round next time.
       //   Also, this should only happen when we are at an extremem logit anyways, and going back one step won't hurt anything.  It's not worth
       //   the cost of the comparison to check for the error condition
-      EBM_ASSERT(std::isnan(sumDenominator) || -k_epsilonResidualError <= sumDenominator);
+      EBM_ASSERT(std::isnan(sumHessian) || -k_epsilonGradient <= sumHessian);
 
-      // sumResidualError can always be much smaller than sumDenominator, since it's a sum, so it can add positive and negative numbers such that it reaches 
-      // almost zero whlie sumDenominator is always positive
+      // sumGradient can always be much smaller than sumHessian, since it's a sum, so it can add positive and negative numbers such that it reaches 
+      // almost zero whlie sumHessian is always positive
 
-      // sumDenominator can always be much smaller than sumResidualError.  Example: 0.999 -> the sumDenominator will be 0.000999 (see ComputeNewtonRaphsonStep)
+      // sumHessian can always be much smaller than sumGradient.  Example: 0.999 -> the sumHessian will be 0.000999 (see CalculateHessianFromGradientClassification)
 
       // since the denominator term always goes up as we add new numbers (it's always positive), we can only have a zero in that term if ALL samples have 
       // low denominators
-      // the denominator can be close to zero only when residualError is -1, 0, or 1 for all cases, although they can be mixed up between these values.
-      // Given that our algorithm tries to drive residual error to zero and it will drive it increasingly strongly the farther it gets from zero, 
+      // the denominator can be close to zero only when gradient is -1, 0, or 1 for all cases, although they can be mixed up between these values.
+      // Given that our algorithm tries to drive error to zero and it will drive it increasingly strongly the farther it gets from zero, 
       // it seems really unlikley that we'll get a zero numerator by having a series of
       // -1 and 1 values that perfectly cancel eachother out because it means they were driven to the opposite of the correct answer
-      // If the denominator is zero, then it's a strong indication that all the residuals are close to zero.
-      // if all the residuals are close to zero, then the numerator is also going to be close to zero
-      // So, if the denominator is close to zero, we can assume the numerator will be too.  At this point with all the residual errors very close to zero
+      // If the denominator is zero, then it's a strong indication that all the gradients are close to zero.
+      // if all the gradients are close to zero, then the numerator is also going to be close to zero
+      // So, if the sumHessian is close to zero, we can assume the sumGradient numerator will be too.  At this point with all the gradients very close to zero
       // we might as well stop learning on these samples and set the update to zero for this section anyways, but we don't want branches here, 
       // so we'll just leave it
 
-      return sumResidualError / sumDenominator;
+      return sumGradient / sumHessian;
 
-      // return can be NaN if both sumResidualError and sumDenominator are zero, or if we're propagating a NaN value.  Neither sumResidualError nor 
-      //   sumDenominator can be infinity, so that's not a source of NaN
-      // return can be infinity if sumDenominator is extremely close to zero, while sumResidualError is non-zero (very hard).  This could happen if 
-      //   the residualError was near +-1
+      // return can be NaN if both sumGradient and sumHessian are zero, or if we're propagating a NaN value.  Neither sumGradient nor 
+      //   sumHessian can be infinity, so that's not a source of NaN
+      // return can be infinity if sumHessian is extremely close to zero, while sumGradient is non-zero (very hard).  This could happen if 
+      //   the gradient was near +-1
       // return can be any other positive or negative number
    }
 
    WARNING_POP
 
-   INLINE_ALWAYS static FloatEbmType ComputeSmallChangeForOneSegmentRegression(const FloatEbmType sumResidualError, const FloatEbmType cSamples) {
+   INLINE_ALWAYS static FloatEbmType ComputeSinglePartitionUpdateRegression(const FloatEbmType sumGradient, const FloatEbmType sumHessian) {
       // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per feature_group boost
 
-      // sumResidualError can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
-      //   +-std::numeric_limits<FloatEbmType>::max(), the sumResidualError can reach +-infinity since they are a sum.
-      //   After sumResidualError reaches +-infinity, we'll get a graph update with a +infinity, and some samples with +-infinity residuals
+      // sumGradient can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
+      //   +-std::numeric_limits<FloatEbmType>::max(), the sumGradient can reach +-infinity since they are a sum.
+      //   After sumGradient reaches +-infinity, we'll get a graph update with a +infinity, and some samples with +-infinity scores
       //   Then, on the next feature that we boost on, we'll calculate a model update for some samples  
-      //   inside ComputeSmallChangeForOneSegmentRegression as +-infinity/cSamples, which will be +-infinity (of the same sign). 
-      //   Then, when we go to calculate our new sample residuals, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), 
+      //   inside ComputeSinglePartitionUpdateRegression as +-infinity/sumHessian, which will be +-infinity (of the same sign). 
+      //   Then, when we go to calculate our new sample scores, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), 
       //   which will result in NaN.  After that, everything melts down to NaN.  The user just needs to not give us such high regression targets.
       //   If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value 
       //   (of 7.2e+134)
 
-      // sumResidualError can be any legal value, including +infinity or -infinity
+      // sumGradient can be any legal value, including +infinity or -infinity
 
       // 1 < cSamples && cSamples < 2^64 (since it's a 64 bit integer in 64 bit address space app
-      EBM_ASSERT(!std::isnan(cSamples)); // this starts as an integer
-      EBM_ASSERT(!std::isinf(cSamples)); // this starts as an integer
+      EBM_ASSERT(!std::isnan(sumHessian)); // this starts as an integer
+      EBM_ASSERT(!std::isinf(sumHessian)); // this starts as an integer
 
-      // -infinity <= sumResidualError && sumResidualError <= infinity (it's regression which has a larger range)
+      // -infinity <= sumGradient && sumGradient <= infinity (it's regression which has a larger range)
 
       // even if we trim inputs of +-infinity from the user to std::numeric_limits<FloatEbmType>::max() or std::numeric_limits<FloatEbmType>::lowest(), 
-      // we'll still reach +-infinity if we add a bunch of them together, so sumResidualError can reach +-infinity.
-      // After sumResidualError reaches +-infinity, we'll get an update and some samples with +-infinity residuals
+      // we'll still reach +-infinity if we add a bunch of them together, so sumGradient can reach +-infinity.
+      // After sumGradient reaches +-infinity, we'll get an update and some samples with +-infinity scores
       // Then, on the next feature we boost on, we'll calculate an model update for some samples (inside this function) as 
-      // +-infinity/cSamples, which will be +-infinity (of the same sign).  Then, when we go to find our new sample residuals, we'll
+      // +-infinity/sumHessian, which will be +-infinity (of the same sign).  Then, when we go to find our new sample scores, we'll
       // subtract +infinity-(+infinity) or -infinity-(-infinity), which will result in NaN.  After that, everything melts down to NaN.
-      EBM_ASSERT(FloatEbmType { 1 } <= cSamples); // we shouldn't be making splits with children with less than 1 sample
-      return sumResidualError / cSamples;
+      EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
+      return sumGradient / sumHessian;
       
-      // since the sumResidualError inputs can be anything, we can return can be anything, including NaN, or +-infinity
+      // since the sumGradient inputs can be anything, we can return can be anything, including NaN, or +-infinity
    }
 
-   INLINE_ALWAYS static FloatEbmType ComputeResidualErrorRegressionInit(const FloatEbmType predictionScore, const FloatEbmType actualValue) {
+   INLINE_ALWAYS static FloatEbmType ComputeGradientRegressionMSEInit(const FloatEbmType predictorScore, const FloatEbmType target) {
       // this function is NOT performance critical as it's called on every sample, but only during initialization.
 
-      // it's possible to reach NaN or +-infinity within this module, so predictionScore can be those values
+      // for MSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
+      // to keep the original scores when computing the gradient updates.
+
+      // it's possible to reach NaN or +-infinity within this module, so predictorScore can be those values
       // since we can reach such values anyways, we might as well not check for them during initialization and detect the
       // NaN or +-infinity values in one of our boosting rounds and then terminate the algorithm once those special values
       // have propagaged, which we need to handle anyways
 
-      const FloatEbmType result = actualValue - predictionScore;
+      const FloatEbmType gradient = target - predictorScore;
 
-      // if actualValue and predictionScore are both +infinity or both -infinity, then we'll generate a NaN value
+      // if target and predictorScore are both +infinity or both -infinity, then we'll generate a NaN value
 
-      return result;
+      return gradient;
    }
 
-   INLINE_ALWAYS static FloatEbmType ComputeResidualErrorRegression(const FloatEbmType value) {
+   INLINE_ALWAYS static FloatEbmType ComputeGradientRegressionMSEFromOriginalGradient(const FloatEbmType originalGradient) {
       // this function IS performance critical as it's called on every sample
 
-      // value can be +-infinity, or NaN.  See note in ComputeSmallChangeForOneSegmentRegression
+      // for MSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
+      // to keep the original scores when computing the gradient updates, so we only need the previous gradient
 
-      // this function is here to document where we're calculating regression, like ComputeResidualErrorBinaryClassification below.  It doesn't do anything, 
+      // originalGradient can be +-infinity, or NaN.  See note in ComputeSinglePartitionUpdateRegression
+
+      // this function is here to document where we're calculating regression, like TransformScoreToGradientBinaryClassification below.  It doesn't do anything, 
       //   but it serves as an indication that the calculation would be placed here if we changed it in the future
-      return value;
+      return originalGradient;
    }
 
-   INLINE_ALWAYS static FloatEbmType ComputeResidualErrorBinaryClassification(
-      const FloatEbmType trainingLogOddsPrediction, 
-      const size_t binnedActualValue
+   INLINE_ALWAYS static FloatEbmType TransformScoreToGradientBinaryClassification(
+      const FloatEbmType predictorScore, 
+      const size_t target
    ) {
       // this IS a performance critical function.  It gets called per sample!
 
-      // trainingLogOddsPrediction can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
-      //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
+      // predictorScore can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdateClassification
+      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
       //   logit
 
-      // trainingLogOddsPrediction can be +-infinity -> we can overflow to +-infinity
+      // predictorScore can be +-infinity -> we can overflow to +-infinity
 
-      EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
+      EBM_ASSERT(0 == target || 1 == target);
 
-      // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, trainingLogOddsPrediction would need to be either 
+      // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, predictorScore would need to be either 
       //   infinity or -infinity
       // this function outputs 1 if actual value was 1 but we incorrectly predicted with 100% certainty that it was 0 by having 
-      //   trainingLogOddsPrediction be -infinity
-      // this function outputs -1 if actual value was 0 but we incorrectly predicted with 100% certainty that it was 1 by having trainingLogOddsPrediction 
+      //   predictorScore be -infinity
+      // this function outputs -1 if actual value was 0 but we incorrectly predicted with 100% certainty that it was 1 by having predictorScore 
       //   be infinity
       //
-      // this function outputs 0.5 if actual value was 1 but we were 50%/50% by having trainingLogOddsPrediction be 0
-      // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having trainingLogOddsPrediction be 0
+      // this function outputs 0.5 if actual value was 1 but we were 50%/50% by having predictorScore be 0
+      // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having predictorScore be 0
 
-      // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == binnedActualValue.  We expect 0 to be the 
-      //   default target, so we should flip the value of trainingLogOddsPrediction so that we don't need to negate it for the default 0 case
-      // TODO: we can probably remove the negation on 1 == binnedActualValue via : return  binned_actual_value - 1 + (1 / (np.exp(training_log_odds_prediction) + 1)) 
+      // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == target.  We expect 0 to be the 
+      //   default target, so we should flip the value of predictorScore so that we don't need to negate it for the default 0 case
+      // TODO: we can probably remove the negation on 1 == target via : return  binned_actual_value - 1 + (1 / (np.exp(training_log_odds_prediction) + 1)) 
       // once we've moved to sorted training data
       // exp will return the same type that it is given, either float or double
       // TODO: for the ApproxExp function, we can change the constant to being a negative once we change to sorting by our target value
-      //       then we don't need to even take the negative of trainingLogOddsPrediction below
+      //       then we don't need to even take the negative of predictorScore below
 
-      // !!! IMPORTANT: when using an approximate exp function, the formula used to compute the residuals becomes very
+      // !!! IMPORTANT: when using an approximate exp function, the formula used to compute the gradients becomes very
       //                important.  We want something that is balanced from positive to negative, which this version
       //                does IF the classes are roughly balanced since the positive or negative value is
-      //                determined by only the binnedActualValue, unlike if we used a forumala that relied
+      //                determined by only the target, unlike if we used a forumala that relied
       //                on the exp function returning a 1 at the 0 value, which our approximate exp does not give
       //                In time, you'd expect boosting to make targets with 0 more negative, leading to a positive
       //                term in the exp, and targets with 1 more positive, leading to a positive term in the exp
@@ -676,10 +694,10 @@ public:
       //                sums of zero.
       //                I've made a copy of this formula as a comment to reference to what is good in-case the 
       //                formula is changed in the code without reading this comment
-      //                const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } + ExpForResiduals(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction));
+      //                const FloatEbmType gradient = (UNPREDICTABLE(0 == target) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -predictorScore : predictorScore));
       // !!! IMPORTANT: SEE ABOVE
-      const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } +
-         ExpForResidualsBinaryClassification(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction));
+      const FloatEbmType gradient = (UNPREDICTABLE(0 == target) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } +
+         ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -predictorScore : predictorScore));
 
       // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
       // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
@@ -687,43 +705,43 @@ public:
       // above 1.0 especially, since IEEE 754 guarnatees that addition and division yield numbers rounded correctly to the last binary decimal place
       // IEEE 754, which we check for at compile time, specifies that +-1/infinity = 0
 
-      // ret cannot be +-infinity -> even if trainingLogOddsPrediction is +-infinity we then get +-1 division by 1, or division by +infinity, which are +-1 
+      // gradient cannot be +-infinity -> even if predictorScore is +-infinity we then get +-1 division by 1, or division by +infinity, which are +-1 
       //   or 0 respectively
 
-      // ret can only be NaN if our inputs are NaN
+      // gradient can only be NaN if our inputs are NaN
 
       // So...
-      EBM_ASSERT(std::isnan(trainingLogOddsPrediction) || !std::isinf(ret) && FloatEbmType { -1 } <= ret && ret <= FloatEbmType { 1 });
+      EBM_ASSERT(std::isnan(predictorScore) || !std::isinf(gradient) && FloatEbmType { -1 } <= gradient && gradient <= FloatEbmType { 1 });
 
-      // ret can't be +-infinity, since an infinity in the denominator would just lead us to zero for the ret value!
+      // gradient can't be +-infinity, since an infinity in the denominator would just lead us to zero for the gradient value!
 
 #ifndef NDEBUG
-      const FloatEbmType expVal = std::exp(trainingLogOddsPrediction);
-      const FloatEbmType retDebug = 
-         ComputeResidualErrorMulticlass(FloatEbmType { 1 } + expVal, expVal, binnedActualValue, 1);
-      // the ComputeResidualErrorMulticlass can't be +-infinity per notes in ComputeResidualErrorMulticlass, 
+      const FloatEbmType expVal = std::exp(predictorScore);
+      const FloatEbmType gradientDebug = 
+         TransformScoreToGradientMulticlass(FloatEbmType { 1 } + expVal, expVal, target, 1);
+      // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
-      EBM_ASSERT(std::isnan(trainingLogOddsPrediction) || std::isnan(retDebug) || std::abs(retDebug - ret) < k_epsilonResidualErrorForBinaryToMulticlass);
+      EBM_ASSERT(std::isnan(predictorScore) || std::isnan(gradientDebug) || std::abs(gradientDebug - gradient) < k_epsilonGradientForBinaryToMulticlass);
 #endif // NDEBUG
-      return ret;
+      return gradient;
    }
 
-   INLINE_ALWAYS static FloatEbmType ComputeResidualErrorMulticlass(
+   INLINE_ALWAYS static FloatEbmType TransformScoreToGradientMulticlass(
       const FloatEbmType sumExp, 
       const FloatEbmType itemExp, 
-      const size_t binnedActualValue, 
+      const size_t target, 
       const size_t iVector
    ) {
       // this IS a performance critical function.  It gets called per sample AND per-class!
 
-      // trainingLogWeight (which calculates itemExp) can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
-      //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
+      // trainingLogWeight (which calculates itemExp) can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdateClassification
+      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
       //   logit
       
       // trainingLogWeight (which calculates itemExp) can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
 
-      // sumExp can be NaN -> trainingLogOddsPrediction is used when calculating sumExp, so if trainingLogOddsPrediction can be NaN, then sumExp can be NaN
+      // sumExp can be NaN -> predictorScore is used when calculating sumExp, so if predictorScore can be NaN, then sumExp can be NaN
 
       // sumExp can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
@@ -740,11 +758,11 @@ public:
       //   added to numbers below the threshold of epsilon at the value of EbmExp(trainingLogWeight), then by the time we get to the division of 
       //   EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, and result in a value slightly greater than 1!
 
-      EBM_ASSERT(std::isnan(sumExp) || itemExp - k_epsilonResidualError <= sumExp);
+      EBM_ASSERT(std::isnan(sumExp) || itemExp - k_epsilonGradient <= sumExp);
 
-      const FloatEbmType expFraction = itemExp / sumExp;
+      const FloatEbmType probability = itemExp / sumExp;
 
-      // expFraction can be NaN -> 
+      // probability can be NaN -> 
       // - If itemExp AND sumExp are exactly zero or exactly infinity then itemExp / sumExp will lead to NaN
       // - If sumExp is zero, then itemExp pretty much needs to be zero, since if any of the terms in the sumation are
       //   larger than a fraction.  It is very difficult to see how sumExp could be 0 because it would require that we have 3 or more logits that have 
@@ -752,96 +770,96 @@ public:
       //   therefor the exp of those numbers non-zero
       // - it is possible, but difficult to see how both itemExp AND sumExp could be infinity because all we need is for itemExp to be greater than
       //   about 709.79.  If one itemExp is +infinity then so is sumExp.  Each update is mostly limited to units of 0.01 logits 
-      //   (0.01 learningRate * 1 from ComputeResidualErrorBinaryClassification or ComputeResidualErrorMulticlass), so if we've done more than 70,900 boosting 
+      //   (0.01 learningRate * 1 from TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass), so if we've done more than 70,900 boosting 
       //   rounds we can get infinities or NaN values.  This isn't very likekly by itself given that our default is a max of 2000 rounds, but it is possible
       //   if someone is tweaking the parameters way past their natural values
 
-      // expFraction can be SLIGHTLY larger than 1 due to numeric issues -> this should only happen if sumExp == itemExp approximately, so there can be no 
+      // probability can be SLIGHTLY larger than 1 due to numeric issues -> this should only happen if sumExp == itemExp approximately, so there can be no 
       //   other logit terms in sumExp, and this would only happen after many many rounds of boosting (see above about 70,900 rounds of boosting).
-      // - if expFraction was slightly larger than 1, we shouldn't expect a crash.  What would happen is that in our next call to ComputeNewtonRaphsonStep, we
+      // - if probability was slightly larger than 1, we shouldn't expect a crash.  What would happen is that in our next call to CalculateHessianFromGradientClassification, we
       //   would find our denomiator term as a negative number (normally it MUST be positive).  If that happens, then later when we go to compute the
-      //   small model update, we'll inadvertently flip the sign of the update, but since ComputeNewtonRaphsonStep was close to the discontinuity at 0,
+      //   small model update, we'll inadvertently flip the sign of the update, but since CalculateHessianFromGradientClassification was close to the discontinuity at 0,
       //   we know that the update should have a value of 1 * learningRate = 0.01 for default input parameters.  This means that even in the very very
       //   very unlikely case that we flip our sign due to numericacy error, which only happens after an unreasonable number of boosting rounds, we'll
       //   flip the sign on a minor update to the logits.  We can tollerate this sign flip and next round we're not likely to see the same sign flip, so
       //   boosting will recover the mistake with more boosting rounds
 
-      // expFraction must be positive -> both the numerator and denominator are positive, so no reasonable implementation should lead to a negative number
+      // probability must be positive -> both the numerator and denominator are positive, so no reasonable implementation should lead to a negative number
 
-      // expFraction can be zero -> sumExp can be infinity when itemExp is non-infinity.  This occurs when only one of the terms has overflowed to +infinity
+      // probability can be zero -> sumExp can be infinity when itemExp is non-infinity.  This occurs when only one of the terms has overflowed to +infinity
 
-      // expFraction can't be infinity -> even if itemExp is slightly bigger than sumExp due to numeric reasons, the division is going to be close to 1
-      //   we can't really get an infinity in itemExp without also getting an infinity in sumExp, so expFraction can't be infinity without getting a NaN
+      // probability can't be infinity -> even if itemExp is slightly bigger than sumExp due to numeric reasons, the division is going to be close to 1
+      //   we can't really get an infinity in itemExp without also getting an infinity in sumExp, so probability can't be infinity without getting a NaN
 
-      EBM_ASSERT(std::isnan(expFraction) || 
-         !std::isinf(expFraction) && FloatEbmType { 0 } <= expFraction && expFraction <= FloatEbmType { 1 } + k_epsilonResidualError);
+      EBM_ASSERT(std::isnan(probability) || 
+         !std::isinf(probability) && FloatEbmType { 0 } <= probability && probability <= FloatEbmType { 1 } + k_epsilonGradient);
 
 
-      const FloatEbmType yi = UNPREDICTABLE(iVector == binnedActualValue) ? FloatEbmType { 1 } : FloatEbmType { 0 };
+      const FloatEbmType yi = UNPREDICTABLE(iVector == target) ? FloatEbmType { 1 } : FloatEbmType { 0 };
 
-      // if expFraction cannot be +infinity, and needs to be between 0 and 1 + small_value, or NaN, then ret can't be inifinity either
+      // if probability cannot be +infinity, and needs to be between 0 and 1 + small_value, or NaN, then gradient can't be inifinity either
 
-      const FloatEbmType ret = yi - expFraction;
+      const FloatEbmType gradient = yi - probability;
 
-      // mathematicaly we're limited to the range of range 0 <= expFraction && expFraction <= 1, but with floating point issues
-      // we can get an expFraction value slightly larger than 1, which could lead to -1.00000000001-ish results
-      // just like for the division by zero conditions, we'd need many many boosting rounds for expFraction to get to 1, since
+      // mathematicaly we're limited to the range of range 0 <= probability && probability <= 1, but with floating point issues
+      // we can get an probability value slightly larger than 1, which could lead to -1.00000000001-ish results
+      // just like for the division by zero conditions, we'd need many many boosting rounds for probability to get to 1, since
       // the sum of e^logit must be about equal to e^logit for this class, which should require thousands of rounds (70,900 or so)
       // also, the boosting algorthm tends to push results to zero, so a result more negative than -1 would be very exceptional
-      EBM_ASSERT(std::isnan(expFraction) || !std::isinf(ret) && FloatEbmType { -1 } - k_epsilonResidualError <= ret && ret <= FloatEbmType { 1 });
-      return ret;
+      EBM_ASSERT(std::isnan(probability) || !std::isinf(gradient) && FloatEbmType { -1 } - k_epsilonGradient <= gradient && gradient <= FloatEbmType { 1 });
+      return gradient;
    }
 
    INLINE_ALWAYS static FloatEbmType ComputeSingleSampleLogLossBinaryClassification(
-      const FloatEbmType validationLogOddsPrediction, 
-      const size_t binnedActualValue
+      const FloatEbmType predictorScore, 
+      const size_t target
    ) {
       // this IS a performance critical function.  It gets called per validation sample!
 
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
 
-      // trainingLogWeight can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
-      //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
+      // trainingLogWeight can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdateClassification
+      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
       //   logit
 
       // trainingLogWeight can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
 
-      EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
+      EBM_ASSERT(0 == target || 1 == target);
 
-      const FloatEbmType ourExp = ExpForLogLossBinaryClassification(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
+      const FloatEbmType ourExp = ExpForLogLossBinaryClassification(UNPREDICTABLE(0 == target) ? predictorScore : -predictorScore);
       // no reasonable implementation of exp should lead to a negative value
-      EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ourExp);
+      EBM_ASSERT(std::isnan(predictorScore) || FloatEbmType { 0 } <= ourExp);
 
       // exp will always be positive, and when we add 1, we'll always be guaranteed to have a positive number, so log shouldn't ever fail due to negative 
       // numbers the exp term could overlfow to infinity, but that should only happen in pathalogical scenarios where our train set is driving the logits 
       // one way to a very very certain outcome (essentially 100%) and the validation set has the opposite, but in that case our ultimate convergence is 
       // infinity anyways, and we'll be generaly driving up the log loss, so we legitimately want our loop to terminate training since we're getting a 
       // worse and worse model, so going to infinity isn't bad in that case
-      const FloatEbmType ret = LogForLogLoss(FloatEbmType { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
+      const FloatEbmType singleSampleLogLoss = LogForLogLoss(FloatEbmType { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
 
-      // ret can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, 
+      // singleSampleLogLoss can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, 
       // so we should only get propagation NaN values
 
-      // ret can be +infinity -> can happen when the logit is greater than 709, which can happen after about 70,900 boosting rounds
+      // singleSampleLogLoss can be +infinity -> can happen when the logit is greater than 709, which can happen after about 70,900 boosting rounds
 
-      // ret always positive -> the 1 term inside the log has an exact floating point representation, so no reasonable floating point framework should 
+      // singleSampleLogLoss always positive -> the 1 term inside the log has an exact floating point representation, so no reasonable floating point framework should 
       // make adding a positive number to 1 a number less than 1.  It's hard to see how any reasonable log implementatation that would give a negative 
       // exp given a 1, since 1 has an exact floating point number representation, and it computes to another exact floating point number, and who 
       // would seriously make a log function that take 1 and returns a negative.
       // So, 
-      EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ret); // log(1) == 0
+      EBM_ASSERT(std::isnan(predictorScore) || FloatEbmType { 0 } <= singleSampleLogLoss); // log(1) == 0
       // TODO : check our approxmiate log above for handling of 1 exactly.  We might need to change the above assert to allow a small negative value
       //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
 
 #ifndef NDEBUG
-      const FloatEbmType expVal = std::exp(validationLogOddsPrediction);
-      const FloatEbmType retDebug = EbmStats::ComputeSingleSampleLogLossMulticlass(
-         FloatEbmType { 1 } + expVal, 0 == binnedActualValue ? FloatEbmType { 1 } : expVal
+      const FloatEbmType expVal = std::exp(predictorScore);
+      const FloatEbmType singleSampleLogLossDebug = EbmStats::ComputeSingleSampleLogLossMulticlass(
+         FloatEbmType { 1 } + expVal, 0 == target ? FloatEbmType { 1 } : expVal
       );
-      EBM_ASSERT(std::isnan(ret) || std::isinf(ret) || std::isnan(retDebug) || std::isinf(retDebug) || std::abs(retDebug - ret) < k_epsilonResidualErrorForBinaryToMulticlass);
+      EBM_ASSERT(std::isnan(singleSampleLogLoss) || std::isinf(singleSampleLogLoss) || std::isnan(singleSampleLogLossDebug) || std::isinf(singleSampleLogLossDebug) || std::abs(singleSampleLogLossDebug - singleSampleLogLoss) < k_epsilonGradientForBinaryToMulticlass);
 #endif // NDEBUG
 
-      return ret;
+      return singleSampleLogLoss;
    }
 
    INLINE_ALWAYS static FloatEbmType ComputeSingleSampleLogLossMulticlass(
@@ -852,13 +870,13 @@ public:
 
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
 
-      // aValidationLogWeight (calculates itemExp) numbers can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
-      //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
+      // aValidationLogWeight (calculates itemExp) numbers can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdateClassification
+      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
       //   logit
 
       // aValidationLogWeight (calculates itemExp) numbers can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
 
-      // sumExp can be NaN -> trainingLogOddsPrediction is used when calculating sumExp, so if trainingLogOddsPrediction can be NaN, then sumExp can be NaN
+      // sumExp can be NaN -> predictorScore is used when calculating sumExp, so if predictorScore can be NaN, then sumExp can be NaN
 
       // sumExp can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
@@ -878,11 +896,11 @@ public:
       //   added to numbers below the threshold of epsilon at the value of EbmExp(trainingLogWeight), then by the time we get to the division of 
       //   EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, and result in a value slightly greater than 1!
 
-      EBM_ASSERT(std::isnan(sumExp) || itemExp - k_epsilonResidualError <= sumExp);
+      EBM_ASSERT(std::isnan(sumExp) || itemExp - k_epsilonGradient <= sumExp);
 
-      const FloatEbmType expFraction = sumExp / itemExp;
+      const FloatEbmType invertedProbability = sumExp / itemExp;
 
-      // expFraction can be NaN -> 
+      // invertedProbability can be NaN -> 
       // - If itemExp AND sumExp are exactly zero or exactly infinity then sumExp / itemExp will lead to NaN
       // - If sumExp is zero, then itemExp pretty much needs to be zero, since if any of the terms in the sumation are
       //   larger than a fraction.  It is very difficult to see how sumExp could be 0 because it would require that we have 3 or more logits that have 
@@ -890,46 +908,48 @@ public:
       //   therefore the exp of those numbers non-zero
       // - it is possible, but difficult to see how both itemExp AND sumExp could be infinity because all we need is for itemExp to be greater than
       //   about 709.79.  If one itemExp is +infinity then so is sumExp.  Each update is mostly limited to units of 0.01 logits 
-      //   (0.01 learningRate * 1 from ComputeResidualErrorBinaryClassification or ComputeResidualErrorMulticlass), so if we've done more than 70,900 boosting 
+      //   (0.01 learningRate * 1 from TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass), so if we've done more than 70,900 boosting 
       //   rounds we can get infinities or NaN values.  This isn't very likekly by itself given that our default is a max of 2000 rounds, but it is possible
       //   if someone is tweaking the parameters way past their natural values
 
-      // expFraction can be SLIGHTLY smaller than 1 due to numeric issues -> this should only happen if sumExp == itemExp approximately, so there can be no 
+      // invertedProbability can be SLIGHTLY smaller than 1 due to numeric issues -> this should only happen if sumExp == itemExp approximately, so there can be no 
       //   other logit terms in sumExp, and this would only happen after many many rounds of boosting (see above about 70,900 rounds of boosting).
-      // - if expFraction was slightly smaller than 1, we shouldn't expect a crash.  We'll get a slighly negative log, which would otherwise be impossible.
+      // - if invertedProbability was slightly smaller than 1, we shouldn't expect a crash.  We'll get a slighly negative log, which would otherwise be impossible.
       //   We check this before returning the log loss to our caller, since they do not expect negative log losses.
       
-      // expFraction must be positive -> both the numerator and denominator are positive, so no reasonable implementation should lead to a negative number
+      // invertedProbability must be positive -> both the numerator and denominator are positive, so no reasonable implementation should lead to a negative number
 
-      // expFraction can be +infinity -> sumExp can be infinity when itemExp is non-infinity, or itemExp can be sufficiently small to cause a divide by zero.  
+      // invertedProbability can be +infinity -> sumExp can be infinity when itemExp is non-infinity, or itemExp can be sufficiently small to cause a divide by zero.  
       // This occurs when only one of the terms has overflowed to +infinity
 
       // we can tollerate numbers very very slightly less than 1.  These make the log loss go down slightly as they lead to negative log
       // values, but we can tollerate this drop and rely on other features for the log loss calculation
 
-      EBM_ASSERT(std::isnan(expFraction) || FloatEbmType { 1 } - k_epsilonLogLoss <= expFraction);
+      EBM_ASSERT(std::isnan(invertedProbability) || FloatEbmType { 1 } - k_epsilonLogLoss <= invertedProbability);
 
-      const FloatEbmType ret = LogForLogLoss(expFraction);
+      const FloatEbmType singleSampleLogLoss = LogForLogLoss(invertedProbability);
 
-      // we're never taking the log of any number close to a negative, so we won't get a NaN result here UNLESS expFraction was already NaN and we're NaN 
+      // we're never taking the log of any number close to a negative, so we won't get a NaN result here UNLESS invertedProbability was already NaN and we're NaN 
       // propegating
 
       // we're using two numbers that probably can't be represented by exact representations
       // so, the fraction might be a tiny bit smaller than one, in which case the output would be a tiny
       // bit negative.  We can just let other subsequent adds cover this up
-      EBM_ASSERT(std::isnan(ret) || -k_epsilonLogLoss <= ret); // log(1) == 0
-      return ret;
+      EBM_ASSERT(std::isnan(singleSampleLogLoss) || -k_epsilonLogLoss <= singleSampleLogLoss); // log(1) == 0
+      return singleSampleLogLoss;
    }
 
-   INLINE_ALWAYS static FloatEbmType ComputeSingleSampleSquaredErrorRegression(const FloatEbmType residualError) {
+   INLINE_ALWAYS static FloatEbmType ComputeSingleSampleSquaredErrorRegressionFromGradient(const FloatEbmType gradient) {
       // this IS a performance critical function.  It gets called per validation sample!
 
-      // residualError can be +-infinity, or NaN.  See note in ComputeSmallChangeForOneSegmentRegression
+      // for MSE, the gradient is the error and we square it
+
+      // gradient can be +-infinity, or NaN.  See note in ComputeSinglePartitionUpdateRegression
 
       // we are confirmed to get the same mean squared error value as scikit-learn for regression
-      return residualError * residualError;
+      return gradient * gradient;
 
-      // residualError can be anything from 0 to +infinity, or NaN
+      // gradient can be anything from 0 to +infinity, or NaN
    }
 };
 

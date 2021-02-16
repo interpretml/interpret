@@ -169,7 +169,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   // TODO: In the future we'll be splitting our work into small sets of residuals and logits owned by
+   // TODO: In the future we'll be splitting our work into small data owned by
    // a node in a distributed system.  After each node calculates it's model update (represented by this
    // SegmentedTensor class), we'll need to reduce them accross all nodes, before adding together all the
    // SegmentedTensor classes and sending back a full update to the Nodes.  Since we'll be ferrying info
