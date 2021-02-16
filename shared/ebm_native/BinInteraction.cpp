@@ -39,7 +39,7 @@ public:
 
       LOG_0(TraceLevelVerbose, "Entered BinInteractionInternal");
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = 
+      HistogramBucket<bClassification> * const aHistogramBuckets =
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -53,14 +53,14 @@ public:
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
       const DataFrameInteraction * const pDataFrame = pInteractionDetector->GetDataFrameInteraction();
-      const FloatEbmType * pGradient = pDataFrame->GetGradientsPointer();
-      const FloatEbmType * const pGradientsEnd = pGradient + cVectorLength * pDataFrame->GetCountSamples();
+      const FloatEbmType * pGradientAndHessian = pDataFrame->GetGradientsAndHessiansPointer();
+      const FloatEbmType * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * pDataFrame->GetCountSamples();
 
       EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions()); // for interactions, we just return 0 for interactions with zero features
       const size_t cDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= cDimensions); // for interactions, we just return 0 for interactions with zero features
 
-      for(size_t iSample = 0; pGradientsEnd != pGradient; ++iSample) {
+      for(size_t iSample = 0; pGradientsAndHessiansEnd != pGradientAndHessian; ++iSample) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          // in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
          // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
@@ -105,7 +105,7 @@ public:
             pHistogramBucketEntry->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType gradient = *pGradient;
+            const FloatEbmType gradient = *pGradientAndHessian;
             // gradient could be NaN
             // for classification, gradient can be anything from -1 to +1 (it cannot be infinity!)
             // for regression, gradient can be anything from +infinity or -infinity
@@ -123,7 +123,7 @@ public:
                //   values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to 
                //   hold the gradient and this computation from that value and then comment out the computation if not necssary and access it through an 
                //   accessor so that we can make the change entirely via macro
-               const FloatEbmType hessian = EbmStats::CalculateHessianFromGradientClassification(gradient);
+               const FloatEbmType hessian = *(pGradientAndHessian + 1);
                EBM_ASSERT(
                   std::isnan(hessian) ||
                   !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatEbmType { 0.25 }
@@ -138,7 +138,7 @@ public:
                // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
                pHistogramTargetEntry[iVector].SetSumHessians(newHessian);
             }
-            ++pGradient;
+            pGradientAndHessian += bClassification ? 2 : 1;
          }
       }
       LOG_0(TraceLevelVerbose, "Exited BinInteractionInternal");

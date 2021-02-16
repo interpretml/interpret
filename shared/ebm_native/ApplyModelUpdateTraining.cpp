@@ -53,7 +53,7 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
+      FloatEbmType * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
       const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples * cVectorLength;
@@ -83,15 +83,21 @@ public:
          pExpVector -= cVectorLength;
          iVector = 0;
          do {
-            const FloatEbmType gradient = EbmStats::TransformScoreToGradientMulticlass(
+            FloatEbmType gradient;
+            FloatEbmType hessian;
+            EbmStats::TransformScoreToGradientAndHessianMulticlass(
                sumExp,
                *pExpVector,
                targetData,
-               iVector
+               iVector,
+               gradient,
+               hessian
             );
             ++pExpVector;
-            *pGradient = gradient;
-            ++pGradient;
+            *pGradientAndHessian = gradient;
+            // TODO: for multiclass, calculate the hessian from the probabilities instead of the gradients since we can avoid the call to std::abs
+            *(pGradientAndHessian + 1) = hessian;
+            pGradientAndHessian += 2;
             ++iVector;
          } while(iVector < cVectorLength);
          // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
@@ -105,7 +111,7 @@ public:
          // eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
          constexpr bool bZeroingLogits = 0 <= k_iZeroLogit;
          if(bZeroingLogits) {
-            *(pGradient - (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroLogit)) = 0;
+            *(pGradientAndHessian - 2 * (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroLogit)) = 0;
          }
       } while(pPredictorScoresEnd != pPredictorScores);
    }
@@ -127,7 +133,7 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
+      FloatEbmType * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
       const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples;
@@ -140,8 +146,9 @@ public:
          *pPredictorScores = predictorScore;
          ++pPredictorScores;
          const FloatEbmType gradient = EbmStats::TransformScoreToGradientBinaryClassification(predictorScore, targetData);
-         *pGradient = gradient;
-         ++pGradient;
+         *pGradientAndHessian = gradient;
+         *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
+         pGradientAndHessian += 2;
       } while(pPredictorScoresEnd != pPredictorScores);
    }
 };
@@ -162,7 +169,8 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
+      // no hessian for regression
+      FloatEbmType * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
       const FloatEbmType * const pGradientsEnd = pGradient + cSamples;
       const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
@@ -265,7 +273,7 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
+      FloatEbmType * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
@@ -314,15 +322,21 @@ public:
             pExpVector -= cVectorLength;
             iVector = 0;
             do {
-               const FloatEbmType gradient = EbmStats::TransformScoreToGradientMulticlass(
+               FloatEbmType gradient;
+               FloatEbmType hessian;
+               EbmStats::TransformScoreToGradientAndHessianMulticlass(
                   sumExp,
                   *pExpVector,
                   targetData,
-                  iVector
+                  iVector,
+                  gradient,
+                  hessian
                );
                ++pExpVector;
-               *pGradient = gradient;
-               ++pGradient;
+               *pGradientAndHessian = gradient;
+               // TODO: for multiclass, calculate the hessian from the probabilities instead of the gradients since we can avoid the call to std::abs
+               *(pGradientAndHessian + 1) = hessian;
+               pGradientAndHessian += 2;
                ++iVector;
             } while(iVector < cVectorLength);
             // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
@@ -336,7 +350,7 @@ public:
             // cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
             constexpr bool bZeroingLogits = 0 <= k_iZeroLogit;
             if(bZeroingLogits) {
-               *(pGradient - (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroLogit)) = 0;
+               *(pGradientAndHessian - 2 * (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroLogit)) = 0;
             }
 
             iTensorBinCombined >>= cBitsPerItemMax;
@@ -385,7 +399,7 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
+      FloatEbmType * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
@@ -422,8 +436,9 @@ public:
             ++pPredictorScores;
             const FloatEbmType gradient = EbmStats::TransformScoreToGradientBinaryClassification(predictorScore, targetData);
 
-            *pGradient = gradient;
-            ++pGradient;
+            *pGradientAndHessian = gradient;
+            *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
+            pGradientAndHessian += 2;
 
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pPredictorScoresInnerEnd != pPredictorScores);
@@ -471,7 +486,8 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradient = pTrainingSet->GetGradientsPointer();
+      // No hessians for regression
+      FloatEbmType * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
 
       // this shouldn't overflow since we're accessing existing memory

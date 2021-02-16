@@ -389,7 +389,8 @@ Booster * Booster::Allocate(
 
    if(pBooster->m_trainingSet.Initialize(
       true, 
-      bClassification, 
+      bClassification,
+      bClassification,
       bClassification, 
       cFeatureGroups, 
       pBooster->m_apFeatureGroups,
@@ -406,6 +407,7 @@ Booster * Booster::Allocate(
 
    if(pBooster->m_validationSet.Initialize(
       !bClassification, 
+      false,
       bClassification, 
       bClassification, 
       cFeatureGroups, 
@@ -441,7 +443,7 @@ Booster * Booster::Allocate(
             cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
-            pBooster->m_trainingSet.GetGradientsPointer()
+            pBooster->m_trainingSet.GetGradientsAndHessiansPointer()
          )) {
             // error already logged
             Booster::Free(pBooster);
@@ -459,7 +461,7 @@ Booster * Booster::Allocate(
             cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
-            pBooster->m_trainingSet.GetGradientsPointer()
+            pBooster->m_trainingSet.GetGradientsAndHessiansPointer()
          );
          EBM_ASSERT(!isFailed);
       }
@@ -472,7 +474,7 @@ Booster * Booster::Allocate(
             cValidationSamples,
             aValidationTargets,
             aValidationPredictorScores,
-            pBooster->m_validationSet.GetGradientsPointer()
+            pBooster->m_validationSet.GetGradientsAndHessiansPointer()
          );
          EBM_ASSERT(!isFailed);
       }

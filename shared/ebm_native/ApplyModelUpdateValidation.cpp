@@ -139,7 +139,8 @@ public:
       EBM_ASSERT(0 < cSamples);
 
       FloatEbmType sumSquareError = FloatEbmType { 0 };
-      FloatEbmType * pGradient = pValidationSet->GetGradientsPointer();
+      // no hessians for regression
+      FloatEbmType * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
       const FloatEbmType * const pGradientsEnd = pGradient + cSamples;
       const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
@@ -428,7 +429,8 @@ public:
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatEbmType sumSquareError = FloatEbmType { 0 };
-      FloatEbmType * pGradient = pValidationSet->GetGradientsPointer();
+      // no hessians for regression
+      FloatEbmType * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureGroup);
 
       // this shouldn't overflow since we're accessing existing memory

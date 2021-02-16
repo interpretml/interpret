@@ -15,22 +15,29 @@
 #include "FeatureGroup.h"
 #include "DataFrameBoosting.h"
 
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradients(const size_t cSamples, const size_t cVectorLength) {
-   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::ConstructGradients");
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cSamples, const size_t cVectorLength) {
+   LOG_0(TraceLevelInfo, "Entered ConstructGradientsAndHessians");
 
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(1 <= cVectorLength);
 
-   if(IsMultiplyError(cSamples, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructGradients IsMultiplyError(cSamples, cVectorLength)");
+   const size_t cStorageItems = bAllocateHessians ? 2 : 1;
+   if(IsMultiplyError(cStorageItems, cVectorLength)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cStorageItems, cVectorLength)");
+      return nullptr;
+   }
+   const size_t cStorageItemsPerSample = cStorageItems * cVectorLength;
+
+   if(IsMultiplyError(cSamples, cStorageItemsPerSample)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cSamples, cStorageItemsPerSample)");
       return nullptr;
    }
 
-   const size_t cElements = cSamples * cVectorLength;
-   FloatEbmType * aGradients = EbmMalloc<FloatEbmType>(cElements);
+   const size_t cElements = cSamples * cStorageItemsPerSample;
+   FloatEbmType * aGradientsAndHessians = EbmMalloc<FloatEbmType>(cElements);
 
-   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::ConstructGradients");
-   return aGradients;
+   LOG_0(TraceLevelInfo, "Exited ConstructGradientsAndHessians");
+   return aGradientsAndHessians;
 }
 
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
@@ -306,7 +313,8 @@ free_all:
 
 bool DataFrameBoosting::Initialize(
    const bool bAllocateGradients, 
-   const bool bAllocatePredictorScores, 
+   const bool bAllocateHessians,
+   const bool bAllocatePredictorScores,
    const bool bAllocateTargetData, 
    const size_t cFeatureGroups, 
    const FeatureGroup * const * const apFeatureGroup, 
@@ -316,7 +324,7 @@ bool DataFrameBoosting::Initialize(
    const FloatEbmType * const aPredictorScoresFrom, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   EBM_ASSERT(nullptr == m_aGradients);
+   EBM_ASSERT(nullptr == m_aGradientsAndHessians);
    EBM_ASSERT(nullptr == m_aPredictorScores);
    EBM_ASSERT(nullptr == m_aTargetData);
    EBM_ASSERT(nullptr == m_aaInputData);
@@ -325,19 +333,21 @@ bool DataFrameBoosting::Initialize(
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
    if(0 != cSamples) {
-      FloatEbmType * aGradients = nullptr;
+      FloatEbmType * aGradientsAndHessians = nullptr;
       if(bAllocateGradients) {
-         aGradients = ConstructGradients(cSamples, cVectorLength);
-         if(nullptr == aGradients) {
-            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aGradients");
+         aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, cVectorLength);
+         if(nullptr == aGradientsAndHessians) {
+            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aGradientsAndHessians");
             return true;
          }
+      } else {
+         EBM_ASSERT(!bAllocateHessians);
       }
       FloatEbmType * aPredictorScores = nullptr;
       if(bAllocatePredictorScores) {
          aPredictorScores = ConstructPredictorScores(cSamples, cVectorLength, aPredictorScoresFrom);
          if(nullptr == aPredictorScores) {
-            free(aGradients);
+            free(aGradientsAndHessians);
             LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aPredictorScores");
             return true;
          }
@@ -346,7 +356,7 @@ bool DataFrameBoosting::Initialize(
       if(bAllocateTargetData) {
          aTargetData = ConstructTargetData(cSamples, static_cast<const IntEbmType *>(aTargets), runtimeLearningTypeOrCountTargetClasses);
          if(nullptr == aTargetData) {
-            free(aGradients);
+            free(aGradientsAndHessians);
             free(aPredictorScores);
             LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aTargetData");
             return true;
@@ -356,7 +366,7 @@ bool DataFrameBoosting::Initialize(
       if(0 != cFeatureGroups) {
          aaInputData = ConstructInputData(cFeatureGroups, apFeatureGroup, cSamples, aInputDataFrom);
          if(nullptr == aaInputData) {
-            free(aGradients);
+            free(aGradientsAndHessians);
             free(aPredictorScores);
             free(aTargetData);
             LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aaInputData");
@@ -364,7 +374,7 @@ bool DataFrameBoosting::Initialize(
          }
       }
 
-      m_aGradients = aGradients;
+      m_aGradientsAndHessians = aGradientsAndHessians;
       m_aPredictorScores = aPredictorScores;
       m_aTargetData = aTargetData;
       m_aaInputData = aaInputData;
@@ -382,7 +392,7 @@ WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void DataFrameBoosting::Destruct() {
    LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::Destruct");
 
-   free(m_aGradients);
+   free(m_aGradientsAndHessians);
    free(m_aPredictorScores);
    free(m_aTargetData);
 

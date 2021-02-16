@@ -21,13 +21,14 @@ extern bool InitializeGradients(
    FloatEbmType * pGradient
 );
 
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradients(
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(
+   const bool bAllocateHessians,
    const size_t cSamples, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::ConstructGradients");
+   LOG_0(TraceLevelInfo, "Entered ConstructGradientsAndHessians");
 
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aTargetData);
@@ -38,15 +39,23 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradients(
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(1 <= cVectorLength);
 
-   if(UNLIKELY(IsMultiplyError(cSamples, cVectorLength))) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradients IsMultiplyError(cSamples, cVectorLength)");
+
+   const size_t cStorageItems = bAllocateHessians ? 2 : 1;
+   if(IsMultiplyError(cStorageItems, cVectorLength)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cStorageItems, cVectorLength)");
+      return nullptr;
+   }
+   const size_t cStorageItemsPerSample = cStorageItems * cVectorLength;
+
+   if(UNLIKELY(IsMultiplyError(cSamples, cStorageItemsPerSample))) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cSamples, cStorageItemsPerSample)");
       return nullptr;
    }
 
-   const size_t cElements = cSamples * cVectorLength;
-   FloatEbmType * aGradients = EbmMalloc<FloatEbmType>(cElements);
-   if(UNLIKELY(nullptr == aGradients)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradients nullptr == aGradients");
+   const size_t cElements = cSamples * cStorageItemsPerSample;
+   FloatEbmType * aGradientsAndHessians = EbmMalloc<FloatEbmType>(cElements);
+   if(UNLIKELY(nullptr == aGradientsAndHessians)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
       return nullptr;
    }
 
@@ -55,15 +64,15 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradients(
       cSamples,
       aTargetData,
       aPredictorScores,
-      aGradients
+      aGradientsAndHessians
    ))) {
       // error already logged
-      free(aGradients);
+      free(aGradientsAndHessians);
       return nullptr;
    }
 
-   LOG_0(TraceLevelInfo, "Exited ConstructGradients");
-   return aGradients;
+   LOG_0(TraceLevelInfo, "Exited ConstructGradientsAndHessians");
+   return aGradientsAndHessians;
 }
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
@@ -143,7 +152,7 @@ WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void DataFrameInteraction::Destruct() {
    LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::Destruct");
 
-   free(m_aGradients);
+   free(m_aGradientsAndHessians);
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(1 <= m_cFeatureAtomics);
       StorageDataType ** paInputData = m_aaInputData;
@@ -161,7 +170,8 @@ void DataFrameInteraction::Destruct() {
 WARNING_POP
 
 bool DataFrameInteraction::Initialize(
-   const size_t cFeatureAtomics, 
+   const bool bAllocateHessians,
+   const size_t cFeatureAtomics,
    const FeatureAtomic * const aFeatureAtomics, 
    const size_t cSamples, 
    const IntEbmType * const aBinnedData, 
@@ -169,7 +179,7 @@ bool DataFrameInteraction::Initialize(
    const FloatEbmType * const aPredictorScores, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   EBM_ASSERT(nullptr == m_aGradients); // we expect to start with zeroed values
+   EBM_ASSERT(nullptr == m_aGradientsAndHessians); // we expect to start with zeroed values
    EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
    EBM_ASSERT(0 == m_cSamples); // we expect to start with zeroed values
 
@@ -210,19 +220,19 @@ bool DataFrameInteraction::Initialize(
          } while(pTargetFromEnd != pTargetFrom);
       }
 
-      FloatEbmType * aGradients = ConstructGradients(cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
-      if(nullptr == aGradients) {
+      FloatEbmType * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
+      if(nullptr == aGradientsAndHessians) {
          goto exit_error;
       }
       if(0 != cFeatureAtomics) {
          StorageDataType ** const aaInputData = ConstructInputData(cFeatureAtomics, aFeatureAtomics, cSamples, aBinnedData);
          if(nullptr == aaInputData) {
-            free(aGradients);
+            free(aGradientsAndHessians);
             goto exit_error;
          }
          m_aaInputData = aaInputData;
       }
-      m_aGradients = aGradients;
+      m_aGradientsAndHessians = aGradientsAndHessians;
       m_cSamples = cSamples;
    }
    m_cFeatureAtomics = cFeatureAtomics;

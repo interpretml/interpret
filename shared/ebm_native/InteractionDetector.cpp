@@ -124,6 +124,7 @@ InteractionDetector * InteractionDetector::Allocate(
    pRet->m_cLogExitMessages = 1000;
 
    if(pRet->m_dataFrame.Initialize(
+      IsClassification(runtimeLearningTypeOrCountTargetClasses),
       cFeatureAtomics,
       aFeatureAtomics,
       cSamples,

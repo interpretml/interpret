@@ -26,7 +26,7 @@ public:
       const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pGradient
+      FloatEbmType * pGradientAndHessian
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
@@ -40,7 +40,7 @@ public:
       EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
-      EBM_ASSERT(nullptr != pGradient);
+      EBM_ASSERT(nullptr != pGradientAndHessian);
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -59,7 +59,7 @@ public:
 
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pGradientsEnd = pGradient + cSamples * cVectorLength;
+      const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + 2 * cSamples * cVectorLength;
 
       do {
          const IntEbmType targetOriginal = *pTargetData;
@@ -92,10 +92,14 @@ public:
 
          iVector = 0;
          do {
-            const FloatEbmType gradient = EbmStats::TransformScoreToGradientMulticlass(sumExp, *pExpVector, target, iVector);
+            FloatEbmType gradient;
+            FloatEbmType hessian;
+            EbmStats::TransformScoreToGradientAndHessianMulticlass(sumExp, *pExpVector, target, iVector, gradient, hessian);
             ++pExpVector;
-            *pGradient = gradient;
-            ++pGradient;
+            *pGradientAndHessian = gradient;
+            // TODO: for multiclass, calculate the hessian from the probabilities instead of the gradients since we can avoid the call to std::abs
+            *(pGradientAndHessian + 1) = hessian;
+            pGradientAndHessian += 2;
             ++iVector;
          } while(iVector < cVectorLength);
 
@@ -110,9 +114,9 @@ public:
          // We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
          constexpr bool bZeroingLogits = 0 <= k_iZeroLogit;
          if(bZeroingLogits) {
-            pGradient[k_iZeroLogit - static_cast<ptrdiff_t>(cVectorLength)] = 0;
+            pGradientAndHessian[2 * (k_iZeroLogit - static_cast<ptrdiff_t>(cVectorLength))] = 0;
          }
-      } while(pGradientsEnd != pGradient);
+      } while(pGradientAndHessiansEnd != pGradientAndHessian);
 
       if(UNLIKELY(aExpVector != aLocalExpVector)) {
          free(aExpVector);
@@ -135,7 +139,7 @@ public:
       const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pGradient
+      FloatEbmType * pGradientAndHessian
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       LOG_0(TraceLevelInfo, "Entered InitializeGradients");
@@ -147,11 +151,11 @@ public:
       EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
-      EBM_ASSERT(nullptr != pGradient);
+      EBM_ASSERT(nullptr != pGradientAndHessian);
 
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pGradientsEnd = pGradient + cSamples;
+      const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + 2 * cSamples;
 
       do {
          const IntEbmType targetOriginal = *pTargetData;
@@ -164,9 +168,10 @@ public:
          const FloatEbmType predictionScore = *pPredictorScores;
          ++pPredictorScores;
          const FloatEbmType gradient = EbmStats::TransformScoreToGradientBinaryClassification(predictionScore, target);
-         *pGradient = gradient;
-         ++pGradient;
-      } while(pGradientsEnd != pGradient);
+         *pGradientAndHessian = gradient;
+         *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
+         pGradientAndHessian += 2;
+      } while(pGradientAndHessiansEnd != pGradientAndHessian);
       LOG_0(TraceLevelInfo, "Exited InitializeGradients");
       return false;
    }
@@ -184,7 +189,7 @@ public:
       const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pGradient
+      FloatEbmType * pGradientAndHessian
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       LOG_0(TraceLevelInfo, "Entered InitializeGradients");
@@ -196,11 +201,11 @@ public:
       EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
-      EBM_ASSERT(nullptr != pGradient);
+      EBM_ASSERT(nullptr != pGradientAndHessian);
 
       const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pGradientsEnd = pGradient + cSamples;
+      const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + cSamples;
       do {
          // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
          //   from the input data
@@ -215,9 +220,9 @@ public:
          const FloatEbmType predictionScore = *pPredictorScores;
          ++pPredictorScores;
          const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEInit(predictionScore, data);
-         *pGradient = gradient;
-         ++pGradient;
-      } while(pGradientsEnd != pGradient);
+         *pGradientAndHessian = gradient;
+         ++pGradientAndHessian;
+      } while(pGradientAndHessiansEnd != pGradientAndHessian);
       LOG_0(TraceLevelInfo, "Exited InitializeGradients");
       return false;
    }
@@ -228,7 +233,7 @@ extern bool InitializeGradients(
    const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
-   FloatEbmType * pGradient
+   FloatEbmType * pGradientAndHessian
 ) {
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
@@ -237,7 +242,7 @@ extern bool InitializeGradients(
             cSamples,
             aTargetData,
             aPredictorScores,
-            pGradient
+            pGradientAndHessian
          );
       } else {
          return InitializeGradientsInternal<k_dynamicClassification>::Func(
@@ -245,7 +250,7 @@ extern bool InitializeGradients(
             cSamples,
             aTargetData,
             aPredictorScores,
-            pGradient
+            pGradientAndHessian
          );
       }
    } else {
@@ -255,7 +260,7 @@ extern bool InitializeGradients(
          cSamples,
          aTargetData,
          aPredictorScores,
-         pGradient
+         pGradientAndHessian
       );
    }
 }

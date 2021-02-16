@@ -14,7 +14,7 @@
 #include "FeatureGroup.h"
 
 class DataFrameBoosting final {
-   FloatEbmType * m_aGradients;
+   FloatEbmType * m_aGradientsAndHessians;
    FloatEbmType * m_aPredictorScores;
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
@@ -29,7 +29,7 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS void InitializeZero() {
-      m_aGradients = nullptr;
+      m_aGradientsAndHessians = nullptr;
       m_aPredictorScores = nullptr;
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
@@ -41,7 +41,8 @@ public:
 
    bool Initialize(
       const bool bAllocateGradients, 
-      const bool bAllocatePredictorScores, 
+      const bool bAllocateHessians,
+      const bool bAllocatePredictorScores,
       const bool bAllocateTargetData, 
       const size_t cFeatureGroups, 
       const FeatureGroup * const * const apFeatureGroup, 
@@ -52,13 +53,13 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
 
-   INLINE_ALWAYS FloatEbmType * GetGradientsPointer() {
-      EBM_ASSERT(nullptr != m_aGradients);
-      return m_aGradients;
+   INLINE_ALWAYS FloatEbmType * GetGradientsAndHessiansPointer() {
+      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
+      return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS const FloatEbmType * GetGradientsPointer() const {
-      EBM_ASSERT(nullptr != m_aGradients);
-      return m_aGradients;
+   INLINE_ALWAYS const FloatEbmType * GetGradientsAndHessiansPointer() const {
+      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
+      return m_aGradientsAndHessians;
    }
    INLINE_ALWAYS FloatEbmType * GetPredictorScores() {
       EBM_ASSERT(nullptr != m_aPredictorScores);

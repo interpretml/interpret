@@ -37,7 +37,7 @@ public:
       LOG_0(TraceLevelVerbose, "Entered BinBoostingZeroDimensions");
 
       HistogramBucketBase * const pHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry =
+      HistogramBucket<bClassification> * const pHistogramBucketEntry =
          pHistogramBucketBase->GetHistogramBucket<bClassification>();
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
@@ -54,9 +54,9 @@ public:
       EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const FloatEbmType * pGradient = pTrainingSet->GetDataFrameBoosting()->GetGradientsPointer();
+      const FloatEbmType * pGradientAndHessian = pTrainingSet->GetDataFrameBoosting()->GetGradientsAndHessiansPointer();
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pGradientsEnd = pGradient + cVectorLength * cSamples;
+      const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
 
       HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
          pHistogramBucketEntry->GetHistogramTargetEntry();
@@ -89,7 +89,7 @@ public:
          FloatEbmType sumGradientsDebug = 0;
 #endif // NDEBUG
          do {
-            const FloatEbmType gradient = *pGradient;
+            const FloatEbmType gradient = *pGradientAndHessian;
             EBM_ASSERT(!bClassification ||
                ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
                static_cast<ptrdiff_t>(iVector) != k_iZeroLogit || 0 == gradient);
@@ -103,10 +103,10 @@ public:
                //   more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a 
                //   MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the computation if 
                //   not necssary and access it through an accessor so that we can make the change entirely via macro
-               const FloatEbmType hessian = EbmStats::CalculateHessianFromGradientClassification(gradient);
+               const FloatEbmType hessian = *(pGradientAndHessian + 1);
                pHistogramTargetEntry[iVector].SetSumHessians(pHistogramTargetEntry[iVector].GetSumHessians() + hessian * weight);
             }
-            ++pGradient;
+            pGradientAndHessian += bClassification ? 2 : 1;
             ++iVector;
             // if we use this specific format where (iVector < cVectorLength) then the compiler collapses alway the loop for small cVectorLength values
             // if we make this (iVector != cVectorLength) then the loop is not collapsed
@@ -120,7 +120,7 @@ public:
             std::isnan(sumGradientsDebug) ||
             -k_epsilonGradient < sumGradientsDebug && sumGradientsDebug < k_epsilonGradient
          );
-      } while(pGradientsEnd != pGradient);
+      } while(pGradientAndHessiansEnd != pGradientAndHessian);
       LOG_0(TraceLevelVerbose, "Exited BinBoostingZeroDimensions");
    }
 };
@@ -195,7 +195,7 @@ public:
       LOG_0(TraceLevelVerbose, "Entered BinBoostingInternal");
 
       HistogramBucketBase * const aHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets =
+      HistogramBucket<bClassification> * const aHistogramBuckets =
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
@@ -225,18 +225,18 @@ public:
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
       const StorageDataType * pInputData = pTrainingSet->GetDataFrameBoosting()->GetInputDataPointer(pFeatureGroup);
-      const FloatEbmType * pGradient = pTrainingSet->GetDataFrameBoosting()->GetGradientsPointer();
+      const FloatEbmType * pGradientAndHessian = pTrainingSet->GetDataFrameBoosting()->GetGradientsAndHessiansPointer();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pGradientsTrueEnd = pGradient + cVectorLength * cSamples;
-      const FloatEbmType * pGradientsExit = pGradientsTrueEnd;
+      const FloatEbmType * const pGradientAndHessiansTrueEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
+      const FloatEbmType * pGradientAndHessiansExit = pGradientAndHessiansTrueEnd;
       size_t cItemsRemaining = cSamples;
       if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pGradientsExit = pGradientsTrueEnd - cVectorLength * ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
-      EBM_ASSERT(pGradient < pGradientsExit);
-      EBM_ASSERT(pGradientsExit < pGradientsTrueEnd);
+      pGradientAndHessiansExit = pGradientAndHessiansTrueEnd - (bClassification ? 2 : 1) * cVectorLength * ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
+      EBM_ASSERT(pGradientAndHessian < pGradientAndHessiansExit);
+      EBM_ASSERT(pGradientAndHessiansExit < pGradientAndHessiansTrueEnd);
 
       do {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -285,7 +285,7 @@ public:
             FloatEbmType gradientTotalDebug = 0;
 #endif // NDEBUG
             do {
-               const FloatEbmType gradient = *pGradient;
+               const FloatEbmType gradient = *pGradientAndHessian;
                EBM_ASSERT(
                   !bClassification ||
                   ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits ||
@@ -302,12 +302,12 @@ public:
                   //   make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be 
                   //   done in a MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the 
                   //   computation if not necssary and access it through an accessor so that we can make the change entirely via macro
-                  const FloatEbmType hessian = EbmStats::CalculateHessianFromGradientClassification(gradient);
+                  const FloatEbmType hessian = *(pGradientAndHessian + 1);
                   pHistogramTargetEntry[iVector].SetSumHessians(
                      pHistogramTargetEntry[iVector].GetSumHessians() + hessian * weight
                   );
                }
-               ++pGradient;
+               pGradientAndHessian += bClassification ? 2 : 1;
                ++iVector;
                // if we use this specific format where (iVector < cVectorLength) then the compiler collapses alway the loop for small cVectorLength values
                // if we make this (iVector != cVectorLength) then the loop is not collapsed
@@ -322,22 +322,22 @@ public:
             );
 
             iTensorBinCombined >>= cBitsPerItemMax;
-            // TODO : try replacing cItemsRemaining with a pGradientsExit which eliminates one subtact operation, but might make it harder for 
+            // TODO : try replacing cItemsRemaining with a pGradientAndHessiansExit which eliminates one subtact operation, but might make it harder for 
             //   the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
-      } while(pGradientsExit != pGradient);
+      } while(pGradientAndHessiansExit != pGradientAndHessian);
 
       // first time through?
-      if(pGradientsTrueEnd != pGradient) {
+      if(pGradientAndHessiansTrueEnd != pGradientAndHessian) {
          LOG_0(TraceLevelVerbose, "Handling last BinBoostingInternal loop");
 
-         EBM_ASSERT(0 == (pGradientsTrueEnd - pGradient) % cVectorLength);
-         cItemsRemaining = (pGradientsTrueEnd - pGradient) / cVectorLength;
+         EBM_ASSERT(0 == (pGradientAndHessiansTrueEnd - pGradientAndHessian) % (cVectorLength * (bClassification ? 2 : 1)));
+         cItemsRemaining = (pGradientAndHessiansTrueEnd - pGradientAndHessian) / (cVectorLength * (bClassification ? 2 : 1));
          EBM_ASSERT(0 < cItemsRemaining);
          EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
 
-         pGradientsExit = pGradientsTrueEnd;
+         pGradientAndHessiansExit = pGradientAndHessiansTrueEnd;
 
          goto one_last_loop;
       }

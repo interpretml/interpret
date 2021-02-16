@@ -13,7 +13,7 @@
 #include "FeatureAtomic.h"
 
 class DataFrameInteraction final {
-   FloatEbmType * m_aGradients;
+   FloatEbmType * m_aGradientsAndHessians;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
    size_t m_cFeatureAtomics;
@@ -28,14 +28,15 @@ public:
    void Destruct();
 
    INLINE_ALWAYS void InitializeZero() {
-      m_aGradients = nullptr;
+      m_aGradientsAndHessians = nullptr;
       m_aaInputData = nullptr;
       m_cSamples = 0;
       m_cFeatureAtomics = 0;
    }
 
    bool Initialize(
-      const size_t cFeatureAtomics, 
+      const bool bAllocateHessians,
+      const size_t cFeatureAtomics,
       const FeatureAtomic * const aFeatureAtomics, 
       const size_t cSamples, 
       const IntEbmType * const aInputDataFrom, 
@@ -44,9 +45,9 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
 
-   INLINE_ALWAYS const FloatEbmType * GetGradientsPointer() const {
-      EBM_ASSERT(nullptr != m_aGradients);
-      return m_aGradients;
+   INLINE_ALWAYS const FloatEbmType * GetGradientsAndHessiansPointer() const {
+      EBM_ASSERT(nullptr != m_aGradientsAndHessians);
+      return m_aGradientsAndHessians;
    }
    // TODO: we can change this to take the m_iFeatureData value directly, which we get from a loop index
    INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const FeatureAtomic * const pFeatureAtomic) const {

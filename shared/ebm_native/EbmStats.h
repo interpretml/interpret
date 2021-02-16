@@ -330,7 +330,7 @@ public:
 
    EbmStats() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType CalculateHessianFromGradientClassification(const FloatEbmType gradient) {
+   INLINE_ALWAYS static FloatEbmType CalculateHessianFromGradientBinaryClassification(const FloatEbmType gradient) {
       // this function IS performance critical as it's called on every sample * cClasses * cInnerBags
 
       // normally you would calculate the hessian from the class probability, but for classification it's possible
@@ -457,7 +457,7 @@ public:
       //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
       //   logit, and TransformScoreToGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
       //   sumGradient can always be zero since it's a sum of positive and negative values sumHessian is harder to get to zero, 
-      //   since it's a sum of positive numbers.  The sumHessian is the sum of values returned from CalculateHessianFromGradientClassification.  gradient 
+      //   since it's a sum of positive numbers.  The sumHessian is the sum of values returned from CalculateHessianFromGradientBinaryClassification.  gradient 
       //   must be -1, 0, or +1 to make the hessian zero.  -1 and +1 are hard, but not impossible to get to with really bad inputs, 
       //   since boosting tends to push errors towards 0.  An error of 0 is most likely when the denominator term in either
       //   TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
@@ -540,12 +540,12 @@ public:
       //   also, since -cSamples <= sumGradient && sumGradient <= cSamples, and since cSamples must be 64 bits or lower, we cann't overflow 
       //   to infinity when taking the sum
 
-      // sumHessian cannot be infinity -> per the notes in CalculateHessianFromGradientClassification
+      // sumHessian cannot be infinity -> per the notes in CalculateHessianFromGradientBinaryClassification
 
       // since this is classification, -cSamples <= sumGradient && sumGradient <= cSamples
       EBM_ASSERT(!std::isinf(sumGradient)); // a 64-bit number can't get a value larger than a double to overflow to infinity
 
-      // since this is classification, 0 <= sumHessian && sumHessian <= 0.25 * cSamples (see notes in CalculateHessianFromGradientClassification), 
+      // since this is classification, 0 <= sumHessian && sumHessian <= 0.25 * cSamples (see notes in CalculateHessianFromGradientBinaryClassification), 
       // so sumHessian can't be infinity
       EBM_ASSERT(!std::isinf(sumHessian)); // a 64-bit number can't get a value larger than a double to overflow to infinity
 
@@ -559,7 +559,7 @@ public:
       // sumGradient can always be much smaller than sumHessian, since it's a sum, so it can add positive and negative numbers such that it reaches 
       // almost zero whlie sumHessian is always positive
 
-      // sumHessian can always be much smaller than sumGradient.  Example: 0.999 -> the sumHessian will be 0.000999 (see CalculateHessianFromGradientClassification)
+      // sumHessian can always be much smaller than sumGradient.  Example: 0.999 -> the sumHessian will be 0.000999 (see CalculateHessianFromGradientBinaryClassification)
 
       // since the denominator term always goes up as we add new numbers (it's always positive), we can only have a zero in that term if ALL samples have 
       // low denominators
@@ -717,8 +717,9 @@ public:
 
 #ifndef NDEBUG
       const FloatEbmType expVal = std::exp(predictorScore);
-      const FloatEbmType gradientDebug = 
-         TransformScoreToGradientMulticlass(FloatEbmType { 1 } + expVal, expVal, target, 1);
+      FloatEbmType gradientDebug;
+      FloatEbmType hessianDebug;
+      TransformScoreToGradientAndHessianMulticlass(FloatEbmType { 1 } + expVal, expVal, target, 1, gradientDebug, hessianDebug);
       // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
@@ -727,11 +728,13 @@ public:
       return gradient;
    }
 
-   INLINE_ALWAYS static FloatEbmType TransformScoreToGradientMulticlass(
+   INLINE_ALWAYS static void TransformScoreToGradientAndHessianMulticlass(
       const FloatEbmType sumExp, 
       const FloatEbmType itemExp, 
       const size_t target, 
-      const size_t iVector
+      const size_t iVector,
+      FloatEbmType & gradientOut,
+      FloatEbmType & hessianOut
    ) {
       // this IS a performance critical function.  It gets called per sample AND per-class!
 
@@ -776,9 +779,9 @@ public:
 
       // probability can be SLIGHTLY larger than 1 due to numeric issues -> this should only happen if sumExp == itemExp approximately, so there can be no 
       //   other logit terms in sumExp, and this would only happen after many many rounds of boosting (see above about 70,900 rounds of boosting).
-      // - if probability was slightly larger than 1, we shouldn't expect a crash.  What would happen is that in our next call to CalculateHessianFromGradientClassification, we
+      // - if probability was slightly larger than 1, we shouldn't expect a crash.  What would happen is that in our next call to CalculateHessianFromGradientBinaryClassification, we
       //   would find our denomiator term as a negative number (normally it MUST be positive).  If that happens, then later when we go to compute the
-      //   small model update, we'll inadvertently flip the sign of the update, but since CalculateHessianFromGradientClassification was close to the discontinuity at 0,
+      //   small model update, we'll inadvertently flip the sign of the update, but since CalculateHessianFromGradientBinaryClassification was close to the discontinuity at 0,
       //   we know that the update should have a value of 1 * learningRate = 0.01 for default input parameters.  This means that even in the very very
       //   very unlikely case that we flip our sign due to numericacy error, which only happens after an unreasonable number of boosting rounds, we'll
       //   flip the sign on a minor update to the logits.  We can tollerate this sign flip and next round we're not likely to see the same sign flip, so
@@ -807,7 +810,11 @@ public:
       // the sum of e^logit must be about equal to e^logit for this class, which should require thousands of rounds (70,900 or so)
       // also, the boosting algorthm tends to push results to zero, so a result more negative than -1 would be very exceptional
       EBM_ASSERT(std::isnan(probability) || !std::isinf(gradient) && FloatEbmType { -1 } - k_epsilonGradient <= gradient && gradient <= FloatEbmType { 1 });
-      return gradient;
+
+      const FloatEbmType hessian = probability * (FloatEbmType { 1 } - probability);
+
+      gradientOut = gradient;
+      hessianOut = hessian;
    }
 
    INLINE_ALWAYS static FloatEbmType ComputeSingleSampleLogLossBinaryClassification(
