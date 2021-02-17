@@ -14,10 +14,8 @@
 #include "ebm_native.h"
 #include "EbmInternal.h"
 
-// TODO: enable approximate exp and log by default
 // TODO: try out floats throughout our program instead of doubles.  It'll be important when we move to GPUs and SIMD
-// TODO: try using the less accurate ExpApproxSchraudolph version sometime and see how much difference it makes
-//       in terms of speed first, then if it makes a speed difference, check the AUC and calibration using the benchmark system
+// TODO: do more extensive checks for of AUC and calibration using the benchmark system
 // TODO: do the massive multi-dataset addExpSchraudolphTerm/addLogSchraudolphTerm  term optimization using our benchmarks
 
 // START SECTION CORRECT ROUNDING : https://en.wikipedia.org/wiki/IEEE_754#Roundings_to_nearest
@@ -292,6 +290,7 @@ constexpr float k_expOverflowPoint = 88.5f; // this is exactly representable in 
 #define EXP_INT
 
 template<
+   bool bNegateInput = false,
    bool bNaNPossible = true,
    bool bUnderflowPossible = true,
    bool bOverflowPossible = true,
@@ -323,13 +322,25 @@ INLINE_ALWAYS T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm 
       //       or convert floats to ints that can't succeed, provided the platform defines how these are handled
 
       if(bUnderflowPossible) {
-         if(UNLIKELY(val < T { k_expUnderflowPoint })) {
-            return T { 0 };
+         if(bNegateInput) {
+            if(UNLIKELY(T { -k_expUnderflowPoint } < val)) {
+               return T { 0 };
+            }
+         } else {
+            if(UNLIKELY(val < T { k_expUnderflowPoint })) {
+               return T { 0 };
+            }
          }
       }
       if(bOverflowPossible) {
-         if(UNLIKELY(T { k_expOverflowPoint } < val)) {
-            return std::numeric_limits<T>::infinity();
+         if(bNegateInput) {
+            if(UNLIKELY(val < T { -k_expOverflowPoint })) {
+               return std::numeric_limits<T>::infinity();
+            }
+         } else {
+            if(UNLIKELY(T { k_expOverflowPoint } < val)) {
+               return std::numeric_limits<T>::infinity();
+            }
          }
       }
       if(bSpecialCaseZero) {
@@ -339,6 +350,7 @@ INLINE_ALWAYS T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm 
       }
 
       const float valFloat = static_cast<float>(val);
+      constexpr float signedExpMultiple = bNegateInput ? -k_expMultiple : k_expMultiple;
 
 #ifdef EXP_INT
 
@@ -347,14 +359,14 @@ INLINE_ALWAYS T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm 
       // has some transfer time or time to swtich integer/float values.  Integers in the range we're expecting also
       // have a little more precision, which means we can get closer to the ideal addExpSchraudolphTerm that we want
 
-      const int32_t retInt = static_cast<int32_t>(k_expMultiple * valFloat) + addExpSchraudolphTerm;
+      const int32_t retInt = static_cast<int32_t>(signedExpMultiple * valFloat) + addExpSchraudolphTerm;
 #else
 
       // TODO: test the speed of this form once we have SIMD implemented
 
       // this version might be faster if there's a cost to switching between int to float.  Fused multiply add is either 
       // just as fast as plain multiply, or pretty close to it though, so throwing in the add might be low cost or free
-      const int32_t retInt = static_cast<int32_t>(k_expMultiple * valFloat + static_cast<float>(addExpSchraudolphTerm));
+      const int32_t retInt = static_cast<int32_t>(signedExpMultiple * valFloat + static_cast<float>(addExpSchraudolphTerm));
 #endif
 
       float retFloat;
@@ -373,6 +385,7 @@ INLINE_ALWAYS T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm 
 }
 
 template<
+   bool bNegateInput = false,
    bool bNaNPossible = true,
    bool bUnderflowPossible = true,
    bool bOverflowPossible = true,
@@ -425,13 +438,25 @@ INLINE_ALWAYS T ExpApproxBest(T val) {
       //       or convert floats to ints that can't succeed, provided the platform defines how these are handled
 
       if(bUnderflowPossible) {
-         if(UNLIKELY(val < T { k_expUnderflowPoint })) {
-            return T { 0 };
+         if(bNegateInput) {
+            if(UNLIKELY(T { -k_expUnderflowPoint } < val)) {
+               return T { 0 };
+            }
+         } else {
+            if(UNLIKELY(val < T { k_expUnderflowPoint })) {
+               return T { 0 };
+            }
          }
       }
       if(bOverflowPossible) {
-         if(UNLIKELY(T { k_expOverflowPoint } < val)) {
-            return std::numeric_limits<T>::infinity();
+         if(bNegateInput) {
+            if(UNLIKELY(val < T { -k_expOverflowPoint })) {
+               return std::numeric_limits<T>::infinity();
+            }
+         } else {
+            if(UNLIKELY(T { k_expOverflowPoint } < val)) {
+               return std::numeric_limits<T>::infinity();
+            }
          }
       }
       if(bSpecialCaseZero) {
@@ -441,9 +466,17 @@ INLINE_ALWAYS T ExpApproxBest(T val) {
       }
 
       float valFloat = static_cast<float>(val);
-      const float negativeCorrection = UNPREDICTABLE(0.00000000f <= valFloat) ? 0.00000000f : 1.00000000f;
+      float negativeCorrection;
 
-      valFloat *= 1.44269502f; // 9 digits for most accurate float representation of: 1 / ln(2)
+      // if valFloat is zero, give the same negativeCorrection since the output should be indistinquishable betwee +-0
+      if(bNegateInput) {
+         negativeCorrection = UNPREDICTABLE(valFloat <= 0.00000000f) ? 0.00000000f : 1.00000000f;
+      } else {
+         negativeCorrection = UNPREDICTABLE(0.00000000f <= valFloat) ? 0.00000000f : 1.00000000f;
+      }
+
+      // 9 digits for most accurate float representation of: 1 / ln(2)
+      valFloat *= bNegateInput ? -1.44269502f : 1.44269502f;
 
       // TODO: (static_cast<float>(static_cast<int32_t>(valFloat)) - negativeCorrection) can alternatively be computed as:
       //       - FIRST, look up _mm_round_sd with _MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC which I think does
@@ -519,7 +552,7 @@ INLINE_ALWAYS T ExpApproxBest(T val) {
    return val;
 }
 
-template<typename T>
+template<bool bNegateInput = false, typename T>
 INLINE_ALWAYS T ExpForBinaryClassification(const T val) {
 #ifdef FAST_EXP
    // the optimal addExpSchraudolphTerm would be different between binary 
@@ -527,13 +560,13 @@ INLINE_ALWAYS T ExpForBinaryClassification(const T val) {
 
    // TODO : Tune ExpApproxSchraudolph specifically for binary classification
 
-   return ExpApproxSchraudolph<true, true, true, false, T>(val);
+   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val);
 #else // FAST_EXP
-   return std::exp(val);
+   return std::exp(bNegateInput ? -val : val);
 #endif // FAST_EXP
 }
 
-template<typename T>
+template<bool bNegateInput = false, typename T>
 INLINE_ALWAYS T ExpForMulticlass(const T val) {
 #ifdef FAST_EXP
    // the optimal addExpSchraudolphTerm would be different between binary
@@ -541,9 +574,9 @@ INLINE_ALWAYS T ExpForMulticlass(const T val) {
 
    // TODO : Tune ExpApproxSchraudolph specifically for multiclass classification
 
-   return ExpApproxSchraudolph<true, true, true, false, T>(val);
+   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val);
 #else // FAST_EXP
-   return std::exp(val);
+   return std::exp(bNegateInput ? -val : val);
 #endif // FAST_EXP
 }
 
@@ -599,6 +632,7 @@ constexpr float k_logTermZeroMeanErrorForLogFrom1_To1_5 = -87.9865799f; // exper
 // https://github.com/ekmett/approximate/blob/master/cbits/fast.c
 
 template<
+   bool bNegateOutput = false,
    bool bNaNPossible = true,
    bool bNegativePossible = true,
    bool bZeroPossible = true, // if false, positive zero returns a big negative number, negative zero returns a big positive number
@@ -670,7 +704,11 @@ INLINE_ALWAYS T LogApproxSchraudolph(T val, const float addLogSchraudolphTerm = 
          float retFloat = static_cast<float>(retInt);
 
          // use a fused multiply add assembly instruction, so don't add the addLogSchraudolphTerm prior to multiplying
-         retFloat = k_logMultiple * retFloat + addLogSchraudolphTerm;
+         if(bNegateOutput) {
+            retFloat = (-k_logMultiple) * retFloat + (-addLogSchraudolphTerm);
+         } else {
+            retFloat = k_logMultiple * retFloat + addLogSchraudolphTerm;
+         }
 
          val = static_cast<T>(retFloat);
       }
@@ -678,7 +716,7 @@ INLINE_ALWAYS T LogApproxSchraudolph(T val, const float addLogSchraudolphTerm = 
    return val;
 }
 
-template<typename T>
+template<bool bNegateInput = false, typename T>
 INLINE_ALWAYS T ExpForLogLossBinaryClassification(const T val) {
 #ifdef FAST_LOG
    // the optimal addExpSchraudolphTerm is different between binary and multiclass 
@@ -688,15 +726,15 @@ INLINE_ALWAYS T ExpForLogLossBinaryClassification(const T val) {
    //        k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit was tuned for softmax with 3 classes and one of them zeroed.  
    //        For binary classification we can assume large positive logits typically, unlike multiclass
 
-   return ExpApproxSchraudolph<true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
+   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
 #else // FAST_LOG
    // if we're using the non-approximate std::log function, we might as well use std::exp as well for the
    // places that we compute Exp for the log loss
-   return std::exp(val);
+   return std::exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
 }
 
-template<typename T>
+template<bool bNegateInput = false, typename T>
 INLINE_ALWAYS T ExpForLogLossMulticlass(const T val) {
 #ifdef FAST_LOG
    // the optimal addExpSchraudolphTerm is different between binary and multiclass 
@@ -708,15 +746,15 @@ INLINE_ALWAYS T ExpForLogLossMulticlass(const T val) {
    //        tuned for softmax with a zeroed logit, but it probably doesn't matter much because we don't
    //        care much about shifts in the log loss metric provided the shifts are stable
 
-   return ExpApproxSchraudolph<true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
+   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
 #else // FAST_LOG
    // if we're using the non-approximate std::log function, we might as well use std::exp as well for the
    // places that we compute Exp for the log loss
-   return std::exp(val);
+   return std::exp(bNegateInput ? -val : val);
 #endif // FAST_LOG
 }
 
-template<typename T>
+template<bool bNegateOutput = false, typename T>
 INLINE_ALWAYS T LogForLogLoss(const T val) {
 
    // the log function is only used to calculate the log loss on the valididation set only in our codebase
@@ -743,9 +781,11 @@ INLINE_ALWAYS T LogForLogLoss(const T val) {
    // at that point if early stopping is enabled.  If we return a large positive result here instead of infinity
    // there shouldn't be any real consequences.
    // val can't be negative or zero from the formulas that we calculate before calling this log function
-   return LogApproxSchraudolph<true, false, false, false, T>(val, k_logTermLowerBoundInputCloseToOne);
+   return LogApproxSchraudolph<bNegateOutput, true, false, false, false, T>(val, k_logTermLowerBoundInputCloseToOne);
 #else // FAST_LOG
-   return std::log(val);
+   T ret = std::log(val);
+   ret = bNegateOutput ? -ret : ret;
+   return ret;
 #endif // FAST_LOG
 }
 

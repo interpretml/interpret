@@ -697,7 +697,7 @@ public:
       //                const FloatEbmType gradient = (UNPREDICTABLE(0 == target) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -predictorScore : predictorScore));
       // !!! IMPORTANT: SEE ABOVE
       const FloatEbmType gradient = (UNPREDICTABLE(0 == target) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } +
-         ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -predictorScore : predictorScore));
+         ExpForBinaryClassification<false>(UNPREDICTABLE(0 == target) ? -predictorScore : predictorScore));
 
       // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
       // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
@@ -833,7 +833,7 @@ public:
 
       EBM_ASSERT(0 == target || 1 == target);
 
-      const FloatEbmType ourExp = ExpForLogLossBinaryClassification(UNPREDICTABLE(0 == target) ? predictorScore : -predictorScore);
+      const FloatEbmType ourExp = ExpForLogLossBinaryClassification<false>(UNPREDICTABLE(0 == target) ? predictorScore : -predictorScore);
       // no reasonable implementation of exp should lead to a negative value
       EBM_ASSERT(std::isnan(predictorScore) || FloatEbmType { 0 } <= ourExp);
 
@@ -842,7 +842,7 @@ public:
       // one way to a very very certain outcome (essentially 100%) and the validation set has the opposite, but in that case our ultimate convergence is 
       // infinity anyways, and we'll be generaly driving up the log loss, so we legitimately want our loop to terminate training since we're getting a 
       // worse and worse model, so going to infinity isn't bad in that case
-      const FloatEbmType singleSampleLogLoss = LogForLogLoss(FloatEbmType { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
+      const FloatEbmType singleSampleLogLoss = LogForLogLoss<false>(FloatEbmType { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
 
       // singleSampleLogLoss can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, 
       // so we should only get propagation NaN values
@@ -934,7 +934,7 @@ public:
 
       EBM_ASSERT(std::isnan(invertedProbability) || FloatEbmType { 1 } - k_epsilonLogLoss <= invertedProbability);
 
-      const FloatEbmType singleSampleLogLoss = LogForLogLoss(invertedProbability);
+      const FloatEbmType singleSampleLogLoss = LogForLogLoss<false>(invertedProbability);
 
       // we're never taking the log of any number close to a negative, so we won't get a NaN result here UNLESS invertedProbability was already NaN and we're NaN 
       // propegating

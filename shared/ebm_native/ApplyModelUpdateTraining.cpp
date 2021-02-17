@@ -84,7 +84,7 @@ public:
 
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType oneExp = ExpForMulticlass(predictorScore);
+            const FloatEbmType oneExp = ExpForMulticlass<false>(predictorScore);
             *pExpVector = oneExp;
             ++pExpVector;
             sumExp += oneExp;
@@ -319,7 +319,7 @@ public:
 
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
-               const FloatEbmType oneExp = ExpForMulticlass(predictorScore);
+               const FloatEbmType oneExp = ExpForMulticlass<false>(predictorScore);
                *pExpVector = oneExp;
                ++pExpVector;
                sumExp += oneExp;

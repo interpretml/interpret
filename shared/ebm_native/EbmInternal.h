@@ -187,13 +187,13 @@ constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 //
 // struct MyStruct { int myInt[1]; };
 // MyStruct * pMyStruct = malloc(sizeof(MyStruct) + sizeof(int));
-// "pMyStruct->myInt[2] = 3;" 
+// "pMyStruct->myInt[1] = 3;" 
 // 
 // Compilers have been getting agressive in using undefined behavior to optimize code, so even though the struct
 // hack is still widely used, we don't want to risk invoking undefined behavior. By converting an array 
 // into a pointer though with the ArrayToPointer function below, we can make this legal again by always writing: 
 //
-// "ArrayToPointer(pMyStruct->myInt)[2] = 3;"
+// "ArrayToPointer(pMyStruct->myInt)[1] = 3;"
 //
 // I've seen a lot of speculation on the internet that the struct hack is always illegal, but I believe this is
 // incorrect using this modified access method.  To illustrate, everything in this example should be completely legal:
@@ -202,7 +202,7 @@ constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 // char * pMem = malloc(sizeof(MyStruct) + sizeof(int));
 // size_t myOffset = offsetof(MyStruct, myInt);
 // int * pInt = reinterpret_cast<int *>(pMem + myOffset);
-// pInt[2] = 3;
+// pInt[1] = 3;
 //
 // We endure all this hassle because in a number of places we co-locate memory for performance reasons.  We do allocate 
 // sufficient memory for doing this, and we also statically check that our structures are standard layout structures, 
