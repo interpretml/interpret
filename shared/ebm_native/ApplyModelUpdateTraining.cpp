@@ -171,7 +171,7 @@ public:
       const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
          // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient - smallChangeToPrediction);
+         const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
          *pGradient = gradient;
          ++pGradient;
       } while(pGradientsEnd != pGradient);
@@ -506,7 +506,7 @@ public:
 
             const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient - smallChangeToPrediction);
+            const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
 
             *pGradient = gradient;
             ++pGradient;

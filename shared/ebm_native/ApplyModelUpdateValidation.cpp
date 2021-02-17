@@ -155,7 +155,7 @@ public:
       const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
          // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient - smallChangeToPrediction);
+         const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
          const FloatEbmType singleSampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
          EBM_ASSERT(std::isnan(singleSampleSquaredError) || FloatEbmType { 0 } <= singleSampleSquaredError);
          sumSquareError += singleSampleSquaredError;
@@ -477,7 +477,7 @@ public:
 
             const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient - smallChangeToPrediction);
+            const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
             const FloatEbmType sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
             EBM_ASSERT(std::isnan(sampleSquaredError) || FloatEbmType { 0 } <= sampleSquaredError);
             sumSquareError += sampleSquaredError;

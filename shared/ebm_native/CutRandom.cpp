@@ -513,7 +513,7 @@ public:
                pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType update = pHistogramTargetEntry[iVector].m_sumGradients;
+               FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iVector].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                // for DP-EBMs, we can't zero one of the class scores as we can for logits since we're returning a sum
@@ -552,7 +552,7 @@ public:
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                   FloatEbmType update;
                   if(bClassification) {
-                     update = EbmStats::ComputeSinglePartitionUpdateClassification(
+                     update = EbmStats::ComputeSinglePartitionUpdate(
                         pHistogramTargetEntry[iVector].m_sumGradients,
                         pHistogramTargetEntry[iVector].GetSumHessians()
                      );
@@ -566,7 +566,7 @@ public:
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
                   } else {
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                     update = EbmStats::ComputeSinglePartitionUpdateRegression(
+                     update = EbmStats::ComputeSinglePartitionUpdate(
                         pHistogramTargetEntry[iVector].m_sumGradients,
                         static_cast<FloatEbmType>(cSamples)
                      );

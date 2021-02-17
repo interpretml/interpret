@@ -125,7 +125,7 @@ static bool BoostZeroDimensional(
          pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType update = aSumHistogramTargetEntry[iVector].m_sumGradients;
+            const FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iVector].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             // Hmmm.. for DP we need the sum, which means that we can't zero one of the class numbers as we
@@ -141,7 +141,7 @@ static bool BoostZeroDimensional(
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateClassification(
+            FloatEbmType update = EbmStats::ComputeSinglePartitionUpdate(
                aSumHistogramTargetEntry[iVector].m_sumGradients,
                aSumHistogramTargetEntry[iVector].GetSumHessians()
             );
@@ -164,10 +164,10 @@ static bool BoostZeroDimensional(
       const HistogramTargetEntry<false> * const aSumHistogramTargetEntry =
          pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-         const FloatEbmType smallChangeToModel = aSumHistogramTargetEntry[0].m_sumGradients;
+         const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
          aValues[0] = smallChangeToModel;
       } else {
-         const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateRegression(
+         const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
             aSumHistogramTargetEntry[0].m_sumGradients,
             static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
          );

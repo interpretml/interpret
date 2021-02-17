@@ -62,7 +62,7 @@ static void Flatten(
       do {
          FloatEbmType update;
          if(bClassification) {
-            update = EbmStats::ComputeSinglePartitionUpdateClassification(
+            update = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntry->m_sumGradients, pHistogramTargetEntry->GetSumHessians());
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -75,7 +75,7 @@ static void Flatten(
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
          } else {
-            update = EbmStats::ComputeSinglePartitionUpdateRegression(
+            update = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntry->m_sumGradients, static_cast<FloatEbmType>(pTreeNode->AMBIGUOUS_GetCountSamples()));
          }
          *pValuesCur = update;
@@ -268,8 +268,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          }
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType CHANGE_sumGradients =
-               pHistogramTargetEntry[iVector].m_sumGradients;
+            const FloatEbmType CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
 
             aSumGradientsRight[iVector] -= CHANGE_sumGradients;
             aSumHistogramTargetEntryLeft[iVector].m_sumGradients += CHANGE_sumGradients;
@@ -533,7 +532,7 @@ public:
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateClassification(
+               FloatEbmType update = EbmStats::ComputeSinglePartitionUpdate(
                   pRootTreeNode->GetHistogramTargetEntry()[iVector].m_sumGradients, pRootTreeNode->GetHistogramTargetEntry()[iVector].GetSumHessians()
                );
 
@@ -550,7 +549,7 @@ public:
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateRegression(
+            const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
                pRootTreeNode->GetHistogramTargetEntry()[0].m_sumGradients, static_cast<FloatEbmType>(cSamplesTotal)
             );
             FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
@@ -607,11 +606,11 @@ public:
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType update0 = EbmStats::ComputeSinglePartitionUpdateClassification(
+               FloatEbmType update0 = EbmStats::ComputeSinglePartitionUpdate(
                   pHistogramTargetEntryLeftChild[iVector].m_sumGradients,
                   pHistogramTargetEntryLeftChild[iVector].GetSumHessians()
                );
-               FloatEbmType update1 = EbmStats::ComputeSinglePartitionUpdateClassification(
+               FloatEbmType update1 = EbmStats::ComputeSinglePartitionUpdate(
                   pHistogramTargetEntryRightChild[iVector].m_sumGradients,
                   pHistogramTargetEntryRightChild[iVector].GetSumHessians()
                );
@@ -632,11 +631,11 @@ public:
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            aValues[0] = EbmStats::ComputeSinglePartitionUpdateRegression(
+            aValues[0] = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntryLeftChild[0].m_sumGradients,
                static_cast<FloatEbmType>(pLeftChild->AMBIGUOUS_GetCountSamples())
             );
-            aValues[1] = EbmStats::ComputeSinglePartitionUpdateRegression(
+            aValues[1] = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntryRightChild[0].m_sumGradients,
                static_cast<FloatEbmType>(pRightChild->AMBIGUOUS_GetCountSamples())
             );
