@@ -28,7 +28,7 @@ static_assert(std::is_pod<FeatureGroupEntry>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 class FeatureGroup final {
-   size_t m_cItemsPerBitPackedDataUnit;
+   ptrdiff_t m_cItemsPerBitPackedDataUnit;
    size_t m_cDimensions;
    size_t m_cSignificantDimensions;
    size_t m_iInputData;
@@ -72,11 +72,21 @@ public:
    static FeatureGroup ** AllocateFeatureGroups(const size_t cFeatureGroups) noexcept;
    static void FreeFeatureGroups(const size_t cFeatureGroups, FeatureGroup ** apFeatureGroups) noexcept;
 
-   INLINE_ALWAYS void SetCountItemsPerBitPackedDataUnit(const size_t cItemsPerBitPackedDataUnit) noexcept {
+   INLINE_ALWAYS void SetCountItemsPerBitPackedDataUnit(const ptrdiff_t cItemsPerBitPackedDataUnit) noexcept {
+      EBM_ASSERT(k_cItemsPerBitPackedDataUnitDynamic2 != cItemsPerBitPackedDataUnit);
+      EBM_ASSERT(k_cItemsPerBitPackedDataUnitNone == cItemsPerBitPackedDataUnit ||
+         k_cItemsPerBitPackedDataUnitMin2 <= cItemsPerBitPackedDataUnit &&
+         cItemsPerBitPackedDataUnit <= k_cItemsPerBitPackedDataUnitMax2
+      );
       m_cItemsPerBitPackedDataUnit = cItemsPerBitPackedDataUnit;
    }
 
-   INLINE_ALWAYS size_t GetCountItemsPerBitPackedDataUnit() const noexcept {
+   INLINE_ALWAYS ptrdiff_t GetCountItemsPerBitPackedDataUnit() const noexcept {
+      EBM_ASSERT(k_cItemsPerBitPackedDataUnitDynamic2 != m_cItemsPerBitPackedDataUnit);
+      EBM_ASSERT(k_cItemsPerBitPackedDataUnitNone == m_cItemsPerBitPackedDataUnit || 
+         k_cItemsPerBitPackedDataUnitMin2 <= m_cItemsPerBitPackedDataUnit && 
+         m_cItemsPerBitPackedDataUnit <= k_cItemsPerBitPackedDataUnitMax2
+      );
       return m_cItemsPerBitPackedDataUnit;
    }
 

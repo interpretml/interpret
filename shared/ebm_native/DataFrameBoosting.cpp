@@ -192,7 +192,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          *paInputDataTo = nullptr; // free will skip over these later
          ++paInputDataTo;
       } else {
-         const size_t cItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+         EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
+         const size_t cItemsPerBitPackedDataUnit = static_cast<size_t>(pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
          // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
          EBM_ASSERT(cItemsPerBitPackedDataUnit <= CountBitsRequiredPositiveMax<StorageDataType>());
          const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);

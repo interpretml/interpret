@@ -366,16 +366,14 @@ constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCou
 #define GET_DIMENSIONS(MACRO_compilerCountDimensions, MACRO_runtimeCountDimensions) \
    (k_dynamicDimensions == (MACRO_compilerCountDimensions) ? static_cast<size_t>(MACRO_runtimeCountDimensions) : static_cast<size_t>(MACRO_compilerCountDimensions))
 
-#ifndef TODO_remove_this
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in 
 // places where you couldn't do so with variable loop iterations
 #define GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(MACRO_compilerCountItemsPerBitPackedDataUnit, MACRO_runtimeCountItemsPerBitPackedDataUnit) \
-   (k_cItemsPerBitPackedDataUnitDynamic == (MACRO_compilerCountItemsPerBitPackedDataUnit) ? \
-      (MACRO_runtimeCountItemsPerBitPackedDataUnit) : (MACRO_compilerCountItemsPerBitPackedDataUnit))
-#endif
+   (k_cItemsPerBitPackedDataUnitDynamic2 == (MACRO_compilerCountItemsPerBitPackedDataUnit) ? \
+      static_cast<size_t>(MACRO_runtimeCountItemsPerBitPackedDataUnit) : static_cast<size_t>(MACRO_compilerCountItemsPerBitPackedDataUnit))
 
 template<typename T>
 constexpr size_t CountBitsRequired(const T maxValue) noexcept {
@@ -431,29 +429,36 @@ constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked(const size_t cItemsBit
 }
 #endif
 
-// TODO : remove the 2 suffixes from these, and verify these are being used!!
-constexpr size_t k_cItemsPerBitPackedDataUnitMax2 = k_cBitsForStorageType;
-static_assert(k_cItemsPerBitPackedDataUnitMax2 <= k_cBitsForStorageType, "k_cItemsPerBitPackedDataUnitMax too big");
-constexpr size_t k_cItemsPerBitPackedDataUnitMin2 = 1;
-static_assert(1 <= k_cItemsPerBitPackedDataUnitMin2, "k_cItemsPerBitPackedDataUnitMin cannot be zero");
+constexpr ptrdiff_t k_cItemsPerBitPackedDataUnitNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
+// TODO : remove the 2 suffixes from these, and verify these are being used!!  AND at the same time verify that we like the sign of anything that uses these constants size_t vs ptrdiff_t
+constexpr ptrdiff_t k_cItemsPerBitPackedDataUnitDynamic2 = ptrdiff_t { 0 };
+constexpr ptrdiff_t k_cItemsPerBitPackedDataUnitMax2 = ptrdiff_t { k_cBitsForStorageType };
+static_assert(k_cItemsPerBitPackedDataUnitMax2 <= ptrdiff_t { k_cBitsForStorageType }, "k_cItemsPerBitPackedDataUnitMax too big");
+constexpr ptrdiff_t k_cItemsPerBitPackedDataUnitMin2 = ptrdiff_t { 1 };
+static_assert(1 <= k_cItemsPerBitPackedDataUnitMin2 || k_cItemsPerBitPackedDataUnitDynamic2 == k_cItemsPerBitPackedDataUnitMin2 && k_cItemsPerBitPackedDataUnitDynamic2 == k_cItemsPerBitPackedDataUnitMax2, "k_cItemsPerBitPackedDataUnitMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
 static_assert(k_cItemsPerBitPackedDataUnitMin2 <= k_cItemsPerBitPackedDataUnitMax2, "bit pack max less than min");
 static_assert(
-   k_cItemsPerBitPackedDataUnitMin2 == k_cBitsForStorageType / (k_cBitsForStorageType / k_cItemsPerBitPackedDataUnitMin2),
+   k_cItemsPerBitPackedDataUnitDynamic2 == k_cItemsPerBitPackedDataUnitMin2 ||
+   k_cItemsPerBitPackedDataUnitMin2 == 
+   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackedDataUnitMin2),
    "k_cItemsPerBitPackedDataUnitMin needs to be on the progression series");
 static_assert(
-   k_cItemsPerBitPackedDataUnitMax2 == k_cBitsForStorageType / (k_cBitsForStorageType / k_cItemsPerBitPackedDataUnitMax2),
+   k_cItemsPerBitPackedDataUnitDynamic2 == k_cItemsPerBitPackedDataUnitMax2 ||
+   k_cItemsPerBitPackedDataUnitMax2 == 
+   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackedDataUnitMax2),
    "k_cItemsPerBitPackedDataUnitMax needs to be on the progression series");
-constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked2(const size_t cItemsBitPackedPrev) noexcept {
-   // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1,0 [there are 15 of these + the empty case]
-   // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 [which are all included in 64 bits + the empty case]
-   //
-   // we continue the progression until we hit k_cItemsPerBitPackedDataUnitMin.  After that point we return 1
-   // so that we have a fallback case for handling any data size.  Then, following 1, we return 0 
-   // to handle feature groups that have only one legal state.  The caller can limit this last case by stopping at 1
-   return cItemsBitPackedPrev <= size_t { 1 } ? size_t { 0 } : (
-      k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1) < k_cItemsPerBitPackedDataUnitMin ?
-      size_t { 1 } :
-      k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1)
+constexpr INLINE_ALWAYS ptrdiff_t GetNextCountItemsBitPacked2(const ptrdiff_t cItemsBitPackedPrev) noexcept {
+   // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (optionaly),-1 
+   // [there are 15 of these + the dynamic case + onebin case]
+   // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 (optionaly),-1 
+   // [which are all included in 64 bits + the dynamic case + onebin case]
+
+   return cItemsBitPackedPrev <= k_cItemsPerBitPackedDataUnitDynamic2 ? k_cItemsPerBitPackedDataUnitNone : (
+      k_cItemsPerBitPackedDataUnitMin2 == cItemsBitPackedPrev ?
+      (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackedDataUnitMax2 &&
+      ptrdiff_t { 1 } == k_cItemsPerBitPackedDataUnitMin2 ?
+      k_cItemsPerBitPackedDataUnitNone : k_cItemsPerBitPackedDataUnitDynamic2) :
+      ptrdiff_t { k_cBitsForStorageType } / ((ptrdiff_t { k_cBitsForStorageType } / cItemsBitPackedPrev) + 1)
    );
 }
 
@@ -531,6 +536,81 @@ INLINE_ALWAYS T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noe
       return a;
    }
 }
+
+INLINE_RELEASE_UNTEMPLATED const char * SkipWhitespace(const char * s) {
+   char oneChar = *s;
+   while(0x20 == oneChar || 0x9 <= oneChar && oneChar <= 0xd) {
+      // skip whitespace
+      ++s;
+      oneChar = *s;
+   }
+   return s;
+}
+
+template<typename T>
+INLINE_ALWAYS const char * ConvertStringToFloat(const char * const s, T * const pResultOut);
+
+template<>
+INLINE_ALWAYS const char * ConvertStringToFloat(const char * const s, double * const pResultOut) {
+   // we skip beginning whitespaces (strtod guarantees this)
+   // unlike strtod, we also skip trailing whitespaces
+
+   assert(nullptr != s); // can't use EBM_ASSERT in this header!
+   assert(nullptr != pResultOut);
+
+   // the C++ standard says this about strtod:
+   //   If the subject sequence is empty or does not have the expected form, no
+   //   conversion is performed; the value of nptr is stored in the object
+   //   pointed to by endptr, provided that endptr is not a null pointer.
+   //
+   // But, I'm unwilling to trust that there is no variation in the C++ runtime libraries, so I'll do my best to 
+   // trust but verify by setting sNext before calling strtod, even though that involves a const cast
+   char * sNext = const_cast<char *>(s);
+   const double ret = std::strtod(s, &sNext);
+   if(s == sNext || nullptr == sNext) {
+      // technically, sNext should never be nullptr, but we're again verifying our trust of the C++ library
+      return nullptr;
+   }
+   *pResultOut = ret;
+   return SkipWhitespace(sNext);
+}
+
+INLINE_RELEASE_UNTEMPLATED const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel) {
+   // amazingly, C++ doesn't seem to provide a case insensive string comparer
+   // this function skips inital whitespaces and trailing whitespaces
+   // this function returns nullptr if there is no match, otherwise it returns a pointer to the 
+   // first non-whitespace character
+
+   char mainChar = *sMain;
+   while(0x20 == mainChar || 0x9 <= mainChar && mainChar <= 0xd) {
+      // skip whitespace
+      ++sMain;
+      mainChar = *sMain;
+   }
+   char labelChar = *sLabel;
+   while(0 != labelChar) {
+      if('A' <= mainChar && mainChar <= 'Z') {
+         mainChar += 'a' - 'A';
+      }
+      if('A' <= labelChar && labelChar <= 'Z') {
+         labelChar += 'a' - 'A';
+      }
+      if(mainChar != labelChar) {
+         return nullptr;
+      }
+      ++sMain;
+      ++sLabel;
+      mainChar = *sMain;
+      labelChar = *sLabel;
+   }
+   while(0x20 == mainChar || 0x9 <= mainChar && mainChar <= 0xd) {
+      // skip whitespace
+      ++sMain;
+      mainChar = *sMain;
+   }
+   return sMain;
+}
+
 
 // TODO: figure out if we really want/need to template the handling of different bit packing sizes.  It might
 //       be the case that for specific bit sizes, like 8x8, we want to keep our memory stride as small as possible

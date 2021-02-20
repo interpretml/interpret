@@ -175,7 +175,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, ptrdiff_t compilerCountItemsPerBitPackedDataUnit>
 class BinBoostingInternal final {
 public:
 
@@ -207,7 +207,7 @@ public:
          compilerCountItemsPerBitPackedDataUnit,
          pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
       );
-      EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
+      EBM_ASSERT(size_t { 1 } <= cItemsPerBitPackedDataUnit);
       EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
       EBM_ASSERT(1 <= cBitsPerItemMax);
@@ -394,7 +394,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, ptrdiff_t compilerCountItemsPerBitPackedDataUnitPossible>
 class BinBoostingSIMDPacking final {
 public:
 
@@ -405,11 +405,11 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet
    ) {
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      const ptrdiff_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
 
-      EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
-      EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
+      EBM_ASSERT(ptrdiff_t { 1 } <= runtimeCountItemsPerBitPackedDataUnit);
+      EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= ptrdiff_t { k_cBitsForStorageType });
+      static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= ptrdiff_t { k_cBitsForStorageType }, "We can't have this many items in a data pack.");
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
          BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
             pThreadStateBoosting,
@@ -440,8 +440,8 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet
    ) {
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
-      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
+      EBM_ASSERT(ptrdiff_t { 1 } <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
+      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= ptrdiff_t { k_cBitsForStorageType });
       BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pThreadStateBoosting,
          pFeatureGroup,

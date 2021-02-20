@@ -290,6 +290,8 @@ EXIT /B 0
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />
+    <ClInclude Include="Objective.h" />
+    <ClInclude Include="ObjectivePseudoHuber.h" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />
@@ -322,6 +324,7 @@ EXIT /B 0
     <ClCompile Include="GenerateQuantileCuts.cpp" />
     <ClCompile Include="GenerateUniformCuts.cpp" />
     <ClCompile Include="GenerateWinsorizedCuts.cpp" />
+    <ClCompile Include="Objective.cpp" />
     <ClCompile Include="ThreadStateBoosting.cpp" />
     <ClCompile Include="ThreadStateInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />

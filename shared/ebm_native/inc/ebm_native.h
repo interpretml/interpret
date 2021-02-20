@@ -13,10 +13,12 @@
 #ifdef __cplusplus
 extern "C" {
 #define EBM_BOOL_CAST(EBM_VAL) (static_cast<BoolEbmType>(EBM_VAL))
+#define EBM_ERROR_CAST(EBM_VAL) (static_cast<ErrorEbmType>(EBM_VAL))
 #define EBM_TRACE_CAST(EBM_VAL) (static_cast<TraceEbmType>(EBM_VAL))
 #define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL) (static_cast<GenerateUpdateOptionsType>(EBM_VAL))
 #else // __cplusplus
 #define EBM_BOOL_CAST(EBM_VAL) ((BoolEbmType)(EBM_VAL))
+#define EBM_ERROR_CAST(EBM_VAL) ((ErrorEbmType)(EBM_VAL))
 #define EBM_TRACE_CAST(EBM_VAL) ((TraceEbmType)(EBM_VAL))
 #define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL) ((GenerateUpdateOptionsType)(EBM_VAL))
 #endif // __cplusplus
@@ -131,6 +133,8 @@ typedef int32_t TraceEbmType;
 #define TraceEbmTypePrintf PRId32
 typedef IntEbmType BoolEbmType;
 #define BoolEbmTypePrintf IntEbmTypePrintf
+typedef IntEbmType ErrorEbmType;
+#define ErrorEbmTypePrintf IntEbmTypePrintf
 typedef IntEbmType GenerateUpdateOptionsType;
 // technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
 typedef UIntEbmType UGenerateUpdateOptionsType;
@@ -138,6 +142,15 @@ typedef UIntEbmType UGenerateUpdateOptionsType;
 
 #define EBM_FALSE          (EBM_BOOL_CAST(0))
 #define EBM_TRUE           (EBM_BOOL_CAST(1))
+
+#define Error_None                                    (EBM_ERROR_CAST(0))
+#define Error_OutOfMemory                             (EBM_ERROR_CAST(1))
+#define Error_ObjectiveConstructionException          (EBM_ERROR_CAST(2))
+#define Error_ObjectiveParameterUnknown               (EBM_ERROR_CAST(3))
+#define Error_ObjectiveParameterValueMalformed        (EBM_ERROR_CAST(4))
+#define Error_ObjectiveParameterValueOutOfRange       (EBM_ERROR_CAST(5))
+#define Error_ObjectiveCountTargetClassesInvalid      (EBM_ERROR_CAST(6))
+#define Error_ObjectiveUnknown                        (EBM_ERROR_CAST(7))
 
 #define GenerateUpdateOptions_Default              (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
 #define GenerateUpdateOptions_DisableNewtonGain    (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))

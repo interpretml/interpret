@@ -14,6 +14,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
+#include "Objective.h"
 #include "EbmStats.h"
 // feature includes
 #include "FeatureAtomic.h"
@@ -271,6 +272,7 @@ Booster * Booster::Allocate(
          pBooster->m_apFeatureGroups[iFeatureGroup] = pFeatureGroup;
 
          size_t cSignificantDimensions = 0;
+         ptrdiff_t cItemsPerBitPackedDataUnit = k_cItemsPerBitPackedDataUnitNone;
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(TraceLevelInfo, "INFO Booster::Initialize empty feature group");
          } else {
@@ -357,13 +359,13 @@ Booster * Booster::Allocate(
                   cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplit;
                }
 
-               // if cSignificantDimensions is zero, don't both initializing pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
                const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
                EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
-               pFeatureGroup->SetCountItemsPerBitPackedDataUnit(GetCountItemsBitPacked(cBitsRequiredMin));
+               cItemsPerBitPackedDataUnit = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
             }
          }
          pFeatureGroup->SetCountSignificantFeatures(cSignificantDimensions);
+         pFeatureGroup->SetCountItemsPerBitPackedDataUnit(cItemsPerBitPackedDataUnit);
 
          ++iFeatureGroup;
       } while(iFeatureGroup < cFeatureGroups);

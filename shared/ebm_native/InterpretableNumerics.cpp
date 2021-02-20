@@ -268,6 +268,7 @@ static FloatEbmType StringToFloatWithFixup(
    // +-infinity for at least some implementations.  We can't really take a ratio from those numbers, so convert
    // this to the lowest and max values
 
+   // TODO: switch over to using our better ConvertStringToFloat function now!
    FloatEbmType ret = strtod(str, nullptr);
 
    // this is a check for -infinity/-HUGE_VAL, without the -infinity value since some compilers make that illegal
