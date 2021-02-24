@@ -564,7 +564,6 @@ public:
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup
    ) {
-      Booster * const pBooster = pThreadStateBoosting->GetBooster();
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
 
       EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);

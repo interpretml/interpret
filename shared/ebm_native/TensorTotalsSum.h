@@ -200,9 +200,6 @@ void TensorTotalsSum(
    //       be optimized away.  We should probably build special cases for this function for pairs (only 4 options
    //       in an if statement), and tripples (only 8 options in an if statement) and then keep this more general one 
    //       for higher dimensions
-   const size_t cSignficantDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantDimensions());
-   EBM_ASSERT(1 <= cSignficantDimensions);
-   EBM_ASSERT(cSignficantDimensions <= k_cDimensionsMax);
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,

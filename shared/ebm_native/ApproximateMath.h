@@ -323,22 +323,22 @@ INLINE_ALWAYS T ExpApproxSchraudolph(T val, const int32_t addExpSchraudolphTerm 
 
       if(bUnderflowPossible) {
          if(bNegateInput) {
-            if(UNLIKELY(T { -k_expUnderflowPoint } < val)) {
+            if(UNLIKELY(static_cast<T>(-k_expUnderflowPoint) < val)) {
                return T { 0 };
             }
          } else {
-            if(UNLIKELY(val < T { k_expUnderflowPoint })) {
+            if(UNLIKELY(val < static_cast<T>(k_expUnderflowPoint))) {
                return T { 0 };
             }
          }
       }
       if(bOverflowPossible) {
          if(bNegateInput) {
-            if(UNLIKELY(val < T { -k_expOverflowPoint })) {
+            if(UNLIKELY(val < static_cast<T>(-k_expOverflowPoint))) {
                return std::numeric_limits<T>::infinity();
             }
          } else {
-            if(UNLIKELY(T { k_expOverflowPoint } < val)) {
+            if(UNLIKELY(static_cast<T>(k_expOverflowPoint) < val)) {
                return std::numeric_limits<T>::infinity();
             }
          }
@@ -439,22 +439,22 @@ INLINE_ALWAYS T ExpApproxBest(T val) {
 
       if(bUnderflowPossible) {
          if(bNegateInput) {
-            if(UNLIKELY(T { -k_expUnderflowPoint } < val)) {
+            if(UNLIKELY(static_cast<T>(-k_expUnderflowPoint) < val)) {
                return T { 0 };
             }
          } else {
-            if(UNLIKELY(val < T { k_expUnderflowPoint })) {
+            if(UNLIKELY(val < static_cast<T>(k_expUnderflowPoint))) {
                return T { 0 };
             }
          }
       }
       if(bOverflowPossible) {
          if(bNegateInput) {
-            if(UNLIKELY(val < T { -k_expOverflowPoint })) {
+            if(UNLIKELY(val < static_cast<T>(-k_expOverflowPoint))) {
                return std::numeric_limits<T>::infinity();
             }
          } else {
-            if(UNLIKELY(T { k_expOverflowPoint } < val)) {
+            if(UNLIKELY(static_cast<T>(k_expOverflowPoint) < val)) {
                return std::numeric_limits<T>::infinity();
             }
          }
@@ -679,7 +679,7 @@ INLINE_ALWAYS T LogApproxSchraudolph(T val, const float addLogSchraudolphTerm = 
             }
          }
          if(!std::is_same<T, float>::value) {
-            if(UNLIKELY(T { std::numeric_limits<float>::max() } < val)) {
+            if(UNLIKELY(static_cast<T>(std::numeric_limits<float>::max()) < val)) {
                // if val is a non-float32, and it has a value outside of the float range, then it would result in 
                // undefined behavior if we converted it to a float, so check it here and return
                return std::numeric_limits<T>::infinity();

@@ -1540,7 +1540,7 @@ TEST_CASE("Random splitting, no cuts, binary, sums") {
             CHECK_APPROX(modelValue0, 0.0f);
 
             FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 1);
-            CHECK_APPROX(modelValue0, 0.0f);
+            CHECK_APPROX(modelValue1, 0.0f);
          }
       }
    }

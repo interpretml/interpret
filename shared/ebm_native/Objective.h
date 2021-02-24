@@ -20,7 +20,7 @@ class Objective {
 
    public:
 
-      INLINE_RELEASE_UNTEMPLATED static ErrorEbmType Func(
+      INLINE_ALWAYS static ErrorEbmType Func(
          const Objective * const pObjective,
          ThreadStateBoosting * const pThreadStateBoosting,
          const FeatureGroup * const pFeatureGroup
@@ -45,7 +45,7 @@ class Objective {
          } else {
             return ApplyModelUpdateTrainingBits<
                TObjective,
-               GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
+               GetNextCountItemsBitPacked2(compilerCountItemsPerBitPackedDataUnitPossible)
             >::Func(
                pObjective,
                pThreadStateBoosting,
@@ -61,7 +61,7 @@ class Objective {
 
       ApplyModelUpdateTrainingBits() = delete; // this is a static class.  Do not construct
 
-      INLINE_RELEASE_UNTEMPLATED static ErrorEbmType Func(
+      INLINE_ALWAYS static ErrorEbmType Func(
          const Objective * const pObjective,
          ThreadStateBoosting * const pThreadStateBoosting,
          const FeatureGroup * const pFeatureGroup
@@ -80,7 +80,7 @@ class Objective {
 
    public:
 
-      INLINE_RELEASE_UNTEMPLATED static ErrorEbmType Func(
+      INLINE_ALWAYS static ErrorEbmType Func(
          const Objective * const pObjective,
          ThreadStateBoosting * const pThreadStateBoosting,
          const FeatureGroup * const pFeatureGroup,
@@ -107,7 +107,7 @@ class Objective {
          } else {
             return ApplyModelUpdateValidationBits<
                TObjective,
-               GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
+               GetNextCountItemsBitPacked2(compilerCountItemsPerBitPackedDataUnitPossible)
             >::Func(
                pObjective,
                pThreadStateBoosting,
@@ -124,7 +124,7 @@ class Objective {
 
       ApplyModelUpdateValidationBits() = delete; // this is a static class.  Do not construct
 
-      INLINE_RELEASE_UNTEMPLATED static ErrorEbmType Func(
+      INLINE_ALWAYS static ErrorEbmType Func(
          const Objective * const pObjective,
          ThreadStateBoosting * const pThreadStateBoosting,
          const FeatureGroup * const pFeatureGroup,
@@ -146,7 +146,7 @@ class Objective {
    ) const {
       static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
       const TObjective * const pTObjective = static_cast<const TObjective *>(this);
-      return pTObjective->ApplyModelUpdateTrainingTemplated<compilerCountItemsPerBitPackedDataUnit>(
+      return pTObjective->template ApplyModelUpdateTrainingTemplated<compilerCountItemsPerBitPackedDataUnit>(
          pThreadStateBoosting, 
          pFeatureGroup
       );
@@ -160,7 +160,7 @@ class Objective {
    ) const {
       static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
       const TObjective * const pTObjective = static_cast<const TObjective *>(this);
-      return pTObjective->ApplyModelUpdateValidationTemplated<compilerCountItemsPerBitPackedDataUnit>(
+      return pTObjective->template ApplyModelUpdateValidationTemplated<compilerCountItemsPerBitPackedDataUnit>(
          pThreadStateBoosting, 
          pFeatureGroup,
          pMetricOut
@@ -172,22 +172,24 @@ protected:
    Objective() = default;
 
    template<typename TObjective, ptrdiff_t compilerCountItemsPerBitPackedDataUnit>
-   INLINE_RELEASE_TEMPLATED ErrorEbmType ApplyModelUpdateTrainingShared(
+   ErrorEbmType ApplyModelUpdateTrainingShared(
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup
    ) const {
       static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
       const TObjective * const pTObjective = static_cast<const TObjective *>(this);
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
 
       UNUSED(pTObjective);
-      UNUSED(pThreadStateBoosting);
+      UNUSED(pBooster);
       UNUSED(pFeatureGroup);
 
       constexpr bool bOnlyOneBin = k_cItemsPerBitPackedDataUnitNone == compilerCountItemsPerBitPackedDataUnit;
       if(bOnlyOneBin) {
       } else {
-         //Booster * const pBooster = pThreadStateBoosting->GetBooster();
-         //const ptrdiff_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+         const ptrdiff_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+         UNUSED(runtimeCountItemsPerBitPackedDataUnit);
+
          //DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
 
          //const size_t cSamples = pTrainingSet->GetCountSamples();
@@ -269,22 +271,26 @@ protected:
    }
 
    template<typename TObjective, ptrdiff_t compilerCountItemsPerBitPackedDataUnit>
-   INLINE_RELEASE_TEMPLATED ErrorEbmType ApplyModelUpdateValidationShared(
+   ErrorEbmType ApplyModelUpdateValidationShared(
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       FloatEbmType * const pMetricOut
    ) const {
       static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
       const TObjective * const pTObjective = static_cast<const TObjective *>(this);
+      Booster * const pBooster = pThreadStateBoosting->GetBooster();
 
       UNUSED(pTObjective);
-      UNUSED(pThreadStateBoosting);
+      UNUSED(pBooster);
       UNUSED(pFeatureGroup);
 
       constexpr bool bOnlyOneBin = k_cItemsPerBitPackedDataUnitNone == compilerCountItemsPerBitPackedDataUnit;
       if(bOnlyOneBin) {
          *pMetricOut = -9999;
       } else {
+         const ptrdiff_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+         UNUSED(runtimeCountItemsPerBitPackedDataUnit);
+
          FloatEbmType gradient;
          FloatEbmType hessian;
          pTObjective->CalculateGradientAndHessian(FloatEbmType { 10 }, FloatEbmType { 5 }, gradient, hessian);
