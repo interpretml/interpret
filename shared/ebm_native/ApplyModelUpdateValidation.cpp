@@ -211,7 +211,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
 class ApplyModelUpdateValidationInternal final {
 public:
 
@@ -229,7 +229,7 @@ public:
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -241,13 +241,10 @@ public:
       EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
 
-      const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
-         compilerCountItemsPerBitPackedDataUnit,
-         runtimeCountItemsPerBitPackedDataUnit
-      );
-      EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
-      EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
+      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
+      EBM_ASSERT(1 <= cItemsPerBitPack);
+      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -261,17 +258,17 @@ public:
       const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples * cVectorLength;
       const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
       const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-      if(cSamples <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1) * cVectorLength;
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1) * cVectorLength;
       EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
       EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
       do {
-         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPackedDataUnit * cVectorLength;
+         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPack * cVectorLength;
          // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-         // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
+         // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
@@ -329,8 +326,8 @@ public:
 };
 
 #ifndef EXPAND_BINARY_LOGITS
-template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateValidationInternal<2, compilerCountItemsPerBitPackedDataUnit> final {
+template<size_t compilerBitPack>
+class ApplyModelUpdateValidationInternal<2, compilerBitPack> final {
 public:
 
    ApplyModelUpdateValidationInternal() = delete; // this is a static class.  Do not construct
@@ -343,20 +340,17 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
 
-      const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
-         compilerCountItemsPerBitPackedDataUnit,
-         runtimeCountItemsPerBitPackedDataUnit
-      );
-      EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
-      EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
+      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
+      EBM_ASSERT(1 <= cItemsPerBitPack);
+      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -370,17 +364,17 @@ public:
       const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples;
       const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
       const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-      if(cSamples <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1);
       EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
       EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
       do {
-         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPackedDataUnit;
+         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPack;
          // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-         // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
+         // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
@@ -416,8 +410,8 @@ public:
 };
 #endif // EXPAND_BINARY_LOGITS
 
-template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateValidationInternal<k_regression, compilerCountItemsPerBitPackedDataUnit> final {
+template<size_t compilerBitPack>
+class ApplyModelUpdateValidationInternal<k_regression, compilerBitPack> final {
 public:
 
    ApplyModelUpdateValidationInternal() = delete; // this is a static class.  Do not construct
@@ -430,20 +424,17 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
 
-      const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
-         compilerCountItemsPerBitPackedDataUnit,
-         runtimeCountItemsPerBitPackedDataUnit
-      );
-      EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
-      EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
+      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
+      EBM_ASSERT(1 <= cItemsPerBitPack);
+      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -457,17 +448,17 @@ public:
       const FloatEbmType * const pGradientsTrueEnd = pGradient + cSamples;
       const FloatEbmType * pGradientsExit = pGradientsTrueEnd;
       const FloatEbmType * pGradientsInnerEnd = pGradientsTrueEnd;
-      if(cSamples <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pGradientsExit = pGradientsTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
+      pGradientsExit = pGradientsTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1);
       EBM_ASSERT(pGradient < pGradientsExit);
       EBM_ASSERT(pGradientsExit < pGradientsTrueEnd);
 
       do {
-         pGradientsInnerEnd = pGradient + cItemsPerBitPackedDataUnit;
+         pGradientsInnerEnd = pGradient + cItemsPerBitPack;
          // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-         // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
+         // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
@@ -517,7 +508,7 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+         return ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
             pThreadStateBoosting,
             pFeatureGroup
          );
@@ -547,14 +538,14 @@ public:
       EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return ApplyModelUpdateValidationInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+      return ApplyModelUpdateValidationInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pThreadStateBoosting,
          pFeatureGroup
       );
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
 class ApplyModelUpdateValidationSIMDPacking final {
 public:
 
@@ -564,20 +555,20 @@ public:
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup
    ) {
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
 
-      EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
-      EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
-      if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
-         return ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
+      EBM_ASSERT(1 <= runtimeBitPack);
+      EBM_ASSERT(runtimeBitPack <= k_cBitsForStorageType);
+      static_assert(compilerBitPack <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
+      if(compilerBitPack == runtimeBitPack) {
+         return ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
             pThreadStateBoosting,
             pFeatureGroup
          );
       } else {
          return ApplyModelUpdateValidationSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
-            GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
+            GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
             pThreadStateBoosting,
             pFeatureGroup
@@ -587,7 +578,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateValidationSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> final {
+class ApplyModelUpdateValidationSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic> final {
 public:
 
    ApplyModelUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
@@ -596,11 +587,11 @@ public:
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup
    ) {
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
-      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
+      EBM_ASSERT(1 <= pFeatureGroup->GetBitPack());
+      EBM_ASSERT(pFeatureGroup->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
       return ApplyModelUpdateValidationInternal<
          compilerLearningTypeOrCountTargetClasses, 
-         k_cItemsPerBitPackedDataUnitDynamic
+         k_cItemsPerBitPackDynamic
       >::Func(
          pThreadStateBoosting,
          pFeatureGroup
@@ -629,7 +620,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          return ApplyModelUpdateValidationSIMDPacking<
             compilerLearningTypeOrCountTargetClassesPossible,
-            k_cItemsPerBitPackedDataUnitMax
+            k_cItemsPerBitPackMax
          >::Func(
             pThreadStateBoosting,
             pFeatureGroup
@@ -662,7 +653,7 @@ public:
 
       return ApplyModelUpdateValidationSIMDPacking<
          k_dynamicClassification,
-         k_cItemsPerBitPackedDataUnitMax
+         k_cItemsPerBitPackMax
       >::Func(
          pThreadStateBoosting,
          pFeatureGroup
@@ -708,7 +699,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ret = ApplyModelUpdateValidationSIMDPacking<k_regression, k_cItemsPerBitPackedDataUnitMax>::Func(
+            ret = ApplyModelUpdateValidationSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pThreadStateBoosting,
                pFeatureGroup
             );
@@ -727,7 +718,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ret = ApplyModelUpdateValidationInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+            ret = ApplyModelUpdateValidationInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pThreadStateBoosting,
                pFeatureGroup
             );

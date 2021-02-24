@@ -223,7 +223,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
 class ApplyModelUpdateTrainingInternal final {
 public:
 
@@ -255,13 +255,10 @@ public:
       EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
 
-      const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
-         compilerCountItemsPerBitPackedDataUnit,
-         pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
-      );
-      EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
-      EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
+      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pFeatureGroup->GetBitPack());
+      EBM_ASSERT(1 <= cItemsPerBitPack);
+      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -278,17 +275,17 @@ public:
       const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples * cVectorLength;
       const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
       const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-      if(cSamples <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1) * cVectorLength;
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1) * cVectorLength;
       EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
       EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
       do {
-         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPackedDataUnit * cVectorLength;
+         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPack * cVectorLength;
          // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-         // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
+         // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
@@ -359,8 +356,8 @@ public:
 };
 
 #ifndef EXPAND_BINARY_LOGITS
-template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateTrainingInternal<2, compilerCountItemsPerBitPackedDataUnit> final {
+template<size_t compilerBitPack>
+class ApplyModelUpdateTrainingInternal<2, compilerBitPack> final {
 public:
 
    ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
@@ -370,20 +367,17 @@ public:
       const FeatureGroup * const pFeatureGroup
    ) {
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
 
-      const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
-         compilerCountItemsPerBitPackedDataUnit,
-         runtimeCountItemsPerBitPackedDataUnit
-      );
-      EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
-      EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
+      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
+      EBM_ASSERT(1 <= cItemsPerBitPack);
+      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -400,17 +394,17 @@ public:
       const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples;
       const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
       const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-      if(cSamples <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1);
       EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
       EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
       do {
-         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPackedDataUnit;
+         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPack;
          // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-         // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
+         // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
@@ -446,8 +440,8 @@ public:
 };
 #endif // EXPAND_BINARY_LOGITS
 
-template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateTrainingInternal<k_regression, compilerCountItemsPerBitPackedDataUnit> final {
+template<size_t compilerBitPack>
+class ApplyModelUpdateTrainingInternal<k_regression, compilerBitPack> final {
 public:
 
    ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
@@ -457,20 +451,17 @@ public:
       const FeatureGroup * const pFeatureGroup
    ) {
       Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
 
-      const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
-         compilerCountItemsPerBitPackedDataUnit,
-         runtimeCountItemsPerBitPackedDataUnit
-      );
-      EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
-      EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
+      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
+      EBM_ASSERT(1 <= cItemsPerBitPack);
+      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -486,17 +477,17 @@ public:
       const FloatEbmType * const pGradientTrueEnd = pGradient + cSamples;
       const FloatEbmType * pGradientExit = pGradientTrueEnd;
       const FloatEbmType * pGradientInnerEnd = pGradientTrueEnd;
-      if(cSamples <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pGradientExit = pGradientTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
+      pGradientExit = pGradientTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1);
       EBM_ASSERT(pGradient < pGradientExit);
       EBM_ASSERT(pGradientExit < pGradientTrueEnd);
 
       do {
-         pGradientInnerEnd = pGradient + cItemsPerBitPackedDataUnit;
+         pGradientInnerEnd = pGradient + cItemsPerBitPack;
          // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-         // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
+         // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
@@ -543,7 +534,7 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+         ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
             pThreadStateBoosting,
             pFeatureGroup
          );
@@ -573,14 +564,14 @@ public:
       EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      ApplyModelUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+      ApplyModelUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pThreadStateBoosting,
          pFeatureGroup
       );
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
 class ApplyModelUpdateTrainingSIMDPacking final {
 public:
 
@@ -590,20 +581,20 @@ public:
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup
    ) {
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
 
-      EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
-      EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
-      if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
-         ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
+      EBM_ASSERT(1 <= runtimeBitPack);
+      EBM_ASSERT(runtimeBitPack <= k_cBitsForStorageType);
+      static_assert(compilerBitPack <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
+      if(compilerBitPack == runtimeBitPack) {
+         ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
             pThreadStateBoosting,
             pFeatureGroup
          );
       } else {
          ApplyModelUpdateTrainingSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
-            GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
+            GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
             pThreadStateBoosting,
             pFeatureGroup
@@ -613,7 +604,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateTrainingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> final {
+class ApplyModelUpdateTrainingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic> final {
 public:
 
    ApplyModelUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
@@ -622,9 +613,9 @@ public:
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup
    ) {
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
-      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
-      ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+      EBM_ASSERT(1 <= pFeatureGroup->GetBitPack());
+      EBM_ASSERT(pFeatureGroup->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
+      ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic>::Func(
          pThreadStateBoosting,
          pFeatureGroup
       );
@@ -652,7 +643,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          ApplyModelUpdateTrainingSIMDPacking<
             compilerLearningTypeOrCountTargetClassesPossible,
-            k_cItemsPerBitPackedDataUnitMax
+            k_cItemsPerBitPackMax
          >::Func(
             pThreadStateBoosting,
             pFeatureGroup
@@ -683,7 +674,7 @@ public:
       EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      ApplyModelUpdateTrainingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackedDataUnitMax>::Func(
+      ApplyModelUpdateTrainingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
          pThreadStateBoosting,
          pFeatureGroup
       );
@@ -724,7 +715,7 @@ extern void ApplyModelUpdateTraining(
             ApplyModelUpdateTrainingSIMDTarget<2>::Func(pThreadStateBoosting, pFeatureGroup);
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ApplyModelUpdateTrainingSIMDPacking<k_regression, k_cItemsPerBitPackedDataUnitMax>::Func(
+            ApplyModelUpdateTrainingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pThreadStateBoosting,
                pFeatureGroup
             );
@@ -740,7 +731,7 @@ extern void ApplyModelUpdateTraining(
             ApplyModelUpdateTrainingNormalTarget<2>::Func(pThreadStateBoosting, pFeatureGroup);
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ApplyModelUpdateTrainingInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+            ApplyModelUpdateTrainingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pThreadStateBoosting,
                pFeatureGroup
             );

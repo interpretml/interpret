@@ -272,7 +272,7 @@ Booster * Booster::Allocate(
          pBooster->m_apFeatureGroups[iFeatureGroup] = pFeatureGroup;
 
          size_t cSignificantDimensions = 0;
-         ptrdiff_t cItemsPerBitPackedDataUnit = k_cItemsPerBitPackedDataUnitNone;
+         ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(TraceLevelInfo, "INFO Booster::Initialize empty feature group");
          } else {
@@ -361,11 +361,11 @@ Booster * Booster::Allocate(
 
                const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
                EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
-               cItemsPerBitPackedDataUnit = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
+               cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
             }
          }
          pFeatureGroup->SetCountSignificantFeatures(cSignificantDimensions);
-         pFeatureGroup->SetCountItemsPerBitPackedDataUnit(cItemsPerBitPackedDataUnit);
+         pFeatureGroup->SetBitPack(cItemsPerBitPack);
 
          ++iFeatureGroup;
       } while(iFeatureGroup < cFeatureGroups);

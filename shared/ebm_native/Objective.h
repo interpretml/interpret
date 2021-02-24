@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef OBJECTIVE_H
-#define OBJECTIVE_H
+#ifndef LOSS_H
+#define LOSS_H
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -12,319 +12,215 @@
 #include "FeatureGroup.h"
 #include "ThreadStateBoosting.h"
 
-class Objective {
+class Loss {
 
-   template<typename TObjective, ptrdiff_t compilerCountItemsPerBitPackedDataUnitPossible>
-   class ApplyModelUpdateTrainingBits final {
-      ApplyModelUpdateTrainingBits() = delete; // this is a static class.  Do not construct
-
-   public:
-
-      INLINE_ALWAYS static ErrorEbmType Func(
-         const Objective * const pObjective,
-         ThreadStateBoosting * const pThreadStateBoosting,
-         const FeatureGroup * const pFeatureGroup
-      ) {
-         const ptrdiff_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
-
-         EBM_ASSERT(k_cItemsPerBitPackedDataUnitDynamic2 != runtimeCountItemsPerBitPackedDataUnit);
-         EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cItemsPerBitPackedDataUnitMax2);
-         EBM_ASSERT(k_cItemsPerBitPackedDataUnitMin2 <= runtimeCountItemsPerBitPackedDataUnit || 
-            k_cItemsPerBitPackedDataUnitNone == runtimeCountItemsPerBitPackedDataUnit);
-         static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cItemsPerBitPackedDataUnitMax2, 
-            "We can't have this many items in a data pack.");
-         static_assert(k_cItemsPerBitPackedDataUnitMin2 <= compilerCountItemsPerBitPackedDataUnitPossible ||
-            k_cItemsPerBitPackedDataUnitDynamic2 == compilerCountItemsPerBitPackedDataUnitPossible ||
-            k_cItemsPerBitPackedDataUnitNone == compilerCountItemsPerBitPackedDataUnitPossible,
-            "We can't have this few items in a data pack.");
-         if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
-            return pObjective->ApplyModelUpdateTrainingExpand<TObjective, compilerCountItemsPerBitPackedDataUnitPossible>(
-               pThreadStateBoosting,
-               pFeatureGroup
-            );
+   template<typename TLoss, ptrdiff_t compilerCountClasses>
+   struct CountClasses final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         if(compilerCountClasses == pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()) {
+            return BitPack<TLoss, compilerCountClasses, k_cItemsPerBitPackMax2>::ApplyTraining(pLoss, pThreadStateBoosting, pFeatureGroup);
          } else {
-            return ApplyModelUpdateTrainingBits<
-               TObjective,
-               GetNextCountItemsBitPacked2(compilerCountItemsPerBitPackedDataUnitPossible)
-            >::Func(
-               pObjective,
-               pThreadStateBoosting,
-               pFeatureGroup
-            );
+            return CountClasses<TLoss, compilerCountClasses + 1>::ApplyTraining(pLoss, pThreadStateBoosting, pFeatureGroup);
+         }
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         if(compilerCountClasses == pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()) {
+            return BitPack<TLoss, compilerCountClasses, k_cItemsPerBitPackMax2>::ApplyValidation(pLoss, pThreadStateBoosting, pFeatureGroup, pMetricOut);
+         } else {
+            return CountClasses<TLoss, compilerCountClasses + 1>::ApplyValidation(pLoss, pThreadStateBoosting, pFeatureGroup, pMetricOut);
          }
       }
    };
-
-   template<typename TObjective>
-   class ApplyModelUpdateTrainingBits<TObjective, k_cItemsPerBitPackedDataUnitNone> final {
-   public:
-
-      ApplyModelUpdateTrainingBits() = delete; // this is a static class.  Do not construct
-
-      INLINE_ALWAYS static ErrorEbmType Func(
-         const Objective * const pObjective,
-         ThreadStateBoosting * const pThreadStateBoosting,
-         const FeatureGroup * const pFeatureGroup
-      ) {
-         EBM_ASSERT(k_cItemsPerBitPackedDataUnitNone == pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
-         return pObjective->ApplyModelUpdateTrainingExpand<TObjective, k_cItemsPerBitPackedDataUnitNone>(
-            pThreadStateBoosting,
-            pFeatureGroup
-         );
+   template<typename TLoss>
+   struct CountClasses<TLoss, k_cCompilerOptimizedTargetClassesMax + 1> final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         return BitPack<TLoss, k_dynamicClassification, k_cItemsPerBitPackMax2>::ApplyTraining(pLoss, pThreadStateBoosting, pFeatureGroup);
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         return BitPack<TLoss, k_dynamicClassification, k_cItemsPerBitPackMax2>::ApplyValidation(pLoss, pThreadStateBoosting, pFeatureGroup, pMetricOut);
       }
    };
 
-   template<typename TObjective, ptrdiff_t compilerCountItemsPerBitPackedDataUnitPossible>
-   class ApplyModelUpdateValidationBits final {
-      ApplyModelUpdateValidationBits() = delete; // this is a static class.  Do not construct
 
-   public:
-
-      INLINE_ALWAYS static ErrorEbmType Func(
-         const Objective * const pObjective,
-         ThreadStateBoosting * const pThreadStateBoosting,
-         const FeatureGroup * const pFeatureGroup,
-         FloatEbmType * const pMetricOut
-      ) {
-         const ptrdiff_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
-
-         EBM_ASSERT(k_cItemsPerBitPackedDataUnitDynamic2 != runtimeCountItemsPerBitPackedDataUnit);
-         EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cItemsPerBitPackedDataUnitMax2);
-         EBM_ASSERT(k_cItemsPerBitPackedDataUnitMin2 <= runtimeCountItemsPerBitPackedDataUnit ||
-            k_cItemsPerBitPackedDataUnitNone == runtimeCountItemsPerBitPackedDataUnit);
-         static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cItemsPerBitPackedDataUnitMax2, 
-            "We can't have this many items in a data pack.");
-         static_assert(k_cItemsPerBitPackedDataUnitMin2 <= compilerCountItemsPerBitPackedDataUnitPossible ||
-            k_cItemsPerBitPackedDataUnitDynamic2 == compilerCountItemsPerBitPackedDataUnitPossible ||
-            k_cItemsPerBitPackedDataUnitNone == compilerCountItemsPerBitPackedDataUnitPossible,
-            "We can't have this few items in a data pack.");
-         if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
-            return pObjective->ApplyModelUpdateValidationExpand<TObjective, compilerCountItemsPerBitPackedDataUnitPossible>(
-               pThreadStateBoosting,
-               pFeatureGroup,
-               pMetricOut
-            );
+   template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
+   struct BitPack final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         if(compilerBitPack == pFeatureGroup->GetBitPack()) {
+            return pLoss->BitPackApplyTraining<TLoss, compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup);
          } else {
-            return ApplyModelUpdateValidationBits<
-               TObjective,
-               GetNextCountItemsBitPacked2(compilerCountItemsPerBitPackedDataUnitPossible)
-            >::Func(
-               pObjective,
-               pThreadStateBoosting,
-               pFeatureGroup,
-               pMetricOut
-            );
+            return BitPack<TLoss, compilerCountClasses, GetNextBitPack(compilerBitPack)>::ApplyTraining(pLoss, pThreadStateBoosting, pFeatureGroup);
+         }
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         if(compilerBitPack == pFeatureGroup->GetBitPack()) {
+            return pLoss->BitPackApplyValidation<TLoss, compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
+         } else {
+            return BitPack<TLoss, compilerCountClasses, GetNextBitPack(compilerBitPack)>::ApplyValidation(pLoss, pThreadStateBoosting, pFeatureGroup, pMetricOut);
          }
       }
    };
-
-   template<typename TObjective>
-   class ApplyModelUpdateValidationBits<TObjective, k_cItemsPerBitPackedDataUnitNone> final {
-   public:
-
-      ApplyModelUpdateValidationBits() = delete; // this is a static class.  Do not construct
-
-      INLINE_ALWAYS static ErrorEbmType Func(
-         const Objective * const pObjective,
-         ThreadStateBoosting * const pThreadStateBoosting,
-         const FeatureGroup * const pFeatureGroup,
-         FloatEbmType * const pMetricOut
-      ) {
-         EBM_ASSERT(k_cItemsPerBitPackedDataUnitNone == pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
-         return pObjective->ApplyModelUpdateValidationExpand<TObjective, k_cItemsPerBitPackedDataUnitNone>(
-            pThreadStateBoosting,
-            pFeatureGroup,
-            pMetricOut
-         );
+   template<typename TLoss, ptrdiff_t compilerCountClasses>
+   struct BitPack<TLoss, compilerCountClasses, k_cItemsPerBitPackNone> final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         return pLoss->BitPackApplyTraining<TLoss, compilerCountClasses, k_cItemsPerBitPackNone>(pThreadStateBoosting, pFeatureGroup);
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         return pLoss->BitPackApplyValidation<TLoss, compilerCountClasses, k_cItemsPerBitPackNone>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
       }
    };
 
-   template<typename TObjective, ptrdiff_t compilerCountItemsPerBitPackedDataUnit>
-   INLINE_RELEASE_TEMPLATED ErrorEbmType ApplyModelUpdateTrainingExpand(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup
-   ) const {
-      static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
-      const TObjective * const pTObjective = static_cast<const TObjective *>(this);
-      return pTObjective->template ApplyModelUpdateTrainingTemplated<compilerCountItemsPerBitPackedDataUnit>(
-         pThreadStateBoosting, 
-         pFeatureGroup
-      );
+
+   template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
+   struct RemoveMulticlass final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         const TLoss * const pTLoss = static_cast<const TLoss *>(pLoss);
+         return pTLoss->ApplyTrainingTemplated<compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup);
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         const TLoss * const pTLoss = static_cast<const TLoss *>(pLoss);
+         return pTLoss->ApplyValidationTemplated<compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
+      }
+   };
+   template<typename TLoss, ptrdiff_t compilerBitPack>
+   struct RemoveMulticlass<TLoss, k_regression, compilerBitPack> final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         const TLoss * const pTLoss = static_cast<const TLoss *>(pLoss);
+         return pTLoss->ApplyTrainingTemplated<compilerBitPack>(pThreadStateBoosting, pFeatureGroup);
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         const TLoss * const pTLoss = static_cast<const TLoss *>(pLoss);
+         return pTLoss->ApplyValidationTemplated<compilerBitPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
+      }
+   };
+
+
+   template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
+   INLINE_RELEASE_TEMPLATED ErrorEbmType BitPackApplyTraining(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
+      return RemoveMulticlass<TLoss, compilerCountClasses, compilerBitPack>::ApplyTraining(this, pThreadStateBoosting, pFeatureGroup);
+   }
+   template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
+   INLINE_RELEASE_TEMPLATED ErrorEbmType BitPackApplyValidation(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
+      return RemoveMulticlass<TLoss, compilerCountClasses, compilerBitPack>::ApplyValidation(this, pThreadStateBoosting, pFeatureGroup, pMetricOut);
    }
 
-   template<typename TObjective, ptrdiff_t compilerCountItemsPerBitPackedDataUnit>
-   INLINE_RELEASE_TEMPLATED ErrorEbmType ApplyModelUpdateValidationExpand(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup,
-      FloatEbmType * const pMetricOut
-   ) const {
-      static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
-      const TObjective * const pTObjective = static_cast<const TObjective *>(this);
-      return pTObjective->template ApplyModelUpdateValidationTemplated<compilerCountItemsPerBitPackedDataUnit>(
-         pThreadStateBoosting, 
-         pFeatureGroup,
-         pMetricOut
-      );
-   }
+
+   template<typename TLoss, ptrdiff_t compilerBitPack>
+   struct Shared final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         UNUSED(pLoss);
+         UNUSED(pThreadStateBoosting);
+         UNUSED(pFeatureGroup);
+         return Error_None;
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         UNUSED(pLoss);
+         UNUSED(pThreadStateBoosting);
+         UNUSED(pFeatureGroup);
+         UNUSED(pMetricOut);
+         return Error_None;
+      }
+   };
+   template<typename TLoss>
+   struct Shared<TLoss, k_cItemsPerBitPackNone> final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         UNUSED(pLoss);
+         UNUSED(pThreadStateBoosting);
+         UNUSED(pFeatureGroup);
+         return Error_None;
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         UNUSED(pLoss);
+         UNUSED(pThreadStateBoosting);
+         UNUSED(pFeatureGroup);
+         UNUSED(pMetricOut);
+         return Error_None;
+      }
+   };
+
+
+   template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
+   struct SharedMulticlass final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         UNUSED(pLoss);
+         UNUSED(pThreadStateBoosting);
+         UNUSED(pFeatureGroup);
+         return Error_None;
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         UNUSED(pLoss);
+         UNUSED(pThreadStateBoosting);
+         UNUSED(pFeatureGroup);
+         UNUSED(pMetricOut);
+         return Error_None;
+      }
+   };
+   template<typename TLoss, ptrdiff_t compilerCountClasses>
+   struct SharedMulticlass<TLoss, compilerCountClasses, k_cItemsPerBitPackNone> final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
+         UNUSED(pLoss);
+         UNUSED(pThreadStateBoosting);
+         UNUSED(pFeatureGroup);
+         return Error_None;
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
+         UNUSED(pLoss);
+         UNUSED(pThreadStateBoosting);
+         UNUSED(pFeatureGroup);
+         UNUSED(pMetricOut);
+         return Error_None;
+      }
+   };
 
 protected:
 
-   Objective() = default;
+   Loss() = default;
 
-   template<typename TObjective, ptrdiff_t compilerCountItemsPerBitPackedDataUnit>
-   ErrorEbmType ApplyModelUpdateTrainingShared(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup
-   ) const {
-      static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
-      const TObjective * const pTObjective = static_cast<const TObjective *>(this);
-      Booster * const pBooster = pThreadStateBoosting->GetBooster();
-
-      UNUSED(pTObjective);
-      UNUSED(pBooster);
-      UNUSED(pFeatureGroup);
-
-      constexpr bool bOnlyOneBin = k_cItemsPerBitPackedDataUnitNone == compilerCountItemsPerBitPackedDataUnit;
-      if(bOnlyOneBin) {
-      } else {
-         const ptrdiff_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
-         UNUSED(runtimeCountItemsPerBitPackedDataUnit);
-
-         //DataFrameBoosting * const pTrainingSet = pBooster->GetTrainingSet();
-
-         //const size_t cSamples = pTrainingSet->GetCountSamples();
-         //EBM_ASSERT(1 <= cSamples);
-         //EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
-
-         //const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
-         //   compilerCountItemsPerBitPackedDataUnit,
-         //   runtimeCountItemsPerBitPackedDataUnit
-         //);
-         //EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
-         //EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-         //const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
-         //EBM_ASSERT(1 <= cBitsPerItemMax);
-         //EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
-         //const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-
-         //const FloatEbmType * const aModelFeatureGroupUpdateTensor = pThreadStateBoosting->GetAccumulatedModelUpdate()->GetValuePointer();
-         //EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
-
-         //FloatEbmType * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
-         //const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
-         //const FloatEbmType * pTargetData = pTrainingSet->GetTargetDataPointer();
-         //FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
-
-         //// this shouldn't overflow since we're accessing existing memory
-         //const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples;
-         //const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
-         //const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-         //if(cSamples <= cItemsPerBitPackedDataUnit) {
-         //   goto one_last_loop;
-         //}
-         //pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
-         //EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
-         //EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
-
-         //do {
-         //   pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPackedDataUnit;
-         //   // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
-         //   // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
-         //one_last_loop:;
-         //   // we store the already multiplied dimensional value in *pInputData
-         //   size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
-         //   ++pInputData;
-         //   do {
-         //      FloatEbmType targetData = *pTargetData;
-         //      ++pTargetData;
-
-         //      const size_t iTensorBin = maskBits & iTensorBinCombined;
-
-         //      const FloatEbmType smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[iTensorBin];
-         //      // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-         //      const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
-         //      *pPredictorScores = predictorScore;
-         //      ++pPredictorScores;
-
-         //      const FloatEbmType prediction = pTObjective->CalculatePrediction(predictorScore);
-
-         //      FloatEbmType gradient;
-         //      FloatEbmType hessian;
-         //      pTObjective->CalculateGradientAndHessian(targetData, prediction, gradient, hessian);
-
-         //      *pGradientAndHessian = gradient;
-         //      *(pGradientAndHessian + 1) = hessian;
-         //      pGradientAndHessian += 2;
-
-         //      iTensorBinCombined >>= cBitsPerItemMax;
-         //   } while(pPredictorScoresInnerEnd != pPredictorScores);
-         //} while(pPredictorScoresExit != pPredictorScores);
-
-         //// first time through?
-         //if(pPredictorScoresTrueEnd != pPredictorScores) {
-         //   pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-         //   pPredictorScoresExit = pPredictorScoresTrueEnd;
-         //   goto one_last_loop;
-         //}
-      }
-      return Error_None;
+   template<typename TLoss, ptrdiff_t compilerBitPack>
+   ErrorEbmType SharedApplyTraining(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
+      static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
+      return Shared<TLoss, compilerBitPack>::ApplyTraining(this, pThreadStateBoosting, pFeatureGroup);
+   }
+   template<typename TLoss, ptrdiff_t compilerBitPack>
+   ErrorEbmType SharedApplyValidation(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
+      static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
+      return Shared<TLoss, compilerBitPack>::ApplyValidation(this, pThreadStateBoosting, pFeatureGroup, pMetricOut);
    }
 
-   template<typename TObjective, ptrdiff_t compilerCountItemsPerBitPackedDataUnit>
-   ErrorEbmType ApplyModelUpdateValidationShared(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup,
-      FloatEbmType * const pMetricOut
-   ) const {
-      static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
-      const TObjective * const pTObjective = static_cast<const TObjective *>(this);
-      Booster * const pBooster = pThreadStateBoosting->GetBooster();
 
-      UNUSED(pTObjective);
-      UNUSED(pBooster);
-      UNUSED(pFeatureGroup);
-
-      constexpr bool bOnlyOneBin = k_cItemsPerBitPackedDataUnitNone == compilerCountItemsPerBitPackedDataUnit;
-      if(bOnlyOneBin) {
-         *pMetricOut = -9999;
-      } else {
-         const ptrdiff_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
-         UNUSED(runtimeCountItemsPerBitPackedDataUnit);
-
-         FloatEbmType gradient;
-         FloatEbmType hessian;
-         pTObjective->CalculateGradientAndHessian(FloatEbmType { 10 }, FloatEbmType { 5 }, gradient, hessian);
-         *pMetricOut = gradient + hessian;
-      }
-      return Error_None;
+   template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
+   ErrorEbmType SharedApplyTraining(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
+      static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
+      return SharedMulticlass<TLoss, compilerCountClasses, compilerBitPack>::ApplyTraining(this, pThreadStateBoosting, pFeatureGroup);
    }
 
-   template<typename TObjective>
-   INLINE_RELEASE_TEMPLATED ErrorEbmType ApplyModelUpdateTrainingExpand(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup
-   ) const {
-      static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
-      return ApplyModelUpdateTrainingBits<TObjective, k_cItemsPerBitPackedDataUnitMax2>::Func(
-         this,
-         pThreadStateBoosting,
-         pFeatureGroup
-      );
+   template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
+   ErrorEbmType SharedApplyValidation(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
+      static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
+      return SharedMulticlass<TLoss, compilerCountClasses, compilerBitPack>::ApplyValidation(this, pThreadStateBoosting, pFeatureGroup, pMetricOut);
    }
 
-   template<typename TObjective>
-   INLINE_RELEASE_TEMPLATED ErrorEbmType ApplyModelUpdateValidationExpand(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup,
-      FloatEbmType * const pMetricOut
-   ) const {
-      static_assert(std::is_base_of<Objective, TObjective>::value, "TObjective must inherit from Objective");
-      return ApplyModelUpdateValidationBits<TObjective, k_cItemsPerBitPackedDataUnitMax2>::Func(
-         this,
-         pThreadStateBoosting,
-         pFeatureGroup,
-         pMetricOut
-      );
+
+   template<typename TLoss>
+   INLINE_RELEASE_TEMPLATED ErrorEbmType LossApplyTraining(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
+      static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
+      return BitPack<TLoss, k_regression, k_cItemsPerBitPackMax2>::ApplyTraining(this, pThreadStateBoosting, pFeatureGroup);
+   }
+   template<typename TLoss>
+   INLINE_RELEASE_TEMPLATED ErrorEbmType LossApplyValidation(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
+      static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
+      return BitPack<TLoss, k_regression, k_cItemsPerBitPackMax2>::ApplyValidation(this, pThreadStateBoosting, pFeatureGroup, pMetricOut);
+   }
+
+
+   template<typename TLoss>
+   INLINE_RELEASE_TEMPLATED ErrorEbmType LossApplyTrainingMulticlass(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
+      static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
+      return CountClasses<TLoss, 3>::ApplyTraining(this, pThreadStateBoosting, pFeatureGroup);
+   }
+   template<typename TLoss>
+   INLINE_RELEASE_TEMPLATED ErrorEbmType LossApplyValidationMulticlass(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
+      static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
+      return CountClasses<TLoss, 3>::ApplyValidation(this, pThreadStateBoosting, pFeatureGroup, pMetricOut);
    }
 
 public:
@@ -334,30 +230,30 @@ public:
       return FloatEbmType { 1 };
    }
 
-   virtual ErrorEbmType ApplyModelUpdateTraining(
+   virtual ErrorEbmType ApplyTraining(
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup
    ) const = 0;
 
-   virtual ErrorEbmType ApplyModelUpdateValidation(
+   virtual ErrorEbmType ApplyValidation(
       ThreadStateBoosting * const pThreadStateBoosting,
       const FeatureGroup * const pFeatureGroup,
       FloatEbmType * const pMetricOut
    ) const = 0;
 
-   static ErrorEbmType CreateObjective(
-      const char * const sObjective,
+   static ErrorEbmType CreateLoss(
+      const char * const sLoss,
       const size_t cTargetClasses,
-      const Objective ** const ppObjective
+      const Loss ** const ppLoss
    ) noexcept;
 
-   virtual ~Objective() = default;
+   virtual ~Loss() = default;
 };
 
 typedef ErrorEbmType (*ATTEMPT_CREATE_OBJECTIVE)(
-   const char * sObjective,
+   const char * sLoss,
    size_t countTargetClasses,
-   const Objective ** const ppObjective
+   const Loss ** const ppLoss
 );
 
 
@@ -366,11 +262,11 @@ typedef ErrorEbmType (*ATTEMPT_CREATE_OBJECTIVE)(
 
 
 
-//class ObjectiveBinaryLogLoss final : public Objective {
+//class LossBinaryLogLoss final : public Loss {
 //   // TODO: put this in it's own file
 //public:
 //
-//   INLINE_ALWAYS ObjectiveBinaryLogLoss() {
+//   INLINE_ALWAYS LossBinaryLogLoss() {
 //   }
 //
 //   template <typename T>
@@ -396,11 +292,11 @@ typedef ErrorEbmType (*ATTEMPT_CREATE_OBJECTIVE)(
 //
 //};
 //
-//class ObjectiveRegressionMSE final : public Objective {
+//class LossRegressionMSE final : public Loss {
 //   // TODO: put this in it's own file
 //public:
 //
-//   INLINE_ALWAYS ObjectiveRegressionMSE() {
+//   INLINE_ALWAYS LossRegressionMSE() {
 //   }
 //
 //   // for MSE regression, we get target - score at initialization and only store the gradients, so we never
@@ -420,4 +316,4 @@ typedef ErrorEbmType (*ATTEMPT_CREATE_OBJECTIVE)(
 //
 //};
 
-#endif // OBJECTIVE_H
+#endif // LOSS_H

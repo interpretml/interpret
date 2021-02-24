@@ -192,16 +192,16 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          *paInputDataTo = nullptr; // free will skip over these later
          ++paInputDataTo;
       } else {
-         EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
-         const size_t cItemsPerBitPackedDataUnit = static_cast<size_t>(pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
+         EBM_ASSERT(1 <= pFeatureGroup->GetBitPack());
+         const size_t cItemsPerBitPack = static_cast<size_t>(pFeatureGroup->GetBitPack());
          // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
-         EBM_ASSERT(cItemsPerBitPackedDataUnit <= CountBitsRequiredPositiveMax<StorageDataType>());
-         const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
+         EBM_ASSERT(cItemsPerBitPack <= CountBitsRequiredPositiveMax<StorageDataType>());
+         const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
          // if we have 1 item, it can't be larger than the number of bits of storage
          EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>());
 
          EBM_ASSERT(0 < cSamples);
-         const size_t cDataUnits = (cSamples - 1) / cItemsPerBitPackedDataUnit + 1; // this can't overflow or underflow
+         const size_t cDataUnits = (cSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
 
          StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cDataUnits);
          if(nullptr == pInputDataTo) {
@@ -239,11 +239,11 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pFeatureGroup->GetCountSignificantDimensions()]);
 
          // THIS IS NOT A CONSTANT FOR A REASON.. WE CHANGE IT ON OUR LAST ITERATION
-         // if we ever template this function on cItemsPerBitPackedDataUnit, then we'd want
+         // if we ever template this function on cItemsPerBitPack, then we'd want
          // to make this a constant so that the compiler could reason about it an eliminate loops
          // as it is, it isn't a constant, so the compiler would not be able to figure out that most
          // of the time it is a constant
-         size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPackedDataUnit;
+         size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPack;
          while(pInputDataTo < pInputDataToLast) /* do the last iteration AFTER we re-enter this loop through the goto label! */ {
          one_last_loop:;
             EBM_ASSERT(shiftEnd <= CountBitsRequiredPositiveMax<StorageDataType>());
@@ -296,7 +296,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
          if(pInputDataTo == pInputDataToLast) {
             // if this is the first time we've exited the loop, then re-enter it to do our last loop, but reduce the number of times we do the inner loop
-            shiftEnd = cBitsPerItemMax * ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
+            shiftEnd = cBitsPerItemMax * ((cSamples - 1) % cItemsPerBitPack + 1);
             goto one_last_loop;
          }
       }

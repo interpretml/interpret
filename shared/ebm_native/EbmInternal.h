@@ -371,9 +371,9 @@ constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCou
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in 
 // places where you couldn't do so with variable loop iterations
-#define GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(MACRO_compilerCountItemsPerBitPackedDataUnit, MACRO_runtimeCountItemsPerBitPackedDataUnit) \
-   (k_cItemsPerBitPackedDataUnitDynamic2 == (MACRO_compilerCountItemsPerBitPackedDataUnit) ? \
-      static_cast<size_t>(MACRO_runtimeCountItemsPerBitPackedDataUnit) : static_cast<size_t>(MACRO_compilerCountItemsPerBitPackedDataUnit))
+#define GET_ITEMS_PER_BIT_PACK(MACRO_compilerBitPack, MACRO_runtimeBitPack) \
+   (k_cItemsPerBitPackDynamic2 == (MACRO_compilerBitPack) ? \
+      static_cast<size_t>(MACRO_runtimeBitPack) : static_cast<size_t>(MACRO_compilerBitPack))
 
 template<typename T>
 constexpr size_t CountBitsRequired(const T maxValue) noexcept {
@@ -418,46 +418,46 @@ constexpr INLINE_ALWAYS size_t GetCountBits(const size_t cItemsBitPacked) noexce
 }
 
 #ifndef TODO_remove_this
-constexpr size_t k_cItemsPerBitPackedDataUnitDynamic = 0;
-constexpr size_t k_cItemsPerBitPackedDataUnitMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
-constexpr size_t k_cItemsPerBitPackedDataUnitMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
+constexpr size_t k_cItemsPerBitPackDynamic = 0;
+constexpr size_t k_cItemsPerBitPackMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
+constexpr size_t k_cItemsPerBitPackMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
 constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
-   return k_cItemsPerBitPackedDataUnitMin == cItemsBitPackedPrev ?
-      k_cItemsPerBitPackedDataUnitDynamic : k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
+   return k_cItemsPerBitPackMin == cItemsBitPackedPrev ?
+      k_cItemsPerBitPackDynamic : k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
 }
 #endif
 
-constexpr ptrdiff_t k_cItemsPerBitPackedDataUnitNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
+constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
 // TODO : remove the 2 suffixes from these, and verify these are being used!!  AND at the same time verify that we like the sign of anything that uses these constants size_t vs ptrdiff_t
-constexpr ptrdiff_t k_cItemsPerBitPackedDataUnitDynamic2 = ptrdiff_t { 0 };
-constexpr ptrdiff_t k_cItemsPerBitPackedDataUnitMax2 = ptrdiff_t { k_cBitsForStorageType };
-static_assert(k_cItemsPerBitPackedDataUnitMax2 <= ptrdiff_t { k_cBitsForStorageType }, "k_cItemsPerBitPackedDataUnitMax too big");
-constexpr ptrdiff_t k_cItemsPerBitPackedDataUnitMin2 = ptrdiff_t { 1 };
-static_assert(1 <= k_cItemsPerBitPackedDataUnitMin2 || k_cItemsPerBitPackedDataUnitDynamic2 == k_cItemsPerBitPackedDataUnitMin2 && k_cItemsPerBitPackedDataUnitDynamic2 == k_cItemsPerBitPackedDataUnitMax2, "k_cItemsPerBitPackedDataUnitMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
-static_assert(k_cItemsPerBitPackedDataUnitMin2 <= k_cItemsPerBitPackedDataUnitMax2, "bit pack max less than min");
+constexpr ptrdiff_t k_cItemsPerBitPackDynamic2 = ptrdiff_t { 0 };
+constexpr ptrdiff_t k_cItemsPerBitPackMax2 = ptrdiff_t { k_cBitsForStorageType };
+static_assert(k_cItemsPerBitPackMax2 <= ptrdiff_t { k_cBitsForStorageType }, "k_cItemsPerBitPackMax too big");
+constexpr ptrdiff_t k_cItemsPerBitPackMin2 = ptrdiff_t { 1 };
+static_assert(1 <= k_cItemsPerBitPackMin2 || k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMin2 && k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMax2, "k_cItemsPerBitPackMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
+static_assert(k_cItemsPerBitPackMin2 <= k_cItemsPerBitPackMax2, "bit pack max less than min");
 static_assert(
-   k_cItemsPerBitPackedDataUnitDynamic2 == k_cItemsPerBitPackedDataUnitMin2 ||
-   k_cItemsPerBitPackedDataUnitMin2 == 
-   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackedDataUnitMin2),
-   "k_cItemsPerBitPackedDataUnitMin needs to be on the progression series");
+   k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMin2 ||
+   k_cItemsPerBitPackMin2 == 
+   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackMin2),
+   "k_cItemsPerBitPackMin needs to be on the progression series");
 static_assert(
-   k_cItemsPerBitPackedDataUnitDynamic2 == k_cItemsPerBitPackedDataUnitMax2 ||
-   k_cItemsPerBitPackedDataUnitMax2 == 
-   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackedDataUnitMax2),
-   "k_cItemsPerBitPackedDataUnitMax needs to be on the progression series");
-constexpr INLINE_ALWAYS ptrdiff_t GetNextCountItemsBitPacked2(const ptrdiff_t cItemsBitPackedPrev) noexcept {
+   k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMax2 ||
+   k_cItemsPerBitPackMax2 == 
+   ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackMax2),
+   "k_cItemsPerBitPackMax needs to be on the progression series");
+constexpr INLINE_ALWAYS ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (optionaly),-1 
    // [there are 15 of these + the dynamic case + onebin case]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 (optionaly),-1 
    // [which are all included in 64 bits + the dynamic case + onebin case]
 
-   return cItemsBitPackedPrev <= k_cItemsPerBitPackedDataUnitDynamic2 ? k_cItemsPerBitPackedDataUnitNone : (
-      k_cItemsPerBitPackedDataUnitMin2 == cItemsBitPackedPrev ?
-      (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackedDataUnitMax2 &&
-      ptrdiff_t { 1 } == k_cItemsPerBitPackedDataUnitMin2 ?
-      k_cItemsPerBitPackedDataUnitNone : k_cItemsPerBitPackedDataUnitDynamic2) :
+   return cItemsBitPackedPrev <= k_cItemsPerBitPackDynamic2 ? k_cItemsPerBitPackNone : (
+      k_cItemsPerBitPackMin2 == cItemsBitPackedPrev ?
+      (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax2 &&
+      ptrdiff_t { 1 } == k_cItemsPerBitPackMin2 ?
+      k_cItemsPerBitPackNone : k_cItemsPerBitPackDynamic2) :
       ptrdiff_t { k_cBitsForStorageType } / ((ptrdiff_t { k_cBitsForStorageType } / cItemsBitPackedPrev) + 1)
    );
 }

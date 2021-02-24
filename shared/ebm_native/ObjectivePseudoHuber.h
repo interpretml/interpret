@@ -3,14 +3,14 @@
 // Author: Paul Koch <code@koch.ninja>
 
 // Steps for adding a new objective in C++:
-//   1) Copy one of the existing Objective*.h include files (like this one) into a new renamed Objective*.h file
-//   2) Modify the class below to handle your new Objective function
-//   3) Add [#include "Objective*.h"] to the list of other include files near the top of the Objective.cpp file
-//   4) Add [Objective*::AttemptCreateObjective] to the list of objectives in k_registeredObjectives in Objective.cpp
+//   1) Copy one of the existing Loss*.h include files (like this one) into a new renamed Loss*.h file
+//   2) Modify the class below to handle your new Loss function
+//   3) Add [#include "Loss*.h"] to the list of other include files near the top of the Loss.cpp file
+//   4) Add [Loss*::AttemptCreateLoss] to the list of objectives in k_registeredLosss in Loss.cpp
 //   5) Recompile the C++ with either build.sh or build.bat depending on your operating system
-//   6) Enjoy your new Objective function, and send us a PR on Github if you think others would benefit  :-)
+//   6) Enjoy your new Loss function, and send us a PR on Github if you think others would benefit  :-)
 
-// IMPORTANT: This file should only be included ONCE in the project, and that place should be in the Objective.cpp file
+// IMPORTANT: This file should only be included ONCE in the project, and that place should be in the Loss.cpp file
 
 #include <stddef.h>
 
@@ -21,11 +21,11 @@
 
 #include "Objective.h"
 
-class ObjectivePseudoHuber final : public Objective {
+class LossPseudoHuber final : public Loss {
 
    FloatEbmType m_deltaInverted;
 
-   INLINE_ALWAYS ObjectivePseudoHuber(const FloatEbmType deltaInverted) {
+   INLINE_ALWAYS LossPseudoHuber(const FloatEbmType deltaInverted) {
       m_deltaInverted = deltaInverted;
    }
 
@@ -55,24 +55,24 @@ public:
       hessianOut = T { 1 } / (calc * sqrtCalc);
    }
 
-   static ErrorEbmType AttemptCreateObjective(
-      const char * sObjective, 
+   static ErrorEbmType AttemptCreateLoss(
+      const char * sLoss, 
       size_t countTargetClasses, 
-      const Objective ** const ppObjective
+      const Loss ** const ppLoss
    ) {
-      EBM_ASSERT(nullptr != sObjective);
-      EBM_ASSERT(nullptr != ppObjective);
-      EBM_ASSERT(nullptr == *ppObjective);
+      EBM_ASSERT(nullptr != sLoss);
+      EBM_ASSERT(nullptr != ppLoss);
+      EBM_ASSERT(nullptr == *ppLoss);
 
-      static const char k_sObjectiveTag[] = "pseudo_huber";
-      sObjective = IsStringEqualsCaseInsensitive(sObjective, k_sObjectiveTag);
-      if(nullptr == sObjective) {
+      static const char k_sLossTag[] = "pseudo_huber";
+      sLoss = IsStringEqualsCaseInsensitive(sLoss, k_sLossTag);
+      if(nullptr == sLoss) {
          // we are not the specified objective
          return Error_None;
       }
       FloatEbmType delta = 1;
-      if(0 != *sObjective) {
-         if(':' != *sObjective) {
+      if(0 != *sLoss) {
+         if(':' != *sLoss) {
             // we are not the specified objective, but the objective could still be something with a longer string
             // eg: the given tag was "something_else:" but our tag was "something:", so we matched on "something" only
             return Error_None;
@@ -81,8 +81,8 @@ public:
          while(true) {
             const char * sNext;
 
-            sObjective = SkipWhitespace(sObjective + 1);
-            if(0 == *sObjective) {
+            sLoss = SkipWhitespace(sLoss + 1);
+            if(0 == *sLoss) {
                // we ended on a ':' at the start, or on a ','.  But just like in some programming languages,
                // we accept the last separator without anything afterwards as a valid formulation
                // eg: "some_objective:" OR "some_objective: some_parameter=1,"
@@ -91,104 +91,72 @@ public:
 
             // check and handle a possible parameter
             static const char k_sDeltaTag[] = "delta";
-            sNext = IsStringEqualsCaseInsensitive(sObjective, k_sDeltaTag);
+            sNext = IsStringEqualsCaseInsensitive(sLoss, k_sDeltaTag);
             if(nullptr != sNext) {
                if('=' == *sNext) {
                   // before this point we could have been seeing a longer version of our proposed tag
                   // eg: the given tag was "something_else=" but our tag was "something="
-                  sObjective = sNext + 1;
-                  sObjective = ConvertStringToFloat(sObjective, &delta);
-                  if(nullptr == sObjective) {
-                     return Error_ObjectiveParameterValueMalformed;
+                  sLoss = sNext + 1;
+                  sLoss = ConvertStringToFloat(sLoss, &delta);
+                  if(nullptr == sLoss) {
+                     return Error_LossParameterValueMalformed;
                   }
-                  if(0 == *sObjective) {
+                  if(0 == *sLoss) {
                      break;
                   }
-                  if(',' != *sObjective) {
-                     return Error_ObjectiveParameterValueMalformed;
+                  if(',' != *sLoss) {
+                     return Error_LossParameterValueMalformed;
                   }
                   continue;
                }
             }
 
             // if we see a type that we don't understand, then return an error
-            return Error_ObjectiveParameterUnknown;
+            return Error_LossParameterUnknown;
          }
          if(std::isnan(delta) || std::isinf(delta)) {
             // our string readers can read NaN and INF values, so check this
-            return Error_ObjectiveParameterValueOutOfRange;
+            return Error_LossParameterValueOutOfRange;
          }
          if(FloatEbmType { 0 } == delta) {
-            return Error_ObjectiveParameterValueOutOfRange;
+            return Error_LossParameterValueOutOfRange;
          }
       }
       const FloatEbmType deltaInverted = FloatEbmType { 1 } / delta;
       EBM_ASSERT(!std::isnan(deltaInverted)); // we checked for 0 and NaN above
       if(std::isinf(deltaInverted)) {
-         return Error_ObjectiveParameterValueOutOfRange;
+         return Error_LossParameterValueOutOfRange;
       }
 
       if(1 != countTargetClasses) {
-         return Error_ObjectiveCountTargetClassesInvalid;
+         return Error_LossCountTargetClassesInvalid;
       }
 
-      *ppObjective = new ObjectivePseudoHuber(deltaInverted);
+      *ppLoss = new LossPseudoHuber(deltaInverted);
       return Error_None;
    }
 
-   template<
-      ptrdiff_t compilerCountItemsPerBitPackedDataUnit
-   >
-   ErrorEbmType ApplyModelUpdateTrainingTemplated(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup
-   ) const {
-      return Objective::ApplyModelUpdateTrainingShared<
-         std::remove_pointer<decltype(this)>::type,
-         compilerCountItemsPerBitPackedDataUnit
-      >(
-         pThreadStateBoosting,
-         pFeatureGroup
-      );
+   // Most new objectives requires a straight copy paste of the code below!
+
+   // TODO: wrap the code below into a SCARY_LOSS_MACRO so that people can't break it by accident
+   //       It's easy to copy it, but harder to verify that it's correct after the fact or when changes are made
+   //       to the parameter lists!
+
+   template<ptrdiff_t compilerBitPack>
+   ErrorEbmType ApplyTrainingTemplated(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
+      return Loss::SharedApplyTraining<std::remove_pointer<decltype(this)>::type, compilerBitPack>(pThreadStateBoosting, pFeatureGroup);
    }
 
-   template<
-      ptrdiff_t compilerCountItemsPerBitPackedDataUnit
-   >
-   ErrorEbmType ApplyModelUpdateValidationTemplated(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup,
-      FloatEbmType * const pMetricOut
-   ) const {
-      return Objective::ApplyModelUpdateValidationShared<
-         std::remove_pointer<decltype(this)>::type,
-         compilerCountItemsPerBitPackedDataUnit
-      >(
-         pThreadStateBoosting,
-         pFeatureGroup,
-         pMetricOut
-      );
+   template<ptrdiff_t compilerBitPack>
+   ErrorEbmType ApplyValidationTemplated(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
+      return Loss::SharedApplyValidation<std::remove_pointer<decltype(this)>::type, compilerBitPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
    }
 
-   ErrorEbmType ApplyModelUpdateTraining(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup
-   ) const override {
-      return Objective::ApplyModelUpdateTrainingExpand<std::remove_pointer<decltype(this)>::type>(
-         pThreadStateBoosting, 
-         pFeatureGroup
-      );
+   ErrorEbmType ApplyTraining(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const override {
+      return Loss::LossApplyTraining<std::remove_pointer<decltype(this)>::type>(pThreadStateBoosting, pFeatureGroup);
    }
 
-   ErrorEbmType ApplyModelUpdateValidation(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup,
-      FloatEbmType * const pMetricOut
-   ) const override {
-      return Objective::ApplyModelUpdateValidationExpand<std::remove_pointer<decltype(this)>::type>(
-         pThreadStateBoosting, 
-         pFeatureGroup,
-         pMetricOut
-      );
+   ErrorEbmType ApplyValidation(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const override {
+      return Loss::LossApplyValidation<std::remove_pointer<decltype(this)>::type>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
    }
 };

@@ -175,7 +175,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, ptrdiff_t compilerCountItemsPerBitPackedDataUnit>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, ptrdiff_t compilerBitPack>
 class BinBoostingInternal final {
 public:
 
@@ -203,13 +203,10 @@ public:
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
-      const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
-         compilerCountItemsPerBitPackedDataUnit,
-         pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
-      );
-      EBM_ASSERT(size_t { 1 } <= cItemsPerBitPackedDataUnit);
-      EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
+      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pFeatureGroup->GetBitPack());
+      EBM_ASSERT(size_t { 1 } <= cItemsPerBitPack);
+      EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
+      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -227,10 +224,10 @@ public:
       const FloatEbmType * const pGradientAndHessiansTrueEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
       const FloatEbmType * pGradientAndHessiansExit = pGradientAndHessiansTrueEnd;
       size_t cItemsRemaining = cSamples;
-      if(cSamples <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pGradientAndHessiansExit = pGradientAndHessiansTrueEnd - (bClassification ? 2 : 1) * cVectorLength * ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
+      pGradientAndHessiansExit = pGradientAndHessiansTrueEnd - (bClassification ? 2 : 1) * cVectorLength * ((cSamples - 1) % cItemsPerBitPack + 1);
       EBM_ASSERT(pGradientAndHessian < pGradientAndHessiansExit);
       EBM_ASSERT(pGradientAndHessiansExit < pGradientAndHessiansTrueEnd);
 
@@ -246,7 +243,7 @@ public:
          // TODO : try using a sampling method with non-repeating samples, and put the count into a bit.  Then unwind that loop either at the byte level 
          //   (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
-         cItemsRemaining = cItemsPerBitPackedDataUnit;
+         cItemsRemaining = cItemsPerBitPack;
          // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop:;
@@ -324,7 +321,7 @@ public:
          EBM_ASSERT(0 == (pGradientAndHessiansTrueEnd - pGradientAndHessian) % (cVectorLength * (bClassification ? 2 : 1)));
          cItemsRemaining = (pGradientAndHessiansTrueEnd - pGradientAndHessian) / (cVectorLength * (bClassification ? 2 : 1));
          EBM_ASSERT(0 < cItemsRemaining);
-         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
+         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPack);
 
          pGradientAndHessiansExit = pGradientAndHessiansTrueEnd;
 
@@ -355,7 +352,7 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         BinBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+         BinBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
             pThreadStateBoosting,
             pFeatureGroup,
             pTrainingSet
@@ -386,7 +383,7 @@ public:
       EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      BinBoostingInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+      BinBoostingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pThreadStateBoosting,
          pFeatureGroup,
          pTrainingSet
@@ -394,7 +391,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, ptrdiff_t compilerCountItemsPerBitPackedDataUnitPossible>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, ptrdiff_t compilerBitPack>
 class BinBoostingSIMDPacking final {
 public:
 
@@ -405,13 +402,13 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet
    ) {
-      const ptrdiff_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      const ptrdiff_t runtimeBitPack = pFeatureGroup->GetBitPack();
 
-      EBM_ASSERT(ptrdiff_t { 1 } <= runtimeCountItemsPerBitPackedDataUnit);
-      EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= ptrdiff_t { k_cBitsForStorageType });
-      static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= ptrdiff_t { k_cBitsForStorageType }, "We can't have this many items in a data pack.");
-      if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
-         BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
+      EBM_ASSERT(ptrdiff_t { 1 } <= runtimeBitPack);
+      EBM_ASSERT(runtimeBitPack <= ptrdiff_t { k_cBitsForStorageType });
+      static_assert(compilerBitPack <= ptrdiff_t { k_cBitsForStorageType }, "We can't have this many items in a data pack.");
+      if(compilerBitPack == runtimeBitPack) {
+         BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
             pThreadStateBoosting,
             pFeatureGroup,
             pTrainingSet
@@ -419,7 +416,7 @@ public:
       } else {
          BinBoostingSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
-            GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
+            GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
             pThreadStateBoosting,
             pFeatureGroup,
@@ -430,7 +427,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class BinBoostingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> final {
+class BinBoostingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic> final {
 public:
 
    BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
@@ -440,9 +437,9 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet
    ) {
-      EBM_ASSERT(ptrdiff_t { 1 } <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
-      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= ptrdiff_t { k_cBitsForStorageType });
-      BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+      EBM_ASSERT(ptrdiff_t { 1 } <= pFeatureGroup->GetBitPack());
+      EBM_ASSERT(pFeatureGroup->GetBitPack() <= ptrdiff_t { k_cBitsForStorageType });
+      BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic>::Func(
          pThreadStateBoosting,
          pFeatureGroup,
          pTrainingSet
@@ -472,7 +469,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          BinBoostingSIMDPacking<
             compilerLearningTypeOrCountTargetClassesPossible,
-            k_cItemsPerBitPackedDataUnitMax
+            k_cItemsPerBitPackMax
          >::Func(
             pThreadStateBoosting,
             pFeatureGroup,
@@ -504,7 +501,7 @@ public:
       EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      BinBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackedDataUnitMax>::Func(
+      BinBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
          pThreadStateBoosting,
          pFeatureGroup,
          pTrainingSet
@@ -558,7 +555,7 @@ extern void BinBoosting(
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            BinBoostingSIMDPacking<k_regression, k_cItemsPerBitPackedDataUnitMax>::Func(
+            BinBoostingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pThreadStateBoosting,
                pFeatureGroup,
                pTrainingSet
@@ -579,7 +576,7 @@ extern void BinBoosting(
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            BinBoostingInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+            BinBoostingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pThreadStateBoosting,
                pFeatureGroup,
                pTrainingSet
