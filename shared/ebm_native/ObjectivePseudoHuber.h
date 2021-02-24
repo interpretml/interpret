@@ -21,9 +21,6 @@
 #include "Objective.h"
 
 class ObjectivePseudoHuber final : public Objective {
-   static constexpr char k_sObjectiveNameTag[] = "pseudo_huber";
-   static constexpr char k_sDeltaParameterTag[] = "delta";
-   static constexpr FloatEbmType k_deltaDefault = 1;
 
    FloatEbmType m_deltaInverted;
 
@@ -66,12 +63,12 @@ public:
       EBM_ASSERT(nullptr != ppObjective);
       EBM_ASSERT(nullptr == *ppObjective);
 
-      sObjective = IsStringEqualsCaseInsensitive(sObjective, k_sObjectiveNameTag);
+      sObjective = IsStringEqualsCaseInsensitive(sObjective, "pseudo_huber");
       if(nullptr == sObjective) {
          // we are not the specified objective
          return Error_None;
       }
-      FloatEbmType delta = k_deltaDefault;
+      FloatEbmType delta = 1;
       if(0 != *sObjective) {
          if(':' != *sObjective) {
             // we are not the specified objective, but the objective could still be something with a longer string
@@ -91,7 +88,7 @@ public:
             }
 
             // check and handle a possible parameter
-            sNext = IsStringEqualsCaseInsensitive(sObjective, k_sDeltaParameterTag);
+            sNext = IsStringEqualsCaseInsensitive(sObjective, "delta");
             if(nullptr != sNext) {
                if('=' == *sNext) {
                   // before this point we could have been seeing a longer version of our proposed tag

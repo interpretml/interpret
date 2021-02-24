@@ -179,6 +179,9 @@ static bool BoostZeroDimensional(
    return false;
 }
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
+
 static bool BoostSingleDimensional(
    ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
@@ -285,6 +288,8 @@ static bool BoostSingleDimensional(
    LOG_0(TraceLevelVerbose, "Exited BoostSingleDimensional");
    return bRet;
 }
+
+WARNING_POP
 
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the hessian isn't required (yet) in order to make decisions about
 //   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the gradients and then 
@@ -764,7 +769,7 @@ static IntEbmType GenerateModelUpdateInternal(
             }
          } else if(1 == cSignificantDimensions) {
             EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
-            EBM_ASSERT(size_t { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
+            EBM_ASSERT(IntEbmType { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
             EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
             if(BoostSingleDimensional(
                pThreadStateBoosting,

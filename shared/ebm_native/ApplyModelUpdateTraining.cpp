@@ -623,7 +623,7 @@ public:
       const FeatureGroup * const pFeatureGroup
    ) {
       EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
-      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
+      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
       ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pThreadStateBoosting,
          pFeatureGroup
