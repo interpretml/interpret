@@ -366,27 +366,6 @@ typedef ErrorEbmType (*ATTEMPT_CREATE_OBJECTIVE)(
 
 
 
-//class ObjectiveMulticlass : public Objective {
-//   // TODO: FILL IN!
-//};
-//
-//class ObjectiveMulticlassSoftmax final : public ObjectiveMulticlass {
-//   // TODO: put this in it's own file
-//
-//   FloatEbmType m_multiple;
-//
-//public:
-//
-//   INLINE_ALWAYS ObjectiveMulticlassSoftmax(const size_t cClasses) {
-//      m_multiple = static_cast<FloatEbmType>(999999 * cClasses);
-//   }
-//
-//   INLINE_ALWAYS FloatEbmType GetUpdateMultiple() const noexcept override {
-//      return m_multiple;
-//   }
-//
-//};
-//
 //class ObjectiveBinaryLogLoss final : public Objective {
 //   // TODO: put this in it's own file
 //public:

@@ -18,6 +18,7 @@
 #include "Logging.h"
 #include "FeatureGroup.h"
 #include "ThreadStateBoosting.h"
+
 #include "Objective.h"
 
 class ObjectivePseudoHuber final : public Objective {
@@ -63,7 +64,8 @@ public:
       EBM_ASSERT(nullptr != ppObjective);
       EBM_ASSERT(nullptr == *ppObjective);
 
-      sObjective = IsStringEqualsCaseInsensitive(sObjective, "pseudo_huber");
+      static const char k_sObjectiveTag[] = "pseudo_huber";
+      sObjective = IsStringEqualsCaseInsensitive(sObjective, k_sObjectiveTag);
       if(nullptr == sObjective) {
          // we are not the specified objective
          return Error_None;
@@ -88,7 +90,8 @@ public:
             }
 
             // check and handle a possible parameter
-            sNext = IsStringEqualsCaseInsensitive(sObjective, "delta");
+            static const char k_sDeltaTag[] = "delta";
+            sNext = IsStringEqualsCaseInsensitive(sObjective, k_sDeltaTag);
             if(nullptr != sNext) {
                if('=' == *sNext) {
                   // before this point we could have been seeing a longer version of our proposed tag

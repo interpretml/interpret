@@ -179,9 +179,6 @@ static bool BoostZeroDimensional(
    return false;
 }
 
-WARNING_PUSH
-WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-
 static bool BoostSingleDimensional(
    ThreadStateBoosting * const pThreadStateBoosting,
    const FeatureGroup * const pFeatureGroup,
@@ -288,8 +285,6 @@ static bool BoostSingleDimensional(
    LOG_0(TraceLevelVerbose, "Exited BoostSingleDimensional");
    return bRet;
 }
-
-WARNING_POP
 
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the hessian isn't required (yet) in order to make decisions about
 //   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the gradients and then 
@@ -667,9 +662,6 @@ static bool BoostRandom(
    return false;
 }
 
-WARNING_PUSH
-WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
@@ -693,7 +685,9 @@ static IntEbmType GenerateModelUpdateInternal(
    const size_t cSignificantDimensions = pFeatureGroup->GetCountSignificantDimensions();
 
    IntEbmType lastDimensionLeavesMax = IntEbmType { 0 };
-   size_t cSignificantBinCount;
+   // this initialization isn't required, but this variable ends up touching a lot of downstream state
+   // and g++ seems to warn about all of that usage, even in other downstream functions!
+   size_t cSignificantBinCount = size_t { 0 };
    if(nullptr == aLeavesMax) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal aLeavesMax was null, so there won't be any splits");
    } else {
@@ -887,8 +881,6 @@ static IntEbmType GenerateModelUpdateInternal(
    LOG_0(TraceLevelVerbose, "Exited GenerateModelUpdatePerTargetClasses");
    return IntEbmType { 0 };
 }
-
-WARNING_POP
 
 // we made this a global because if we had put this variable inside the Booster object, then we would need to dereference that before getting 
 // the count.  By making this global we can send a log message incase a bad Booster object is sent into us we only decrease the count if the 

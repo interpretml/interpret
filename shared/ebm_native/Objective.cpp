@@ -15,10 +15,12 @@
 
 // Add any new Objective*.h include files here:
 #include "ObjectivePseudoHuber.h"
+#include "ObjectiveMulticlassSoftmax.h"
 
 // Add any new Objective*::AttemptCreateObjective functions to this list:
 static const ATTEMPT_CREATE_OBJECTIVE k_registeredObjectives[] = {
-   ObjectivePseudoHuber::AttemptCreateObjective
+   ObjectivePseudoHuber::AttemptCreateObjective,
+   ObjectiveMulticlassSoftmax::AttemptCreateObjective
 };
 
 ErrorEbmType Objective::CreateObjective(
