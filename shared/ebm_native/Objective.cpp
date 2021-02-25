@@ -11,7 +11,7 @@
 #include "FeatureGroup.h"
 #include "ThreadStateBoosting.h"
 
-#include "Objective.h"
+#include "Loss.h"
 
 // Add any new Loss*.h include files here:
 #include "ObjectivePseudoHuber.h"

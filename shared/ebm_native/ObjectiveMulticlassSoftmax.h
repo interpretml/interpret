@@ -19,7 +19,7 @@
 #include "FeatureGroup.h"
 #include "ThreadStateBoosting.h"
 
-#include "Objective.h"
+#include "Loss.h"
 
 class LossMulticlassSoftmax final : public Loss {
 
