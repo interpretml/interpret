@@ -74,22 +74,22 @@ class Loss {
    struct RemoveMulticlass final {
       INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
          const TLoss * const pTLoss = static_cast<const TLoss *>(pLoss);
-         return pTLoss->ApplyTrainingTemplated<compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup);
+         return pTLoss->template ApplyTrainingMulticlassTemplated<compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup);
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
          const TLoss * const pTLoss = static_cast<const TLoss *>(pLoss);
-         return pTLoss->ApplyValidationTemplated<compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
+         return pTLoss->template ApplyValidationMulticlassTemplated<compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
       }
    };
    template<typename TLoss, ptrdiff_t compilerBitPack>
    struct RemoveMulticlass<TLoss, k_regression, compilerBitPack> final {
       INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) {
          const TLoss * const pTLoss = static_cast<const TLoss *>(pLoss);
-         return pTLoss->ApplyTrainingTemplated<compilerBitPack>(pThreadStateBoosting, pFeatureGroup);
+         return pTLoss->template ApplyTrainingTemplated<compilerBitPack>(pThreadStateBoosting, pFeatureGroup);
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) {
          const TLoss * const pTLoss = static_cast<const TLoss *>(pLoss);
-         return pTLoss->ApplyValidationTemplated<compilerBitPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
+         return pTLoss->template ApplyValidationTemplated<compilerBitPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
       }
    };
 
@@ -188,13 +188,13 @@ protected:
 
 
    template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
-   ErrorEbmType SharedApplyTraining(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
+   ErrorEbmType SharedApplyTrainingMulticlass(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
       static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
       return SharedMulticlass<TLoss, compilerCountClasses, compilerBitPack>::ApplyTraining(this, pThreadStateBoosting, pFeatureGroup);
    }
 
    template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
-   ErrorEbmType SharedApplyValidation(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
+   ErrorEbmType SharedApplyValidationMulticlass(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
       static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
       return SharedMulticlass<TLoss, compilerCountClasses, compilerBitPack>::ApplyValidation(this, pThreadStateBoosting, pFeatureGroup, pMetricOut);
    }
