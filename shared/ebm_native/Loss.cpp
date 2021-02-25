@@ -15,7 +15,8 @@
 
 // Add any new Loss*.h include files here:
 #include "LossPseudoHuber.h"
-#include "LossMulticlassSoftmax.h"
+#include "LossBinaryLogLoss.h"
+#include "LossMulticlassLogLoss.h"
 
 // Add any new Loss*::AttemptCreateLoss functions to this list:
 static const ATTEMPT_CREATE_LOSS k_registeredLosss[] = {
