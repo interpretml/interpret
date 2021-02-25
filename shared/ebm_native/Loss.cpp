@@ -21,7 +21,7 @@
 // Add any new Loss*::AttemptCreateLoss functions to this list:
 static const ATTEMPT_CREATE_LOSS k_registeredLosss[] = {
    LossPseudoHuber::AttemptCreateLoss,
-   LossMulticlassSoftmax::AttemptCreateLoss
+   LossMulticlassLogLoss::AttemptCreateLoss
 };
 
 // TODO: simplify this registration process like this:

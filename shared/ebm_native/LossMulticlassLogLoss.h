@@ -21,11 +21,11 @@
 
 #include "Loss.h"
 
-class LossMulticlassSoftmax final : public Loss {
+class LossMulticlassLogLoss final : public Loss {
 
    size_t m_countTargetClasses;
 
-   INLINE_ALWAYS LossMulticlassSoftmax(const size_t countTargetClasses) {
+   INLINE_ALWAYS LossMulticlassLogLoss(const size_t countTargetClasses) {
       m_countTargetClasses = countTargetClasses;
    }
 
@@ -40,7 +40,12 @@ public:
       EBM_ASSERT(nullptr != ppLoss);
       EBM_ASSERT(nullptr == *ppLoss);
 
-      static const char k_sLossTag[] = "multiclass_softmax";
+      if(2 == countTargetClasses) {
+         // we overload "log_loss" for both binary and multiclass, so reject accepting binary here
+         return Error_LossCountTargetClassesInvalid;
+      }
+
+      static const char k_sLossTag[] = "log_loss";
       sLoss = IsStringEqualsCaseInsensitive(sLoss, k_sLossTag);
       if(nullptr == sLoss) {
          // we are not the specified objective
@@ -52,7 +57,7 @@ public:
          return Error_None;
       }
 
-      *ppLoss = new LossMulticlassSoftmax(countTargetClasses);
+      *ppLoss = new LossMulticlassLogLoss(countTargetClasses);
       return Error_None;
    }
 
