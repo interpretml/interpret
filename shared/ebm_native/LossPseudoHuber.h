@@ -37,22 +37,21 @@ public:
    }
 
    template <typename T>
-   INLINE_ALWAYS void CalculateGradient(const T target, const T prediction, T & gradientOut) const {
+   INLINE_ALWAYS T CalculateGradient(const T target, const T prediction) const {
       const T residualNegative = prediction - target;
       const T residualNegativeFraction = residualNegative * static_cast<T>(m_deltaInverted);
       const T calc = T { 1 } + residualNegativeFraction * residualNegativeFraction;
       const T sqrtCalc = std::sqrt(calc);
-      gradientOut = residualNegative / sqrtCalc;
+      return residualNegative / sqrtCalc;
    }
 
    template <typename T>
-   INLINE_ALWAYS void CalculateGradientAndHessian(const T target, const T prediction, T & gradientOut, T & hessianOut) const {
+   INLINE_ALWAYS void CalculateHessian(const T target, const T prediction) const {
       const T residualNegative = prediction - target;
       const T residualNegativeFraction = residualNegative * static_cast<T>(m_deltaInverted);
       const T calc = T { 1 } + residualNegativeFraction * residualNegativeFraction;
       const T sqrtCalc = std::sqrt(calc);
-      gradientOut = residualNegative / sqrtCalc;
-      hessianOut = T { 1 } / (calc * sqrtCalc);
+      return T { 1 } / (calc * sqrtCalc);
    }
 
    static ErrorEbmType AttemptCreateLoss(
