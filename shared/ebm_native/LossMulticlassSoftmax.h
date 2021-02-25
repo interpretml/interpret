@@ -56,29 +56,6 @@ public:
       return Error_None;
    }
 
+   LOSS_MULTICLASS_DEFAULT_MECHANICS_PUT_AT_END_OF_CLASS
 
-   // Most new objectives requires a straight copy paste of the code below!
-
-   // TODO: wrap the code below into a SCARY_LOSS_MACRO so that people can't break it by accident
-   //       It's easy to copy it, but harder to verify that it's correct after the fact or when changes are made
-   //       to the parameter lists!
-
-   template<ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
-   ErrorEbmType ApplyTrainingMulticlassTemplated(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
-      return Loss::SharedApplyTrainingMulticlass<std::remove_pointer<decltype(this)>::type, compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup);
-   }
-
-   template<ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
-   ErrorEbmType ApplyValidationMulticlassTemplated(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
-      return Loss::SharedApplyValidationMulticlass<std::remove_pointer<decltype(this)>::type, compilerCountClasses, compilerBitPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
-   }
-
-   ErrorEbmType ApplyTraining(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const override {
-      return Loss::LossApplyTrainingMulticlass<std::remove_pointer<decltype(this)>::type>(pThreadStateBoosting, pFeatureGroup);
-   }
-
-   ErrorEbmType ApplyValidation(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const override {
-      return Loss::LossApplyValidationMulticlass<std::remove_pointer<decltype(this)>::type>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
-   }
 };
-

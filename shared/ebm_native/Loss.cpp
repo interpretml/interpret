@@ -87,3 +87,7 @@ ErrorEbmType Loss::CreateLoss(
    LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss unknown");
    return Error_LossUnknown;
 }
+
+FloatEbmType Loss::GetUpdateMultiple() const {
+   return FloatEbmType { 1 };
+}
