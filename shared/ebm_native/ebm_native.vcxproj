@@ -291,8 +291,8 @@ EXIT /B 0
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />
     <ClInclude Include="Loss.h" />
-    <ClInclude Include="ObjectiveMulticlassSoftmax.h" />
-    <ClInclude Include="ObjectivePseudoHuber.h" />
+    <ClInclude Include="LossMulticlassSoftmax.h" />
+    <ClInclude Include="LossPseudoHuber.h" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />

@@ -250,7 +250,7 @@ public:
    virtual ~Loss() = default;
 };
 
-typedef ErrorEbmType (*ATTEMPT_CREATE_OBJECTIVE)(
+typedef ErrorEbmType (*ATTEMPT_CREATE_LOSS)(
    const char * sLoss,
    size_t countTargetClasses,
    const Loss ** const ppLoss

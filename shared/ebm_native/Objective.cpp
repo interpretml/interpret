@@ -14,18 +14,18 @@
 #include "Loss.h"
 
 // Add any new Loss*.h include files here:
-#include "ObjectivePseudoHuber.h"
-#include "ObjectiveMulticlassSoftmax.h"
+#include "LossPseudoHuber.h"
+#include "LossMulticlassSoftmax.h"
 
 // Add any new Loss*::AttemptCreateLoss functions to this list:
-static const ATTEMPT_CREATE_OBJECTIVE k_registeredLosss[] = {
+static const ATTEMPT_CREATE_LOSS k_registeredLosss[] = {
    LossPseudoHuber::AttemptCreateLoss,
    LossMulticlassSoftmax::AttemptCreateLoss
 };
 
 // TODO: simplify this registration process like this:
 //
-// global for all objectives
+// global for all losses
 //struct LossParam {
 //   const char * name; // I consume this so won't complicate things for the user by having a non std::string
 //   FloatEbmType defaultValue;
@@ -39,7 +39,7 @@ static const ATTEMPT_CREATE_OBJECTIVE k_registeredLosss[] = {
 //      LossRegistration("pseudo_huber2", LossPseudoHuber2::CreateLoss, { LossParam("param1", 1.2), LossParam("param2", 1.2), }),
 //   }
 //
-//   // in your objective include file:
+//   // in your loss include file:
 //   static Loss * LossPseudoHuber::CreateLoss(
 //      std::vector<FloatEbmType> params,
 //      size_t countTargetClasses (or replace someday with a "Configure" object that can hold whatever
@@ -61,8 +61,8 @@ ErrorEbmType Loss::CreateLoss(
 
    *ppLoss = nullptr;
    try {
-      const ATTEMPT_CREATE_OBJECTIVE * pAttemptCreateLossCur = k_registeredLosss;
-      const ATTEMPT_CREATE_OBJECTIVE * const pAttemptCreateLossEnd = 
+      const ATTEMPT_CREATE_LOSS * pAttemptCreateLossCur = k_registeredLosss;
+      const ATTEMPT_CREATE_LOSS * const pAttemptCreateLossEnd = 
          &k_registeredLosss[sizeof(k_registeredLosss) / sizeof(k_registeredLosss[0])];
       while(pAttemptCreateLossEnd != pAttemptCreateLossCur) {
          const ErrorEbmType error = (*pAttemptCreateLossCur)(sLoss, cTargetClasses, ppLoss);
@@ -81,9 +81,9 @@ ErrorEbmType Loss::CreateLoss(
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss Out of Memory");
       return Error_OutOfMemory;
    } catch(...) {
-      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss objective construction exception");
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss construction exception");
       return Error_LossConstructionException;
    }
-   LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss objective unknown");
+   LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss unknown");
    return Error_LossUnknown;
 }
