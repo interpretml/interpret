@@ -619,10 +619,6 @@ public:
    EbmException(const ErrorEbmType error) : m_error(error) {
    }
 
-   const char * what() const noexcept override {
-      return "EbmException";
-   }
-
    ErrorEbmType GetError() const noexcept {
       return m_error;
    }

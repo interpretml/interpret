@@ -17,18 +17,33 @@
 
 #include "Loss.h"
 
+// Steps for adding a new loss/objective function in C++:
+//   1) Copy one of the existing Loss*.h include files into a new renamed Loss*.h file
+//   2) Modify the new Loss*.h file to handle your new Loss function
+//   3) Add [#include "Loss*.h"] to the list of other include files right below this
+//   4) Add the Loss* type to the list of loss registrations in RegisterLosses() right below this
+//      IMPORTANT: the list of *LossParam items in the function RegisterLosses() below MUST match the constructor 
+//                 parameters in the Loss* struct, otherwise it will not compile!
+//   5) Recompile the C++ with either build.sh or build.bat depending on your operating system
+//   6) Enjoy your new Loss function, and send us a PR on Github if you think others would benefit  :-)
+
 // Add any new Loss*.h include files here:
+#include "LossBinaryCrossEntropy.h"
 #include "LossBinaryLogLoss.h"
+#include "LossMulticlassCrossEntropy.h"
 #include "LossMulticlassLogLoss.h"
+#include "LossMultilabelBinaryLogLoss.h"
+#include "LossMultilabelMulticlassCrossEntropy.h"
+#include "LossMultiregressionMse.h"
+#include "LossRegressionMse.h"
 #include "LossRegressionPseudoHuber.h"
 
 // Add any new Loss* types to this list:
-static std::vector<std::shared_ptr<const LossRegistrationBase>> RegisterLosses() {
+static const std::vector<std::shared_ptr<const RegisterLossBase>> RegisterLosses() {
    // IMPORTANT: the *LossParam types here must match the parameters types in your Loss* constructor
    return {
-      LossRegistration<LossRegressionPseudoHuber>("pseudo_huber", FloatLossParam("delta", 1)),
-      LossRegistration<LossMulticlassLogLoss>("log_loss"),
-      LossRegistration<LossMulticlassLogLoss>("softmax")
+      RegisterLoss<LossMulticlassLogLoss>("log_loss"),
+      RegisterLoss<LossRegressionPseudoHuber>("pseudo_huber", FloatLossParam("delta", 1))
    };
 }
 
@@ -46,8 +61,8 @@ ErrorEbmType Loss::CreateLoss(
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
    
    try {
-      std::vector<std::shared_ptr<const LossRegistrationBase>> registeredLosses = RegisterLosses();
-      for(const std::shared_ptr<const LossRegistrationBase> & lossRegistration : registeredLosses) {
+      const std::vector<std::shared_ptr<const RegisterLossBase>> registeredLosses = RegisterLosses();
+      for(const std::shared_ptr<const RegisterLossBase> & lossRegistration : registeredLosses) {
          if(nullptr == lossRegistration) {
             // hopefully nobody inserts a nullptr, but check anyways
             LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss construction exception");

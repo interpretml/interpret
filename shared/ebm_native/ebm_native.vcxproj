@@ -291,8 +291,14 @@ EXIT /B 0
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />
     <ClInclude Include="Loss.h" />
+    <ClInclude Include="LossBinaryCrossEntropy.h" />
     <ClInclude Include="LossBinaryLogLoss.h" />
+    <ClInclude Include="LossMulticlassCrossEntropy.h" />
     <ClInclude Include="LossMulticlassLogLoss.h" />
+    <ClInclude Include="LossMultilabelBinaryLogLoss.h" />
+    <ClInclude Include="LossMultilabelMulticlassCrossEntropy.h" />
+    <ClInclude Include="LossMultiregressionMse.h" />
+    <ClInclude Include="LossRegressionMse.h" />
     <ClInclude Include="LossRegressionPseudoHuber.h" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />

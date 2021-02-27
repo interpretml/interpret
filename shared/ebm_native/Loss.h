@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
+// !!! NOTE: To add a new loss/objective function in C++, follow the steps listed at the top of the "Loss.cpp" file !!!
+
 #ifndef LOSS_H
 #define LOSS_H
 
@@ -173,8 +175,6 @@ class Loss {
 
 protected:
 
-   Loss() = default;
-
    template<typename TLoss, ptrdiff_t compilerBitPack>
    INLINE_RELEASE_TEMPLATED ErrorEbmType SharedApplyTraining(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup) const {
       static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
@@ -192,7 +192,6 @@ protected:
       static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
       return SharedMulti<TLoss, compilerCountClasses, compilerBitPack>::ApplyTraining(this, pThreadStateBoosting, pFeatureGroup);
    }
-
    template<typename TLoss, ptrdiff_t compilerCountClasses, ptrdiff_t compilerBitPack>
    INLINE_RELEASE_TEMPLATED ErrorEbmType SharedApplyValidationMulti(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const {
       static_assert(std::is_base_of<Loss, TLoss>::value, "TLoss must inherit from Loss");
@@ -223,7 +222,11 @@ protected:
       return CountClasses<TLoss, 3>::ApplyValidation(this, pThreadStateBoosting, pFeatureGroup, pMetricOut);
    }
 
+   Loss() = default;
+
 public:
+
+   // TODO: we should wrap all our calls to the potentially re-written client code with try/catch blocks since we don't know if it throws exceptions
 
    // TODO: we need to actually use this now..
    virtual FloatEbmType GetUpdateMultiple() const;
@@ -252,92 +255,72 @@ class SkipLossException final : public std::exception {
    // we don't derrive from EbmException since this exception isn't meant to percolate up past the C interface
 public:
    SkipLossException() = default;
-
-   const char * what() const noexcept override {
-      return "Skip this loss function";
-   }
 };
 
 class LossParameterValueOutOfRangeException final : public EbmException {
-
 public:
-   LossParameterValueOutOfRangeException() : EbmException(Error_LossParameterValueOutOfRange) {
-   }
-
-   const char * what() const noexcept override {
-      return "Loss parameter value out of range";
+   INLINE_ALWAYS LossParameterValueOutOfRangeException() : EbmException(Error_LossParameterValueOutOfRange) {
    }
 };
 
 class LossParameterMismatchWithConfigException final : public EbmException {
-
 public:
-   LossParameterMismatchWithConfigException() : EbmException(Error_LossParameterMismatchWithConfig) {
-   }
-
-   const char * what() const noexcept override {
-      return "Loss parameter mismatches the Config";
+   INLINE_ALWAYS LossParameterMismatchWithConfigException() : EbmException(Error_LossParameterMismatchWithConfig) {
    }
 };
 
-class FloatLossParam final {
+class LossParam {
    const char * const m_sParamName;
+
+protected:
+
+   INLINE_ALWAYS LossParam(const char * const sParamName) : m_sParamName(sParamName) {
+   }
+
+public:
+
+   INLINE_ALWAYS const char * GetParamName() const noexcept {
+      return m_sParamName;
+   }
+};
+
+
+class FloatLossParam final : public LossParam {
    const FloatEbmType m_defaultValue;
 
 public:
 
    typedef FloatEbmType LossParamType;
 
-   INLINE_ALWAYS const char * GetParamName() const noexcept {
-      return m_sParamName;
-   }
-
    INLINE_ALWAYS FloatEbmType GetDefaultValue() const noexcept {
       return m_defaultValue;
    }
 
    INLINE_ALWAYS FloatLossParam(const char * const sParamName, const FloatEbmType defaultValue) :
-      m_sParamName(sParamName),
+      LossParam(sParamName),
       m_defaultValue(defaultValue) {
    }
 };
 
-class BoolLossParam final {
-   const char * const m_sParamName;
+class BoolLossParam final : public LossParam {
    const bool m_defaultValue;
 
 public:
 
    typedef bool LossParamType;
 
-   INLINE_ALWAYS const char * GetParamName() const noexcept {
-      return m_sParamName;
-   }
-
    INLINE_ALWAYS bool GetDefaultValue() const noexcept {
       return m_defaultValue;
    }
 
    INLINE_ALWAYS BoolLossParam(const char * const sParamName, const bool defaultValue) :
-      m_sParamName(sParamName),
+      LossParam(sParamName),
       m_defaultValue(defaultValue) {
    }
 };
 
-class LossRegistrationBase {
-protected:
-
-   LossRegistrationBase() = default;
-
-public:
-   virtual std::unique_ptr<const Loss> AttemptCreateLoss(const Config & config, const char * const sLoss) const = 0;
-   virtual ~LossRegistrationBase() = default;
-};
-
-template<typename TLoss, typename... Args>
-class LossRegistrationPack final : public LossRegistrationBase {
-   const char * m_sLossName;
-   std::function<std::unique_ptr<const Loss>(const Config & config, const char * const sLoss)> m_callBack;
+class RegisterLossBase {
+   const char * const m_sLossName;
 
    static INLINE_ALWAYS const char * ConvertStringToLossType(const char * const s, FloatEbmType * const pResultOut) noexcept {
       return ConvertStringToFloat(s, pResultOut);
@@ -350,15 +333,18 @@ class LossRegistrationPack final : public LossRegistrationBase {
       return nullptr;
    }
 
+protected:
+
    template<typename TLossParam>
-   static typename TLossParam::LossParamType UnpackLossParam(const TLossParam & param, const char * sLoss, std::vector<const char *> & usedLocations) {
+   static typename TLossParam::LossParamType UnpackLossParam(
+      const TLossParam & param,
+      const char * sLoss,
+      std::vector<const char *> & usedLocations) 
+   {
       typename TLossParam::LossParamType paramValue = param.GetDefaultValue();
       while(true) {
-         const char * sNext;
-
          // check and handle a possible parameter
-         static const char k_sDeltaTag[] = "delta";
-         sNext = IsStringEqualsCaseInsensitive(sLoss, k_sDeltaTag);
+         const char * sNext = IsStringEqualsCaseInsensitive(sLoss, param.GetParamName());
          if(nullptr != sNext) {
             if('=' == *sNext) {
                usedLocations.push_back(sLoss);
@@ -389,48 +375,106 @@ class LossRegistrationPack final : public LossRegistrationBase {
       return paramValue;
    }
 
-public:
-   LossRegistrationPack(const char * sLossName, Args...args) : m_sLossName(sLossName) {
-      m_callBack = [args...](const Config & config, const char * const sLoss) {
-         std::vector<const char *> usedLocations;
+   static INLINE_ALWAYS void FinalCheckParameters(const char * sLoss, std::vector<const char *> & usedLocations) {
+      std::sort(usedLocations.begin(), usedLocations.end());
 
-         std::unique_ptr<const Loss> pLoss = std::unique_ptr<const Loss>(new TLoss(config, UnpackLossParam(args, sLoss, usedLocations)...));
-
-         std::sort(usedLocations.begin(), usedLocations.end());
-
-         // TODO: check here if we used all our comma separated values
-         UNUSED(sLoss); // remove this once we check for unused tags
-
-         return pLoss;
-      };
+      for(const char * sParam : usedLocations) {
+         if(sParam != sLoss) {
+            throw EbmException(Error_LossParameterUnknown);
+         }
+         sLoss = strchr(sLoss, ',');
+         if(nullptr == sLoss) {
+            return;
+         }
+         ++sLoss;
+         if(0 == *SkipWhitespace(sLoss)) {
+            return;
+         }
+      }
+      if(0 != *SkipWhitespace(sLoss)) {
+         throw EbmException(Error_LossParameterUnknown);
+      }
    }
 
-   std::unique_ptr<const Loss> AttemptCreateLoss(const Config & config, const char * sLoss) const override {
+   INLINE_ALWAYS const char * CheckLossName(const char * sLoss) const {
       EBM_ASSERT(nullptr != sLoss);
 
       sLoss = IsStringEqualsCaseInsensitive(sLoss, m_sLossName);
       if(nullptr == sLoss) {
-         // we are not the specified objective
+         // we are not the specified loss function
          return nullptr;
       }
       if(0 != *sLoss) {
          if(':' != *sLoss) {
             // we are not the specified objective, but the objective could still be something with a longer string
             // eg: the given tag was "something_else:" but our tag was "something:", so we matched on "something" only
-            return std::unique_ptr<const Loss>();
+            return nullptr;
          }
          sLoss = SkipWhitespace(sLoss + 1);
+      }
+      return sLoss;
+   }
+
+   INLINE_ALWAYS RegisterLossBase(const char * sLossName) : m_sLossName(sLossName) {
+   }
+
+public:
+
+   virtual std::unique_ptr<const Loss> AttemptCreateLoss(const Config & config, const char * const sLoss) const = 0;
+   virtual ~RegisterLossBase() = default;
+};
+
+template<typename TLoss, typename... Args>
+class RegisterLossPack final : public RegisterLossBase {
+
+   std::function<std::unique_ptr<const Loss>(const Config & config, const char * const sLoss)> m_callBack;
+
+   template<typename... ArgsConverted>
+   static std::unique_ptr<const Loss> CheckAndCallNew(
+      const Config & config,
+      const char * const sLoss,
+      std::vector<const char *> & usedLocations,
+      ArgsConverted...args
+   ) {
+      FinalCheckParameters(sLoss, usedLocations); // this throws if it finds anything wrong
+      return std::unique_ptr<const Loss>(new TLoss(config, args...));
+   }
+
+public:
+
+   RegisterLossPack(const char * sLossName, Args...args) : RegisterLossBase(sLossName) {
+      m_callBack = [args...](
+         const Config & config,
+         const char * const sLoss
+      ) {
+         std::vector<const char *> usedLocations;
+         return std::unique_ptr<const Loss>(CheckAndCallNew(
+            config,
+            sLoss,
+            usedLocations,
+            UnpackLossParam(args, sLoss, usedLocations)...)
+         );
+      };
+   }
+
+   std::unique_ptr<const Loss> AttemptCreateLoss(const Config & config, const char * sLoss) const override {
+      sLoss = CheckLossName(sLoss);
+      if(nullptr == sLoss) {
+         // we are not the specified loss function
+         return std::unique_ptr<const Loss>();
       }
       return m_callBack(config, sLoss);
    }
 };
 
 template<typename TLoss, typename... Args>
-std::shared_ptr<const LossRegistrationBase> LossRegistration(const char * sLossName, Args...args) noexcept {
-   return std::make_shared<const LossRegistrationPack<TLoss, Args...>>(sLossName, args...);
+std::shared_ptr<const RegisterLossBase> RegisterLoss(const char * sLossName, Args...args) noexcept {
+   // ideally we'd be returning unique_ptr here, but we pass this to an initialization list which doesn't work in C++11
+   return std::make_shared<const RegisterLossPack<TLoss, Args...>>(sLossName, args...);
 }
 
 
+// TODO: add parameters to these macros to pass in what options we want in our template generation
 #define LOSS_DEFAULT_MECHANICS_PUT_AT_END_OF_CLASS \
    public: \
       template<ptrdiff_t compilerBitPack> \
@@ -464,62 +508,5 @@ std::shared_ptr<const LossRegistrationBase> LossRegistration(const char * sLossN
       ErrorEbmType ApplyValidation(ThreadStateBoosting * const pThreadStateBoosting, const FeatureGroup * const pFeatureGroup, FloatEbmType * const pMetricOut) const override { \
          return Loss::LossApplyValidationMulti<std::remove_pointer<decltype(this)>::type>(pThreadStateBoosting, pFeatureGroup, pMetricOut); \
       }
-
-
-
-
-//class LossBinaryLogLoss final : public Loss {
-//   // TODO: put this in it's own file
-//public:
-//
-//   INLINE_ALWAYS LossBinaryLogLoss() {
-//   }
-//
-//   template <typename T>
-//   static INLINE_ALWAYS T CalculatePrediction(const T score) {
-//      return score * 10000;
-//   }
-//
-//   template <typename T>
-//   static INLINE_ALWAYS T GetGradientFromBoolTarget(const bool target, const T prediction) {
-//      return -100000;
-//   }
-//
-//   template <typename T>
-//   static INLINE_ALWAYS T GetHessianFromBoolTargetAndGradient(const bool target, const T gradient) {
-//      // normally we'd get the hessian from the prediction, but for binary logistic regression it's a bit better
-//      // to use the gradient, and the mathematics is a special case where we can do this.
-//      return -100000;
-//   }
-//
-//   INLINE_ALWAYS FloatEbmType GetUpdateMultiple() const noexcept override {
-//      return FloatEbmType { 1 };
-//   }
-//
-//};
-//
-//class LossRegressionMSE final : public Loss {
-//   // TODO: put this in it's own file
-//public:
-//
-//   INLINE_ALWAYS LossRegressionMSE() {
-//   }
-//
-//   // for MSE regression, we get target - score at initialization and only store the gradients, so we never
-//   // make a prediction, so we don't need CalculatePrediction(...)
-//
-//   template <typename T>
-//   static INLINE_ALWAYS T GetGradientFromGradientPrev(const T target, const T gradientPrev) {
-//      // for MSE regression, we get target - score at initialization and only store the gradients, so we
-//      // never need the targets.  We just work from the previous gradients.
-//
-//      return -100000;
-//   }
-//
-//   INLINE_ALWAYS FloatEbmType GetUpdateMultiple() const noexcept override {
-//      return FloatEbmType { 1 };
-//   }
-//
-//};
 
 #endif // LOSS_H
