@@ -49,7 +49,7 @@ struct LossRegressionPseudoHuber final : public Loss {
    }
 
    template <typename T>
-   INLINE_ALWAYS void CalculateHessian(const T target, const T prediction) const {
+   INLINE_ALWAYS T CalculateHessian(const T target, const T prediction) const {
       const T residualNegative = prediction - target;
       const T residualNegativeFraction = residualNegative * static_cast<T>(m_deltaInverted);
       const T calc = T { 1 } + residualNegativeFraction * residualNegativeFraction;

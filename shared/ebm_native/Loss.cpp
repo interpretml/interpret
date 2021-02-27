@@ -23,7 +23,7 @@
 #include "LossRegressionPseudoHuber.h"
 
 // Add any new Loss* types to this list:
-static const std::initializer_list<std::shared_ptr<const LossRegistrationBase>> RegisterLosses() {
+static std::vector<std::shared_ptr<const LossRegistrationBase>> RegisterLosses() {
    // IMPORTANT: the *LossParam types here must match the parameters types in your Loss* constructor
    return {
       LossRegistration<LossRegressionPseudoHuber>("pseudo_huber", FloatLossParam("delta", 1)),
@@ -46,7 +46,7 @@ ErrorEbmType Loss::CreateLoss(
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
    
    try {
-      const std::initializer_list<std::shared_ptr<const LossRegistrationBase>> registeredLosses = RegisterLosses();
+      std::vector<std::shared_ptr<const LossRegistrationBase>> registeredLosses = RegisterLosses();
       for(const std::shared_ptr<const LossRegistrationBase> & lossRegistration : registeredLosses) {
          if(nullptr == lossRegistration) {
             // hopefully nobody inserts a nullptr, but check anyways
