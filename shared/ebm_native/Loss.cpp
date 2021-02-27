@@ -18,9 +18,9 @@
 #include "Loss.h"
 
 // Add any new Loss*.h include files here:
-#include "LossPseudoHuber.h"
 #include "LossBinaryLogLoss.h"
 #include "LossMulticlassLogLoss.h"
+#include "LossRegressionPseudoHuber.h"
 
 // Add any new Loss* types to this list:
 static const std::initializer_list<std::shared_ptr<const LossRegistrationBase>> RegisterLosses() {

@@ -344,7 +344,10 @@ class LossRegistrationPack final : public LossRegistrationBase {
    }
 
    static INLINE_ALWAYS const char * ConvertStringToLossType(const char * const s, bool * const pResultOut) noexcept {
-      return false; // TODO : implement
+      // TODO : implement
+      UNUSED(s);
+      UNUSED(pResultOut);
+      return nullptr;
    }
 
    template<typename TLossParam>

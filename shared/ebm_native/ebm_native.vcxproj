@@ -293,7 +293,7 @@ EXIT /B 0
     <ClInclude Include="Loss.h" />
     <ClInclude Include="LossBinaryLogLoss.h" />
     <ClInclude Include="LossMulticlassLogLoss.h" />
-    <ClInclude Include="LossPseudoHuber.h" />
+    <ClInclude Include="LossRegressionPseudoHuber.h" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />
