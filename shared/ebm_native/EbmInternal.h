@@ -11,6 +11,7 @@
 #include <type_traits> // is_integral
 #include <cmath> // std::exp, std::log
 #include <stdlib.h> // free
+#include <exception>
 
 #include "ebm_native.h"
 
@@ -611,6 +612,34 @@ INLINE_RELEASE_UNTEMPLATED const char * IsStringEqualsCaseInsensitive(const char
    return sMain;
 }
 
+class EbmException : public std::exception {
+   const ErrorEbmType m_error;
+
+public:
+   EbmException(const ErrorEbmType error) : m_error(error) {
+   }
+
+   const char * what() const noexcept override {
+      return "EbmException";
+   }
+
+   ErrorEbmType GetError() const noexcept {
+      return m_error;
+   }
+};
+
+class Config final {
+
+   const size_t m_cOutputs;
+
+public:
+   INLINE_ALWAYS Config(const size_t cOutputs) : m_cOutputs(cOutputs) {
+   }
+
+   INLINE_ALWAYS size_t GetCountOutputs() const noexcept {
+      return m_cOutputs;
+   }
+};
 
 // TODO: figure out if we really want/need to template the handling of different bit packing sizes.  It might
 //       be the case that for specific bit sizes, like 8x8, we want to keep our memory stride as small as possible

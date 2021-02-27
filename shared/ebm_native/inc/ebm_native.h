@@ -145,12 +145,12 @@ typedef UIntEbmType UGenerateUpdateOptionsType;
 
 #define Error_None                                    (EBM_ERROR_CAST(0))
 #define Error_OutOfMemory                             (EBM_ERROR_CAST(1))
-#define Error_LossConstructionException          (EBM_ERROR_CAST(2))
-#define Error_LossParameterUnknown               (EBM_ERROR_CAST(3))
-#define Error_LossParameterValueMalformed        (EBM_ERROR_CAST(4))
-#define Error_LossParameterValueOutOfRange       (EBM_ERROR_CAST(5))
-#define Error_LossCountTargetClassesInvalid      (EBM_ERROR_CAST(6))
-#define Error_LossUnknown                        (EBM_ERROR_CAST(7))
+#define Error_LossConstructionException               (EBM_ERROR_CAST(2))
+#define Error_LossParameterUnknown                    (EBM_ERROR_CAST(3))
+#define Error_LossParameterValueMalformed             (EBM_ERROR_CAST(4))
+#define Error_LossParameterValueOutOfRange            (EBM_ERROR_CAST(5))
+#define Error_LossParameterMismatchWithConfig         (EBM_ERROR_CAST(6))
+#define Error_LossUnknown                             (EBM_ERROR_CAST(7))
 
 #define GenerateUpdateOptions_Default              (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
 #define GenerateUpdateOptions_DisableNewtonGain    (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))

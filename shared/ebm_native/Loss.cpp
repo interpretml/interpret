@@ -5,6 +5,10 @@
 #include "PrecompiledHeader.h"
 
 #include <stddef.h> // size_t, ptrdiff_t
+#include <vector>
+#include <functional>
+#include <memory>
+#include <algorithm>
 
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
@@ -18,66 +22,53 @@
 #include "LossBinaryLogLoss.h"
 #include "LossMulticlassLogLoss.h"
 
-// Add any new Loss*::AttemptCreateLoss functions to this list:
-static const ATTEMPT_CREATE_LOSS k_registeredLosss[] = {
-   LossPseudoHuber::AttemptCreateLoss,
-   LossMulticlassLogLoss::AttemptCreateLoss
-};
+// Add any new Loss* types to this list:
+static const std::initializer_list<std::shared_ptr<const LossRegistrationBase>> RegisterLosses() {
+   // IMPORTANT: the *LossParam types here must match the parameters types in your Loss* constructor
+   return {
+      LossRegistration<LossRegressionPseudoHuber>("pseudo_huber", FloatLossParam("delta", 1)),
+      LossRegistration<LossMulticlassLogLoss>("log_loss"),
+      LossRegistration<LossMulticlassLogLoss>("softmax")
+   };
+}
 
-// TODO: simplify this registration process like this:
-//
-// global for all losses
-//struct LossParam {
-//   const char * name; // I consume this so won't complicate things for the user by having a non std::string
-//   FloatEbmType defaultValue;
-//}
-//
-//// still need to do this in Loss.cpp!
-//#include "LossPseudoHuber.h"
-//static const LossRegistration k_registeredLosss[] = {
-//   {
-//      LossRegistration("pseudo_huber", LossPseudoHuber::CreateLoss),
-//      LossRegistration("pseudo_huber2", LossPseudoHuber2::CreateLoss, { LossParam("param1", 1.2), LossParam("param2", 1.2), }),
-//   }
-//
-//   // in your loss include file:
-//   static Loss * LossPseudoHuber::CreateLoss(
-//      std::vector<FloatEbmType> params,
-//      size_t countTargetClasses (or replace someday with a "Configure" object that can hold whatever
-//   )
-//
-
-
-
+// !! ANYTHING BELOW THIS POINT ISN'T REQUIRED TO MAKE YOUR OWN CUSTOM LOSS FUNCTION !!
 
 ErrorEbmType Loss::CreateLoss(
    const char * const sLoss, 
-   const size_t cTargetClasses, 
+   const Config * const pConfig,
    const Loss ** const ppLoss
 ) noexcept {
    EBM_ASSERT(nullptr != sLoss);
+   EBM_ASSERT(nullptr != pConfig);
    EBM_ASSERT(nullptr != ppLoss);
 
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
-
-   *ppLoss = nullptr;
+   
    try {
-      const ATTEMPT_CREATE_LOSS * pAttemptCreateLossCur = k_registeredLosss;
-      const ATTEMPT_CREATE_LOSS * const pAttemptCreateLossEnd = 
-         &k_registeredLosss[sizeof(k_registeredLosss) / sizeof(k_registeredLosss[0])];
-      while(pAttemptCreateLossEnd != pAttemptCreateLossCur) {
-         const ErrorEbmType error = (*pAttemptCreateLossCur)(sLoss, cTargetClasses, ppLoss);
-         if(Error_None != error) {
-            EBM_ASSERT(nullptr == *ppLoss);
-            LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss error in AttemptCreateLoss");
-            return error;
+      const std::initializer_list<std::shared_ptr<const LossRegistrationBase>> registeredLosses = RegisterLosses();
+      for(const std::shared_ptr<const LossRegistrationBase> & lossRegistration : registeredLosses) {
+         if(nullptr == lossRegistration) {
+            // hopefully nobody inserts a nullptr, but check anyways
+            LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss construction exception");
+            return Error_LossConstructionException;
          }
-         if(nullptr != *ppLoss) {
-            LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
-            return Error_None;
+         try {
+            std::unique_ptr<const Loss> pLoss = lossRegistration->AttemptCreateLoss(*pConfig, sLoss);
+            if(nullptr != pLoss) {
+               // found it!
+               LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
+               // we're exiting the area where exceptions are regularily thrown 
+               *ppLoss = pLoss.release();
+               return Error_None;
+            }
+         } catch(const SkipLossException &) {
+            // the specific Loss function is saying it isn't a match (based on parameters in the Config object probably)
          }
-         ++pAttemptCreateLossCur;
       }
+   } catch(const EbmException & exception) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss Exception");
+      return exception.GetError();
    } catch(const std::bad_alloc&) {
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss Out of Memory");
       return Error_OutOfMemory;
@@ -85,6 +76,7 @@ ErrorEbmType Loss::CreateLoss(
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss construction exception");
       return Error_LossConstructionException;
    }
+   
    LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss unknown");
    return Error_LossUnknown;
 }

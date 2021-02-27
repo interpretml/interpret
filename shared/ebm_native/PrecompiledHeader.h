@@ -10,9 +10,14 @@
 #include <type_traits> // std::is_standard_layout, std::is_integral
 #include <stdlib.h> // malloc, free
 #include <string.h> // strchr, memmove, memcpy
+#include <algorithm> // std::sort
 
 #include <vector>
 #include <queue>
+#include <exception>
+#include <functional> // std::function
+#include <memory> // std::shared_ptr
+  
 
 #include <random>
 #include <cmath> // log, exp, etc.  Use cmath instead of math.h so that we get type overloading for these functions for seemless float/double useage
