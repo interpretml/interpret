@@ -33,9 +33,9 @@
 #include "LossBinaryLogLoss.h"
 #include "LossMulticlassCrossEntropy.h"
 #include "LossMulticlassLogLoss.h"
-#include "LossMultilabelBinaryLogLoss.h"
-#include "LossMultilabelMulticlassCrossEntropy.h"
-#include "LossMultiregressionMse.h"
+#include "LossMultitaskBinaryLogLoss.h"
+#include "LossMultitaskMulticlassCrossEntropy.h"
+#include "LossMultitaskRegressionMse.h"
 #include "LossRegressionMse.h"
 #include "LossRegressionPseudoHuber.h"
 
@@ -47,6 +47,37 @@ static const std::vector<std::shared_ptr<const RegisterLossBase>> RegisterLosses
       RegisterLoss<LossRegressionPseudoHuber>("pseudo_huber", FloatLossParam("delta", 1))
    };
 }
+
+// TODO: include ranking
+//
+// We use the following terminology:
+// Target      : the thing we're trying to predict.  For classification this is the label.  For regression this 
+//               is what we're predicting directly.  Target and Output seem to be used interchangeably in other 
+//               packages.  We choose Target here.
+// Score       : the values we use to generate predictions.  For classification these are logits.  For regression these
+//               are the predictions themselves.  For multiclass there are N scores per target when there are N classes.
+//               For multiclass you could eliminate one score to get N-1 scores, but we don't use that in this package.
+// Prediction  : the prediction of the model.  We output scores in our model and generate predictions from them.
+//               For multiclass the scores are the logits, and the predictions would be the outputs of softmax.
+//               We have N scores per target for an N class multiclass problem.
+// Binary      : binary classification.  Target is 0 or 1
+// Multiclass  : multiclass classification.  Target is 0, 1, 2, ... 
+// Regression  : regression
+// Multioutput : a model that can predict multiple different things.  A single model could predict binary, 
+//               multiclass, regression, etc. different targets.
+// Multitask   : A slightly more restricted form of multioutput where training jointly optimizes the targets.
+//               The different targets can still be of different types (binary, multiclass, regression, etc), but
+//               importantly they share a single loss function.  In C++ we deal only with multitask since otherwise 
+//               it would make more sense to train the targets separately.  In higher level languages the models can 
+//               either be Multitask or Multioutput depending on how they were generated.
+// Multilabel  : A more restricted version of multitask where the tasks are either binary or multiclass, but all
+//               the targets have the same number of classes.  We don't treat this case specially in C++ since
+//               we can operate on the more general case of "LossMultitaskMulticlassCrossEntropy" instead.
+// 
+// The most general loss function that we could handle in C++ would be to take a custom loss function that jointly 
+// optimizes a multitask problem that contains regression, binary, and multiclass tasks.  This would be: 
+// "LossMultitaskCustom"
+
 
 // !! ANYTHING BELOW THIS POINT ISN'T REQUIRED TO MAKE YOUR OWN CUSTOM LOSS FUNCTION !!
 
