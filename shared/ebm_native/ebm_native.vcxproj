@@ -300,6 +300,7 @@ EXIT /B 0
     <ClInclude Include="LossMultiregressionMse.h" />
     <ClInclude Include="LossRegressionMse.h" />
     <ClInclude Include="LossRegressionPseudoHuber.h" />
+    <ClInclude Include="RegisterLoss.h" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />
@@ -333,6 +334,7 @@ EXIT /B 0
     <ClCompile Include="GenerateUniformCuts.cpp" />
     <ClCompile Include="GenerateWinsorizedCuts.cpp" />
     <ClCompile Include="Loss.cpp" />
+    <ClCompile Include="RegisterLoss.cpp" />
     <ClCompile Include="ThreadStateBoosting.cpp" />
     <ClCompile Include="ThreadStateInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />

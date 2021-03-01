@@ -16,6 +16,7 @@
 #include "ThreadStateBoosting.h"
 
 #include "Loss.h"
+#include "RegisterLoss.h"
 
 // Steps for adding a new loss/objective function in C++:
 //   1) Copy one of the existing Loss*.h include files into a new renamed Loss*.h file
