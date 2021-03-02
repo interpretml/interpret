@@ -45,7 +45,7 @@ struct LossBinaryLogLoss : Loss {
    INLINE_ALWAYS LossBinaryLogLoss(const Config & config) {
       if(1 != config.GetCountOutputs()) {
          // we share the tag "log_loss" with multiclass classification
-         throw SkipLossException();
+         throw SkipRegistrationException();
       }
    }
 

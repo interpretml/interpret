@@ -6,9 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <vector>
-#include <functional>
-#include <memory>
-#include <algorithm>
+#include <memory> // shared_ptr, unique_ptr
 
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
@@ -23,12 +21,12 @@
 //   2) Modify the new Loss*.h file to handle your new Loss function
 //   3) Add [#include "Loss*.h"] to the list of other include files right below this
 //   4) Add the Loss* type to the list of loss registrations in RegisterLosses() right below this
-//      IMPORTANT: the list of *LossParam items in the function RegisterLosses() below MUST match the constructor 
-//                 parameters in the Loss* struct, otherwise it will not compile!
+//      IMPORTANT: the list of *LossParam items in the function RegisterLosses() MUST match the constructor 
+//                 parameters in the new Loss* struct, otherwise it will not compile!
 //   5) Recompile the C++ with either build.sh or build.bat depending on your operating system
 //   6) Enjoy your new Loss function, and send us a PR on Github if you think others would benefit  :-)
 
-// Add any new Loss*.h include files here:
+// Add new Loss*.h include files here:
 #include "LossBinaryCrossEntropy.h"
 #include "LossBinaryLogLoss.h"
 #include "LossMulticlassCrossEntropy.h"
@@ -39,12 +37,12 @@
 #include "LossRegressionMse.h"
 #include "LossRegressionPseudoHuber.h"
 
-// Add any new Loss* types to this list:
-static const std::vector<std::shared_ptr<const RegisterLossBase>> RegisterLosses() {
+// Add new Loss* type registrations to this list:
+static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
    // IMPORTANT: the *LossParam types here must match the parameters types in your Loss* constructor
    return {
-      RegisterLoss<LossMulticlassLogLoss>("log_loss"),
-      RegisterLoss<LossRegressionPseudoHuber>("pseudo_huber", FloatLossParam("delta", 1))
+      Register<LossMulticlassLogLoss>("log_loss"),
+      Register<LossRegressionPseudoHuber>("pseudo_huber", FloatParam("delta", 1))
    };
 }
 
@@ -56,7 +54,8 @@ static const std::vector<std::shared_ptr<const RegisterLossBase>> RegisterLosses
 //               packages.  We choose Target here.
 // Score       : the values we use to generate predictions.  For classification these are logits.  For regression these
 //               are the predictions themselves.  For multiclass there are N scores per target when there are N classes.
-//               For multiclass you could eliminate one score to get N-1 scores, but we don't use that in this package.
+//               For multiclass you could eliminate one score to get N-1 scores, but we don't use that trick in this 
+//               package yet.
 // Prediction  : the prediction of the model.  We output scores in our model and generate predictions from them.
 //               For multiclass the scores are the logits, and the predictions would be the outputs of softmax.
 //               We have N scores per target for an N class multiclass problem.
@@ -70,8 +69,8 @@ static const std::vector<std::shared_ptr<const RegisterLossBase>> RegisterLosses
 //               importantly they share a single loss function.  In C++ we deal only with multitask since otherwise 
 //               it would make more sense to train the targets separately.  In higher level languages the models can 
 //               either be Multitask or Multioutput depending on how they were generated.
-// Multilabel  : A more restricted version of multitask where the tasks are all binary classification.  For 
-//               consistency with our other types of Multitask learning, we call this MultitaskBinary*.
+// Multilabel  : A more restricted version of multitask where the tasks are all binary classification.  We use
+//               the term MultitaskBinary* here since it fits better into our ontology.
 // 
 // The most general loss function that we could handle in C++ would be to take a custom loss function that jointly 
 // optimizes a multitask problem that contains regression, binary, and multiclass tasks.  This would be: 
@@ -80,50 +79,48 @@ static const std::vector<std::shared_ptr<const RegisterLossBase>> RegisterLosses
 
 // !! ANYTHING BELOW THIS POINT ISN'T REQUIRED TO MAKE YOUR OWN CUSTOM LOSS FUNCTION !!
 
-ErrorEbmType Loss::CreateLoss(
-   const char * const sLoss, 
+ErrorEbmType Loss::CreateRegistrable(
+   const char * const sRegistration, 
    const Config * const pConfig,
-   const Loss ** const ppLoss
+   const Registrable ** const ppRegistrable
 ) noexcept {
-   EBM_ASSERT(nullptr != sLoss);
+   EBM_ASSERT(nullptr != sRegistration);
    EBM_ASSERT(nullptr != pConfig);
-   EBM_ASSERT(nullptr != ppLoss);
+   EBM_ASSERT(nullptr != ppRegistrable);
 
-   LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
-   
+   LOG_0(TraceLevelInfo, "Entered Registrable::CreateRegistrable");
    try {
-      const std::vector<std::shared_ptr<const RegisterLossBase>> registeredLosses = RegisterLosses();
-      for(const std::shared_ptr<const RegisterLossBase> & lossRegistration : registeredLosses) {
-         if(nullptr == lossRegistration) {
+      const std::vector<std::shared_ptr<const Registration>> registrations = RegisterLosses();
+      for(const std::shared_ptr<const Registration> & registration : registrations) {
+         if(nullptr == registration) {
             // hopefully nobody inserts a nullptr, but check anyways
-            LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss construction exception");
-            return Error_LossConstructionException;
+            LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable null registration");
+            return Error_NullLossRegistrationException;
          }
          try {
-            std::unique_ptr<const Loss> pLoss = lossRegistration->AttemptCreateLoss(*pConfig, sLoss);
-            if(nullptr != pLoss) {
+            std::unique_ptr<const Registrable> pRegistrable = registration->AttemptCreate(*pConfig, sRegistration);
+            if(nullptr != pRegistrable) {
                // found it!
-               LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
+               LOG_0(TraceLevelInfo, "Exited Registrable::CreateRegistrable");
                // we're exiting the area where exceptions are regularily thrown 
-               *ppLoss = pLoss.release();
+               *ppRegistrable = pRegistrable.release();
                return Error_None;
             }
-         } catch(const SkipLossException &) {
-            // the specific Loss function is saying it isn't a match (based on parameters in the Config object probably)
+         } catch(const SkipRegistrationException &) {
+            // the specific Registrable function is saying it isn't a match (based on parameters in the Config object probably)
          }
       }
    } catch(const EbmException & exception) {
-      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss Exception");
+      LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable EbmException");
       return exception.GetError();
-   } catch(const std::bad_alloc&) {
-      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss Out of Memory");
+   } catch(const std::bad_alloc &) {
+      LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable Out of Memory");
       return Error_OutOfMemory;
    } catch(...) {
-      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss construction exception");
-      return Error_LossConstructionException;
+      LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable internal error, unknown exception");
+      return Error_UnknownInternalError;
    }
-   
-   LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss unknown");
+   LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable registration unknown");
    return Error_LossUnknown;
 }
 

@@ -16,43 +16,43 @@
 #include "Loss.h"
 #include "RegisterLoss.h"
 
-void RegisterLossBase::FinalCheckParameters(const char * sLoss, std::vector<const char *> & usedLocations) {
+void Registration::FinalCheckParameters(const char * sRegistration, std::vector<const char *> & usedLocations) {
    std::sort(usedLocations.begin(), usedLocations.end());
 
    for(const char * sParam : usedLocations) {
-      if(sParam != sLoss) {
+      if(sParam != sRegistration) {
          throw EbmException(Error_LossParameterUnknown);
       }
-      sLoss = strchr(sLoss, ',');
-      if(nullptr == sLoss) {
+      sRegistration = strchr(sRegistration, k_paramSeparator);
+      if(nullptr == sRegistration) {
          return;
       }
-      ++sLoss;
-      if(0 == *SkipWhitespace(sLoss)) {
+      ++sRegistration;
+      if(0 == *SkipWhitespace(sRegistration)) {
          return;
       }
    }
-   if(0 != *SkipWhitespace(sLoss)) {
+   if(0 != *SkipWhitespace(sRegistration)) {
       throw EbmException(Error_LossParameterUnknown);
    }
 }
 
-const char * RegisterLossBase::CheckLossName(const char * sLoss) const {
-   EBM_ASSERT(nullptr != sLoss);
+const char * Registration::CheckRegistrationName(const char * sRegistration) const {
+   EBM_ASSERT(nullptr != sRegistration);
 
-   sLoss = IsStringEqualsCaseInsensitive(sLoss, m_sLossName);
-   if(nullptr == sLoss) {
-      // we are not the specified loss function
+   sRegistration = IsStringEqualsCaseInsensitive(sRegistration, m_sRegistrationName);
+   if(nullptr == sRegistration) {
+      // we are not the specified registration function
       return nullptr;
    }
-   if(0 != *sLoss) {
-      if(':' != *sLoss) {
+   if(0 != *sRegistration) {
+      if(k_typeTerminator != *sRegistration) {
          // we are not the specified objective, but the objective could still be something with a longer string
          // eg: the given tag was "something_else:" but our tag was "something:", so we matched on "something" only
          return nullptr;
       }
-      sLoss = SkipWhitespace(sLoss + 1);
+      sRegistration = SkipWhitespace(sRegistration + 1);
    }
-   return sLoss;
+   return sRegistration;
 }
 

@@ -301,6 +301,7 @@ EXIT /B 0
     <ClInclude Include="LossRegressionMse.h" />
     <ClInclude Include="LossRegressionPseudoHuber.h" />
     <ClInclude Include="RegisterLoss.h" />
+    <ClInclude Include="Registrable.h" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />

@@ -13,8 +13,9 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureGroup.h"
 #include "ThreadStateBoosting.h"
+#include "Registrable.h"
 
-class Loss {
+class Loss : public Registrable {
 
    template<typename TLoss, ptrdiff_t compilerCountClasses>
    struct CountClasses final {
@@ -242,13 +243,11 @@ public:
       FloatEbmType * const pMetricOut
    ) const = 0;
 
-   static ErrorEbmType CreateLoss(
-      const char * const sLoss,
+   static ErrorEbmType CreateRegistrable(
+      const char * const sRegistration,
       const Config * const pConfig,
-      const Loss ** const ppLoss
+      const Registrable ** const ppRegistrable
    ) noexcept;
-
-   virtual ~Loss() = default;
 };
 
 // TODO: add parameters to these macros to pass in what options we want in our template generation
