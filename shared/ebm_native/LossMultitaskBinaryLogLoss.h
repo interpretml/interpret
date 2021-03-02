@@ -6,6 +6,6 @@
 
 #include "Loss.h"
 
-struct LossMultilabelBinaryLogLoss : Loss {
+struct LossMultitaskBinaryLogLoss : Loss {
    // this one needs to be special cased!
 };

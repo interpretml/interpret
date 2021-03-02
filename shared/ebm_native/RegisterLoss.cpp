@@ -6,8 +6,6 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <vector>
-#include <functional>
-#include <memory>
 #include <algorithm>
 
 #include "EbmInternal.h" // INLINE_ALWAYS

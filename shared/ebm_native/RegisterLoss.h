@@ -34,7 +34,6 @@ public:
    }
 };
 
-
 class FloatLossParam final : public LossParam {
    const FloatEbmType m_defaultValue;
 
@@ -72,11 +71,19 @@ public:
 class RegisterLossBase {
    const char * const m_sLossName;
 
-   static INLINE_ALWAYS const char * ConvertStringToLossType(const char * const s, FloatEbmType * const pResultOut) noexcept {
+   // these ConvertStringToLossType functions are here to de-template the various LossParam types
+
+   static INLINE_ALWAYS const char * ConvertStringToLossType(
+      const char * const s, 
+      FloatEbmType * const pResultOut
+   ) noexcept {
       return ConvertStringToFloat(s, pResultOut);
    }
 
-   static INLINE_ALWAYS const char * ConvertStringToLossType(const char * const s, bool * const pResultOut) noexcept {
+   static INLINE_ALWAYS const char * ConvertStringToLossType(
+      const char * const s, 
+      bool * const pResultOut
+   ) noexcept {
       // TODO : implement
       UNUSED(s);
       UNUSED(pResultOut);
@@ -140,6 +147,7 @@ public:
 template<typename TLoss, typename... Args>
 class RegisterLossPack final : public RegisterLossBase {
 
+   // this lambda function holds our templated parameter pack until we need it
    std::function<std::unique_ptr<const Loss>(const Config & config, const char * const sLoss)> m_callBack;
 
    template<typename... ArgsConverted>
@@ -149,18 +157,27 @@ class RegisterLossPack final : public RegisterLossBase {
       std::vector<const char *> & usedLocations,
       ArgsConverted...args
    ) {
-      FinalCheckParameters(sLoss, usedLocations); // this throws if it finds anything wrong
+      // The loss string has been processed so we now have either the default param values or we have the parameter
+      // values specified in the loss string.  Now we need to verify that there weren't any unused parameters,
+      // which would have been an error.  FinalCheckParameters does this and throws an exception if it finds any errors
+      FinalCheckParameters(sLoss, usedLocations);
       return std::unique_ptr<const Loss>(new TLoss(config, args...));
    }
 
 public:
 
    RegisterLossPack(const char * sLossName, Args...args) : RegisterLossBase(sLossName) {
+
+      // hide our parameter pack in a lambda so that we don't have to think about it yet.  Seems easier than using a tuple
       m_callBack = [args...](
          const Config & config,
          const char * const sLoss
       ) {
          std::vector<const char *> usedLocations;
+         // UnpackLossParam processes each LossParam type independently, but we keep a list of all the points
+         // in the string that were processed with usedLocations.  C++ gives us no guarantees about which order
+         // the UnpackLossParam functions are called, but we are guaranteed that they are all called before 
+         // CheckAndCallNew is called, so inside there we verify whether all the parameters were used
          return std::unique_ptr<const Loss>(CheckAndCallNew(
             config,
             sLoss,
@@ -174,8 +191,10 @@ public:
       sLoss = CheckLossName(sLoss);
       if(nullptr == sLoss) {
          // we are not the specified loss function
-         return std::unique_ptr<const Loss>();
+         return nullptr;
       }
+
+      // m_callBack contains the parameter pack that our constructor was created with, so we're regaining access here
       return m_callBack(config, sLoss);
    }
 };

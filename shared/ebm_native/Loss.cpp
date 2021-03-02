@@ -70,9 +70,8 @@ static const std::vector<std::shared_ptr<const RegisterLossBase>> RegisterLosses
 //               importantly they share a single loss function.  In C++ we deal only with multitask since otherwise 
 //               it would make more sense to train the targets separately.  In higher level languages the models can 
 //               either be Multitask or Multioutput depending on how they were generated.
-// Multilabel  : A more restricted version of multitask where the tasks are either binary or multiclass, but all
-//               the targets have the same number of classes.  We don't treat this case specially in C++ since
-//               we can operate on the more general case of "LossMultitaskMulticlassCrossEntropy" instead.
+// Multilabel  : A more restricted version of multitask where the tasks are all binary classification.  For 
+//               consistency with our other types of Multitask learning, we call this MultitaskBinary*.
 // 
 // The most general loss function that we could handle in C++ would be to take a custom loss function that jointly 
 // optimizes a multitask problem that contains regression, binary, and multiclass tasks.  This would be: 
