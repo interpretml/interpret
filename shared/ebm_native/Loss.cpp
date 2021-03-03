@@ -10,9 +10,9 @@
 
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "FeatureGroup.h"
-#include "ThreadStateBoosting.h"
 
+#include "Config.h"
+#include "Registrable.h"
 #include "Loss.h"
 #include "Registration.h"
 
@@ -79,49 +79,51 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
 
 // !! ANYTHING BELOW THIS POINT ISN'T REQUIRED TO MAKE YOUR OWN CUSTOM LOSS FUNCTION !!
 
-ErrorEbmType Loss::CreateRegistrable(
-   const char * const sRegistration, 
+ErrorEbmType Loss::CreateLoss(
+   const char * const sLoss,
    const Config * const pConfig,
-   const Registrable ** const ppRegistrable
+   const Loss ** const ppLoss
 ) noexcept {
-   EBM_ASSERT(nullptr != sRegistration);
+   EBM_ASSERT(nullptr != sLoss);
    EBM_ASSERT(nullptr != pConfig);
-   EBM_ASSERT(nullptr != ppRegistrable);
+   EBM_ASSERT(nullptr != ppLoss);
 
-   LOG_0(TraceLevelInfo, "Entered Registrable::CreateRegistrable");
+   LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
    try {
       const std::vector<std::shared_ptr<const Registration>> registrations = RegisterLosses();
-      for(const std::shared_ptr<const Registration> & registration : registrations) {
-         if(nullptr == registration) {
-            // hopefully nobody inserts a nullptr, but check anyways
-            LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable null registration");
-            return Error_NullLossRegistrationException;
-         }
-         try {
-            std::unique_ptr<const Registrable> pRegistrable = registration->AttemptCreate(*pConfig, sRegistration);
-            if(nullptr != pRegistrable) {
-               // found it!
-               LOG_0(TraceLevelInfo, "Exited Registrable::CreateRegistrable");
-               // we're exiting the area where exceptions are regularily thrown 
-               *ppRegistrable = pRegistrable.release();
-               return Error_None;
-            }
-         } catch(const SkipRegistrationException &) {
-            // the specific Registrable function is saying it isn't a match (based on parameters in the Config object probably)
-         }
+      std::unique_ptr<const Registrable> pRegistrable = Registration::CreateRegistrable(registrations, sLoss, pConfig);
+      if(nullptr == pRegistrable) {
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss unknown");
+         return Error_LossUnknown;
       }
+      *ppLoss = static_cast<const Loss *>(pRegistrable.release());
+      LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
+      return Error_None;
+   } catch(const ParameterValueMalformedException &) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueMalformedException");
+      return Error_LossParameterValueMalformed;
+   } catch(const ParameterUnknownException &) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterUnknownException");
+      return Error_LossParameterUnknown;
+   } catch(const RegistrationConstructorException &) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss RegistrationConstructorException");
+      return Error_LossConstructorException;
+   } catch(const ParameterValueOutOfRangeException &) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueOutOfRangeException");
+      return Error_LossParameterValueOutOfRange;
+   } catch(const ParameterMismatchWithConfigException &) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterMismatchWithConfigException");
+      return Error_LossParameterMismatchWithConfig;
    } catch(const EbmException & exception) {
-      LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable EbmException");
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss EbmException");
       return exception.GetError();
    } catch(const std::bad_alloc &) {
-      LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable Out of Memory");
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss Out of Memory");
       return Error_OutOfMemory;
    } catch(...) {
-      LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable internal error, unknown exception");
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss internal error, unknown exception");
       return Error_UnknownInternalError;
    }
-   LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable registration unknown");
-   return Error_LossUnknown;
 }
 
 FloatEbmType Loss::GetUpdateMultiple() const {

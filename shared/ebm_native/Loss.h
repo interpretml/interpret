@@ -13,6 +13,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureGroup.h"
 #include "ThreadStateBoosting.h"
+#include "Config.h"
 #include "Registrable.h"
 
 class Loss : public Registrable {
@@ -243,10 +244,10 @@ public:
       FloatEbmType * const pMetricOut
    ) const = 0;
 
-   static ErrorEbmType CreateRegistrable(
-      const char * const sRegistration,
+   static ErrorEbmType CreateLoss(
+      const char * const sLoss,
       const Config * const pConfig,
-      const Registrable ** const ppRegistrable
+      const Loss ** const ppLoss
    ) noexcept;
 };
 

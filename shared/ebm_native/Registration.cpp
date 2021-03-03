@@ -13,15 +13,44 @@
 #include "FeatureGroup.h"
 #include "ThreadStateBoosting.h"
 
-#include "Loss.h"
+#include "Config.h"
+#include "Registrable.h"
 #include "Registration.h"
+
+std::unique_ptr<const Registrable> Registration::CreateRegistrable(
+   const std::vector<std::shared_ptr<const Registration>> registrations,
+   const char * const sRegistration,
+   const Config * const pConfig
+) {
+   EBM_ASSERT(nullptr != sRegistration);
+   EBM_ASSERT(nullptr != pConfig);
+
+   LOG_0(TraceLevelInfo, "Entered Registrable::CreateRegistrable");
+   for(const std::shared_ptr<const Registration> & registration : registrations) {
+      if(nullptr != registration) {
+         try {
+            std::unique_ptr<const Registrable> pRegistrable = registration->AttemptCreate(*pConfig, sRegistration);
+            if(nullptr != pRegistrable) {
+               // found it!
+               LOG_0(TraceLevelInfo, "Exited Registrable::CreateRegistrable");
+               // we're exiting the area where exceptions are regularily thrown 
+               return pRegistrable;
+            }
+         } catch(const SkipRegistrationException &) {
+            // the specific Registrable function is saying it isn't a match (based on parameters in the Config object probably)
+         }
+      }
+   }
+   LOG_0(TraceLevelWarning, "WARNING Registrable::CreateRegistrable registration unknown");
+   return nullptr;
+}
 
 void Registration::FinalCheckParameters(const char * sRegistration, std::vector<const char *> & usedLocations) {
    std::sort(usedLocations.begin(), usedLocations.end());
 
    for(const char * sParam : usedLocations) {
       if(sParam != sRegistration) {
-         throw EbmException(Error_LossParameterUnknown);
+         throw ParameterUnknownException();
       }
       sRegistration = strchr(sRegistration, k_paramSeparator);
       if(nullptr == sRegistration) {
@@ -33,7 +62,7 @@ void Registration::FinalCheckParameters(const char * sRegistration, std::vector<
       }
    }
    if(0 != *SkipWhitespace(sRegistration)) {
-      throw EbmException(Error_LossParameterUnknown);
+      throw ParameterUnknownException();
    }
 }
 

@@ -18,7 +18,7 @@ struct LossMulticlassLogLoss : Loss {
       }
 
       if(config.GetCountOutputs() <= 0) {
-         throw LossParameterMismatchWithConfigException();
+         throw ParameterMismatchWithConfigException();
       }
 
       m_countTargetClasses = config.GetCountOutputs();

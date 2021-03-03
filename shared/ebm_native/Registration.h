@@ -2,8 +2,6 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// !!! NOTE: To add a new loss/objective function in C++, follow the steps listed at the top of the "Loss.cpp" file !!!
-
 #ifndef REGISTRATION_H
 #define REGISTRATION_H
 
@@ -11,13 +9,9 @@
 #include <vector>
 #include <functional>
 #include <memory>
-#include <algorithm>
 
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "FeatureGroup.h"
-#include "ThreadStateBoosting.h"
-#include "Loss.h"
 
 class SkipRegistrationException final : public std::exception {
    // we don't derrive from EbmException since this exception isn't meant to percolate up past the C interface
@@ -25,16 +19,32 @@ public:
    SkipRegistrationException() = default;
 };
 
-class LossParameterValueOutOfRangeException final : public EbmException {
+class ParameterValueOutOfRangeException final : public std::exception {
 public:
-   INLINE_ALWAYS LossParameterValueOutOfRangeException() : EbmException(Error_LossParameterValueOutOfRange) {
-   }
+   ParameterValueOutOfRangeException() = default;
 };
 
-class LossParameterMismatchWithConfigException final : public EbmException {
+class ParameterMismatchWithConfigException final : public std::exception {
 public:
-   INLINE_ALWAYS LossParameterMismatchWithConfigException() : EbmException(Error_LossParameterMismatchWithConfig) {
-   }
+   ParameterMismatchWithConfigException() = default;
+};
+
+class ParameterValueMalformedException final : public std::exception {
+   // this should not be thrown from the Registrable constructor
+public:
+   ParameterValueMalformedException() = default;
+};
+
+class ParameterUnknownException final : public std::exception {
+   // this should not be thrown from the Registrable constructor
+public:
+   ParameterUnknownException() = default;
+};
+
+class RegistrationConstructorException final : public std::exception {
+   // this should not be thrown from the Registrable constructor
+public:
+   RegistrationConstructorException() = default;
 };
 
 class ParamBase {
@@ -120,6 +130,8 @@ protected:
       const char * sRegistration,
       std::vector<const char *> & usedLocations) 
    {
+      static_assert(std::is_base_of<ParamBase, TParam>::value, "TParam not derrived from ParamBase");
+
       typename TParam::ParamType paramValue = param.GetDefaultValue();
       while(true) {
          // check and handle a possible parameter
@@ -133,13 +145,13 @@ protected:
                sRegistration = sNext + 1;
                sRegistration = ConvertStringToRegistrationType(sRegistration, &paramValue);
                if(nullptr == sRegistration) {
-                  throw EbmException(Error_LossParameterValueMalformed);
+                  throw ParameterValueMalformedException();
                }
                if(0 == *sRegistration) {
                   break;
                }
                if(k_paramSeparator != *sRegistration) {
-                  throw EbmException(Error_LossParameterValueMalformed);
+                  throw ParameterValueMalformedException();
                }
                ++sRegistration;
                continue;
@@ -157,12 +169,22 @@ protected:
    static void FinalCheckParameters(const char * sRegistration, std::vector<const char *> & usedLocations);
    const char * CheckRegistrationName(const char * sRegistration) const;
 
+   virtual std::unique_ptr<const Registrable> AttemptCreate(
+      const Config & config,
+      const char * const sRegistration
+   ) const = 0;
+
    INLINE_ALWAYS Registration(const char * sRegistrationName) : m_sRegistrationName(sRegistrationName) {
    }
 
 public:
 
-   virtual std::unique_ptr<const Registrable> AttemptCreate(const Config & config, const char * const sRegistration) const = 0;
+   static std::unique_ptr<const Registrable> CreateRegistrable(
+      const std::vector<std::shared_ptr<const Registration>> registrations,
+      const char * const sRegistration,
+      const Config * const pConfig
+   );
+
    virtual ~Registration() = default;
 };
 
@@ -188,15 +210,31 @@ class RegistrationPack final : public Registration {
          return std::unique_ptr<const Registrable>(new TRegistrable(config, args...));
       } catch(const SkipRegistrationException &) {
          throw;
+      } catch(const ParameterValueOutOfRangeException &) {
+         throw;
+      } catch(const ParameterMismatchWithConfigException &) {
+         throw;
       } catch(const EbmException &) {
+         // generally we'd prefer that the Registration constructors avoid this exception, but pass it along if thrown
          throw;
       } catch(const std::bad_alloc &) {
          throw;
       } catch(...) {
          // our client Registration functions should only ever throw SkipRegistrationException, a derivative of EbmException, 
          // or std::bad_alloc, but check anyways
-         throw EbmException(Error_LossConstructorException);
+         throw RegistrationConstructorException();
       }
+   }
+
+   std::unique_ptr<const Registrable> AttemptCreate(const Config & config, const char * sRegistration) const override {
+      sRegistration = CheckRegistrationName(sRegistration);
+      if(nullptr == sRegistration) {
+         // we are not the specified registration function
+         return nullptr;
+      }
+
+      // m_callBack contains the parameter pack that our constructor was created with, so we're regaining access here
+      return m_callBack(config, sRegistration);
    }
 
 public:
@@ -220,17 +258,6 @@ public:
             UnpackParam(args, sRegistration, usedLocations)...)
          );
       };
-   }
-
-   std::unique_ptr<const Registrable> AttemptCreate(const Config & config, const char * sRegistration) const override {
-      sRegistration = CheckRegistrationName(sRegistration);
-      if(nullptr == sRegistration) {
-         // we are not the specified registration function
-         return nullptr;
-      }
-
-      // m_callBack contains the parameter pack that our constructor was created with, so we're regaining access here
-      return m_callBack(config, sRegistration);
    }
 };
 

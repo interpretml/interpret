@@ -35,7 +35,7 @@ struct LossRegressionMse : Loss {
 
    INLINE_ALWAYS LossRegressionMse(const Config & config) {
       if(1 != config.GetCountOutputs()) {
-         throw LossParameterMismatchWithConfigException();
+         throw ParameterMismatchWithConfigException();
       }
    }
 

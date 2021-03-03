@@ -624,19 +624,6 @@ public:
    }
 };
 
-class Config final {
-
-   const size_t m_cOutputs;
-
-public:
-   INLINE_ALWAYS Config(const size_t cOutputs) : m_cOutputs(cOutputs) {
-   }
-
-   INLINE_ALWAYS size_t GetCountOutputs() const noexcept {
-      return m_cOutputs;
-   }
-};
-
 // TODO: figure out if we really want/need to template the handling of different bit packing sizes.  It might
 //       be the case that for specific bit sizes, like 8x8, we want to keep our memory stride as small as possible
 //       but we might also find that we can apply SIMD at the outer loop level in the places where we use bit

@@ -13,16 +13,16 @@ struct LossRegressionPseudoHuber : Loss {
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
    INLINE_ALWAYS LossRegressionPseudoHuber(const Config & config, FloatEbmType delta) {
       if(1 != config.GetCountOutputs()) {
-         throw LossParameterMismatchWithConfigException();
+         throw ParameterMismatchWithConfigException();
       }
 
       if(0 == delta || std::isnan(delta) || std::isinf(delta)) {
-         throw LossParameterValueOutOfRangeException();
+         throw ParameterValueOutOfRangeException();
       }
 
       FloatEbmType deltaInverted = FloatEbmType { 1 } / delta;
       if(std::isinf(deltaInverted)) {
-         throw LossParameterValueOutOfRangeException();
+         throw ParameterValueOutOfRangeException();
       }
 
       m_deltaInverted = deltaInverted;

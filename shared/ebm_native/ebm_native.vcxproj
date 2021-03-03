@@ -290,6 +290,7 @@ EXIT /B 0
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />
+    <ClInclude Include="Config.h" />
     <ClInclude Include="Loss.h" />
     <ClInclude Include="LossBinaryCrossEntropy.h" />
     <ClInclude Include="LossBinaryLogLoss.h" />
