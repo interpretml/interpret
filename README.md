@@ -15,6 +15,7 @@ InterpretML is an open-source package that incorporates state-of-the-art machine
 
 Interpretability is essential for:
 - Model debugging - Why did my model make this mistake?
+- Feature Engineering - How can I improve my model?
 - Detecting fairness issues - Does my model discriminate?
 - Human-AI cooperation - How can I understand and trust the model's decisions?
 - Regulatory compliance - Does my model satisfy legal requirements?
