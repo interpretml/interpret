@@ -16,8 +16,11 @@
 
 class Registrable {
 
-public:
+protected:
 
+   Registrable() = default;
+
+public:
    virtual ~Registrable() = default;
 };
 

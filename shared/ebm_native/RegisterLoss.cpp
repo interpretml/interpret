@@ -14,7 +14,7 @@
 #include "ThreadStateBoosting.h"
 
 #include "Loss.h"
-#include "RegisterLoss.h"
+#include "Registration.h"
 
 void Registration::FinalCheckParameters(const char * sRegistration, std::vector<const char *> & usedLocations) {
    std::sort(usedLocations.begin(), usedLocations.end());
