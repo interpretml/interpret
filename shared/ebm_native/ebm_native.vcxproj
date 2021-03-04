@@ -103,7 +103,7 @@
       <PreprocessorDefinitions>EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)metrics;$(ProjectDir)loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <StringPooling>true</StringPooling>
@@ -149,7 +149,7 @@ EXIT /B 0
       <PreprocessorDefinitions>EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)metrics;$(ProjectDir)loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <OmitFramePointers>false</OmitFramePointers>
@@ -197,7 +197,7 @@ EXIT /B 0
       <PreprocessorDefinitions>EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)metrics;$(ProjectDir)loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -248,7 +248,7 @@ EXIT /B 0
       <PreprocessorDefinitions>EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)metrics;$(ProjectDir)loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -292,15 +292,16 @@ EXIT /B 0
     <ClInclude Include="ApproximateMath.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Loss.h" />
-    <ClInclude Include="LossBinaryCrossEntropy.h" />
-    <ClInclude Include="LossBinaryLogLoss.h" />
-    <ClInclude Include="LossMulticlassCrossEntropy.h" />
-    <ClInclude Include="LossMulticlassLogLoss.h" />
-    <ClInclude Include="LossMultitaskBinaryLogLoss.h" />
-    <ClInclude Include="LossMultitaskMulticlassCrossEntropy.h" />
-    <ClInclude Include="LossMultitaskRegressionMse.h" />
-    <ClInclude Include="LossRegressionMse.h" />
-    <ClInclude Include="LossRegressionPseudoHuber.h" />
+    <ClInclude Include="loss_functions\LossBinaryCrossEntropy.h" />
+    <ClInclude Include="loss_functions\LossBinaryLogLoss.h" />
+    <ClInclude Include="loss_functions\LossMulticlassCrossEntropy.h" />
+    <ClInclude Include="loss_functions\LossMulticlassLogLoss.h" />
+    <ClInclude Include="loss_functions\LossMultitaskBinaryLogLoss.h" />
+    <ClInclude Include="loss_functions\LossMultitaskMulticlassCrossEntropy.h" />
+    <ClInclude Include="loss_functions\LossMultitaskRegressionMse.h" />
+    <ClInclude Include="loss_functions\LossRegressionMse.h" />
+    <ClInclude Include="loss_functions\LossRegressionPseudoHuber.h" />
+    <ClInclude Include="metrics\MetricAuc.h" />
     <ClInclude Include="Registration.h" />
     <ClInclude Include="Registrable.h" />
     <ClInclude Include="ThreadStateInteraction.h" />

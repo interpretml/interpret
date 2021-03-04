@@ -1,0 +1,116 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="ApplyModelUpdate.cpp" />
+    <ClCompile Include="ApplyModelUpdateTraining.cpp" />
+    <ClCompile Include="ApplyModelUpdateValidation.cpp" />
+    <ClCompile Include="BinBoosting.cpp" />
+    <ClCompile Include="BinInteraction.cpp" />
+    <ClCompile Include="DataFrameShared.cpp" />
+    <ClCompile Include="GenerateQuantileCuts.cpp" />
+    <ClCompile Include="GenerateUniformCuts.cpp" />
+    <ClCompile Include="GenerateWinsorizedCuts.cpp" />
+    <ClCompile Include="Loss.cpp" />
+    <ClCompile Include="Registration.cpp" />
+    <ClCompile Include="ThreadStateBoosting.cpp" />
+    <ClCompile Include="ThreadStateInteraction.cpp" />
+    <ClCompile Include="CalculateInteractionScore.cpp" />
+    <ClCompile Include="CutRandom.cpp" />
+    <ClCompile Include="DebugEbm.cpp" />
+    <ClCompile Include="FeatureGroup.cpp" />
+    <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
+    <ClCompile Include="FindBestInteractionScorePairs.cpp" />
+    <ClCompile Include="GenerateModelUpdate.cpp" />
+    <ClCompile Include="GrowDecisionTree.cpp" />
+    <ClCompile Include="InitializeResiduals.cpp" />
+    <ClCompile Include="InterpretableNumerics.cpp" />
+    <ClCompile Include="RandomExternal.cpp" />
+    <ClCompile Include="SegmentedTensor.cpp" />
+    <ClCompile Include="SumHistogramBuckets.cpp" />
+    <ClCompile Include="TensorTotalsBuild.cpp" />
+    <ClCompile Include="DataFrameInteraction.cpp" />
+    <ClCompile Include="DataFrameBoosting.cpp" />
+    <ClCompile Include="Discretize.cpp" />
+    <ClCompile Include="DllMainEbmNative.cpp" />
+    <ClCompile Include="InteractionDetector.cpp" />
+    <ClCompile Include="Logging.cpp" />
+    <ClCompile Include="PrecompiledHeader.cpp" />
+    <ClCompile Include="RandomStream.cpp" />
+    <ClCompile Include="SamplingSet.cpp" />
+    <ClCompile Include="Booster.cpp" />
+    <ClCompile Include="wrap_func.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ApproximateMath.h" />
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="Loss.h" />
+    <ClInclude Include="Registration.h" />
+    <ClInclude Include="Registrable.h" />
+    <ClInclude Include="ThreadStateInteraction.h" />
+    <ClInclude Include="InteractionDetector.h" />
+    <ClInclude Include="Booster.h" />
+    <ClInclude Include="inc\ebm_native.h" />
+    <ClInclude Include="FeatureAtomic.h" />
+    <ClInclude Include="FeatureGroup.h" />
+    <ClInclude Include="HistogramBucket.h" />
+    <ClInclude Include="ThreadStateBoosting.h" />
+    <ClInclude Include="DataFrameInteraction.h" />
+    <ClInclude Include="DataFrameBoosting.h" />
+    <ClInclude Include="EbmInternal.h" />
+    <ClInclude Include="EbmStats.h" />
+    <ClInclude Include="Logging.h" />
+    <ClInclude Include="PrecompiledHeader.h" />
+    <ClInclude Include="HistogramTargetEntry.h" />
+    <ClInclude Include="RandomStream.h" />
+    <ClInclude Include="SamplingSet.h" />
+    <ClInclude Include="SegmentedTensor.h" />
+    <ClInclude Include="TensorTotalsSum.h" />
+    <ClInclude Include="TreeNode.h" />
+    <ClInclude Include="TreeSweep.h" />
+    <ClInclude Include="loss_functions\LossBinaryCrossEntropy.h">
+      <Filter>loss_functions</Filter>
+    </ClInclude>
+    <ClInclude Include="loss_functions\LossBinaryLogLoss.h">
+      <Filter>loss_functions</Filter>
+    </ClInclude>
+    <ClInclude Include="loss_functions\LossMulticlassCrossEntropy.h">
+      <Filter>loss_functions</Filter>
+    </ClInclude>
+    <ClInclude Include="loss_functions\LossMulticlassLogLoss.h">
+      <Filter>loss_functions</Filter>
+    </ClInclude>
+    <ClInclude Include="loss_functions\LossMultitaskBinaryLogLoss.h">
+      <Filter>loss_functions</Filter>
+    </ClInclude>
+    <ClInclude Include="loss_functions\LossMultitaskMulticlassCrossEntropy.h">
+      <Filter>loss_functions</Filter>
+    </ClInclude>
+    <ClInclude Include="loss_functions\LossMultitaskRegressionMse.h">
+      <Filter>loss_functions</Filter>
+    </ClInclude>
+    <ClInclude Include="loss_functions\LossRegressionMse.h">
+      <Filter>loss_functions</Filter>
+    </ClInclude>
+    <ClInclude Include="loss_functions\LossRegressionPseudoHuber.h">
+      <Filter>loss_functions</Filter>
+    </ClInclude>
+    <ClInclude Include="metrics\MetricAuc.h">
+      <Filter>metrics</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ebm_native_exports.def" />
+    <None Include="style.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ebm_native_exports.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="loss_functions">
+      <UniqueIdentifier>{cf25a42a-d924-459d-bd60-ddb0d13481d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="metrics">
+      <UniqueIdentifier>{ac4e0b40-5223-4e83-b545-07d30d2a02d0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
