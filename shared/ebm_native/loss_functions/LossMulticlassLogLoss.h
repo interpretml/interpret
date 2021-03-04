@@ -6,7 +6,7 @@
 
 #include "Loss.h"
 
-struct LossMulticlassLogLoss : Loss {
+struct LossMulticlassLogLoss : public LossMulticlass {
 
    size_t m_countTargetClasses;
 
@@ -24,5 +24,5 @@ struct LossMulticlassLogLoss : Loss {
       m_countTargetClasses = config.GetCountOutputs();
    }
 
-   LOSS_MULTI_DEFAULT_MECHANICS_PUT_AT_END_OF_CLASS
+   LOSS_DEFAULT_MECHANICS_PUT_AT_END_OF_CLASS
 };

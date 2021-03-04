@@ -6,7 +6,7 @@
 
 #include "Loss.h"
 
-struct LossRegressionPseudoHuber : Loss {
+struct LossRegressionPseudoHuber : public LossRegression {
 
    FloatEbmType m_deltaInverted;
 
@@ -39,6 +39,7 @@ struct LossRegressionPseudoHuber : Loss {
       T residualNegativeFraction = residualNegative * static_cast<T>(m_deltaInverted);
       T calc = T { 1 } + residualNegativeFraction * residualNegativeFraction;
       T sqrtCalc = std::sqrt(calc);
+      // the calculations above are shared with the hessian, so the compiler should combine them.
       return residualNegative / sqrtCalc;
    }
 
@@ -48,6 +49,7 @@ struct LossRegressionPseudoHuber : Loss {
       T residualNegativeFraction = residualNegative * static_cast<T>(m_deltaInverted);
       T calc = T { 1 } + residualNegativeFraction * residualNegativeFraction;
       T sqrtCalc = std::sqrt(calc);
+      // the calculations above are shared with the hessian, so the compiler should combine them.
       return T { 1 } / (calc * sqrtCalc);
    }
 

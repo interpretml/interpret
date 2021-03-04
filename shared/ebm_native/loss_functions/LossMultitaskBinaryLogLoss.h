@@ -6,7 +6,7 @@
 
 #include "Loss.h"
 
-struct LossMultitaskBinaryLogLoss : Loss {
+struct LossMultitaskBinaryLogLoss : public LossMultitaskBinary {
    // this one would more popularily be called LossMultilabelLogLoss.  We're currently calling this
    // LossMultitaskBinaryLogLoss since it fits better into our ontology of Multitask* types having 
    // multiple targets, but consider chaning this to multilabel since it would be more widely recognized that way

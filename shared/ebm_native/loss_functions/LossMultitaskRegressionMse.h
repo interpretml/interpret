@@ -6,6 +6,6 @@
 
 #include "Loss.h"
 
-struct LossMultitaskRegressionMse : Loss {
+struct LossMultitaskRegressionMse : public LossMultitaskRegression {
    // this one needs to be special cased!
 };

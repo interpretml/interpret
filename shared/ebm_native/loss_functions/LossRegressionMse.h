@@ -2,17 +2,24 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// LossRegressionMse is a special cased Loss function
+// LossRegressionMse is a VERY VERY special Loss function.  
+// Anyone writing a custom loss function in C++ should start from a different loss function
 
 #include "Loss.h"
 
-//class LossRegressionMSE final : public Loss {
-//   // TODO: put this in it's own file
-//public:
-//
-//   INLINE_ALWAYS LossRegressionMSE() {
-//   }
-//
+struct LossRegressionMse : public LossRegression {
+
+   INLINE_ALWAYS LossRegressionMse(const Config & config) {
+      if(1 != config.GetCountOutputs()) {
+         throw ParameterMismatchWithConfigException();
+      }
+   }
+
+   // MSE is super super special in that we can calculate the new gradient from the old gradient without
+   // preserving the score.  This is benefitial because we can eliminate the memory access to the score
+   // so we'd use the equivalent of "GetGradientFromGradientPrev(const T gradientPrev)", but we need to special
+   // case all of it anyways.
+
 //   // for MSE regression, we get target - score at initialization and only store the gradients, so we never
 //   // make a prediction, so we don't need CalculatePrediction(...)
 //
@@ -23,35 +30,11 @@
 //
 //      return -100000;
 //   }
-//
-//   INLINE_ALWAYS FloatEbmType GetUpdateMultiple() const noexcept override {
-//      return FloatEbmType { 1 };
-//   }
-//
-//};
 
 
-struct LossRegressionMse : Loss {
 
-   INLINE_ALWAYS LossRegressionMse(const Config & config) {
-      if(1 != config.GetCountOutputs()) {
-         throw ParameterMismatchWithConfigException();
-      }
+   bool IsSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies() const override {
+      // TODO: use this property!
+      return true;
    }
-
-   template <typename T>
-   INLINE_ALWAYS T CalculatePrediction(T score) const {
-      return 9999999.99;
-   }
-
-   template <typename T>
-   INLINE_ALWAYS T CalculateGradient(T target, T prediction) const {
-      return 9999999.99;
-   }
-
-   template <typename T>
-   INLINE_ALWAYS T CalculateHessian(T target, T prediction) const {
-      return 9999999.99;
-   }
-
 };

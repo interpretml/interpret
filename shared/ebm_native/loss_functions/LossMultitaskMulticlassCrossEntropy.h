@@ -6,7 +6,7 @@
 
 #include "Loss.h"
 
-struct LossMultitaskMulticlassCrossEntropy : Loss {
+struct LossMultitaskMulticlassCrossEntropy : public LossMultitaskMulticlass {
 
    // This is the most general format that I could envision we'd handle as a non-custom loss function.
    // It's not clear that we can really handle it nicely, but I'm leaving a placeholder here to think about it.  

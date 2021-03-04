@@ -129,3 +129,7 @@ ErrorEbmType Loss::CreateLoss(
 FloatEbmType Loss::GetUpdateMultiple() const {
    return FloatEbmType { 1 };
 }
+
+bool Loss::IsSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies() const {
+   return false;
+}

@@ -21,7 +21,7 @@
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
 class BinInteractionInternal final {
 public:
 
@@ -57,7 +57,7 @@ public:
       const FloatEbmType * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * pDataFrame->GetCountSamples();
 
       EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions()); // for interactions, we just return 0 for interactions with zero features
-      const size_t cDimensions = GET_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountSignificantDimensions());
+      const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= cDimensions); // for interactions, we just return 0 for interactions with zero features
 
       for(size_t iSample = 0; pGradientsAndHessiansEnd != pGradientAndHessian; ++iSample) {
@@ -145,7 +145,7 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensionsPossible>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensionsPossible>
 class BinInteractionDimensions final {
 public:
 
@@ -159,15 +159,15 @@ public:
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      static_assert(1 <= compilerCountDimensionsPossible, "can't have less than 1 dimension for interactions");
-      static_assert(compilerCountDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
+      static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension for interactions");
+      static_assert(cCompilerDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      const size_t runtimeCountDimensions = pFeatureGroup->GetCountSignificantDimensions();
+      const size_t cRuntimeDimensions = pFeatureGroup->GetCountSignificantDimensions();
 
-      EBM_ASSERT(1 <= runtimeCountDimensions);
-      EBM_ASSERT(runtimeCountDimensions <= k_cDimensionsMax);
-      if(compilerCountDimensionsPossible == runtimeCountDimensions) {
-         BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, compilerCountDimensionsPossible>::Func(
+      EBM_ASSERT(1 <= cRuntimeDimensions);
+      EBM_ASSERT(cRuntimeDimensions <= k_cDimensionsMax);
+      if(cCompilerDimensionsPossible == cRuntimeDimensions) {
+         BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible>::Func(
             pInteractionDetector,
             pFeatureGroup,
             aHistogramBuckets
@@ -176,7 +176,7 @@ public:
 #endif // NDEBUG
          );
       } else {
-         BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, compilerCountDimensionsPossible + 1>::Func(
+         BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible + 1>::Func(
             pInteractionDetector,
             pFeatureGroup,
             aHistogramBuckets

@@ -49,7 +49,6 @@
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />
-    <ClInclude Include="inc\ebm_native.h" />
     <ClInclude Include="FeatureAtomic.h" />
     <ClInclude Include="FeatureGroup.h" />
     <ClInclude Include="HistogramBucket.h" />
@@ -97,6 +96,9 @@
     <ClInclude Include="metrics\MetricAuc.h">
       <Filter>metrics</Filter>
     </ClInclude>
+    <ClInclude Include="inc\ebm_native.h">
+      <Filter>inc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />
@@ -111,6 +113,9 @@
     </Filter>
     <Filter Include="metrics">
       <UniqueIdentifier>{ac4e0b40-5223-4e83-b545-07d30d2a02d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="inc">
+      <UniqueIdentifier>{5cd9d4c4-93e3-4127-8d1e-496270df544a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

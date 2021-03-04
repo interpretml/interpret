@@ -173,7 +173,8 @@ void TensorTotalsCompareDebug(
 
 #endif // NDEBUG
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
+// TODO : we're not currently using cCompilerDimensions, so either use it or get rid of it
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
 void TensorTotalsSum(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const FeatureGroup * const pFeatureGroup,

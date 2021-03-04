@@ -320,6 +320,7 @@ typedef UIntEbmType ActiveDataType;
 
 constexpr ptrdiff_t k_regression = -1;
 constexpr ptrdiff_t k_dynamicClassification = 0;
+constexpr ptrdiff_t k_oneScore = 1;
 constexpr INLINE_ALWAYS bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    return k_regression == learningTypeOrCountTargetClasses;
 }
@@ -364,8 +365,8 @@ constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCou
 // places where you couldn't do so with variable loop iterations
 // TODO: use this macro more
 // TODO: do we really need the static_cast to size_t here?
-#define GET_DIMENSIONS(MACRO_compilerCountDimensions, MACRO_runtimeCountDimensions) \
-   (k_dynamicDimensions == (MACRO_compilerCountDimensions) ? static_cast<size_t>(MACRO_runtimeCountDimensions) : static_cast<size_t>(MACRO_compilerCountDimensions))
+#define GET_DIMENSIONS(MACRO_cCompilerDimensions, MACRO_cRuntimeDimensions) \
+   (k_dynamicDimensions == (MACRO_cCompilerDimensions) ? static_cast<size_t>(MACRO_cRuntimeDimensions) : static_cast<size_t>(MACRO_cCompilerDimensions))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
@@ -448,19 +449,18 @@ static_assert(
    k_cItemsPerBitPackMax2 == 
    ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackMax2),
    "k_cItemsPerBitPackMax needs to be on the progression series");
+// if we cover the entire range of possible bit packing, then we don't need the dynamic case!
+constexpr ptrdiff_t k_cItemsPerBitPackLast = (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax2 &&
+   ptrdiff_t { 1 } == k_cItemsPerBitPackMin2) ? ptrdiff_t { 1 } : k_cItemsPerBitPackDynamic2;
 constexpr INLINE_ALWAYS ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPackedPrev) noexcept {
-   // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (optionaly),-1 
+   // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)
    // [there are 15 of these + the dynamic case + onebin case]
-   // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 (optionaly),-1 
+   // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)
    // [which are all included in 64 bits + the dynamic case + onebin case]
-
-   return cItemsBitPackedPrev <= k_cItemsPerBitPackDynamic2 ? k_cItemsPerBitPackNone : (
-      k_cItemsPerBitPackMin2 == cItemsBitPackedPrev ?
-      (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax2 &&
-      ptrdiff_t { 1 } == k_cItemsPerBitPackMin2 ?
-      k_cItemsPerBitPackNone : k_cItemsPerBitPackDynamic2) :
-      ptrdiff_t { k_cBitsForStorageType } / ((ptrdiff_t { k_cBitsForStorageType } / cItemsBitPackedPrev) + 1)
-   );
+   // we can have bit packs of -1, but this function should never see that value
+   // this function should also never see the dynamic value 0 because we should terminate the chain at that point
+   return k_cItemsPerBitPackMin2 == cItemsBitPackedPrev ? k_cItemsPerBitPackDynamic2 :
+      ptrdiff_t { k_cBitsForStorageType } / ((ptrdiff_t { k_cBitsForStorageType } / cItemsBitPackedPrev) + 1);
 }
 
 

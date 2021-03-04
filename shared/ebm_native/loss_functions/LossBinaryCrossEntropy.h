@@ -6,6 +6,6 @@
 
 #include "Loss.h"
 
-struct LossBinaryCrossEntropy : Loss {
+struct LossBinaryCrossEntropy : public LossBinary {
    // this one needs to be special cased!
 };

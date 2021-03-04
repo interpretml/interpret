@@ -7,7 +7,7 @@
 #include "Loss.h"
 
 
-//class LossBinaryLogLoss final : public Loss {
+//class LossBinaryLogLoss final : public LossBinary {
 //   // TODO: put this in it's own file
 //public:
 //
@@ -39,7 +39,7 @@
 //
 
 
-struct LossBinaryLogLoss : Loss {
+struct LossBinaryLogLoss : public LossBinary {
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
    INLINE_ALWAYS LossBinaryLogLoss(const Config & config) {

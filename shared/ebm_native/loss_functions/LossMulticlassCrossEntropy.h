@@ -6,6 +6,6 @@
 
 #include "Loss.h"
 
-struct LossMulticlassCrossEntropy : Loss {
+struct LossMulticlassCrossEntropy : public LossMulticlass {
    // this one needs to be special cased!
 };
