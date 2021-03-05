@@ -43,6 +43,7 @@ struct LossRegressionPseudoHuber : public LossRegression {
       return residualNegative / sqrtCalc;
    }
 
+   // if the loss function doesn't have a second derivative, then delete the CalculateHessian function.
    template <typename T>
    INLINE_ALWAYS T CalculateHessian(T target, T prediction) const {
       T residualNegative = prediction - target;
@@ -53,5 +54,5 @@ struct LossRegressionPseudoHuber : public LossRegression {
       return T { 1 } / (calc * sqrtCalc);
    }
 
-   LOSS_DEFAULT_MECHANICS_PUT_AT_END_OF_CLASS
+   LOSS_CLASS_BOILERPLATE_PUT_AT_END_OF_CLASS
 };

@@ -3,26 +3,21 @@
 // Author: Paul Koch <code@koch.ninja>
 
 #include "PrecompiledHeader.h"
-
-#include <stddef.h> // size_t, ptrdiff_t
 #include <vector>
-#include <memory> // shared_ptr, unique_ptr
-
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
-
-#include "Config.h"
-#include "Registrable.h"
 #include "Loss.h"
 #include "Registration.h"
 
 // Steps for adding a new loss/objective function in C++:
 //   1) Copy one of the existing Loss*.h include files into a new renamed Loss*.h file
-//   2) Modify the new Loss*.h file to handle your new Loss function
-//   3) Add [#include "Loss*.h"] to the list of other include files right below this
-//   4) Add the Loss* type to the list of loss registrations in RegisterLosses() right below this
-//      IMPORTANT: the list of *LossParam items in the function RegisterLosses() MUST match the constructor 
-//                 parameters in the new Loss* struct, otherwise it will not compile!
+//      (for regression, we recommend starting from LossRegressionPseudoHuber.h)
+//   2) Modify the new Loss*.h file to handle the new loss function
+//   3) Add [#include "Loss*.h"] to the list of other include files right below this guide
+//   4) Add the Loss* type to the list of loss registrations in the RegisterLosses() function right below the includes
+//   5) Modify the Register<Loss*>("loss_function_name", ...) entry to have the new loss function name
+//      and the list of parameters needed for the loss function which are to be extracted from the loss string.
+//   6) Update/verify that the constructor arguments on your Loss* class match the parameters in the loss registration
+//      below. If the list of *LossParam items in the function RegisterLosses() do not match your constructor
+//      parameters in the new Loss* struct, it will not compile and cryptic compile errors will be produced.
 //   5) Recompile the C++ with either build.sh or build.bat depending on your operating system
 //   6) Enjoy your new Loss function, and send us a PR on Github if you think others would benefit  :-)
 
@@ -45,37 +40,6 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
       Register<LossRegressionPseudoHuber>("pseudo_huber", FloatParam("delta", 1))
    };
 }
-
-// TODO: include ranking
-//
-// We use the following terminology:
-// Target      : the thing we're trying to predict.  For classification this is the label.  For regression this 
-//               is what we're predicting directly.  Target and Output seem to be used interchangeably in other 
-//               packages.  We choose Target here.
-// Score       : the values we use to generate predictions.  For classification these are logits.  For regression these
-//               are the predictions themselves.  For multiclass there are N scores per target when there are N classes.
-//               For multiclass you could eliminate one score to get N-1 scores, but we don't use that trick in this 
-//               package yet.
-// Prediction  : the prediction of the model.  We output scores in our model and generate predictions from them.
-//               For multiclass the scores are the logits, and the predictions would be the outputs of softmax.
-//               We have N scores per target for an N class multiclass problem.
-// Binary      : binary classification.  Target is 0 or 1
-// Multiclass  : multiclass classification.  Target is 0, 1, 2, ... 
-// Regression  : regression
-// Multioutput : a model that can predict multiple different things.  A single model could predict binary, 
-//               multiclass, regression, etc. different targets.
-// Multitask   : A slightly more restricted form of multioutput where training jointly optimizes the targets.
-//               The different targets can still be of different types (binary, multiclass, regression, etc), but
-//               importantly they share a single loss function.  In C++ we deal only with multitask since otherwise 
-//               it would make more sense to train the targets separately.  In higher level languages the models can 
-//               either be Multitask or Multioutput depending on how they were generated.
-// Multilabel  : A more restricted version of multitask where the tasks are all binary classification.  We use
-//               the term MultitaskBinary* here since it fits better into our ontology.
-// 
-// The most general loss function that we could handle in C++ would be to take a custom loss function that jointly 
-// optimizes a multitask problem that contains regression, binary, and multiclass tasks.  This would be: 
-// "LossMultitaskCustom"
-
 
 // !! ANYTHING BELOW THIS POINT ISN'T REQUIRED TO MAKE YOUR OWN CUSTOM LOSS FUNCTION !!
 
