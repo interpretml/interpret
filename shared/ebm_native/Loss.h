@@ -139,16 +139,20 @@ class Loss : public Registrable {
       return pTLoss->template ApplyValidationTemplated<cCompilerScores, cCompilerPack>(pThreadStateBoosting, pFeatureGroup, pMetricOut);
    }
 
-   template<bool bHessian>
-   INLINE_ALWAYS static void ApplyHessian();
+   template<typename TLoss, bool bHessian>
+   struct ApplyHessian;
 
-   template<>
-   INLINE_ALWAYS static void ApplyHessian<true>() {
-   }
+   template<typename TLoss>
+   struct ApplyHessian<TLoss, true> final {
+      INLINE_ALWAYS static void Func() {
+      }
+   };
 
-   template<>
-   INLINE_ALWAYS static void ApplyHessian<false>() {
-   }
+   template<typename TLoss>
+   struct ApplyHessian<TLoss, false> final {
+      INLINE_ALWAYS static void Func() {
+      }
+   };
 
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared final {
@@ -157,7 +161,7 @@ class Loss : public Registrable {
          UNUSED(pThreadStateBoosting);
          UNUSED(pFeatureGroup);
 
-         ApplyHessian<bHessian>(); // TODO: use this
+         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
 
          return Error_None;
       }
@@ -167,7 +171,7 @@ class Loss : public Registrable {
          UNUSED(pFeatureGroup);
          UNUSED(pMetricOut);
 
-         ApplyHessian<bHessian>(); // TODO: use this
+         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
 
          return Error_None;
       }
@@ -179,7 +183,7 @@ class Loss : public Registrable {
          UNUSED(pThreadStateBoosting);
          UNUSED(pFeatureGroup);
 
-         ApplyHessian<bHessian>(); // TODO: use this
+         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
 
          return Error_None;
       }
@@ -189,7 +193,7 @@ class Loss : public Registrable {
          UNUSED(pFeatureGroup);
          UNUSED(pMetricOut);
 
-         ApplyHessian<bHessian>(); // TODO: use this
+         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
 
          return Error_None;
       }
@@ -201,7 +205,7 @@ class Loss : public Registrable {
          UNUSED(pThreadStateBoosting);
          UNUSED(pFeatureGroup);
 
-         ApplyHessian<bHessian>(); // TODO: use this
+         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
 
          return Error_None;
       }
@@ -211,7 +215,7 @@ class Loss : public Registrable {
          UNUSED(pFeatureGroup);
          UNUSED(pMetricOut);
 
-         ApplyHessian<bHessian>(); // TODO: use this
+         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
 
          return Error_None;
       }
@@ -223,7 +227,7 @@ class Loss : public Registrable {
          UNUSED(pThreadStateBoosting);
          UNUSED(pFeatureGroup);
 
-         ApplyHessian<bHessian>(); // TODO: use this
+         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
 
          return Error_None;
       }
@@ -233,7 +237,7 @@ class Loss : public Registrable {
          UNUSED(pFeatureGroup);
          UNUSED(pMetricOut);
 
-         ApplyHessian<bHessian>(); // TODO: use this
+         ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
 
          return Error_None;
       }
@@ -249,7 +253,7 @@ class Loss : public Registrable {
       template<class TCheck>
       static TrueStruct NotInvokedCheck(TCheck const * pCheck,
          typename std::enable_if<std::is_same<FloatEbmType,
-         decltype(pCheck->CalculateHessian<FloatEbmType>(FloatEbmType { 0 }, FloatEbmType { 0 }))>::value>::type * = 
+         decltype(pCheck->CalculateHessian(FloatEbmType { 0 }, FloatEbmType { 0 }))>::value>::type * = 
          nullptr);
       static FalseStruct NotInvokedCheck(...);
       static constexpr bool value = std::is_same<TrueStruct, decltype(HasCalculateHessianFunctionInternal::NotInvokedCheck(static_cast<typename std::remove_reference<TLoss>::type *>(nullptr)))>::value;
