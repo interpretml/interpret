@@ -30,6 +30,7 @@ class LossMultitaskRegression;
 class ApplyTrainingData final {
    ThreadStateBoosting * const m_pThreadStateBoosting;
    const FeatureGroup * const m_pFeatureGroup;
+   const bool m_bHessianNeeded;
 
 public:
 
@@ -39,19 +40,25 @@ public:
    INLINE_ALWAYS const FeatureGroup * GetFeatureGroup() const noexcept {
       return m_pFeatureGroup;
    }
+   INLINE_ALWAYS bool GetIsHessianNeeded() const noexcept {
+      return m_bHessianNeeded;
+   }
 
    INLINE_ALWAYS ApplyTrainingData(
       ThreadStateBoosting * const pThreadStateBoosting, 
-      const FeatureGroup * const pFeatureGroup
+      const FeatureGroup * const pFeatureGroup,
+      const bool bHessianNeeded
    ) noexcept :
       m_pThreadStateBoosting(pThreadStateBoosting),
-      m_pFeatureGroup(pFeatureGroup) {
+      m_pFeatureGroup(pFeatureGroup),
+      m_bHessianNeeded(bHessianNeeded) {
    }
 };
 
 class ApplyValidationData final {
    ThreadStateBoosting * const m_pThreadStateBoosting;
    const FeatureGroup * const m_pFeatureGroup;
+   const bool m_bHessianNeeded;
    FloatEbmType m_metric;
 
 public:
@@ -62,6 +69,9 @@ public:
    INLINE_ALWAYS const FeatureGroup * GetFeatureGroup() const noexcept {
       return m_pFeatureGroup;
    }
+   INLINE_ALWAYS bool GetIsHessianNeeded() const noexcept {
+      return m_bHessianNeeded;
+   }
    INLINE_ALWAYS FloatEbmType GetMetric() const noexcept {
       return m_metric;
    }
@@ -71,10 +81,12 @@ public:
 
    INLINE_ALWAYS ApplyValidationData(
       ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup
+      const FeatureGroup * const pFeatureGroup,
+      const bool bHessianNeeded
    ) noexcept :
       m_pThreadStateBoosting(pThreadStateBoosting),
       m_pFeatureGroup(pFeatureGroup),
+      m_bHessianNeeded(bHessianNeeded),
       m_metric(FloatEbmType { 0 }) {
    }
 };
@@ -194,13 +206,11 @@ class Loss : public Registrable {
 
    template<typename TLoss, bool bHessian>
    struct ApplyHessian;
-
    template<typename TLoss>
    struct ApplyHessian<TLoss, true> final {
       INLINE_ALWAYS static void Func() {
       }
    };
-
    template<typename TLoss>
    struct ApplyHessian<TLoss, false> final {
       INLINE_ALWAYS static void Func() {
@@ -284,6 +294,37 @@ class Loss : public Registrable {
       }
    };
 
+
+   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   struct AttachHessian;
+   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   struct AttachHessian<TLoss, cCompilerScores, cCompilerPack, true> final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+         if(data.GetIsHessianNeeded()) {
+            return Shared<TLoss, cCompilerScores, cCompilerPack, true>::ApplyTraining(pLoss, data);
+         } else {
+            return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyTraining(pLoss, data);
+         }
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+         if(data.GetIsHessianNeeded()) {
+            return Shared<TLoss, cCompilerScores, cCompilerPack, true>::ApplyValidation(pLoss, data);
+         } else {
+            return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyValidation(pLoss, data);
+         }
+      }
+   };
+   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   struct AttachHessian<TLoss, cCompilerScores, cCompilerPack, false> final {
+      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+         return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyTraining(pLoss, data);
+      }
+      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+         return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyValidation(pLoss, data);
+      }
+   };
+
+
    template<class TLoss>
    struct HasCalculateHessianFunctionInternal {
       // use SFINAE to find out if the target class has the function with the correct signature
@@ -332,12 +373,12 @@ protected:
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbmType SharedApplyTraining(ApplyTrainingData & data) const {
       static_assert(IsEdgeLoss<TLoss>(), "TLoss must inherit from one of the children of the Loss class");
-      return Shared<TLoss, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyTraining(this, data);
+      return AttachHessian<TLoss, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyTraining(this, data);
    }
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbmType SharedApplyValidation(ApplyValidationData & data) const {
       static_assert(IsEdgeLoss<TLoss>(), "TLoss must inherit from one of the children of the Loss class");
-      return Shared<TLoss, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyValidation(this, data);
+      return AttachHessian<TLoss, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyValidation(this, data);
    }
 
 
