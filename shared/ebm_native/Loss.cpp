@@ -38,31 +38,40 @@ static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
    return {
       Register<LossMulticlassLogLoss>("log_loss"),
       Register<LossRegressionPseudoHuber>("pseudo_huber", FloatParam("delta", 1))
+      // TODO: add a "c_sample" here and adapt the instructions above to handle it
    };
 }
 
+
 // !! ANYTHING BELOW THIS POINT ISN'T REQUIRED TO MAKE YOUR OWN CUSTOM LOSS FUNCTION !!
 
+
 ErrorEbmType Loss::CreateLoss(
+   const Config & config,
    const char * const sLoss,
-   const Config * const pConfig,
-   const Loss ** const ppLoss
+   std::unique_ptr<const Loss> & pLossOut
 ) noexcept {
    EBM_ASSERT(nullptr != sLoss);
-   EBM_ASSERT(nullptr != pConfig);
-   EBM_ASSERT(nullptr != ppLoss);
 
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
    try {
       const std::vector<std::shared_ptr<const Registration>> registrations = RegisterLosses();
-      std::unique_ptr<const Registrable> pRegistrable = Registration::CreateRegistrable(registrations, sLoss, pConfig);
-      if(nullptr == pRegistrable) {
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss loss unknown");
+      std::vector<std::unique_ptr<const Registrable>> registrables = 
+         Registration::CreateRegistrables(config, sLoss, registrations);
+      if(registrables.size() < 1) {
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss empty loss string");
          return Error_LossUnknown;
       }
-      *ppLoss = static_cast<const Loss *>(pRegistrable.release());
+      if(1 != registrables.size()) {
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss multiple loss functions can't simultaneously exist");
+         return Error_LossMultipleSpecified;
+      }
+      pLossOut = std::unique_ptr<const Loss>(static_cast<const Loss *>(registrables[0].release()));
       LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
       return Error_None;
+   } catch(const RegistrationUnknownException &) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss RegistrationUnknownException");
+      return Error_LossUnknown;
    } catch(const ParameterValueMalformedException &) {
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueMalformedException");
       return Error_LossParameterValueMalformed;
@@ -78,6 +87,15 @@ ErrorEbmType Loss::CreateLoss(
    } catch(const ParameterMismatchWithConfigException &) {
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterMismatchWithConfigException");
       return Error_LossParameterMismatchWithConfig;
+   } catch(const IllegalRegistrationNameException &) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss IllegalRegistrationNameException");
+      return Error_LossIllegalRegistrationName;
+   } catch(const IllegalParamNameException &) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss IllegalParamNameException");
+      return Error_LossIllegalParamName;
+   } catch(const DuplicateParamNameException &) {
+      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss DuplicateParamNameException");
+      return Error_LossDuplicateParamName;
    } catch(const EbmException & exception) {
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss EbmException");
       return exception.GetError();

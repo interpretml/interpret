@@ -16,6 +16,10 @@
 #include "ebm_native.h"
 
 #define UNUSED(x) (void)(x)
+// TODO: use OUT throughout our codebase
+// this just visually tags parameters as being modified by their caller
+#define OUT
+#define INOUT
 
 // here's how to detect the compiler type for a variety of compilers -> https://sourceforge.net/p/predef/wiki/Compilers/
 // disabling warnings with _Pragma detailed info here https://stackoverflow.com/questions/3378560/how-to-disable-gcc-warnings-for-a-few-lines-of-code
@@ -594,6 +598,9 @@ INLINE_RELEASE_UNTEMPLATED const char * IsStringEqualsCaseInsensitive(const char
          mainChar += 'a' - 'A';
       }
       if('A' <= labelChar && labelChar <= 'Z') {
+         // in theory within our executable we could ensure that all labels are lower case, but we want
+         // people to tweak the loss and metric registrations, so let's be defensive here and do a full
+         // case insensitive compare
          labelChar += 'a' - 'A';
       }
       if(mainChar != labelChar) {

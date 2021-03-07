@@ -409,9 +409,9 @@ public:
    virtual ErrorEbmType ApplyValidation(ApplyValidationData & data) const = 0;
 
    static ErrorEbmType CreateLoss(
+      const Config & config,
       const char * const sLoss,
-      const Config * const pConfig,
-      const Loss ** const ppLoss
+      std::unique_ptr<const Loss> & pLossOut
    ) noexcept;
 };
 

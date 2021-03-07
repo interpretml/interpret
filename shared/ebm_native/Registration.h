@@ -41,10 +41,34 @@ public:
    ParameterUnknownException() = default;
 };
 
+class RegistrationUnknownException final : public std::exception {
+   // this should not be thrown from the Registrable constructor
+public:
+   RegistrationUnknownException() = default;
+};
+
 class RegistrationConstructorException final : public std::exception {
    // this should not be thrown from the Registrable constructor
 public:
    RegistrationConstructorException() = default;
+};
+
+class IllegalParamNameException final : public std::exception {
+   // this should not be thrown from the Registrable constructor
+public:
+   IllegalParamNameException() = default;
+};
+
+class IllegalRegistrationNameException final : public std::exception {
+   // this should not be thrown from the Registrable constructor
+public:
+   IllegalRegistrationNameException() = default;
+};
+
+class DuplicateParamNameException final : public std::exception {
+   // this should not be thrown from the Registrable constructor
+public:
+   DuplicateParamNameException() = default;
 };
 
 class ParamBase {
@@ -52,8 +76,7 @@ class ParamBase {
 
 protected:
 
-   INLINE_ALWAYS ParamBase(const char * const sParamName) : m_sParamName(sParamName) {
-   }
+   ParamBase(const char * const sParamName);
 
 public:
 
@@ -97,10 +120,6 @@ public:
 };
 
 class Registration {
-   constexpr static const char k_paramSeparator = ';';
-   constexpr static char k_valueSeparator = '=';
-   constexpr static char k_typeTerminator = ':';
-
    const char * const m_sRegistrationName;
 
    // these ConvertStringToRegistrationType functions are here to de-template the various Param types
@@ -124,12 +143,15 @@ class Registration {
 
 protected:
 
+   static void CheckParamNames(const char * const sParamName, std::vector<const char *> usedParamNames);
+
    template<typename TParam>
    static typename TParam::ParamType UnpackParam(
       const TParam & param,
       const char * sRegistration,
-      std::vector<const char *> & usedLocations) 
-   {
+      const char * const sRegistrationEnd,
+      size_t & cUsedParamsInOut
+   ) {
       static_assert(std::is_base_of<ParamBase, TParam>::value, "TParam not derrived from ParamBase");
 
       typename TParam::ParamType paramValue = param.GetDefaultValue();
@@ -138,7 +160,7 @@ protected:
          const char * sNext = IsStringEqualsCaseInsensitive(sRegistration, param.GetParamName());
          if(nullptr != sNext) {
             if(k_valueSeparator == *sNext) {
-               usedLocations.push_back(sRegistration);
+               ++cUsedParamsInOut;
 
                // before this point we could have been seeing a longer version of our proposed tag
                // eg: the given tag was "something_else=" but our tag was "something="
@@ -147,9 +169,13 @@ protected:
                if(nullptr == sRegistration) {
                   throw ParameterValueMalformedException();
                }
-               if(0 == *sRegistration) {
+               if(sRegistrationEnd == sRegistration) {
                   break;
                }
+               EBM_ASSERT(k_registrationSeparator != *sRegistration);
+               EBM_ASSERT(k_valueSeparator != *sRegistration);
+               EBM_ASSERT(k_typeTerminator != *sRegistration);
+
                if(k_paramSeparator != *sRegistration) {
                   throw ParameterValueMalformedException();
                }
@@ -158,7 +184,7 @@ protected:
             }
          }
          sRegistration = strchr(sRegistration, k_paramSeparator);
-         if(nullptr == sRegistration) {
+         if(nullptr == sRegistration || sRegistrationEnd <= sRegistration) {
             break;
          }
          ++sRegistration;
@@ -166,23 +192,32 @@ protected:
       return paramValue;
    }
 
-   static void FinalCheckParameters(const char * sRegistration, std::vector<const char *> & usedLocations);
-   const char * CheckRegistrationName(const char * sRegistration) const;
+   static void FinalCheckParameters(
+      const char * sRegistration, 
+      const char * const sRegistrationEnd,
+      const size_t cUsedParams
+   );
+   const char * CheckRegistrationName(const char * sRegistration, const char * const sRegistrationEnd) const;
 
    virtual std::unique_ptr<const Registrable> AttemptCreate(
       const Config & config,
-      const char * const sRegistration
+      const char * const sRegistration,
+      const char * const sRegistrationEnd
    ) const = 0;
 
-   INLINE_ALWAYS Registration(const char * sRegistrationName) : m_sRegistrationName(sRegistrationName) {
-   }
+   Registration(const char * const sRegistrationName);
 
 public:
 
-   static std::unique_ptr<const Registrable> CreateRegistrable(
-      const std::vector<std::shared_ptr<const Registration>> registrations,
-      const char * const sRegistration,
-      const Config * const pConfig
+   constexpr static const char k_registrationSeparator = ',';
+   constexpr static const char k_paramSeparator = ';';
+   constexpr static char k_valueSeparator = '=';
+   constexpr static char k_typeTerminator = ':';
+
+   static std::vector<std::unique_ptr<const Registrable>> CreateRegistrables(
+      const Config & config,
+      const char * sRegistration,
+      const std::vector<std::shared_ptr<const Registration>> & registrations
    );
 
    virtual ~Registration() = default;
@@ -192,24 +227,41 @@ template<typename TRegistrable, typename... Args>
 class RegistrationPack final : public Registration {
 
    // this lambda function holds our templated parameter pack until we need it
-   std::function<std::unique_ptr<const Registrable>(const Config & config, const char * const sRegistration)> m_callBack;
+   std::function<std::unique_ptr<const Registrable>(
+      const Config & config, 
+      const char * const sRegistration,
+      const char * const sRegistrationEnd
+   )> m_callBack;
+
+   INLINE_ALWAYS static void UnpackRecursive(std::vector<const char *> & paramNames) {
+      UNUSED(paramNames);
+      return;
+   }
+
+   template<typename TParam, typename... ArgsConverted>
+   INLINE_ALWAYS static void UnpackRecursive(std::vector<const char *> & paramNames, const TParam param, const ArgsConverted...args) {
+      static_assert(std::is_base_of<ParamBase, TParam>::value, "RegistrationPack::UnpackRecursive TParam must derive from ParamBase");
+      CheckParamNames(param.GetParamName(), paramNames);
+      UnpackRecursive(paramNames, args...);
+   }
 
    template<typename... ArgsConverted>
    static std::unique_ptr<const Registrable> CheckAndCallNew(
       const Config & config,
       const char * const sRegistration,
-      std::vector<const char *> & usedLocations,
-      ArgsConverted...args
+      const char * const sRegistrationEnd,
+      const size_t & cUsedParams,
+      const ArgsConverted...args
    ) {
       // The registration string has been processed so we now have either the default param values or we have the parameter
       // values specified in the registration string.  Now we need to verify that there weren't any unused parameters,
       // which would have been an error.  FinalCheckParameters does this and throws an exception if it finds any errors
-      FinalCheckParameters(sRegistration, usedLocations);
+      FinalCheckParameters(sRegistration, sRegistrationEnd, cUsedParams);
       try {
          // unique_ptr constructor is noexcept, so it should be safe to call it inside the try/catch block
          return std::unique_ptr<const Registrable>(new TRegistrable(config, args...));
       } catch(const SkipRegistrationException &) {
-         throw;
+         return nullptr;
       } catch(const ParameterValueOutOfRangeException &) {
          throw;
       } catch(const ParameterMismatchWithConfigException &) {
@@ -226,43 +278,57 @@ class RegistrationPack final : public Registration {
       }
    }
 
-   std::unique_ptr<const Registrable> AttemptCreate(const Config & config, const char * sRegistration) const override {
-      sRegistration = CheckRegistrationName(sRegistration);
+   std::unique_ptr<const Registrable> AttemptCreate(
+      const Config & config, 
+      const char * sRegistration,
+      const char * const sRegistrationEnd
+   ) const override {
+      sRegistration = CheckRegistrationName(sRegistration, sRegistrationEnd);
       if(nullptr == sRegistration) {
          // we are not the specified registration function
          return nullptr;
       }
 
       // m_callBack contains the parameter pack that our constructor was created with, so we're regaining access here
-      return m_callBack(config, sRegistration);
+      return m_callBack(config, sRegistration, sRegistrationEnd);
    }
 
 public:
 
-   RegistrationPack(const char * sRegistrationName, Args...args) : Registration(sRegistrationName) {
+   RegistrationPack(const char * sRegistrationName, const Args...args) : Registration(sRegistrationName) {
+
+      std::vector<const char *> usedParamNames;
+      UnpackRecursive(usedParamNames, args...);
 
       // hide our parameter pack in a lambda so that we don't have to think about it yet.  Seems easier than using a tuple
       m_callBack = [args...](
          const Config & config,
-         const char * const sRegistration
+         const char * const sRegistration,
+         const char * const sRegistrationEnd
       ) {
-         std::vector<const char *> usedLocations;
-         // UnpackParam processes each Param type independently, but we keep a list of all the points
-         // in the string that were processed with usedLocations.  C++ gives us no guarantees about which order
+         // The usage of cUsedParams is a bit unusual.  It starts off at zero, but gets incremented in the calls to
+         // UnpackParam.  When CheckAndCallNew is called, the value in cUsedParams is the total of all parameters
+         // that were "claimed" by calls to UnpackParam.  Inside CheckAndCallNew we check that the total number
+         // of valid parameters equals the number of parameters that were processed.  This is just to get arround
+         // the issue that template parameter packs are hard to deal with in C++11 at least.
+         size_t cUsedParams = 0;
+
+         // UnpackParam processes each Param type independently, but we keep a count of all the valid parameters 
+         // that were processed.  C++ gives us no guarantees about which order
          // the UnpackParam functions are called, but we are guaranteed that they are all called before 
          // CheckAndCallNew is called, so inside there we verify whether all the parameters were used
-         return std::unique_ptr<const Registrable>(CheckAndCallNew(
+         return CheckAndCallNew(
             config,
             sRegistration,
-            usedLocations,
-            UnpackParam(args, sRegistration, usedLocations)...)
-         );
+            sRegistrationEnd,
+            cUsedParams,
+            UnpackParam(args, sRegistration, sRegistrationEnd, INOUT cUsedParams)...);
       };
    }
 };
 
 template<typename TRegistrable, typename... Args>
-std::shared_ptr<const Registration> Register(const char * sRegistrationName, Args...args) {
+std::shared_ptr<const Registration> Register(const char * const sRegistrationName, const Args...args) {
    // ideally we'd be returning unique_ptr here, but we pass this to an initialization list which doesn't work in C++11
    return std::make_shared<const RegistrationPack<TRegistrable, Args...>>(sRegistrationName, args...);
 }
