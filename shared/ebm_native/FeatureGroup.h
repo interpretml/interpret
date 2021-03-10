@@ -82,11 +82,8 @@ public:
    }
 
    INLINE_ALWAYS ptrdiff_t GetBitPack() const noexcept {
-      EBM_ASSERT(k_cItemsPerBitPackDynamic2 != m_cItemsPerBitPack);
-      EBM_ASSERT(k_cItemsPerBitPackNone == m_cItemsPerBitPack || 
-         k_cItemsPerBitPackMin2 <= m_cItemsPerBitPack && 
-         m_cItemsPerBitPack <= k_cItemsPerBitPackMax2
-      );
+      // don't check the legal value for m_cItemsPerBitPack here since we call this function from a huge
+      // number of templates.  We check this value when SetBitPack is called
       return m_cItemsPerBitPack;
    }
 

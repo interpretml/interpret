@@ -91,40 +91,88 @@ public:
    }
 };
 
+// TODO : move this into EbmInternal.h
+constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesStart = 3;
+
 class Loss : public Registrable {
+   // welcome to the mind-bending demented hall of mirrors.. a prison for your mind
+
+
+   // if we have multiple scores AND multiple bitpacks, then we have two nested loops in our final function
+   // and the compiler will only unroll the inner loop.  That inner loop will be for the scores, so there
+   // is not much benefit in generating hard coded loop counts for the bitpacks, so short circut the
+   // bit packing to use the dynamic value if we don't have the single bin case.  This also solves
+   // part of our template blowup issue of having N * M starting point templates where N is the number
+   // of scores and M is the number of bit packs.  If we use 8 * 16 that's already 128 copies of the
+   // templated function at this point and more later.  Reducing this to just 16 is very very helpful.
    template<typename TLoss, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
-   constexpr static ptrdiff_t GetInitialCountScores() {
-      return k_oneScore;
+   INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData & data) const {
+      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+         return BitPackPostApplyTraining<TLoss, k_oneScore, k_cItemsPerBitPackNone>(data);
+      } else {
+         return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax2>::ApplyTraining(this, data);
+      }
+   }
+   template<typename TLoss, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData & data) const {
+      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+         return BitPackPostApplyValidation<TLoss, k_oneScore, k_cItemsPerBitPackNone>(data);
+      } else {
+         return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax2>::ApplyValidation(this, data);
+      }
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
-   constexpr static ptrdiff_t GetInitialCountScores() {
-      return k_dynamicClassification;
+   INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData & data) const {
+      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+         // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
+         return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
+      } else {
+         // if our inner loop is dynamic scores, then the compiler won't do a full unwind of the bit pack
+         // loop, so just short circuit it to using dynamic
+         return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic2>(data);
+      }
+   }
+   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
+   INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData & data) const {
+      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+         // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
+         return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
+      } else {
+         // if our inner loop is dynamic scores, then the compiler won't do a full unwind of the bit pack
+         // loop, so just short circuit it to using dynamic
+         return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic2>(data);
+      }
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
-   constexpr static ptrdiff_t GetInitialCountScores() {
-      // TODO : harden this to be able to handle weird values in k_cCompilerOptimizedTargetClassesMax like 0, 1, 2, 3, etc..
-      return 3;
-   }
-   template<typename TLoss>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData & data) const {
-      return CountScores<TLoss, GetInitialCountScores<TLoss>()>::ApplyTraining(this, data);
+      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+         // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
+         return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
+      } else {
+         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax < k_cCompilerOptimizedTargetClassesStart ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart)>::ApplyTraining(this, data);
+      }
    }
-   template<typename TLoss>
+   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData & data) const {
-      return CountScores<TLoss, GetInitialCountScores<TLoss>()>::ApplyValidation(this, data);
+      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+         // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
+         return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
+      } else {
+         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax < k_cCompilerOptimizedTargetClassesStart ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart)>::ApplyValidation(this, data);
+      }
    }
    template<typename TLoss, ptrdiff_t cCompilerScores>
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          if(cCompilerScores == data.GetThreadStateBoosting()->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()) {
-            return pLoss->BitPackPreApplyTraining<TLoss, cCompilerScores>(data);
+            return pLoss->BitPackPostApplyTraining<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(data);
          } else {
             return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyTraining(pLoss, data);
          }
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          if(cCompilerScores == data.GetThreadStateBoosting()->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()) {
-            return pLoss->BitPackPreApplyValidation<TLoss, cCompilerScores>(data);
+            return pLoss->BitPackPostApplyValidation<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(data);
          } else {
             return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyValidation(pLoss, data);
          }
@@ -133,40 +181,16 @@ class Loss : public Registrable {
    template<typename TLoss>
    struct CountScores<TLoss, k_dynamicClassification> final {
       INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
-         return pLoss->BitPackPreApplyTraining<TLoss, k_dynamicClassification>(data);
+         return pLoss->BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic2>(data);
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
-         return pLoss->BitPackPreApplyValidation<TLoss, k_dynamicClassification>(data);
-      }
-   };
-   template<typename TLoss>
-   struct CountScores<TLoss, k_oneScore> final {
-      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
-         return pLoss->BitPackPreApplyTraining<TLoss, k_oneScore>(data);
-      }
-      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
-         return pLoss->BitPackPreApplyValidation<TLoss, k_oneScore>(data);
+         return pLoss->BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic2>(data);
       }
    };
 
 
-
-   template<typename TLoss, ptrdiff_t cCompilerScores>
-   INLINE_RELEASE_TEMPLATED ErrorEbmType BitPackPreApplyTraining(ApplyTrainingData & data) const {
-      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
-         return BitPackPostApplyTraining<TLoss, cCompilerScores, k_cItemsPerBitPackNone>(data);
-      } else {
-         return BitPack<TLoss, cCompilerScores, k_cItemsPerBitPackMax2>::ApplyTraining(this, data);
-      }
-   }
-   template<typename TLoss, ptrdiff_t cCompilerScores>
-   INLINE_RELEASE_TEMPLATED ErrorEbmType BitPackPreApplyValidation(ApplyValidationData & data) const {
-      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
-         return BitPackPostApplyValidation<TLoss, cCompilerScores, k_cItemsPerBitPackNone>(data);
-      } else {
-         return BitPack<TLoss, cCompilerScores, k_cItemsPerBitPackMax2>::ApplyValidation(this, data);
-      }
-   }
+   // in our current format cCompilerScores will always be 1, but just in case we change our code to allow
+   // for special casing multiclass with compile time unrolling of the compiler pack, leave cCompilerScores here
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct BitPack final {
       INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
@@ -219,7 +243,7 @@ class Loss : public Registrable {
 
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared final {
-      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+      static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          UNUSED(pLoss);
          UNUSED(data);
 
@@ -227,7 +251,7 @@ class Loss : public Registrable {
 
          return Error_None;
       }
-      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+      static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          UNUSED(pLoss);
          UNUSED(data);
 
@@ -238,7 +262,7 @@ class Loss : public Registrable {
    };
    template<typename TLoss, ptrdiff_t cCompilerScores, bool bHessian>
    struct Shared<TLoss, cCompilerScores, k_cItemsPerBitPackNone, bHessian> final {
-      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+      static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          UNUSED(pLoss);
          UNUSED(data);
 
@@ -246,7 +270,7 @@ class Loss : public Registrable {
 
          return Error_None;
       }
-      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+      static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          UNUSED(pLoss);
          UNUSED(data);
 
@@ -257,7 +281,7 @@ class Loss : public Registrable {
    };
    template<typename TLoss, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared <TLoss, k_oneScore, cCompilerPack, bHessian> final {
-      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+      static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          UNUSED(pLoss);
          UNUSED(data);
 
@@ -265,7 +289,7 @@ class Loss : public Registrable {
 
          return Error_None;
       }
-      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+      static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          UNUSED(pLoss);
          UNUSED(data);
 
@@ -276,7 +300,7 @@ class Loss : public Registrable {
    };
    template<typename TLoss, bool bHessian>
    struct Shared<TLoss, k_oneScore, k_cItemsPerBitPackNone, bHessian> final {
-      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+      static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          UNUSED(pLoss);
          UNUSED(data);
 
@@ -284,7 +308,7 @@ class Loss : public Registrable {
 
          return Error_None;
       }
-      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+      static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          UNUSED(pLoss);
          UNUSED(data);
 
@@ -299,14 +323,14 @@ class Loss : public Registrable {
    struct AttachHessian;
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct AttachHessian<TLoss, cCompilerScores, cCompilerPack, true> final {
-      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+      INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          if(data.GetIsHessianNeeded()) {
             return Shared<TLoss, cCompilerScores, cCompilerPack, true>::ApplyTraining(pLoss, data);
          } else {
             return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyTraining(pLoss, data);
          }
       }
-      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+      INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          if(data.GetIsHessianNeeded()) {
             return Shared<TLoss, cCompilerScores, cCompilerPack, true>::ApplyValidation(pLoss, data);
          } else {
@@ -316,10 +340,10 @@ class Loss : public Registrable {
    };
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct AttachHessian<TLoss, cCompilerScores, cCompilerPack, false> final {
-      INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+      INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyTraining(pLoss, data);
       }
-      INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+      INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyValidation(pLoss, data);
       }
    };
@@ -339,10 +363,14 @@ class Loss : public Registrable {
       // to the function, which we don't want to do since our function is meant to be 100% inline, and taking
       // a pointer might create a second non-inlined copy of the function with some compilers.  I think
       // burrying the inline function inside a decltype will prevent it's materialization.
+      //
+      // use float as the calling type on purpose since any of our Simd types should convert up from a float and
+      // we shouldn't get compiler warnings for upgrades on the float type to doubles
+
       template<class TCheck>
       static TrueStruct NotInvokedCheck(TCheck const * pCheck,
          typename std::enable_if<
-         std::is_same<FloatEbmType, decltype(pCheck->CalculateHessian(FloatEbmType { 0 }, FloatEbmType { 0 }))>::value
+         std::is_same<FloatEbmType, decltype(pCheck->CalculateHessian(float { 0 }, float { 0 }))>::value
          >::type * = nullptr);
       static FalseStruct NotInvokedCheck(...);
       static constexpr bool value = std::is_same<TrueStruct, 
