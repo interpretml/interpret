@@ -691,7 +691,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 
 
 #ifdef __cplusplus
-}
+} // extern "C"
 #endif // __cplusplus
 
 #endif  // EBM_NATIVE_H

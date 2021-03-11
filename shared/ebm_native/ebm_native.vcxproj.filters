@@ -68,40 +68,41 @@
     <ClInclude Include="TensorTotalsSum.h" />
     <ClInclude Include="TreeNode.h" />
     <ClInclude Include="TreeSweep.h" />
-    <ClInclude Include="loss_functions\LossBinaryCrossEntropy.h">
-      <Filter>loss_functions</Filter>
+    <ClInclude Include="zone_separate\loss_functions\LossBinaryCrossEntropy.h">
+      <Filter>zone_separate\loss_functions</Filter>
     </ClInclude>
-    <ClInclude Include="loss_functions\LossBinaryLogLoss.h">
-      <Filter>loss_functions</Filter>
+    <ClInclude Include="zone_separate\loss_functions\LossBinaryLogLoss.h">
+      <Filter>zone_separate\loss_functions</Filter>
     </ClInclude>
-    <ClInclude Include="loss_functions\LossMulticlassCrossEntropy.h">
-      <Filter>loss_functions</Filter>
+    <ClInclude Include="zone_separate\loss_functions\LossMulticlassCrossEntropy.h">
+      <Filter>zone_separate\loss_functions</Filter>
     </ClInclude>
-    <ClInclude Include="loss_functions\LossMulticlassLogLoss.h">
-      <Filter>loss_functions</Filter>
+    <ClInclude Include="zone_separate\loss_functions\LossMulticlassLogLoss.h">
+      <Filter>zone_separate\loss_functions</Filter>
     </ClInclude>
-    <ClInclude Include="loss_functions\LossMultitaskBinaryLogLoss.h">
-      <Filter>loss_functions</Filter>
+    <ClInclude Include="zone_separate\loss_functions\LossMultitaskBinaryLogLoss.h">
+      <Filter>zone_separate\loss_functions</Filter>
     </ClInclude>
-    <ClInclude Include="loss_functions\LossMultitaskMulticlassCrossEntropy.h">
-      <Filter>loss_functions</Filter>
+    <ClInclude Include="zone_separate\loss_functions\LossMultitaskMulticlassCrossEntropy.h">
+      <Filter>zone_separate\loss_functions</Filter>
     </ClInclude>
-    <ClInclude Include="loss_functions\LossMultitaskRegressionMse.h">
-      <Filter>loss_functions</Filter>
+    <ClInclude Include="zone_separate\loss_functions\LossMultitaskRegressionMse.h">
+      <Filter>zone_separate\loss_functions</Filter>
     </ClInclude>
-    <ClInclude Include="loss_functions\LossRegressionMse.h">
-      <Filter>loss_functions</Filter>
+    <ClInclude Include="zone_separate\loss_functions\LossRegressionMse.h">
+      <Filter>zone_separate\loss_functions</Filter>
     </ClInclude>
-    <ClInclude Include="loss_functions\LossRegressionPseudoHuber.h">
-      <Filter>loss_functions</Filter>
+    <ClInclude Include="zone_separate\loss_functions\LossRegressionPseudoHuber.h">
+      <Filter>zone_separate\loss_functions</Filter>
     </ClInclude>
-    <ClInclude Include="metrics\MetricAuc.h">
-      <Filter>metrics</Filter>
+    <ClInclude Include="zone_separate\metrics\MetricAuc.h">
+      <Filter>zone_separate\metrics</Filter>
     </ClInclude>
     <ClInclude Include="inc\ebm_native.h">
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="LossRegistrations.h" />
+    <ClInclude Include="EbmException.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />
@@ -111,14 +112,17 @@
     <Text Include="ebm_native_exports.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="loss_functions">
-      <UniqueIdentifier>{cf25a42a-d924-459d-bd60-ddb0d13481d7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="metrics">
-      <UniqueIdentifier>{ac4e0b40-5223-4e83-b545-07d30d2a02d0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="inc">
       <UniqueIdentifier>{5cd9d4c4-93e3-4127-8d1e-496270df544a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="zone_separate">
+      <UniqueIdentifier>{8829f362-ad1e-420a-962c-4f1afc881991}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="zone_separate\loss_functions">
+      <UniqueIdentifier>{cf25a42a-d924-459d-bd60-ddb0d13481d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="zone_separate\metrics">
+      <UniqueIdentifier>{ac4e0b40-5223-4e83-b545-07d30d2a02d0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

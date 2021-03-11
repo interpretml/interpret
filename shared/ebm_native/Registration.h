@@ -12,6 +12,7 @@
 
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
+#include "EbmException.h"
 #include "Config.h"
 #include "Registrable.h"
 

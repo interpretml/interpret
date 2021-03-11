@@ -97,3 +97,10 @@
       and others: https://google.github.io/styleguide/cppguide.html#Exceptions
     - our higher level language to C++ interface boundary uses pure C (the only portable solution), so we can't 
       throw exceptions accross that boundary, so ultimately we need error codes at that level anyways.
+
+- use the following order throughout for functions and variable declarations: 
+  "INLINE_RELEASE_UNTEMPLATED constexpr static"
+  INLINE_RELEASE_UNTEMPLATED needs to be first since it's a template under DEBUG builds (for functions)
+  constexpr next so that it doesn't sit next to const if our function returns a const type
+  static last since that's what's left
+

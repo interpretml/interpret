@@ -3,11 +3,18 @@
 // Author: Paul Koch <code@koch.ninja>
 
 #include "PrecompiledHeader.h"
+
+#include <stddef.h> // size_t, ptrdiff_t
+#include <memory> // shared_ptr, unique_ptr
 #include <vector>
+
+#include "ebm_native.h"
+#include "EbmInternal.h"
+#include "Logging.h" // EBM_ASSERT & LOG
+
+#include "EbmException.h"
 #include "Loss.h"
 #include "Registration.h"
-
-
 
 
 //TODO: these need to be extern "C" style and located in a separate "zone"

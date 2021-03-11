@@ -9,11 +9,21 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 #include <type_traits> // is_integral
-#include <cmath> // std::exp, std::log
 #include <stdlib.h> // free
-#include <exception>
 
 #include "ebm_native.h"
+
+// !!! VERY IMPORTANT !!!
+// this file is incluable into separately compiled zones WITHOUT being put into an anonymous namespace
+// as such, all functions and variables MUST be declared static (and preferably inline too) otherwise 
+// we'll break the ODR (one definition rule).  Normally this is not a problem, but we compile with 
+// different compiler flags for different translation units (*.cpp files) and that that would break 
+// rules (5.1) or (5.3) from the C++ standard where it says:
+// "There can be more than one definition of a... (and it lists class, enumeration, "
+// "each definition of D shall consist of the same sequence of tokens"
+// "in each definition of D, corresponding entities shall have the same language linkage"
+// By using static we are avoiding the rule since we don't have external linkage
+// see the file "IMPORTANT.md" for more details.
 
 #define UNUSED(x) (void)(x)
 // TODO: use OUT throughout our codebase
@@ -152,10 +162,10 @@
 #define INLINE_RELEASE_TEMPLATED
 #endif //NDEBUG
 
-INLINE_ALWAYS void StopClangAnalysis() noexcept ANALYZER_NORETURN {
+INLINE_ALWAYS static void StopClangAnalysis() noexcept ANALYZER_NORETURN {
 }
 
-INLINE_ALWAYS char * strcpy_NO_WARNINGS(char * dest, const char * src) noexcept {
+INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * dest, const char * src) noexcept {
    StopClangAnalysis();
    return strcpy(dest, src);
 }
@@ -173,17 +183,17 @@ INLINE_ALWAYS char * strcpy_NO_WARNINGS(char * dest, const char * src) noexcept 
 
 // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small 
 // negative values close to zero that might occur due to numeric instability
-constexpr FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest();
-constexpr FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
-constexpr FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
-constexpr FloatEbmType k_epsilonGradient = 1e-7;
+constexpr static FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest();
+constexpr static FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
+constexpr static FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
+constexpr static FloatEbmType k_epsilonGradient = 1e-7;
 #if defined(FAST_EXP) || defined(FAST_LOG)
 // with the approximate exp function we can expect a bit of noise.  We might need to increase this further
-constexpr FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-1;
+constexpr static FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-1;
 #else // defined(FAST_EXP) || defined(FAST_LOG)
-constexpr FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-7;
+constexpr static FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-7;
 #endif // defined(FAST_EXP) || defined(FAST_LOG)
-constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
+constexpr static FloatEbmType k_epsilonLogLoss = 1e-7;
 
 // The C++ standard makes it undefined behavior to access memory past the end of an array with a declared length.
 // So, without mitigation, the struct hack would be undefined behavior.  We can however formally turn an array 
@@ -214,30 +224,30 @@ constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 // which is required in order to use the offsetof macro, or in our case array to pointer conversion.
 // 
 template<typename T>
-INLINE_ALWAYS T * ArrayToPointer(T * a) noexcept {
+INLINE_ALWAYS static T * ArrayToPointer(T * const a) noexcept {
    return a;
 }
 template<typename T>
-INLINE_ALWAYS const T * ArrayToPointer(const T * a) noexcept {
+INLINE_ALWAYS static const T * ArrayToPointer(const T * const a) noexcept {
    return a;
 }
 
 // TODO : replace all std::min and std::max and similar comparions that get the min/max with this function
 // unlike std::min, our version has explicit noexcept semantics
 template<typename T>
-constexpr INLINE_ALWAYS T EbmMin(T v1, T v2) noexcept {
+INLINE_ALWAYS constexpr static T EbmMin(T v1, T v2) noexcept {
    return UNPREDICTABLE(v1 < v2) ? v1 : v2;
 }
 // unlike std::max, our version has explicit noexcept semantics
 template<typename T>
-constexpr INLINE_ALWAYS T EbmMax(T v1, T v2) noexcept {
+INLINE_ALWAYS constexpr static T EbmMax(T v1, T v2) noexcept {
    return UNPREDICTABLE(v1 < v2) ? v2 : v1;
 }
 
 WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 template<typename TTo, typename TFrom>
-constexpr INLINE_ALWAYS bool IsNumberConvertable(const TFrom number) noexcept {
+INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noexcept {
    // the general rules of conversion are as follows:
    // calling std::numeric_limits<?>::max() returns an item of that type
    // casting and comparing will never give us undefined behavior.  It can give us implementation defined behavior or unspecified behavior, which is legal.
@@ -312,8 +322,8 @@ WARNING_POP
 // TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
 //   runtime looped version of our code
 
-constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 8;
-constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesStart = 3;
+constexpr static ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 8;
+constexpr static ptrdiff_t k_cCompilerOptimizedTargetClassesStart = 3;
 
 static_assert(
    2 <= k_cCompilerOptimizedTargetClassesMax, 
@@ -323,27 +333,27 @@ static_assert(
 typedef size_t StorageDataType;
 typedef UIntEbmType ActiveDataType;
 
-constexpr ptrdiff_t k_regression = -1;
-constexpr ptrdiff_t k_dynamicClassification = 0;
-constexpr ptrdiff_t k_oneScore = 1;
-constexpr INLINE_ALWAYS bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
+constexpr static ptrdiff_t k_regression = -1;
+constexpr static ptrdiff_t k_dynamicClassification = 0;
+constexpr static ptrdiff_t k_oneScore = 1;
+INLINE_ALWAYS constexpr static bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    return k_regression == learningTypeOrCountTargetClasses;
 }
-constexpr INLINE_ALWAYS bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
+INLINE_ALWAYS constexpr static bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    return 0 <= learningTypeOrCountTargetClasses;
 }
-constexpr INLINE_ALWAYS bool IsBinaryClassification(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
+INLINE_ALWAYS constexpr static bool IsBinaryClassification(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
 #ifdef EXPAND_BINARY_LOGITS
    return UNUSED(learningTypeOrCountTargetClasses), false;
 #else // EXPAND_BINARY_LOGITS
    return 2 == learningTypeOrCountTargetClasses;
 #endif // EXPAND_BINARY_LOGITS
 }
-constexpr INLINE_ALWAYS bool IsMulticlass(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
+INLINE_ALWAYS constexpr static bool IsMulticlass(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    return IsClassification(learningTypeOrCountTargetClasses) && !IsBinaryClassification(learningTypeOrCountTargetClasses);
 }
 
-constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
+INLINE_ALWAYS constexpr static size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
    // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
@@ -383,16 +393,16 @@ constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCou
       static_cast<size_t>(MACRO_runtimeBitPack) : static_cast<size_t>(MACRO_compilerBitPack))
 
 template<typename T>
-constexpr size_t CountBitsRequired(const T maxValue) noexcept {
+constexpr static size_t CountBitsRequired(const T maxValue) noexcept {
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
    return T { 0 } == maxValue ? size_t { 0 } : size_t { 1 } + CountBitsRequired<T>(maxValue / T { 2 });
 }
 template<typename T>
-constexpr INLINE_ALWAYS size_t CountBitsRequiredPositiveMax() noexcept {
+INLINE_ALWAYS constexpr static size_t CountBitsRequiredPositiveMax() noexcept {
    return CountBitsRequired(std::numeric_limits<T>::max());
 }
 
-constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
+constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 
 // It's impossible for us to have tensors with more than k_cDimensionsMax dimensions.  Even if we had the minimum 
 // number of bins per feature (two), then we would have 2^N memory spaces at our binning step, and 
@@ -406,29 +416,29 @@ constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 //
 // TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see 
 //        how many would fit into memory.
-constexpr size_t k_cDimensionsMax = k_cBitsForSizeT - 1;
+constexpr static size_t k_cDimensionsMax = k_cBitsForSizeT - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
-constexpr size_t k_cCompilerOptimizedCountDimensionsMax = 2;
+constexpr static size_t k_cCompilerOptimizedCountDimensionsMax = 2;
 
 static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
    "k_cCompilerOptimizedCountDimensionsMax can be 1 if we want to turn off dimension optimization, but 0 or less is disallowed.");
 static_assert(k_cCompilerOptimizedCountDimensionsMax <= k_cDimensionsMax,
    "k_cCompilerOptimizedCountDimensionsMax cannot be larger than the maximum number of dimensions.");
 
-constexpr size_t k_dynamicDimensions = 0;
+constexpr static size_t k_dynamicDimensions = 0;
 
-constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
+constexpr static size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
-constexpr INLINE_ALWAYS size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
+INLINE_ALWAYS constexpr static size_t GetCountBits(const size_t cItemsBitPacked) noexcept {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
 
 #ifndef TODO_remove_this
-constexpr size_t k_cItemsPerBitPackDynamic = 0;
-constexpr size_t k_cItemsPerBitPackMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
-constexpr size_t k_cItemsPerBitPackMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
-constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) noexcept {
+constexpr static size_t k_cItemsPerBitPackDynamic = 0;
+constexpr static size_t k_cItemsPerBitPackMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
+constexpr static size_t k_cItemsPerBitPackMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
+INLINE_ALWAYS constexpr static size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
    return k_cItemsPerBitPackMin == cItemsBitPackedPrev ?
@@ -436,12 +446,12 @@ constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked(const size_t cItemsBit
 }
 #endif
 
-constexpr ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
+constexpr static ptrdiff_t k_cItemsPerBitPackNone = ptrdiff_t { -1 }; // this is for when there is only 1 bin
 // TODO : remove the 2 suffixes from these, and verify these are being used!!  AND at the same time verify that we like the sign of anything that uses these constants size_t vs ptrdiff_t
-constexpr ptrdiff_t k_cItemsPerBitPackDynamic2 = ptrdiff_t { 0 };
-constexpr ptrdiff_t k_cItemsPerBitPackMax2 = ptrdiff_t { k_cBitsForStorageType };
+constexpr static ptrdiff_t k_cItemsPerBitPackDynamic2 = ptrdiff_t { 0 };
+constexpr static ptrdiff_t k_cItemsPerBitPackMax2 = ptrdiff_t { k_cBitsForStorageType };
 static_assert(k_cItemsPerBitPackMax2 <= ptrdiff_t { k_cBitsForStorageType }, "k_cItemsPerBitPackMax too big");
-constexpr ptrdiff_t k_cItemsPerBitPackMin2 = ptrdiff_t { 1 };
+constexpr static ptrdiff_t k_cItemsPerBitPackMin2 = ptrdiff_t { 1 };
 static_assert(1 <= k_cItemsPerBitPackMin2 || k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMin2 && k_cItemsPerBitPackDynamic2 == k_cItemsPerBitPackMax2, "k_cItemsPerBitPackMin must be positive and can only be zero if both min and max are zero (which means we only use dynamic)");
 static_assert(k_cItemsPerBitPackMin2 <= k_cItemsPerBitPackMax2, "bit pack max less than min");
 static_assert(
@@ -455,9 +465,9 @@ static_assert(
    ptrdiff_t { k_cBitsForStorageType } / (ptrdiff_t { k_cBitsForStorageType } / k_cItemsPerBitPackMax2),
    "k_cItemsPerBitPackMax needs to be on the progression series");
 // if we cover the entire range of possible bit packing, then we don't need the dynamic case!
-constexpr ptrdiff_t k_cItemsPerBitPackLast = (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax2 &&
+constexpr static ptrdiff_t k_cItemsPerBitPackLast = (ptrdiff_t { k_cBitsForStorageType } == k_cItemsPerBitPackMax2 &&
    ptrdiff_t { 1 } == k_cItemsPerBitPackMin2) ? ptrdiff_t { 1 } : k_cItemsPerBitPackDynamic2;
-constexpr INLINE_ALWAYS ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPackedPrev) noexcept {
+INLINE_ALWAYS constexpr static ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPackedPrev) noexcept {
    // for 64 bits, the progression is: 64,32,21,16,12,10,9,8,7,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)
    // [there are 15 of these + the dynamic case + onebin case]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1,0 (optionaly),-1 (never occurs in this function)
@@ -473,7 +483,7 @@ constexpr INLINE_ALWAYS ptrdiff_t GetNextBitPack(const ptrdiff_t cItemsBitPacked
 
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
-constexpr INLINE_ALWAYS bool IsMultiplyError(const size_t num1, const size_t num2) noexcept {
+INLINE_ALWAYS constexpr static bool IsMultiplyError(const size_t num1, const size_t num2) noexcept {
    // algebraically, we want to know if this is true: std::numeric_limits<size_t>::max() + 1 <= num1 * num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 + 1 <= num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 < num2
@@ -485,7 +495,7 @@ constexpr INLINE_ALWAYS bool IsMultiplyError(const size_t num1, const size_t num
 }
 WARNING_POP
 
-constexpr INLINE_ALWAYS bool IsAddError(const size_t num1, const size_t num2) noexcept {
+INLINE_ALWAYS constexpr static bool IsAddError(const size_t num1, const size_t num2) noexcept {
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
    return num1 + num2 < num1;
 }
@@ -504,13 +514,13 @@ constexpr INLINE_ALWAYS bool IsAddError(const size_t num1, const size_t num2) no
 // in which case we use pure malloc and then free instead of these helper functions.  In both cases we still
 // use free though, so it's less likely to create bugs by accident.
 template<typename T>
-INLINE_ALWAYS T * EbmMalloc() noexcept {
+INLINE_ALWAYS static T * EbmMalloc() noexcept {
    static_assert(!std::is_same<T, void>::value, "don't try allocating a single void item with EbmMalloc");
    T * const a = static_cast<T *>(malloc(sizeof(T)));
    return a;
 }
 template<typename T>
-INLINE_ALWAYS T * EbmMalloc(const size_t cItems) noexcept {
+INLINE_ALWAYS static T * EbmMalloc(const size_t cItems) noexcept {
    constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
    static_assert(0 < cBytesPerItem, "can't have a zero sized item");
    bool bOneByte = 1 == cBytesPerItem;
@@ -532,7 +542,7 @@ INLINE_ALWAYS T * EbmMalloc(const size_t cItems) noexcept {
    }
 }
 template<typename T>
-INLINE_ALWAYS T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noexcept {
+INLINE_ALWAYS static T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noexcept {
    if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
       return nullptr;
    } else {
@@ -543,7 +553,7 @@ INLINE_ALWAYS T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noe
    }
 }
 
-INLINE_RELEASE_UNTEMPLATED const char * SkipWhitespace(const char * s) {
+INLINE_RELEASE_UNTEMPLATED static const char * SkipWhitespace(const char * s) {
    char oneChar = *s;
    while(0x20 == oneChar || 0x9 <= oneChar && oneChar <= 0xd) {
       // skip whitespace
@@ -553,11 +563,7 @@ INLINE_RELEASE_UNTEMPLATED const char * SkipWhitespace(const char * s) {
    return s;
 }
 
-template<typename T>
-INLINE_ALWAYS const char * ConvertStringToFloat(const char * const s, T * const pResultOut);
-
-template<>
-INLINE_ALWAYS const char * ConvertStringToFloat(const char * const s, double * const pResultOut) {
+INLINE_ALWAYS static const char * ConvertStringToFloat(const char * const s, double * const pResultOut) {
    // we skip beginning whitespaces (strtod guarantees this)
    // unlike strtod, we also skip trailing whitespaces
 
@@ -581,7 +587,7 @@ INLINE_ALWAYS const char * ConvertStringToFloat(const char * const s, double * c
    return SkipWhitespace(sNext);
 }
 
-INLINE_RELEASE_UNTEMPLATED const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel) {
+INLINE_RELEASE_UNTEMPLATED static const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel) {
    // amazingly, C++ doesn't seem to provide a case insensive string comparer
    // this function skips inital whitespaces and trailing whitespaces
    // this function returns nullptr if there is no match, otherwise it returns a pointer to the 
@@ -620,25 +626,13 @@ INLINE_RELEASE_UNTEMPLATED const char * IsStringEqualsCaseInsensitive(const char
    return sMain;
 }
 
-class EbmException : public std::exception {
-   const ErrorEbmType m_error;
-
-public:
-   EbmException(const ErrorEbmType error) : m_error(error) {
-   }
-
-   ErrorEbmType GetError() const noexcept {
-      return m_error;
-   }
-};
-
 // TODO: figure out if we really want/need to template the handling of different bit packing sizes.  It might
 //       be the case that for specific bit sizes, like 8x8, we want to keep our memory stride as small as possible
 //       but we might also find that we can apply SIMD at the outer loop level in the places where we use bit
 //       packing, so we'd load eight 64-bit numbers at a time and then keep all the interior loops.  In this case
 //       the only penalty would be one branch mispredict, but we'd be able to loop over 8 bit extractions at a time
 //       We might also pay a penalty if our stride length for the outputs is too long, but we'll have to test that
-constexpr bool k_bUseSIMD = false;
+constexpr static bool k_bUseSIMD = false;
 
 //#define ZERO_FIRST_MULTICLASS_LOGIT
 
