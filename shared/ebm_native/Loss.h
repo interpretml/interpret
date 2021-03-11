@@ -526,24 +526,24 @@ protected:
 #define LOSS_CLASS_TEMPLATE_BOILERPLATE_PUT_AT_END_OF_CLASS \
    public: \
       bool LossHasHessian() const override { \
-         return Loss::HasCalculateHessianFunction<std::remove_pointer<decltype(this)>::type>(); \
+         return Loss::HasCalculateHessianFunction<typename std::remove_pointer<decltype(this)>::type>(); \
       } \
       template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack> \
       ErrorEbmType ApplyTrainingTemplated(ApplyTrainingData & data) const { \
-         return Loss::SharedApplyTraining<std::remove_pointer<decltype(this)>::type, cCompilerScores, cCompilerPack>(data); \
+         return Loss::SharedApplyTraining<typename std::remove_pointer<decltype(this)>::type, cCompilerScores, cCompilerPack>(data); \
       } \
       template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack> \
       ErrorEbmType ApplyValidationTemplated(ApplyValidationData & data) const { \
-         return Loss::SharedApplyValidation<std::remove_pointer<decltype(this)>::type, cCompilerScores, cCompilerPack>(data); \
+         return Loss::SharedApplyValidation<typename std::remove_pointer<decltype(this)>::type, cCompilerScores, cCompilerPack>(data); \
       }
 
 #define LOSS_CLASS_VIRTUAL_BOILERPLATE_PUT_AT_END_OF_CLASS \
    public: \
       ErrorEbmType ApplyTraining(ApplyTrainingData & data) const override { \
-         return Loss::LossApplyTraining<std::remove_pointer<decltype(this)>::type>(data); \
+         return Loss::LossApplyTraining<typename std::remove_pointer<decltype(this)>::type>(data); \
       } \
       ErrorEbmType ApplyValidation(ApplyValidationData & data) const override { \
-         return Loss::LossApplyValidation<std::remove_pointer<decltype(this)>::type>(data); \
+         return Loss::LossApplyValidation<typename std::remove_pointer<decltype(this)>::type>(data); \
       }
 
 #endif // LOSS_H
