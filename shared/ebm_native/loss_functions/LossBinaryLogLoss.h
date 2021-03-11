@@ -51,14 +51,19 @@ struct LossBinaryLogLoss : public LossBinary {
    }
 
    INLINE_ALWAYS TFloat CalculatePrediction(TFloat score) const {
+      UNUSED(score);
       return 9999999.99;
    }
 
    INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction) const {
+      UNUSED(target);
+      UNUSED(prediction);
       return 9999999.99;
    }
 
    INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction) const {
+      UNUSED(target);
+      UNUSED(prediction);
       return 9999999.99;
    }
 };
