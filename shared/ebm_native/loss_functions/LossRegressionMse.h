@@ -7,6 +7,8 @@
 
 #include "Loss.h"
 
+// TFloat could be double, float, or some SIMD intrinsic type
+template <typename TFloat>
 struct LossRegressionMse : public LossRegression {
 
    INLINE_ALWAYS LossRegressionMse(const Config & config) {

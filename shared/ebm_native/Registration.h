@@ -12,6 +12,8 @@
 
 #include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
+#include "Config.h"
+#include "Registrable.h"
 
 class SkipRegistrationException final : public std::exception {
    // we don't derrive from EbmException since this exception isn't meant to percolate up past the C interface
@@ -86,17 +88,17 @@ public:
 };
 
 class FloatParam final : public ParamBase {
-   const FloatEbmType m_defaultValue;
+   const double m_defaultValue;
 
 public:
 
-   typedef FloatEbmType ParamType;
+   typedef double ParamType;
 
-   INLINE_ALWAYS FloatEbmType GetDefaultValue() const noexcept {
+   INLINE_ALWAYS double GetDefaultValue() const noexcept {
       return m_defaultValue;
    }
 
-   INLINE_ALWAYS FloatParam(const char * const sParamName, const FloatEbmType defaultValue) :
+   INLINE_ALWAYS FloatParam(const char * const sParamName, const double defaultValue) :
       ParamBase(sParamName),
       m_defaultValue(defaultValue) {
    }
@@ -126,7 +128,7 @@ class Registration {
 
    static INLINE_ALWAYS const char * ConvertStringToRegistrationType(
       const char * const s, 
-      FloatEbmType * const pResultOut
+      double * const pResultOut
    ) noexcept {
       return ConvertStringToFloat(s, pResultOut);
    }
@@ -223,7 +225,7 @@ public:
    virtual ~Registration() = default;
 };
 
-template<typename TRegistrable, typename... Args>
+template<template <typename> class TRegistrable, typename TFloat, typename... Args>
 class RegistrationPack final : public Registration {
 
    // this lambda function holds our templated parameter pack until we need it
@@ -259,7 +261,7 @@ class RegistrationPack final : public Registration {
       FinalCheckParameters(sRegistration, sRegistrationEnd, cUsedParams);
       try {
          // unique_ptr constructor is noexcept, so it should be safe to call it inside the try/catch block
-         return std::unique_ptr<const Registrable>(new TRegistrable(config, args...));
+         return std::unique_ptr<const Registrable>(new TRegistrable<TFloat>(config, args...));
       } catch(const SkipRegistrationException &) {
          return nullptr;
       } catch(const ParameterValueOutOfRangeException &) {
@@ -327,10 +329,10 @@ public:
    }
 };
 
-template<typename TRegistrable, typename... Args>
+template<template <typename> class TRegistrable, typename TFloat, typename... Args>
 std::shared_ptr<const Registration> Register(const char * const sRegistrationName, const Args...args) {
    // ideally we'd be returning unique_ptr here, but we pass this to an initialization list which doesn't work in C++11
-   return std::make_shared<const RegistrationPack<TRegistrable, Args...>>(sRegistrationName, args...);
+   return std::make_shared<const RegistrationPack<TRegistrable, TFloat, Args...>>(sRegistrationName, args...);
 }
 
 #endif // REGISTRATION_H

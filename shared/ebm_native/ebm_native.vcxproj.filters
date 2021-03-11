@@ -39,6 +39,8 @@
     <ClCompile Include="SamplingSet.cpp" />
     <ClCompile Include="Booster.cpp" />
     <ClCompile Include="wrap_func.cpp" />
+    <ClCompile Include="Zone32Sse2.cpp" />
+    <ClCompile Include="Zone64None.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />
@@ -99,6 +101,7 @@
     <ClInclude Include="inc\ebm_native.h">
       <Filter>inc</Filter>
     </ClInclude>
+    <ClInclude Include="LossRegistrations.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />

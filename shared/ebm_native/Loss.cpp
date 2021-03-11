@@ -7,44 +7,12 @@
 #include "Loss.h"
 #include "Registration.h"
 
-// Steps for adding a new loss/objective function in C++:
-//   1) Copy one of the existing Loss*.h include files into a new renamed Loss*.h file
-//      (for regression, we recommend starting from LossRegressionPseudoHuber.h)
-//   2) Modify the new Loss*.h file to handle the new loss function
-//   3) Add [#include "Loss*.h"] to the list of other include files right below this guide
-//   4) Add the Loss* type to the list of loss registrations in the RegisterLosses() function right below the includes
-//   5) Modify the Register<Loss*>("loss_function_name", ...) entry to have the new loss function name
-//      and the list of parameters needed for the loss function which are to be extracted from the loss string.
-//   6) Update/verify that the constructor arguments on your Loss* class match the parameters in the loss registration
-//      below. If the list of *LossParam items in the function RegisterLosses() do not match your constructor
-//      parameters in the new Loss* struct, it will not compile and cryptic compile errors will be produced.
-//   5) Recompile the C++ with either build.sh or build.bat depending on your operating system
-//   6) Enjoy your new Loss function, and send us a PR on Github if you think others would benefit  :-)
-
-// Add new Loss*.h include files here:
-#include "LossBinaryCrossEntropy.h"
-#include "LossBinaryLogLoss.h"
-#include "LossMulticlassCrossEntropy.h"
-#include "LossMulticlassLogLoss.h"
-#include "LossMultitaskBinaryLogLoss.h"
-#include "LossMultitaskMulticlassCrossEntropy.h"
-#include "LossMultitaskRegressionMse.h"
-#include "LossRegressionMse.h"
-#include "LossRegressionPseudoHuber.h"
-
-// Add new Loss* type registrations to this list:
-static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
-   // IMPORTANT: the *LossParam types here must match the parameters types in your Loss* constructor
-   return {
-      Register<LossMulticlassLogLoss>("log_loss"),
-      Register<LossRegressionPseudoHuber>("pseudo_huber", FloatParam("delta", 1))
-      // TODO: add a "c_sample" here and adapt the instructions above to handle it
-   };
-}
 
 
-// !! ANYTHING BELOW THIS POINT ISN'T REQUIRED TO MAKE YOUR OWN CUSTOM LOSS FUNCTION !!
 
+//TODO: these need to be extern "C" style and located in a separate "zone"
+//extern const std::vector<std::shared_ptr<const Registration>> RegisterLosses32Sse2();
+extern const std::vector<std::shared_ptr<const Registration>> RegisterLosses64None();
 
 ErrorEbmType Loss::CreateLoss(
    const Config & config,
@@ -55,7 +23,8 @@ ErrorEbmType Loss::CreateLoss(
 
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
    try {
-      const std::vector<std::shared_ptr<const Registration>> registrations = RegisterLosses();
+      // TODO: select the right float 32/64 float/double type
+      const std::vector<std::shared_ptr<const Registration>> registrations = RegisterLosses64None();
       std::vector<std::unique_ptr<const Registrable>> registrables = 
          Registration::CreateRegistrables(config, sLoss, registrations);
       if(registrables.size() < 1) {

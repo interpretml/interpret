@@ -91,9 +91,6 @@ public:
    }
 };
 
-// TODO : move this into EbmInternal.h
-constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesStart = 3;
-
 class Loss : public Registrable {
    // welcome to the mind-bending demented hall of mirrors.. a prison for your mind
 

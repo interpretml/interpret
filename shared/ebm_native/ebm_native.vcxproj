@@ -292,6 +292,7 @@ EXIT /B 0
     <ClInclude Include="ApproximateMath.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Loss.h" />
+    <ClInclude Include="LossRegistrations.h" />
     <ClInclude Include="loss_functions\LossBinaryCrossEntropy.h" />
     <ClInclude Include="loss_functions\LossBinaryLogLoss.h" />
     <ClInclude Include="loss_functions\LossMulticlassCrossEntropy.h" />
@@ -338,6 +339,8 @@ EXIT /B 0
     <ClCompile Include="GenerateWinsorizedCuts.cpp" />
     <ClCompile Include="Loss.cpp" />
     <ClCompile Include="Registration.cpp" />
+    <ClCompile Include="Zone64None.cpp" />
+    <ClCompile Include="Zone32Sse2.cpp" />
     <ClCompile Include="ThreadStateBoosting.cpp" />
     <ClCompile Include="ThreadStateInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />

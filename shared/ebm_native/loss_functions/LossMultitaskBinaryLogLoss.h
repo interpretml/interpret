@@ -6,6 +6,8 @@
 
 #include "Loss.h"
 
+// TFloat could be double, float, or some SIMD intrinsic type
+template <typename TFloat>
 struct LossMultitaskBinaryLogLoss : public LossMultitaskBinary {
    // this one would more popularily be called LossMultilabelLogLoss.  We're currently calling this
    // LossMultitaskBinaryLogLoss since it fits better into our ontology of Multitask* types having 

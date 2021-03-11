@@ -38,7 +38,8 @@
 //};
 //
 
-
+// TFloat could be double, float, or some SIMD intrinsic type
+template <typename TFloat>
 struct LossBinaryLogLoss : public LossBinary {
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
@@ -49,19 +50,15 @@ struct LossBinaryLogLoss : public LossBinary {
       }
    }
 
-   template <typename T>
-   INLINE_ALWAYS T CalculatePrediction(T score) const {
+   INLINE_ALWAYS TFloat CalculatePrediction(TFloat score) const {
       return 9999999.99;
    }
 
-   template <typename T>
-   INLINE_ALWAYS T CalculateGradient(T target, T prediction) const {
+   INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction) const {
       return 9999999.99;
    }
 
-   template <typename T>
-   INLINE_ALWAYS T CalculateHessian(T target, T prediction) const {
+   INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction) const {
       return 9999999.99;
    }
-
 };

@@ -127,7 +127,7 @@
 #define UNLIKELY(b) (b)
 #define PREDICTABLE(b) (b)
 #define UNPREDICTABLE(b) (b)
-#define INLINE_ALWAYS __forceinline
+#define INLINE_ALWAYS inline __forceinline
 
 #else // compiler type
 #error compiler not recognized
@@ -313,6 +313,7 @@ WARNING_POP
 //   runtime looped version of our code
 
 constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 8;
+constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesStart = 3;
 
 static_assert(
    2 <= k_cCompilerOptimizedTargetClassesMax, 

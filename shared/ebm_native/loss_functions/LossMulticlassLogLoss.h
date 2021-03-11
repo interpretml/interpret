@@ -6,6 +6,8 @@
 
 #include "Loss.h"
 
+// TFloat could be double, float, or some SIMD intrinsic type
+template <typename TFloat>
 struct LossMulticlassLogLoss : public LossMulticlass {
 
    size_t m_countTargetClasses;

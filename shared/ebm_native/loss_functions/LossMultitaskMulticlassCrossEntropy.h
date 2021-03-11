@@ -6,6 +6,8 @@
 
 #include "Loss.h"
 
+// TFloat could be double, float, or some SIMD intrinsic type
+template <typename TFloat>
 struct LossMultitaskMulticlassCrossEntropy : public LossMultitaskMulticlass {
 
    // This is the most general format that I could envision we'd handle as a non-custom loss function.
