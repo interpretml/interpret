@@ -27,7 +27,21 @@ jobs:
   variables:
     runCodesignValidationInjection: false
   steps:
+  - task: PythonScript@0
+    condition: startsWith(variables['image.name'], 'windows')
+    inputs:
+      scriptSource: 'inline'
+      script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
   - script: |
+      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2\bin\
+      cuda_11.2.2_win10_network.exe -s nvcc_11.2
+      nvcc --version
+      .\build.bat
+    condition: startsWith(variables['image.name'], 'windows')
+    displayName: 'Building ebm_native code (Windows)'
+  - script: |
+      sudo apt -y install nvidia-cuda-toolkit
+      nvcc --version
       /bin/sh ./build.sh
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Building ebm_native code (Linux)'
@@ -35,11 +49,6 @@ jobs:
       /bin/sh ./build.sh
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Building ebm_native code (Mac)'
-  - script: |
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\build.bat
-    condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Building ebm_native code (Windows)'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
