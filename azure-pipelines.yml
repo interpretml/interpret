@@ -34,6 +34,7 @@ jobs:
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2\bin\
+      # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2
       nvcc --version
       .\build.bat

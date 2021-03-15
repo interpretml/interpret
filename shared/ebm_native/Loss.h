@@ -16,6 +16,7 @@
 #include "ThreadStateBoosting.h"
 #include "Config.h"
 #include "Registrable.h"
+#include "Registration.h" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!
 
 class LossSingletask;
 class LossBinary;
@@ -519,9 +520,15 @@ protected:
 };
 
 
-#define LOSS_CLASS_BOILERPLATE_PUT_AT_END_OF_CLASS \
+#define LOSS_CLASS_BOILERPLATE_PUT_AT_END_OF_CLASS(isVectorized) \
+   LOSS_CLASS_CONSTANTS_BOILERPLATE_PUT_AT_END_OF_CLASS(isVectorized) \
    LOSS_CLASS_TEMPLATE_BOILERPLATE_PUT_AT_END_OF_CLASS \
    LOSS_CLASS_VIRTUAL_BOILERPLATE_PUT_AT_END_OF_CLASS
+
+// TODO: use the isVectorized constexpr to control construction of the Loss structs
+#define LOSS_CLASS_CONSTANTS_BOILERPLATE_PUT_AT_END_OF_CLASS(isVectorized) \
+   public: \
+      constexpr static bool k_bVectorized = (isVectorized);
 
 #define LOSS_CLASS_TEMPLATE_BOILERPLATE_PUT_AT_END_OF_CLASS \
    public: \

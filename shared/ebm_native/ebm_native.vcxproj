@@ -103,7 +103,7 @@
       <PreprocessorDefinitions>EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)zone_separate/metrics;$(ProjectDir)zone_separate/loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <StringPooling>true</StringPooling>
@@ -149,7 +149,7 @@ EXIT /B 0
       <PreprocessorDefinitions>EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)zone_separate/metrics;$(ProjectDir)zone_separate/loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <OmitFramePointers>false</OmitFramePointers>
@@ -197,7 +197,7 @@ EXIT /B 0
       <PreprocessorDefinitions>EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)zone_separate/metrics;$(ProjectDir)zone_separate/loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -248,7 +248,7 @@ EXIT /B 0
       <PreprocessorDefinitions>EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)zone_separate/metrics;$(ProjectDir)zone_separate/loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -361,10 +361,10 @@ EXIT /B 0
     <ClCompile Include="DataFrameInteraction.cpp" />
     <ClCompile Include="DataFrameBoosting.cpp" />
     <ClCompile Include="Discretize.cpp" />
-    <ClCompile Include="DllMainEbmNative.cpp" />
+    <ClCompile Include="special\DllMainEbmNative.cpp" />
     <ClCompile Include="InteractionDetector.cpp" />
     <ClCompile Include="Logging.cpp" />
-    <ClCompile Include="PrecompiledHeader.cpp">
+    <ClCompile Include="special\PrecompiledHeader.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -373,7 +373,7 @@ EXIT /B 0
     <ClCompile Include="RandomStream.cpp" />
     <ClCompile Include="SamplingSet.cpp" />
     <ClCompile Include="Booster.cpp" />
-    <ClCompile Include="wrap_func.cpp">
+    <ClCompile Include="special\wrap_func.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

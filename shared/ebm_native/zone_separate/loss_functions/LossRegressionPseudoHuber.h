@@ -53,5 +53,5 @@ struct LossRegressionPseudoHuber : public LossRegression {
       return TFloat(1) / (calc * sqrtCalc);
    }
 
-   LOSS_CLASS_BOILERPLATE_PUT_AT_END_OF_CLASS
+   LOSS_CLASS_BOILERPLATE_PUT_AT_END_OF_CLASS(true)
 };

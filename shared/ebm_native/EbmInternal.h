@@ -10,6 +10,8 @@
 #include <limits> // numeric_limits
 #include <type_traits> // is_integral
 #include <stdlib.h> // free
+#include <assert.h> // base assert
+#include <string.h> // strcpy
 
 #include "ebm_native.h"
 

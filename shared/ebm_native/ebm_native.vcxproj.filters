@@ -31,16 +31,16 @@
     <ClCompile Include="DataFrameInteraction.cpp" />
     <ClCompile Include="DataFrameBoosting.cpp" />
     <ClCompile Include="Discretize.cpp" />
-    <ClCompile Include="DllMainEbmNative.cpp" />
     <ClCompile Include="InteractionDetector.cpp" />
     <ClCompile Include="Logging.cpp" />
-    <ClCompile Include="PrecompiledHeader.cpp" />
     <ClCompile Include="RandomStream.cpp" />
     <ClCompile Include="SamplingSet.cpp" />
     <ClCompile Include="Booster.cpp" />
-    <ClCompile Include="wrap_func.cpp" />
     <ClCompile Include="Zone32Sse2.cpp" />
     <ClCompile Include="Zone64None.cpp" />
+    <ClCompile Include="special\DllMainEbmNative.cpp" />
+    <ClCompile Include="special\PrecompiledHeader.cpp" />
+    <ClCompile Include="special\wrap_func.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />

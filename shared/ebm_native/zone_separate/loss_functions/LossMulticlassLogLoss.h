@@ -26,5 +26,5 @@ struct LossMulticlassLogLoss : public LossMulticlass {
       m_countTargetClasses = config.GetCountOutputs();
    }
 
-   LOSS_CLASS_BOILERPLATE_PUT_AT_END_OF_CLASS
+   LOSS_CLASS_BOILERPLATE_PUT_AT_END_OF_CLASS(true)
 };

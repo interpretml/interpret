@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# This script is written as Bourne shell and is POSIX compliant to have less interoperability issues between distros.
+
 # Periodically check the valgrind results on the build server by going to:
 # https://dev.azure.com/ms/interpret/_build?definitionId=293&_a=summary
 # By clicking on the build of interest, then "Test ebm_native Linux", then "View raw log"
@@ -35,14 +37,80 @@
 #   - https://include-what-you-use.org/ is alpha, and it looks like it changes a lot.  Doesn't seem worth the benefit.
 #   - NOTE: scan-build and clang-tidy are really the same thing, but with different interfaces
 
+# The only things that Linux makes illegal in filenames are the zero termination character '\0' and the path character '/'
+# This makes it hard to write shell scripts that handle things like control characters, spaces, newlines, etc properly.
+# In Linux filenames and directories often don't have spaces and scripts often don't handle them.  In Windows
+# we often do have spaces in directory names though, and we want to be able to build from the Windows Bash shell,
+# so we handle them here.
+# We need to pass multiple directory/filenames pairs into g++/clang++ from multiple different directories 
+# (making find hard), and we also have additional files we use (see --version-script), so we need to build up 
+# variables that contain the filesnames to pass into the compiler. This reference says there is no portable way 
+# to handle spaces (see 1.4 Template: Building up a variable), 
+# so they recommend setting IFS to tab and newline, which means files with tab and newline won't work:
+# https://dwheeler.com/essays/filenames-in-shell.html
+# I'm not quite sure that's true.  If we use the often frowned upon eval command we can put single quotes arround
+# any strings that we use, and eval will parse them correctly with spaces.  This opens us up to issues with eval, 
+# so we need to sanitize our strings beforehand similar to this discussion, although printf "%q" is too new
+# currently (2016) for us to take a dependency on it, so we use sed to sanitize our single quote filenames instead:
+# https://stackoverflow.com/questions/17529220/why-should-eval-be-avoided-in-bash-and-what-should-i-use-instead
+#
+# Here are some good references on the issues regarding odd characters in filenames: 
+# - https://dwheeler.com/essays/filenames-in-shell.html
+# - https://dwheeler.com/essays/fixing-unix-linux-filenames.html
+# TODO: VERIFY against:
+# - newlines in files "a.cpp\nb.cpp" which can be interpreted as separate files in some scripts
+# - files that start with '-' characters.  eg: "-myfile.txt" which can be interpreted as arguments in some scripts
+# - files that begin or end or contain spaces eg: "  a.cpp  b.cpp  " which get stripped or turned into multiple arguments
+# - tab characters "\t"
+# - string escape characters "\\"
+# - quote characters "\"" or "\'" or "\`"
+# - asterix in filenames "*" eg: "*.cpp" which can get glob expanded
+# - ';' character -> which can be used to run new shell commands in some scripts
+# - control characters (ASCII 1-31)
+# - UTF-8 characters
+# - try the following stress test case:        inter pret/shared\ebm_native/-ma in;_Lo`s's.cpp
+# We also cannot use the following safely:
+# - find exec with the \; ending since it eats the return codes of our compiler, which we really really want!
+# - raw "exec" without re-shelling the result
+#   https://unix.stackexchange.com/questions/156008/is-it-possible-to-use-find-exec-sh-c-safely
+# - ld -> for C++ programs we need to know implementation specific directories and object files for initialization.
+#   We re-call g++/clang++ to link with object files instead.  We need to separate our compile and link steps because
+#   we compile the same C++ files over several times with different compiler options so these need to generate
+#   separated .o files with different names.  I'm not sure if GNU make/cmake handles this natievly if we go that route.
+# - make -> well, we might use make someday if compile speed becomes an issue, but I like that this script doesn't 
+#   require installing anything before calling it on either mac or linux machines, and GNU make requires installation 
+#   on macs and isn't part of the standard clang++ build pipeline.  cmake also requires installation.  Bourne shell script 
+#   is the most out of the box compatible solution.  Also, per above, I'm not sure if make/cmake handles duplicate
+#   compilation of .cpp files multiple times with different compiler options
+# - tee -> we write the compiler output to both a file and to stdout, but tee swallows any error codes in the compiler
+#   I've been using backticks to store the output in a variable first, which is frowned upon, so consider
+#   command substitution instead, which is now even part of the more recent bourne shells and is POSIX compliant now
+#   PIPESTATUS is bash specific
+# - command substitution seems to remove trailing newlines.. so backticks would be required there??
+#   https://superuser.com/questions/403800/how-can-i-make-the-bash-backtick-operator-keep-newlines-in-output/827879
+# - don't use echo.  Use printf "%s"
 
 # TODO also build our html resources here, and also in the .bat file for Windows
+
+# TODO: use this everywhere
+sanitize() {
+   # use this techinque where single quotes are expanded to '\'' (end quotes insert single quote, start quote)
+   # but fixed from the version in this thread: 
+   # https://stackoverflow.com/questions/15783701/which-characters-need-to-be-escaped-when-using-bash
+   # https://stackoverflow.com/questions/17529220/why-should-eval-be-avoided-in-bash-and-what-should-i-use-instead
+   printf "%s" "$1" | sed "s/'/'\\\\''/g" | sed "s/^\(.*\)$/'\1'/"
+}
 
 clang_pp_bin=clang++
 g_pp_bin=g++
 os_type=`uname`
-root_path=`dirname "$0"`
+#root_path=`dirname "$0"`
+# TODO: this could be improved upon.  There is no perfect solution AFAIK for getting the script directory.  Look at BASH_SOURCE[0] as well and possibly select either it or $0
+# TODO: backticks or command substitution.. make a consistent decision
+# The output here needs to not be the empty string for glob substitution below:
+root_path=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 src_path="$root_path/shared/ebm_native"
+src_path_sanitized=`sanitize "$src_path"`
 python_lib="$root_path/python/interpret-core/interpret/lib"
 staging_path="$root_path/staging"
 
@@ -59,43 +127,6 @@ done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
 compile_all=""
-compile_all="$compile_all \"$src_path/ApplyModelUpdate.cpp\""
-compile_all="$compile_all \"$src_path/ApplyModelUpdateTraining.cpp\""
-compile_all="$compile_all \"$src_path/ApplyModelUpdateValidation.cpp\""
-compile_all="$compile_all \"$src_path/BinBoosting.cpp\""
-compile_all="$compile_all \"$src_path/BinInteraction.cpp\""
-compile_all="$compile_all \"$src_path/Booster.cpp\""
-compile_all="$compile_all \"$src_path/CalculateInteractionScore.cpp\""
-compile_all="$compile_all \"$src_path/CutRandom.cpp\""
-compile_all="$compile_all \"$src_path/DataFrameBoosting.cpp\""
-compile_all="$compile_all \"$src_path/DataFrameInteraction.cpp\""
-compile_all="$compile_all \"$src_path/DataFrameShared.cpp\""
-compile_all="$compile_all \"$src_path/DebugEbm.cpp\""
-compile_all="$compile_all \"$src_path/Discretize.cpp\""
-compile_all="$compile_all \"$src_path/FeatureGroup.cpp\""
-compile_all="$compile_all \"$src_path/FindBestBoostingSplitsPairs.cpp\""
-compile_all="$compile_all \"$src_path/FindBestInteractionScorePairs.cpp\""
-compile_all="$compile_all \"$src_path/GenerateModelUpdate.cpp\""
-compile_all="$compile_all \"$src_path/GenerateQuantileCuts.cpp\""
-compile_all="$compile_all \"$src_path/GenerateUniformCuts.cpp\""
-compile_all="$compile_all \"$src_path/GenerateWinsorizedCuts.cpp\""
-compile_all="$compile_all \"$src_path/GrowDecisionTree.cpp\""
-compile_all="$compile_all \"$src_path/InitializeResiduals.cpp\""
-compile_all="$compile_all \"$src_path/InteractionDetector.cpp\""
-compile_all="$compile_all \"$src_path/InterpretableNumerics.cpp\""
-compile_all="$compile_all \"$src_path/Logging.cpp\""
-compile_all="$compile_all \"$src_path/Loss.cpp\""
-compile_all="$compile_all \"$src_path/RandomExternal.cpp\""
-compile_all="$compile_all \"$src_path/RandomStream.cpp\""
-compile_all="$compile_all \"$src_path/Registration.cpp\""
-compile_all="$compile_all \"$src_path/SamplingSet.cpp\""
-compile_all="$compile_all \"$src_path/SegmentedTensor.cpp\""
-compile_all="$compile_all \"$src_path/SumHistogramBuckets.cpp\""
-compile_all="$compile_all \"$src_path/TensorTotalsBuild.cpp\""
-compile_all="$compile_all \"$src_path/ThreadStateBoosting.cpp\""
-compile_all="$compile_all \"$src_path/ThreadStateInteraction.cpp\""
-compile_all="$compile_all \"$src_path/Zone32Sse2.cpp\""
-compile_all="$compile_all \"$src_path/Zone64None.cpp\""
 compile_all="$compile_all -I\"$src_path\""
 compile_all="$compile_all -I\"$src_path/inc\""
 compile_all="$compile_all -I\"$src_path/zone_separate/loss_functions\""
@@ -140,7 +171,7 @@ if [ "$os_type" = "Darwin" ]; then
       bin_path="$root_path/tmp/clang/bin/release/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64.dylib"
       log_file="$intermediate_path/ebm_native_release_mac_x64_build_log.txt"
-      compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3 -install_name @rpath/$bin_file"
    
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
@@ -152,13 +183,44 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $compile_command`
+
+
+      all_object_files=""
+      compile_out_full=""
+      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
+      for file in "$src_path"/*.cpp ; do
+         if [ -e "$file" ] ; then
+            file_sanitized=`sanitize "$file"`
+            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+            file_body_sanitized=`sanitize "$file_body"`
+            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+            all_object_files="$all_object_files $object_full_file"
+            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+            compile_out=`eval $compile_specific`
+            # TODO: we might need to sanitize compile_out here!
+            ret_code=$?
+            compile_out_full="$compile_out_full$compile_out"
+            if [ $ret_code -ne 0 ]; then 
+               printf "%s\n" "$compile_out_full"
+               printf "%s\n" "$compile_out_full" > "$log_file"
+               exit $ret_code
+            fi
+         fi
+      done
+
+
+      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
       ret_code=$?
-      printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$log_file"
+      compile_out_full="$compile_out_full$compile_out"
+      printf "%s\n" "$compile_out_full"
+      printf "%s\n" "$compile_out_full" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
+
+
       cp "$bin_path/$bin_file" "$python_lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
@@ -177,7 +239,7 @@ if [ "$os_type" = "Darwin" ]; then
       bin_path="$root_path/tmp/clang/bin/debug/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64_debug.dylib"
       log_file="$intermediate_path/ebm_native_debug_mac_x64_build_log.txt"
-      compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer -install_name @rpath/$bin_file"
    
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
@@ -189,13 +251,45 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $compile_command`
+
+
+      all_object_files=""
+      compile_out_full=""
+      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
+      for file in "$src_path"/*.cpp ; do
+         if [ -e "$file" ] ; then
+            file_sanitized=`sanitize "$file"`
+            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+            file_body_sanitized=`sanitize "$file_body"`
+            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+            all_object_files="$all_object_files $object_full_file"
+            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+            compile_out=`eval $compile_specific`
+            # TODO: we might need to sanitize compile_out here!
+            ret_code=$?
+            compile_out_full="$compile_out_full$compile_out"
+            if [ $ret_code -ne 0 ]; then 
+               printf "%s\n" "$compile_out_full"
+               printf "%s\n" "$compile_out_full" > "$log_file"
+               exit $ret_code
+            fi
+         fi
+      done
+
+
+      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
       ret_code=$?
-      printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$log_file"
+      compile_out_full="$compile_out_full$compile_out"
+      printf "%s\n" "$compile_out_full"
+      printf "%s\n" "$compile_out_full" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
+
+
+
       cp "$bin_path/$bin_file" "$python_lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
@@ -212,7 +306,7 @@ elif [ "$os_type" = "Linux" ]; then
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
    compile_linux="$compile_all"
    compile_linux="$compile_linux -Wlogical-op -Wl,--version-script=\"$src_path/ebm_native_exports.txt\" -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now"
-   compile_linux="$compile_linux -Wl,--wrap=memcpy \"$src_path/wrap_func.cpp\" -static-libgcc -static-libstdc++ -shared"
+   compile_linux="$compile_linux -Wl,--wrap=memcpy -static-libgcc -static-libstdc++ -shared"
 
    printf "%s\n" "Creating initial directories"
    [ -d "$staging_path" ] || mkdir -p "$staging_path"
@@ -235,7 +329,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path="$root_path/tmp/gcc/bin/release/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64.so"
       log_file="$intermediate_path/ebm_native_release_linux_x64_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -O3 -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -O3"
    
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
@@ -247,13 +341,61 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $compile_command`
+
+      all_object_files=""
+      compile_out_full=""
+      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
+      for file in "$src_path"/*.cpp ; do
+         if [ -e "$file" ] ; then
+            file_sanitized=`sanitize "$file"`
+            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+            file_body_sanitized=`sanitize "$file_body"`
+            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+            all_object_files="$all_object_files $object_full_file"
+            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+            compile_out=`eval $compile_specific`
+            # TODO: we might need to sanitize compile_out here!
+            ret_code=$?
+            compile_out_full="$compile_out_full$compile_out"
+            if [ $ret_code -ne 0 ]; then 
+               printf "%s\n" "$compile_out_full"
+               printf "%s\n" "$compile_out_full" > "$log_file"
+               exit $ret_code
+            fi
+         fi
+      done
+
+      # TODO: put this into a function
+      file="$src_path"/special/wrap_func.cpp
+      file_sanitized=`sanitize "$file"`
+      file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+      file_body_sanitized=`sanitize "$file_body"`
+      object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+      all_object_files="$all_object_files $object_full_file"
+      compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
       ret_code=$?
-      printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$log_file"
+      compile_out_full="$compile_out_full$compile_out"
+      if [ $ret_code -ne 0 ]; then 
+         printf "%s\n" "$compile_out_full"
+         printf "%s\n" "$compile_out_full" > "$log_file"
+         exit $ret_code
+      fi
+
+
+      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
+      ret_code=$?
+      compile_out_full="$compile_out_full$compile_out"
+      printf "%s\n" "$compile_out_full"
+      printf "%s\n" "$compile_out_full" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
+
+
       cp "$bin_path/$bin_file" "$python_lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
@@ -272,7 +414,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path="$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64_debug.so"
       log_file="$intermediate_path/ebm_native_debug_linux_x64_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -m64 -O1 -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -m64 -O1"
    
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
@@ -284,13 +426,62 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $compile_command`
+
+
+      all_object_files=""
+      compile_out_full=""
+      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
+      for file in "$src_path"/*.cpp ; do
+         if [ -e "$file" ] ; then
+            file_sanitized=`sanitize "$file"`
+            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+            file_body_sanitized=`sanitize "$file_body"`
+            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+            all_object_files="$all_object_files $object_full_file"
+            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+            compile_out=`eval $compile_specific`
+            # TODO: we might need to sanitize compile_out here!
+            ret_code=$?
+            compile_out_full="$compile_out_full$compile_out"
+            if [ $ret_code -ne 0 ]; then 
+               printf "%s\n" "$compile_out_full"
+               printf "%s\n" "$compile_out_full" > "$log_file"
+               exit $ret_code
+            fi
+         fi
+      done
+
+      # TODO: put this into a function
+      file="$src_path"/special/wrap_func.cpp
+      file_sanitized=`sanitize "$file"`
+      file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+      file_body_sanitized=`sanitize "$file_body"`
+      object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+      all_object_files="$all_object_files $object_full_file"
+      compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
       ret_code=$?
-      printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$log_file"
+      compile_out_full="$compile_out_full$compile_out"
+      if [ $ret_code -ne 0 ]; then 
+         printf "%s\n" "$compile_out_full"
+         printf "%s\n" "$compile_out_full" > "$log_file"
+         exit $ret_code
+      fi
+
+
+      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
+      ret_code=$?
+      compile_out_full="$compile_out_full$compile_out"
+      printf "%s\n" "$compile_out_full"
+      printf "%s\n" "$compile_out_full" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
+
+
       cp "$bin_path/$bin_file" "$python_lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
@@ -311,7 +502,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path="$root_path/tmp/gcc/bin/release/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86.so"
       log_file="$intermediate_path/ebm_native_release_linux_x86_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -DNDEBUG -O3 -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
       
       if [ ! -d "$intermediate_path" ]; then
          printf "%s\n" "Doing first time installation of x86"
@@ -344,13 +535,62 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $compile_command`
+
+
+      all_object_files=""
+      compile_out_full=""
+      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
+      for file in "$src_path"/*.cpp ; do
+         if [ -e "$file" ] ; then
+            file_sanitized=`sanitize "$file"`
+            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+            file_body_sanitized=`sanitize "$file_body"`
+            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+            all_object_files="$all_object_files $object_full_file"
+            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+            compile_out=`eval $compile_specific`
+            # TODO: we might need to sanitize compile_out here!
+            ret_code=$?
+            compile_out_full="$compile_out_full$compile_out"
+            if [ $ret_code -ne 0 ]; then 
+               printf "%s\n" "$compile_out_full"
+               printf "%s\n" "$compile_out_full" > "$log_file"
+               exit $ret_code
+            fi
+         fi
+      done
+
+      # TODO: put this into a function
+      file="$src_path"/special/wrap_func.cpp
+      file_sanitized=`sanitize "$file"`
+      file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+      file_body_sanitized=`sanitize "$file_body"`
+      object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+      all_object_files="$all_object_files $object_full_file"
+      compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
       ret_code=$?
-      printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$log_file"
+      compile_out_full="$compile_out_full$compile_out"
+      if [ $ret_code -ne 0 ]; then 
+         printf "%s\n" "$compile_out_full"
+         printf "%s\n" "$compile_out_full" > "$log_file"
+         exit $ret_code
+      fi
+
+
+      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
+      ret_code=$?
+      compile_out_full="$compile_out_full$compile_out"
+      printf "%s\n" "$compile_out_full"
+      printf "%s\n" "$compile_out_full" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
+
+
       cp "$bin_path/$bin_file" "$python_lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
@@ -369,7 +609,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86_debug.so"
       log_file="$intermediate_path/ebm_native_debug_linux_x86_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -O1 -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -O1"
       
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
@@ -381,13 +621,62 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $compile_command`
+
+
+      all_object_files=""
+      compile_out_full=""
+      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
+      for file in "$src_path"/*.cpp ; do
+         if [ -e "$file" ] ; then
+            file_sanitized=`sanitize "$file"`
+            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+            file_body_sanitized=`sanitize "$file_body"`
+            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+            all_object_files="$all_object_files $object_full_file"
+            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+            compile_out=`eval $compile_specific`
+            # TODO: we might need to sanitize compile_out here!
+            ret_code=$?
+            compile_out_full="$compile_out_full$compile_out"
+            if [ $ret_code -ne 0 ]; then 
+               printf "%s\n" "$compile_out_full"
+               printf "%s\n" "$compile_out_full" > "$log_file"
+               exit $ret_code
+            fi
+         fi
+      done
+
+      # TODO: put this into a function
+      file="$src_path"/special/wrap_func.cpp
+      file_sanitized=`sanitize "$file"`
+      file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+      file_body_sanitized=`sanitize "$file_body"`
+      object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
+      all_object_files="$all_object_files $object_full_file"
+      compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
       ret_code=$?
-      printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$log_file"
+      compile_out_full="$compile_out_full$compile_out"
+      if [ $ret_code -ne 0 ]; then 
+         printf "%s\n" "$compile_out_full"
+         printf "%s\n" "$compile_out_full" > "$log_file"
+         exit $ret_code
+      fi
+
+
+      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
+      compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
+      ret_code=$?
+      compile_out_full="$compile_out_full$compile_out"
+      printf "%s\n" "$compile_out_full"
+      printf "%s\n" "$compile_out_full" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
+
+
       cp "$bin_path/$bin_file" "$python_lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 

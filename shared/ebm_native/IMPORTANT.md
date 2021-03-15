@@ -2,6 +2,16 @@
 
 ## One Definition Rule (ODR) considerations
 
+BIG CHANGE: we need to create a new "separate" library that defines all the separate stuff below... we can use
+this in order to create different SIMD compilations but also we'll want to be able to run different GPU compilers
+on the stuff in that directory, so imagine compiling against CUDA, OpenCL and Metal all with different compilers
+etc.  Since we're putting this into it's own library we can create separate .cpp files and we can use the 
+non-anonymous namespace trick to keep them all very very separate when we link them all together.  Our VS studio
+solution should be set to the default non-simd version and we can optionally use others, and maybe even CUDA etc
+compilations.  If we use only C interfaces between internal libraries then there's a higher chance we can use
+different compilers to build modules and link them together separately afterwards since .o files are more standardized
+for C than C++.
+
 C++ is in many ways a very flawed language.  One of the most insidious aspects are inadvertant violations of the 
 One Definition Rule (ODR) and related issues of the Application Binary Interface (ABI) not being standardized in C++.
 The worst part of ODR violations is that the compiler/linker is not required to detect them, and they can lead to
@@ -11,6 +21,7 @@ https://en.wikipedia.org/wiki/One_Definition_Rule
 https://en.cppreference.com/w/cpp/language/definition
 https://akrzemi1.wordpress.com/2016/11/28/the-one-definition-rule/
 https://gieseanw.wordpress.com/2018/10/30/oops-i-violated-odr-again/
+https://www.drdobbs.com/c-theory-and-practice/184403437
 https://devblogs.microsoft.com/cppblog/diagnosing-hidden-odr-violations-in-visual-c-and-fixing-lnk2022/
 
 In the blog from Andy Rich above, he gives an example of two *.cpp files with a shared header that are linked together, 

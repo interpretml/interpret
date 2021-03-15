@@ -13,6 +13,7 @@
 
 #include "ebm_native.h"
 #include "EbmInternal.h"
+#include "Logging.h"
 
 // TODO: try out floats throughout our program instead of doubles.  It'll be important when we move to GPUs and SIMD
 // TODO: do more extensive checks for of AUC and calibration using the benchmark system
