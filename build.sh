@@ -142,14 +142,14 @@ compile_file() {
 }
 
 link_file() {
-   local compile_command="$1"
+   local link_command="$1"
    local all_object_files_sanitized="$2"
    local bin_path_unsanitized="$3"
    local bin_file="$4"
    local log_file_unsanitized="$5"
 
    local bin_path_sanitized=`sanitize "$bin_path_unsanitized"`
-   local compile_specific="$compile_command $all_object_files_sanitized -o $bin_path_sanitized/$bin_file 2>&1"
+   local compile_specific="$link_command $all_object_files_sanitized -o $bin_path_sanitized/$bin_file 2>&1"
    local compile_out=`eval $compile_specific`
    # TODO: we might need to sanitize compile_out here!
    local ret_code=$?
@@ -231,7 +231,7 @@ if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
 
    # try moving some of these clang specific warnings into compile_all if g++ eventually supports them
-   compile_mac="$compile_all -Wnull-dereference -Wgnu-zero-variadic-macro-arguments -dynamiclib"
+   compile_mac="$compile_all -Wnull-dereference -Wgnu-zero-variadic-macro-arguments"
 
    printf "%s\n" "Creating initial directories"
    [ -d "$staging_path_unsanitized" ] || mkdir -p "$staging_path_unsanitized"
@@ -254,6 +254,7 @@ if [ "$os_type" = "Darwin" ]; then
       bin_file="lib_ebm_native_mac_x64.dylib"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_mac_x64_build_log.txt"
       compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3 -install_name @rpath/$bin_file"
+      link_command="$compile_command -dynamiclib -install_name @rpath/$bin_file"
    
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
 
@@ -264,7 +265,7 @@ if [ "$os_type" = "Darwin" ]; then
          compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
 
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
@@ -275,7 +276,8 @@ if [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/clang/bin/debug/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64_debug.dylib"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_mac_x64_build_log.txt"
-      compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer -install_name @rpath/$bin_file"
+      compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      link_command="$compile_command -dynamiclib -install_name @rpath/$bin_file"
    
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
 
@@ -286,7 +288,7 @@ if [ "$os_type" = "Darwin" ]; then
          compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
 
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
@@ -329,7 +331,7 @@ elif [ "$os_type" = "Linux" ]; then
          compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      file_unsanitized="$src_path"/special/wrap_func.cpp
+      file_unsanitized="$src_path_unsanitized"/special/wrap_func.cpp
       compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
 
       link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
@@ -355,7 +357,7 @@ elif [ "$os_type" = "Linux" ]; then
          compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      file_unsanitized="$src_path"/special/wrap_func.cpp
+      file_unsanitized="$src_path_unsanitized"/special/wrap_func.cpp
       compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
 
       link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
@@ -412,7 +414,7 @@ elif [ "$os_type" = "Linux" ]; then
          compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      file_unsanitized="$src_path"/special/wrap_func.cpp
+      file_unsanitized="$src_path_unsanitized"/special/wrap_func.cpp
       compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
 
       link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
@@ -437,7 +439,7 @@ elif [ "$os_type" = "Linux" ]; then
          compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      file_unsanitized="$src_path"/special/wrap_func.cpp
+      file_unsanitized="$src_path_unsanitized"/special/wrap_func.cpp
       compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
 
       link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
