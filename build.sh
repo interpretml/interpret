@@ -122,7 +122,7 @@ compile_file() {
    local intermediate_path_unsanitized="$2"
    local compile_command="$3"
 
-   if [ -e "$file_unsanitized" ] ; then
+   if [ -f "$file_unsanitized" ] ; then
       local file_sanitized=`sanitize "$file_unsanitized"`
       local file_body_unsanitized=`printf "%s" "$file_unsanitized" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
       local object_full_file_unsanitized="$intermediate_path_unsanitized/$file_body_unsanitized.o"
@@ -139,6 +139,17 @@ compile_file() {
          exit $ret_code
       fi
    fi
+}
+
+compile_directory() {
+   local src_path_unsanitized="$1"
+   local intermediate_path_unsanitized="$2"
+   local compile_command="$3"
+
+   # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
+   for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
+      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+   done
 }
 
 link_file() {
@@ -182,11 +193,24 @@ copy_bin_files() {
 clang_pp_bin=clang++
 g_pp_bin=g++
 os_type=`uname`
+
 # TODO: this could be improved upon.  There is no perfect solution AFAIK for getting the script directory, and I'm not too sure how the CDPATH thing works
 # Look at BASH_SOURCE[0] as well and possibly select either it or $0
 # The output here needs to not be the empty string for glob substitution below:
 root_path_initial=`dirname -- "$0"`
 root_path_unsanitized=`CDPATH= cd -- "$root_path_initial" && pwd -P`
+
+if [ ! -f "$root_path_unsanitized/build.sh" ] ; then
+   # there are all kinds of reasons why we might not have gotten the script path in $0.  It's more of a convention
+   # than a requirement to have either the full path or even the script itself.  There are far more complicated
+   # scripts out there that attempt to use various shell specific workarounds, like BASH_SOURCE[0] to best solve
+   # the problem, but it's possible in theory to be running over an SSL connection without a script on the local
+   # system at all, so getting the directory is a fundamentally unsolved problem.  We can terminate though if
+   # we find ourselves in such a weird condition.  This also happens when the "source" command is used.
+   printf "Could not find script file root directory for building InterpretML.  Exiting."
+   exit 1
+fi
+
 root_path_sanitized=`sanitize "$root_path_unsanitized"`
 src_path_unsanitized="$root_path_unsanitized/shared/ebm_native"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
@@ -256,17 +280,12 @@ if [ "$os_type" = "Darwin" ]; then
       compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3 -install_name @rpath/$bin_file"
       link_command="$compile_command -dynamiclib -install_name @rpath/$bin_file"
    
-      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-
       all_object_files_sanitized=""
       compile_out_full=""
-      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      done
 
-      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
-
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## macOS debug|x64
@@ -279,17 +298,12 @@ if [ "$os_type" = "Darwin" ]; then
       compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       link_command="$compile_command -dynamiclib -install_name @rpath/$bin_file"
    
-      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-
       all_object_files_sanitized=""
       compile_out_full=""
-      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      done
 
-      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
-
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 elif [ "$os_type" = "Linux" ]; then
@@ -311,7 +325,6 @@ elif [ "$os_type" = "Linux" ]; then
       exit $ret_code
    fi
 
-
    if [ $build_64_bit -eq 1 ]; then
       ########################## Linux release|x64
 
@@ -322,22 +335,14 @@ elif [ "$os_type" = "Linux" ]; then
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x64_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -O3"
    
-      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-
       all_object_files_sanitized=""
       compile_out_full=""
-      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      done
 
-      file_unsanitized="$src_path_unsanitized"/special/wrap_func.cpp
-      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
       link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
-
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
-
 
       ########################## Linux debug|x64
 
@@ -348,20 +353,13 @@ elif [ "$os_type" = "Linux" ]; then
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x64_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -m64 -O1"
    
-      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-
       all_object_files_sanitized=""
       compile_out_full=""
-      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      done
 
-      file_unsanitized="$src_path_unsanitized"/special/wrap_func.cpp
-      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
       link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
-
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 
@@ -375,6 +373,9 @@ elif [ "$os_type" = "Linux" ]; then
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x86_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
       
+      all_object_files_sanitized=""
+      compile_out_full=""
+
       if [ ! -d "$intermediate_path_unsanitized" ]; then
          printf "%s\n" "Doing first time installation of x86"
 
@@ -407,18 +408,9 @@ elif [ "$os_type" = "Linux" ]; then
          exit $ret_code
       fi
 
-      all_object_files_sanitized=""
-      compile_out_full=""
-      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      done
-
-      file_unsanitized="$src_path_unsanitized"/special/wrap_func.cpp
-      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-
+      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
       link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
-
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## Linux debug|x86
@@ -430,20 +422,13 @@ elif [ "$os_type" = "Linux" ]; then
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x86_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -O1"
       
-      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-
       all_object_files_sanitized=""
       compile_out_full=""
-      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      done
 
-      file_unsanitized="$src_path_unsanitized"/special/wrap_func.cpp
-      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
       link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
-
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 else
