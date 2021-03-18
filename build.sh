@@ -101,18 +101,100 @@ sanitize() {
    printf "%s" "$1" | sed "s/'/'\\\\''/g" | sed "s/^\(.*\)$/'\1'/"
 }
 
+make_initial_paths_simple() {
+   local intermediate_path_unsanitized="$1"
+   local bin_path_unsanitized="$2"
+
+   [ -d "$intermediate_path_unsanitized" ] || mkdir -p "$intermediate_path_unsanitized"
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+   [ -d "$bin_path_unsanitized" ] || mkdir -p "$bin_path_unsanitized"
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+}
+
+compile_file() {
+   local file_unsanitized="$1"
+   local intermediate_path_unsanitized="$2"
+   local compile_command="$3"
+
+   if [ -e "$file_unsanitized" ] ; then
+      local file_sanitized=`sanitize "$file_unsanitized"`
+      local file_body_unsanitized=`printf "%s" "$file_unsanitized" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+      local object_full_file_unsanitized="$intermediate_path_unsanitized/$file_body_unsanitized.o"
+      local object_full_file_sanitized=`sanitize "$object_full_file_unsanitized"`
+      all_object_files_sanitized="$all_object_files_sanitized $object_full_file_sanitized"
+      local compile_specific="$compile_command -c $file_sanitized -o $object_full_file_sanitized 2>&1"
+      local compile_out=`eval $compile_specific`
+      # TODO: we might need to sanitize compile_out here!
+      local ret_code=$?
+      compile_out_full="$compile_out_full$compile_out"
+      if [ $ret_code -ne 0 ]; then 
+         printf "%s\n" "$compile_out_full"
+         printf "%s\n" "$compile_out_full" > "$log_file"
+         exit $ret_code
+      fi
+   fi
+}
+
+link_file() {
+   local compile_command="$1"
+   local all_object_files_sanitized="$2"
+   local bin_path_unsanitized="$3"
+   local bin_file="$4"
+   local log_file_unsanitized="$5"
+
+   local bin_path_sanitized=`sanitize "$bin_path_unsanitized"`
+   local compile_specific="$compile_command $all_object_files_sanitized -o $bin_path_sanitized/$bin_file 2>&1"
+   local compile_out=`eval $compile_specific`
+   # TODO: we might need to sanitize compile_out here!
+   local ret_code=$?
+   compile_out_full="$compile_out_full$compile_out"
+   printf "%s\n" "$compile_out_full"
+   printf "%s\n" "$compile_out_full" > "$log_file_unsanitized"
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+}
+
+copy_bin_files() {
+   local bin_path_unsanitized="$1"
+   local bin_file="$2"
+   local python_lib_unsanitized="$3"
+   local staging_path_unsanitized="$4"
+
+   cp "$bin_path_unsanitized/$bin_file" "$python_lib_unsanitized/"
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+   cp "$bin_path_unsanitized/$bin_file" "$staging_path_unsanitized/"
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+}
+
 clang_pp_bin=clang++
 g_pp_bin=g++
 os_type=`uname`
-#root_path=`dirname "$0"`
-# TODO: this could be improved upon.  There is no perfect solution AFAIK for getting the script directory.  Look at BASH_SOURCE[0] as well and possibly select either it or $0
-# TODO: backticks or command substitution.. make a consistent decision
+# TODO: this could be improved upon.  There is no perfect solution AFAIK for getting the script directory, and I'm not too sure how the CDPATH thing works
+# Look at BASH_SOURCE[0] as well and possibly select either it or $0
 # The output here needs to not be the empty string for glob substitution below:
-root_path=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
-src_path="$root_path/shared/ebm_native"
-src_path_sanitized=`sanitize "$src_path"`
-python_lib="$root_path/python/interpret-core/interpret/lib"
-staging_path="$root_path/staging"
+root_path_initial=`dirname -- "$0"`
+root_path_unsanitized=`CDPATH= cd -- "$root_path_initial" && pwd -P`
+root_path_sanitized=`sanitize "$root_path_unsanitized"`
+src_path_unsanitized="$root_path_unsanitized/shared/ebm_native"
+src_path_sanitized=`sanitize "$src_path_unsanitized"`
+
+python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/lib"
+python_lib_sanitized=`sanitize "$python_lib_unsanitized"`
+staging_path_unsanitized="$root_path_unsanitized/staging"
+staging_path_sanitized=`sanitize "$staging_path_unsanitized"`
 
 build_32_bit=0
 build_64_bit=1
@@ -127,10 +209,10 @@ done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
 compile_all=""
-compile_all="$compile_all -I\"$src_path\""
-compile_all="$compile_all -I\"$src_path/inc\""
-compile_all="$compile_all -I\"$src_path/zone_separate/loss_functions\""
-compile_all="$compile_all -I\"$src_path/zone_separate/metrics\""
+compile_all="$compile_all -I$src_path_sanitized"
+compile_all="$compile_all -I$src_path_sanitized/inc"
+compile_all="$compile_all -I$src_path_sanitized/zone_separate/loss_functions"
+compile_all="$compile_all -I$src_path_sanitized/zone_separate/metrics"
 compile_all="$compile_all -Wall -Wextra"
 compile_all="$compile_all -Wunused-result"
 compile_all="$compile_all -Wno-parentheses"
@@ -152,12 +234,12 @@ if [ "$os_type" = "Darwin" ]; then
    compile_mac="$compile_all -Wnull-dereference -Wgnu-zero-variadic-macro-arguments -dynamiclib"
 
    printf "%s\n" "Creating initial directories"
-   [ -d "$staging_path" ] || mkdir -p "$staging_path"
+   [ -d "$staging_path_unsanitized" ] || mkdir -p "$staging_path_unsanitized"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$python_lib" ] || mkdir -p "$python_lib"
+   [ -d "$python_lib_unsanitized" ] || mkdir -p "$python_lib_unsanitized"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -167,154 +249,61 @@ if [ "$os_type" = "Darwin" ]; then
       ########################## macOS release|x64
 
       printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS release|x64"
-      intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native"
-      bin_path="$root_path/tmp/clang/bin/release/mac/x64/ebm_native"
+      intermediate_path_unsanitized="$root_path_unsanitized/tmp/clang/intermediate/release/mac/x64/ebm_native"
+      bin_path_unsanitized="$root_path_unsanitized/tmp/clang/bin/release/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64.dylib"
-      log_file="$intermediate_path/ebm_native_release_mac_x64_build_log.txt"
+      log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_mac_x64_build_log.txt"
       compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3 -install_name @rpath/$bin_file"
    
-      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      [ -d "$bin_path" ] || mkdir -p "$bin_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
 
-
-      all_object_files=""
+      all_object_files_sanitized=""
       compile_out_full=""
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file in "$src_path"/*.cpp ; do
-         if [ -e "$file" ] ; then
-            file_sanitized=`sanitize "$file"`
-            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-            file_body_sanitized=`sanitize "$file_body"`
-            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-            all_object_files="$all_object_files $object_full_file"
-            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-            compile_out=`eval $compile_specific`
-            # TODO: we might need to sanitize compile_out here!
-            ret_code=$?
-            compile_out_full="$compile_out_full$compile_out"
-            if [ $ret_code -ne 0 ]; then 
-               printf "%s\n" "$compile_out_full"
-               printf "%s\n" "$compile_out_full" > "$log_file"
-               exit $ret_code
-            fi
-         fi
+      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
+      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
 
-      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      printf "%s\n" "$compile_out_full"
-      printf "%s\n" "$compile_out_full" > "$log_file"
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-
-
-      cp "$bin_path/$bin_file" "$python_lib/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$staging_path/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## macOS debug|x64
 
       printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS debug|x64"
-      intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native"
-      bin_path="$root_path/tmp/clang/bin/debug/mac/x64/ebm_native"
+      intermediate_path_unsanitized="$root_path_unsanitized/tmp/clang/intermediate/debug/mac/x64/ebm_native"
+      bin_path_unsanitized="$root_path_unsanitized/tmp/clang/bin/debug/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64_debug.dylib"
-      log_file="$intermediate_path/ebm_native_debug_mac_x64_build_log.txt"
+      log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_mac_x64_build_log.txt"
       compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer -install_name @rpath/$bin_file"
    
-      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      [ -d "$bin_path" ] || mkdir -p "$bin_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
 
-
-      all_object_files=""
+      all_object_files_sanitized=""
       compile_out_full=""
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file in "$src_path"/*.cpp ; do
-         if [ -e "$file" ] ; then
-            file_sanitized=`sanitize "$file"`
-            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-            file_body_sanitized=`sanitize "$file_body"`
-            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-            all_object_files="$all_object_files $object_full_file"
-            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-            compile_out=`eval $compile_specific`
-            # TODO: we might need to sanitize compile_out here!
-            ret_code=$?
-            compile_out_full="$compile_out_full$compile_out"
-            if [ $ret_code -ne 0 ]; then 
-               printf "%s\n" "$compile_out_full"
-               printf "%s\n" "$compile_out_full" > "$log_file"
-               exit $ret_code
-            fi
-         fi
+      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
+      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
 
-      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      printf "%s\n" "$compile_out_full"
-      printf "%s\n" "$compile_out_full" > "$log_file"
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-
-
-
-      cp "$bin_path/$bin_file" "$python_lib/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$staging_path/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 elif [ "$os_type" = "Linux" ]; then
 
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
    compile_linux="$compile_all"
-   compile_linux="$compile_linux -Wlogical-op -Wl,--version-script=\"$src_path/ebm_native_exports.txt\" -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now"
+   compile_linux="$compile_linux -Wlogical-op -Wl,--version-script=$src_path_sanitized/ebm_native_exports.txt -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now"
    compile_linux="$compile_linux -Wl,--wrap=memcpy -static-libgcc -static-libstdc++ -shared"
 
    printf "%s\n" "Creating initial directories"
-   [ -d "$staging_path" ] || mkdir -p "$staging_path"
+   [ -d "$staging_path_unsanitized" ] || mkdir -p "$staging_path_unsanitized"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$python_lib" ] || mkdir -p "$python_lib"
+   [ -d "$python_lib_unsanitized" ] || mkdir -p "$python_lib_unsanitized"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -325,186 +314,66 @@ elif [ "$os_type" = "Linux" ]; then
       ########################## Linux release|x64
 
       printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux release|x64"
-      intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native"
-      bin_path="$root_path/tmp/gcc/bin/release/linux/x64/ebm_native"
+      intermediate_path_unsanitized="$root_path_unsanitized/tmp/gcc/intermediate/release/linux/x64/ebm_native"
+      bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/release/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64.so"
-      log_file="$intermediate_path/ebm_native_release_linux_x64_build_log.txt"
+      log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x64_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -O3"
    
-      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      [ -d "$bin_path" ] || mkdir -p "$bin_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
 
-      all_object_files=""
+      all_object_files_sanitized=""
       compile_out_full=""
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file in "$src_path"/*.cpp ; do
-         if [ -e "$file" ] ; then
-            file_sanitized=`sanitize "$file"`
-            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-            file_body_sanitized=`sanitize "$file_body"`
-            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-            all_object_files="$all_object_files $object_full_file"
-            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-            compile_out=`eval $compile_specific`
-            # TODO: we might need to sanitize compile_out here!
-            ret_code=$?
-            compile_out_full="$compile_out_full$compile_out"
-            if [ $ret_code -ne 0 ]; then 
-               printf "%s\n" "$compile_out_full"
-               printf "%s\n" "$compile_out_full" > "$log_file"
-               exit $ret_code
-            fi
-         fi
+      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      # TODO: put this into a function
-      file="$src_path"/special/wrap_func.cpp
-      file_sanitized=`sanitize "$file"`
-      file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-      file_body_sanitized=`sanitize "$file_body"`
-      object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-      all_object_files="$all_object_files $object_full_file"
-      compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      if [ $ret_code -ne 0 ]; then 
-         printf "%s\n" "$compile_out_full"
-         printf "%s\n" "$compile_out_full" > "$log_file"
-         exit $ret_code
-      fi
+      file_unsanitized="$src_path"/special/wrap_func.cpp
+      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
 
+      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
 
-      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      printf "%s\n" "$compile_out_full"
-      printf "%s\n" "$compile_out_full" > "$log_file"
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
-
-      cp "$bin_path/$bin_file" "$python_lib/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$staging_path/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
 
       ########################## Linux debug|x64
 
       printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux debug|x64"
-      intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native"
-      bin_path="$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native"
+      intermediate_path_unsanitized="$root_path_unsanitized/tmp/gcc/intermediate/debug/linux/x64/ebm_native"
+      bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/debug/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64_debug.so"
-      log_file="$intermediate_path/ebm_native_debug_linux_x64_build_log.txt"
+      log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x64_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -m64 -O1"
    
-      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      [ -d "$bin_path" ] || mkdir -p "$bin_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
 
-
-      all_object_files=""
+      all_object_files_sanitized=""
       compile_out_full=""
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file in "$src_path"/*.cpp ; do
-         if [ -e "$file" ] ; then
-            file_sanitized=`sanitize "$file"`
-            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-            file_body_sanitized=`sanitize "$file_body"`
-            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-            all_object_files="$all_object_files $object_full_file"
-            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-            compile_out=`eval $compile_specific`
-            # TODO: we might need to sanitize compile_out here!
-            ret_code=$?
-            compile_out_full="$compile_out_full$compile_out"
-            if [ $ret_code -ne 0 ]; then 
-               printf "%s\n" "$compile_out_full"
-               printf "%s\n" "$compile_out_full" > "$log_file"
-               exit $ret_code
-            fi
-         fi
+      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      # TODO: put this into a function
-      file="$src_path"/special/wrap_func.cpp
-      file_sanitized=`sanitize "$file"`
-      file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-      file_body_sanitized=`sanitize "$file_body"`
-      object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-      all_object_files="$all_object_files $object_full_file"
-      compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      if [ $ret_code -ne 0 ]; then 
-         printf "%s\n" "$compile_out_full"
-         printf "%s\n" "$compile_out_full" > "$log_file"
-         exit $ret_code
-      fi
+      file_unsanitized="$src_path"/special/wrap_func.cpp
+      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
 
+      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
 
-      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      printf "%s\n" "$compile_out_full"
-      printf "%s\n" "$compile_out_full" > "$log_file"
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-
-
-      cp "$bin_path/$bin_file" "$python_lib/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$staging_path/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 
    if [ $build_32_bit -eq 1 ]; then
       ########################## Linux release|x86
 
       printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux release|x86"
-      intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x86/ebm_native"
-      bin_path="$root_path/tmp/gcc/bin/release/linux/x86/ebm_native"
+      intermediate_path_unsanitized="$root_path_unsanitized/tmp/gcc/intermediate/release/linux/x86/ebm_native"
+      bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/release/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86.so"
-      log_file="$intermediate_path/ebm_native_release_linux_x86_build_log.txt"
+      log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x86_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
       
-      if [ ! -d "$intermediate_path" ]; then
+      if [ ! -d "$intermediate_path_unsanitized" ]; then
          printf "%s\n" "Doing first time installation of x86"
 
          # this is the first time we're being compiled x86 on this machine, so install other required items
@@ -524,169 +393,56 @@ elif [ "$os_type" = "Linux" ]; then
             exit $ret_code
          fi
 
-         mkdir -p "$intermediate_path"
+         mkdir -p "$intermediate_path_unsanitized"
       fi
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      [ -d "$bin_path" ] || mkdir -p "$bin_path"
+      [ -d "$bin_path_unsanitized" ] || mkdir -p "$bin_path_unsanitized"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
 
-
-      all_object_files=""
+      all_object_files_sanitized=""
       compile_out_full=""
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file in "$src_path"/*.cpp ; do
-         if [ -e "$file" ] ; then
-            file_sanitized=`sanitize "$file"`
-            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-            file_body_sanitized=`sanitize "$file_body"`
-            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-            all_object_files="$all_object_files $object_full_file"
-            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-            compile_out=`eval $compile_specific`
-            # TODO: we might need to sanitize compile_out here!
-            ret_code=$?
-            compile_out_full="$compile_out_full$compile_out"
-            if [ $ret_code -ne 0 ]; then 
-               printf "%s\n" "$compile_out_full"
-               printf "%s\n" "$compile_out_full" > "$log_file"
-               exit $ret_code
-            fi
-         fi
+      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      # TODO: put this into a function
-      file="$src_path"/special/wrap_func.cpp
-      file_sanitized=`sanitize "$file"`
-      file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-      file_body_sanitized=`sanitize "$file_body"`
-      object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-      all_object_files="$all_object_files $object_full_file"
-      compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      if [ $ret_code -ne 0 ]; then 
-         printf "%s\n" "$compile_out_full"
-         printf "%s\n" "$compile_out_full" > "$log_file"
-         exit $ret_code
-      fi
+      file_unsanitized="$src_path"/special/wrap_func.cpp
+      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
 
+      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
 
-      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      printf "%s\n" "$compile_out_full"
-      printf "%s\n" "$compile_out_full" > "$log_file"
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-
-
-      cp "$bin_path/$bin_file" "$python_lib/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$staging_path/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## Linux debug|x86
 
       printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux debug|x86"
-      intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native"
-      bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native"
+      intermediate_path_unsanitized="$root_path_unsanitized/tmp/gcc/intermediate/debug/linux/x86/ebm_native"
+      bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/debug/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86_debug.so"
-      log_file="$intermediate_path/ebm_native_debug_linux_x86_build_log.txt"
+      log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x86_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -O1"
       
-      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      [ -d "$bin_path" ] || mkdir -p "$bin_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
 
-
-      all_object_files=""
+      all_object_files_sanitized=""
       compile_out_full=""
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for file in "$src_path"/*.cpp ; do
-         if [ -e "$file" ] ; then
-            file_sanitized=`sanitize "$file"`
-            file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-            file_body_sanitized=`sanitize "$file_body"`
-            object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-            all_object_files="$all_object_files $object_full_file"
-            compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-            compile_out=`eval $compile_specific`
-            # TODO: we might need to sanitize compile_out here!
-            ret_code=$?
-            compile_out_full="$compile_out_full$compile_out"
-            if [ $ret_code -ne 0 ]; then 
-               printf "%s\n" "$compile_out_full"
-               printf "%s\n" "$compile_out_full" > "$log_file"
-               exit $ret_code
-            fi
-         fi
+      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       done
 
-      # TODO: put this into a function
-      file="$src_path"/special/wrap_func.cpp
-      file_sanitized=`sanitize "$file"`
-      file_body=`printf "%s" "$file" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
-      file_body_sanitized=`sanitize "$file_body"`
-      object_full_file="\"$intermediate_path\"/$file_body_sanitized.o"
-      all_object_files="$all_object_files $object_full_file"
-      compile_specific="$compile_command -c $file_sanitized -o $object_full_file 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      if [ $ret_code -ne 0 ]; then 
-         printf "%s\n" "$compile_out_full"
-         printf "%s\n" "$compile_out_full" > "$log_file"
-         exit $ret_code
-      fi
+      file_unsanitized="$src_path"/special/wrap_func.cpp
+      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
 
+      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
 
-      compile_specific="$compile_command $all_object_files -o \"$bin_path/$bin_file\" 2>&1"
-      compile_out=`eval $compile_specific`
-      # TODO: we might need to sanitize compile_out here!
-      ret_code=$?
-      compile_out_full="$compile_out_full$compile_out"
-      printf "%s\n" "$compile_out_full"
-      printf "%s\n" "$compile_out_full" > "$log_file"
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-
-
-      cp "$bin_path/$bin_file" "$python_lib/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$staging_path/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 else
    printf "%s\n" "OS $os_type not recognized.  We support $clang_pp_bin on macOS and $g_pp_bin on Linux"
