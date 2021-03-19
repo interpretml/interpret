@@ -57,7 +57,7 @@
 # Here are some good references on the issues regarding odd characters in filenames: 
 # - https://dwheeler.com/essays/filenames-in-shell.html
 # - https://dwheeler.com/essays/fixing-unix-linux-filenames.html
-# TODO: VERIFY against:
+# These should work in our script below (some have been explicitly tested):
 # - newlines in files "a.cpp\nb.cpp" which can be interpreted as separate files in some scripts
 # - files that start with '-' characters.  eg: "-myfile.txt" which can be interpreted as arguments in some scripts
 # - files that begin or end or contain spaces eg: "  a.cpp  b.cpp  " which get stripped or turned into multiple arguments
@@ -68,7 +68,7 @@
 # - ';' character -> which can be used to run new shell commands in some scripts
 # - control characters (ASCII 1-31)
 # - UTF-8 characters
-# - try the following stress test case:        inter pret/shared\ebm_native/-ma in;_Lo`s's.cpp
+# - try the following stress test case (works on windows):     ./-in ter;_Pr`e't/shared/ebm_native/-ha rd;_Fi`l'e.cpp
 # We also cannot use the following safely:
 # - find exec with the \; ending since it eats the return codes of our compiler, which we really really want!
 # - raw "exec" without re-shelling the result
@@ -78,21 +78,23 @@
 #   we compile the same C++ files over several times with different compiler options so these need to generate
 #   separated .o files with different names.  I'm not sure if GNU make/cmake handles this natievly if we go that route.
 # - make -> well, we might use make someday if compile speed becomes an issue, but I like that this script doesn't 
-#   require installing anything before calling it on either mac or linux machines, and GNU make requires installation 
-#   on macs and isn't part of the standard clang++ build pipeline.  cmake also requires installation.  Bourne shell script 
+#   require installing anything before calling it on either standard mac or linux machines, and GNU make requires installation 
+#   on macs and isn't part of the standard clang++ build pipeline.  cmake also requires installation.  Bourne shell POSIX script 
 #   is the most out of the box compatible solution.  Also, per above, I'm not sure if make/cmake handles duplicate
 #   compilation of .cpp files multiple times with different compiler options
 # - tee -> we write the compiler output to both a file and to stdout, but tee swallows any error codes in the compiler
 #   I've been using backticks to store the output in a variable first, which is frowned upon, so consider
 #   command substitution instead, which is now even part of the more recent bourne shells and is POSIX compliant now
 #   PIPESTATUS is bash specific
-# - command substitution seems to remove trailing newlines.. so backticks would be required there??
+# - no command substitution (although I might change my mind on this given POSIX now supports command substitution).  
+#   We don't use backticks much here so it's low cost to use the older method.  Backticks are more compatible, 
+#   but also command substitution seems to remove trailing newlines, which although esoteric introduces an error 
+#   condition we'd want to at least investigate and/or check and/or handle.
 #   https://superuser.com/questions/403800/how-can-i-make-the-bash-backtick-operator-keep-newlines-in-output/827879
-# - don't use echo.  Use printf "%s"
+# - don't use echo "$something".  Use printf "%s" "$something"
 
 # TODO also build our html resources here, and also in the .bat file for Windows
 
-# TODO: use this everywhere
 sanitize() {
    # use this techinque where single quotes are expanded to '\'' (end quotes insert single quote, start quote)
    # but fixed from the version in this thread: 
