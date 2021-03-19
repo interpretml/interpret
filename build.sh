@@ -277,7 +277,7 @@ if [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/clang/bin/release/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64.dylib"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_mac_x64_build_log.txt"
-      compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3 -install_name @rpath/$bin_file"
+      compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3"
       link_command="$compile_command -dynamiclib -install_name @rpath/$bin_file"
    
       all_object_files_sanitized=""
@@ -285,7 +285,7 @@ if [ "$os_type" = "Darwin" ]; then
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## macOS debug|x64
@@ -303,7 +303,7 @@ if [ "$os_type" = "Darwin" ]; then
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 elif [ "$os_type" = "Linux" ]; then
@@ -334,6 +334,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_file="lib_ebm_native_linux_x64.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x64_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -O3"
+      link_command="$compile_command"
    
       all_object_files_sanitized=""
       compile_out_full=""
@@ -341,7 +342,7 @@ elif [ "$os_type" = "Linux" ]; then
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## Linux debug|x64
@@ -352,6 +353,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_file="lib_ebm_native_linux_x64_debug.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x64_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -m64 -O1"
+      link_command="$compile_command"
    
       all_object_files_sanitized=""
       compile_out_full=""
@@ -359,7 +361,7 @@ elif [ "$os_type" = "Linux" ]; then
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 
@@ -372,6 +374,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_file="lib_ebm_native_linux_x86.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x86_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
+      link_command="$compile_command"
       
       all_object_files_sanitized=""
       compile_out_full=""
@@ -410,7 +413,7 @@ elif [ "$os_type" = "Linux" ]; then
 
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## Linux debug|x86
@@ -421,6 +424,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_file="lib_ebm_native_linux_x86_debug.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x86_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -O1"
+      link_command="$compile_command"
       
       all_object_files_sanitized=""
       compile_out_full=""
@@ -428,7 +432,7 @@ elif [ "$os_type" = "Linux" ]; then
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$compile_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 else
