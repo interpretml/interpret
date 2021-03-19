@@ -223,11 +223,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
                 discretized = native.discretize(col_data, cuts)
 
-                _, bin_counts = np.unique(discretized, return_counts=True)
+                bin_counts = np.bincount(discretized)
 
-                if count_missing == 0:
-                    bin_counts = np.concatenate(([0], bin_counts))
-                else:
+                if count_missing != 0:
                     col_data = col_data[~np.isnan(col_data)]
                 
                 self.col_bin_counts_.append(bin_counts)
