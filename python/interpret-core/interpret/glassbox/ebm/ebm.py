@@ -949,6 +949,7 @@ class BaseEBM(BaseEstimator):
 
         self.feature_groups_ = main_indices + pair_indices
 
+        self.bagged_models_ = estimators
         # Merge estimators into one.
         self.additive_terms_ = []
         self.term_standard_deviations_ = []
