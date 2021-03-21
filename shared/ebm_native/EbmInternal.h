@@ -596,7 +596,7 @@ INLINE_RELEASE_UNTEMPLATED static const char * IsStringEqualsCaseInsensitive(con
    // first non-whitespace character
 
    char mainChar = *sMain;
-   while(0x20 == mainChar || 0x9 <= mainChar && mainChar <= 0xd) {
+   while(0x20 == mainChar || (0x9 <= mainChar && mainChar <= 0xd)) {
       // skip whitespace
       ++sMain;
       mainChar = *sMain;
@@ -620,7 +620,7 @@ INLINE_RELEASE_UNTEMPLATED static const char * IsStringEqualsCaseInsensitive(con
       mainChar = *sMain;
       labelChar = *sLabel;
    }
-   while(0x20 == mainChar || 0x9 <= mainChar && mainChar <= 0xd) {
+   while(0x20 == mainChar || (0x9 <= mainChar && mainChar <= 0xd)) {
       // skip whitespace
       ++sMain;
       mainChar = *sMain;

@@ -25,7 +25,7 @@ static bool CheckForIllegalCharacters(const char * s) noexcept {
          if('\0' == chr) {
             return false;
          }
-         if(0x20 == chr || 0x9 <= chr && chr <= 0xd) {
+         if(0x20 == chr || (0x9 <= chr && chr <= 0xd)) {
             // whitespace is illegal
             break;
          }
