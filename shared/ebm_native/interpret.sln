@@ -67,27 +67,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "avx512", "compute\avx512\avx512.vcxproj", "{F2EA4B57-0DF5-40A9-A8DE-6E92C7F898A1}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bridge_c", "bridge_c", "{76AE1E67-5E28-4447-B98E-0B1C3D6B60FB}"
-	ProjectSection(SolutionItems) = preProject
-		bridge_c\bridge_c.h = bridge_c\bridge_c.h
-		bridge_c\zones.h = bridge_c\zones.h
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bridge_cpp", "bridge_cpp", "{8759780E-5F40-4C4F-A13C-4D6B2F8B2DE7}"
-	ProjectSection(SolutionItems) = preProject
-		bridge_cpp\bridge_cpp.hpp = bridge_cpp\bridge_cpp.hpp
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common_c", "common_c", "{1FE2740B-9097-4A56-BB7C-F996DFF427C7}"
-	ProjectSection(SolutionItems) = preProject
-		common_c\common_c.h = common_c\common_c.h
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common_cpp", "common_cpp", "{F2DD7388-EE85-4C2D-A3A8-15F041DB8DE7}"
-	ProjectSection(SolutionItems) = preProject
-		common_cpp\common_cpp.hpp = common_cpp\common_cpp.hpp
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64

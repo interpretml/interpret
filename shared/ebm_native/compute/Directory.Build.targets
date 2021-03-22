@@ -1,6 +1,8 @@
 <Project>
   <ItemGroup>
      <_WildCardClCompile Include="..\*.cpp" />
+     <_WildCardClCompile Include="..\..\bridge_cpp\*.cpp" />
+     <_WildCardClCompile Include="..\..\common_cpp\*.cpp" />
   </ItemGroup>
   <Target Name="AddWildCardItems" AfterTargets="BuildGenerateSources">
     <ItemGroup>

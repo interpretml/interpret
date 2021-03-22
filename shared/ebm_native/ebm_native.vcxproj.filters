@@ -32,7 +32,6 @@
     <ClCompile Include="DataFrameBoosting.cpp" />
     <ClCompile Include="Discretize.cpp" />
     <ClCompile Include="InteractionDetector.cpp" />
-    <ClCompile Include="Logging.cpp" />
     <ClCompile Include="RandomStream.cpp" />
     <ClCompile Include="SamplingSet.cpp" />
     <ClCompile Include="Booster.cpp" />
@@ -46,6 +45,9 @@
     </ClCompile>
     <ClCompile Include="special\PrecompiledHeader.cpp">
       <Filter>special</Filter>
+    </ClCompile>
+    <ClCompile Include="bridge_c\Logging.c">
+      <Filter>bridge_c</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -65,7 +67,6 @@
     <ClInclude Include="DataFrameBoosting.h" />
     <ClInclude Include="EbmInternal.h" />
     <ClInclude Include="EbmStats.h" />
-    <ClInclude Include="Logging.h" />
     <ClInclude Include="PrecompiledHeader.h" />
     <ClInclude Include="HistogramTargetEntry.h" />
     <ClInclude Include="RandomStream.h" />
@@ -109,6 +110,24 @@
     </ClInclude>
     <ClInclude Include="LossRegistrations.h" />
     <ClInclude Include="EbmException.h" />
+    <ClInclude Include="bridge_c\bridge_c.h">
+      <Filter>bridge_c</Filter>
+    </ClInclude>
+    <ClInclude Include="bridge_c\Logging.h">
+      <Filter>bridge_c</Filter>
+    </ClInclude>
+    <ClInclude Include="bridge_c\zones.h">
+      <Filter>bridge_c</Filter>
+    </ClInclude>
+    <ClInclude Include="common_c\common_c.h">
+      <Filter>common_c</Filter>
+    </ClInclude>
+    <ClInclude Include="bridge_cpp\bridge_cpp.hpp">
+      <Filter>bridge_cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="common_cpp\common_cpp.hpp">
+      <Filter>common_cpp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />
@@ -132,6 +151,18 @@
     </Filter>
     <Filter Include="special">
       <UniqueIdentifier>{3c75c63a-6df6-4cd6-91e2-ee80ef96f468}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="bridge_c">
+      <UniqueIdentifier>{32bfc9ca-2159-409b-89d1-af8034257dd1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="common_c">
+      <UniqueIdentifier>{1daae48a-6372-46a2-a0e9-dda3519eb4b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="bridge_cpp">
+      <UniqueIdentifier>{00aba3da-146d-462c-8f27-c3675127ae35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="common_cpp">
+      <UniqueIdentifier>{48382ee5-df51-4d4d-92ce-dbd4c773ed4e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

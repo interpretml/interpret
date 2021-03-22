@@ -129,7 +129,7 @@ typedef struct _InteractionDetectorHandle {
 // std::numeric_limits<FloatEbmType>::min() -> small positive number
 #define FLOAT_EBM_MIN            DBL_MIN
 // std::numeric_limits<FloatEbmType>::denorm_min() -> small positive number
-#define FLOAT_EBM_DENORM_MIN     DBL_TRUE_MIN
+//#define FLOAT_EBM_DENORM_MIN     DBL_TRUE_MIN -> not supported in g++ version of float.h for now (it's a C11 construct)
 // std::numeric_limits<FloatEbmType>::infinity()
 #define FLOAT_EBM_POSITIVE_INF   (STATIC_CAST(FloatEbmType, (INFINITY)))
 // -std::numeric_limits<FloatEbmType>::infinity()

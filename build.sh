@@ -126,12 +126,12 @@ compile_file() {
 
    if [ -f "$file_unsanitized" ] ; then
       local file_sanitized=`sanitize "$file_unsanitized"`
-      local file_body_unsanitized=`printf "%s" "$file_unsanitized" | sed 's/.*\/\(.*\)\.cpp$/\1/'`
+      local file_body_unsanitized=`printf "%s" "$file_unsanitized" | sed 's/.*\/\(.*\)\(\.cpp\|\.c\)$/\1/'`
       local object_full_file_unsanitized="$intermediate_path_unsanitized/$file_body_unsanitized.o"
       local object_full_file_sanitized=`sanitize "$object_full_file_unsanitized"`
       all_object_files_sanitized="$all_object_files_sanitized $object_full_file_sanitized"
       local compile_specific="$compile_command -c $file_sanitized -o $object_full_file_sanitized 2>&1"
-      local compile_out=`eval $compile_specific`
+      compile_out=`eval $compile_specific`
       # TODO: we might need to sanitize compile_out here!
       local ret_code=$?
       compile_out_full="$compile_out_full$compile_out"
@@ -152,6 +152,9 @@ compile_directory() {
    for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
       compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
    done
+   for file_unsanitized in "$src_path_unsanitized"/*.c ; do
+      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+   done
 }
 
 link_file() {
@@ -163,7 +166,7 @@ link_file() {
 
    local bin_path_sanitized=`sanitize "$bin_path_unsanitized"`
    local compile_specific="$link_command $all_object_files_sanitized -o $bin_path_sanitized/$bin_file 2>&1"
-   local compile_out=`eval $compile_specific`
+   compile_out=`eval $compile_specific`
    # TODO: we might need to sanitize compile_out here!
    local ret_code=$?
    compile_out_full="$compile_out_full$compile_out"
@@ -237,6 +240,10 @@ done
 compile_all=""
 compile_all="$compile_all -I$src_path_sanitized"
 compile_all="$compile_all -I$src_path_sanitized/inc"
+compile_all="$compile_all -I$src_path_sanitized/bridge_c"
+compile_all="$compile_all -I$src_path_sanitized/bridge_cpp"
+compile_all="$compile_all -I$src_path_sanitized/common_c"
+compile_all="$compile_all -I$src_path_sanitized/common_cpp"
 compile_all="$compile_all -I$src_path_sanitized/zone_separate/loss_functions"
 compile_all="$compile_all -I$src_path_sanitized/zone_separate/metrics"
 compile_all="$compile_all -Wall -Wextra"
@@ -287,6 +294,8 @@ if [ "$os_type" = "Darwin" ]; then
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
       link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
@@ -305,6 +314,8 @@ if [ "$os_type" = "Darwin" ]; then
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
       link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
@@ -343,6 +354,8 @@ elif [ "$os_type" = "Linux" ]; then
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
       link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
@@ -362,6 +375,8 @@ elif [ "$os_type" = "Linux" ]; then
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
       link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
@@ -414,6 +429,8 @@ elif [ "$os_type" = "Linux" ]; then
       fi
 
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
       link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
@@ -433,6 +450,8 @@ elif [ "$os_type" = "Linux" ]; then
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
+      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
       link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"

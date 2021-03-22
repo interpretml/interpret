@@ -290,6 +290,12 @@ EXIT /B 0
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />
+    <ClInclude Include="bridge_cpp\bridge_cpp.hpp" />
+    <ClInclude Include="bridge_c\bridge_c.h" />
+    <ClInclude Include="bridge_c\Logging.h" />
+    <ClInclude Include="bridge_c\zones.h" />
+    <ClInclude Include="common_cpp\common_cpp.hpp" />
+    <ClInclude Include="common_c\common_c.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="EbmException.h" />
     <ClInclude Include="Loss.h" />
@@ -318,7 +324,6 @@ EXIT /B 0
     <ClInclude Include="DataFrameBoosting.h" />
     <ClInclude Include="EbmInternal.h" />
     <ClInclude Include="EbmStats.h" />
-    <ClInclude Include="Logging.h" />
     <ClInclude Include="PrecompiledHeader.h" />
     <ClInclude Include="HistogramTargetEntry.h" />
     <ClInclude Include="RandomStream.h" />
@@ -334,6 +339,12 @@ EXIT /B 0
     <ClCompile Include="ApplyModelUpdateValidation.cpp" />
     <ClCompile Include="BinBoosting.cpp" />
     <ClCompile Include="BinInteraction.cpp" />
+    <ClCompile Include="bridge_c\Logging.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="DataFrameShared.cpp" />
     <ClCompile Include="GenerateQuantileCuts.cpp" />
     <ClCompile Include="GenerateUniformCuts.cpp" />
@@ -363,12 +374,6 @@ EXIT /B 0
     <ClCompile Include="Discretize.cpp" />
     <ClCompile Include="special\DllMainEbmNative.cpp" />
     <ClCompile Include="InteractionDetector.cpp" />
-    <ClCompile Include="Logging.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="special\PrecompiledHeader.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
