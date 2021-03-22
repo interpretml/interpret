@@ -100,7 +100,7 @@ sanitize() {
    # but fixed from the version in this thread: 
    # https://stackoverflow.com/questions/15783701/which-characters-need-to-be-escaped-when-using-bash
    # https://stackoverflow.com/questions/17529220/why-should-eval-be-avoided-in-bash-and-what-should-i-use-instead
-   printf "%s" "$1" | sed "s/'/'\\\\''/g" | sed "s/^\(.*\)$/'\1'/"
+   printf "%s" "$1" | sed "s/'/'\\\\''/g; 1s/^/'/; \$s/\$/'/"
 }
 
 make_initial_paths_simple() {
@@ -126,7 +126,8 @@ compile_file() {
 
    if [ -f "$file_unsanitized" ] ; then
       local file_sanitized=`sanitize "$file_unsanitized"`
-      local file_body_unsanitized=`printf "%s" "$file_unsanitized" | sed 's/.*\/\(.*\)\(\.cpp\|\.c\)$/\1/'`
+      # https://www.oncrashreboot.com/use-sed-to-split-path-into-filename-extension-and-directory
+      local file_body_unsanitized=`printf "%s" "$file_unsanitized" | sed 's/\\(.*\\)\\/\\(.*\\)\\.\\(.*\\)$/\\2/'`
       local object_full_file_unsanitized="$intermediate_path_unsanitized/$file_body_unsanitized.o"
       local object_full_file_sanitized=`sanitize "$object_full_file_unsanitized"`
       all_object_files_sanitized="$all_object_files_sanitized $object_full_file_sanitized"
@@ -149,12 +150,18 @@ compile_directory() {
    local compile_command="$3"
 
    # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-   for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
-      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-   done
-   for file_unsanitized in "$src_path_unsanitized"/*.c ; do
-      compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-   done
+   find "$src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
+   if [ $? -eq 0 ]; then 
+      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      done
+   fi
+   find "$src_path_unsanitized" -maxdepth 1 -type f -name '*.c' 2>/dev/null | grep -q .
+   if [ $? -eq 0 ]; then 
+      for file_unsanitized in "$src_path_unsanitized"/*.c ; do
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+      done
+   fi
 }
 
 link_file() {

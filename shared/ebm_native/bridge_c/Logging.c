@@ -13,8 +13,8 @@
 #include "common_c.h"
 #include "Logging.h"
 
-INTERNAL_IMPORT_EXPORT_BODY const char g_trueString[] = "true";
-INTERNAL_IMPORT_EXPORT_BODY const char g_falseString[] = "false";
+const char g_trueString[] = "true";
+const char g_falseString[] = "false";
 
 #ifndef NDEBUG
 #define COMPILE_MODE "DEBUG"
@@ -25,7 +25,7 @@ INTERNAL_IMPORT_EXPORT_BODY const char g_falseString[] = "false";
 static const char g_assertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
 static const char g_pLoggingParameterError[] = "Error in vsnprintf parameters for logging.";
 
-INTERNAL_IMPORT_EXPORT_BODY TraceEbmType g_traceLevel = TraceLevelOff;
+TraceEbmType g_traceLevel = TraceLevelOff;
 static LOG_MESSAGE_FUNCTION g_pLogMessageFunc = NULL;
 
 static const char g_traceOffString[] = "OFF";
