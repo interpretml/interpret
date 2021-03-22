@@ -60,6 +60,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpu", "compute\cpu\cpu.vcxp
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3DB96E-A28F-4032-8E41-C6D2E408FC72}"
 	ProjectSection(SolutionItems) = preProject
+		compute\Directory.Build.targets = compute\Directory.Build.targets
 		compute\PrecompiledHeader.h = compute\PrecompiledHeader.h
 		compute\test.cpp = compute\test.cpp
 	EndProjectSection

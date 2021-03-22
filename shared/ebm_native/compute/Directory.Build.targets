@@ -1,4 +1,7 @@
 <Project>
+  <ItemGroup>
+     <_WildCardClCompile Include="..\*.cpp" />
+  </ItemGroup>
   <Target Name="AddWildCardItems" AfterTargets="BuildGenerateSources">
     <ItemGroup>
       <ClCompile Include="@(_WildCardClCompile)" />

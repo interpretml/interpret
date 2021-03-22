@@ -38,9 +38,15 @@
     <ClCompile Include="Booster.cpp" />
     <ClCompile Include="Zone32Sse2.cpp" />
     <ClCompile Include="Zone64None.cpp" />
-    <ClCompile Include="special\DllMainEbmNative.cpp" />
-    <ClCompile Include="special\PrecompiledHeader.cpp" />
-    <ClCompile Include="special\wrap_func.cpp" />
+    <ClCompile Include="special\wrap_func.cpp">
+      <Filter>special</Filter>
+    </ClCompile>
+    <ClCompile Include="special\DllMainEbmNative.cpp">
+      <Filter>special</Filter>
+    </ClCompile>
+    <ClCompile Include="special\PrecompiledHeader.cpp">
+      <Filter>special</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />
@@ -123,6 +129,9 @@
     </Filter>
     <Filter Include="zone_separate\metrics">
       <UniqueIdentifier>{ac4e0b40-5223-4e83-b545-07d30d2a02d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="special">
+      <UniqueIdentifier>{3c75c63a-6df6-4cd6-91e2-ee80ef96f468}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
