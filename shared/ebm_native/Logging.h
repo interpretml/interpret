@@ -8,33 +8,30 @@
 #include <assert.h>
 
 #include "ebm_native.h" // LOG_MESSAGE_FUNCTION
-#include "EbmInternal.h" // UNLIKELY
+#include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_INCLUDE 
+#include "common_c.h" // UNLIKELY
 
-extern const char g_trueString[];
-extern const char g_falseString[];
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
-constexpr INLINE_ALWAYS const char * ObtainTruth(const bool b) {
-   return b ? g_trueString : g_falseString;
+INTERNAL_IMPORT_EXPORT_INCLUDE const char g_trueString[];
+INTERNAL_IMPORT_EXPORT_INCLUDE const char g_falseString[];
+
+INLINE_ALWAYS static const char * ObtainTruth(const BoolEbmType b) {
+   return EBM_FALSE != b ? g_trueString : g_falseString;
 }
 
-constexpr INLINE_ALWAYS const char * ObtainTruth(const BoolEbmType isTrue) {
-   return ObtainTruth(EBM_FALSE != isTrue);
-}
+INTERNAL_IMPORT_EXPORT_INCLUDE TraceEbmType g_traceLevel;
 
-extern TraceEbmType g_traceLevel;
-
-extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage, ...);
-extern void InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage);
-extern void LogAssertFailure(
+INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION InteralLogWithArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage, ...);
+INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage);
+INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION LogAssertFailure(
    const unsigned long long lineNumber,
    const char * const fileName,
    const char * const functionName,
    const char * const assertText
 ) ANALYZER_NORETURN ;
-
-constexpr INLINE_ALWAYS bool AlwaysFalse() {
-   return false;
-}
 
 // We use separate macros for LOG_0 (zero parameters) and LOG_N (variadic parameters) because having zero parameters is non-standardized in C++11
 // In C++20, there will be __VA_OPT__, but I don't want to take a dependency on such a new standard yet
@@ -64,35 +61,35 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
 // we use LOG__ prefixes for any variables that we define to avoid collisions with any code we get inserted into
 #define LOG_0(traceLevel, pLogMessage) \
    do { \
-      constexpr TraceEbmType LOG__traceLevel = (traceLevel); \
+      const TraceEbmType LOG__traceLevel = (traceLevel); \
       static_assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG_0(traceLevel, pLogMessage, ...)"); \
       static_assert(LOG__traceLevel <= TraceLevelVerbose, "traceLevel can't be higher than TraceLevelVerbose for call to LOG_0(traceLevel, pLogMessage, ...)"); \
       if(UNLIKELY(LOG__traceLevel <= g_traceLevel)) { \
-         constexpr static char LOG__originalMessage[] = pLogMessage; \
+         const static char LOG__originalMessage[] = pLogMessage; \
          InteralLogWithoutArguments(LOG__traceLevel, LOG__originalMessage); \
       } \
-   } while(AlwaysFalse())
+   } while( (void)0, 0)
 
 #define LOG_N(traceLevel, pLogMessage, ...) \
    do { \
-      constexpr TraceEbmType LOG__traceLevel = (traceLevel); \
+      const TraceEbmType LOG__traceLevel = (traceLevel); \
       static_assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG_N(traceLevel, pLogMessage, ...)"); \
       static_assert(LOG__traceLevel <= TraceLevelVerbose, \
          "traceLevel can't be higher than TraceLevelVerbose for call to LOG_N(traceLevel, pLogMessage, ...)"); \
       if(UNLIKELY(LOG__traceLevel <= g_traceLevel)) { \
-         constexpr static char LOG__originalMessage[] = pLogMessage; \
+         const static char LOG__originalMessage[] = pLogMessage; \
          InteralLogWithArguments(LOG__traceLevel, LOG__originalMessage, __VA_ARGS__); \
       } \
-   } while(AlwaysFalse())
+   } while( (void)0, 0)
 
 #define LOG_COUNTED_0(pLogCountDecrement, traceLevelBefore, traceLevelAfter, pLogMessage) \
    do { \
-      constexpr TraceEbmType LOG__traceLevelBefore = (traceLevelBefore); \
+      const TraceEbmType LOG__traceLevelBefore = (traceLevelBefore); \
       static_assert(TraceLevelOff < LOG__traceLevelBefore, \
          "traceLevelBefore can't be TraceLevelOff or lower for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelBefore <= TraceLevelVerbose, \
          "traceLevelBefore can't be higher than TraceLevelVerbose for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
-      constexpr TraceEbmType LOG__traceLevelAfter = (traceLevelAfter); \
+      const TraceEbmType LOG__traceLevelAfter = (traceLevelAfter); \
       static_assert(TraceLevelOff < LOG__traceLevelAfter, \
          "traceLevelAfter can't be TraceLevelOff or lower for call to LOG_COUNTED_0(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelAfter <= TraceLevelVerbose, \
@@ -105,8 +102,8 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
             TraceEbmType LOG__traceLevelLogging; \
             if(LIKELY(LOG__traceLevel < LOG__traceLevelAfter)) { \
                int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
-               const int LOG__logCount = *LOG__pLogCountDecrement - int { 1 }; \
-               if(LIKELY(LOG__logCount < int { 0 })) { \
+               const int LOG__logCount = *LOG__pLogCountDecrement - 1; \
+               if(LIKELY(LOG__logCount < 0)) { \
                   break; \
                } \
                *LOG__pLogCountDecrement = LOG__logCount; \
@@ -114,20 +111,20 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
             } else { \
                LOG__traceLevelLogging = LOG__traceLevelAfter; \
             }\
-            constexpr static char LOG__originalMessage[] = pLogMessage; \
+            const static char LOG__originalMessage[] = pLogMessage; \
             InteralLogWithoutArguments(LOG__traceLevelLogging, LOG__originalMessage); \
-         } while(false); \
+         } while( (void)0, 0); \
       } \
-   } while(AlwaysFalse())
+   } while( (void)0, 0)
 
 #define LOG_COUNTED_N(pLogCountDecrement, traceLevelBefore, traceLevelAfter, pLogMessage, ...) \
    do { \
-      constexpr TraceEbmType LOG__traceLevelBefore = (traceLevelBefore); \
+      const TraceEbmType LOG__traceLevelBefore = (traceLevelBefore); \
       static_assert(TraceLevelOff < LOG__traceLevelBefore, \
          "traceLevelBefore can't be TraceLevelOff or lower for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelBefore <= TraceLevelVerbose, \
          "traceLevelBefore can't be higher than TraceLevelVerbose for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
-      constexpr TraceEbmType LOG__traceLevelAfter = (traceLevelAfter); \
+      const TraceEbmType LOG__traceLevelAfter = (traceLevelAfter); \
       static_assert(TraceLevelOff < LOG__traceLevelAfter, \
          "traceLevelAfter can't be TraceLevelOff or lower for call to LOG_COUNTED_N(pLogCount, traceLevelBefore, traceLevelAfter, pLogMessage, ...)"); \
       static_assert(LOG__traceLevelAfter <= TraceLevelVerbose, \
@@ -140,8 +137,8 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
             TraceEbmType LOG__traceLevelLogging; \
             if(LIKELY(LOG__traceLevel < LOG__traceLevelAfter)) { \
                int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
-               const int LOG__logCount = *LOG__pLogCountDecrement - int { 1 }; \
-               if(LIKELY(LOG__logCount < int { 0 })) { \
+               const int LOG__logCount = *LOG__pLogCountDecrement - 1; \
+               if(LIKELY(LOG__logCount < 0)) { \
                   break; \
                } \
                *LOG__pLogCountDecrement = LOG__logCount; \
@@ -149,11 +146,11 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
             } else { \
                LOG__traceLevelLogging = LOG__traceLevelAfter; \
             }\
-            constexpr static char LOG__originalMessage[] = pLogMessage; \
+            const static char LOG__originalMessage[] = pLogMessage; \
             InteralLogWithArguments(LOG__traceLevelLogging, LOG__originalMessage, __VA_ARGS__); \
-         } while(false); \
+         } while( (void)0, 0); \
       } \
-   } while(AlwaysFalse())
+   } while( (void)0, 0)
 
 #ifndef NDEBUG
 // the "assert(!  #bCondition)" condition needs some explanation.  At that point we definetly want to assert false, and we also want to include the text
@@ -164,5 +161,9 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
 #else // NDEBUG
 #define EBM_ASSERT(bCondition) ((void)0)
 #endif // NDEBUG
+
+#ifdef __cplusplus
+} // extern "C"
+#endif // __cplusplus
 
 #endif // LOGGING_H

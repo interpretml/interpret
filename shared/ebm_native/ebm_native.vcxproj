@@ -103,7 +103,7 @@
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)bridge_c;$(ProjectDir)bridge_cpp;$(ProjectDir)common_c;$(ProjectDir)common_cpp;$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <StringPooling>true</StringPooling>
@@ -149,7 +149,7 @@ EXIT /B 0
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)bridge_c;$(ProjectDir)bridge_cpp;$(ProjectDir)common_c;$(ProjectDir)common_cpp;$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <OmitFramePointers>false</OmitFramePointers>
@@ -197,7 +197,7 @@ EXIT /B 0
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)bridge_c;$(ProjectDir)bridge_cpp;$(ProjectDir)common_c;$(ProjectDir)common_cpp;$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -248,7 +248,7 @@ EXIT /B 0
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)bridge_c;$(ProjectDir)bridge_cpp;$(ProjectDir)common_c;$(ProjectDir)common_cpp;$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -363,7 +363,12 @@ EXIT /B 0
     <ClCompile Include="Discretize.cpp" />
     <ClCompile Include="special\DllMainEbmNative.cpp" />
     <ClCompile Include="InteractionDetector.cpp" />
-    <ClCompile Include="Logging.cpp" />
+    <ClCompile Include="Logging.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="special\PrecompiledHeader.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

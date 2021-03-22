@@ -14,6 +14,16 @@
 
 constexpr FloatEbmType k_percentageDeviationFromEndpointForInterpretableNumbers = FloatEbmType { 0.25 };
 
+static_assert(FLOAT_EBM_MAX == std::numeric_limits<FloatEbmType>::max(), "FLOAT_EBM_MAX mismatch");
+static_assert(FLOAT_EBM_LOWEST == std::numeric_limits<FloatEbmType>::lowest(), "FLOAT_EBM_LOWEST mismatch");
+static_assert(FLOAT_EBM_MIN == std::numeric_limits<FloatEbmType>::min(), "FLOAT_EBM_MIN mismatch");
+static_assert(FLOAT_EBM_DENORM_MIN == std::numeric_limits<FloatEbmType>::denorm_min(), "FLOAT_EBM_DENORM_MIN mismatch");
+static_assert(FLOAT_EBM_POSITIVE_INF == std::numeric_limits<FloatEbmType>::infinity(), "FLOAT_EBM_POSITIVE_INF mismatch");
+static_assert(FLOAT_EBM_NEGATIVE_INF == -std::numeric_limits<FloatEbmType>::infinity(), "FLOAT_EBM_NEGATIVE_INF mismatch");
+#ifndef __clang__ // compiler type (clang++)
+// clang's static checker seems to dislike this comparison and says it's not an integral comparison, but it is!
+static_assert(FLOAT_EBM_NAN != FLOAT_EBM_NAN, "FLOAT_EBM_NAN mismatch"); // a != a is only true for NaN
+#endif
 
 INLINE_ALWAYS constexpr static size_t CountBase10CharactersAbs(int n) noexcept {
    // this works for negative numbers too

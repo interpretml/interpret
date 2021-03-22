@@ -9,19 +9,22 @@
 #define EBM_NATIVE_H
 
 #include <inttypes.h>
+#include <float.h>
+#include <math.h>
 
 #ifdef __cplusplus
 extern "C" {
-#define EBM_BOOL_CAST(EBM_VAL) (static_cast<BoolEbmType>(EBM_VAL))
-#define EBM_ERROR_CAST(EBM_VAL) (static_cast<ErrorEbmType>(EBM_VAL))
-#define EBM_TRACE_CAST(EBM_VAL) (static_cast<TraceEbmType>(EBM_VAL))
-#define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL) (static_cast<GenerateUpdateOptionsType>(EBM_VAL))
+#define EBM_EXTERN_C  extern "C"
+#define STATIC_CAST(__type, __val)  (static_cast<__type>(__val))
 #else // __cplusplus
-#define EBM_BOOL_CAST(EBM_VAL) ((BoolEbmType)(EBM_VAL))
-#define EBM_ERROR_CAST(EBM_VAL) ((ErrorEbmType)(EBM_VAL))
-#define EBM_TRACE_CAST(EBM_VAL) ((TraceEbmType)(EBM_VAL))
-#define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL) ((GenerateUpdateOptionsType)(EBM_VAL))
+#define EBM_EXTERN_C
+#define STATIC_CAST(__type, __val)  ((__type)(__val))
 #endif // __cplusplus
+
+#define EBM_BOOL_CAST(EBM_VAL)                     (STATIC_CAST(BoolEbmType, (EBM_VAL)))
+#define EBM_ERROR_CAST(EBM_VAL)                    (STATIC_CAST(ErrorEbmType, (EBM_VAL)))
+#define EBM_TRACE_CAST(EBM_VAL)                    (STATIC_CAST(TraceEbmType, (EBM_VAL)))
+#define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL)  (STATIC_CAST(GenerateUpdateOptionsType, (EBM_VAL)))
 
 //#define EXPAND_BINARY_LOGITS
 // TODO: implement REDUCE_MULTICLASS_LOGITS
@@ -40,7 +43,7 @@ extern "C" {
 // ones that we can consume from other languages
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_R
-#define EBM_NATIVE_IMPORT_EXPORT_BODY extern __attribute__ ((visibility ("default")))
+#define EBM_NATIVE_IMPORT_EXPORT_BODY EBM_EXTERN_C __attribute__ ((visibility ("default")))
 #endif // EBM_NATIVE_R
 
 #define EBM_NATIVE_CALLING_CONVENTION
@@ -59,7 +62,7 @@ extern "C" {
 // we use a .def file in Visual Studio because we can remove the C name mangling entirely, 
 // in addition to C++ name mangling, unlike __declspec(dllexport)
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
-#define EBM_NATIVE_IMPORT_EXPORT_BODY extern
+#define EBM_NATIVE_IMPORT_EXPORT_BODY EBM_EXTERN_C
 #else // EBM_NATIVE_EXPORTS
 // __declspec(dllimport) is optional, but having it allows the compiler to make the 
 // resulting code more efficient when imported
@@ -118,6 +121,21 @@ typedef struct _InteractionDetectorHandle {
 // this should really be defined, but some compilers aren't compliant
 #define PRIx64 "llx"
 #endif // PRIx64
+
+// std::numeric_limits<FloatEbmType>::max() -> big positive number
+#define FLOAT_EBM_MAX            DBL_MAX
+// std::numeric_limits<FloatEbmType>::lowest() -> big negative number.  True in IEEE-754, which we require
+#define FLOAT_EBM_LOWEST         (-DBL_MAX)
+// std::numeric_limits<FloatEbmType>::min() -> small positive number
+#define FLOAT_EBM_MIN            DBL_MIN
+// std::numeric_limits<FloatEbmType>::denorm_min() -> small positive number
+#define FLOAT_EBM_DENORM_MIN     DBL_TRUE_MIN
+// std::numeric_limits<FloatEbmType>::infinity()
+#define FLOAT_EBM_POSITIVE_INF   (STATIC_CAST(FloatEbmType, (INFINITY)))
+// -std::numeric_limits<FloatEbmType>::infinity()
+#define FLOAT_EBM_NEGATIVE_INF   (-FLOAT_EBM_POSITIVE_INF)
+// std::numeric_limits<FloatEbmType>::quiet_NaN()
+#define FLOAT_EBM_NAN            (STATIC_CAST(FloatEbmType, (NAN)))
 
 typedef double FloatEbmType;
 // this needs to be in "le" format, since we internally use that format to generate "interpretable" 

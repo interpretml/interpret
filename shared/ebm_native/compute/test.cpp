@@ -7,6 +7,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "zones.h"
+#include "bridge_c.h"
 
 extern "C" void SafeToCallThisOutsideNamespace() {
    return;
@@ -31,7 +32,7 @@ void SafeToMakeThisOutsideNamespaceCpp() {
    return;
 }
 
-}
+} // DEFINED_ZONE_NAME
 
 extern "C" void SafeToMakeThisOutsideNamespaceC() {
    DEFINED_ZONE_NAME::SafeToMakeThisOutsideNamespaceCpp();

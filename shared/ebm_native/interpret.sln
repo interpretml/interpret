@@ -75,7 +75,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bridge_c", "bridge_c", "{76
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bridge_cpp", "bridge_cpp", "{8759780E-5F40-4C4F-A13C-4D6B2F8B2DE7}"
 	ProjectSection(SolutionItems) = preProject
-		bridge_cpp\bridge_cpp.h = bridge_cpp\bridge_cpp.h
+		bridge_cpp\bridge_cpp.hpp = bridge_cpp\bridge_cpp.hpp
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common_c", "common_c", "{1FE2740B-9097-4A56-BB7C-F996DFF427C7}"
@@ -85,7 +85,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common_c", "common_c", "{1F
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common_cpp", "common_cpp", "{F2DD7388-EE85-4C2D-A3A8-15F041DB8DE7}"
 	ProjectSection(SolutionItems) = preProject
-		common_cpp\common_cpp.h = common_cpp\common_cpp.h
+		common_cpp\common_cpp.hpp = common_cpp\common_cpp.hpp
 	EndProjectSection
 EndProject
 Global
