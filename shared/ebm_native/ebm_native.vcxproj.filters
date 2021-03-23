@@ -46,7 +46,7 @@
     <ClCompile Include="special\PrecompiledHeader.cpp">
       <Filter>special</Filter>
     </ClCompile>
-    <ClCompile Include="common_c.c">
+    <ClCompile Include="common_c\common_c.c">
       <Filter>common_c</Filter>
     </ClCompile>
     <ClCompile Include="bridge_c\logging.c">
