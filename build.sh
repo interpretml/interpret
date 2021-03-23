@@ -122,7 +122,8 @@ make_initial_paths_simple() {
 compile_file() {
    local file_unsanitized="$1"
    local intermediate_path_unsanitized="$2"
-   local compile_command="$3"
+   local compiler="$3"
+   local compiler_args_sanitized="$4"
 
    if [ -f "$file_unsanitized" ] ; then
       local file_sanitized=`sanitize "$file_unsanitized"`
@@ -131,7 +132,7 @@ compile_file() {
       local object_full_file_unsanitized="$intermediate_path_unsanitized/$file_body_unsanitized.o"
       local object_full_file_sanitized=`sanitize "$object_full_file_unsanitized"`
       all_object_files_sanitized="$all_object_files_sanitized $object_full_file_sanitized"
-      local compile_specific="$compile_command -c $file_sanitized -o $object_full_file_sanitized 2>&1"
+      local compile_specific="$compiler $compiler_args_sanitized -c $file_sanitized -o $object_full_file_sanitized 2>&1"
       compile_out=`eval $compile_specific`
       # TODO: we might need to sanitize compile_out here!
       local ret_code=$?
@@ -144,35 +145,48 @@ compile_file() {
    fi
 }
 
-compile_directory() {
+compile_directory_c() {
    local src_path_unsanitized="$1"
    local intermediate_path_unsanitized="$2"
-   local compile_command="$3"
+   local compiler="$3"
+   local compiler_args_sanitized="$4"
 
-   # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-   find "$src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
-   if [ $? -eq 0 ]; then 
-      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      done
-   fi
+   # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
    find "$src_path_unsanitized" -maxdepth 1 -type f -name '*.c' 2>/dev/null | grep -q .
    if [ $? -eq 0 ]; then 
+      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
       for file_unsanitized in "$src_path_unsanitized"/*.c ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compiler" "$compiler_args_sanitized"
+      done
+   fi
+}
+
+compile_directory_cpp() {
+   local src_path_unsanitized="$1"
+   local intermediate_path_unsanitized="$2"
+   local compiler="$3"
+   local compiler_args_sanitized="$4"
+
+   # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
+   find "$src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
+   if [ $? -eq 0 ]; then 
+      # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
+      for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
+         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compiler" "$compiler_args_sanitized"
       done
    fi
 }
 
 link_file() {
-   local link_command="$1"
-   local all_object_files_sanitized="$2"
-   local bin_path_unsanitized="$3"
-   local bin_file="$4"
-   local log_file_unsanitized="$5"
+   local linker="$1"
+   local linker_args_sanitized="$2"
+   local all_object_files_sanitized="$3"
+   local bin_path_unsanitized="$4"
+   local bin_file="$5"
+   local log_file_unsanitized="$6"
 
    local bin_path_sanitized=`sanitize "$bin_path_unsanitized"`
-   local compile_specific="$link_command $all_object_files_sanitized -o $bin_path_sanitized/$bin_file 2>&1"
+   local compile_specific="$linker $linker_args_sanitized $all_object_files_sanitized -o $bin_path_sanitized/$bin_file 2>&1"
    compile_out=`eval $compile_specific`
    # TODO: we might need to sanitize compile_out here!
    local ret_code=$?
@@ -202,8 +216,6 @@ copy_bin_files() {
    fi
 }
 
-clang_pp_bin=clang++
-g_pp_bin=g++
 os_type=`uname`
 
 # TODO: this could be improved upon.  There is no perfect solution AFAIK for getting the script directory, and I'm not too sure how the CDPATH thing works
@@ -271,6 +283,8 @@ if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
 
    # try moving some of these clang specific warnings into compile_all if g++ eventually supports them
+   c_compiler=clang
+   cpp_compiler=clang++
    compile_mac="$compile_all -Wnull-dereference -Wgnu-zero-variadic-macro-arguments"
 
    printf "%s\n" "Creating initial directories"
@@ -288,45 +302,48 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $build_64_bit -eq 1 ]; then
       ########################## macOS release|x64
 
-      printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS release|x64"
+      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for macOS release|x64"
       intermediate_path_unsanitized="$root_path_unsanitized/tmp/clang/intermediate/release/mac/x64/ebm_native"
       bin_path_unsanitized="$root_path_unsanitized/tmp/clang/bin/release/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64.dylib"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_mac_x64_build_log.txt"
-      compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3"
+      compile_command="$compile_mac -m64 -DNDEBUG -O3"
       link_command="$compile_command -dynamiclib -install_name @rpath/$bin_file"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## macOS debug|x64
 
-      printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS debug|x64"
+      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for macOS debug|x64"
       intermediate_path_unsanitized="$root_path_unsanitized/tmp/clang/intermediate/debug/mac/x64/ebm_native"
       bin_path_unsanitized="$root_path_unsanitized/tmp/clang/bin/debug/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64_debug.dylib"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_mac_x64_build_log.txt"
-      compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      compile_command="$compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       link_command="$compile_command -dynamiclib -install_name @rpath/$bin_file"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 elif [ "$os_type" = "Linux" ]; then
+
+   c_compiler=gcc
+   cpp_compiler=g++
 
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
    compile_linux="$compile_all"
@@ -348,56 +365,56 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $build_64_bit -eq 1 ]; then
       ########################## Linux release|x64
 
-      printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux release|x64"
+      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for Linux release|x64"
       intermediate_path_unsanitized="$root_path_unsanitized/tmp/gcc/intermediate/release/linux/x64/ebm_native"
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/release/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x64_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -O3"
+      compile_command="$compile_linux -m64 -DNDEBUG -O3"
       link_command="$compile_command"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## Linux debug|x64
 
-      printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux debug|x64"
+      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for Linux debug|x64"
       intermediate_path_unsanitized="$root_path_unsanitized/tmp/gcc/intermediate/debug/linux/x64/ebm_native"
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/debug/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64_debug.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x64_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -m64 -O1"
+      compile_command="$compile_linux -m64 -O1"
       link_command="$compile_command"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 
    if [ $build_32_bit -eq 1 ]; then
       ########################## Linux release|x86
 
-      printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux release|x86"
+      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for Linux release|x86"
       intermediate_path_unsanitized="$root_path_unsanitized/tmp/gcc/intermediate/release/linux/x86/ebm_native"
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/release/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x86_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
+      compile_command="$compile_linux -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
       link_command="$compile_command"
       
       all_object_files_sanitized=""
@@ -435,35 +452,35 @@ elif [ "$os_type" = "Linux" ]; then
          exit $ret_code
       fi
 
-      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## Linux debug|x86
 
-      printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux debug|x86"
+      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for Linux debug|x86"
       intermediate_path_unsanitized="$root_path_unsanitized/tmp/gcc/intermediate/debug/linux/x86/ebm_native"
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/debug/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86_debug.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x86_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -O1"
+      compile_command="$compile_linux -msse2 -mfpmath=sse -m32 -O1"
       link_command="$compile_command"
       
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory "$src_path_unsanitized" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_directory "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$compile_command"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$compile_command"
-      link_file "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 else
-   printf "%s\n" "OS $os_type not recognized.  We support $clang_pp_bin on macOS and $g_pp_bin on Linux"
+   printf "%s\n" "OS $os_type not recognized.  We support clang/clang++ on macOS and gcc/g++ on Linux"
    exit 1
 fi

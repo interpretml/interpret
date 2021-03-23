@@ -73,7 +73,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(T
       // set, and also test that the callback function works at this early stage instead of waiting for a real error
       const TraceEbmType LOG__traceLevel = TraceLevelWarning;
       if(UNLIKELY(LOG__traceLevel <= traceLevel)) {
-         const static char LOG__originalMessage[] = "Native logging trace level set to %s in " COMPILE_MODE;
+         static const char LOG__originalMessage[] = "Native logging trace level set to %s in " COMPILE_MODE;
          InteralLogWithArguments(LOG__traceLevel, LOG__originalMessage, GetTraceLevelString(traceLevel));
       }
    }

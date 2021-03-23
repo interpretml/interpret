@@ -95,16 +95,16 @@ jobs:
     displayName: 'Move binary to staging directory'
   - script: |
       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
-    condition: startsWith(variables['image.name'], 'ubuntu')
+    condition: and(startsWith(variables['image.name'], 'ubuntu'), not(eq(variables['Build.Reason'], 'Schedule')))
     displayName: 'Testing ebm_native code (Linux)'
   - script: |
       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
-    condition: startsWith(variables['image.name'], 'macOS')
+    condition: and(startsWith(variables['image.name'], 'macOS'), not(eq(variables['Build.Reason'], 'Schedule')))
     displayName: 'Testing ebm_native code (Mac)'
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
-    condition: startsWith(variables['image.name'], 'windows')
+    condition: and(startsWith(variables['image.name'], 'windows'), not(eq(variables['Build.Reason'], 'Schedule')))
     displayName: 'Testing ebm_native code (Windows)'
   - task: ComponentGovernanceComponentDetection@0
     displayName: 'Scan dependencies for incompatible licenses and security issues'

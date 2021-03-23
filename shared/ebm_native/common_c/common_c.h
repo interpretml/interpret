@@ -96,8 +96,8 @@ extern "C" {
 #define __has_builtin(x) 0 // __has_builtin is supported in newer compilers.  On older compilers diable anything we would check with it
 #endif // __has_builtin
 
-#define LIKELY(b) __builtin_expect(static_cast<bool>(b), 1)
-#define UNLIKELY(b) __builtin_expect(static_cast<bool>(b), 0)
+#define LIKELY(b) __builtin_expect((b), 1)
+#define UNLIKELY(b) __builtin_expect((b), 0)
 #define PREDICTABLE(b) (b)
 
 #if __has_builtin(__builtin_unpredictable)
