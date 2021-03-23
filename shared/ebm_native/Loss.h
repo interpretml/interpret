@@ -15,7 +15,7 @@
 #include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "compute.hpp"
 
 #include "Config.h"
 #include "Registrable.h"
@@ -185,7 +185,7 @@ class Loss : public Registrable {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
       } else {
-         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax < k_cCompilerOptimizedTargetClassesStart ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart)>::ApplyTraining(this, data);
+         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax2 < k_cCompilerOptimizedTargetClassesStart2 ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart2)>::ApplyTraining(this, data);
       }
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
@@ -194,7 +194,7 @@ class Loss : public Registrable {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
       } else {
-         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax < k_cCompilerOptimizedTargetClassesStart ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart)>::ApplyValidation(this, data);
+         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax2 < k_cCompilerOptimizedTargetClassesStart2 ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart2)>::ApplyValidation(this, data);
       }
    }
    template<typename TLoss, ptrdiff_t cCompilerScores>
@@ -203,14 +203,14 @@ class Loss : public Registrable {
          if(cCompilerScores == data.GetRuntimeLearningTypeOrCountTargetClasses()) {
             return pLoss->BitPackPostApplyTraining<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(data);
          } else {
-            return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyTraining(pLoss, data);
+            return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyTraining(pLoss, data);
          }
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          if(cCompilerScores == data.GetRuntimeLearningTypeOrCountTargetClasses()) {
             return pLoss->BitPackPostApplyValidation<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(data);
          } else {
-            return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyValidation(pLoss, data);
+            return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyValidation(pLoss, data);
          }
       }
    };

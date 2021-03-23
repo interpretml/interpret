@@ -12,8 +12,6 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
-
 #include "EbmException.h"
 #include "Loss.h"
 #include "Registration.h"

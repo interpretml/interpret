@@ -83,10 +83,6 @@ public:
 
    INLINE_ALWAYS void SetBitPack(const ptrdiff_t cItemsPerBitPack) noexcept {
       EBM_ASSERT(k_cItemsPerBitPackDynamic2 != cItemsPerBitPack);
-      EBM_ASSERT(k_cItemsPerBitPackNone == cItemsPerBitPack ||
-         k_cItemsPerBitPackMin2 <= cItemsPerBitPack &&
-         cItemsPerBitPack <= k_cItemsPerBitPackMax2
-      );
       m_cItemsPerBitPack = cItemsPerBitPack;
    }
 

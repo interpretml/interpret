@@ -15,8 +15,6 @@
 #include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"
 
-#include "EbmInternal.h"
-
 #include "EbmException.h"
 #include "Config.h"
 #include "Registrable.h"

@@ -296,6 +296,7 @@ EXIT /B 0
     <ClInclude Include="bridge_c\zones.h" />
     <ClInclude Include="common_cpp\common_cpp.hpp" />
     <ClInclude Include="common_c\common_c.h" />
+    <ClInclude Include="compute.hpp" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="EbmException.h" />
     <ClInclude Include="Loss.h" />

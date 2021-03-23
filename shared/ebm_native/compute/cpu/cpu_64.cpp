@@ -5,8 +5,8 @@
 #include "PrecompiledHeader.h"
 
 #include "ebm_native.h"
-#include "bridge_c.h"
 #include "common_c.h"
+#include "bridge_c.h"
 #include "zones.h"
 
 // we use DEFINED_ZONE_NAME in order to give the contents below separate names to the compiler and

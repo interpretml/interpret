@@ -7,6 +7,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "zones.h"
+#include "common_c.h"
 #include "bridge_c.h"
 
 extern "C" void SafeToCallThisOutsideNamespace() {

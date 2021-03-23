@@ -131,6 +131,7 @@
     <ClInclude Include="bridge_c\logging.h">
       <Filter>bridge_c</Filter>
     </ClInclude>
+    <ClInclude Include="compute.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />
