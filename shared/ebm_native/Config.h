@@ -5,8 +5,16 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "ebm_native.h"
+#include "logging.h"
 #include "bridge_c.h"
-#include "common_c.h" // INLINE_ALWAYS
+#include "common_c.h"
+#include "zones.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 class Config final {
 
@@ -20,5 +28,7 @@ public:
       return m_cOutputs;
    }
 };
+
+} // DEFINED_ZONE_NAME
 
 #endif // CONFIG_H

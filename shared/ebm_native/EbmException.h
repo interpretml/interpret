@@ -8,6 +8,12 @@
 #include <exception>
 
 #include "ebm_native.h"
+#include "zones.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 class EbmException : public std::exception {
    const ErrorEbmType m_error;
@@ -20,5 +26,7 @@ public:
       return m_error;
    }
 };
+
+} // DEFINED_ZONE_NAME
 
 #endif // EBM_EXCEPTION_H

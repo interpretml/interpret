@@ -9,8 +9,15 @@
 #include <string.h> // strchr, memmove
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-#include "logging.h" // EBM_ASSERT & LOG
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 constexpr FloatEbmType k_percentageDeviationFromEndpointForInterpretableNumbers = FloatEbmType { 0.25 };
 
@@ -1050,3 +1057,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBou
    *lowGraphBoundOut = lowGraphBound;
    *highGraphBoundOut = highGraphBound;
 }
+
+} // DEFINED_ZONE_NAME

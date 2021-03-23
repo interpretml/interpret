@@ -15,6 +15,12 @@
 
 #include "ebm_native.h"
 #include "common_c.h"
+#include "zones.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 // !!! VERY IMPORTANT !!!
 // this file is incluable into separately compiled zones WITHOUT being put into an anonymous namespace
@@ -420,5 +426,7 @@ INLINE_ALWAYS static T * EbmMalloc(const size_t cItems, const size_t cBytesPerIt
 constexpr static bool k_bUseSIMD = false;
 
 //#define ZERO_FIRST_MULTICLASS_LOGIT
+
+} // DEFINED_ZONE_NAME
 
 #endif // EBM_INTERNAL_H

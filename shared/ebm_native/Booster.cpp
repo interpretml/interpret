@@ -9,9 +9,11 @@
 #include <limits> // numeric_limits
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-// very independent includes
-#include "logging.h" // EBM_ASSERT & LOG
+
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
 #include "Loss.h"
@@ -27,6 +29,11 @@
 #include "TreeSweep.h"
 
 #include "Booster.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 extern bool InitializeGradients(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -1036,3 +1043,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 
    LOG_0(TraceLevelInfo, "Exited FreeBooster");
 }
+
+} // DEFINED_ZONE_NAME

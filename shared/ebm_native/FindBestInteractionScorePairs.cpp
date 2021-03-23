@@ -6,9 +6,12 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "EbmStats.h"
 
 #include "FeatureAtomic.h"
@@ -20,6 +23,11 @@
 #include "InteractionDetector.h"
 
 #include "TensorTotalsSum.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 class FindBestInteractionScorePairsInternal final {
@@ -345,3 +353,4 @@ extern FloatEbmType FindBestInteractionScorePairs(
    }
 }
 
+} // DEFINED_ZONE_NAME

@@ -7,9 +7,16 @@
 
 #include <type_traits> // std::is_standard_layout
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<bool bClassification>
 struct HistogramTargetEntry;
@@ -149,5 +156,6 @@ static_assert(std::is_trivial<HistogramTargetEntry<false>>::value,
 static_assert(std::is_pod<HistogramTargetEntry<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
+} // DEFINED_ZONE_NAME
 
 #endif // HISTOGRAM_TARGET_ENTRY_H

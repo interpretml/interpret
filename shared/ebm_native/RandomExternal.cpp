@@ -4,9 +4,18 @@
 
 #include "PrecompiledHeader.h"
 
-#include "ebm_native.h" // IntEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "RandomStream.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 EBM_NATIVE_IMPORT_EXPORT_BODY SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
    SeedEbmType randomSeed,
@@ -108,3 +117,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
       "Exited SampleWithoutReplacement"
    );
 }
+
+} // DEFINED_ZONE_NAME

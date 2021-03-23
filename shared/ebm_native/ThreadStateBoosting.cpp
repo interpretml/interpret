@@ -7,8 +7,11 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
 
 #include "SegmentedTensor.h"
 
@@ -17,6 +20,11 @@
 #include "Booster.h"
 
 #include "ThreadStateBoosting.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting) {
    LOG_0(TraceLevelInfo, "Entered ThreadStateBoosting::Free");
@@ -164,3 +172,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeThreadState
 
    LOG_0(TraceLevelInfo, "Exited FreeThreadStateBoosting");
 }
+
+} // DEFINED_ZONE_NAME

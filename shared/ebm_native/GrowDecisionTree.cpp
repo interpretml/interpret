@@ -10,9 +10,12 @@
 #include <vector>
 #include <queue>
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "SegmentedTensor.h"
 #include "EbmStats.h"
 #include "ThreadStateBoosting.h"
@@ -25,6 +28,11 @@
 
 #include "TreeNode.h"
 #include "TreeSweep.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this 
 //   recursive function to handle that
@@ -889,3 +897,5 @@ extern bool GrowDecisionTree(
 
    return bRet;
 }
+
+} // DEFINED_ZONE_NAME

@@ -12,8 +12,15 @@
 #include <cmath> // std::exp, std::log
 
 #include "ebm_native.h"
-#include "EbmInternal.h"
 #include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 // TODO: try out floats throughout our program instead of doubles.  It'll be important when we move to GPUs and SIMD
 // TODO: do more extensive checks for of AUC and calibration using the benchmark system
@@ -789,5 +796,7 @@ INLINE_ALWAYS T LogForLogLoss(const T val) {
    return ret;
 #endif // FAST_LOG
 }
+
+} // DEFINED_ZONE_NAME
 
 #endif // APPROXIMATE_MATH_H

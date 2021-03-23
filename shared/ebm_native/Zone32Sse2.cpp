@@ -4,6 +4,8 @@
 
 #include "PrecompiledHeader.h"
 
+#ifdef NEVER
+
 // BEFORE we do anything with out include files, ensure we have the correct SIMD compilation flags set
 
 // TODO: un-disable this file
@@ -139,3 +141,5 @@ extern const std::vector<std::shared_ptr<const Registration>> RegisterLosses32Ss
 //}
 
 #endif // DISABLE_THIS_FILE
+
+#endif // NEVER

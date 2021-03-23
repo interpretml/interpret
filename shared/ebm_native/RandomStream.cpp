@@ -4,9 +4,18 @@
 
 #include "PrecompiledHeader.h"
 
-#include "ebm_native.h" // IntEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "RandomStream.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 // I generated these as purely random numbers from 0 to 2^64-1
 static const uint_fast64_t k_oneTimePadRandomSeed[64] {
@@ -156,3 +165,5 @@ exit_loop:;
    m_state2 = sanitizedSeed;
    m_stateSeedConst = sanitizedSeed;
 }
+
+} // DEFINED_ZONE_NAME

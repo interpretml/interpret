@@ -10,9 +10,11 @@
 #include <limits> // numeric_limits
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-// very independent includes
-#include "logging.h" // EBM_ASSERT & LOG
+
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
 // feature includes
@@ -23,6 +25,11 @@
 #include "DataFrameBoosting.h"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingSet.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 class Booster final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
@@ -169,5 +176,7 @@ static_assert(std::is_trivial<Booster>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<Booster>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+} // DEFINED_ZONE_NAME
 
 #endif // BOOSTER_H

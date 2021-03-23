@@ -7,9 +7,11 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-// very independent includes
-#include "logging.h" // EBM_ASSERT & LOG
+
 #include "ApproximateMath.h"
 #include "EbmStats.h"
 // FeatureGroup.h depends on FeatureInternal.h
@@ -19,6 +21,11 @@
 
 #include "Booster.h"
 #include "ThreadStateBoosting.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
@@ -741,3 +748,5 @@ extern void ApplyModelUpdateTraining(
 
    LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateTraining");
 }
+
+} // DEFINED_ZONE_NAME

@@ -320,7 +320,7 @@ if [ "$os_type" = "Darwin" ]; then
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
       compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
@@ -342,7 +342,7 @@ if [ "$os_type" = "Darwin" ]; then
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
       compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
@@ -386,7 +386,7 @@ elif [ "$os_type" = "Linux" ]; then
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
       compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
@@ -409,7 +409,7 @@ elif [ "$os_type" = "Linux" ]; then
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
       compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
@@ -465,7 +465,7 @@ elif [ "$os_type" = "Linux" ]; then
          exit $ret_code
       fi
 
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
       compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
@@ -488,7 +488,7 @@ elif [ "$os_type" = "Linux" ]; then
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
       compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"

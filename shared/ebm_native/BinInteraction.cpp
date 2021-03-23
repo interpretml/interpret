@@ -6,9 +6,11 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
 
 #include "EbmStats.h"
 
@@ -20,6 +22,11 @@
 
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
 class BinInteractionInternal final {
@@ -319,3 +326,5 @@ extern void BinInteraction(
       );
    }
 }
+
+} // DEFINED_ZONE_NAME

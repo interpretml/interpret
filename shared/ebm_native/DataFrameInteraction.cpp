@@ -7,11 +7,19 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FloatEbmType
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-#include "logging.h" // EBM_ASSERT & LOG
+
 #include "FeatureAtomic.h"
 #include "DataFrameInteraction.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 extern bool InitializeGradients(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -244,3 +252,5 @@ exit_error:;
    LOG_0(TraceLevelWarning, "WARNING Exited DataFrameInteraction::Initialize");
    return true;
 }
+
+} // DEFINED_ZONE_NAME

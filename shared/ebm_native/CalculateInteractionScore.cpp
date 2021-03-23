@@ -8,8 +8,11 @@
 #include <limits> // numeric_limits
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-#include "logging.h" // EBM_ASSERT & LOG
+
 // feature includes
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
@@ -20,6 +23,11 @@
 #include "InteractionDetector.h"
 
 #include "TensorTotalsSum.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 extern void BinInteraction(
    InteractionDetector * const pInteractionDetector,
@@ -445,3 +453,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    }
    return ret;
 }
+
+} // DEFINED_ZONE_NAME

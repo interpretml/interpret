@@ -9,9 +9,11 @@
 #include <limits> // numeric_limits
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-// very independent includes
-#include "logging.h" // EBM_ASSERT & LOG
+
 #include "SegmentedTensor.h"
 #include "EbmStats.h"
 // feature includes
@@ -29,6 +31,11 @@
 #include "ThreadStateBoosting.h"
 
 #include "TensorTotalsSum.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 extern void BinBoosting(
    ThreadStateBoosting * const pThreadStateBoosting,
@@ -1063,3 +1070,4 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
    return ret;
 }
 
+} // DEFINED_ZONE_NAME

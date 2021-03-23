@@ -8,10 +8,19 @@
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "EbmStats.h"
 #include "HistogramBucket.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<bool bClassification>
 struct TreeNode;
@@ -483,5 +492,7 @@ template<bool bClassification>
 INLINE_ALWAYS const TreeNode<bClassification> * GetRightTreeNodeChild(const TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
    return AddBytesTreeNode<bClassification>(pTreeNodeChildren, cBytesTreeNode);
 }
+
+} // DEFINED_ZONE_NAME
 
 #endif // TREE_NODE_H

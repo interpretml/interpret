@@ -5,6 +5,13 @@
 #ifndef REGISTRABLE_H
 #define REGISTRABLE_H
 
+#include "zones.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
+
 class Registrable {
 
 protected:
@@ -14,5 +21,7 @@ protected:
 public:
    virtual ~Registrable() = default;
 };
+
+} // DEFINED_ZONE_NAME
 
 #endif // REGISTRABLE_H

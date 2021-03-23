@@ -7,16 +7,21 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
 
 #include "EbmInternal.h"
-// very independent includes
-#include "logging.h" // EBM_ASSERT & LOG
 
 // FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
 
 #include "Booster.h"
 #include "ThreadStateBoosting.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 extern void ApplyModelUpdateTraining(
    ThreadStateBoosting * const pThreadStateBoosting,
@@ -516,3 +521,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
 
    return IntEbmType { 0 };
 }
+
+} // DEFINED_ZONE_NAME

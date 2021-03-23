@@ -8,15 +8,21 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-// very independent includes
-#include "logging.h" // EBM_ASSERT & LOG
 
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
 
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 extern void TensorTotalsBuild(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -339,5 +345,7 @@ void TensorTotalsSum(
    }
 #endif // NDEBUG
 }
+
+} // DEFINED_ZONE_NAME
 
 #endif // TENSOR_TOTALS_SUM_H

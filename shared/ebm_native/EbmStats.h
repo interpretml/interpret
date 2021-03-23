@@ -8,9 +8,18 @@
 #include <cmath> // log, exp, etc
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "ApproximateMath.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 // TODO: rename FloatEbmType to DecimalDataType (or something else that doesn't imply specifically float32)
 // TODO: before applying a model update for classification, check to see that the probability implied by the 
@@ -959,5 +968,7 @@ public:
       // gradient can be anything from 0 to +infinity, or NaN
    }
 };
+
+} // DEFINED_ZONE_NAME
 
 #endif // EBM_STATS_H

@@ -6,10 +6,19 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 FeatureGroup * FeatureGroup::Allocate(const size_t cFeatures, const size_t iFeatureGroup) noexcept {
    const size_t cBytes = GetFeatureGroupCountBytes(cFeatures);
@@ -51,3 +60,4 @@ void FeatureGroup::FreeFeatureGroups(const size_t cFeatureGroups, FeatureGroup *
    LOG_0(TraceLevelInfo, "Exited FeatureGroup::FreeFeatureGroups");
 }
 
+} // DEFINED_ZONE_NAME

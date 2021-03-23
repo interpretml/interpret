@@ -10,12 +10,21 @@
 #include <functional>
 #include <memory>
 
-#include "bridge_c.h"
+#include "ebm_native.h"
+#include "logging.h"
 #include "common_c.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "EbmException.h"
 #include "Config.h"
 #include "Registrable.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 class SkipRegistrationException final : public std::exception {
    // we don't derrive from EbmException since this exception isn't meant to percolate up past the C interface
@@ -336,5 +345,7 @@ std::shared_ptr<const Registration> Register(const char * const sRegistrationNam
    // ideally we'd be returning unique_ptr here, but we pass this to an initialization list which doesn't work in C++11
    return std::make_shared<const RegistrationPack<TRegistrable, TFloat, Args...>>(sRegistrationName, args...);
 }
+
+} // DEFINED_ZONE_NAME
 
 #endif // REGISTRATION_H

@@ -9,12 +9,19 @@
 #include <vector>
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-#include "logging.h" // EBM_ASSERT & LOG
 
 #include "EbmException.h"
 #include "Loss.h"
 #include "Registration.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 
 //TODO: these need to be extern "C" style and located in a separate "zone"
@@ -91,3 +98,5 @@ FloatEbmType Loss::GetUpdateMultiple() const {
 bool Loss::IsSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies() const {
    return false;
 }
+
+} // DEFINED_ZONE_NAME

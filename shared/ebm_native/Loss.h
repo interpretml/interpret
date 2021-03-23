@@ -10,14 +10,21 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <memory> // shared_ptr, unique_ptr
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-
-#include "bridge_c.h"
+#include "ebm_native.h"
+#include "logging.h"
 #include "common_c.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "Config.h"
 #include "Registrable.h"
 #include "Registration.h" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 class LossSingletask;
 class LossBinary;
@@ -583,5 +590,7 @@ protected:
       ErrorEbmType ApplyValidation(ApplyValidationData & data) const override { \
          return Loss::LossApplyValidation<typename std::remove_pointer<decltype(this)>::type>(data); \
       }
+
+} // DEFINED_ZONE_NAME
 
 #endif // LOSS_H

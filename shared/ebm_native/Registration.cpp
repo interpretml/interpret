@@ -8,14 +8,23 @@
 #include <vector>
 #include <algorithm>
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "FeatureGroup.h"
 #include "ThreadStateBoosting.h"
 
 #include "Config.h"
 #include "Registrable.h"
 #include "Registration.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 static bool CheckForIllegalCharacters(const char * s) noexcept {
    if(nullptr != s) {
@@ -188,3 +197,5 @@ const char * Registration::CheckRegistrationName(
    EBM_ASSERT(sRegistration <= sRegistrationEnd);
    return sRegistration;
 }
+
+} // DEFINED_ZONE_NAME

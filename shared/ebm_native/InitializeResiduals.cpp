@@ -9,8 +9,17 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "EbmStats.h"
-#include "logging.h" // EBM_ASSERT & LOG
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
@@ -256,3 +265,5 @@ extern bool InitializeGradients(
       );
    }
 }
+
+} // DEFINED_ZONE_NAME

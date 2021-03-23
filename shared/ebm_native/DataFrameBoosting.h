@@ -8,10 +8,18 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "FeatureGroup.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 class DataFrameBoosting final {
    FloatEbmType * m_aGradientsAndHessians;
@@ -89,5 +97,7 @@ static_assert(std::is_trivial<DataFrameBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<DataFrameBoosting>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+} // DEFINED_ZONE_NAME
 
 #endif // DATA_FRAME_BOOSTING_H

@@ -10,9 +10,12 @@
 #include <cmath> // abs
 #include <string.h> // memcpy
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "HistogramTargetEntry.h"
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
@@ -22,6 +25,11 @@
 
 #include "Booster.h"
 #include "InteractionDetector.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<bool bClassification>
 struct HistogramBucket;
@@ -251,5 +259,7 @@ INLINE_ALWAYS const HistogramBucketBase * GetHistogramBucketByIndex(
 #define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerHistogramBucket, MACRO_pHistogramBucket, MACRO_aHistogramBucketsEnd) \
    (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pHistogramBucket) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= \
       reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
+
+} // DEFINED_ZONE_NAME
 
 #endif // HISTOGRAM_BUCKET_H

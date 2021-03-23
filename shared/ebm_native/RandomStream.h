@@ -8,9 +8,16 @@
 #include <inttypes.h> // uint32_t, uint_fast64_t
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // IntEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
+#include "ebm_native.h"
 #include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 // We expose our random number generator, so to ensure that we get
 // different random number streams from what our caller will get, we want to mix in these values
@@ -191,5 +198,7 @@ static_assert(std::is_trivial<RandomStream>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<RandomStream>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+} // DEFINED_ZONE_NAME
 
 #endif // RANDOM_STREAM_H
