@@ -12,7 +12,7 @@
 
 #include "ebm_native.h"
 #include "EbmInternal.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
    IntEbmType countTargetClasses,

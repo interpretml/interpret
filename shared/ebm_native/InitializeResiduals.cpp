@@ -10,7 +10,7 @@
 
 #include "ebm_native.h"
 #include "EbmStats.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification

@@ -10,7 +10,7 @@
 
 #include "ebm_native.h"
 #include "EbmInternal.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 
 constexpr FloatEbmType k_percentageDeviationFromEndpointForInterpretableNumbers = FloatEbmType { 0.25 };
 

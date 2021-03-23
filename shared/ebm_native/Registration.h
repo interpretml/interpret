@@ -12,7 +12,7 @@
 
 #include "bridge_c.h"
 #include "common_c.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 #include "EbmException.h"
 #include "Config.h"
 #include "Registrable.h"

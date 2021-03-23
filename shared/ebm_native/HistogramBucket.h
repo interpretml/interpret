@@ -12,7 +12,7 @@
 
 #include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 #include "HistogramTargetEntry.h"
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"

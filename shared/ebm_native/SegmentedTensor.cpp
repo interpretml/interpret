@@ -10,7 +10,7 @@
 #include <string.h> // memcpy
 
 #include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 
 #include "SegmentedTensor.h"
 

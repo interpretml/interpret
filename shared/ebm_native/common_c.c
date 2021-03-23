@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #include "common_c.h"
-#include "Logging.h"
+#include "logging.h"
 
 INTERNAL_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION SkipWhitespace(const char * s) {
    char oneChar = *s;

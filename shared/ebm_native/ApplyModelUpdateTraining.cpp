@@ -9,7 +9,7 @@
 #include "ebm_native.h"
 #include "EbmInternal.h"
 // very independent includes
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 #include "ApproximateMath.h"
 #include "EbmStats.h"
 // FeatureGroup.h depends on FeatureInternal.h

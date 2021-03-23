@@ -11,7 +11,7 @@
 #include "ebm_native.h" // FloatEbmType
 #include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_INCLUDE 
 #include "common_c.h"
-#include "Logging.h"
+#include "logging.h"
 
 const char g_trueString[] = "true";
 const char g_falseString[] = "false";

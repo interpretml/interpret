@@ -14,7 +14,7 @@
 
 #include "bridge_c.h"
 #include "common_c.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 #include "Config.h"
 #include "Registrable.h"
 #include "Registration.h" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!

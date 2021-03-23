@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 #include "ApproximateMath.h"
 
 // TODO: rename FloatEbmType to DecimalDataType (or something else that doesn't imply specifically float32)

@@ -10,7 +10,7 @@
 
 #include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
 

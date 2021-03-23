@@ -10,7 +10,7 @@
 
 #include "ebm_native.h" // IntEbmType
 #include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h"
+#include "logging.h"
 
 // We expose our random number generator, so to ensure that we get
 // different random number streams from what our caller will get, we want to mix in these values

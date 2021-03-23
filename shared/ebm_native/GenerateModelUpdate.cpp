@@ -11,7 +11,7 @@
 #include "ebm_native.h"
 #include "EbmInternal.h"
 // very independent includes
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
 #include "EbmStats.h"
 // feature includes

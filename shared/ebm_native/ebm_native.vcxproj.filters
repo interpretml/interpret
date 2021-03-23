@@ -128,7 +128,7 @@
     <ClInclude Include="common_cpp\common_cpp.hpp">
       <Filter>common_cpp</Filter>
     </ClInclude>
-    <ClInclude Include="bridge_c\logging2.h">
+    <ClInclude Include="bridge_c\logging.h">
       <Filter>bridge_c</Filter>
     </ClInclude>
   </ItemGroup>

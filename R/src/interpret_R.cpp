@@ -9,7 +9,7 @@
 
 #include "ebm_native.h"
 #include "EbmInternal.h"
-#include "Logging.h"
+#include "logging.h"
 #include "Booster.h"
 #include "InteractionDetector.h"
 

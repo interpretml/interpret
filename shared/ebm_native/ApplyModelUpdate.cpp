@@ -10,7 +10,7 @@
 
 #include "EbmInternal.h"
 // very independent includes
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 
 // FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"

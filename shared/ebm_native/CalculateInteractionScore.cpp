@@ -9,7 +9,7 @@
 
 #include "ebm_native.h"
 #include "EbmInternal.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 // feature includes
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"

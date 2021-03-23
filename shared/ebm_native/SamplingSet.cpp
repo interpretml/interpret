@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // INLINE_ALWAYS & UNLIKLEY
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h" // our header didn't need the full definition, but we use the RandomStream in here, so we need it
 #include "DataFrameBoosting.h"
 #include "SamplingSet.h"
