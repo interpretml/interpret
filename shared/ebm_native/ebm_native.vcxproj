@@ -103,7 +103,7 @@
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)bridge_c;$(ProjectDir)bridge_cpp;$(ProjectDir)common_c;$(ProjectDir)common_cpp;$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <StringPooling>true</StringPooling>
@@ -149,7 +149,7 @@ EXIT /B 0
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)bridge_c;$(ProjectDir)bridge_cpp;$(ProjectDir)common_c;$(ProjectDir)common_cpp;$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <OmitFramePointers>false</OmitFramePointers>
@@ -197,7 +197,7 @@ EXIT /B 0
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)bridge_c;$(ProjectDir)bridge_cpp;$(ProjectDir)common_c;$(ProjectDir)common_cpp;$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -248,7 +248,7 @@ EXIT /B 0
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)bridge_c;$(ProjectDir)bridge_cpp;$(ProjectDir)common_c;$(ProjectDir)common_cpp;$(ProjectDir)inc;$(ProjectDir)zone_separate\metrics;$(ProjectDir)zone_separate\loss_functions</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -297,22 +297,6 @@ EXIT /B 0
     <ClInclude Include="common_cpp\common_cpp.hpp" />
     <ClInclude Include="common_c\common_c.h" />
     <ClInclude Include="compute.hpp" />
-    <ClInclude Include="Config.h" />
-    <ClInclude Include="EbmException.h" />
-    <ClInclude Include="Loss.h" />
-    <ClInclude Include="LossRegistrations.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossBinaryCrossEntropy.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossBinaryLogLoss.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossMulticlassCrossEntropy.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossMulticlassLogLoss.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossMultitaskBinaryLogLoss.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossMultitaskMulticlassCrossEntropy.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossMultitaskRegressionMse.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossRegressionMse.h" />
-    <ClInclude Include="zone_separate\loss_functions\LossRegressionPseudoHuber.h" />
-    <ClInclude Include="zone_separate\metrics\MetricAuc.h" />
-    <ClInclude Include="Registration.h" />
-    <ClInclude Include="Registrable.h" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />
@@ -356,8 +340,6 @@ EXIT /B 0
     <ClCompile Include="GenerateQuantileCuts.cpp" />
     <ClCompile Include="GenerateUniformCuts.cpp" />
     <ClCompile Include="GenerateWinsorizedCuts.cpp" />
-    <ClCompile Include="Loss.cpp" />
-    <ClCompile Include="Registration.cpp" />
     <ClCompile Include="Zone64None.cpp" />
     <ClCompile Include="Zone32Sse2.cpp" />
     <ClCompile Include="ThreadStateBoosting.cpp" />

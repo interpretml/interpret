@@ -109,7 +109,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\loss_functions;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -144,7 +144,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\loss_functions;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -178,7 +178,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\loss_functions;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -213,7 +213,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\loss_functions;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
