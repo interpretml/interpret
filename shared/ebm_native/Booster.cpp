@@ -16,7 +16,6 @@
 
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
-#include "Loss.h"
 #include "EbmStats.h"
 // feature includes
 #include "FeatureAtomic.h"

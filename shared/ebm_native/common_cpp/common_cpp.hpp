@@ -5,6 +5,9 @@
 #ifndef COMMON_CPP_HPP
 #define COMMON_CPP_HPP
 
+#include <limits> // numeric_limits
+#include <type_traits> // std::is_standard_layout, std::is_integral
+
 #include "ebm_native.h"
 #include "logging.h"
 #include "common_c.h"

@@ -7,6 +7,7 @@
 
 #include "ebm_native.h"
 #include "logging.h"
+#include "common_c.h"
 #include "zones.h"
 
 namespace DEFINED_ZONE_NAME {

@@ -10,8 +10,6 @@
     <ClCompile Include="GenerateQuantileCuts.cpp" />
     <ClCompile Include="GenerateUniformCuts.cpp" />
     <ClCompile Include="GenerateWinsorizedCuts.cpp" />
-    <ClCompile Include="Loss.cpp" />
-    <ClCompile Include="Registration.cpp" />
     <ClCompile Include="ThreadStateBoosting.cpp" />
     <ClCompile Include="ThreadStateInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
@@ -36,7 +34,6 @@
     <ClCompile Include="SamplingSet.cpp" />
     <ClCompile Include="Booster.cpp" />
     <ClCompile Include="Zone32Sse2.cpp" />
-    <ClCompile Include="Zone64None.cpp" />
     <ClCompile Include="special\wrap_func.cpp">
       <Filter>special</Filter>
     </ClCompile>
@@ -55,10 +52,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ApproximateMath.h" />
-    <ClInclude Include="Config.h" />
-    <ClInclude Include="Loss.h" />
-    <ClInclude Include="Registration.h" />
-    <ClInclude Include="Registrable.h" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />
@@ -81,8 +74,6 @@
     <ClInclude Include="inc\ebm_native.h">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="LossRegistrations.h" />
-    <ClInclude Include="EbmException.h" />
     <ClInclude Include="bridge_c\bridge_c.h">
       <Filter>bridge_c</Filter>
     </ClInclude>
@@ -101,7 +92,6 @@
     <ClInclude Include="bridge_c\logging.h">
       <Filter>bridge_c</Filter>
     </ClInclude>
-    <ClInclude Include="compute.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />

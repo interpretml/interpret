@@ -103,7 +103,7 @@
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <StringPooling>true</StringPooling>
@@ -149,7 +149,7 @@ EXIT /B 0
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <OmitFramePointers>false</OmitFramePointers>
@@ -197,7 +197,7 @@ EXIT /B 0
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -248,7 +248,7 @@ EXIT /B 0
       <PreprocessorDefinitions>MAIN_ZONE;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -296,7 +296,6 @@ EXIT /B 0
     <ClInclude Include="bridge_c\zones.h" />
     <ClInclude Include="common_cpp\common_cpp.hpp" />
     <ClInclude Include="common_c\common_c.h" />
-    <ClInclude Include="compute.hpp" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />
@@ -340,7 +339,6 @@ EXIT /B 0
     <ClCompile Include="GenerateQuantileCuts.cpp" />
     <ClCompile Include="GenerateUniformCuts.cpp" />
     <ClCompile Include="GenerateWinsorizedCuts.cpp" />
-    <ClCompile Include="Zone64None.cpp" />
     <ClCompile Include="Zone32Sse2.cpp" />
     <ClCompile Include="ThreadStateBoosting.cpp" />
     <ClCompile Include="ThreadStateInteraction.cpp" />

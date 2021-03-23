@@ -120,10 +120,10 @@ make_initial_paths_simple() {
 }
 
 compile_file() {
-   local file_unsanitized="$1"
-   local intermediate_path_unsanitized="$2"
-   local compiler="$3"
-   local compiler_args_sanitized="$4"
+   local compiler="$1"
+   local compiler_args_sanitized="$2"
+   local file_unsanitized="$3"
+   local intermediate_path_unsanitized="$4"
 
    if [ -f "$file_unsanitized" ] ; then
       local file_sanitized=`sanitize "$file_unsanitized"`
@@ -146,33 +146,33 @@ compile_file() {
 }
 
 compile_directory_c() {
-   local src_path_unsanitized="$1"
-   local intermediate_path_unsanitized="$2"
-   local compiler="$3"
-   local compiler_args_sanitized="$4"
+   local compiler="$1"
+   local compiler_args_sanitized="$2"
+   local src_path_unsanitized="$3"
+   local intermediate_path_unsanitized="$4"
 
    # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
    find "$src_path_unsanitized" -maxdepth 1 -type f -name '*.c' 2>/dev/null | grep -q .
    if [ $? -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
       for file_unsanitized in "$src_path_unsanitized"/*.c ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compiler" "$compiler_args_sanitized"
+         compile_file "$compiler" "$compiler_args_sanitized" "$file_unsanitized" "$intermediate_path_unsanitized"
       done
    fi
 }
 
 compile_directory_cpp() {
-   local src_path_unsanitized="$1"
-   local intermediate_path_unsanitized="$2"
-   local compiler="$3"
-   local compiler_args_sanitized="$4"
+   local compiler="$1"
+   local compiler_args_sanitized="$2"
+   local src_path_unsanitized="$3"
+   local intermediate_path_unsanitized="$4"
 
    # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
    find "$src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
    if [ $? -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
       for file_unsanitized in "$src_path_unsanitized"/*.cpp ; do
-         compile_file "$file_unsanitized" "$intermediate_path_unsanitized" "$compiler" "$compiler_args_sanitized"
+         compile_file "$compiler" "$compiler_args_sanitized" "$file_unsanitized" "$intermediate_path_unsanitized"
       done
    fi
 }
@@ -314,16 +314,16 @@ if [ "$os_type" = "Darwin" ]; then
       both_args_extra="-m64 -DNDEBUG -O3"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
-      link_command="$cpp_args_specific -dynamiclib -install_name @rpath/$bin_file"
+      link_args_specific="$cpp_args_specific -dynamiclib -install_name @rpath/$bin_file"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE" "$src_path_unsanitized" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized"
+      link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## macOS debug|x64
@@ -336,16 +336,16 @@ if [ "$os_type" = "Darwin" ]; then
       both_args_extra="-m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
-      link_command="$cpp_args_specific -dynamiclib -install_name @rpath/$bin_file"
+      link_args_specific="$cpp_args_specific -dynamiclib -install_name @rpath/$bin_file"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE" "$src_path_unsanitized" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized"
+      link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 elif [ "$os_type" = "Linux" ]; then
@@ -380,17 +380,17 @@ elif [ "$os_type" = "Linux" ]; then
       both_args_extra="-m64 -DNDEBUG -O3"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
-      link_command="$cpp_args_specific"
+      link_args_specific="$cpp_args_specific"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
-      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE" "$src_path_unsanitized" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized"
+      link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## Linux debug|x64
@@ -403,17 +403,17 @@ elif [ "$os_type" = "Linux" ]; then
       both_args_extra="-m64 -O1"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
-      link_command="$cpp_args_specific"
+      link_args_specific="$cpp_args_specific"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
-      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE" "$src_path_unsanitized" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized"
+      link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 
@@ -428,7 +428,7 @@ elif [ "$os_type" = "Linux" ]; then
       both_args_extra="-msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
-      link_command="$cpp_args_specific"
+      link_args_specific="$cpp_args_specific"
       
       all_object_files_sanitized=""
       compile_out_full=""
@@ -465,11 +465,11 @@ elif [ "$os_type" = "Linux" ]; then
          exit $ret_code
       fi
 
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
-      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE" "$src_path_unsanitized" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized"
+      link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
       ########################## Linux debug|x86
@@ -482,17 +482,17 @@ elif [ "$os_type" = "Linux" ]; then
       both_args_extra="-msse2 -mfpmath=sse -m32 -O1"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
-      link_command="$cpp_args_specific"
+      link_args_specific="$cpp_args_specific"
       
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
-      link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific -DMAIN_ZONE" "$src_path_unsanitized" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized"
+      link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
 else

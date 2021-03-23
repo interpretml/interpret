@@ -37,10 +37,10 @@
 #include "EbmInternal.h"
 // very independent includes
 #include "logging.h" // EBM_ASSERT & LOG
-#include "Registration.h"
+#include "Registration.hpp"
 
-#include "Registrable.h"
-#include "Loss.h"
+#include "Registrable.hpp"
+#include "Loss.hpp"
 
 // helpful SSE info: https://software.intel.com/sites/landingpage/IntrinsicsGuide/
 
@@ -120,7 +120,7 @@ static INLINE_ALWAYS std::shared_ptr<const Registration> RegisterLoss(const char
 }
 
 // now include all our special loss registrations which will use the RegisterLoss function we defined above!
-#include "LossRegistrations.h"
+#include "loss_registrations.hpp"
 
 extern const std::vector<std::shared_ptr<const Registration>> RegisterLosses32Sse2() {
    return RegisterLosses();

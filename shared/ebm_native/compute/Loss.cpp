@@ -12,9 +12,9 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmException.h"
-#include "Loss.h"
-#include "Registration.h"
+#include "EbmException.hpp"
+#include "Loss.hpp"
+#include "Registration.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

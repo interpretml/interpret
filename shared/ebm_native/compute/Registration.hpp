@@ -15,9 +15,9 @@
 #include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"
 
-#include "EbmException.h"
-#include "Config.h"
-#include "Registrable.h"
+#include "EbmException.hpp"
+#include "Config.hpp"
+#include "Registrable.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

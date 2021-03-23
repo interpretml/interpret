@@ -17,9 +17,9 @@
 
 #include "compute.hpp"
 
-#include "Config.h"
-#include "Registrable.h"
-#include "Registration.h" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!
+#include "Config.hpp"
+#include "Registrable.hpp"
+#include "Registration.hpp" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

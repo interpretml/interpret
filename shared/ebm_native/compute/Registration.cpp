@@ -12,14 +12,9 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
-
-#include "FeatureGroup.h"
-#include "ThreadStateBoosting.h"
-
-#include "Config.h"
-#include "Registrable.h"
-#include "Registration.h"
+#include "Config.hpp"
+#include "Registrable.hpp"
+#include "Registration.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
