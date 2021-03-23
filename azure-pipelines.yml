@@ -99,7 +99,7 @@ jobs:
     displayName: 'Testing ebm_native code (Linux)'
   - script: |
       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
-    condition: and(startsWith(variables['image.name'], 'macOS'), not(eq(variables['Build.Reason'], 'Schedule')))
+    condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Testing ebm_native code (Mac)'
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\

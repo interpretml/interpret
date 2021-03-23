@@ -256,36 +256,42 @@ for arg in "$@"; do
 done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
-compile_all=""
-compile_all="$compile_all -I$src_path_sanitized"
-compile_all="$compile_all -I$src_path_sanitized/inc"
-compile_all="$compile_all -I$src_path_sanitized/bridge_c"
-compile_all="$compile_all -I$src_path_sanitized/bridge_cpp"
-compile_all="$compile_all -I$src_path_sanitized/common_c"
-compile_all="$compile_all -I$src_path_sanitized/common_cpp"
-compile_all="$compile_all -I$src_path_sanitized/zone_separate/loss_functions"
-compile_all="$compile_all -I$src_path_sanitized/zone_separate/metrics"
-compile_all="$compile_all -Wall -Wextra"
-compile_all="$compile_all -Wunused-result"
-compile_all="$compile_all -Wno-parentheses"
-compile_all="$compile_all -Wold-style-cast"
-compile_all="$compile_all -Wdouble-promotion"
-compile_all="$compile_all -Wshadow"
-compile_all="$compile_all -Wformat=2"
-compile_all="$compile_all -std=c++11"
-compile_all="$compile_all -fvisibility=hidden -fvisibility-inlines-hidden"
-compile_all="$compile_all -fno-math-errno -fno-trapping-math"
-compile_all="$compile_all -march=core2"
-compile_all="$compile_all -fpic"
-compile_all="$compile_all -DEBM_NATIVE_EXPORTS"
+both_args=""
+both_args="$both_args -I$src_path_sanitized/inc"
+both_args="$both_args -I$src_path_sanitized/bridge_c"
+both_args="$both_args -I$src_path_sanitized/common_c"
+both_args="$both_args -Wall -Wextra"
+both_args="$both_args -Wunused-result"
+both_args="$both_args -Wno-parentheses"
+both_args="$both_args -Wdouble-promotion"
+both_args="$both_args -Wshadow"
+both_args="$both_args -Wformat=2"
+both_args="$both_args -fvisibility=hidden"
+both_args="$both_args -fno-math-errno -fno-trapping-math"
+both_args="$both_args -march=core2"
+both_args="$both_args -fpic"
+both_args="$both_args -DEBM_NATIVE_EXPORTS"
+
+c_args=""
+c_args="$c_args -std=c99"
+
+cpp_args=""
+cpp_args="$cpp_args -I$src_path_sanitized"
+cpp_args="$cpp_args -I$src_path_sanitized/bridge_cpp"
+cpp_args="$cpp_args -I$src_path_sanitized/common_cpp"
+cpp_args="$cpp_args -I$src_path_sanitized/zone_separate/loss_functions"
+cpp_args="$cpp_args -I$src_path_sanitized/zone_separate/metrics"
+cpp_args="$cpp_args -Wold-style-cast"
+cpp_args="$cpp_args -std=c++11"
+cpp_args="$cpp_args -fvisibility-inlines-hidden"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
 
-   # try moving some of these clang specific warnings into compile_all if g++ eventually supports them
+   # try moving some of these clang specific warnings into both_args if g++ eventually supports them
    c_compiler=clang
    cpp_compiler=clang++
-   compile_mac="$compile_all -Wnull-dereference -Wgnu-zero-variadic-macro-arguments"
+   both_args="$both_args -Wnull-dereference -Wgnu-zero-variadic-macro-arguments"
 
    printf "%s\n" "Creating initial directories"
    [ -d "$staging_path_unsanitized" ] || mkdir -p "$staging_path_unsanitized"
@@ -307,16 +313,18 @@ if [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/clang/bin/release/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64.dylib"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_mac_x64_build_log.txt"
-      compile_command="$compile_mac -m64 -DNDEBUG -O3"
-      link_command="$compile_command -dynamiclib -install_name @rpath/$bin_file"
+      both_args_extra="-m64 -DNDEBUG -O3"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      link_command="$cpp_args_specific -dynamiclib -install_name @rpath/$bin_file"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
@@ -327,16 +335,18 @@ if [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/clang/bin/debug/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64_debug.dylib"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_mac_x64_build_log.txt"
-      compile_command="$compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
-      link_command="$compile_command -dynamiclib -install_name @rpath/$bin_file"
+      both_args_extra="-m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      link_command="$cpp_args_specific -dynamiclib -install_name @rpath/$bin_file"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
       link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
@@ -345,10 +355,9 @@ elif [ "$os_type" = "Linux" ]; then
    c_compiler=gcc
    cpp_compiler=g++
 
-   # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
-   compile_linux="$compile_all"
-   compile_linux="$compile_linux -Wlogical-op -Wl,--version-script=$src_path_sanitized/ebm_native_exports.txt -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now"
-   compile_linux="$compile_linux -Wl,--wrap=memcpy -static-libgcc -static-libstdc++ -shared"
+   # try moving some of these g++ specific warnings into both_args if clang eventually supports them
+   both_args="$both_args -Wlogical-op -Wl,--version-script=$src_path_sanitized/ebm_native_exports.txt -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now"
+   both_args="$both_args -Wl,--wrap=memcpy -static-libgcc -static-libstdc++ -shared"
 
    printf "%s\n" "Creating initial directories"
    [ -d "$staging_path_unsanitized" ] || mkdir -p "$staging_path_unsanitized"
@@ -370,17 +379,19 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/release/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x64_build_log.txt"
-      compile_command="$compile_linux -m64 -DNDEBUG -O3"
-      link_command="$compile_command"
+      both_args_extra="-m64 -DNDEBUG -O3"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      link_command="$cpp_args_specific"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
       link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
@@ -391,17 +402,19 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/debug/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64_debug.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x64_build_log.txt"
-      compile_command="$compile_linux -m64 -O1"
-      link_command="$compile_command"
+      both_args_extra="-m64 -O1"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      link_command="$cpp_args_specific"
    
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
       link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
@@ -414,8 +427,10 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/release/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_release_linux_x86_build_log.txt"
-      compile_command="$compile_linux -msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
-      link_command="$compile_command"
+      both_args_extra="-msse2 -mfpmath=sse -m32 -DNDEBUG -O3"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      link_command="$cpp_args_specific"
       
       all_object_files_sanitized=""
       compile_out_full=""
@@ -452,10 +467,10 @@ elif [ "$os_type" = "Linux" ]; then
          exit $ret_code
       fi
 
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
       link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
@@ -466,17 +481,19 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/debug/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86_debug.so"
       log_file_unsanitized="$intermediate_path_unsanitized/ebm_native_debug_linux_x86_build_log.txt"
-      compile_command="$compile_linux -msse2 -mfpmath=sse -m32 -O1"
-      link_command="$compile_command"
+      both_args_extra="-msse2 -mfpmath=sse -m32 -O1"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      link_command="$cpp_args_specific"
       
       all_object_files_sanitized=""
       compile_out_full=""
 
       make_initial_paths_simple "$intermediate_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$compile_command"
-      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$compile_command"
+      compile_directory_cpp "$src_path_unsanitized" "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
+      compile_directory_c "$src_path_unsanitized/bridge_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_directory_c "$src_path_unsanitized/common_c" "$intermediate_path_unsanitized" "$c_compiler" "$c_args_specific"
+      compile_file "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "$cpp_compiler" "$cpp_args_specific"
       link_file "$cpp_compiler" "$link_command" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
