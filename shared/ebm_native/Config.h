@@ -5,7 +5,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "EbmInternal.h"
+#include "bridge_c.h"
+#include "common_c.h" // INLINE_ALWAYS
 
 class Config final {
 

@@ -216,14 +216,22 @@ copy_bin_files() {
    fi
 }
 
-os_type=`uname`
+build_32_bit=0
+build_64_bit=1
+for arg in "$@"; do
+   if [ "$arg" = "-32bit" ]; then
+      build_32_bit=1
+   fi
+   if [ "$arg" = "-no64bit" ]; then
+      build_64_bit=0
+   fi
+done
 
 # TODO: this could be improved upon.  There is no perfect solution AFAIK for getting the script directory, and I'm not too sure how the CDPATH thing works
 # Look at BASH_SOURCE[0] as well and possibly select either it or $0
 # The output here needs to not be the empty string for glob substitution below:
 root_path_initial=`dirname -- "$0"`
 root_path_unsanitized=`CDPATH= cd -- "$root_path_initial" && pwd -P`
-
 if [ ! -f "$root_path_unsanitized/build.sh" ] ; then
    # there are all kinds of reasons why we might not have gotten the script path in $0.  It's more of a convention
    # than a requirement to have either the full path or even the script itself.  There are far more complicated
@@ -238,22 +246,10 @@ fi
 root_path_sanitized=`sanitize "$root_path_unsanitized"`
 src_path_unsanitized="$root_path_unsanitized/shared/ebm_native"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
-
 python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/lib"
 python_lib_sanitized=`sanitize "$python_lib_unsanitized"`
 staging_path_unsanitized="$root_path_unsanitized/staging"
 staging_path_sanitized=`sanitize "$staging_path_unsanitized"`
-
-build_32_bit=0
-build_64_bit=1
-for arg in "$@"; do
-   if [ "$arg" = "-32bit" ]; then
-      build_32_bit=1
-   fi
-   if [ "$arg" = "-no64bit" ]; then
-      build_64_bit=0
-   fi
-done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
 both_args=""
@@ -284,6 +280,8 @@ cpp_args="$cpp_args -I$src_path_sanitized/zone_separate/metrics"
 cpp_args="$cpp_args -Wold-style-cast"
 cpp_args="$cpp_args -std=c++11"
 cpp_args="$cpp_args -fvisibility-inlines-hidden"
+
+os_type=`uname`
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html

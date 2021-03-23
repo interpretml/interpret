@@ -161,6 +161,15 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * dest, const char * src) EB
 #define FAST_EXP
 #define FAST_LOG
 
+INTERNAL_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION SkipWhitespace(const char * s);
+INTERNAL_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION ConvertStringToFloat(
+   const char * const s,
+   double * const pResultOut
+);
+INTERNAL_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION IsStringEqualsCaseInsensitive(
+   const char * sMain,
+   const char * sLabel
+);
 
 #ifdef __cplusplus
 } // extern "C"

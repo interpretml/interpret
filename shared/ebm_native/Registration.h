@@ -10,7 +10,8 @@
 #include <functional>
 #include <memory>
 
-#include "EbmInternal.h" // INLINE_ALWAYS
+#include "bridge_c.h"
+#include "common_c.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "EbmException.h"
 #include "Config.h"

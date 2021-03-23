@@ -11,9 +11,10 @@
 #include <memory> // shared_ptr, unique_ptr
 
 #include "EbmInternal.h" // INLINE_ALWAYS
+
+#include "bridge_c.h"
+#include "common_c.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "FeatureGroup.h"
-#include "ThreadStateBoosting.h"
 #include "Config.h"
 #include "Registrable.h"
 #include "Registration.h" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!
@@ -29,47 +30,73 @@ class LossMultitaskMulticlass;
 class LossMultitaskRegression;
 
 class ApplyTrainingData final {
-   ThreadStateBoosting * const m_pThreadStateBoosting;
-   const FeatureGroup * const m_pFeatureGroup;
+   ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
+   ptrdiff_t m_cItemsPerBitPack;
+
+   //ThreadStateBoosting * const m_pThreadStateBoosting;
+   //const FeatureGroup * const m_pFeatureGroup;
    const bool m_bHessianNeeded;
 
 public:
 
-   INLINE_ALWAYS ThreadStateBoosting * GetThreadStateBoosting() const noexcept {
-      return m_pThreadStateBoosting;
+   INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() const noexcept {
+      return m_runtimeLearningTypeOrCountTargetClasses;
    }
-   INLINE_ALWAYS const FeatureGroup * GetFeatureGroup() const noexcept {
-      return m_pFeatureGroup;
+
+   INLINE_ALWAYS ptrdiff_t GetBitPack() const noexcept {
+      return m_cItemsPerBitPack;
    }
+
+   //INLINE_ALWAYS ThreadStateBoosting * GetThreadStateBoosting() const noexcept {
+   //   return m_pThreadStateBoosting;
+   //}
+   //INLINE_ALWAYS const FeatureGroup * GetFeatureGroup() const noexcept {
+   //   return m_pFeatureGroup;
+   //}
    INLINE_ALWAYS bool GetIsHessianNeeded() const noexcept {
       return m_bHessianNeeded;
    }
 
    INLINE_ALWAYS ApplyTrainingData(
-      ThreadStateBoosting * const pThreadStateBoosting, 
-      const FeatureGroup * const pFeatureGroup,
+      ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      ptrdiff_t cItemsPerBitPack,
+      //ThreadStateBoosting * const pThreadStateBoosting, 
+      //const FeatureGroup * const pFeatureGroup,
       const bool bHessianNeeded
    ) noexcept :
-      m_pThreadStateBoosting(pThreadStateBoosting),
-      m_pFeatureGroup(pFeatureGroup),
+      m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses),
+      m_cItemsPerBitPack(cItemsPerBitPack),
+      //m_pThreadStateBoosting(pThreadStateBoosting),
+      //m_pFeatureGroup(pFeatureGroup),
       m_bHessianNeeded(bHessianNeeded) {
    }
 };
 
 class ApplyValidationData final {
-   ThreadStateBoosting * const m_pThreadStateBoosting;
-   const FeatureGroup * const m_pFeatureGroup;
+   ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
+   ptrdiff_t m_cItemsPerBitPack;
+
+   //ThreadStateBoosting * const m_pThreadStateBoosting;
+   //const FeatureGroup * const m_pFeatureGroup;
    const bool m_bHessianNeeded;
    FloatEbmType m_metric;
 
 public:
 
-   INLINE_ALWAYS ThreadStateBoosting * GetThreadStateBoosting() const noexcept {
-      return m_pThreadStateBoosting;
+   INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() const noexcept {
+      return m_runtimeLearningTypeOrCountTargetClasses;
    }
-   INLINE_ALWAYS const FeatureGroup * GetFeatureGroup() const noexcept {
-      return m_pFeatureGroup;
+
+   INLINE_ALWAYS ptrdiff_t GetBitPack() const noexcept {
+      return m_cItemsPerBitPack;
    }
+
+   //INLINE_ALWAYS ThreadStateBoosting * GetThreadStateBoosting() const noexcept {
+   //   return m_pThreadStateBoosting;
+   //}
+   //INLINE_ALWAYS const FeatureGroup * GetFeatureGroup() const noexcept {
+   //   return m_pFeatureGroup;
+   //}
    INLINE_ALWAYS bool GetIsHessianNeeded() const noexcept {
       return m_bHessianNeeded;
    }
@@ -81,12 +108,16 @@ public:
    }
 
    INLINE_ALWAYS ApplyValidationData(
-      ThreadStateBoosting * const pThreadStateBoosting,
-      const FeatureGroup * const pFeatureGroup,
+      ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      ptrdiff_t cItemsPerBitPack,
+      //ThreadStateBoosting * const pThreadStateBoosting,
+      //const FeatureGroup * const pFeatureGroup,
       const bool bHessianNeeded
    ) noexcept :
-      m_pThreadStateBoosting(pThreadStateBoosting),
-      m_pFeatureGroup(pFeatureGroup),
+      m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses),
+      m_cItemsPerBitPack(cItemsPerBitPack),
+      //m_pThreadStateBoosting(pThreadStateBoosting),
+      //m_pFeatureGroup(pFeatureGroup),
       m_bHessianNeeded(bHessianNeeded),
       m_metric(FloatEbmType { 0 }) {
    }
@@ -105,7 +136,7 @@ class Loss : public Registrable {
    // templated function at this point and more later.  Reducing this to just 16 is very very helpful.
    template<typename TLoss, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData & data) const {
-      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+      if(k_cItemsPerBitPackNone == data.GetBitPack()) {
          return BitPackPostApplyTraining<TLoss, k_oneScore, k_cItemsPerBitPackNone>(data);
       } else {
          return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax2>::ApplyTraining(this, data);
@@ -113,7 +144,7 @@ class Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData & data) const {
-      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+      if(k_cItemsPerBitPackNone == data.GetBitPack()) {
          return BitPackPostApplyValidation<TLoss, k_oneScore, k_cItemsPerBitPackNone>(data);
       } else {
          return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax2>::ApplyValidation(this, data);
@@ -121,7 +152,7 @@ class Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData & data) const {
-      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+      if(k_cItemsPerBitPackNone == data.GetBitPack()) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
       } else {
@@ -132,7 +163,7 @@ class Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData & data) const {
-      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+      if(k_cItemsPerBitPackNone == data.GetBitPack()) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
       } else {
@@ -143,7 +174,7 @@ class Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData & data) const {
-      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+      if(k_cItemsPerBitPackNone == data.GetBitPack()) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
       } else {
@@ -152,7 +183,7 @@ class Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData & data) const {
-      if(k_cItemsPerBitPackNone == data.GetFeatureGroup()->GetBitPack()) {
+      if(k_cItemsPerBitPackNone == data.GetBitPack()) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
       } else {
@@ -162,14 +193,14 @@ class Loss : public Registrable {
    template<typename TLoss, ptrdiff_t cCompilerScores>
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
-         if(cCompilerScores == data.GetThreadStateBoosting()->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()) {
+         if(cCompilerScores == data.GetRuntimeLearningTypeOrCountTargetClasses()) {
             return pLoss->BitPackPostApplyTraining<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(data);
          } else {
             return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyTraining(pLoss, data);
          }
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
-         if(cCompilerScores == data.GetThreadStateBoosting()->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()) {
+         if(cCompilerScores == data.GetRuntimeLearningTypeOrCountTargetClasses()) {
             return pLoss->BitPackPostApplyValidation<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(data);
          } else {
             return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyValidation(pLoss, data);
@@ -192,14 +223,14 @@ class Loss : public Registrable {
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct BitPack final {
       INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
-         if(cCompilerPack == data.GetFeatureGroup()->GetBitPack()) {
+         if(cCompilerPack == data.GetBitPack()) {
             return pLoss->BitPackPostApplyTraining<TLoss, cCompilerScores, cCompilerPack>(data);
          } else {
             return BitPack<TLoss, cCompilerScores, GetNextBitPack(cCompilerPack)>::ApplyTraining(pLoss, data);
          }
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
-         if(cCompilerPack == data.GetFeatureGroup()->GetBitPack()) {
+         if(cCompilerPack == data.GetBitPack()) {
             return pLoss->BitPackPostApplyValidation<TLoss, cCompilerScores, cCompilerPack>(data);
          } else {
             return BitPack<TLoss, cCompilerScores, GetNextBitPack(cCompilerPack)>::ApplyValidation(pLoss, data);
