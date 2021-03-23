@@ -8,10 +8,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "ebm_native.h" // FloatEbmType
-#include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_INCLUDE 
-#include "common_c.h"
+#include "ebm_native.h" // LOG_MESSAGE_FUNCTION
 #include "logging.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 const char g_trueString[] = "true";
 const char g_falseString[] = "false";
@@ -72,16 +74,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(T
       // this is not an actual error, but ensure that this message gets written to the log so that we know it was properly
       // set, and also test that the callback function works at this early stage instead of waiting for a real error
       const TraceEbmType LOG__traceLevel = TraceLevelWarning;
-      if(UNLIKELY(LOG__traceLevel <= traceLevel)) {
+      if(LOG__traceLevel <= traceLevel) {
          static const char LOG__originalMessage[] = "Native logging trace level set to %s in " COMPILE_MODE;
          InteralLogWithArguments(LOG__traceLevel, LOG__originalMessage, GetTraceLevelString(traceLevel));
       }
    }
 }
 
-WARNING_PUSH
-WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
-INTERNAL_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION InteralLogWithArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage, ...) {
+//WARNING_PUSH
+//WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
+extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage, ...) {
    assert(NULL != g_pLogMessageFunc);
 
    // this function is here largely to clip the stack memory needed for messageSpace.  If we put the below functionality directly into a MACRO or an 
@@ -99,7 +101,7 @@ INTERNAL_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION InteralLogWithArg
 
    // clang-tidy says va_list is uninitialized, despite the call to va_start above. This is a known bug in clang-tidy.
    // DETAILS: https://stackoverflow.com/questions/58672959/why-does-clang-tidy-say-vsnprintf-has-an-uninitialized-va-list-argument
-   StopClangAnalysis();
+   //StopClangAnalysis();
    if(vsnprintf(messageSpace, sizeof(messageSpace) / sizeof(messageSpace[0]), pOriginalMessage, args) < 0) {
       (*g_pLogMessageFunc)(traceLevel, g_pLoggingParameterError);
    } else {
@@ -108,20 +110,24 @@ INTERNAL_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION InteralLogWithArg
    }
    va_end(args);
 }
-WARNING_POP
+//WARNING_POP
 
-INTERNAL_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage) {
+extern void InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage) {
    assert(NULL != g_pLogMessageFunc);
    (*g_pLogMessageFunc)(traceLevel, pOriginalMessage);
 }
 
-INTERNAL_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION LogAssertFailure(
-   const unsigned long long lineNumber, 
-   const char * const fileName, 
-   const char * const functionName, 
+extern void LogAssertFailure(
+   const unsigned long long lineNumber,
+   const char * const fileName,
+   const char * const functionName,
    const char * const assertText
-) ANALYZER_NORETURN {
-   if(UNLIKELY(TraceLevelError <= g_traceLevel)) {
+) LOGGING_ANALYZER_NORETURN {
+   if(TraceLevelError <= g_traceLevel) {
       InteralLogWithArguments(TraceLevelError, g_assertLogMessage, lineNumber, fileName, functionName, assertText);
    }
 }
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus

@@ -21,7 +21,7 @@ namespace DEFINED_ZONE_NAME {
 
 } // DEFINED_ZONE_NAME
 
-INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateLoss_Cpu_64(
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cpu_64(
    const size_t cOutputs,
    const char * const sLoss,
    const char * const sLossEnd,

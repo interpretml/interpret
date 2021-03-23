@@ -6,10 +6,15 @@
 
 #include <stdlib.h>
 
-#include "common_c.h"
+#include "ebm_native.h"
 #include "logging.h"
+#include "common_c.h"
 
-INTERNAL_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION SkipWhitespace(const char * s) {
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+extern const char * SkipWhitespace(const char * s) {
    char oneChar = *s;
    while(0x20 == oneChar || 0x9 <= oneChar && oneChar <= 0xd) {
       // skip whitespace
@@ -19,7 +24,7 @@ INTERNAL_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION SkipWhite
    return s;
 }
 
-INTERNAL_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION ConvertStringToFloat(
+extern const char * ConvertStringToFloat(
    const char * const s, 
    double * const pResultOut
 ) {
@@ -46,7 +51,7 @@ INTERNAL_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION ConvertSt
    return SkipWhitespace(sNext);
 }
 
-INTERNAL_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION IsStringEqualsCaseInsensitive(
+extern const char * IsStringEqualsCaseInsensitive(
    const char * sMain, 
    const char * sLabel
 ) {
@@ -87,3 +92,7 @@ INTERNAL_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION IsStringE
    }
    return sMain;
 }
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus

@@ -10,15 +10,13 @@
 #ifdef __cplusplus
 extern "C" {
 #define INTERNAL_IMPORT_EXPORT_BODY extern "C"
-#define EBM_NOEXCEPT noexcept
 #else // __cplusplus
 #define INTERNAL_IMPORT_EXPORT_BODY extern
-#define EBM_NOEXCEPT
 #endif // __cplusplus
 
 #define INTERNAL_IMPORT_EXPORT_INCLUDE extern
 
-INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateLoss_Cpu_64(
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType CreateLoss_Cpu_64(
    const size_t cOutputs,
    const char * const sLoss,
    const char * const sLossEnd,

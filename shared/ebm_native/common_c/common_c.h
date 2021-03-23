@@ -8,10 +8,12 @@
 #include <string.h>
 
 #include "ebm_native.h"
-#include "bridge_c.h"
 
 #ifdef __cplusplus
 extern "C" {
+#define EBM_NOEXCEPT noexcept
+#else // __cplusplus
+#define EBM_NOEXCEPT
 #endif // __cplusplus
 
 #define UNUSED(x) (void)(x)
@@ -34,6 +36,8 @@ extern "C" {
 
 #if __has_feature(attribute_analyzer_noreturn)
 #define ANALYZER_NORETURN __attribute__((analyzer_noreturn))
+#else // __has_feature(attribute_analyzer_noreturn)
+#define ANALYZER_NORETURN
 #endif // __has_feature(attribute_analyzer_noreturn)
 
 #elif defined(__GNUC__) // compiler type (g++)
@@ -161,12 +165,12 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * dest, const char * src) EB
 #define FAST_EXP
 #define FAST_LOG
 
-INTERNAL_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION SkipWhitespace(const char * s);
-INTERNAL_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION ConvertStringToFloat(
+extern const char * SkipWhitespace(const char * s);
+extern const char * ConvertStringToFloat(
    const char * const s,
    double * const pResultOut
 );
-INTERNAL_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION IsStringEqualsCaseInsensitive(
+extern const char * IsStringEqualsCaseInsensitive(
    const char * sMain,
    const char * sLabel
 );

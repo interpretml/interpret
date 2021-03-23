@@ -8,30 +8,42 @@
 #include <assert.h>
 
 #include "ebm_native.h" // LOG_MESSAGE_FUNCTION
-#include "bridge_c.h" // INTERNAL_IMPORT_EXPORT_INCLUDE 
-#include "common_c.h" // UNLIKELY
 
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
-INTERNAL_IMPORT_EXPORT_INCLUDE const char g_trueString[];
-INTERNAL_IMPORT_EXPORT_INCLUDE const char g_falseString[];
+#ifdef __clang__ // compiler type (clang++)
 
-INLINE_ALWAYS static const char * ObtainTruth(const BoolEbmType b) {
+#if __has_feature(attribute_analyzer_noreturn)
+#define LOGGING_ANALYZER_NORETURN __attribute__((analyzer_noreturn))
+#else // __has_feature(attribute_analyzer_noreturn)
+#define LOGGING_ANALYZER_NORETURN
+#endif // __has_feature(attribute_analyzer_noreturn)
+
+#else // __clang__
+
+#define LOGGING_ANALYZER_NORETURN
+
+#endif // __clang__
+
+extern const char g_trueString[];
+extern const char g_falseString[];
+
+inline static const char * ObtainTruth(const BoolEbmType b) {
    return EBM_FALSE != b ? g_trueString : g_falseString;
 }
 
-INTERNAL_IMPORT_EXPORT_INCLUDE TraceEbmType g_traceLevel;
+extern TraceEbmType g_traceLevel;
 
-INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION InteralLogWithArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage, ...);
-INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage);
-INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION LogAssertFailure(
+extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage, ...);
+extern void InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage);
+extern void LogAssertFailure(
    const unsigned long long lineNumber,
    const char * const fileName,
    const char * const functionName,
    const char * const assertText
-) ANALYZER_NORETURN ;
+) LOGGING_ANALYZER_NORETURN ;
 
 // We use separate macros for LOG_0 (zero parameters) and LOG_N (variadic parameters) because having zero parameters is non-standardized in C++11
 // In C++20, there will be __VA_OPT__, but I don't want to take a dependency on such a new standard yet
@@ -64,7 +76,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION LogAssertFailu
       const TraceEbmType LOG__traceLevel = (traceLevel); \
       static_assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG_0(traceLevel, pLogMessage, ...)"); \
       static_assert(LOG__traceLevel <= TraceLevelVerbose, "traceLevel can't be higher than TraceLevelVerbose for call to LOG_0(traceLevel, pLogMessage, ...)"); \
-      if(UNLIKELY(LOG__traceLevel <= g_traceLevel)) { \
+      if(LOG__traceLevel <= g_traceLevel) { \
          const static char LOG__originalMessage[] = pLogMessage; \
          InteralLogWithoutArguments(LOG__traceLevel, LOG__originalMessage); \
       } \
@@ -76,7 +88,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION LogAssertFailu
       static_assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG_N(traceLevel, pLogMessage, ...)"); \
       static_assert(LOG__traceLevel <= TraceLevelVerbose, \
          "traceLevel can't be higher than TraceLevelVerbose for call to LOG_N(traceLevel, pLogMessage, ...)"); \
-      if(UNLIKELY(LOG__traceLevel <= g_traceLevel)) { \
+      if(LOG__traceLevel <= g_traceLevel) { \
          const static char LOG__originalMessage[] = pLogMessage; \
          InteralLogWithArguments(LOG__traceLevel, LOG__originalMessage, __VA_ARGS__); \
       } \
@@ -97,13 +109,13 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION LogAssertFailu
       static_assert(LOG__traceLevelBefore < LOG__traceLevelAfter, \
          "We only support increasing the required trace level after N iterations. It doesn't make sense to have equal values, otherwise just use LOG_0(..)"); \
       const TraceEbmType LOG__traceLevel = g_traceLevel; \
-      if(UNLIKELY(LOG__traceLevelBefore <= LOG__traceLevel)) { \
+      if(LOG__traceLevelBefore <= LOG__traceLevel) { \
          do { \
             TraceEbmType LOG__traceLevelLogging; \
-            if(LIKELY(LOG__traceLevel < LOG__traceLevelAfter)) { \
+            if(LOG__traceLevel < LOG__traceLevelAfter) { \
                int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
                const int LOG__logCount = *LOG__pLogCountDecrement - 1; \
-               if(LIKELY(LOG__logCount < 0)) { \
+               if(LOG__logCount < 0) { \
                   break; \
                } \
                *LOG__pLogCountDecrement = LOG__logCount; \
@@ -132,13 +144,13 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION LogAssertFailu
       static_assert(LOG__traceLevelBefore < LOG__traceLevelAfter, \
          "We only support increasing the required trace level after N iterations and it doesn't make sense to have equal values, otherwise just use LOG_N(...)"); \
       const TraceEbmType LOG__traceLevel = g_traceLevel; \
-      if(UNLIKELY(LOG__traceLevelBefore <= LOG__traceLevel)) { \
+      if(LOG__traceLevelBefore <= LOG__traceLevel) { \
          do { \
             TraceEbmType LOG__traceLevelLogging; \
-            if(LIKELY(LOG__traceLevel < LOG__traceLevelAfter)) { \
+            if(LOG__traceLevel < LOG__traceLevelAfter) { \
                int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
                const int LOG__logCount = *LOG__pLogCountDecrement - 1; \
-               if(LIKELY(LOG__logCount < 0)) { \
+               if(LOG__logCount < 0) { \
                   break; \
                } \
                *LOG__pLogCountDecrement = LOG__logCount; \
@@ -157,7 +169,7 @@ INTERNAL_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION LogAssertFailu
 // of the assert that triggered the failure. Any string will have a non-zero pointer, so negating it will always fail, and we'll get to see the text of 
 // the original failure in the message this allows us to use whatever behavior has been chosen by the C runtime library implementor for assertion 
 // failures without using the undocumented function that assert calls internally on each platform
-#define EBM_ASSERT(bCondition) ((void)(LIKELY(bCondition) || (LogAssertFailure(STATIC_CAST(unsigned long long, __LINE__), __FILE__, __func__, #bCondition), assert(!  #bCondition), 0)))
+#define EBM_ASSERT(bCondition) ((void)((bCondition) || (LogAssertFailure(STATIC_CAST(unsigned long long, __LINE__), __FILE__, __func__, #bCondition), assert(!  #bCondition), 0)))
 #else // NDEBUG
 #define EBM_ASSERT(bCondition) ((void)0)
 #endif // NDEBUG
