@@ -49,7 +49,7 @@
     <ClCompile Include="common_c.c">
       <Filter>common_c</Filter>
     </ClCompile>
-    <ClCompile Include="bridge_c\logging2.c">
+    <ClCompile Include="bridge_c\logging.c">
       <Filter>bridge_c</Filter>
     </ClCompile>
   </ItemGroup>
@@ -116,9 +116,6 @@
     <ClInclude Include="bridge_c\bridge_c.h">
       <Filter>bridge_c</Filter>
     </ClInclude>
-    <ClInclude Include="bridge_c\Logging.h">
-      <Filter>bridge_c</Filter>
-    </ClInclude>
     <ClInclude Include="bridge_c\zones.h">
       <Filter>bridge_c</Filter>
     </ClInclude>
@@ -130,6 +127,9 @@
     </ClInclude>
     <ClInclude Include="common_cpp\common_cpp.hpp">
       <Filter>common_cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="bridge_c\logging2.h">
+      <Filter>bridge_c</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
