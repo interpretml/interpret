@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "ebm_native.h"
+#include "logging.h"
 #include "common_c.h"
 #include "bridge_c.h"
 #include "zones.h"
@@ -33,6 +34,7 @@ private:
 
 public:
 
+   ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    INLINE_ALWAYS Cpu_64_Operators() noexcept {
    }
 
@@ -94,10 +96,23 @@ static INLINE_ALWAYS std::shared_ptr<const Registration> RegisterLoss(const char
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cpu_64(
    const size_t cOutputs,
    const char * const sLoss,
+   const void ** const ppLossOut
+) {
+   return Loss::CreateLoss(&RegisterLosses, cOutputs, sLoss, ppLossOut);
+}
+
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Cpu_64(
+   const size_t cOutputs,
+   const char * const sLoss,
    const char * const sLossEnd,
    const void ** const ppLossOut
 ) {
-   return Loss::CreateLoss(&RegisterLosses, cOutputs, sLoss, sLossEnd, ppLossOut);
+   UNUSED(cOutputs);
+   UNUSED(sLoss);
+   UNUSED(sLossEnd);
+   UNUSED(ppLossOut);
+
+   return Error_UnknownInternalError;
 }
 
 } // DEFINED_ZONE_NAME

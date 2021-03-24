@@ -478,7 +478,6 @@ public:
       const REGISTER_LOSSES_FUNCTION registerLossesFunction, 
       const size_t cOutputs,
       const char * const sLoss,
-      const char * const sLossEnd,
       const void ** const ppLossOut
    ) noexcept;
 };

@@ -27,16 +27,19 @@ ErrorEbmType Loss::CreateLoss(
    const REGISTER_LOSSES_FUNCTION registerLossesFunction,
    const size_t cOutputs,
    const char * const sLoss,
-   const char * const sLossEnd,
    const void ** const ppLossOut
 ) noexcept {
    EBM_ASSERT(nullptr != registerLossesFunction);
    EBM_ASSERT(1 <= cOutputs);
    EBM_ASSERT(nullptr != sLoss);
-   EBM_ASSERT(nullptr != sLossEnd);
    EBM_ASSERT(nullptr != ppLossOut);
 
-   UNUSED(sLossEnd); // TODO: only return 1 of these items per call instead of a list!
+   // we only have 1 loss per string, unlike metrics
+   const char * const sLossEnd = sLoss + strlen(sLoss);
+   // maybe backtrack from the end until the first non-whitespace, and also move forward until the first non-
+   // whitespace.  That'll make it easier to create exit conditions since we will know if we hit sLossEnd that
+   // we don't need to explore the trailing characters
+   UNUSED(sLossEnd);
 
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
    try {

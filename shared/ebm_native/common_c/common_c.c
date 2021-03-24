@@ -16,7 +16,7 @@ extern "C" {
 
 extern const char * SkipWhitespace(const char * s) {
    char oneChar = *s;
-   while(0x20 == oneChar || 0x9 <= oneChar && oneChar <= 0xd) {
+   while(0x20 == oneChar || (0x9 <= oneChar && oneChar <= 0xd)) {
       // skip whitespace
       ++s;
       oneChar = *s;

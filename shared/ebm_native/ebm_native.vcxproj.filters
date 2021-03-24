@@ -33,7 +33,6 @@
     <ClCompile Include="RandomStream.cpp" />
     <ClCompile Include="SamplingSet.cpp" />
     <ClCompile Include="Booster.cpp" />
-    <ClCompile Include="Zone32Sse2.cpp" />
     <ClCompile Include="special\wrap_func.cpp">
       <Filter>special</Filter>
     </ClCompile>

@@ -96,7 +96,9 @@ extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * 
    // vsnprintf specifically says that the count parameter is in bytes of buffer space, but let's be safe and assume someone might change this to a 
    // unicode function someday and that new function might be in characters instead of bytes.  For us #bytes == #chars.  If a unicode specific version 
    // is in bytes it won't overflow, but it will waste memory
-
+   
+   // turn off clang-tidy warning about insecurity of vsnprintf
+   // NOLINTNEXTLINE
    if(vsnprintf(messageSpace, sizeof(messageSpace) / sizeof(messageSpace[0]), pOriginalMessage, args) < 0) {
       (*g_pLogMessageFunc)(traceLevel, g_pLoggingParameterError);
    } else {
