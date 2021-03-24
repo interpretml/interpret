@@ -24,6 +24,15 @@ extern const char * SkipWhitespace(const char * s) {
    return s;
 }
 
+extern const char * SkipEndWhitespaceWhenGuaranteedNonWhitespace(const char * sEnd) {
+   char oneChar;
+   do {
+      --sEnd;
+      oneChar = *sEnd;
+   } while(0x20 == oneChar || (0x9 <= oneChar && oneChar <= 0xd));
+   return sEnd + 1;
+}
+
 extern const char * ConvertStringToFloat(
    const char * const s, 
    double * const pResultOut
@@ -67,7 +76,7 @@ extern const char * IsStringEqualsCaseInsensitive(
       mainChar = *sMain;
    }
    char labelChar = *sLabel;
-   while(0 != labelChar) {
+   while('\0' != labelChar) {
       if('A' <= mainChar && mainChar <= 'Z') {
          mainChar += 'a' - 'A';
       }

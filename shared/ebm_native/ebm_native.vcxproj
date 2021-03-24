@@ -296,6 +296,7 @@ EXIT /B 0
     <ClInclude Include="bridge_c\zones.h" />
     <ClInclude Include="common_cpp\common_cpp.hpp" />
     <ClInclude Include="common_c\common_c.h" />
+    <ClInclude Include="loss_metric_main.hpp" />
     <ClInclude Include="ThreadStateInteraction.h" />
     <ClInclude Include="InteractionDetector.h" />
     <ClInclude Include="Booster.h" />

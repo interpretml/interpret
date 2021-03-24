@@ -27,40 +27,32 @@ ErrorEbmType Loss::CreateLoss(
    const REGISTER_LOSSES_FUNCTION registerLossesFunction,
    const size_t cOutputs,
    const char * const sLoss,
+   const char * const sLossEnd,
    const void ** const ppLossOut
 ) noexcept {
    EBM_ASSERT(nullptr != registerLossesFunction);
    EBM_ASSERT(1 <= cOutputs);
    EBM_ASSERT(nullptr != sLoss);
+   EBM_ASSERT(nullptr != sLossEnd);
+   EBM_ASSERT(sLoss < sLossEnd); // empty string not allowed
+   EBM_ASSERT('\0' != *sLoss);
+   EBM_ASSERT(!(0x20 == *sLoss || (0x9 <= *sLoss && *sLoss <= 0xd)));
+   EBM_ASSERT(!(0x20 == *(sLossEnd - 1) || (0x9 <= *(sLossEnd - 1) && *(sLossEnd - 1) <= 0xd)));
+   EBM_ASSERT('\0' == *sLossEnd || 0x20 == *sLossEnd || (0x9 <= *sLossEnd && *sLossEnd <= 0xd));
    EBM_ASSERT(nullptr != ppLossOut);
-
-   // we only have 1 loss per string, unlike metrics
-   const char * const sLossEnd = sLoss + strlen(sLoss);
-   // maybe backtrack from the end until the first non-whitespace, and also move forward until the first non-
-   // whitespace.  That'll make it easier to create exit conditions since we will know if we hit sLossEnd that
-   // we don't need to explore the trailing characters
-   UNUSED(sLossEnd);
 
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
    try {
       Config config(cOutputs);
       const std::vector<std::shared_ptr<const Registration>> registrations = (*registerLossesFunction)();
-      std::vector<std::unique_ptr<const Registrable>> registrables = 
-         Registration::CreateRegistrables(config, sLoss, registrations);
-      if(registrables.size() < 1) {
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss empty loss string");
+      std::unique_ptr<const Registrable> pRegistrable = 
+         Registration::CreateRegistrable(config, sLoss, sLossEnd, registrations);
+      if(nullptr == pRegistrable) {
          return Error_LossUnknown;
       }
-      if(1 != registrables.size()) {
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss multiple loss functions can't simultaneously exist");
-         return Error_LossMultipleSpecified;
-      }
-      *ppLossOut = registrables[0].release();
+      *ppLossOut = pRegistrable.release();
       LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
       return Error_None;
-   } catch(const RegistrationUnknownException &) {
-      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss RegistrationUnknownException");
-      return Error_LossUnknown;
    } catch(const ParameterValueMalformedException &) {
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueMalformedException");
       return Error_LossParameterValueMalformed;

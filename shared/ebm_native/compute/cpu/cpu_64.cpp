@@ -96,9 +96,10 @@ static INLINE_ALWAYS std::shared_ptr<const Registration> RegisterLoss(const char
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cpu_64(
    const size_t cOutputs,
    const char * const sLoss,
+   const char * const sLossEnd,
    const void ** const ppLossOut
 ) {
-   return Loss::CreateLoss(&RegisterLosses, cOutputs, sLoss, ppLossOut);
+   return Loss::CreateLoss(&RegisterLosses, cOutputs, sLoss, sLossEnd, ppLossOut);
 }
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Cpu_64(

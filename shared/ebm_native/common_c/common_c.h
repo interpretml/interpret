@@ -90,6 +90,9 @@ extern "C" {
 // disable dereferencing NULL pointer (same pointer), since the static analysis seems to think any access 
 // of a pointer is dereferencing a NULL pointer potentially.
 #pragma warning(disable : 28182)
+// disable SIMD alignment issues.  We need to align on 16 byte boundaries (64 byte would be better), but we
+// use SIMD all over the place, so just disable the general warning
+#pragma warning(disable : 4316)
 
 #else  // compiler type
 #error compiler not recognized
@@ -165,7 +168,10 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * dest, const char * src) EB
 #define FAST_EXP
 #define FAST_LOG
 
+static const char k_registrationSeparator = ',';
+
 extern const char * SkipWhitespace(const char * s);
+extern const char * SkipEndWhitespaceWhenGuaranteedNonWhitespace(const char * sEnd);
 extern const char * ConvertStringToFloat(
    const char * const s,
    double * const pResultOut

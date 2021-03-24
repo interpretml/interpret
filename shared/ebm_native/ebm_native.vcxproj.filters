@@ -91,6 +91,7 @@
     <ClInclude Include="common_c\logging.h">
       <Filter>common_c</Filter>
     </ClInclude>
+    <ClInclude Include="loss_metric_main.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />
