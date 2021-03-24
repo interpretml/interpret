@@ -9,11 +9,11 @@
 extern "C" {
 #endif // __cplusplus
 
-#if defined(MAIN_ZONE)
+#if defined(ZONE_main)
 #define DEFINED_ZONE_NAME      NAMESPACE_MAIN
-#elif defined(CPU_ZONE)
+#elif defined(ZONE_cpu)
 #define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_CPU
-#elif defined(AVX512_ZONE)
+#elif defined(ZONE_avx512)
 #define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_AVX512
 #else
 #error ZONE not recognized
