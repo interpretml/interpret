@@ -10,9 +10,10 @@
 #include "common_c.h"
 #include "bridge_c.h"
 
-extern "C" void SafeToCallThisOutsideNamespace() {
-   return;
-}
+//extern "C" void SafeToCallThisOutsideNamespace() {
+//   return;
+//}
+//
 
 // we use DEFINED_ZONE_NAME in order to give the contents below separate names to the compiler and
 // avoid very very very bad "one definition rule" violations which are nasty undefined behavior violations
@@ -24,7 +25,7 @@ namespace DEFINED_ZONE_NAME {
 class TestClass {
 public:
    inline TestClass() {
-      SafeToCallThisOutsideNamespace();
+      //SafeToCallThisOutsideNamespace();
    }
 };
 
@@ -35,7 +36,7 @@ void SafeToMakeThisOutsideNamespaceCpp() {
 
 } // DEFINED_ZONE_NAME
 
-extern "C" void SafeToMakeThisOutsideNamespaceC() {
-   DEFINED_ZONE_NAME::SafeToMakeThisOutsideNamespaceCpp();
-   return;
-}
+//extern "C" void SafeToMakeThisOutsideNamespaceC() {
+//   DEFINED_ZONE_NAME::SafeToMakeThisOutsideNamespaceCpp();
+//   return;
+//}

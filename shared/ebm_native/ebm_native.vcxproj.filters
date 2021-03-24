@@ -46,8 +46,8 @@
     <ClCompile Include="common_c\common_c.c">
       <Filter>common_c</Filter>
     </ClCompile>
-    <ClCompile Include="bridge_c\logging.c">
-      <Filter>bridge_c</Filter>
+    <ClCompile Include="common_c\logging.c">
+      <Filter>common_c</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -89,8 +89,8 @@
     <ClInclude Include="common_cpp\common_cpp.hpp">
       <Filter>common_cpp</Filter>
     </ClInclude>
-    <ClInclude Include="bridge_c\logging.h">
-      <Filter>bridge_c</Filter>
+    <ClInclude Include="common_c\logging.h">
+      <Filter>common_c</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
