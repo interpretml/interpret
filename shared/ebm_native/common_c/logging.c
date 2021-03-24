@@ -81,8 +81,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(T
    }
 }
 
-//WARNING_PUSH
-//WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
 extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage, ...) {
    assert(NULL != g_pLogMessageFunc);
 
@@ -99,9 +97,6 @@ extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * 
    // unicode function someday and that new function might be in characters instead of bytes.  For us #bytes == #chars.  If a unicode specific version 
    // is in bytes it won't overflow, but it will waste memory
 
-   // clang-tidy says va_list is uninitialized, despite the call to va_start above. This is a known bug in clang-tidy.
-   // DETAILS: https://stackoverflow.com/questions/58672959/why-does-clang-tidy-say-vsnprintf-has-an-uninitialized-va-list-argument
-   //StopClangAnalysis();
    if(vsnprintf(messageSpace, sizeof(messageSpace) / sizeof(messageSpace[0]), pOriginalMessage, args) < 0) {
       (*g_pLogMessageFunc)(traceLevel, g_pLoggingParameterError);
    } else {
@@ -110,7 +105,6 @@ extern void InteralLogWithArguments(const TraceEbmType traceLevel, const char * 
    }
    va_end(args);
 }
-//WARNING_POP
 
 extern void InteralLogWithoutArguments(const TraceEbmType traceLevel, const char * const pOriginalMessage) {
    assert(NULL != g_pLogMessageFunc);

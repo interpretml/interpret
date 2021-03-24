@@ -26,6 +26,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+typedef const std::vector<std::shared_ptr<const Registration>> (* REGISTER_LOSSES_FUNCTION)();
+
 class LossSingletask;
 class LossBinary;
 class LossMulticlass;
@@ -473,9 +475,11 @@ public:
    virtual ErrorEbmType ApplyValidation(ApplyValidationData & data) const = 0;
 
    static ErrorEbmType CreateLoss(
-      const Config & config,
+      const REGISTER_LOSSES_FUNCTION registerLossesFunction, 
+      const size_t cOutputs,
       const char * const sLoss,
-      std::unique_ptr<const Loss> & pLossOut
+      const char * const sLossEnd,
+      const void ** const ppLossOut
    ) noexcept;
 };
 

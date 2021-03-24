@@ -13,30 +13,35 @@
 #include "zones.h"
 
 #include "EbmException.hpp"
-#include "Loss.hpp"
+#include "Config.hpp"
+#include "Registrable.hpp"
 #include "Registration.hpp"
+#include "Loss.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-
-//TODO: these need to be extern "C" style and located in a separate "zone"
-//extern const std::vector<std::shared_ptr<const Registration>> RegisterLosses32Sse2();
-extern const std::vector<std::shared_ptr<const Registration>> RegisterLosses64None();
-
 ErrorEbmType Loss::CreateLoss(
-   const Config & config,
+   const REGISTER_LOSSES_FUNCTION registerLossesFunction,
+   const size_t cOutputs,
    const char * const sLoss,
-   std::unique_ptr<const Loss> & pLossOut
+   const char * const sLossEnd,
+   const void ** const ppLossOut
 ) noexcept {
+   EBM_ASSERT(nullptr != registerLossesFunction);
+   EBM_ASSERT(1 <= cOutputs);
    EBM_ASSERT(nullptr != sLoss);
+   EBM_ASSERT(nullptr != sLossEnd);
+   EBM_ASSERT(nullptr != ppLossOut);
+
+   UNUSED(sLossEnd); // TODO: only return 1 of these items per call instead of a list!
 
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
    try {
-      // TODO: select the right float 32/64 float/double type
-      const std::vector<std::shared_ptr<const Registration>> registrations = RegisterLosses64None();
+      Config config(cOutputs);
+      const std::vector<std::shared_ptr<const Registration>> registrations = (*registerLossesFunction)();
       std::vector<std::unique_ptr<const Registrable>> registrables = 
          Registration::CreateRegistrables(config, sLoss, registrations);
       if(registrables.size() < 1) {
@@ -47,7 +52,7 @@ ErrorEbmType Loss::CreateLoss(
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss multiple loss functions can't simultaneously exist");
          return Error_LossMultipleSpecified;
       }
-      pLossOut = std::unique_ptr<const Loss>(static_cast<const Loss *>(registrables[0].release()));
+      *ppLossOut = registrables[0].release();
       LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
       return Error_None;
    } catch(const RegistrationUnknownException &) {

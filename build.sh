@@ -302,6 +302,9 @@ compute_args="$compute_args -I$src_path_sanitized/compute"
 compute_args="$compute_args -I$src_path_sanitized/compute/loss_functions"
 compute_args="$compute_args -I$src_path_sanitized/compute/metrics"
 
+# add any other non-include options
+common_args="$common_args -Wno-format-nonliteral"
+
 os_type=`uname`
 
 if [ "$os_type" = "Darwin" ]; then

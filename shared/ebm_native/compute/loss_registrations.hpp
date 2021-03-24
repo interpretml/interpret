@@ -24,7 +24,7 @@
 #include "LossRegressionPseudoHuber.hpp"
 
 // Add new Loss* type registrations to this list:
-static INLINE_ALWAYS const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
+static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
    // IMPORTANT: the *LossParam types here must match the parameters types in your Loss* constructor
    return {
       RegisterLoss<LossMulticlassLogLoss>("log_loss"),
