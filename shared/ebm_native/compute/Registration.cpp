@@ -12,14 +12,9 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
-
-#include "FeatureGroup.h"
-#include "ThreadStateBoosting.h"
-
-#include "Config.h"
-#include "Registrable.h"
-#include "Registration.h"
+#include "Config.hpp"
+#include "Registrable.hpp"
+#include "Registration.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -38,7 +33,7 @@ static bool CheckForIllegalCharacters(const char * s) noexcept {
             // whitespace is illegal
             break;
          }
-         if(Registration::k_registrationSeparator == chr ||
+         if(k_registrationSeparator == chr ||
             Registration::k_paramSeparator == chr ||
             Registration::k_valueSeparator == chr ||
             Registration::k_typeTerminator == chr
@@ -85,50 +80,36 @@ void Registration::CheckParamNames(const char * const sParamName, std::vector<co
    usedParamNames.push_back(sParamName);
 }
 
-std::vector<std::unique_ptr<const Registrable>> Registration::CreateRegistrables(
+std::unique_ptr<const Registrable> Registration::CreateRegistrable(
    const Config & config,
    const char * sRegistration,
+   const char * sRegistrationEnd,
    const std::vector<std::shared_ptr<const Registration>> & registrations
 ) {
    EBM_ASSERT(nullptr != sRegistration);
+   EBM_ASSERT(nullptr != sRegistrationEnd);
+   EBM_ASSERT(sRegistration < sRegistrationEnd); // empty string not allowed
+   EBM_ASSERT('\0' != *sRegistration);
+   EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
+   EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
+   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
 
-   LOG_0(TraceLevelInfo, "Entered Registrable::CreateRegistrables");
+   LOG_0(TraceLevelInfo, "Entered Registrable::CreateRegistrable");
 
-   std::vector<std::unique_ptr<const Registrable>> registrables;
-   while(true) {
-      sRegistration = SkipWhitespace(sRegistration);
-      const char * sRegistrationEnd = strchr(sRegistration, k_registrationSeparator);
-      if(nullptr == sRegistrationEnd) {
-         // find the null terminator then
-         sRegistrationEnd = sRegistration + strlen(sRegistration);
-      }
-      if(sRegistrationEnd != sRegistration) {
-         // we allow empty registrations like ",,,something_legal,,,  something_else  , " since the intent is clear
-         for(const std::shared_ptr<const Registration> & registration : registrations) {
-            if(nullptr != registration) {
-               // normally we shouldn't have nullptr registrations, but let's not complain if someone is writing
-               // their own custom one and accidentally puts one in.  We still understand the intent.
-               std::unique_ptr<const Registrable> pRegistrable =
-                  registration->AttemptCreate(config, sRegistration, sRegistrationEnd);
-               if(nullptr != pRegistrable) {
-                  registrables.emplace_back(pRegistrable.release());
-                  goto next_registration; // pick only the first one per registrable in the sRegistration string
-               }
-            }
+   std::unique_ptr<const Registrable> pRegistrable = nullptr;
+   for(const std::shared_ptr<const Registration> & registration : registrations) {
+      if(nullptr != registration) {
+         // normally we shouldn't have nullptr registrations, but let's not complain if someone is writing
+         // their own custom one and accidentally puts one in.  We still understand the intent.
+         pRegistrable = registration->AttemptCreate(config, sRegistration, sRegistrationEnd);
+         if(nullptr != pRegistrable) {
+            break;
          }
-         // we didn't find anything!
-         throw RegistrationUnknownException();
       }
-   next_registration:;
-      if('\0' == *sRegistrationEnd) {
-         break;
-      }
-      EBM_ASSERT(k_registrationSeparator == *sRegistrationEnd);
-
-      sRegistration = sRegistrationEnd + 1;
    }
-   LOG_0(TraceLevelInfo, "Exited Registrable::CreateRegistrables");
-   return registrables;
+
+   LOG_0(TraceLevelInfo, "Exited Registrable::CreateRegistrable");
+   return pRegistrable;
 }
 
 void Registration::FinalCheckParameters(
@@ -138,7 +119,10 @@ void Registration::FinalCheckParameters(
 ) {
    EBM_ASSERT(nullptr != sRegistration);
    EBM_ASSERT(nullptr != sRegistrationEnd);
-   EBM_ASSERT(sRegistration <= sRegistrationEnd);
+   EBM_ASSERT(sRegistration <= sRegistrationEnd); // sRegistration contains the part after the tag now
+   EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
+   EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
+   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
 
    // cUsedParams will have been filled by the time we reach this point since all the calls to UnpackParam
    // are guaranteed to have occured before we get called.
@@ -155,7 +139,7 @@ void Registration::FinalCheckParameters(
          ++sRegistration; // get past the ';' character
       }
       EBM_ASSERT(sRegistration <= sRegistrationEnd);
-      if(sRegistrationEnd == sRegistration) {
+      if(sRegistrationEnd <= sRegistration) {
          break;
       }
       --cRemainingParams; // this will underflow if we're missing a param, but underflow for unsigned is legal
@@ -179,7 +163,11 @@ const char * Registration::CheckRegistrationName(
 ) const {
    EBM_ASSERT(nullptr != sRegistration);
    EBM_ASSERT(nullptr != sRegistrationEnd);
-   EBM_ASSERT(sRegistration <= sRegistrationEnd);
+   EBM_ASSERT(sRegistration < sRegistrationEnd); // empty string not allowed
+   EBM_ASSERT('\0' != *sRegistration);
+   EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
+   EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
+   EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
 
    sRegistration = IsStringEqualsCaseInsensitive(sRegistration, m_sRegistrationName);
    if(nullptr == sRegistration) {

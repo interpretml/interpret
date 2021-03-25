@@ -15,16 +15,18 @@
 #include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "compute.hpp"
 
-#include "Config.h"
-#include "Registrable.h"
-#include "Registration.h" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!
+#include "Config.hpp"
+#include "Registrable.hpp"
+#include "Registration.hpp" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+typedef const std::vector<std::shared_ptr<const Registration>> (* REGISTER_LOSSES_FUNCTION)();
 
 class LossSingletask;
 class LossBinary;
@@ -185,7 +187,7 @@ class Loss : public Registrable {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
       } else {
-         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax < k_cCompilerOptimizedTargetClassesStart ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart)>::ApplyTraining(this, data);
+         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax2 < k_cCompilerOptimizedTargetClassesStart2 ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart2)>::ApplyTraining(this, data);
       }
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
@@ -194,7 +196,7 @@ class Loss : public Registrable {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(data);
       } else {
-         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax < k_cCompilerOptimizedTargetClassesStart ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart)>::ApplyValidation(this, data);
+         return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax2 < k_cCompilerOptimizedTargetClassesStart2 ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart2)>::ApplyValidation(this, data);
       }
    }
    template<typename TLoss, ptrdiff_t cCompilerScores>
@@ -203,14 +205,14 @@ class Loss : public Registrable {
          if(cCompilerScores == data.GetRuntimeLearningTypeOrCountTargetClasses()) {
             return pLoss->BitPackPostApplyTraining<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(data);
          } else {
-            return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyTraining(pLoss, data);
+            return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyTraining(pLoss, data);
          }
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          if(cCompilerScores == data.GetRuntimeLearningTypeOrCountTargetClasses()) {
             return pLoss->BitPackPostApplyValidation<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(data);
          } else {
-            return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyValidation(pLoss, data);
+            return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyValidation(pLoss, data);
          }
       }
    };
@@ -473,9 +475,11 @@ public:
    virtual ErrorEbmType ApplyValidation(ApplyValidationData & data) const = 0;
 
    static ErrorEbmType CreateLoss(
-      const Config & config,
+      const REGISTER_LOSSES_FUNCTION registerLossesFunction, 
+      const size_t cOutputs,
       const char * const sLoss,
-      std::unique_ptr<const Loss> & pLossOut
+      const char * const sLossEnd,
+      const void ** const ppLossOut
    ) noexcept;
 };
 

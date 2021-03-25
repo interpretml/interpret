@@ -6,6 +6,7 @@
 #define BRIDGE_C_H
 
 #include "ebm_native.h"
+#include "common_c.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,6 +23,16 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType CreateLoss_Cpu_64(
    const char * const sLossEnd,
    const void ** const ppLossOut
 );
+
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType CreateMetric_Cpu_64(
+   const size_t cOutputs,
+   const char * const sLoss,
+   const char * const sLossEnd,
+   const void ** const ppLossOut
+);
+
+typedef size_t StorageDataType;
+typedef UIntEbmType ActiveDataType;
 
 #ifdef __cplusplus
 } // extern "C"

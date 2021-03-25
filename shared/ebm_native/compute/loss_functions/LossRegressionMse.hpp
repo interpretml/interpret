@@ -5,7 +5,7 @@
 // LossRegressionMse is a VERY VERY special Loss function.  
 // Anyone writing a custom loss function in C++ should start from a different loss function
 
-#include "Loss.h"
+#include "Loss.hpp"
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>

@@ -15,11 +15,9 @@
 #include "common_c.h" // INLINE_ALWAYS
 #include "zones.h"
 
-#include "EbmInternal.h"
-
-#include "EbmException.h"
-#include "Config.h"
-#include "Registrable.h"
+#include "EbmException.hpp"
+#include "Config.hpp"
+#include "Registrable.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -52,12 +50,6 @@ class ParameterUnknownException final : public std::exception {
    // this should not be thrown from the Registrable constructor
 public:
    ParameterUnknownException() = default;
-};
-
-class RegistrationUnknownException final : public std::exception {
-   // this should not be thrown from the Registrable constructor
-public:
-   RegistrationUnknownException() = default;
 };
 
 class RegistrationConstructorException final : public std::exception {
@@ -167,6 +159,13 @@ protected:
    ) {
       static_assert(std::is_base_of<ParamBase, TParam>::value, "TParam not derrived from ParamBase");
 
+      EBM_ASSERT(nullptr != sRegistration);
+      EBM_ASSERT(nullptr != sRegistrationEnd);
+      EBM_ASSERT(sRegistration <= sRegistrationEnd); // sRegistration contains the part after the tag now
+      EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
+      EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
+      EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
+
       typename TParam::ParamType paramValue = param.GetDefaultValue();
       while(true) {
          // check and handle a possible parameter
@@ -182,13 +181,10 @@ protected:
                if(nullptr == sRegistration) {
                   throw ParameterValueMalformedException();
                }
-               if(sRegistrationEnd == sRegistration) {
+               if(sRegistrationEnd <= sRegistration) {
+                  // if there are trailing spaces we can blow past the sRegistrationEnd which has spaces removed
                   break;
                }
-               EBM_ASSERT(k_registrationSeparator != *sRegistration);
-               EBM_ASSERT(k_valueSeparator != *sRegistration);
-               EBM_ASSERT(k_typeTerminator != *sRegistration);
-
                if(k_paramSeparator != *sRegistration) {
                   throw ParameterValueMalformedException();
                }
@@ -222,14 +218,14 @@ protected:
 
 public:
 
-   constexpr static const char k_registrationSeparator = ',';
    constexpr static const char k_paramSeparator = ';';
    constexpr static char k_valueSeparator = '=';
    constexpr static char k_typeTerminator = ':';
 
-   static std::vector<std::unique_ptr<const Registrable>> CreateRegistrables(
+   static std::unique_ptr<const Registrable> CreateRegistrable(
       const Config & config,
       const char * sRegistration,
+      const char * sRegistrationEnd,
       const std::vector<std::shared_ptr<const Registration>> & registrations
    );
 

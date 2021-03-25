@@ -4,10 +4,10 @@
 
 // !!! NOTE: To add a new loss/objective function in C++, follow the steps listed at the top of the "Loss.cpp" file !!!
 
-#include "Loss.h"
+#include "Loss.hpp"
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>
-struct LossMultitaskRegressionMse : public LossMultitaskRegression {
+struct LossMulticlassCrossEntropy : public LossMulticlass {
    // this one needs to be special cased!
 };

@@ -7,7 +7,6 @@
 
 #include "ebm_native.h"
 #include "logging.h"
-#include "bridge_c.h"
 #include "common_c.h"
 #include "zones.h"
 

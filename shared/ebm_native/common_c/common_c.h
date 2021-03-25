@@ -31,8 +31,8 @@ extern "C" {
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("clang diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
-#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING _Pragma("clang diagnostic ignored \"-Wformat-nonliteral\"")
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+#define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 
 #if __has_feature(attribute_analyzer_noreturn)
 #define ANALYZER_NORETURN __attribute__((analyzer_noreturn))
@@ -47,8 +47,8 @@ extern "C" {
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("GCC diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
-#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+#define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 
 #define ANALYZER_NORETURN
 
@@ -65,8 +65,8 @@ extern "C" {
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
-#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+#define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
 
 #define ANALYZER_NORETURN
 
@@ -77,8 +77,8 @@ extern "C" {
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE __pragma(warning(disable: 4701))
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH __pragma(warning(disable: 4018))
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
-#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY __pragma(warning(disable: 6001))
+#define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER [[gsl::suppress(type.6)]]
 
 #define ANALYZER_NORETURN
 
@@ -90,6 +90,9 @@ extern "C" {
 // disable dereferencing NULL pointer (same pointer), since the static analysis seems to think any access 
 // of a pointer is dereferencing a NULL pointer potentially.
 #pragma warning(disable : 28182)
+// disable SIMD alignment issues.  We need to align on 16 byte boundaries (64 byte would be better), but we
+// use SIMD all over the place, so just disable the general warning
+#pragma warning(disable : 4316)
 
 #else  // compiler type
 #error compiler not recognized
@@ -165,7 +168,10 @@ INLINE_ALWAYS static char * strcpy_NO_WARNINGS(char * dest, const char * src) EB
 #define FAST_EXP
 #define FAST_LOG
 
+static const char k_registrationSeparator = ',';
+
 extern const char * SkipWhitespace(const char * s);
+extern const char * SkipEndWhitespaceWhenGuaranteedNonWhitespace(const char * sEnd);
 extern const char * ConvertStringToFloat(
    const char * const s,
    double * const pResultOut

@@ -12,49 +12,47 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
-
-#include "EbmException.h"
-#include "Loss.h"
-#include "Registration.h"
+#include "EbmException.hpp"
+#include "Config.hpp"
+#include "Registrable.hpp"
+#include "Registration.hpp"
+#include "Loss.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-
-//TODO: these need to be extern "C" style and located in a separate "zone"
-//extern const std::vector<std::shared_ptr<const Registration>> RegisterLosses32Sse2();
-extern const std::vector<std::shared_ptr<const Registration>> RegisterLosses64None();
-
 ErrorEbmType Loss::CreateLoss(
-   const Config & config,
+   const REGISTER_LOSSES_FUNCTION registerLossesFunction,
+   const size_t cOutputs,
    const char * const sLoss,
-   std::unique_ptr<const Loss> & pLossOut
+   const char * const sLossEnd,
+   const void ** const ppLossOut
 ) noexcept {
+   EBM_ASSERT(nullptr != registerLossesFunction);
+   EBM_ASSERT(1 <= cOutputs);
    EBM_ASSERT(nullptr != sLoss);
+   EBM_ASSERT(nullptr != sLossEnd);
+   EBM_ASSERT(sLoss < sLossEnd); // empty string not allowed
+   EBM_ASSERT('\0' != *sLoss);
+   EBM_ASSERT(!(0x20 == *sLoss || (0x9 <= *sLoss && *sLoss <= 0xd)));
+   EBM_ASSERT(!(0x20 == *(sLossEnd - 1) || (0x9 <= *(sLossEnd - 1) && *(sLossEnd - 1) <= 0xd)));
+   EBM_ASSERT('\0' == *sLossEnd || 0x20 == *sLossEnd || (0x9 <= *sLossEnd && *sLossEnd <= 0xd));
+   EBM_ASSERT(nullptr != ppLossOut);
 
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
    try {
-      // TODO: select the right float 32/64 float/double type
-      const std::vector<std::shared_ptr<const Registration>> registrations = RegisterLosses64None();
-      std::vector<std::unique_ptr<const Registrable>> registrables = 
-         Registration::CreateRegistrables(config, sLoss, registrations);
-      if(registrables.size() < 1) {
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss empty loss string");
+      Config config(cOutputs);
+      const std::vector<std::shared_ptr<const Registration>> registrations = (*registerLossesFunction)();
+      std::unique_ptr<const Registrable> pRegistrable = 
+         Registration::CreateRegistrable(config, sLoss, sLossEnd, registrations);
+      if(nullptr == pRegistrable) {
          return Error_LossUnknown;
       }
-      if(1 != registrables.size()) {
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss multiple loss functions can't simultaneously exist");
-         return Error_LossMultipleSpecified;
-      }
-      pLossOut = std::unique_ptr<const Loss>(static_cast<const Loss *>(registrables[0].release()));
+      *ppLossOut = pRegistrable.release();
       LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
       return Error_None;
-   } catch(const RegistrationUnknownException &) {
-      LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss RegistrationUnknownException");
-      return Error_LossUnknown;
    } catch(const ParameterValueMalformedException &) {
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueMalformedException");
       return Error_LossParameterValueMalformed;

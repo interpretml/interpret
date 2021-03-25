@@ -94,7 +94,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>CPU_ZONE;_LIB;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZONE_cpu;_LIB;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
@@ -109,7 +109,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\loss_functions;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -127,7 +127,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>CPU_ZONE;_LIB;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZONE_cpu;_LIB;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
@@ -144,7 +144,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\loss_functions;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -162,7 +162,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>CPU_ZONE;_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZONE_cpu;_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
@@ -178,7 +178,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\loss_functions;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -196,7 +196,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>CPU_ZONE;_LIB;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZONE_cpu;_LIB;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
@@ -213,7 +213,7 @@
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OpenMPSupport>false</OpenMPSupport>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\inc;$(ProjectDir)..\..\common_c;$(ProjectDir)..\..\bridge_c;$(ProjectDir)..\..\common_cpp;$(ProjectDir)..\..\bridge_cpp;$(ProjectDir)..;$(ProjectDir)..\loss_functions;$(ProjectDir)..\metrics;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>

@@ -170,7 +170,6 @@ typedef UIntEbmType UGenerateUpdateOptionsType;
 #define Error_LossParameterValueOutOfRange            (EBM_ERROR_CAST(6))
 #define Error_LossParameterMismatchWithConfig         (EBM_ERROR_CAST(7))
 #define Error_LossUnknown                             (EBM_ERROR_CAST(8))
-#define Error_LossMultipleSpecified                   (EBM_ERROR_CAST(9))
 #define Error_LossIllegalRegistrationName             (EBM_ERROR_CAST(10))
 #define Error_LossIllegalParamName                    (EBM_ERROR_CAST(11))
 #define Error_LossDuplicateParamName                  (EBM_ERROR_CAST(12))
