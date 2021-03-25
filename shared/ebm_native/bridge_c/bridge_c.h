@@ -24,6 +24,13 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType CreateLoss_Cpu_64(
    const void ** const ppLossOut
 );
 
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType CreateLoss_Cuda_32(
+   const size_t cOutputs,
+   const char * const sLoss,
+   const char * const sLossEnd,
+   const void ** const ppLossOut
+);
+
 INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType CreateMetric_Cpu_64(
    const size_t cOutputs,
    const char * const sLoss,
