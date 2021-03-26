@@ -124,8 +124,6 @@
       <ModuleDefinitionFile>ebm_native_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\cuda\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cuda.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -172,8 +170,6 @@ EXIT /B 0
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebm_native_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\cuda\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cuda.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -225,8 +221,6 @@ EXIT /B 0
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebm_native_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\cuda\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cuda.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -278,8 +272,6 @@ EXIT /B 0
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebm_native_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\cuda\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cuda.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -398,6 +390,11 @@ EXIT /B 0
     </ProjectReference>
     <ProjectReference Include="compute\cpu\cpu.vcxproj">
       <Project>{afcfb34c-7555-4399-88bd-560cad86ce6e}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup Condition="exists('$(VCTargetsPath)\BuildCustomizations\CUDA 11.2.props')">
+    <ProjectReference Include="compute\cuda\cuda.vcxproj">
+      <Project>{26b3484d-e3dc-4dcd-95a2-b4fffaf43a9a}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
