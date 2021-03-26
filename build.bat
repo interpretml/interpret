@@ -46,6 +46,18 @@ IF %build_64_bit% EQU 1 (
    )
 
 
+   MSBuild.exe "%root_path%shared\ebm_native\compute\cuda\cuda.vcxproj" /p:Configuration=Release /p:Platform=x64 %extra_analysis%
+   IF %ERRORLEVEL% NEQ 0 (
+      ECHO MSBuild for Release x64 returned error code %ERRORLEVEL%
+      EXIT /B %ERRORLEVEL%
+   )
+   MSBuild.exe "%root_path%shared\ebm_native\compute\cuda\cuda.vcxproj" /p:Configuration=Debug /p:Platform=x64 %extra_analysis%
+   IF %ERRORLEVEL% NEQ 0 (
+      ECHO MSBuild for Debug x64 returned error code %ERRORLEVEL%
+      EXIT /B %ERRORLEVEL%
+   )
+
+
    MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Release /p:Platform=x64 %extra_analysis%
    IF %ERRORLEVEL% NEQ 0 (
       ECHO MSBuild for Release x64 returned error code %ERRORLEVEL%
@@ -76,6 +88,18 @@ IF %build_32_bit% EQU 1 (
       EXIT /B %ERRORLEVEL%
    )
    MSBuild.exe "%root_path%shared\ebm_native\compute\avx512\avx512.vcxproj" /p:Configuration=Debug /p:Platform=Win32 %extra_analysis%
+   IF %ERRORLEVEL% NEQ 0 (
+      ECHO MSBuild for Debug x86 returned error code %ERRORLEVEL%
+      EXIT /B %ERRORLEVEL%
+   )
+
+
+   MSBuild.exe "%root_path%shared\ebm_native\compute\cuda\cuda.vcxproj" /p:Configuration=Release /p:Platform=Win32 %extra_analysis%
+   IF %ERRORLEVEL% NEQ 0 (
+      ECHO MSBuild for Release x86 returned error code %ERRORLEVEL%
+      EXIT /B %ERRORLEVEL%
+   )
+   MSBuild.exe "%root_path%shared\ebm_native\compute\cuda\cuda.vcxproj" /p:Configuration=Debug /p:Platform=Win32 %extra_analysis%
    IF %ERRORLEVEL% NEQ 0 (
       ECHO MSBuild for Debug x86 returned error code %ERRORLEVEL%
       EXIT /B %ERRORLEVEL%
