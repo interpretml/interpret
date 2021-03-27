@@ -279,7 +279,7 @@ class Loss : public Registrable {
       }
    };
 
-   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared final {
       static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          UNUSED(pLoss);
@@ -298,8 +298,8 @@ class Loss : public Registrable {
          return Error_None;
       }
    };
-   template<typename TLoss, ptrdiff_t cCompilerScores, bool bHessian>
-   struct Shared<TLoss, cCompilerScores, k_cItemsPerBitPackNone, bHessian> final {
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, bool bHessian>
+   struct Shared<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackNone, bHessian> final {
       static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          UNUSED(pLoss);
          UNUSED(data);
@@ -317,8 +317,8 @@ class Loss : public Registrable {
          return Error_None;
       }
    };
-   template<typename TLoss, ptrdiff_t cCompilerPack, bool bHessian>
-   struct Shared <TLoss, k_oneScore, cCompilerPack, bHessian> final {
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerPack, bool bHessian>
+   struct Shared <TLoss, TFloat, k_oneScore, cCompilerPack, bHessian> final {
       static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          UNUSED(pLoss);
          UNUSED(data);
@@ -336,8 +336,8 @@ class Loss : public Registrable {
          return Error_None;
       }
    };
-   template<typename TLoss, bool bHessian>
-   struct Shared<TLoss, k_oneScore, k_cItemsPerBitPackNone, bHessian> final {
+   template<typename TLoss, typename TFloat, bool bHessian>
+   struct Shared<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackNone, bHessian> final {
       static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          UNUSED(pLoss);
          UNUSED(data);
@@ -357,32 +357,32 @@ class Loss : public Registrable {
    };
 
 
-   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    struct AttachHessian;
-   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
-   struct AttachHessian<TLoss, cCompilerScores, cCompilerPack, true> final {
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, true> final {
       INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
          if(data.GetIsHessianNeeded()) {
-            return Shared<TLoss, cCompilerScores, cCompilerPack, true>::ApplyTraining(pLoss, data);
+            return TFloat::template ApplyTraining<Shared, TLoss, TFloat, cCompilerScores, cCompilerPack, true>(pLoss, data);
          } else {
-            return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyTraining(pLoss, data);
+            return TFloat::template ApplyTraining<Shared, TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pLoss, data);
          }
       }
       INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
          if(data.GetIsHessianNeeded()) {
-            return Shared<TLoss, cCompilerScores, cCompilerPack, true>::ApplyValidation(pLoss, data);
+            return TFloat::template ApplyValidation<Shared, TLoss, TFloat, cCompilerScores, cCompilerPack, true>(pLoss, data);
          } else {
-            return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyValidation(pLoss, data);
+            return TFloat::template ApplyValidation<Shared, TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pLoss, data);
          }
       }
    };
-   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
-   struct AttachHessian<TLoss, cCompilerScores, cCompilerPack, false> final {
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   struct AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, false> final {
       INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
-         return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyTraining(pLoss, data);
+         return TFloat::template ApplyTraining<Shared, TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pLoss, data);
       }
       INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
-         return Shared<TLoss, cCompilerScores, cCompilerPack, false>::ApplyValidation(pLoss, data);
+         return TFloat::template ApplyValidation<Shared, TLoss, TFloat, cCompilerScores, cCompilerPack, false>(pLoss, data);
       }
    };
 
@@ -436,15 +436,15 @@ protected:
    }
 
 
-   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbmType SharedApplyTraining(ApplyTrainingData & data) const {
       static_assert(IsEdgeLoss<TLoss>(), "TLoss must inherit from one of the children of the Loss class");
-      return AttachHessian<TLoss, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyTraining(this, data);
+      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyTraining(this, data);
    }
-   template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
+   template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbmType SharedApplyValidation(ApplyValidationData & data) const {
       static_assert(IsEdgeLoss<TLoss>(), "TLoss must inherit from one of the children of the Loss class");
-      return AttachHessian<TLoss, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyValidation(this, data);
+      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyValidation(this, data);
    }
 
 
@@ -579,11 +579,11 @@ protected:
       } \
       template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack> \
       ErrorEbmType ApplyTrainingTemplated(ApplyTrainingData & data) const { \
-         return Loss::SharedApplyTraining<typename std::remove_pointer<decltype(this)>::type, cCompilerScores, cCompilerPack>(data); \
+         return Loss::SharedApplyTraining<typename std::remove_pointer<decltype(this)>::type, TFloat, cCompilerScores, cCompilerPack>(data); \
       } \
       template<ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack> \
       ErrorEbmType ApplyValidationTemplated(ApplyValidationData & data) const { \
-         return Loss::SharedApplyValidation<typename std::remove_pointer<decltype(this)>::type, cCompilerScores, cCompilerPack>(data); \
+         return Loss::SharedApplyValidation<typename std::remove_pointer<decltype(this)>::type, TFloat, cCompilerScores, cCompilerPack>(data); \
       }
 
 #define LOSS_CLASS_VIRTUAL_BOILERPLATE_PUT_AT_END_OF_CLASS \

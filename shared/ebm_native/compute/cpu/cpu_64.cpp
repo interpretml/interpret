@@ -81,6 +81,18 @@ public:
    INLINE_ALWAYS Cpu_64_Operators Sqrt() const noexcept {
       return Cpu_64_Operators(std::sqrt(m_data));
    }
+
+   template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+      // this allows us to switch execution onto GPU, FPGA, or other local computation
+      return TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyTraining(pLoss, data);
+   }
+
+   template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+      // this allows us to switch execution onto GPU, FPGA, or other local computation
+      return TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyValidation(pLoss, data);
+   }
 };
 
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
