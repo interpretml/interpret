@@ -397,6 +397,11 @@ EXIT /B 0
       <Project>{26b3484d-e3dc-4dcd-95a2-b4fffaf43a9a}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup Condition="!exists('$(VCTargetsPath)\BuildCustomizations\CUDA 11.2.props')">
+    <ProjectReference Include="compute\cuda_missing_ebm\cuda_missing_ebm.vcxproj">
+      <Project>{059d61c6-0fc9-4ea5-b4af-5cb0d8d0980b}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

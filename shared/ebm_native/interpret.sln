@@ -101,6 +101,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "metrics", "metrics", "{43E2
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda_ebm", "compute\cuda_ebm\cuda_ebm.vcxproj", "{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda_missing_ebm", "compute\cuda_missing_ebm\cuda_missing_ebm.vcxproj", "{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -153,6 +155,14 @@ Global
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Release|x64.Build.0 = Release|x64
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Release|x86.ActiveCfg = Release|Win32
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}.Release|x86.Build.0 = Release|Win32
+		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Debug|x64.ActiveCfg = Debug|x64
+		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Debug|x64.Build.0 = Debug|x64
+		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Debug|x86.ActiveCfg = Debug|Win32
+		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Debug|x86.Build.0 = Debug|Win32
+		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Release|x64.ActiveCfg = Release|x64
+		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Release|x64.Build.0 = Release|x64
+		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Release|x86.ActiveCfg = Release|Win32
+		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -167,6 +177,7 @@ Global
 		{8CAB82C2-DF15-49B3-9F7D-DFF3E71FCC22} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
 		{43E23DAD-B0D6-4148-B12A-F58560778CB3} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
 		{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
+		{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B} = {5B3DB96E-A28F-4032-8E41-C6D2E408FC72}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A1DD85D3-F373-45AE-B998-4F7E1ADF40DC}
