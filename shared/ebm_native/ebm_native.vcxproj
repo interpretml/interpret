@@ -385,15 +385,15 @@ EXIT /B 0
     <Text Include="ebm_native_exports.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="compute\avx512\avx512.vcxproj">
+    <ProjectReference Include="compute\avx512_ebm\avx512_ebm.vcxproj">
       <Project>{f2ea4b57-0df5-40a9-a8de-6e92c7f898a1}</Project>
     </ProjectReference>
-    <ProjectReference Include="compute\cpu\cpu.vcxproj">
+    <ProjectReference Include="compute\cpu_ebm\cpu_ebm.vcxproj">
       <Project>{afcfb34c-7555-4399-88bd-560cad86ce6e}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup Condition="exists('$(VCTargetsPath)\BuildCustomizations\CUDA 11.2.props')">
-    <ProjectReference Include="compute\cuda\cuda.vcxproj">
+    <ProjectReference Include="compute\cuda_ebm\cuda_ebm.vcxproj">
       <Project>{26b3484d-e3dc-4dcd-95a2-b4fffaf43a9a}</Project>
     </ProjectReference>
   </ItemGroup>

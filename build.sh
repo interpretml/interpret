@@ -126,6 +126,7 @@ compile_file() {
    local intermediate_path_unsanitized="$4"
    local zone="$5"
 
+   # glob expansion returns *.cpp or *.c when there are no matches, so we need to check for the existance of the file
    if [ -f "$file_unsanitized" ] ; then
       local file_sanitized=`sanitize "$file_unsanitized"`
       # https://www.oncrashreboot.com/use-sed-to-split-path-into-filename-extension-and-directory
@@ -189,7 +190,7 @@ compile_compute() {
    local zone="$6"
 
    compile_directory_cpp "$compiler" "$compiler_args_sanitized -DZONE_$zone" "$src_path_unsanitized/compute" "$intermediate_path_unsanitized" "$zone"
-   compile_directory_cpp "$compiler" "$compiler_args_sanitized -I$src_path_sanitized/compute/$zone -DZONE_$zone" "$src_path_unsanitized/compute/$zone" "$intermediate_path_unsanitized" "$zone"
+   compile_directory_cpp "$compiler" "$compiler_args_sanitized -I$src_path_sanitized/compute/${zone}_ebm -DZONE_$zone" "$src_path_unsanitized/compute/${zone}_ebm" "$intermediate_path_unsanitized" "$zone"
 }
 
 link_file() {

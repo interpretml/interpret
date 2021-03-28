@@ -22,7 +22,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{afcfb34c-7555-4399-88bd-560cad86ce6e}</ProjectGuid>
-    <RootNamespace>cpu</RootNamespace>
+    <RootNamespace>cpu_ebm</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

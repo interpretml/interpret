@@ -62,7 +62,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{589FA769-174
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "interpret-core", "..\..\python\interpret-core\interpret-core.pyproj", "{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpu", "compute\cpu\cpu.vcxproj", "{AFCFB34C-7555-4399-88BD-560CAD86CE6E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cpu_ebm", "compute\cpu_ebm\cpu_ebm.vcxproj", "{AFCFB34C-7555-4399-88BD-560CAD86CE6E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3DB96E-A28F-4032-8E41-C6D2E408FC72}"
 	ProjectSection(SolutionItems) = preProject
@@ -79,7 +79,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\Registration.hpp = compute\Registration.hpp
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "avx512", "compute\avx512\avx512.vcxproj", "{F2EA4B57-0DF5-40A9-A8DE-6E92C7F898A1}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "avx512_ebm", "compute\avx512_ebm\avx512_ebm.vcxproj", "{F2EA4B57-0DF5-40A9-A8DE-6E92C7F898A1}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "loss_functions", "loss_functions", "{8CAB82C2-DF15-49B3-9F7D-DFF3E71FCC22}"
 	ProjectSection(SolutionItems) = preProject
@@ -99,7 +99,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "metrics", "metrics", "{43E2
 		compute\metrics\MetricAuc.hpp = compute\metrics\MetricAuc.hpp
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda", "compute\cuda\cuda.vcxproj", "{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda_ebm", "compute\cuda_ebm\cuda_ebm.vcxproj", "{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

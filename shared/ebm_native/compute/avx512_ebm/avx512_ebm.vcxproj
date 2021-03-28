@@ -22,7 +22,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{F2EA4B57-0DF5-40A9-A8DE-6E92C7F898A1}</ProjectGuid>
-    <RootNamespace>avx512</RootNamespace>
+    <RootNamespace>avx512_ebm</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
