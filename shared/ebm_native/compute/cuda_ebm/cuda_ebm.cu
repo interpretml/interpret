@@ -37,16 +37,9 @@ bool TestCuda() {
    int aResult[k_cItems];
    memset(aResult, 0, sizeof(aResult));
 
-   // TODO: unfortunately, I think this means our Loss classes need to be standard_layout and trivially copyable
-   // which means no virtual function  :(.  We can use function pointers instead though, even though that's kind
-   // of uggly, but at least those will be hidden from the Loss class writer.  In Registration.hpp after
-   // calling new TRegistrable... we still have the specific loss type after that call, so we can take a pointer
-   // to a function that we inject via the loss MACRO.  Dirty, but it'll get the job done.
-
-   static_assert(std::is_standard_layout<TestLoss>::value,
-      "Our Loss type must be a standard layout struct to be inserted into the GPU");
-   static_assert(std::is_trivially_copyable<TestLoss>::value,
-      "Our Loss type must be a trivial struct to be inserted into the GPU");
+   static_assert(std::is_standard_layout<TestLoss>::value &&
+      std::is_trivially_copyable<TestLoss>::value,
+      "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
    TestLoss loss(9);
 

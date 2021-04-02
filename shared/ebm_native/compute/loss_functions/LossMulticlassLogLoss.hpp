@@ -7,24 +7,25 @@
 #include "Loss.hpp"
 
 // TFloat could be double, float, or some SIMD intrinsic type
-template <typename TFloat>
+template<typename TFloat>
 struct LossMulticlassLogLoss : public LossMulticlass {
+   LOSS_CLASS_BOILERPLATE(LossMulticlassLogLoss, true, 1)
 
    size_t m_countTargetClasses;
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
    INLINE_ALWAYS LossMulticlassLogLoss(const Config & config) {
-      if(1 == config.GetCountOutputs()) {
+      UNUSED(config);
+
+      if(1 == config.cOutputs) {
          // we share the tag "log_loss" with binary classification
          throw SkipRegistrationException();
       }
 
-      if(config.GetCountOutputs() <= 0) {
+      if(config.cOutputs <= 0) {
          throw ParameterMismatchWithConfigException();
       }
 
-      m_countTargetClasses = config.GetCountOutputs();
+      m_countTargetClasses = config.cOutputs;
    }
-
-   LOSS_CLASS_BOILERPLATE_PUT_AT_END_OF_CLASS(true)
 };

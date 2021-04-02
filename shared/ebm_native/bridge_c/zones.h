@@ -23,6 +23,8 @@ extern "C" {
 #error ZONE not recognized
 #endif
 
+#define MAKE_ZONED_C_FUNCTION_NAME(__function_name) DEFINED_ZONE_NAME ## _ ## __function_name
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus

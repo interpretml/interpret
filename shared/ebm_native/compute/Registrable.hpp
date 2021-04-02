@@ -12,15 +12,16 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-class Registrable {
+struct Registrable {
 
 protected:
 
    Registrable() = default;
 
-public:
-   virtual ~Registrable() = default;
 };
+static_assert(std::is_standard_layout<Registrable>::value &&
+   std::is_trivially_copyable<Registrable>::value,
+   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 } // DEFINED_ZONE_NAME
 

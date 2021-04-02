@@ -38,9 +38,6 @@ public:
    INLINE_ALWAYS Cpu_64_Operators() noexcept {
    }
 
-   INLINE_ALWAYS Cpu_64_Operators(const Cpu_64_Operators & data) noexcept : m_data(data.m_data) {
-   }
-
    INLINE_ALWAYS Cpu_64_Operators(const float data) noexcept : m_data(static_cast<Unpacked>(data)) {
    }
 
@@ -83,17 +80,20 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData & data) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
-      return TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyTraining(pLoss, data);
+      return TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyTraining(pLoss, pData);
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData & data) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
-      return TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyValidation(pLoss, data);
+      return TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyValidation(pLoss, pData);
    }
 };
+static_assert(std::is_standard_layout<Cpu_64_Operators>::value &&
+   std::is_trivially_copyable<Cpu_64_Operators>::value,
+   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
@@ -106,26 +106,26 @@ static INLINE_ALWAYS std::shared_ptr<const Registration> RegisterLoss(const char
 #include "loss_registrations.hpp"
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cpu_64(
-   const size_t cOutputs,
+   const Config * const pConfig,
    const char * const sLoss,
    const char * const sLossEnd,
-   const void ** const ppLossOut
+   LossWrapper * const pLossWrapperOut
 ) {
-   return Loss::CreateLoss(&RegisterLosses, cOutputs, sLoss, sLossEnd, ppLossOut);
+   return Loss::CreateLoss(&RegisterLosses, pConfig, sLoss, sLossEnd, pLossWrapperOut);
 }
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Cpu_64(
-   const size_t cOutputs,
-   const char * const sLoss,
-   const char * const sLossEnd,
-   const void ** const ppLossOut
+   const Config * const pConfig,
+   const char * const sMetric,
+   const char * const sMetricEnd
+//   MetricWrapper * const pMetricWrapperOut,
 ) {
-   UNUSED(cOutputs);
-   UNUSED(sLoss);
-   UNUSED(sLossEnd);
-   UNUSED(ppLossOut);
+   UNUSED(pConfig);
+   UNUSED(sMetric);
+   UNUSED(sMetricEnd);
 
    return Error_UnknownInternalError;
 }
+
 
 } // DEFINED_ZONE_NAME

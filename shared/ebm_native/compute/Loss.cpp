@@ -12,8 +12,9 @@
 #include "logging.h"
 #include "zones.h"
 
+#include "zoned_bridge_c_functions.h"
+#include "zoned_bridge_cpp_functions.hpp"
 #include "EbmException.hpp"
-#include "Config.hpp"
 #include "Registrable.hpp"
 #include "Registration.hpp"
 #include "Loss.hpp"
@@ -25,13 +26,14 @@ namespace DEFINED_ZONE_NAME {
 
 ErrorEbmType Loss::CreateLoss(
    const REGISTER_LOSSES_FUNCTION registerLossesFunction,
-   const size_t cOutputs,
+   const Config * const pConfig,
    const char * const sLoss,
    const char * const sLossEnd,
-   const void ** const ppLossOut
+   LossWrapper * const pLossWrapperOut
 ) noexcept {
    EBM_ASSERT(nullptr != registerLossesFunction);
-   EBM_ASSERT(1 <= cOutputs);
+   EBM_ASSERT(nullptr != pConfig);
+   EBM_ASSERT(1 <= pConfig->cOutputs);
    EBM_ASSERT(nullptr != sLoss);
    EBM_ASSERT(nullptr != sLossEnd);
    EBM_ASSERT(sLoss < sLossEnd); // empty string not allowed
@@ -39,62 +41,73 @@ ErrorEbmType Loss::CreateLoss(
    EBM_ASSERT(!(0x20 == *sLoss || (0x9 <= *sLoss && *sLoss <= 0xd)));
    EBM_ASSERT(!(0x20 == *(sLossEnd - 1) || (0x9 <= *(sLossEnd - 1) && *(sLossEnd - 1) <= 0xd)));
    EBM_ASSERT('\0' == *sLossEnd || 0x20 == *sLossEnd || (0x9 <= *sLossEnd && *sLossEnd <= 0xd));
-   EBM_ASSERT(nullptr != ppLossOut);
+   EBM_ASSERT(nullptr != pLossWrapperOut);
+   EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
 
    LOG_0(TraceLevelInfo, "Entered Loss::CreateLoss");
+
+   ErrorEbmType error;
    try {
-      Config config(cOutputs);
       const std::vector<std::shared_ptr<const Registration>> registrations = (*registerLossesFunction)();
-      std::unique_ptr<const Registrable> pRegistrable = 
-         Registration::CreateRegistrable(config, sLoss, sLossEnd, registrations);
-      if(nullptr == pRegistrable) {
-         return Error_LossUnknown;
+      const bool bFailed = Registration::CreateRegistrable(pConfig, sLoss, sLossEnd, pLossWrapperOut, registrations);
+      if(!bFailed) {
+         EBM_ASSERT(nullptr != pLossWrapperOut->m_pLoss);
+         pLossWrapperOut->m_pApplyTrainingC = MAKE_ZONED_C_FUNCTION_NAME(ApplyTraining);
+         pLossWrapperOut->m_pApplyValidationC = MAKE_ZONED_C_FUNCTION_NAME(ApplyValidation);
+         LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
+         return Error_None;
       }
-      *ppLossOut = pRegistrable.release();
-      LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss");
-      return Error_None;
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
+      LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss unknown loss");
+      error = Error_LossUnknown;
    } catch(const ParameterValueMalformedException &) {
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueMalformedException");
-      return Error_LossParameterValueMalformed;
+      error = Error_LossParameterValueMalformed;
    } catch(const ParameterUnknownException &) {
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterUnknownException");
-      return Error_LossParameterUnknown;
+      error = Error_LossParameterUnknown;
    } catch(const RegistrationConstructorException &) {
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss RegistrationConstructorException");
-      return Error_LossConstructorException;
+      error = Error_LossConstructorException;
    } catch(const ParameterValueOutOfRangeException &) {
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueOutOfRangeException");
-      return Error_LossParameterValueOutOfRange;
+      error = Error_LossParameterValueOutOfRange;
    } catch(const ParameterMismatchWithConfigException &) {
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterMismatchWithConfigException");
-      return Error_LossParameterMismatchWithConfig;
+      error = Error_LossParameterMismatchWithConfig;
    } catch(const IllegalRegistrationNameException &) {
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss IllegalRegistrationNameException");
-      return Error_LossIllegalRegistrationName;
+      error = Error_LossIllegalRegistrationName;
    } catch(const IllegalParamNameException &) {
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss IllegalParamNameException");
-      return Error_LossIllegalParamName;
+      error = Error_LossIllegalParamName;
    } catch(const DuplicateParamNameException &) {
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss DuplicateParamNameException");
-      return Error_LossDuplicateParamName;
+      error = Error_LossDuplicateParamName;
    } catch(const EbmException & exception) {
+      EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss EbmException");
-      return exception.GetError();
+      error = exception.GetError();
    } catch(const std::bad_alloc &) {
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss Out of Memory");
-      return Error_OutOfMemory;
+      error = Error_OutOfMemory;
    } catch(...) {
       LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss internal error, unknown exception");
-      return Error_UnknownInternalError;
+      error = Error_UnknownInternalError;
    }
-}
 
-FloatEbmType Loss::GetUpdateMultiple() const {
-   return FloatEbmType { 1 };
-}
+   free(const_cast<void *>(pLossWrapperOut->m_pLoss)); // this is legal if pLossWrapper->m_pLoss is nullptr
+   pLossWrapperOut->m_pLoss = nullptr;
 
-bool Loss::IsSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies() const {
-   return false;
+   return error;
 }
 
 } // DEFINED_ZONE_NAME

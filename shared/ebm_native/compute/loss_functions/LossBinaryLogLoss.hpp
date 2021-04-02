@@ -39,12 +39,12 @@
 //
 
 // TFloat could be double, float, or some SIMD intrinsic type
-template <typename TFloat>
+template<typename TFloat>
 struct LossBinaryLogLoss : public LossBinary {
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
    INLINE_ALWAYS LossBinaryLogLoss(const Config & config) {
-      if(1 != config.GetCountOutputs()) {
+      if(1 != config.cOutputs) {
          // we share the tag "log_loss" with multiclass classification
          throw SkipRegistrationException();
       }

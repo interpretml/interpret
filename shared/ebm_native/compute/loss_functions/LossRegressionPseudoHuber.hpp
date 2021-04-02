@@ -7,14 +7,17 @@
 #include "Loss.hpp"
 
 // TFloat could be double, float, or some SIMD intrinsic type
-template <typename TFloat>
+template<typename TFloat>
 struct LossRegressionPseudoHuber : public LossRegression {
+   LOSS_CLASS_BOILERPLATE(LossRegressionPseudoHuber, true, 1)
 
    TFloat m_deltaInverted;
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
    INLINE_ALWAYS LossRegressionPseudoHuber(const Config & config, TFloat delta) {
-      if(1 != config.GetCountOutputs()) {
+      UNUSED(config);
+
+      if(1 != config.cOutputs) {
          throw ParameterMismatchWithConfigException();
       }
 
@@ -52,6 +55,4 @@ struct LossRegressionPseudoHuber : public LossRegression {
       // the calculations above are shared with the hessian, so the compiler should combine them.
       return TFloat(1) / (calc * sqrtCalc);
    }
-
-   LOSS_CLASS_BOILERPLATE_PUT_AT_END_OF_CLASS(true)
 };

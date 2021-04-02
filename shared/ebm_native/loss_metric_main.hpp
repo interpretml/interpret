@@ -19,12 +19,13 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 INLINE_ALWAYS static ErrorEbmType GetLoss(
-   const size_t cOutputs,
+   const Config * const pConfig,
    const char * sLoss,
-   const void ** const ppLossOut
+   LossWrapper * const pLossWrapperOut
 ) noexcept {
-   EBM_ASSERT(nullptr != ppLossOut);
-   *ppLossOut = nullptr;
+   EBM_ASSERT(nullptr != pConfig);
+   EBM_ASSERT(nullptr != pLossWrapperOut);
+   pLossWrapperOut->m_pLoss = nullptr;
 
    if(nullptr == sLoss) {
       // TODO: in the future use a default
@@ -39,18 +40,19 @@ INLINE_ALWAYS static ErrorEbmType GetLoss(
 
    ErrorEbmType error;
 
-   error = CreateLoss_Cpu_64(cOutputs, sLoss, sLossEnd, ppLossOut);
+   error = CreateLoss_Cpu_64(pConfig, sLoss, sLossEnd, pLossWrapperOut);
 
    return error;
 }
 
 INLINE_ALWAYS static ErrorEbmType GetMetric(
-   const size_t cOutputs,
-   const char * sMetric,
-   const void ** const ppMetricOut
+   const Config * const pConfig,
+   const char * sMetric
+//   MetricWrapper * const pMetricWrapperOut
 ) noexcept {
-   EBM_ASSERT(nullptr != ppMetricOut);
-   *ppMetricOut = nullptr;
+   EBM_ASSERT(nullptr != pConfig);
+   //EBM_ASSERT(nullptr != pMetricWrapperOut);
+   //pMetricWrapperOut->m_pMetric = nullptr;
    if(nullptr == sMetric) {
       // it's legal to have no metrics
       return Error_None;
@@ -68,7 +70,7 @@ INLINE_ALWAYS static ErrorEbmType GetMetric(
          const char * const sMetricEnd = SkipEndWhitespaceWhenGuaranteedNonWhitespace(sMetricSeparator);
          ErrorEbmType error;
 
-         error = CreateMetric_Cpu_64(cOutputs, sMetric, sMetricEnd, ppMetricOut);
+         error = CreateMetric_Cpu_64(pConfig, sMetric, sMetricEnd);
          if(Error_None != error) {
             return error;
          }

@@ -13,10 +13,10 @@
 #include "ebm_native.h"
 #include "logging.h"
 #include "common_c.h" // INLINE_ALWAYS
+#include "bridge_c.h"
 #include "zones.h"
 
 #include "EbmException.hpp"
-#include "Config.hpp"
 #include "Registrable.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -208,10 +208,11 @@ protected:
    );
    const char * CheckRegistrationName(const char * sRegistration, const char * const sRegistrationEnd) const;
 
-   virtual std::unique_ptr<const Registrable> AttemptCreate(
-      const Config & config,
-      const char * const sRegistration,
-      const char * const sRegistrationEnd
+   virtual bool AttemptCreate(
+      const Config * const pConfig,
+      const char * sRegistration,
+      const char * const sRegistrationEnd,
+      void * const pWrapperOut
    ) const = 0;
 
    Registration(const char * const sRegistrationName);
@@ -222,10 +223,11 @@ public:
    constexpr static char k_valueSeparator = '=';
    constexpr static char k_typeTerminator = ':';
 
-   static std::unique_ptr<const Registrable> CreateRegistrable(
-      const Config & config,
+   static bool CreateRegistrable(
+      const Config * const pConfig,
       const char * sRegistration,
       const char * sRegistrationEnd,
+      void * const pWrapperOut,
       const std::vector<std::shared_ptr<const Registration>> & registrations
    );
 
@@ -236,10 +238,11 @@ template<template <typename> class TRegistrable, typename TFloat, typename... Ar
 class RegistrationPack final : public Registration {
 
    // this lambda function holds our templated parameter pack until we need it
-   std::function<std::unique_ptr<const Registrable>(
-      const Config & config, 
+   std::function<bool(
+      const Config * const pConfig,
       const char * const sRegistration,
-      const char * const sRegistrationEnd
+      const char * const sRegistrationEnd,
+      void * const pWrapperOut
    )> m_callBack;
 
    INLINE_ALWAYS static void UnpackRecursive(std::vector<const char *> & paramNames) {
@@ -255,10 +258,11 @@ class RegistrationPack final : public Registration {
    }
 
    template<typename... ArgsConverted>
-   static std::unique_ptr<const Registrable> CheckAndCallNew(
-      const Config & config,
+   static bool CheckAndCallNew(
+      const Config * const pConfig,
       const char * const sRegistration,
       const char * const sRegistrationEnd,
+      void * const pWrapperOut,
       const size_t & cUsedParams,
       const ArgsConverted...args
    ) {
@@ -266,40 +270,63 @@ class RegistrationPack final : public Registration {
       // values specified in the registration string.  Now we need to verify that there weren't any unused parameters,
       // which would have been an error.  FinalCheckParameters does this and throws an exception if it finds any errors
       FinalCheckParameters(sRegistration, sRegistrationEnd, cUsedParams);
-      try {
-         // unique_ptr constructor is noexcept, so it should be safe to call it inside the try/catch block
-         return std::unique_ptr<const Registrable>(new TRegistrable<TFloat>(config, args...));
-      } catch(const SkipRegistrationException &) {
-         return nullptr;
-      } catch(const ParameterValueOutOfRangeException &) {
-         throw;
-      } catch(const ParameterMismatchWithConfigException &) {
-         throw;
-      } catch(const EbmException &) {
-         // generally we'd prefer that the Registration constructors avoid this exception, but pass it along if thrown
-         throw;
-      } catch(const std::bad_alloc &) {
-         throw;
-      } catch(...) {
-         // our client Registration functions should only ever throw SkipRegistrationException, a derivative of EbmException, 
-         // or std::bad_alloc, but check anyways
-         throw RegistrationConstructorException();
+
+      // use malloc so that we can use the C free function on the main zone side.
+      void * const pRegistrableMemory = malloc(sizeof(TRegistrable<TFloat>));
+      if(nullptr != pRegistrableMemory) {
+         try {
+            static_assert(std::is_standard_layout<TRegistrable<TFloat>>::value &&
+               std::is_trivially_copyable<TRegistrable<TFloat>>::value,
+               "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+            // use the in-place constructor to constrct our specialized Loss/Metric function in our pre-reserved memory
+            // this works because the *Loss/Metric classes need to be standard layout and trivially copyable anyways
+            TRegistrable<TFloat> * const pRegistrable = new (pRegistrableMemory) TRegistrable<TFloat>(*pConfig, args...);
+            EBM_ASSERT(nullptr != pRegistrable); // since allocation already happened
+            EBM_ASSERT(pRegistrableMemory == pRegistrable);
+            // this cannot fail or throw exceptions.  It takes ownership of our pRegistrable pointer
+            pRegistrable->FillWrapper(pWrapperOut);
+            return false;
+         } catch(const SkipRegistrationException &) {
+            free(const_cast<void *>(pRegistrableMemory));
+            return true;
+         } catch(const ParameterValueOutOfRangeException &) {
+            free(const_cast<void *>(pRegistrableMemory));
+            throw;
+         } catch(const ParameterMismatchWithConfigException &) {
+            free(const_cast<void *>(pRegistrableMemory));
+            throw;
+         } catch(const EbmException &) {
+            // generally we'd prefer that the Registration constructors avoid this exception, but pass it along if thrown
+            free(const_cast<void *>(pRegistrableMemory));
+            throw;
+         } catch(const std::bad_alloc &) {
+            // it's possible in theory that the constructor allocates some temporary memory, so pass this through
+            free(const_cast<void *>(pRegistrableMemory));
+            throw;
+         } catch(...) {
+            // our client Registration functions should only ever throw SkipRegistrationException, a derivative of EbmException, 
+            // or std::bad_alloc, but check anyways
+            free(const_cast<void *>(pRegistrableMemory));
+            throw RegistrationConstructorException();
+         }
       }
+      throw std::bad_alloc();
    }
 
-   std::unique_ptr<const Registrable> AttemptCreate(
-      const Config & config, 
+   bool AttemptCreate(
+      const Config * const pConfig,
       const char * sRegistration,
-      const char * const sRegistrationEnd
+      const char * const sRegistrationEnd,
+      void * const pWrapperOut
    ) const override {
       sRegistration = CheckRegistrationName(sRegistration, sRegistrationEnd);
       if(nullptr == sRegistration) {
          // we are not the specified registration function
-         return nullptr;
+         return true;
       }
 
       // m_callBack contains the parameter pack that our constructor was created with, so we're regaining access here
-      return m_callBack(config, sRegistration, sRegistrationEnd);
+      return m_callBack(pConfig, sRegistration, sRegistrationEnd, pWrapperOut);
    }
 
 public:
@@ -311,9 +338,10 @@ public:
 
       // hide our parameter pack in a lambda so that we don't have to think about it yet.  Seems easier than using a tuple
       m_callBack = [args...](
-         const Config & config,
+         const Config * const pConfig,
          const char * const sRegistration,
-         const char * const sRegistrationEnd
+         const char * const sRegistrationEnd,
+         void * const pWrapperOut
       ) {
          // The usage of cUsedParams is a bit unusual.  It starts off at zero, but gets incremented in the calls to
          // UnpackParam.  When CheckAndCallNew is called, the value in cUsedParams is the total of all parameters
@@ -327,9 +355,10 @@ public:
          // the UnpackParam functions are called, but we are guaranteed that they are all called before 
          // CheckAndCallNew is called, so inside there we verify whether all the parameters were used
          return CheckAndCallNew(
-            config,
+            pConfig,
             sRegistration,
             sRegistrationEnd,
+            pWrapperOut,
             cUsedParams,
             UnpackParam(args, sRegistration, sRegistrationEnd, INOUT cUsedParams)...);
       };

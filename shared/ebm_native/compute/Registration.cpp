@@ -12,7 +12,6 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "Config.hpp"
 #include "Registrable.hpp"
 #include "Registration.hpp"
 
@@ -66,7 +65,7 @@ void Registration::CheckParamNames(const char * const sParamName, std::vector<co
    EBM_ASSERT(nullptr != sParamName);
 
    // yes, this is exponential, but it's only exponential for parameters that we define in this executable so
-   // we have complete control, and loss params should not exceed a handfull
+   // we have complete control, and loss/metric params should not exceed a handfull
    for(const char * const sOtherParamName : usedParamNames) {
       EBM_ASSERT(nullptr != sOtherParamName);
 
@@ -80,10 +79,11 @@ void Registration::CheckParamNames(const char * const sParamName, std::vector<co
    usedParamNames.push_back(sParamName);
 }
 
-std::unique_ptr<const Registrable> Registration::CreateRegistrable(
-   const Config & config,
+bool Registration::CreateRegistrable(
+   const Config * const pConfig,
    const char * sRegistration,
    const char * sRegistrationEnd,
+   void * const pWrapperOut,
    const std::vector<std::shared_ptr<const Registration>> & registrations
 ) {
    EBM_ASSERT(nullptr != sRegistration);
@@ -93,23 +93,24 @@ std::unique_ptr<const Registrable> Registration::CreateRegistrable(
    EBM_ASSERT(!(0x20 == *sRegistration || (0x9 <= *sRegistration && *sRegistration <= 0xd)));
    EBM_ASSERT(!(0x20 == *(sRegistrationEnd - 1) || (0x9 <= *(sRegistrationEnd - 1) && *(sRegistrationEnd - 1) <= 0xd)));
    EBM_ASSERT('\0' == *sRegistrationEnd || k_registrationSeparator == *sRegistrationEnd || 0x20 == *sRegistrationEnd || (0x9 <= *sRegistrationEnd && *sRegistrationEnd <= 0xd));
+   EBM_ASSERT(nullptr != pWrapperOut);
 
    LOG_0(TraceLevelInfo, "Entered Registrable::CreateRegistrable");
 
-   std::unique_ptr<const Registrable> pRegistrable = nullptr;
+   bool bFailed = true;
    for(const std::shared_ptr<const Registration> & registration : registrations) {
       if(nullptr != registration) {
          // normally we shouldn't have nullptr registrations, but let's not complain if someone is writing
          // their own custom one and accidentally puts one in.  We still understand the intent.
-         pRegistrable = registration->AttemptCreate(config, sRegistration, sRegistrationEnd);
-         if(nullptr != pRegistrable) {
+         bFailed = registration->AttemptCreate(pConfig, sRegistration, sRegistrationEnd, pWrapperOut);
+         if(!bFailed) {
             break;
          }
       }
    }
 
    LOG_0(TraceLevelInfo, "Exited Registrable::CreateRegistrable");
-   return pRegistrable;
+   return bFailed;
 }
 
 void Registration::FinalCheckParameters(

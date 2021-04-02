@@ -8,11 +8,11 @@
 #include "Loss.hpp"
 
 // TFloat could be double, float, or some SIMD intrinsic type
-template <typename TFloat>
+template<typename TFloat>
 struct LossRegressionMse : public LossRegression {
 
    INLINE_ALWAYS LossRegressionMse(const Config & config) {
-      if(1 != config.GetCountOutputs()) {
+      if(1 != config.cOutputs) {
          throw ParameterMismatchWithConfigException();
       }
    }

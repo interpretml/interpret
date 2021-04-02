@@ -11,15 +11,15 @@
 #include "zones.h"
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cuda_32(
-   const size_t cOutputs,
+   const Config * const pConfig,
    const char * const sLoss,
    const char * const sLossEnd,
-   const void ** const ppLossOut
+   LossWrapper * const pLossWrapperOut
 ) {
-   UNUSED(cOutputs);
+   UNUSED(pConfig);
    UNUSED(sLoss);
    UNUSED(sLossEnd);
-   UNUSED(ppLossOut);
+   UNUSED(pLossWrapperOut);
 
    return Error_UnknownInternalError;
 }
