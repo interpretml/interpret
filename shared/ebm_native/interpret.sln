@@ -71,7 +71,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\EbmException.hpp = compute\EbmException.hpp
 		compute\Loss.cpp = compute\Loss.cpp
 		compute\Loss.hpp = compute\Loss.hpp
-		compute\loss_registrations.hpp = compute\loss_registrations.hpp
 		compute\PrecompiledHeader.h = compute\PrecompiledHeader.h
 		compute\Registration.cpp = compute\Registration.cpp
 		compute\Registration.hpp = compute\Registration.hpp
@@ -84,6 +83,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "avx512_ebm", "compute\avx51
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "loss_functions", "loss_functions", "{8CAB82C2-DF15-49B3-9F7D-DFF3E71FCC22}"
 	ProjectSection(SolutionItems) = preProject
+		compute\loss_functions\loss_registrations.hpp = compute\loss_functions\loss_registrations.hpp
 		compute\loss_functions\LossBinaryCrossEntropy.hpp = compute\loss_functions\LossBinaryCrossEntropy.hpp
 		compute\loss_functions\LossBinaryLogLoss.hpp = compute\loss_functions\LossBinaryLogLoss.hpp
 		compute\loss_functions\LossMulticlassCrossEntropy.hpp = compute\loss_functions\LossMulticlassCrossEntropy.hpp

@@ -14,6 +14,8 @@
 
 #include "EbmInternal.h"
 
+#include "loss_metric_main.hpp"
+
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
 #include "EbmStats.h"
