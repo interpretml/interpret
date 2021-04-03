@@ -73,7 +73,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\Loss.hpp = compute\Loss.hpp
 		compute\loss_registrations.hpp = compute\loss_registrations.hpp
 		compute\PrecompiledHeader.h = compute\PrecompiledHeader.h
-		compute\Registrable.hpp = compute\Registrable.hpp
 		compute\Registration.cpp = compute\Registration.cpp
 		compute\Registration.hpp = compute\Registration.hpp
 		compute\zoned_bridge_c_functions.cpp = compute\zoned_bridge_c_functions.cpp

@@ -21,6 +21,15 @@ struct Loss;
 typedef ErrorEbmType (* APPLY_TRAINING_CPP)(const Loss * const pLoss, ApplyTrainingData * const pData);
 typedef ErrorEbmType (* APPLY_VALIDATION_CPP)(const Loss * const pLoss, ApplyValidationData * const pData);
 
+struct FunctionPointersCpp {
+   // unfortunately, function pointers are not interchangable with data pointers since in some architectures
+   // they exist in separate memory regions as data, so we can't store them as void * in the Wrappers
+   // https://stackoverflow.com/questions/12358843/why-are-function-pointers-and-data-pointers-incompatible-in-c-c
+
+   APPLY_TRAINING_CPP m_pApplyTrainingCpp;
+   APPLY_VALIDATION_CPP m_pApplyValidationCpp;
+};
+
 } // DEFINED_ZONE_NAME
 
 #endif // ZONED_BRIDGE_CPP_FUNCTIONS_HPP

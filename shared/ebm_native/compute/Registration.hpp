@@ -17,7 +17,6 @@
 #include "zones.h"
 
 #include "EbmException.hpp"
-#include "Registrable.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

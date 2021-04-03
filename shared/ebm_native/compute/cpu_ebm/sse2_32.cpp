@@ -16,7 +16,6 @@
 #include "common_cpp.hpp"
 #include "bridge_cpp.hpp"
 
-#include "Registrable.hpp"
 #include "Registration.hpp"
 #include "Loss.hpp"
 

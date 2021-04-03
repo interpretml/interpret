@@ -19,7 +19,6 @@
 #include "compute.hpp"
 
 #include "zoned_bridge_cpp_functions.hpp"
-#include "Registrable.hpp"
 #include "Registration.hpp" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!
 
 namespace DEFINED_ZONE_NAME {
@@ -370,19 +369,23 @@ protected:
 
    template<typename TLoss>
    INLINE_RELEASE_TEMPLATED void LossFillWrapper(
-      void * const pWrapperOut,
       const FloatEbmType updateMultiple,
-      const APPLY_TRAINING_CPP pApplyTrainingCpp,
-      const APPLY_VALIDATION_CPP pApplyValidationCpp
+      void * const pWrapperOut
    ) const noexcept {
+      EBM_ASSERT(nullptr != pWrapperOut);
       LossWrapper * const pLossWrapperOut = static_cast<LossWrapper *>(pWrapperOut);
-      pLossWrapperOut->m_pLoss = this;
+      FunctionPointersCpp * const pFunctionPointers =
+         static_cast<FunctionPointersCpp *>(pLossWrapperOut->m_pFunctionPointersCpp);
+      EBM_ASSERT(nullptr != pFunctionPointers);
 
-      pLossWrapperOut->m_pApplyTrainingCpp = reinterpret_cast<void *>(pApplyTrainingCpp);
-      pLossWrapperOut->m_pApplyValidationCpp = reinterpret_cast<void *>(pApplyValidationCpp);
+      pFunctionPointers->m_pApplyTrainingCpp = &TLoss::ApplyTraining;
+      pFunctionPointers->m_pApplyValidationCpp = &TLoss::ApplyValidation;
+
       pLossWrapperOut->m_updateMultiple = updateMultiple;
       pLossWrapperOut->m_bLossHasHessian = HasCalculateHessianFunction<TLoss>() ? EBM_TRUE : EBM_FALSE;
       pLossWrapperOut->m_bSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies = EBM_FALSE;
+
+      pLossWrapperOut->m_pLoss = this;
    }
 
    Loss() = default;
@@ -483,7 +486,7 @@ protected:
 #define LOSS_CLASS_BOILERPLATE(__EBM_TYPE, isVectorized, __updateMultiple) \
    LOSS_CLASS_CONSTANTS_BOILERPLATE(isVectorized) \
    LOSS_CLASS_TEMPLATE_BOILERPLATE \
-   LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE, __updateMultiple)
+   LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE, (__updateMultiple))
 
 // TODO: use the isVectorized constexpr to control construction of the Loss structs
 #define LOSS_CLASS_CONSTANTS_BOILERPLATE(isVectorized) \
@@ -515,11 +518,9 @@ protected:
          static_assert( \
             std::is_same<const __EBM_TYPE<TFloat>, typename std::remove_pointer<decltype(this)>::type>::value, \
             "*Loss types mismatch"); \
-         LossFillWrapper<typename std::remove_pointer<decltype(this)>>( \
-            pWrapperOut, \
+         LossFillWrapper<typename std::remove_pointer<decltype(this)>::type>( \
             static_cast<FloatEbmType>(__updateMultiple), \
-            &ApplyTraining, \
-            &ApplyValidation); \
+            pWrapperOut); \
       }
 
 } // DEFINED_ZONE_NAME

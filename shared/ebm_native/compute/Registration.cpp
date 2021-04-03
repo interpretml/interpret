@@ -12,7 +12,6 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "Registrable.hpp"
 #include "Registration.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -86,6 +85,7 @@ bool Registration::CreateRegistrable(
    void * const pWrapperOut,
    const std::vector<std::shared_ptr<const Registration>> & registrations
 ) {
+   EBM_ASSERT(nullptr != pConfig);
    EBM_ASSERT(nullptr != sRegistration);
    EBM_ASSERT(nullptr != sRegistrationEnd);
    EBM_ASSERT(sRegistration < sRegistrationEnd); // empty string not allowed

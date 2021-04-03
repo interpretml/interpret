@@ -26,6 +26,7 @@ INLINE_ALWAYS static ErrorEbmType GetLoss(
    EBM_ASSERT(nullptr != pConfig);
    EBM_ASSERT(nullptr != pLossWrapperOut);
    pLossWrapperOut->m_pLoss = nullptr;
+   pLossWrapperOut->m_pFunctionPointersCpp = nullptr;
 
    if(nullptr == sLoss) {
       // TODO: in the future use a default
@@ -45,14 +46,16 @@ INLINE_ALWAYS static ErrorEbmType GetLoss(
    return error;
 }
 
-INLINE_ALWAYS static ErrorEbmType GetMetric(
+INLINE_ALWAYS static ErrorEbmType GetMetrics(
    const Config * const pConfig,
    const char * sMetric
-//   MetricWrapper * const pMetricWrapperOut
+//   MetricWrapper * const aMetricWrapperOut
 ) noexcept {
    EBM_ASSERT(nullptr != pConfig);
    //EBM_ASSERT(nullptr != pMetricWrapperOut);
-   //pMetricWrapperOut->m_pMetric = nullptr;
+   //aMetricWrapperOut->m_pMetric = nullptr;
+   //aMetricWrapperOut->m_pFunctionPointersCpp = nullptr;
+
    if(nullptr == sMetric) {
       // it's legal to have no metrics
       return Error_None;

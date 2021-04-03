@@ -20,6 +20,9 @@ extern "C" {
 typedef size_t StorageDataType;
 typedef UIntEbmType ActiveDataType;
 
+struct Registrable {
+};
+
 struct ApplyTrainingData {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
    ptrdiff_t m_cItemsPerBitPack;
@@ -43,13 +46,12 @@ struct LossWrapper {
    APPLY_TRAINING_C m_pApplyTrainingC;
    APPLY_VALIDATION_C m_pApplyValidationC;
    // everything below here the C++ *Loss specific class needs to fill out
-   const void * m_pLoss;
+   const Registrable * m_pLoss;
    FloatEbmType m_updateMultiple;
    BoolEbmType m_bLossHasHessian;
    BoolEbmType m_bSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies;
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
-   void * m_pApplyTrainingCpp;
-   void * m_pApplyValidationCpp;
+   void * m_pFunctionPointersCpp;
 };
 
 struct Config {

@@ -17,6 +17,8 @@
 #include "zoned_bridge_c_functions.h"
 #include "zoned_bridge_cpp_functions.hpp"
 
+#include "Loss.hpp"
+
 // the static member functions in our classes are extern "CPP" functions, so we need to bridge our extern "C"
 // functions (which are the only thing we can can safely bridge over different compilation flags) to extern "CPP"
 
@@ -30,7 +32,8 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyTrainin
    ApplyTrainingData * const pData
 ) {
    const Loss * const pLoss = static_cast<const Loss *>(pLossWrapper->m_pLoss);
-   const APPLY_TRAINING_CPP pApplyTrainingCpp = reinterpret_cast<APPLY_TRAINING_CPP>(pLossWrapper->m_pApplyTrainingCpp);
+   const APPLY_TRAINING_CPP pApplyTrainingCpp = 
+      (static_cast<FunctionPointersCpp *>(pLossWrapper->m_pFunctionPointersCpp))->m_pApplyTrainingCpp;
    return (*pApplyTrainingCpp)(pLoss, pData);
 }
 
@@ -39,7 +42,8 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyValidat
    ApplyValidationData * const pData
 ) {
    const Loss * const pLoss = static_cast<const Loss *>(pLossWrapper->m_pLoss);
-   const APPLY_VALIDATION_CPP pApplyValidationCpp = reinterpret_cast<APPLY_VALIDATION_CPP>(pLossWrapper->m_pApplyValidationCpp);
+   const APPLY_VALIDATION_CPP pApplyValidationCpp = 
+      (static_cast<FunctionPointersCpp *>(pLossWrapper->m_pFunctionPointersCpp))->m_pApplyValidationCpp;
    return (*pApplyValidationCpp)(pLoss, pData);
 }
 
