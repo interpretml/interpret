@@ -35,8 +35,8 @@ struct LossRegressionMse : public LossRegression {
 
 
 
-   bool IsSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies() const override {
-      // TODO: use this property!
-      return true;
-   }
+   //bool IsSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies() const override {
+   //   // TODO: use this property!
+   //   return true;
+   //}
 };

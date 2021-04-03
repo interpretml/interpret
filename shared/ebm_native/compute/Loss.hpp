@@ -378,8 +378,8 @@ protected:
       LossWrapper * const pLossWrapperOut = static_cast<LossWrapper *>(pWrapperOut);
       pLossWrapperOut->m_pLoss = this;
 
-      pLossWrapperOut->m_pApplyTrainingCpp = pApplyTrainingCpp;
-      pLossWrapperOut->m_pApplyValidationCpp = pApplyValidationCpp;
+      pLossWrapperOut->m_pApplyTrainingCpp = reinterpret_cast<void *>(pApplyTrainingCpp);
+      pLossWrapperOut->m_pApplyValidationCpp = reinterpret_cast<void *>(pApplyValidationCpp);
       pLossWrapperOut->m_updateMultiple = updateMultiple;
       pLossWrapperOut->m_bLossHasHessian = HasCalculateHessianFunction<TLoss>() ? EBM_TRUE : EBM_FALSE;
       pLossWrapperOut->m_bSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies = EBM_FALSE;

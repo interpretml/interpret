@@ -23,7 +23,11 @@ extern "C" {
 #error ZONE not recognized
 #endif
 
-#define MAKE_ZONED_C_FUNCTION_NAME(__function_name) DEFINED_ZONE_NAME ## _ ## __function_name
+// we need to nest twice to get the defined value into the token pasted operation:
+// https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
+#define MAKE_ZONED_C_FUNCTION_NAME_INTERNAL1(__zone_name, __function_name) __zone_name ## _ ## __function_name
+#define MAKE_ZONED_C_FUNCTION_NAME_INTERNAL2(__zone_name, __function_name) MAKE_ZONED_C_FUNCTION_NAME_INTERNAL1(__zone_name, __function_name)
+#define MAKE_ZONED_C_FUNCTION_NAME(__function_name) MAKE_ZONED_C_FUNCTION_NAME_INTERNAL2(DEFINED_ZONE_NAME, __function_name)
 
 #ifdef __cplusplus
 } // extern "C"
