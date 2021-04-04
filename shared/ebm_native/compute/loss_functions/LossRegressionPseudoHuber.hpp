@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// !!! NOTE: To add a new loss/objective function in C++, follow the steps listed at the top of the "Loss.cpp" file !!!
+// !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
 
 #include "Loss.hpp"
 
@@ -33,11 +33,11 @@ struct LossRegressionPseudoHuber : public LossRegression {
       m_deltaInverted = deltaInverted;
    }
 
-   INLINE_ALWAYS TFloat CalculatePrediction(TFloat score) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat CalculatePrediction(TFloat score) const {
       return score;
    }
 
-   INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction) const {
       TFloat residualNegative = prediction - target;
       TFloat residualNegativeFraction = residualNegative * m_deltaInverted;
       TFloat calc = TFloat(1) + residualNegativeFraction * residualNegativeFraction;
@@ -47,7 +47,7 @@ struct LossRegressionPseudoHuber : public LossRegression {
    }
 
    // if the loss function doesn't have a second derivative, then delete the CalculateHessian function.
-   INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction) const {
       TFloat residualNegative = prediction - target;
       TFloat residualNegativeFraction = residualNegative * m_deltaInverted;
       TFloat calc = TFloat(1) + residualNegativeFraction * residualNegativeFraction;

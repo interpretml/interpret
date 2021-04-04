@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// !!! NOTE: To add a new loss/objective function in C++, follow the steps listed at the top of the "Loss.cpp" file !!!
+// !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
 
 #include "Loss.hpp"
 
@@ -27,5 +27,21 @@ struct LossMulticlassLogLoss : public LossMulticlass {
       }
 
       m_countTargetClasses = config.cOutputs;
+   }
+
+   GPU_DEVICE INLINE_ALWAYS TFloat CalculatePrediction(TFloat score) const {
+      //TODO implement
+      return -score * 999;
+   }
+
+   GPU_DEVICE INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction) const {
+      //TODO implement
+      return 999.9999;
+   }
+
+   // if the loss function doesn't have a second derivative, then delete the CalculateHessian function.
+   GPU_DEVICE INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction) const {
+      //TODO implement
+      return 999.9999;
    }
 };

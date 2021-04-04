@@ -1,3 +1,12 @@
+// Copyright (c) 2018 Microsoft Corporation
+// Licensed under the MIT license.
+// Author: Paul Koch <code@koch.ninja>
+
+#ifdef LOSS_REGISTRATIONS_H
+#error loss_registrations.hpp is very special and should only be included once in a translation unit (*.cpp file)
+#endif
+#define LOSS_REGISTRATIONS_H
+
 // Steps for adding a new loss/objective function in C++:
 //   1) Copy one of the existing Loss*.h include files into a new renamed Loss*.h file
 //      (for regression, we recommend starting from LossRegressionPseudoHuber.h)

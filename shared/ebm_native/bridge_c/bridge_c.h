@@ -5,6 +5,8 @@
 #ifndef BRIDGE_C_H
 #define BRIDGE_C_H
 
+#include <stdlib.h> // free
+
 #include "ebm_native.h"
 #include "common_c.h"
 
@@ -53,6 +55,13 @@ struct LossWrapper {
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface
    void * m_pFunctionPointersCpp;
 };
+
+INLINE_ALWAYS static void FreeLossWrapperInternals(LossWrapper * const pLossWrapper) {
+   free(const_cast<Registrable *>(pLossWrapper->m_pLoss));
+   pLossWrapper->m_pLoss = NULL;
+   free(pLossWrapper->m_pFunctionPointersCpp);
+   pLossWrapper->m_pFunctionPointersCpp = NULL;
+}
 
 struct Config {
    // don't use m_ notation here, mostly to make it cleaner for people writing *Loss classes

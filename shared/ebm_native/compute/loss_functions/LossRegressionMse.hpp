@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
+// !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
+
 // LossRegressionMse is a VERY VERY special Loss function.  
 // Anyone writing a custom loss function in C++ should start from a different loss function
 

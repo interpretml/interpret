@@ -21,6 +21,16 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+#ifdef __CUDACC__
+#define GPU_GLOBAL            __global__
+#define GPU_DEVICE            __device__
+#define GPU_BOTH              __host__ __device__
+#else
+#define GPU_GLOBAL
+#define GPU_DEVICE
+#define GPU_BOTH
+#endif
+
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be 
 // that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes

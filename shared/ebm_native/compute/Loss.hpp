@@ -38,6 +38,18 @@ struct LossMultitaskBinary;
 struct LossMultitaskMulticlass;
 struct LossMultitaskRegression;
 
+
+template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+GPU_GLOBAL static void ExecuteApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+   TLoss * const pLossSpecific = static_cast<TLoss *>(pLoss);
+   TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyTraining(pLossSpecific, pData);
+}
+template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
+GPU_GLOBAL static void ExecuteApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
+   TLoss * const pLossSpecific = static_cast<TLoss *>(pLoss);
+   TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyValidation(pLossSpecific, pData);
+}
+
 struct Loss : public Registrable {
    // Welcome to the demented hall of mirrors.. a prison for your mind
    // And no, I did not make this to purposely torment you
@@ -177,89 +189,73 @@ struct Loss : public Registrable {
    struct ApplyHessian;
    template<typename TLoss>
    struct ApplyHessian<TLoss, true> final {
-      INLINE_ALWAYS static void Func() {
+      GPU_DEVICE INLINE_ALWAYS static void Func() {
       }
    };
    template<typename TLoss>
    struct ApplyHessian<TLoss, false> final {
-      INLINE_ALWAYS static void Func() {
+      GPU_DEVICE INLINE_ALWAYS static void Func() {
       }
    };
 
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared final {
-      static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+      GPU_DEVICE static void ApplyTraining(const TLoss * const pLoss, ApplyTrainingData * const pData) {
          UNUSED(pLoss);
          UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-
-         return Error_None;
       }
-      static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
+      GPU_DEVICE static void ApplyValidation(const TLoss * const pLoss, ApplyValidationData * const pData) {
          UNUSED(pLoss);
          UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-
-         return Error_None;
       }
    };
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, bool bHessian>
    struct Shared<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackNone, bHessian> final {
-      static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+      GPU_DEVICE static void ApplyTraining(const TLoss * const pLoss, ApplyTrainingData * const pData) {
          UNUSED(pLoss);
          UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-
-         return Error_None;
       }
-      static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
+      GPU_DEVICE static void ApplyValidation(const TLoss * const pLoss, ApplyValidationData * const pData) {
          UNUSED(pLoss);
          UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-
-         return Error_None;
       }
    };
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared <TLoss, TFloat, k_oneScore, cCompilerPack, bHessian> final {
-      static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+      GPU_DEVICE static void ApplyTraining(const TLoss * const pLoss, ApplyTrainingData * const pData) {
          UNUSED(pLoss);
          UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-
-         return Error_None;
       }
-      static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
+      GPU_DEVICE static void ApplyValidation(const TLoss * const pLoss, ApplyValidationData * const pData) {
          UNUSED(pLoss);
          UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-
-         return Error_None;
       }
    };
    template<typename TLoss, typename TFloat, bool bHessian>
    struct Shared<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackNone, bHessian> final {
-      static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+      GPU_DEVICE static void ApplyTraining(const TLoss * const pLoss, ApplyTrainingData * const pData) {
          UNUSED(pLoss);
          UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-
-         return Error_None;
       }
-      static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
+      GPU_DEVICE static void ApplyValidation(const TLoss * const pLoss, ApplyValidationData * const pData) {
          UNUSED(pLoss);
          UNUSED(pData);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
-
-         return Error_None;
       }
    };
 

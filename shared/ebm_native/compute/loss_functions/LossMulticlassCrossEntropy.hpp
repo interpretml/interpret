@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// !!! NOTE: To add a new loss/objective function in C++, follow the steps listed at the top of the "Loss.cpp" file !!!
+// !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
 
 #include "Loss.hpp"
 
