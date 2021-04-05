@@ -26,14 +26,14 @@ struct Registrable {
 };
 
 struct ApplyTrainingData {
-   ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
-   ptrdiff_t m_cItemsPerBitPack;
+   ptrdiff_t m_cRuntimeScores;
+   ptrdiff_t m_cRuntimePack;
    BoolEbmType m_bHessianNeeded;
 };
 
 struct ApplyValidationData {
-   ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
-   ptrdiff_t m_cItemsPerBitPack;
+   ptrdiff_t m_cRuntimeScores;
+   ptrdiff_t m_cRuntimePack;
    BoolEbmType m_bHessianNeeded;
    FloatEbmType m_metricOut;
 };

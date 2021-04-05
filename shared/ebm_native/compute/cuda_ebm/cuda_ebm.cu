@@ -6,7 +6,6 @@
 #include "device_launch_parameters.h"
 
 #include <type_traits>
-#include <cmath>
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -83,21 +82,15 @@ public:
    }
 
    GPU_BOTH INLINE_ALWAYS bool IsAnyInf() const {
-      // TODO: implement this
-      return true;
-      //return std::isinf(m_data);
+      return isinf(m_data);
    }
 
    GPU_BOTH INLINE_ALWAYS bool IsAnyNaN() const {
-      // TODO: implement this
-      return true;
-      //return std::isnan(m_data);
+      return isnan(m_data);
    }
 
    GPU_BOTH INLINE_ALWAYS Cuda_32_Operators Sqrt() const {
-      // TODO: implement this
-      return -9999.999;
-      //return Cuda_32_Operators(std::sqrt(m_data));
+      return Cuda_32_Operators(sqrtf(m_data));
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
@@ -162,7 +155,11 @@ public:
       }
 
       TestGpuAdd<TLoss><<<1, k_cItems>>>(static_cast<Loss *>(pDeviceLoss), aDeviceVal1, aDeviceVal2, aDeviceResult);
-      ExecuteApplyTraining<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian><<<1, k_cItems>>>(pLoss, pData);
+      ExecuteApplyTraining<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian><<<1, k_cItems>>>(
+         pLoss,
+         pData->m_cRuntimeScores,
+         pData->m_cRuntimePack
+      );
 
       error = cudaGetLastError();
       if(cudaSuccess != error) {
@@ -228,7 +225,12 @@ public:
       // this allows us to switch execution onto GPU, FPGA, or other local computation
 
       // TODO: use something other than <<<1, 1>>>
-      ExecuteApplyValidation<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian><<<1, 1>>>(pLoss, pData);
+      ExecuteApplyValidation<TExecute, TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian><<<1, 1>>>(
+         pLoss,
+         pData->m_cRuntimeScores,
+         pData->m_cRuntimePack,
+         nullptr
+      );
       return Error_None;
    }
 };

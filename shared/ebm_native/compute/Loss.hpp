@@ -19,13 +19,14 @@
 #include "compute.hpp"
 
 #include "zoned_bridge_cpp_functions.hpp"
-#include "Registration.hpp" // TODO : remove this, but we need somwhere to put the SkipRegistrationException that we use from within client Loss classes!
+#include "registration_exceptions.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+class Registration;
 typedef const std::vector<std::shared_ptr<const Registration>> (* REGISTER_LOSSES_FUNCTION)();
 
 struct LossSingletask;
@@ -40,14 +41,32 @@ struct LossMultitaskRegression;
 
 
 template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-GPU_GLOBAL static void ExecuteApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+GPU_GLOBAL static void ExecuteApplyTraining(
+   const Loss * const pLoss, 
+   const ptrdiff_t cRuntimeScores,
+   const ptrdiff_t cRuntimePack
+) {
    TLoss * const pLossSpecific = static_cast<TLoss *>(pLoss);
-   TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyTraining(pLossSpecific, pData);
+   TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyTraining(
+      pLossSpecific, 
+      cRuntimeScores,
+      cRuntimePack
+   );
 }
 template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-GPU_GLOBAL static void ExecuteApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
+GPU_GLOBAL static void ExecuteApplyValidation(
+   const Loss * const pLoss, 
+   const ptrdiff_t cRuntimeScores,
+   const ptrdiff_t cRuntimePack,
+   FloatEbmType * const pMetricOut
+) {
    TLoss * const pLossSpecific = static_cast<TLoss *>(pLoss);
-   TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyValidation(pLossSpecific, pData);
+   TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyValidation(
+      pLossSpecific, 
+      cRuntimeScores,
+      cRuntimePack,
+      pMetricOut
+   );
 }
 
 struct Loss : public Registrable {
@@ -64,7 +83,7 @@ struct Loss : public Registrable {
    // templated function at this point and more later.  Reducing this to just 16 is very very helpful.
    template<typename TLoss, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cItemsPerBitPack) {
+      if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          return BitPackPostApplyTraining<TLoss, k_oneScore, k_cItemsPerBitPackNone>(pData);
       } else {
          return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax2>::ApplyTraining(this, pData);
@@ -72,7 +91,7 @@ struct Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<!TLoss::IsMultiScore, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cItemsPerBitPack) {
+      if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          return BitPackPostApplyValidation<TLoss, k_oneScore, k_cItemsPerBitPackNone>(pData);
       } else {
          return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax2>::ApplyValidation(this, pData);
@@ -80,7 +99,7 @@ struct Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cItemsPerBitPack) {
+      if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
       } else {
@@ -91,7 +110,7 @@ struct Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cItemsPerBitPack) {
+      if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
       } else {
@@ -102,7 +121,7 @@ struct Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cItemsPerBitPack) {
+      if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
       } else {
@@ -111,7 +130,7 @@ struct Loss : public Registrable {
    }
    template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData * const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cItemsPerBitPack) {
+      if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
          return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackNone>(pData);
       } else {
@@ -121,14 +140,14 @@ struct Loss : public Registrable {
    template<typename TLoss, ptrdiff_t cCompilerScores>
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
-         if(cCompilerScores == pData->m_runtimeLearningTypeOrCountTargetClasses) {
+         if(cCompilerScores == pData->m_cRuntimeScores) {
             return pLoss->BitPackPostApplyTraining<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(pData);
          } else {
             return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyTraining(pLoss, pData);
          }
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
-         if(cCompilerScores == pData->m_runtimeLearningTypeOrCountTargetClasses) {
+         if(cCompilerScores == pData->m_cRuntimeScores) {
             return pLoss->BitPackPostApplyValidation<TLoss, cCompilerScores, k_cItemsPerBitPackDynamic2>(pData);
          } else {
             return CountScores<TLoss, k_cCompilerOptimizedTargetClassesMax2 == cCompilerScores ? k_dynamicClassification : cCompilerScores + 1>::ApplyValidation(pLoss, pData);
@@ -151,14 +170,14 @@ struct Loss : public Registrable {
    template<typename TLoss, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    struct BitPack final {
       INLINE_ALWAYS static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
-         if(cCompilerPack == pData->m_cItemsPerBitPack) {
+         if(cCompilerPack == pData->m_cRuntimePack) {
             return pLoss->BitPackPostApplyTraining<TLoss, cCompilerScores, cCompilerPack>(pData);
          } else {
             return BitPack<TLoss, cCompilerScores, GetNextBitPack(cCompilerPack)>::ApplyTraining(pLoss, pData);
          }
       }
       INLINE_ALWAYS static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
-         if(cCompilerPack == pData->m_cItemsPerBitPack) {
+         if(cCompilerPack == pData->m_cRuntimePack) {
             return pLoss->BitPackPostApplyValidation<TLoss, cCompilerScores, cCompilerPack>(pData);
          } else {
             return BitPack<TLoss, cCompilerScores, GetNextBitPack(cCompilerPack)>::ApplyValidation(pLoss, pData);
@@ -200,60 +219,108 @@ struct Loss : public Registrable {
 
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared final {
-      GPU_DEVICE static void ApplyTraining(const TLoss * const pLoss, ApplyTrainingData * const pData) {
+      GPU_DEVICE static void ApplyTraining(
+         const TLoss * const pLoss,
+         const ptrdiff_t cRuntimeScores,
+         const ptrdiff_t cRuntimePack
+      ) {
          UNUSED(pLoss);
-         UNUSED(pData);
+         UNUSED(cRuntimeScores);
+         UNUSED(cRuntimePack);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
-      GPU_DEVICE static void ApplyValidation(const TLoss * const pLoss, ApplyValidationData * const pData) {
+      GPU_DEVICE static void ApplyValidation(
+         const TLoss * const pLoss,
+         const ptrdiff_t cRuntimeScores,
+         const ptrdiff_t cRuntimePack,
+         FloatEbmType * const pMetricOut
+      ) {
          UNUSED(pLoss);
-         UNUSED(pData);
+         UNUSED(cRuntimeScores);
+         UNUSED(cRuntimePack);
+         UNUSED(pMetricOut);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
    };
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, bool bHessian>
    struct Shared<TLoss, TFloat, cCompilerScores, k_cItemsPerBitPackNone, bHessian> final {
-      GPU_DEVICE static void ApplyTraining(const TLoss * const pLoss, ApplyTrainingData * const pData) {
+      GPU_DEVICE static void ApplyTraining(
+         const TLoss * const pLoss,
+         const ptrdiff_t cRuntimeScores,
+         const ptrdiff_t cRuntimePack
+      ) {
          UNUSED(pLoss);
-         UNUSED(pData);
+         UNUSED(cRuntimeScores);
+         UNUSED(cRuntimePack);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
-      GPU_DEVICE static void ApplyValidation(const TLoss * const pLoss, ApplyValidationData * const pData) {
+      GPU_DEVICE static void ApplyValidation(
+         const TLoss * const pLoss,
+         const ptrdiff_t cRuntimeScores,
+         const ptrdiff_t cRuntimePack,
+         FloatEbmType * const pMetricOut
+      ) {
          UNUSED(pLoss);
-         UNUSED(pData);
+         UNUSED(cRuntimeScores);
+         UNUSED(cRuntimePack);
+         UNUSED(pMetricOut);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
    };
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerPack, bool bHessian>
    struct Shared <TLoss, TFloat, k_oneScore, cCompilerPack, bHessian> final {
-      GPU_DEVICE static void ApplyTraining(const TLoss * const pLoss, ApplyTrainingData * const pData) {
+      GPU_DEVICE static void ApplyTraining(
+         const TLoss * const pLoss,
+         const ptrdiff_t cRuntimeScores,
+         const ptrdiff_t cRuntimePack
+      ) {
          UNUSED(pLoss);
-         UNUSED(pData);
+         UNUSED(cRuntimeScores);
+         UNUSED(cRuntimePack);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
-      GPU_DEVICE static void ApplyValidation(const TLoss * const pLoss, ApplyValidationData * const pData) {
+      GPU_DEVICE static void ApplyValidation(
+         const TLoss * const pLoss,
+         const ptrdiff_t cRuntimeScores,
+         const ptrdiff_t cRuntimePack,
+         FloatEbmType * const pMetricOut
+      ) {
          UNUSED(pLoss);
-         UNUSED(pData);
+         UNUSED(cRuntimeScores);
+         UNUSED(cRuntimePack);
+         UNUSED(pMetricOut);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
    };
    template<typename TLoss, typename TFloat, bool bHessian>
    struct Shared<TLoss, TFloat, k_oneScore, k_cItemsPerBitPackNone, bHessian> final {
-      GPU_DEVICE static void ApplyTraining(const TLoss * const pLoss, ApplyTrainingData * const pData) {
+      GPU_DEVICE static void ApplyTraining(
+         const TLoss * const pLoss, 
+         const ptrdiff_t cRuntimeScores,
+         const ptrdiff_t cRuntimePack
+      ) {
          UNUSED(pLoss);
-         UNUSED(pData);
+         UNUSED(cRuntimeScores);
+         UNUSED(cRuntimePack);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }
-      GPU_DEVICE static void ApplyValidation(const TLoss * const pLoss, ApplyValidationData * const pData) {
+      GPU_DEVICE static void ApplyValidation(
+         const TLoss * const pLoss,
+         const ptrdiff_t cRuntimeScores,
+         const ptrdiff_t cRuntimePack,
+         FloatEbmType * const pMetricOut
+      ) {
          UNUSED(pLoss);
-         UNUSED(pData);
+         UNUSED(cRuntimeScores);
+         UNUSED(cRuntimePack);
+         UNUSED(pMetricOut);
 
          ApplyHessian<TLoss, bHessian>::Func(); // TODO: use this
       }

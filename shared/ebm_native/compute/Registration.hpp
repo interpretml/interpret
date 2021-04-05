@@ -16,64 +16,12 @@
 #include "bridge_c.h"
 #include "zones.h"
 
-#include "EbmException.hpp"
+#include "registration_exceptions.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
-
-class SkipRegistrationException final : public std::exception {
-   // we don't derrive from EbmException since this exception isn't meant to percolate up past the C interface
-public:
-   SkipRegistrationException() = default;
-};
-
-class ParameterValueOutOfRangeException final : public std::exception {
-public:
-   ParameterValueOutOfRangeException() = default;
-};
-
-class ParameterMismatchWithConfigException final : public std::exception {
-public:
-   ParameterMismatchWithConfigException() = default;
-};
-
-class ParameterValueMalformedException final : public std::exception {
-   // this should not be thrown from the Registrable constructor
-public:
-   ParameterValueMalformedException() = default;
-};
-
-class ParameterUnknownException final : public std::exception {
-   // this should not be thrown from the Registrable constructor
-public:
-   ParameterUnknownException() = default;
-};
-
-class RegistrationConstructorException final : public std::exception {
-   // this should not be thrown from the Registrable constructor
-public:
-   RegistrationConstructorException() = default;
-};
-
-class IllegalParamNameException final : public std::exception {
-   // this should not be thrown from the Registrable constructor
-public:
-   IllegalParamNameException() = default;
-};
-
-class IllegalRegistrationNameException final : public std::exception {
-   // this should not be thrown from the Registrable constructor
-public:
-   IllegalRegistrationNameException() = default;
-};
-
-class DuplicateParamNameException final : public std::exception {
-   // this should not be thrown from the Registrable constructor
-public:
-   DuplicateParamNameException() = default;
-};
 
 class ParamBase {
    const char * const m_sParamName;
@@ -294,17 +242,13 @@ class RegistrationPack final : public Registration {
          } catch(const ParameterMismatchWithConfigException &) {
             free(const_cast<void *>(pRegistrableMemory));
             throw;
-         } catch(const EbmException &) {
-            // generally we'd prefer that the Registration constructors avoid this exception, but pass it along if thrown
-            free(const_cast<void *>(pRegistrableMemory));
-            throw;
          } catch(const std::bad_alloc &) {
             // it's possible in theory that the constructor allocates some temporary memory, so pass this through
             free(const_cast<void *>(pRegistrableMemory));
             throw;
          } catch(...) {
-            // our client Registration functions should only ever throw SkipRegistrationException, a derivative of EbmException, 
-            // or std::bad_alloc, but check anyways
+            // our client Registration functions should only ever throw a limited range of exceptions listed above, 
+            // but check anyways
             free(const_cast<void *>(pRegistrableMemory));
             throw RegistrationConstructorException();
          }

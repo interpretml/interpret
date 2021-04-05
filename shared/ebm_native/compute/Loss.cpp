@@ -14,7 +14,7 @@
 
 #include "zoned_bridge_c_functions.h"
 #include "zoned_bridge_cpp_functions.hpp"
-#include "EbmException.hpp"
+#include "registration_exceptions.hpp"
 #include "Registration.hpp"
 #include "Loss.hpp"
 
@@ -95,10 +95,6 @@ ErrorEbmType Loss::CreateLoss(
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss DuplicateParamNameException");
          error = Error_LossDuplicateParamName;
-      } catch(const EbmException & exception) {
-         EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss EbmException");
-         error = exception.GetError();
       } catch(const std::bad_alloc &) {
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss Out of Memory");
          error = Error_OutOfMemory;
