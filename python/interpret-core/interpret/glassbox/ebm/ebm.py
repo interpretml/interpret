@@ -223,7 +223,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
                 discretized = native.discretize(col_data, cuts)
 
-                bin_counts = np.bincount(discretized)
+                bin_counts = np.bincount(discretized, minlength=len(cuts) + 2)
 
                 if count_missing != 0:
                     col_data = col_data[~np.isnan(col_data)]

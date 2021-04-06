@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifdef LOSS_REGISTRATIONS_H
+#ifdef LOSS_REGISTRATIONS_HPP
 #error loss_registrations.hpp is very special and should only be included once in a translation unit (*.cpp file)
 #endif
-#define LOSS_REGISTRATIONS_H
+#define LOSS_REGISTRATIONS_HPP
 
 // Steps for adding a new loss/objective function in C++:
 //   1) Copy one of the existing Loss*.h include files into a new renamed Loss*.h file

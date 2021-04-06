@@ -32,6 +32,9 @@ GPU_GLOBAL void TestGpuAdd(const Loss * const pLoss, const int * const pVal1, co
 }
 
 struct Cuda_32_Operators final {
+   // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__SINGLE.html#group__CUDA__MATH__SINGLE
+   // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__DOUBLE.html#group__CUDA__MATH__DOUBLE
+
    typedef float Unpacked;
    typedef float Packed;
 
