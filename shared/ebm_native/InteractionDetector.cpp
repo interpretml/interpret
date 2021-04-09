@@ -56,10 +56,6 @@ InteractionDetector * InteractionDetector::Allocate(
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(optionalTempParams);
 
-   // TODO : implement weights 
-   UNUSED(aWeights);
-   EBM_ASSERT(nullptr == aWeights);
-
    LOG_0(TraceLevelInfo, "Entered InteractionDetector::Allocate");
 
    LOG_0(TraceLevelInfo, "InteractionDetector::Allocate starting feature processing");
@@ -137,6 +133,7 @@ InteractionDetector * InteractionDetector::Allocate(
       aFeatureAtomics,
       cSamples,
       aBinnedData,
+      aWeights,
       aTargets,
       aPredictorScores,
       runtimeLearningTypeOrCountTargetClasses

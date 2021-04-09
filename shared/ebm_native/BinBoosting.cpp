@@ -61,6 +61,7 @@ public:
       EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
+      const FloatEbmType * pWeight = pTrainingSet->GetWeights();
       const FloatEbmType * pGradientAndHessian = pTrainingSet->GetDataFrameBoosting()->GetGradientsAndHessiansPointer();
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
@@ -81,9 +82,11 @@ public:
          //   (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
          const size_t cOccurences = *pCountOccurrences;
+         const FloatEbmType weight = *pWeight;
          ++pCountOccurrences;
+         ++pWeight;
          pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
-         const FloatEbmType weight = static_cast<FloatEbmType>(cOccurences);
+         pHistogramBucketEntry->SetWeightInBucket(pHistogramBucketEntry->GetWeightInBucket() + weight);
 
          size_t iVector = 0;
 
@@ -224,6 +227,7 @@ public:
       EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
+      const FloatEbmType * pWeight = pTrainingSet->GetWeights();
       const StorageDataType * pInputData = pTrainingSet->GetDataFrameBoosting()->GetInputDataPointer(pFeatureGroup);
       const FloatEbmType * pGradientAndHessian = pTrainingSet->GetDataFrameBoosting()->GetGradientsAndHessiansPointer();
 
@@ -268,9 +272,12 @@ public:
 
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pThreadStateBoosting->GetHistogramBucketsEndDebug());
             const size_t cOccurences = *pCountOccurrences;
+            const FloatEbmType weight = *pWeight;
             ++pCountOccurrences;
+            ++pWeight;
             pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
-            const FloatEbmType weight = static_cast<FloatEbmType>(cOccurences);
+            pHistogramBucketEntry->SetWeightInBucket(pHistogramBucketEntry->GetWeightInBucket() + weight);
+
             HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
                pHistogramBucketEntry->GetHistogramTargetEntry();
 

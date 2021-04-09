@@ -108,6 +108,12 @@ struct TreeNodeData<true> {
       m_UNION.m_beforeExaminationForPossibleSplitting.m_cSamples = cSamples;
    }
 
+   INLINE_ALWAYS FloatEbmType GetWeight() const {
+      return m_weight;
+   }
+   INLINE_ALWAYS void SetWeight(const FloatEbmType weight) {
+      m_weight = weight;
+   }
 
    INLINE_ALWAYS const HistogramBucket<true> * BEFORE_GetHistogramBucketEntryFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
@@ -188,6 +194,8 @@ private:
 #ifndef NDEBUG
    bool m_bExaminedForPossibleSplitting;
 #endif // NDEBUG
+
+   FloatEbmType m_weight;
 
    TreeNodeDataUnion m_UNION;
    // use the "struct hack" since Flexible array member method is not available in C++
@@ -281,6 +289,12 @@ struct TreeNodeData<false> {
       m_cSamples = cSamples;
    }
 
+   INLINE_ALWAYS FloatEbmType GetWeight() const {
+      return m_weight;
+   }
+   INLINE_ALWAYS void SetWeight(const FloatEbmType weight) {
+      m_weight = weight;
+   }
 
    INLINE_ALWAYS const HistogramBucket<false> * BEFORE_GetHistogramBucketEntryFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
@@ -361,6 +375,8 @@ private:
 #ifndef NDEBUG
    bool m_bExaminedForPossibleSplitting;
 #endif // NDEBUG
+
+   FloatEbmType m_weight;
 
    TreeNodeDataUnion m_UNION;
 

@@ -45,7 +45,8 @@ public:
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
-
+      const FloatEbmType * pWeight = pBooster->GetValidationWeights();
+  
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
@@ -96,10 +97,16 @@ public:
          );
 
          EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
-         sumLogLoss += sampleLogLoss;
 
+         FloatEbmType weight = FloatEbmType { 1 };
+         if(nullptr != pWeight) {
+            weight = *pWeight;
+            ++pWeight;
+         }
+         sumLogLoss += sampleLogLoss * weight;
       } while(pPredictorScoresEnd != pPredictorScores);
-      return sumLogLoss / cSamples;
+      const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+      return sumLogLoss / totalWeight;
    }
 };
 
@@ -119,6 +126,8 @@ public:
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
+      const FloatEbmType * pWeight = pBooster->GetValidationWeights();
+
       FloatEbmType sumLogLoss = 0;
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
@@ -133,9 +142,16 @@ public:
          ++pPredictorScores;
          const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
          EBM_ASSERT(std::isnan(sampleLogLoss) || FloatEbmType { 0 } <= sampleLogLoss);
-         sumLogLoss += sampleLogLoss;
+
+         FloatEbmType weight = FloatEbmType { 1 };
+         if(nullptr != pWeight) {
+            weight = *pWeight;
+            ++pWeight;
+         }
+         sumLogLoss += sampleLogLoss * weight;
       } while(pPredictorScoresEnd != pPredictorScores);
-      return sumLogLoss / cSamples;
+      const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+      return sumLogLoss / totalWeight;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -155,6 +171,8 @@ public:
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
+      const FloatEbmType * pWeight = pBooster->GetValidationWeights();
+
       FloatEbmType sumSquareError = FloatEbmType { 0 };
       // no hessians for regression
       FloatEbmType * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
@@ -165,11 +183,18 @@ public:
          const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
          const FloatEbmType singleSampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
          EBM_ASSERT(std::isnan(singleSampleSquaredError) || FloatEbmType { 0 } <= singleSampleSquaredError);
-         sumSquareError += singleSampleSquaredError;
+
+         FloatEbmType weight = FloatEbmType { 1 };
+         if(nullptr != pWeight) {
+            weight = *pWeight;
+            ++pWeight;
+         }
+         sumSquareError += singleSampleSquaredError * weight;
          *pGradient = gradient;
          ++pGradient;
       } while(pGradientsEnd != pGradient);
-      return sumSquareError / cSamples;
+      const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+      return sumSquareError / totalWeight;
    }
 };
 
@@ -238,6 +263,7 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
+      const FloatEbmType * pWeight = pBooster->GetValidationWeights();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -317,7 +343,13 @@ public:
             );
 
             EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
-            sumLogLoss += sampleLogLoss;
+
+            FloatEbmType weight = FloatEbmType { 1 };
+            if(nullptr != pWeight) {
+               weight = *pWeight;
+               ++pWeight;
+            }
+            sumLogLoss += sampleLogLoss * weight;
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pPredictorScoresInnerEnd != pPredictorScores);
       } while(pPredictorScoresExit != pPredictorScores);
@@ -328,7 +360,8 @@ public:
          pPredictorScoresExit = pPredictorScoresTrueEnd;
          goto one_last_loop;
       }
-      return sumLogLoss / cSamples;
+      const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+      return sumLogLoss / totalWeight;
    }
 };
 
@@ -349,6 +382,7 @@ public:
 
       const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
+      const FloatEbmType * pWeight = pBooster->GetValidationWeights();
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
@@ -400,7 +434,13 @@ public:
             const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
 
             EBM_ASSERT(std::isnan(sampleLogLoss) || FloatEbmType { 0 } <= sampleLogLoss);
-            sumLogLoss += sampleLogLoss;
+
+            FloatEbmType weight = FloatEbmType { 1 };
+            if(nullptr != pWeight) {
+               weight = *pWeight;
+               ++pWeight;
+            }
+            sumLogLoss += sampleLogLoss * weight;
 
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pPredictorScoresInnerEnd != pPredictorScores);
@@ -412,7 +452,8 @@ public:
          pPredictorScoresExit = pPredictorScoresTrueEnd;
          goto one_last_loop;
       }
-      return sumLogLoss / cSamples;
+      const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+      return sumLogLoss / totalWeight;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -433,6 +474,7 @@ public:
 
       const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
+      const FloatEbmType * pWeight = pBooster->GetValidationWeights();
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
@@ -478,7 +520,13 @@ public:
             const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
             const FloatEbmType sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
             EBM_ASSERT(std::isnan(sampleSquaredError) || FloatEbmType { 0 } <= sampleSquaredError);
-            sumSquareError += sampleSquaredError;
+
+            FloatEbmType weight = FloatEbmType { 1 };
+            if(nullptr != pWeight) {
+               weight = *pWeight;
+               ++pWeight;
+            }
+            sumSquareError += sampleSquaredError * weight;
             *pGradient = gradient;
             ++pGradient;
 
@@ -492,7 +540,8 @@ public:
          pGradientsExit = pGradientsTrueEnd;
          goto one_last_loop;
       }
-      return sumSquareError / cSamples;
+      const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+      return sumSquareError / totalWeight;
    }
 };
 

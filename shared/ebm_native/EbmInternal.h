@@ -66,7 +66,7 @@ constexpr static ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 8;
 constexpr static ptrdiff_t k_cCompilerOptimizedTargetClassesStart = 3;
 
 static_assert(
-   2 <= k_cCompilerOptimizedTargetClassesMax, 
+   2 <= k_cCompilerOptimizedTargetClassesMax,
    "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
    "output model files with two values instead of our special case 1");
 
@@ -102,6 +102,41 @@ INLINE_ALWAYS constexpr static size_t GetNextCountItemsBitPacked(const size_t cI
 //       We might also pay a penalty if our stride length for the outputs is too long, but we'll have to test that
 constexpr static bool k_bUseSIMD = false;
 constexpr static bool k_bUseLogitboost = false;
+
+template<typename T>
+INLINE_ALWAYS static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
+   // floats have 23 bits of mantissa, so if you add 2^23 of them, the average value is below the threshold where
+   // it adds to the sum total value even by the smallest amount.  When that happens the sum stops advancing
+   // this function solves that by breaking the loop into 3 sections which allows us to go back to zero where
+   // floats have more resolution
+
+   EBM_ASSERT(nullptr != pVals);
+   T totalOuter = T { 0 };
+   while(size_t { 0 } != cVals) {
+      T totalMid = T { 0 };
+      do {
+         EBM_ASSERT(0 != cVals);
+         size_t cInner = cVals % k_cFloatSumLimit;
+         cInner = (size_t { 0 } == cInner) ? k_cFloatSumLimit : cInner;
+         cVals -= cInner;
+         const T * const pValsEnd = pVals + cInner;
+         T totalInner = T { 0 };
+         do {
+            const T val = *pVals;
+            if(val < T { 0 }) {
+               return std::numeric_limits<T>::lowest();
+            }
+            totalInner += val;
+            ++pVals;
+         } while(pValsEnd != pVals);
+         totalMid += totalInner;
+         EBM_ASSERT(0 == cVals % k_cFloatSumLimit);
+      } while(size_t { 0 } != (cVals / k_cFloatSumLimit) % k_cFloatSumLimit);
+      totalOuter += totalMid;
+   }
+   return totalOuter;
+}
+
 
 //#define ZERO_FIRST_MULTICLASS_LOGIT
 

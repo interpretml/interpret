@@ -163,10 +163,10 @@ public:
                      if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHighHigh->GetCountSamplesInBucket())) {
                         FloatEbmType splittingScore = 0;
 
-                        FloatEbmType cLowLowSamplesInBucket = static_cast<FloatEbmType>(pTotalsLowLow->GetCountSamplesInBucket());
-                        FloatEbmType cLowHighSamplesInBucket = static_cast<FloatEbmType>(pTotalsLowHigh->GetCountSamplesInBucket());
-                        FloatEbmType cHighLowSamplesInBucket = static_cast<FloatEbmType>(pTotalsHighLow->GetCountSamplesInBucket());
-                        FloatEbmType cHighHighSamplesInBucket = static_cast<FloatEbmType>(pTotalsHighHigh->GetCountSamplesInBucket());
+                        FloatEbmType cLowLowWeightInBucket = pTotalsLowLow->GetWeightInBucket();
+                        FloatEbmType cLowHighWeightInBucket = pTotalsLowHigh->GetWeightInBucket();
+                        FloatEbmType cHighLowWeightInBucket = pTotalsHighLow->GetWeightInBucket();
+                        FloatEbmType cHighHighWeightInBucket = pTotalsHighHigh->GetWeightInBucket();
 
                         HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotalsLowLow =
                            pTotalsLowLow->GetHistogramTargetEntry();
@@ -184,20 +184,20 @@ public:
                            constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                            const FloatEbmType splittingScoreUpdate1 = EbmStats::ComputeSinglePartitionGain(
                               pHistogramTargetEntryTotalsLowLow[iVector].m_sumGradients,
-                              bUseLogitBoost ? pHistogramTargetEntryTotalsLowLow[iVector].GetSumHessians() : cLowLowSamplesInBucket
+                              bUseLogitBoost ? pHistogramTargetEntryTotalsLowLow[iVector].GetSumHessians() : cLowLowWeightInBucket
                            );
                            EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                            splittingScore += splittingScoreUpdate1;
                            const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeSinglePartitionGain(
-                              pHistogramTargetEntryTotalsLowHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryTotalsLowHigh[iVector].GetSumHessians() : cLowHighSamplesInBucket);
+                              pHistogramTargetEntryTotalsLowHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryTotalsLowHigh[iVector].GetSumHessians() : cLowHighWeightInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                            splittingScore += splittingScoreUpdate2;
                            const FloatEbmType splittingScoreUpdate3 = EbmStats::ComputeSinglePartitionGain(
-                              pHistogramTargetEntryTotalsHighLow[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryTotalsHighLow[iVector].GetSumHessians() : cHighLowSamplesInBucket);
+                              pHistogramTargetEntryTotalsHighLow[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryTotalsHighLow[iVector].GetSumHessians() : cHighLowWeightInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
                            splittingScore += splittingScoreUpdate3;
                            const FloatEbmType splittingScoreUpdate4 = EbmStats::ComputeSinglePartitionGain(
-                              pHistogramTargetEntryTotalsHighHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryTotalsHighHigh[iVector].GetSumHessians() : cHighHighSamplesInBucket);
+                              pHistogramTargetEntryTotalsHighHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryTotalsHighHigh[iVector].GetSumHessians() : cHighHighWeightInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
                            splittingScore += splittingScoreUpdate4;
                         }

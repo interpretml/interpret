@@ -45,6 +45,8 @@ class Booster final {
 
    size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
+   FloatEbmType m_validationWeightTotal;
+   FloatEbmType * m_aValidationWeights;
 
    SegmentedTensor ** m_apCurrentModel;
    SegmentedTensor ** m_apBestModel;
@@ -84,6 +86,8 @@ public:
 
       m_cSamplingSets = 0;
       m_apSamplingSets = nullptr;
+      m_validationWeightTotal = 0;
+      m_aValidationWeights = nullptr;
 
       m_apCurrentModel = nullptr;
       m_apBestModel = nullptr;
@@ -123,6 +127,14 @@ public:
 
    INLINE_ALWAYS const SamplingSet * const * GetSamplingSets() const {
       return m_apSamplingSets;
+   }
+
+   INLINE_ALWAYS FloatEbmType GetValidationWeightTotal() const {
+      return m_validationWeightTotal;
+   }
+
+   INLINE_ALWAYS const FloatEbmType * GetValidationWeights() const {
+      return m_aValidationWeights;
    }
 
    INLINE_ALWAYS SegmentedTensor * const * GetCurrentModel() const {

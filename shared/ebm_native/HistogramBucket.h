@@ -61,6 +61,7 @@ struct HistogramBucket final : HistogramBucketBase {
 private:
 
    size_t m_cSamplesInBucket;
+   FloatEbmType m_weightInBucket;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramTargetEntry must be the last item in this struct
@@ -83,6 +84,13 @@ public:
       m_cSamplesInBucket = cSamplesInBucket;
    }
 
+   INLINE_ALWAYS FloatEbmType GetWeightInBucket() const {
+      return m_weightInBucket;
+   }
+   INLINE_ALWAYS void SetWeightInBucket(const FloatEbmType weightInBucket) {
+      m_weightInBucket = weightInBucket;
+   }
+
    INLINE_ALWAYS const HistogramTargetEntry<bClassification> * GetHistogramTargetEntry() const {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
@@ -92,6 +100,7 @@ public:
 
    INLINE_ALWAYS void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cSamplesInBucket += other.m_cSamplesInBucket;
+      m_weightInBucket += other.m_weightInBucket;
 
       HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
 
@@ -105,6 +114,7 @@ public:
 
    INLINE_ALWAYS void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cSamplesInBucket -= other.m_cSamplesInBucket;
+      m_weightInBucket -= other.m_weightInBucket;
 
       HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
 
@@ -146,6 +156,7 @@ public:
 
 
       m_cSamplesInBucket = size_t { 0 };
+      m_weightInBucket = size_t { 0 };
       HistogramTargetEntry<bClassification> * pHistogramTargetEntry = GetHistogramTargetEntry();
       const HistogramTargetEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
       EBM_ASSERT(1 <= cVectorLength);
@@ -161,6 +172,7 @@ public:
       UNUSED(cVectorLength);
 #ifndef NDEBUG
       EBM_ASSERT(0 == m_cSamplesInBucket);
+      EBM_ASSERT(0 == m_weightInBucket);
 
       const HistogramTargetEntry<bClassification> * pHistogramBucketVector = GetHistogramTargetEntry();
 

@@ -84,7 +84,7 @@ static void Flatten(
 
          } else {
             update = EbmStats::ComputeSinglePartitionUpdate(
-               pHistogramTargetEntry->m_sumGradients, static_cast<FloatEbmType>(pTreeNode->AMBIGUOUS_GetCountSamples()));
+               pHistogramTargetEntry->m_sumGradients, pTreeNode->GetWeight());
          }
          *pValuesCur = update;
 
@@ -181,6 +181,10 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    size_t cSamplesRight = pTreeNode->AMBIGUOUS_GetCountSamples();
    size_t cSamplesLeft = 0;
+
+   FloatEbmType weightRight = pTreeNode->GetWeight();
+   FloatEbmType weightLeft = 0;
+
    FloatEbmType BEST_nodeSplittingScore = k_illegalGain;
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
    EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
@@ -194,6 +198,11 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       }
       cSamplesLeft += CHANGE_cSamples;
 
+
+      const FloatEbmType CHANGE_weight = pHistogramBucketEntryCur->GetWeightInBucket();
+      weightRight -= CHANGE_weight;
+      weightLeft += CHANGE_weight;
+
       const HistogramTargetEntry<bClassification> * pHistogramTargetEntry =
          pHistogramBucketEntryCur->GetHistogramTargetEntry();
 
@@ -201,8 +210,8 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          EBM_ASSERT(0 < cSamplesRight);
          EBM_ASSERT(0 < cSamplesLeft);
 
-         FloatEbmType sumHessiansRight = static_cast<FloatEbmType>(cSamplesRight);
-         FloatEbmType sumHessiansLeft = static_cast<FloatEbmType>(cSamplesLeft);
+         FloatEbmType sumHessiansRight = weightRight;
+         FloatEbmType sumHessiansLeft = weightLeft;
          FloatEbmType nodeSplittingScore = 0;
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -271,6 +280,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
             pTreeSweepCur->SetBestHistogramBucketEntry(pHistogramBucketEntryCur);
             pTreeSweepCur->SetCountBestSamplesLeft(cSamplesLeft);
+            pTreeSweepCur->SetBestWeightLeft(weightLeft);
             memcpy(
                pTreeSweepCur->GetBestHistogramTargetEntry(), aSumHistogramTargetEntryLeft,
                sizeof(*aSumHistogramTargetEntryLeft) * cVectorLength
@@ -322,6 +332,9 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const size_t BEST_cSamplesLeft = pTreeSweepStart->GetCountBestSamplesLeft();
    pLeftChild->AMBIGUOUS_SetCountSamples(BEST_cSamplesLeft);
 
+   const FloatEbmType BEST_weightLeft = pTreeSweepStart->GetBestWeightLeft();
+   pLeftChild->SetWeight(BEST_weightLeft);
+
    const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntryNext =
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, pThreadStateBoosting->GetHistogramBucketsEndDebug());
@@ -332,7 +345,8 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const size_t cSamplesParent = pTreeNode->AMBIGUOUS_GetCountSamples();
    pRightChild->AMBIGUOUS_SetCountSamples(cSamplesParent - BEST_cSamplesLeft);
 
-   FloatEbmType sumHessiansParent = static_cast<FloatEbmType>(cSamplesParent);
+   FloatEbmType sumHessiansParent = pTreeNode->GetWeight();
+   pRightChild->SetWeight(sumHessiansParent - BEST_weightLeft);
 
    // if the total samples is 0 then we should be using our specialty handling of that case
    // if the total samples if not 0, then our splitting code should never split any node that has zero on either the left or right, so no new 
@@ -440,6 +454,7 @@ public:
       ThreadStateBoosting * const pThreadStateBoosting,
       const size_t cHistogramBuckets,
       const size_t cSamplesTotal,
+      const FloatEbmType weightTotal,
       const size_t cSamplesRequiredForChildSplitMin,
       const size_t cLeavesMax,
       FloatEbmType * const pTotalGain
@@ -512,6 +527,7 @@ public:
          pThreadStateBoosting->GetHistogramBucketsEndDebug()
       );
       pRootTreeNode->AMBIGUOUS_SetCountSamples(cSamplesTotal);
+      pRootTreeNode->SetWeight(weightTotal);
 
       // copying existing mem
       memcpy(
@@ -563,7 +579,7 @@ public:
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
-               pRootTreeNode->GetHistogramTargetEntry()[0].m_sumGradients, static_cast<FloatEbmType>(cSamplesTotal)
+               pRootTreeNode->GetHistogramTargetEntry()[0].m_sumGradients, weightTotal
             );
             FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
             pValues[0] = smallChangeToModel;
@@ -598,11 +614,11 @@ public:
          const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
             pRootTreeNode->AFTER_GetTreeNodeChildren(),
             cBytesPerTreeNode
-            );
+         );
          const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
             pRootTreeNode->AFTER_GetTreeNodeChildren(),
             cBytesPerTreeNode
-            );
+         );
 
          const HistogramTargetEntry<bClassification> * pHistogramTargetEntryLeftChild =
             pLeftChild->GetHistogramTargetEntry();
@@ -646,11 +662,11 @@ public:
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             aValues[0] = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntryLeftChild[0].m_sumGradients,
-               static_cast<FloatEbmType>(pLeftChild->AMBIGUOUS_GetCountSamples())
+               pLeftChild->GetWeight()
             );
             aValues[1] = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntryRightChild[0].m_sumGradients,
-               static_cast<FloatEbmType>(pRightChild->AMBIGUOUS_GetCountSamples())
+               pRightChild->GetWeight()
             );
          }
 
@@ -721,7 +737,7 @@ public:
                GetLeftTreeNodeChild<bClassification>(
                   pParentTreeNode->AFTER_GetTreeNodeChildren(),
                   cBytesPerTreeNode
-                  );
+               );
             if(pLeftChild->IsSplittable()) {
                TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
@@ -764,7 +780,7 @@ public:
             TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
                pParentTreeNode->AFTER_GetTreeNodeChildren(),
                cBytesPerTreeNode
-               );
+            );
             if(pRightChild->IsSplittable()) {
                TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
@@ -856,6 +872,7 @@ extern bool GrowDecisionTree(
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
+   const FloatEbmType weightTotal,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
    FloatEbmType * const pTotalGain
@@ -872,6 +889,7 @@ extern bool GrowDecisionTree(
             pThreadStateBoosting,
             cHistogramBuckets,
             cSamplesTotal,
+            weightTotal,
             cSamplesRequiredForChildSplitMin,
             cLeavesMax,
             pTotalGain
@@ -881,6 +899,7 @@ extern bool GrowDecisionTree(
             pThreadStateBoosting,
             cHistogramBuckets,
             cSamplesTotal,
+            weightTotal,
             cSamplesRequiredForChildSplitMin,
             cLeavesMax,
             pTotalGain
@@ -892,6 +911,7 @@ extern bool GrowDecisionTree(
          pThreadStateBoosting,
          cHistogramBuckets,
          cSamplesTotal,
+         weightTotal,
          cSamplesRequiredForChildSplitMin,
          cLeavesMax,
          pTotalGain
