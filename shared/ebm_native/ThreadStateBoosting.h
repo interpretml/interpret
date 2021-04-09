@@ -45,6 +45,7 @@ class ThreadStateBoosting final {
 
    HistogramTargetEntryBase * m_aSumHistogramTargetEntry;
    HistogramTargetEntryBase * m_aSumHistogramTargetEntry1;
+   HistogramTargetEntryBase * m_aSumHistogramTargetEntry2;
 
 #ifndef NDEBUG
    const unsigned char * m_aHistogramBucketsEndDebug;
@@ -72,6 +73,7 @@ public:
       m_aEquivalentSplits = nullptr;
       m_aSumHistogramTargetEntry = nullptr;
       m_aSumHistogramTargetEntry1 = nullptr;
+      m_aSumHistogramTargetEntry2 = nullptr;
    }
 
    static void Free(ThreadStateBoosting * const pThreadStateBoosting);
@@ -129,6 +131,11 @@ public:
    template<bool bClassification>
    INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntry1Array() {
       return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntry1);
+   }
+
+   template<bool bClassification>
+   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntry2Array() {
+      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntry2);
    }
 
 #ifndef NDEBUG

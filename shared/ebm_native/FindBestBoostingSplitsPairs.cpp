@@ -136,12 +136,13 @@ static FloatEbmType SweepMultiDimensional(
                // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
+               constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                const FloatEbmType splittingScoreUpdate1 = EbmStats::ComputeSinglePartitionGain(
-                  pHistogramTargetEntryLow[iVector].m_sumGradients, cLowSamplesInBucket);
+                  pHistogramTargetEntryLow[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryLow[iVector].GetSumHessians() : cLowSamplesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                splittingScore += splittingScoreUpdate1;
                const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeSinglePartitionGain(
-                  pHistogramTargetEntryHigh[iVector].m_sumGradients, cHighSamplesInBucket);
+                  pHistogramTargetEntryHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryHigh[iVector].GetSumHessians() : cHighSamplesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                splittingScore += splittingScoreUpdate2;
             }
@@ -279,9 +280,10 @@ public:
          // TODO : we can make this faster by doing the division in ComputeSinglePartitionGainParent after we add all the numerators 
          // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
+         constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
          const FloatEbmType splittingScoreParentUpdate = EbmStats::ComputeSinglePartitionGain(
             pHistogramTargetEntryTotal[iVector].m_sumGradients,
-            cSamplesInParentBucket
+            bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : cSamplesInParentBucket
          );
          EBM_ASSERT(std::isnan(splittingScoreParentUpdate) || FloatEbmType { 0 } <= splittingScoreParentUpdate);
          splittingScoreParent += splittingScoreParentUpdate;

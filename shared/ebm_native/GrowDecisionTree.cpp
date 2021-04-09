@@ -116,6 +116,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur),
       cSamplesRequiredForChildSplitMin
    );
+   constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
 
    Booster * const pBooster = pThreadStateBoosting->GetBooster();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -140,11 +141,12 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       aSumHistogramTargetEntryLeft[i].Zero();
    }
 
-   FloatEbmType * const aSumGradientsRight = pThreadStateBoosting->GetTempFloatVector();
+   HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntryRight =
+      pThreadStateBoosting->GetSumHistogramTargetEntry2Array<bClassification>();
    const HistogramTargetEntry<bClassification> * pHistogramTargetEntryInit = 
       pTreeNode->GetHistogramTargetEntry();
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      aSumGradientsRight[iVector] = pHistogramTargetEntryInit[iVector].m_sumGradients;
+      aSumHistogramTargetEntryRight[iVector] = pHistogramTargetEntryInit[iVector];
    }
 
    const HistogramBucket<bClassification> * pHistogramBucketEntryCur =
@@ -199,37 +201,39 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          EBM_ASSERT(0 < cSamplesRight);
          EBM_ASSERT(0 < cSamplesLeft);
 
-         const FloatEbmType cSamplesRightFloatEbmType = static_cast<FloatEbmType>(cSamplesRight);
-         const FloatEbmType cSamplesLeftFloatEbmType = static_cast<FloatEbmType>(cSamplesLeft);
+         FloatEbmType sumHessiansRight = static_cast<FloatEbmType>(cSamplesRight);
+         FloatEbmType sumHessiansLeft = static_cast<FloatEbmType>(cSamplesLeft);
          FloatEbmType nodeSplittingScore = 0;
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatEbmType CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
-
-            const FloatEbmType sumGradientsRight = aSumGradientsRight[iVector] - CHANGE_sumGradients;
-            aSumGradientsRight[iVector] = sumGradientsRight;
-
-            // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
-            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType nodeSplittingScoreRight = EbmStats::ComputeSinglePartitionGain(sumGradientsRight, cSamplesRightFloatEbmType);
-            EBM_ASSERT(std::isnan(nodeSplittingScoreRight) || FloatEbmType { 0 } <= nodeSplittingScoreRight);
-            nodeSplittingScore += nodeSplittingScoreRight;
-
+            const FloatEbmType sumGradientsRight = aSumHistogramTargetEntryRight[iVector].m_sumGradients - CHANGE_sumGradients;
+            aSumHistogramTargetEntryRight[iVector].m_sumGradients = sumGradientsRight;
             const FloatEbmType sumGradientsLeft = aSumHistogramTargetEntryLeft[iVector].m_sumGradients + CHANGE_sumGradients;
             aSumHistogramTargetEntryLeft[iVector].m_sumGradients = sumGradientsLeft;
 
+            if(bClassification) {
+               const FloatEbmType CHANGE_sumHessians = pHistogramTargetEntry[iVector].GetSumHessians();
+               const FloatEbmType newSumHessiansLeft = aSumHistogramTargetEntryLeft[iVector].GetSumHessians() + CHANGE_sumHessians;
+               aSumHistogramTargetEntryLeft[iVector].SetSumHessians(newSumHessiansLeft);
+               if(bUseLogitBoost) {
+                  sumHessiansLeft = newSumHessiansLeft;
+                  sumHessiansRight = aSumHistogramTargetEntryRight[iVector].GetSumHessians() - CHANGE_sumHessians;
+                  aSumHistogramTargetEntryRight[iVector].SetSumHessians(sumHessiansRight);
+               }
+            }
+
             // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType nodeSplittingScoreLeft = EbmStats::ComputeSinglePartitionGain(sumGradientsLeft, cSamplesLeftFloatEbmType);
+            const FloatEbmType nodeSplittingScoreRight = EbmStats::ComputeSinglePartitionGain(sumGradientsRight, sumHessiansRight);
+            EBM_ASSERT(std::isnan(nodeSplittingScoreRight) || FloatEbmType { 0 } <= nodeSplittingScoreRight);
+            nodeSplittingScore += nodeSplittingScoreRight;
+
+            // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
+            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
+            const FloatEbmType nodeSplittingScoreLeft = EbmStats::ComputeSinglePartitionGain(sumGradientsLeft, sumHessiansLeft);
             EBM_ASSERT(std::isnan(nodeSplittingScoreLeft) || FloatEbmType { 0 } <= nodeSplittingScoreLeft);
             nodeSplittingScore += nodeSplittingScoreLeft;
-
-            if(bClassification) {
-               aSumHistogramTargetEntryLeft[iVector].SetSumHessians(
-                  aSumHistogramTargetEntryLeft[iVector].GetSumHessians() +
-                  pHistogramTargetEntry[iVector].GetSumHessians()
-               );
-            }
          }
          EBM_ASSERT(std::isnan(nodeSplittingScore) || FloatEbmType { 0 } <= nodeSplittingScore);
 
@@ -277,14 +281,14 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatEbmType CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
-
-            aSumGradientsRight[iVector] -= CHANGE_sumGradients;
+            aSumHistogramTargetEntryRight[iVector].m_sumGradients -= CHANGE_sumGradients;
             aSumHistogramTargetEntryLeft[iVector].m_sumGradients += CHANGE_sumGradients;
             if(bClassification) {
-               aSumHistogramTargetEntryLeft[iVector].SetSumHessians(
-                  aSumHistogramTargetEntryLeft[iVector].GetSumHessians() +
-                  pHistogramTargetEntry[iVector].GetSumHessians()
-               );
+               const FloatEbmType CHANGE_sumHessians = pHistogramTargetEntry[iVector].GetSumHessians();
+               aSumHistogramTargetEntryLeft[iVector].SetSumHessians(aSumHistogramTargetEntryLeft[iVector].GetSumHessians() + CHANGE_sumHessians);
+               if(bUseLogitBoost) {
+                  aSumHistogramTargetEntryRight[iVector].SetSumHessians(aSumHistogramTargetEntryRight[iVector].GetSumHessians() - CHANGE_sumHessians);
+               }
             }
          }
       }
@@ -328,7 +332,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const size_t cSamplesParent = pTreeNode->AMBIGUOUS_GetCountSamples();
    pRightChild->AMBIGUOUS_SetCountSamples(cSamplesParent - BEST_cSamplesLeft);
 
-   const FloatEbmType cSamplesParentFloatEbmType = static_cast<FloatEbmType>(cSamplesParent);
+   FloatEbmType sumHessiansParent = static_cast<FloatEbmType>(cSamplesParent);
 
    // if the total samples is 0 then we should be using our specialty handling of that case
    // if the total samples if not 0, then our splitting code should never split any node that has zero on either the left or right, so no new 
@@ -352,21 +356,22 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       const FloatEbmType BEST_sumGradientsLeft = pHistogramTargetEntrySweep[iVector].m_sumGradients;
       pHistogramTargetEntryLeftChild[iVector].m_sumGradients = BEST_sumGradientsLeft;
-
       const FloatEbmType sumGradientsParent = pHistogramTargetEntryTreeNode[iVector].m_sumGradients;
       pHistogramTargetEntryRightChild[iVector].m_sumGradients = sumGradientsParent - BEST_sumGradientsLeft;
-
-      const FloatEbmType originalParentScoreUpdate = EbmStats::ComputeSinglePartitionGain(sumGradientsParent, cSamplesParentFloatEbmType);
-      EBM_ASSERT(std::isnan(originalParentScoreUpdate) || FloatEbmType { 0 } <= originalParentScoreUpdate);
-      originalParentScore += originalParentScoreUpdate;
 
       if(bClassification) {
          const FloatEbmType BEST_sumHessiansLeft = pHistogramTargetEntrySweep[iVector].GetSumHessians();
          pHistogramTargetEntryLeftChild[iVector].SetSumHessians(BEST_sumHessiansLeft);
-         pHistogramTargetEntryRightChild[iVector].SetSumHessians(
-            pHistogramTargetEntryTreeNode[iVector].GetSumHessians() - BEST_sumHessiansLeft
-         );
+         const FloatEbmType newSumHessiansParent = pHistogramTargetEntryTreeNode[iVector].GetSumHessians();
+         pHistogramTargetEntryRightChild[iVector].SetSumHessians(newSumHessiansParent - BEST_sumHessiansLeft);
+         if(bUseLogitBoost) {
+            sumHessiansParent = newSumHessiansParent;
+         }
       }
+
+      const FloatEbmType originalParentScoreUpdate = EbmStats::ComputeSinglePartitionGain(sumGradientsParent, sumHessiansParent);
+      EBM_ASSERT(std::isnan(originalParentScoreUpdate) || FloatEbmType { 0 } <= originalParentScoreUpdate);
+      originalParentScore += originalParentScoreUpdate;
    }
    EBM_ASSERT(std::isnan(originalParentScore) || FloatEbmType { 0 } <= originalParentScore);
 

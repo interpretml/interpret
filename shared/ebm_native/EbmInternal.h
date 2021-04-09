@@ -101,6 +101,7 @@ INLINE_ALWAYS constexpr static size_t GetNextCountItemsBitPacked(const size_t cI
 //       the only penalty would be one branch mispredict, but we'd be able to loop over 8 bit extractions at a time
 //       We might also pay a penalty if our stride length for the outputs is too long, but we'll have to test that
 constexpr static bool k_bUseSIMD = false;
+constexpr static bool k_bUseLogitboost = false;
 
 //#define ZERO_FIRST_MULTICLASS_LOGIT
 
