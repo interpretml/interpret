@@ -28,6 +28,7 @@ template<bool bClassification>
 struct TreeSweep final {
 private:
    size_t m_cBestSamplesLeft;
+   FloatEbmType m_bestWeightLeft;
    const HistogramBucket<bClassification> * m_pBestHistogramBucketEntry;
 
    // use the "struct hack" since Flexible array member method is not available in C++
@@ -50,6 +51,14 @@ public:
 
    INLINE_ALWAYS void SetCountBestSamplesLeft(size_t cBestSamplesLeft) {
       m_cBestSamplesLeft = cBestSamplesLeft;
+   }
+
+   INLINE_ALWAYS FloatEbmType GetBestWeightLeft() {
+      return m_bestWeightLeft;
+   }
+
+   INLINE_ALWAYS void SetBestWeightLeft(FloatEbmType bestWeightLeft) {
+      m_bestWeightLeft = bestWeightLeft;
    }
 
    INLINE_ALWAYS const HistogramBucket<bClassification> * GetBestHistogramBucketEntry() {

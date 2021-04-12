@@ -55,6 +55,7 @@ extern bool GrowDecisionTree(
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
+   const FloatEbmType weightTotal,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
    FloatEbmType * const pTotalGain
@@ -176,7 +177,7 @@ static bool BoostZeroDimensional(
       } else {
          const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
             aSumHistogramTargetEntry[0].m_sumGradients,
-            static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
+            pHistogramBucketLocal->GetWeightInBucket()
          );
          aValues[0] = smallChangeToModel;
       }
@@ -279,11 +280,13 @@ static bool BoostSingleDimensional(
 
    const size_t cSamplesTotal = pTrainingSet->GetTotalCountSampleOccurrences();
    EBM_ASSERT(1 <= cSamplesTotal);
+   const FloatEbmType weightTotal = pTrainingSet->GetWeightTotal();
 
    bool bRet = GrowDecisionTree(
       pThreadStateBoosting,
       cHistogramBuckets,
       cSamplesTotal,
+      weightTotal,
       cSamplesRequiredForChildSplitMin,
       cLeavesMax, 
       pTotalGain

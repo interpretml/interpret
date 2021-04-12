@@ -32,14 +32,16 @@ class SamplingSet final {
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
    // the raw data in both formats since it is never converted anyways, but this count is!
    size_t * m_aCountOccurrences;
+   FloatEbmType * m_aWeights;
+   FloatEbmType m_weightTotal;
 
    // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataFrame since many 
    // SamplingSet objects will refer to the original one
    static SamplingSet * GenerateSingleSamplingSet(
       RandomStream * const pRandomStream, 
-      const DataFrameBoosting * const pOriginDataFrame
+      const DataFrameBoosting * const pOriginDataFrame,
+      const FloatEbmType * const aWeights
    );
-   static SamplingSet * GenerateFlatSamplingSet(const DataFrameBoosting * const pOriginDataFrame);
 
 public:
 
@@ -68,13 +70,25 @@ public:
    const size_t * GetCountOccurrences() const {
       return m_aCountOccurrences;
    }
+   const FloatEbmType * GetWeights() const {
+      return m_aWeights;
+   }
+   FloatEbmType GetWeightTotal() const {
+      return m_weightTotal;
+   }
 
-   static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);
+   static SamplingSet * GenerateFlatSamplingSet(
+      const DataFrameBoosting * const pOriginDataFrame,
+      const FloatEbmType * const aWeights
+   );
    static SamplingSet ** GenerateSamplingSets(
       RandomStream * const pRandomStream, 
       const DataFrameBoosting * const pOriginDataFrame, 
+      const FloatEbmType * const aWeights,
       const size_t cSamplingSets
    );
+   static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);
+   static void FreeSamplingSet(SamplingSet * const pSamplingSet);
 };
 static_assert(std::is_standard_layout<SamplingSet>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

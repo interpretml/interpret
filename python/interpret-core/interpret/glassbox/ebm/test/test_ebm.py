@@ -339,6 +339,22 @@ def test_ebm_adult():
 
     _smoke_test_explanations(global_exp, local_exp, 6000)
 
+def test_ebm_sample_weight_smoke():
+    data = iris_classification()
+    X_train = data["train"]["X"]
+    y_train = data["train"]["y"]
+
+    X_test = data["test"]["X"]
+    y_test = data["test"]["y"]
+
+    w_train = np.ones_like(y_train)
+    w_train[0] = 10
+
+    clf = ExplainableBoostingClassifier()
+    clf.fit(X_train, y_train, sample_weight=w_train)
+
+    assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
+    assert True
 
 @pytest.mark.visual
 @pytest.mark.slow

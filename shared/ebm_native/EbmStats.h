@@ -503,8 +503,8 @@ public:
       EBM_ASSERT(!std::isnan(sumHessian)); // this starts as an integer
       EBM_ASSERT(!std::isinf(sumHessian)); // this starts as an integer
 
-      EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
-      const FloatEbmType singlePartitionGain = sumGradient / sumHessian * sumGradient;
+      //EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
+      const FloatEbmType singlePartitionGain = FloatEbmType { 0 } == sumHessian ? FloatEbmType { 0 } : sumGradient / sumHessian * sumGradient;
 
       // for both classification and regression, we're squaring sumGradient, and sumHessian is positive.  No reasonable floating point implementation 
       // should turn this negative
@@ -609,7 +609,7 @@ public:
       // subtract +infinity-(+infinity) or -infinity-(-infinity), which will result in NaN.  After that, everything melts down to NaN.
       //EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
 
-      return -sumGradient / sumHessian;
+      return (FloatEbmType { 0 } == sumHessian) ? FloatEbmType { 0 } : (-sumGradient / sumHessian);
 
       // return can be NaN if both sumGradient and sumHessian are zero, or if we're propagating a NaN value.  Neither sumGradient nor 
       //   sumHessian can be infinity, so that's not a source of NaN

@@ -428,8 +428,8 @@ class Native:
             # int64_t * trainingTargets
             ndpointer(dtype=ct.c_int64, ndim=1),
             # double * trainingWeights
-            # ndpointer(dtype=ct.c_double, ndim=1),
-            ct.c_void_p,
+            ndpointer(dtype=ct.c_double, ndim=1),
+            # ct.c_void_p,
             # double * trainingPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
@@ -440,8 +440,8 @@ class Native:
             # int64_t * validationTargets
             ndpointer(dtype=ct.c_int64, ndim=1),
             # double * validationWeights
-            # ndpointer(dtype=ct.c_double, ndim=1),
-            ct.c_void_p,
+            ndpointer(dtype=ct.c_double, ndim=1),
+            # ct.c_void_p,
             # double * validationPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
@@ -474,8 +474,8 @@ class Native:
             # double * trainingTargets
             ndpointer(dtype=ct.c_double, ndim=1),
             # double * trainingWeights
-            # ndpointer(dtype=ct.c_double, ndim=1),
-            ct.c_void_p,
+            ndpointer(dtype=ct.c_double, ndim=1),
+            # ct.c_void_p,
             # double * trainingPredictorScores
             ndpointer(dtype=ct.c_double, ndim=1),
             # int64_t countValidationSamples
@@ -485,8 +485,8 @@ class Native:
             # double * validationTargets
             ndpointer(dtype=ct.c_double, ndim=1),
             # double * validationWeights
-            # ndpointer(dtype=ct.c_double, ndim=1),
-            ct.c_void_p,
+            ndpointer(dtype=ct.c_double, ndim=1),
+            # ct.c_void_p,
             # double * validationPredictorScores
             ndpointer(dtype=ct.c_double, ndim=1),
             # int64_t countInnerBags
@@ -608,8 +608,8 @@ class Native:
             # int64_t * targets
             ndpointer(dtype=ct.c_int64, ndim=1),
             # double * weights
-            # ndpointer(dtype=ct.c_double, ndim=1),
-            ct.c_void_p,
+            ndpointer(dtype=ct.c_double, ndim=1),
+            # ct.c_void_p,
             # double * predictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
@@ -632,8 +632,8 @@ class Native:
             # double * targets
             ndpointer(dtype=ct.c_double, ndim=1),
             # double * weights
-            # ndpointer(dtype=ct.c_double, ndim=1),
-            ct.c_void_p,
+            ndpointer(dtype=ct.c_double, ndim=1),
+            # ct.c_void_p,
             # double * predictorScores
             ndpointer(dtype=ct.c_double, ndim=1),
             # double * optionalTempParams
@@ -690,9 +690,11 @@ class NativeEBMBooster:
         feature_groups,
         X_train,
         y_train,
+        w_train,
         scores_train,
         X_val,
         y_val,
+        w_val,
         scores_val,
         n_inner_bags,
         random_state,
@@ -777,6 +779,9 @@ class NativeEBMBooster:
                 "X_val does not have the same number of samples as y_val"
             )
 
+        if w_train.shape != y_train.shape or w_val.shape != y_val.shape:
+            raise ValueError("Sample weight shape must be equal to training label shape.")
+
         self._native = Native.get_native_singleton()
 
         log.info("Allocation training start")
@@ -857,12 +862,12 @@ class NativeEBMBooster:
                 len(y_train),
                 X_train,
                 y_train,
-                0,
+                w_train,
                 scores_train,
                 len(y_val),
                 X_val,
                 y_val,
-                0,
+                w_val,
                 scores_val,
                 n_inner_bags,
                 optional_temp_params,
@@ -881,12 +886,12 @@ class NativeEBMBooster:
                 len(y_train),
                 X_train,
                 y_train,
-                0,
+                w_train,
                 scores_train,
                 len(y_val),
                 X_val,
                 y_val,
-                0,
+                w_val,
                 scores_val,
                 n_inner_bags,
                 optional_temp_params,
@@ -1183,7 +1188,7 @@ class NativeEBMInteraction:
     """
 
     def __init__(
-        self, model_type, n_classes, features_categorical, features_bin_count, X, y, scores, optional_temp_params
+        self, model_type, n_classes, features_categorical, features_bin_count, X, y, w, scores, optional_temp_params
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -1196,6 +1201,7 @@ class NativeEBMInteraction:
             features_bin_count: count of the number of bins for each feature
             X: Training design matrix as 2-D ndarray.
             y: Training response as 1-D ndarray.
+            w: Sample weights as 1-D ndarray (must be same shape as y).
             scores: predictions from a prior predictor.  For regression
                 there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
@@ -1274,7 +1280,7 @@ class NativeEBMInteraction:
                 len(y),
                 X,
                 y,
-                0,
+                w,
                 scores,
                 optional_temp_params,
             )
@@ -1290,7 +1296,7 @@ class NativeEBMInteraction:
                 len(y),
                 X,
                 y,
-                0,
+                w,
                 scores,
                 optional_temp_params,
             )
@@ -1335,9 +1341,11 @@ class NativeHelper:
         feature_groups,
         X_train,
         y_train,
+        w_train,
         scores_train,
         X_val,
         y_val,
+        w_val,
         scores_val,
         n_inner_bags,
         generate_update_options,
@@ -1362,9 +1370,11 @@ class NativeHelper:
                 feature_groups,
                 X_train,
                 y_train,
+                w_train,
                 scores_train,
                 X_val,
                 y_val,
+                w_val,
                 scores_val,
                 n_inner_bags,
                 random_state,
@@ -1433,6 +1443,7 @@ class NativeHelper:
         features_bin_count,
         X,
         y,
+        w,
         scores,
         min_samples_leaf,
         optional_temp_params=None,
@@ -1440,7 +1451,7 @@ class NativeHelper:
         interaction_scores = []
         with closing(
             NativeEBMInteraction(
-                model_type, n_classes, features_categorical, features_bin_count, X, y, scores, optional_temp_params
+                model_type, n_classes, features_categorical, features_bin_count, X, y, w, scores, optional_temp_params
             )
         ) as native_ebm_interactions:
             for feature_group in iter_feature_groups:

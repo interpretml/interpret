@@ -181,6 +181,20 @@ extern const char * IsStringEqualsCaseInsensitive(
    const char * sLabel
 );
 
+// TODO: use k_cFloatSumLimit in more places (in the histogram generation!!)
+//
+// floating point numbers have a mantissa of 23 bits.  If you try to sum up more than something in the
+// range of 2^23 of numbers with any kind of resolution you'll find that after about 2^23 of them they don't increase
+// on average because the additional single increment is below the resolution of a float.  We can get arround this
+// though by breaking the work into separate loops where we sum only to a certain high value and then 
+// re-do our internal loop again.  The outer loop suffers from the same resolution problem though, so instead
+// of 2 loops, use 3 loops which should solve the problem up to arround the range of 2^64.  If we run our
+// inner loop until 2^19, then we can handle numbers up to 2^(19 * 3) = 2^57, and then we still get annother
+// 4 bits of ultimate resolution until we don't increment on average anymore, so at 2^61.  Our floats are 4 bytes
+// so that means we can handle 2^63 floats, and we'll need other memory of course to, so even on a 64 bit machine
+// we can handle any number of items.
+static const size_t k_cFloatSumLimit = 524288;
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus

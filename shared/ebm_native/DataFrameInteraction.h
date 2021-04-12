@@ -26,6 +26,9 @@ class DataFrameInteraction final {
    size_t m_cSamples;
    size_t m_cFeatureAtomics;
 
+   FloatEbmType * m_aWeights;
+   FloatEbmType m_weightTotal;
+
 public:
 
    DataFrameInteraction() = default; // preserve our POD status
@@ -40,6 +43,8 @@ public:
       m_aaInputData = nullptr;
       m_cSamples = 0;
       m_cFeatureAtomics = 0;
+      m_aWeights = nullptr;
+      m_weightTotal = 0;
    }
 
    bool Initialize(
@@ -48,10 +53,18 @@ public:
       const FeatureAtomic * const aFeatureAtomics, 
       const size_t cSamples, 
       const IntEbmType * const aInputDataFrom, 
-      const void * const aTargetData, 
+      const FloatEbmType * const aWeights,
+      const void * const aTargetData,
       const FloatEbmType * const aPredictorScores, 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
+
+   INLINE_ALWAYS const FloatEbmType * GetWeights() const {
+      return m_aWeights;
+   }
+   INLINE_ALWAYS FloatEbmType GetWeightTotal() const {
+      return m_weightTotal;
+   }
 
    INLINE_ALWAYS const FloatEbmType * GetGradientsAndHessiansPointer() const {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
