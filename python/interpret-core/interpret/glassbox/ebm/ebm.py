@@ -7,7 +7,7 @@ from ...utils import gen_perf_dicts
 from .utils import EBMUtils
 from .internal import NativeHelper, Native
 from .postprocessing import multiclass_postprocess
-from ...utils import unify_data, autogen_schema
+from ...utils import unify_data, autogen_schema, unify_vector
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
@@ -406,23 +406,25 @@ class BaseCoreEBM:
         # Arguments for overall
         self.random_state = random_state
 
-    def fit_parallel(self, X, y, X_pair, n_classes):
+    def fit_parallel(self, X, y, w, X_pair, n_classes):
         self.n_classes_ = n_classes
 
         # Split data into train/val
 
-        X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+        X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
             X,
             y,
+            w,
             test_size=self.validation_size,
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
 
         if X_pair is not None:
-            X_pair_train, X_pair_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+            X_pair_train, X_pair_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
                 X_pair,
                 y,
+                w,
                 test_size=self.validation_size,
                 random_state=self.random_state,
                 is_classification=self.model_type == "classification",
@@ -456,17 +458,17 @@ class BaseCoreEBM:
         self.model_ = []
 
         # Train main effects
-        self._fit_main(main_feature_indices, X_train, y_train, X_val, y_val)
+        self._fit_main(main_feature_indices, X_train, y_train, w_train, X_val, y_val, w_val)
 
         # Build interaction terms, if required
         self.inter_indices_, self.inter_scores_ = self._build_interactions(
-            X_train, y_train, X_pair_train
+            X_train, y_train, w_train, X_pair_train
         )
 
         self.inter_episode_idx_ = 0
         return self
 
-    def _fit_main(self, main_feature_groups, X_train, y_train, X_val, y_val):
+    def _fit_main(self, main_feature_groups, X_train, y_train, w_train, X_val, y_val, w_val):
         log.info("Train main effects")
         (
             self.model_,
@@ -480,9 +482,11 @@ class BaseCoreEBM:
             feature_groups=main_feature_groups,
             X_train=X_train,
             y_train=y_train,
+            w_train=w_train,
             scores_train=None,
             X_val=X_val,
             y_val=y_val,
+            w_val=w_val,
             scores_val=None,
             n_inner_bags=self.inner_bags,
             generate_update_options=Native.GenerateUpdateOptions_Default, 
@@ -500,7 +504,7 @@ class BaseCoreEBM:
 
         return
 
-    def _build_interactions(self, X_train, y_train, X_pair):
+    def _build_interactions(self, X_train, y_train, w_train, X_pair):
         if isinstance(self.interactions, int) and self.interactions != 0:
             log.info("Estimating with FAST")
 
@@ -519,6 +523,7 @@ class BaseCoreEBM:
                 features_bin_count = self.pair_features_bin_count, 
                 X=X_pair,
                 y=y_train,
+                w=w_train,
                 scores=scores_train,
                 min_samples_leaf=self.min_samples_leaf,
             )
@@ -534,7 +539,7 @@ class BaseCoreEBM:
         return final_indices, final_scores
 
     def _staged_fit_interactions(
-        self, X_train, y_train, X_val, y_val, X_pair_train, X_pair_val, inter_indices=[]
+        self, X_train, y_train, w_train, X_val, y_val, w_val, X_pair_train, X_pair_val, inter_indices=[]
     ):
 
         log.info("Training interactions")
@@ -558,9 +563,11 @@ class BaseCoreEBM:
             feature_groups=inter_indices,
             X_train=X_pair_train,
             y_train=y_train,
+            w_train=w_train,
             scores_train=scores_train,
             X_val=X_pair_val,
             y_val=y_val,
+            w_val=w_val,
             scores_val=scores_val,
             n_inner_bags=self.inner_bags,
             generate_update_options=Native.GenerateUpdateOptions_Default, 
@@ -579,7 +586,7 @@ class BaseCoreEBM:
 
         return
 
-    def staged_fit_interactions_parallel(self, X, y, X_pair, inter_indices=[]):
+    def staged_fit_interactions_parallel(self, X, y, w, X_pair, inter_indices=[]):
 
         log.info("Splitting train/test for interactions")
 
@@ -587,23 +594,25 @@ class BaseCoreEBM:
         # NOTE: ideally we would store the train/validation split in the
         #       remote processes, but joblib doesn't have a concept
         #       of keeping remote state, so we re-split our sets
-        X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+        X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
             X,
             y,
+            w,
             test_size=self.validation_size,
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
 
-        X_pair_train, X_pair_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+        X_pair_train, X_pair_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
             X_pair,
             y,
+            w,
             test_size=self.validation_size,
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
 
-        self._staged_fit_interactions(X_train, y_train, X_val, y_val, X_pair_train, X_pair_val, inter_indices)
+        self._staged_fit_interactions(X_train, y_train, w_train, X_val, y_val, w_val, X_pair_train, X_pair_val, inter_indices)
         return self
 
 
@@ -705,12 +714,13 @@ class BaseEBM(BaseEstimator):
         self.max_bins = max_bins
         self.max_interaction_bins = max_interaction_bins
 
-    def fit(self, X, y):  # noqa: C901
+    def fit(self, X, y, sample_weight=None):  # noqa: C901
         """ Fits model to provided samples.
 
         Args:
             X: Numpy array for training samples.
             y: Numpy array as training labels.
+            sample_weight: Optional array of weights per sample. Should be same length as X and y.
 
         Returns:
             Itself.
@@ -744,6 +754,10 @@ class BaseEBM(BaseEstimator):
         X, y, self.feature_names, _ = unify_data(
             X, y, self.feature_names, self.feature_types, missing_data_allowed=False
         )
+
+        # NOTE: Temporary override -- replace before push
+        w = sample_weight if sample_weight is not None else np.ones_like(y, dtype=np.float64)
+        w = unify_vector(w).astype(np.float64, casting="unsafe", copy=False)
 
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
@@ -855,11 +869,11 @@ class BaseEBM(BaseEstimator):
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
-        def train_model(estimator, X, y, X_pair, n_classes):
-            return estimator.fit_parallel(X, y, X_pair, n_classes)
+        def train_model(estimator, X, y, w, X_pair, n_classes):
+            return estimator.fit_parallel(X, y, w, X_pair, n_classes)
 
         train_model_args_iter = (
-            (estimators[i], X, y, X_pair, n_classes) for i in range(self.outer_bags)
+            (estimators[i], X, y, w, X_pair, n_classes) for i in range(self.outer_bags)
         )
 
         estimators = provider.parallel(train_model, train_model_args_iter)
@@ -902,13 +916,13 @@ class BaseEBM(BaseEstimator):
 
             if len(pair_indices) != 0:
                 # Retrain interactions for base models
-                def staged_fit_fn(estimator, X, y, X_pair, inter_indices=[]):
+                def staged_fit_fn(estimator, X, y, w, X_pair, inter_indices=[]):
                     return estimator.staged_fit_interactions_parallel(
-                        X, y, X_pair, inter_indices
+                        X, y, w, X_pair, inter_indices
                     )
 
                 staged_fit_args_iter = (
-                    (estimators[i], X, y, X_pair, pair_indices) for i in range(self.outer_bags)
+                    (estimators[i], X, y, w, X_pair, pair_indices) for i in range(self.outer_bags)
                 )
 
                 estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
@@ -918,13 +932,13 @@ class BaseEBM(BaseEstimator):
             pair_indices = self.interactions
             if len(pair_indices) != 0:
                 # Retrain interactions for base models
-                def staged_fit_fn(estimator, X, y, X_pair, inter_indices=[]):
+                def staged_fit_fn(estimator, X, y, w, X_pair, inter_indices=[]):
                     return estimator.staged_fit_interactions_parallel(
-                        X, y, X_pair, inter_indices
+                        X, y, w, X_pair, inter_indices
                     )
 
                 staged_fit_args_iter = (
-                    (estimators[i], X, y, X_pair, pair_indices) for i in range(self.outer_bags)
+                    (estimators[i], X, y, w, X_pair, pair_indices) for i in range(self.outer_bags)
                 )
 
                 estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)

@@ -89,15 +89,16 @@ class EBMUtils:
 
     @staticmethod
     def ebm_train_test_split(
-        X, y, test_size, random_state, is_classification, is_train=True
+        X, y, w, test_size, random_state, is_classification, is_train=True
     ):
         # all test/train splits should be done with this function to ensure that
         # if we re-generate the train/test splits that they are generated exactly
         # the same as before
         if test_size == 0:
-            X_train, y_train = X, y
+            X_train, y_train, w_train = X, y, w
             X_val = np.empty(shape=(0, X.shape[1]), dtype=X.dtype)
             y_val = np.empty(shape=(0,), dtype=y.dtype)
+            w_val = np.empty(shape=(0,), dtype=w.dtype)
         elif test_size > 0:
             # Adapt test size if too small relative to number of classes
             if is_classification:
@@ -111,9 +112,10 @@ class EBMUtils:
 
             # PaulK NOTE: sklearn train_test_split doesn't accept negative random_states
             # we can remove the conversion to just positive values when we transition to C++
-            X_train, X_val, y_train, y_val = train_test_split(
+            X_train, X_val, y_train, y_val, w_train, w_val = train_test_split(
                 X,
                 y,
+                w,
                 test_size=test_size,
                 random_state=(random_state - (-2147483648)) if random_state < 0 else random_state,
                 stratify=y if is_classification else None,
@@ -134,7 +136,7 @@ class EBMUtils:
 
         X_val = np.ascontiguousarray(X_val.T)
 
-        return X_train, X_val, y_train, y_val
+        return X_train, X_val, y_train, y_val, w_train, w_val
 
     @staticmethod
     def scores_by_feature_group(X, X_pair, feature_groups, model):
