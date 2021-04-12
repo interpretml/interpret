@@ -1,5 +1,10 @@
 # InterpretML Important notes
 
+## Including compute files
+
+We use a Directory.Build.targets file to wildcard include files in the compute directory in all builds of each compute type
+https://docs.microsoft.com/en-us/cpp/build/reference/vcxproj-files-and-wildcards?view=msvc-160
+
 ## One Definition Rule (ODR) considerations
 
 BIG CHANGE: we need to create a new "separate" library that defines all the separate stuff below... we can use

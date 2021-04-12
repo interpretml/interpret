@@ -7,9 +7,18 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "FeatureAtomic.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 struct FeatureGroupEntry final {
    FeatureGroupEntry() = default; // preserve our POD status
@@ -74,10 +83,6 @@ public:
 
    INLINE_ALWAYS void SetBitPack(const ptrdiff_t cItemsPerBitPack) noexcept {
       EBM_ASSERT(k_cItemsPerBitPackDynamic2 != cItemsPerBitPack);
-      EBM_ASSERT(k_cItemsPerBitPackNone == cItemsPerBitPack ||
-         k_cItemsPerBitPackMin2 <= cItemsPerBitPack &&
-         cItemsPerBitPack <= k_cItemsPerBitPackMax2
-      );
       m_cItemsPerBitPack = cItemsPerBitPack;
    }
 
@@ -135,5 +140,6 @@ static_assert(std::is_trivial<FeatureGroup>::value,
 static_assert(std::is_pod<FeatureGroup>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
+} // DEFINED_ZONE_NAME
 
 #endif // FEATURE_GROUP_H

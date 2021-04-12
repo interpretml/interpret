@@ -7,10 +7,18 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
 
 #include "ThreadStateInteraction.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 void ThreadStateInteraction::Free(ThreadStateInteraction * const pThreadStateInteraction) {
    LOG_0(TraceLevelInfo, "Entered ThreadStateInteraction::Free");
@@ -47,3 +55,5 @@ HistogramBucketBase * ThreadStateInteraction::GetHistogramBucketBase(const size_
    }
    return aBuffer;
 }
+
+} // DEFINED_ZONE_NAME

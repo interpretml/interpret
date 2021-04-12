@@ -7,11 +7,19 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FloatEbmType
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+
 #include "FeatureAtomic.h"
 #include "DataFrameInteraction.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 extern bool InitializeGradients(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -175,7 +183,8 @@ bool DataFrameInteraction::Initialize(
    const FeatureAtomic * const aFeatureAtomics, 
    const size_t cSamples, 
    const IntEbmType * const aBinnedData, 
-   const void * const aTargetData, 
+   const FloatEbmType * const aWeights,
+   const void * const aTargetData,
    const FloatEbmType * const aPredictorScores, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
@@ -220,18 +229,48 @@ bool DataFrameInteraction::Initialize(
          } while(pTargetFromEnd != pTargetFrom);
       }
 
+      EBM_ASSERT(nullptr == m_aWeights);
+      m_weightTotal = static_cast<FloatEbmType>(cSamples);
+      if(nullptr != aWeights) {
+         if(IsMultiplyError(sizeof(*aWeights), cSamples)) {
+            LOG_0(TraceLevelWarning,
+               "WARNING DataFrameInteraction::Initialize IsMultiplyError(sizeof(*aWeights), cSamples)");
+            goto exit_error;
+         }
+         const size_t cBytes = sizeof(*aWeights) * cSamples;
+         FloatEbmType * aWeightInternal = static_cast<FloatEbmType *>(malloc(cBytes));
+         if(UNLIKELY(nullptr == aWeightInternal)) {
+            LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::Initialize nullptr == pWeightInternal");
+            goto exit_error;
+         }
+         memcpy(aWeightInternal, aWeights, cBytes);
+         const FloatEbmType total = AddPositiveFloatsSafe(cSamples, aWeightInternal);
+         if(std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }) {
+            LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::Initialize std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }");
+            free(aWeightInternal);
+            goto exit_error;
+         }
+         m_aWeights = aWeightInternal;
+         m_weightTotal = total;
+      }
+
       FloatEbmType * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
       if(nullptr == aGradientsAndHessians) {
+         free(m_aWeights);
+         m_aWeights = nullptr;
          goto exit_error;
       }
       if(0 != cFeatureAtomics) {
          StorageDataType ** const aaInputData = ConstructInputData(cFeatureAtomics, aFeatureAtomics, cSamples, aBinnedData);
          if(nullptr == aaInputData) {
             free(aGradientsAndHessians);
+            free(m_aWeights);
+            m_aWeights = nullptr;
             goto exit_error;
          }
          m_aaInputData = aaInputData;
       }
+
       m_aGradientsAndHessians = aGradientsAndHessians;
       m_cSamples = cSamples;
    }
@@ -244,3 +283,5 @@ exit_error:;
    LOG_0(TraceLevelWarning, "WARNING Exited DataFrameInteraction::Initialize");
    return true;
 }
+
+} // DEFINED_ZONE_NAME

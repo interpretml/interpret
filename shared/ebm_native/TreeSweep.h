@@ -8,9 +8,18 @@
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "HistogramTargetEntry.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<bool bClassification>
 struct HistogramBucket;
@@ -19,6 +28,7 @@ template<bool bClassification>
 struct TreeSweep final {
 private:
    size_t m_cBestSamplesLeft;
+   FloatEbmType m_bestWeightLeft;
    const HistogramBucket<bClassification> * m_pBestHistogramBucketEntry;
 
    // use the "struct hack" since Flexible array member method is not available in C++
@@ -41,6 +51,14 @@ public:
 
    INLINE_ALWAYS void SetCountBestSamplesLeft(size_t cBestSamplesLeft) {
       m_cBestSamplesLeft = cBestSamplesLeft;
+   }
+
+   INLINE_ALWAYS FloatEbmType GetBestWeightLeft() {
+      return m_bestWeightLeft;
+   }
+
+   INLINE_ALWAYS void SetBestWeightLeft(FloatEbmType bestWeightLeft) {
+      m_bestWeightLeft = bestWeightLeft;
    }
 
    INLINE_ALWAYS const HistogramBucket<bClassification> * GetBestHistogramBucketEntry() {
@@ -110,5 +128,7 @@ INLINE_ALWAYS size_t CountTreeSweep(
    EBM_ASSERT(0 == cBytesDiff % cBytesPerTreeSweep);
    return cBytesDiff / cBytesPerTreeSweep;
 }
+
+} // DEFINED_ZONE_NAME
 
 #endif // TREE_SWEEP_H

@@ -38,9 +38,6 @@ public:
    TestPriority m_testPriority;
 };
 
-constexpr inline bool AlwaysFalse() {
-   return false;
-}
 
 int RegisterTestHidden(const TestCaseHidden & testCaseHidden);
 
@@ -64,7 +61,7 @@ bool IsApproxEqual(const double value, const double expected, const double perce
       if(bFailedHidden) { \
          FAILED(double { 0 }, &testCaseHidden, std::string(" FAILED on \"" #expression "\"")); \
       } \
-   } while(AlwaysFalse())
+   } while( (void)0, 0)
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
 // function where CHECK_APPROX(expression) is called
@@ -75,7 +72,7 @@ bool IsApproxEqual(const double value, const double expected, const double perce
       if(!bApproxEqualHidden) { \
          FAILED(valueHidden, &testCaseHidden, std::string(" FAILED on \"" #value "(") + std::to_string(valueHidden) + ") approx " #expected "\""); \
       } \
-   } while(AlwaysFalse())
+   } while( (void)0, 0)
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
 // function where CHECK_APPROX(expression) is called
@@ -86,7 +83,7 @@ bool IsApproxEqual(const double value, const double expected, const double perce
       if(!bApproxEqualHidden) { \
          FAILED(valueHidden, &testCaseHidden, std::string(" FAILED on \"" #value "(") + std::to_string(valueHidden) + ") approx " #expected "\""); \
       } \
-   } while(AlwaysFalse())
+   } while( (void)0, 0)
 
 // EBM/interpret specific stuff below here!!
 

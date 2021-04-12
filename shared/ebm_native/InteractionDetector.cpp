@@ -9,8 +9,11 @@
 #include <limits> // numeric_limits
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+
 // feature includes
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
@@ -19,6 +22,11 @@
 #include "ThreadStateInteraction.h"
 
 #include "InteractionDetector.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 void InteractionDetector::Free(InteractionDetector * const pInteractionDetector) {
    LOG_0(TraceLevelInfo, "Entered InteractionDetector::Free");
@@ -47,10 +55,6 @@ InteractionDetector * InteractionDetector::Allocate(
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(optionalTempParams);
-
-   // TODO : implement weights 
-   UNUSED(aWeights);
-   EBM_ASSERT(nullptr == aWeights);
 
    LOG_0(TraceLevelInfo, "Entered InteractionDetector::Allocate");
 
@@ -129,6 +133,7 @@ InteractionDetector * InteractionDetector::Allocate(
       aFeatureAtomics,
       cSamples,
       aBinnedData,
+      aWeights,
       aTargets,
       aPredictorScores,
       runtimeLearningTypeOrCountTargetClasses
@@ -344,3 +349,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteraction
    
    LOG_0(TraceLevelInfo, "Exited FreeInteractionDetector");
 }
+
+} // DEFINED_ZONE_NAME

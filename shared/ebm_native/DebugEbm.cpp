@@ -15,10 +15,18 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <random>
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "ApproximateMath.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 //#define INCLUDE_TESTS_IN_RELEASE
 //#define ENABLE_TEST_LOG_SUM_ERRORS
@@ -442,3 +450,5 @@ extern double g_TestSoftmaxSumErrors = TestSoftmaxSumErrors();
 #endif // ENABLE_TEST_SOFTMAX_SUM_ERRORS
 
 #endif // !defined(NDEBUG) || defined(INCLUDE_TESTS_IN_RELEASE)
+
+} // DEFINED_ZONE_NAME

@@ -8,11 +8,19 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
 
 #include "HistogramTargetEntry.h"
 #include "Booster.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 struct HistogramBucketBase;
 
@@ -37,6 +45,7 @@ class ThreadStateBoosting final {
 
    HistogramTargetEntryBase * m_aSumHistogramTargetEntry;
    HistogramTargetEntryBase * m_aSumHistogramTargetEntry1;
+   HistogramTargetEntryBase * m_aSumHistogramTargetEntry2;
 
 #ifndef NDEBUG
    const unsigned char * m_aHistogramBucketsEndDebug;
@@ -64,6 +73,7 @@ public:
       m_aEquivalentSplits = nullptr;
       m_aSumHistogramTargetEntry = nullptr;
       m_aSumHistogramTargetEntry1 = nullptr;
+      m_aSumHistogramTargetEntry2 = nullptr;
    }
 
    static void Free(ThreadStateBoosting * const pThreadStateBoosting);
@@ -123,6 +133,11 @@ public:
       return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntry1);
    }
 
+   template<bool bClassification>
+   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntry2Array() {
+      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntry2);
+   }
+
 #ifndef NDEBUG
    INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebug() const {
       return m_aHistogramBucketsEndDebug;
@@ -139,5 +154,7 @@ static_assert(std::is_trivial<ThreadStateBoosting>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<ThreadStateBoosting>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+} // DEFINED_ZONE_NAME
 
 #endif // THREAD_STATE_BOOSTING_H

@@ -6,9 +6,12 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "SegmentedTensor.h"
 #include "EbmStats.h"
 
@@ -22,6 +25,11 @@
 #include "ThreadStateBoosting.h"
 
 #include "TensorTotalsSum.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static FloatEbmType SweepMultiDimensional(
@@ -115,8 +123,8 @@ static FloatEbmType SweepMultiDimensional(
             EBM_ASSERT(0 < pTotalsLow->GetCountSamplesInBucket());
             EBM_ASSERT(0 < pTotalsHigh->GetCountSamplesInBucket());
 
-            FloatEbmType cLowSamplesInBucket = static_cast<FloatEbmType>(pTotalsLow->GetCountSamplesInBucket());
-            FloatEbmType cHighSamplesInBucket = static_cast<FloatEbmType>(pTotalsHigh->GetCountSamplesInBucket());
+            const FloatEbmType cLowWeightInBucket = pTotalsLow->GetWeightInBucket();
+            const FloatEbmType cHighWeightInBucket = pTotalsHigh->GetWeightInBucket();
 
             HistogramTargetEntry<bClassification> * const pHistogramTargetEntryLow =
                pTotalsLow->GetHistogramTargetEntry();
@@ -128,12 +136,13 @@ static FloatEbmType SweepMultiDimensional(
                // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
+               constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                const FloatEbmType splittingScoreUpdate1 = EbmStats::ComputeSinglePartitionGain(
-                  pHistogramTargetEntryLow[iVector].m_sumGradients, cLowSamplesInBucket);
+                  pHistogramTargetEntryLow[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryLow[iVector].GetSumHessians() : cLowWeightInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                splittingScore += splittingScoreUpdate1;
                const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeSinglePartitionGain(
-                  pHistogramTargetEntryHigh[iVector].m_sumGradients, cHighSamplesInBucket);
+                  pHistogramTargetEntryHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryHigh[iVector].GetSumHessians() : cHighWeightInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                splittingScore += splittingScoreUpdate2;
             }
@@ -262,7 +271,7 @@ public:
 
       FloatEbmType splittingScoreParent = FloatEbmType { 0 };
       EBM_ASSERT(0 < pTotal->GetCountSamplesInBucket());
-      const FloatEbmType cSamplesInParentBucket = static_cast<FloatEbmType>(pTotal->GetCountSamplesInBucket());
+      const FloatEbmType cWeightInParentBucket = pTotal->GetWeightInBucket();
 
       HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotal =
          pTotal->GetHistogramTargetEntry();
@@ -271,9 +280,10 @@ public:
          // TODO : we can make this faster by doing the division in ComputeSinglePartitionGainParent after we add all the numerators 
          // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
+         constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
          const FloatEbmType splittingScoreParentUpdate = EbmStats::ComputeSinglePartitionGain(
             pHistogramTargetEntryTotal[iVector].m_sumGradients,
-            cSamplesInParentBucket
+            bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : cWeightInParentBucket
          );
          EBM_ASSERT(std::isnan(splittingScoreParentUpdate) || FloatEbmType { 0 } <= splittingScoreParentUpdate);
          splittingScoreParent += splittingScoreParentUpdate;
@@ -531,7 +541,7 @@ public:
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                update = EbmStats::ComputeSinglePartitionUpdate(
                   pHistogramTargetEntryTotal[iVector].m_sumGradients,
-                  cSamplesInParentBucket
+                  cWeightInParentBucket
                );
             }
 
@@ -652,19 +662,19 @@ public:
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                      pHistogramTargetEntryTotals2LowLowBest[iVector].m_sumGradients,
-                     static_cast<FloatEbmType>(pTotals2LowLowBest->GetCountSamplesInBucket())
+                     pTotals2LowLowBest->GetWeightInBucket()
                   );
                   predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
                      pHistogramTargetEntryTotals2LowHighBest[iVector].m_sumGradients,
-                     static_cast<FloatEbmType>(pTotals2LowHighBest->GetCountSamplesInBucket())
+                     pTotals2LowHighBest->GetWeightInBucket()
                   );
                   predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
                      pHistogramTargetEntryTotals2HighLowBest[iVector].m_sumGradients,
-                     static_cast<FloatEbmType>(pTotals2HighLowBest->GetCountSamplesInBucket())
+                     pTotals2HighLowBest->GetWeightInBucket()
                   );
                   predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
                      pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumGradients,
-                     static_cast<FloatEbmType>(pTotals2HighHighBest->GetCountSamplesInBucket())
+                     pTotals2HighHighBest->GetWeightInBucket()
                   );
                }
 
@@ -800,19 +810,19 @@ public:
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
                      pHistogramTargetEntryTotals1LowLowBest[iVector].m_sumGradients,
-                     static_cast<FloatEbmType>(pTotals1LowLowBest->GetCountSamplesInBucket())
+                     pTotals1LowLowBest->GetWeightInBucket()
                   );
                   predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
                      pHistogramTargetEntryTotals1LowHighBest[iVector].m_sumGradients,
-                     static_cast<FloatEbmType>(pTotals1LowHighBest->GetCountSamplesInBucket())
+                     pTotals1LowHighBest->GetWeightInBucket()
                   );
                   predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
                      pHistogramTargetEntryTotals1HighLowBest[iVector].m_sumGradients,
-                     static_cast<FloatEbmType>(pTotals1HighLowBest->GetCountSamplesInBucket())
+                     pTotals1HighLowBest->GetWeightInBucket()
                   );
                   predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
                      pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumGradients,
-                     static_cast<FloatEbmType>(pTotals1HighHighBest->GetCountSamplesInBucket())
+                     pTotals1HighHighBest->GetWeightInBucket()
                   );
                }
                if(cutFirst1LowBest < cutFirst1HighBest) {
@@ -982,3 +992,5 @@ extern bool FindBestBoostingSplitPairs(
       );
    }
 }
+
+} // DEFINED_ZONE_NAME

@@ -7,8 +7,11 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
 
 #include "SegmentedTensor.h"
 
@@ -17,6 +20,11 @@
 #include "Booster.h"
 
 #include "ThreadStateBoosting.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting) {
    LOG_0(TraceLevelInfo, "Entered ThreadStateBoosting::Free");
@@ -28,6 +36,7 @@ void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting)
       free(pThreadStateBoosting->m_aThreadByteBuffer2);
       free(pThreadStateBoosting->m_aSumHistogramTargetEntry);
       free(pThreadStateBoosting->m_aSumHistogramTargetEntry1);
+      free(pThreadStateBoosting->m_aSumHistogramTargetEntry2);
       free(pThreadStateBoosting->m_aTempFloatVector);
       free(pThreadStateBoosting->m_aEquivalentSplits);
 
@@ -65,21 +74,26 @@ ThreadStateBoosting * ThreadStateBoosting::Allocate(Booster * const pBooster) {
                   EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
                if(LIKELY(nullptr != aSumHistogramTargetEntry1)) {
                   pNew->m_aSumHistogramTargetEntry1 = aSumHistogramTargetEntry1;
-                  FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
-                  if(LIKELY(nullptr != aTempFloatVector)) {
-                     pNew->m_aTempFloatVector = aTempFloatVector;
-                     const size_t cBytesArrayEquivalentSplitMax = pBooster->GetCountBytesArrayEquivalentSplitMax();
-                     if(0 != cBytesArrayEquivalentSplitMax) {
-                        void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
-                        if(UNLIKELY(nullptr == aEquivalentSplits)) {
-                           goto exit_error;
+                  HistogramTargetEntryBase * const aSumHistogramTargetEntry2 =
+                     EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
+                  if(LIKELY(nullptr != aSumHistogramTargetEntry2)) {
+                     pNew->m_aSumHistogramTargetEntry2 = aSumHistogramTargetEntry2;
+                     FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
+                     if(LIKELY(nullptr != aTempFloatVector)) {
+                        pNew->m_aTempFloatVector = aTempFloatVector;
+                        const size_t cBytesArrayEquivalentSplitMax = pBooster->GetCountBytesArrayEquivalentSplitMax();
+                        if(0 != cBytesArrayEquivalentSplitMax) {
+                           void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
+                           if(UNLIKELY(nullptr == aEquivalentSplits)) {
+                              goto exit_error;
+                           }
+                           pNew->m_aEquivalentSplits = aEquivalentSplits;
                         }
-                        pNew->m_aEquivalentSplits = aEquivalentSplits;
-                     }
-                     pNew->m_pBooster = pBooster;
+                        pNew->m_pBooster = pBooster;
 
-                     LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Allocate");
-                     return pNew;
+                        LOG_0(TraceLevelInfo, "Exited ThreadStateBoosting::Allocate");
+                        return pNew;
+                     }
                   }
                }
             }
@@ -164,3 +178,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeThreadState
 
    LOG_0(TraceLevelInfo, "Exited FreeThreadStateBoosting");
 }
+
+} // DEFINED_ZONE_NAME

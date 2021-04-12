@@ -33,10 +33,11 @@ jobs:
       scriptSource: 'inline'
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
   - script: |
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2\bin\
+      # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
+      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      set CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
       # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
-      cuda_11.2.2_win10_network.exe -s nvcc_11.2
-      nvcc --version
+      cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       .\build.bat
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Building ebm_native code (Windows)'
@@ -93,19 +94,28 @@ jobs:
       targetFolder: 'staging'
       flattenFolders: true
     displayName: 'Move binary to staging directory'
+  - task: PythonScript@0
+    condition: startsWith(variables['image.name'], 'windows')
+    inputs:
+      scriptSource: 'inline'
+      script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
+  - script: |
+      # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
+      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      set CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
+      # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
+      cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
+      .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
+    condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
+    displayName: 'Testing ebm_native code (Windows)'
   - script: |
       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
-    condition: startsWith(variables['image.name'], 'ubuntu')
+    condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'Testing ebm_native code (Linux)'
   - script: |
       /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Testing ebm_native code (Mac)'
-  - script: |
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
-    condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Testing ebm_native code (Windows)'
   - task: ComponentGovernanceComponentDetection@0
     displayName: 'Scan dependencies for incompatible licenses and security issues'
   - task: CredScan@2
@@ -330,12 +340,12 @@ jobs:
       set PATH=%PATH%;%GeckoWebDriver%
       python -m pytest -vv -n auto --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
-    condition: and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/develop')))
-    displayName: 'Run pytest (Windows scheduled / master / develop)'
+    condition: and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master')))
+    displayName: 'Run pytest (Windows scheduled / master)'
   - script: |
       python -m pytest -vv -n auto --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
-    condition: not(and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/develop'))))
+    condition: not(and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), in(variables['Build.SourceBranch'], 'refs/heads/master'))))
     displayName: 'Run pytest (Rest)'
   - task: PublishTestResults@2
     condition: succeededOrFailed()

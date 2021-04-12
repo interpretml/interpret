@@ -10,12 +10,20 @@
 #include <limits> // numeric_limits
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+
 // feature includes
 #include "FeatureAtomic.h"
 // dataset depends on features
 #include "DataFrameInteraction.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 class InteractionDetector final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
@@ -91,5 +99,7 @@ static_assert(std::is_trivial<InteractionDetector>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<InteractionDetector>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+} // DEFINED_ZONE_NAME
 
 #endif // EBM_INTERACTION_DETECTOR_H

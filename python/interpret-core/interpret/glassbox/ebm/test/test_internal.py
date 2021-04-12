@@ -99,3 +99,27 @@ def test_one_class():
         model = native_ebm_booster.get_best_model()
         assert len(model) == 1
         assert model[0] is None
+
+def test_suggest_graph_bound():
+    native = Native.get_native_singleton()
+    cuts=[25, 50, 75]
+    (low_graph_bound, high_graph_bound) = native.suggest_graph_bounds(cuts, 24, 76)
+    assert low_graph_bound < 25
+    assert 75 < high_graph_bound
+
+def test_suggest_graph_bound_no_min_max():
+    native = Native.get_native_singleton()
+    cuts=[25, 50, 75]
+    (low_graph_bound, high_graph_bound) = native.suggest_graph_bounds(cuts)
+    assert low_graph_bound < 25
+    assert 75 < high_graph_bound
+
+def test_suggest_graph_bound_no_cuts():
+    native = Native.get_native_singleton()
+    cuts=[]
+    (low_graph_bound, high_graph_bound) = native.suggest_graph_bounds(cuts, 24, 76)
+    assert low_graph_bound <= 24
+    assert 76 <= high_graph_bound
+
+
+

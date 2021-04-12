@@ -7,9 +7,40 @@
 
 #include <type_traits> // std::is_standard_layout
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
+
+static_assert(std::is_same<float, FloatEbmType>::value || std::is_same<double, FloatEbmType>::value, "FloatEbmType must be either float or double");
+typedef std::conditional<std::is_same<float, FloatEbmType>::value, uint32_t, uint64_t>::type FloatEquivalentEbmType;
+
+// TODO: use this in place of the hessian and the count of samples and the weight total.. we want to be able to convert everything to a float
+//  to pass them on the network
+union FloatAndInt {
+   static_assert(sizeof(FloatEquivalentEbmType) == sizeof(FloatEbmType), 
+      "FloatEbmType and FloatEquivalentEbmType must be the same size");
+
+   // these are paired to be the same size
+   FloatEbmType            m_float;
+   FloatEquivalentEbmType  m_int;
+};
+static_assert(std::is_standard_layout<FloatAndInt>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<FloatAndInt>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<FloatAndInt>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
+
+
+static_assert(sizeof(FloatAndInt) == sizeof(FloatEbmType),
+   "FloatEbmType and FloatAndInt must be the same size");
 
 template<bool bClassification>
 struct HistogramTargetEntry;
@@ -149,5 +180,6 @@ static_assert(std::is_trivial<HistogramTargetEntry<false>>::value,
 static_assert(std::is_pod<HistogramTargetEntry<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
+} // DEFINED_ZONE_NAME
 
 #endif // HISTOGRAM_TARGET_ENTRY_H

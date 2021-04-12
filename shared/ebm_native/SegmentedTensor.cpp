@@ -9,10 +9,18 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
 
 #include "SegmentedTensor.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 SegmentedTensor * SegmentedTensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
    EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
@@ -796,3 +804,5 @@ bool SegmentedTensor::IsEqual(const SegmentedTensor & rhs) const {
    return true;
 }
 #endif // NDEBUG
+
+} // DEFINED_ZONE_NAME

@@ -6,9 +6,11 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
 
 #include "EbmStats.h"
 
@@ -20,6 +22,11 @@
 
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
 class BinInteractionInternal final {
@@ -55,6 +62,8 @@ public:
       const DataFrameInteraction * const pDataFrame = pInteractionDetector->GetDataFrameInteraction();
       const FloatEbmType * pGradientAndHessian = pDataFrame->GetGradientsAndHessiansPointer();
       const FloatEbmType * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * pDataFrame->GetCountSamples();
+
+      const FloatEbmType * pWeight = pDataFrame->GetWeights();
 
       EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions()); // for interactions, we just return 0 for interactions with zero features
       const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountSignificantDimensions());
@@ -100,6 +109,12 @@ public:
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
          pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + 1);
+         FloatEbmType weight = 1;
+         if(nullptr != pWeight) {
+            weight = *pWeight;
+            ++pWeight;
+         }
+         pHistogramBucketEntry->SetWeightInBucket(pHistogramBucketEntry->GetWeightInBucket() + weight);
 
          HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
             pHistogramBucketEntry->GetHistogramTargetEntry();
@@ -109,7 +124,7 @@ public:
             // gradient could be NaN
             // for classification, gradient can be anything from -1 to +1 (it cannot be infinity!)
             // for regression, gradient can be anything from +infinity or -infinity
-            pHistogramTargetEntry[iVector].m_sumGradients += gradient;
+            pHistogramTargetEntry[iVector].m_sumGradients += gradient * weight;
             // m_sumGradients could be NaN, or anything from +infinity or -infinity in the case of regression
             if(bClassification) {
                EBM_ASSERT(
@@ -132,7 +147,7 @@ public:
                const FloatEbmType oldHessian = pHistogramTargetEntry[iVector].GetSumHessians();
                // since any one hessian is limited to 0 <= gradient <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(oldHessian) || !std::isinf(oldHessian) && -k_epsilonGradient <= oldHessian);
-               const FloatEbmType newHessian = oldHessian + hessian;
+               const FloatEbmType newHessian = oldHessian + hessian * weight;
                // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(newHessian) || !std::isinf(newHessian) && -k_epsilonGradient <= newHessian);
                // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
@@ -319,3 +334,5 @@ extern void BinInteraction(
       );
    }
 }
+
+} // DEFINED_ZONE_NAME

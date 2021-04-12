@@ -8,9 +8,18 @@
 #include <cmath> // log, exp, etc
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "ApproximateMath.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 // TODO: rename FloatEbmType to DecimalDataType (or something else that doesn't imply specifically float32)
 // TODO: before applying a model update for classification, check to see that the probability implied by the 
@@ -494,8 +503,8 @@ public:
       EBM_ASSERT(!std::isnan(sumHessian)); // this starts as an integer
       EBM_ASSERT(!std::isinf(sumHessian)); // this starts as an integer
 
-      EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
-      const FloatEbmType singlePartitionGain = sumGradient / sumHessian * sumGradient;
+      //EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
+      const FloatEbmType singlePartitionGain = FloatEbmType { 0 } == sumHessian ? FloatEbmType { 0 } : sumGradient / sumHessian * sumGradient;
 
       // for both classification and regression, we're squaring sumGradient, and sumHessian is positive.  No reasonable floating point implementation 
       // should turn this negative
@@ -600,7 +609,7 @@ public:
       // subtract +infinity-(+infinity) or -infinity-(-infinity), which will result in NaN.  After that, everything melts down to NaN.
       //EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
 
-      return -sumGradient / sumHessian;
+      return (FloatEbmType { 0 } == sumHessian) ? FloatEbmType { 0 } : (-sumGradient / sumHessian);
 
       // return can be NaN if both sumGradient and sumHessian are zero, or if we're propagating a NaN value.  Neither sumGradient nor 
       //   sumHessian can be infinity, so that's not a source of NaN
@@ -959,5 +968,7 @@ public:
       // gradient can be anything from 0 to +infinity, or NaN
    }
 };
+
+} // DEFINED_ZONE_NAME
 
 #endif // EBM_STATS_H

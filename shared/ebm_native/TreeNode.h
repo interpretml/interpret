@@ -8,10 +8,19 @@
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "EbmStats.h"
 #include "HistogramBucket.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<bool bClassification>
 struct TreeNode;
@@ -99,6 +108,12 @@ struct TreeNodeData<true> {
       m_UNION.m_beforeExaminationForPossibleSplitting.m_cSamples = cSamples;
    }
 
+   INLINE_ALWAYS FloatEbmType GetWeight() const {
+      return m_weight;
+   }
+   INLINE_ALWAYS void SetWeight(const FloatEbmType weight) {
+      m_weight = weight;
+   }
 
    INLINE_ALWAYS const HistogramBucket<true> * BEFORE_GetHistogramBucketEntryFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
@@ -179,6 +194,8 @@ private:
 #ifndef NDEBUG
    bool m_bExaminedForPossibleSplitting;
 #endif // NDEBUG
+
+   FloatEbmType m_weight;
 
    TreeNodeDataUnion m_UNION;
    // use the "struct hack" since Flexible array member method is not available in C++
@@ -272,6 +289,12 @@ struct TreeNodeData<false> {
       m_cSamples = cSamples;
    }
 
+   INLINE_ALWAYS FloatEbmType GetWeight() const {
+      return m_weight;
+   }
+   INLINE_ALWAYS void SetWeight(const FloatEbmType weight) {
+      m_weight = weight;
+   }
 
    INLINE_ALWAYS const HistogramBucket<false> * BEFORE_GetHistogramBucketEntryFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
@@ -352,6 +375,8 @@ private:
 #ifndef NDEBUG
    bool m_bExaminedForPossibleSplitting;
 #endif // NDEBUG
+
+   FloatEbmType m_weight;
 
    TreeNodeDataUnion m_UNION;
 
@@ -483,5 +508,7 @@ template<bool bClassification>
 INLINE_ALWAYS const TreeNode<bClassification> * GetRightTreeNodeChild(const TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
    return AddBytesTreeNode<bClassification>(pTreeNodeChildren, cBytesTreeNode);
 }
+
+} // DEFINED_ZONE_NAME
 
 #endif // TREE_NODE_H

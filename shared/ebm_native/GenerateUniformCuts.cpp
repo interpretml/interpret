@@ -8,8 +8,15 @@
 #include <limits> // std::numeric_limits
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 extern FloatEbmType ArithmeticMean(
    const FloatEbmType low,
@@ -382,3 +389,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION GenerateUniform
       countPositiveInfinityRet
    );
 }
+
+} // DEFINED_ZONE_NAME

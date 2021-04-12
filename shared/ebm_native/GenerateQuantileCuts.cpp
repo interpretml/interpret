@@ -14,9 +14,17 @@
 #include <string.h> // strchr, memmove
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-#include "Logging.h" // EBM_ASSERT & LOG
+
 #include "RandomStream.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 //#define LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
 //#define LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
@@ -3312,3 +3320,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
    return ret;
 }
+
+} // DEFINED_ZONE_NAME

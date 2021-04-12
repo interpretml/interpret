@@ -9,9 +9,11 @@
 #include <limits> // numeric_limits
 
 #include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
 #include "EbmInternal.h"
-// very independent includes
-#include "Logging.h" // EBM_ASSERT & LOG
+
 #include "SegmentedTensor.h"
 #include "EbmStats.h"
 // feature includes
@@ -29,6 +31,11 @@
 #include "ThreadStateBoosting.h"
 
 #include "TensorTotalsSum.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 extern void BinBoosting(
    ThreadStateBoosting * const pThreadStateBoosting,
@@ -48,6 +55,7 @@ extern bool GrowDecisionTree(
    ThreadStateBoosting * const pThreadStateBoosting,
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
+   const FloatEbmType weightTotal,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
    FloatEbmType * const pTotalGain
@@ -169,7 +177,7 @@ static bool BoostZeroDimensional(
       } else {
          const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
             aSumHistogramTargetEntry[0].m_sumGradients,
-            static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
+            pHistogramBucketLocal->GetWeightInBucket()
          );
          aValues[0] = smallChangeToModel;
       }
@@ -272,11 +280,13 @@ static bool BoostSingleDimensional(
 
    const size_t cSamplesTotal = pTrainingSet->GetTotalCountSampleOccurrences();
    EBM_ASSERT(1 <= cSamplesTotal);
+   const FloatEbmType weightTotal = pTrainingSet->GetWeightTotal();
 
    bool bRet = GrowDecisionTree(
       pThreadStateBoosting,
       cHistogramBuckets,
       cSamplesTotal,
+      weightTotal,
       cSamplesRequiredForChildSplitMin,
       cLeavesMax, 
       pTotalGain
@@ -1063,3 +1073,4 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
    return ret;
 }
 
+} // DEFINED_ZONE_NAME

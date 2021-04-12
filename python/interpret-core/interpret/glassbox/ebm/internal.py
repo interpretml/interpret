@@ -173,6 +173,25 @@ class Native:
 
         return cuts, count_missing, min_val, max_val
 
+    def suggest_graph_bounds(
+        self,
+        cuts, 
+        min_val=np.nan,
+        max_val=np.nan,
+    ):
+        low_graph_bound = ct.c_double(0)
+        high_graph_bound = ct.c_double(0)
+        self._unsafe.SuggestGraphBounds(
+            len(cuts),
+            cuts[0] if 0 < len(cuts) else np.nan,
+            cuts[-1] if 0 < len(cuts) else np.nan,
+            min_val,
+            max_val,
+            ct.byref(low_graph_bound),
+            ct.byref(high_graph_bound),
+        )
+        return low_graph_bound.value, high_graph_bound.value
+
     def discretize(
         self, 
         col_data, 

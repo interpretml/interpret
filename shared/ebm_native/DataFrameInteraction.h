@@ -7,16 +7,27 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "FeatureAtomic.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 class DataFrameInteraction final {
    FloatEbmType * m_aGradientsAndHessians;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
    size_t m_cFeatureAtomics;
+
+   FloatEbmType * m_aWeights;
+   FloatEbmType m_weightTotal;
 
 public:
 
@@ -32,6 +43,8 @@ public:
       m_aaInputData = nullptr;
       m_cSamples = 0;
       m_cFeatureAtomics = 0;
+      m_aWeights = nullptr;
+      m_weightTotal = 0;
    }
 
    bool Initialize(
@@ -40,10 +53,18 @@ public:
       const FeatureAtomic * const aFeatureAtomics, 
       const size_t cSamples, 
       const IntEbmType * const aInputDataFrom, 
-      const void * const aTargetData, 
+      const FloatEbmType * const aWeights,
+      const void * const aTargetData,
       const FloatEbmType * const aPredictorScores, 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
+
+   INLINE_ALWAYS const FloatEbmType * GetWeights() const {
+      return m_aWeights;
+   }
+   INLINE_ALWAYS FloatEbmType GetWeightTotal() const {
+      return m_weightTotal;
+   }
 
    INLINE_ALWAYS const FloatEbmType * GetGradientsAndHessiansPointer() const {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
@@ -69,5 +90,7 @@ static_assert(std::is_trivial<DataFrameInteraction>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<DataFrameInteraction>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+} // DEFINED_ZONE_NAME
 
 #endif // DATA_FRAME_INTERACTION_H

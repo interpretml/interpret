@@ -7,8 +7,16 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 class RandomStream;
 class DataFrameBoosting;
@@ -24,14 +32,16 @@ class SamplingSet final {
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
    // the raw data in both formats since it is never converted anyways, but this count is!
    size_t * m_aCountOccurrences;
+   FloatEbmType * m_aWeights;
+   FloatEbmType m_weightTotal;
 
    // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataFrame since many 
    // SamplingSet objects will refer to the original one
    static SamplingSet * GenerateSingleSamplingSet(
       RandomStream * const pRandomStream, 
-      const DataFrameBoosting * const pOriginDataFrame
+      const DataFrameBoosting * const pOriginDataFrame,
+      const FloatEbmType * const aWeights
    );
-   static SamplingSet * GenerateFlatSamplingSet(const DataFrameBoosting * const pOriginDataFrame);
 
 public:
 
@@ -60,13 +70,25 @@ public:
    const size_t * GetCountOccurrences() const {
       return m_aCountOccurrences;
    }
+   const FloatEbmType * GetWeights() const {
+      return m_aWeights;
+   }
+   FloatEbmType GetWeightTotal() const {
+      return m_weightTotal;
+   }
 
-   static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);
+   static SamplingSet * GenerateFlatSamplingSet(
+      const DataFrameBoosting * const pOriginDataFrame,
+      const FloatEbmType * const aWeights
+   );
    static SamplingSet ** GenerateSamplingSets(
       RandomStream * const pRandomStream, 
       const DataFrameBoosting * const pOriginDataFrame, 
+      const FloatEbmType * const aWeights,
       const size_t cSamplingSets
    );
+   static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);
+   static void FreeSamplingSet(SamplingSet * const pSamplingSet);
 };
 static_assert(std::is_standard_layout<SamplingSet>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -74,5 +96,7 @@ static_assert(std::is_trivial<SamplingSet>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<SamplingSet>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+} // DEFINED_ZONE_NAME
 
 #endif // SAMPLING_SET_H

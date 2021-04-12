@@ -10,9 +10,12 @@
 #include <cmath> // abs
 #include <string.h> // memcpy
 
-#include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // INLINE_ALWAYS
-#include "Logging.h" // EBM_ASSERT & LOG
+#include "ebm_native.h"
+#include "logging.h"
+#include "zones.h"
+
+#include "EbmInternal.h"
+
 #include "HistogramTargetEntry.h"
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
@@ -22,6 +25,11 @@
 
 #include "Booster.h"
 #include "InteractionDetector.h"
+
+namespace DEFINED_ZONE_NAME {
+#ifndef DEFINED_ZONE_NAME
+#error DEFINED_ZONE_NAME must be defined
+#endif // DEFINED_ZONE_NAME
 
 template<bool bClassification>
 struct HistogramBucket;
@@ -53,6 +61,7 @@ struct HistogramBucket final : HistogramBucketBase {
 private:
 
    size_t m_cSamplesInBucket;
+   FloatEbmType m_weightInBucket;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramTargetEntry must be the last item in this struct
@@ -75,6 +84,13 @@ public:
       m_cSamplesInBucket = cSamplesInBucket;
    }
 
+   INLINE_ALWAYS FloatEbmType GetWeightInBucket() const {
+      return m_weightInBucket;
+   }
+   INLINE_ALWAYS void SetWeightInBucket(const FloatEbmType weightInBucket) {
+      m_weightInBucket = weightInBucket;
+   }
+
    INLINE_ALWAYS const HistogramTargetEntry<bClassification> * GetHistogramTargetEntry() const {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
@@ -84,6 +100,7 @@ public:
 
    INLINE_ALWAYS void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cSamplesInBucket += other.m_cSamplesInBucket;
+      m_weightInBucket += other.m_weightInBucket;
 
       HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
 
@@ -97,6 +114,7 @@ public:
 
    INLINE_ALWAYS void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cSamplesInBucket -= other.m_cSamplesInBucket;
+      m_weightInBucket -= other.m_weightInBucket;
 
       HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
 
@@ -138,6 +156,7 @@ public:
 
 
       m_cSamplesInBucket = size_t { 0 };
+      m_weightInBucket = size_t { 0 };
       HistogramTargetEntry<bClassification> * pHistogramTargetEntry = GetHistogramTargetEntry();
       const HistogramTargetEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
       EBM_ASSERT(1 <= cVectorLength);
@@ -153,6 +172,7 @@ public:
       UNUSED(cVectorLength);
 #ifndef NDEBUG
       EBM_ASSERT(0 == m_cSamplesInBucket);
+      EBM_ASSERT(0 == m_weightInBucket);
 
       const HistogramTargetEntry<bClassification> * pHistogramBucketVector = GetHistogramTargetEntry();
 
@@ -251,5 +271,7 @@ INLINE_ALWAYS const HistogramBucketBase * GetHistogramBucketByIndex(
 #define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerHistogramBucket, MACRO_pHistogramBucket, MACRO_aHistogramBucketsEnd) \
    (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pHistogramBucket) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= \
       reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
+
+} // DEFINED_ZONE_NAME
 
 #endif // HISTOGRAM_BUCKET_H
