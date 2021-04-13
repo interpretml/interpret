@@ -1011,7 +1011,7 @@ class BaseEBM(BaseEstimator):
             self._original_term_means_ = []
 
             for set_idx, _, scores in scores_gen:
-                score_mean = np.mean(scores)
+                score_mean = np.average(scores, weights=w)
 
                 self.additive_terms_[set_idx] = (
                     self.additive_terms_[set_idx] - score_mean
