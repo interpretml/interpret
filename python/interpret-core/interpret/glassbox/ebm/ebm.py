@@ -300,11 +300,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 else:
                     mapping[self.missing_str] = missing_constant
 
-                vec_map = np.vectorize(
-                    lambda x: mapping[x] if x in mapping else unknown_constant
-                )
                 col_data = col_data.astype('U')
-                X_new[:, col_idx] = vec_map(col_data)
+                X_new[:, col_idx] = np.fromiter(
+                    (mapping.get(x, unknown_constant) for x in col_data), dtype=np.int64, count=X.shape[0]
+                )
+                
 
         return X_new.astype(np.int64)
 
