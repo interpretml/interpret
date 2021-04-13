@@ -339,21 +339,29 @@ def test_ebm_adult():
 
     _smoke_test_explanations(global_exp, local_exp, 6000)
 
-def test_ebm_sample_weight_smoke():
-    data = iris_classification()
-    X_train = data["train"]["X"]
+def test_ebm_sample_weight():
+    data = adult_classification()
+    X_train = data["train"]["X"][:, [0, 1]]
     y_train = data["train"]["y"]
 
-    X_test = data["test"]["X"]
+    X_test = data["test"]["X"][:, [0, 1]]
     y_test = data["test"]["y"]
 
     w_train = np.ones_like(y_train)
     w_train[0] = 10
 
-    clf = ExplainableBoostingClassifier()
+    clf = ExplainableBoostingClassifier(outer_bags=1, validation_size=0, early_stopping_rounds=-1, max_rounds=100, n_jobs=1)
     clf.fit(X_train, y_train, sample_weight=w_train)
 
-    assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
+    # Create 10 manual copies of X_train[0]
+    repeat_indexes = [0] * 9 + list(range(len(X_train)))
+    X_train_u = X_train[repeat_indexes]
+    y_train_u = y_train.iloc[repeat_indexes]
+
+    clf_u = ExplainableBoostingClassifier(outer_bags=1, validation_size=0, early_stopping_rounds=-1, max_rounds=100, n_jobs=1)
+    clf_u.fit(X_train_u, y_train_u)
+
+    assert np.allclose(clf.predict_proba(X_test), clf_u.predict_proba(X_test))
     assert True
 
 @pytest.mark.visual

@@ -1429,7 +1429,8 @@ class NativeHelper:
             )
 
             # TODO: Add alternative | get_current_model
-            model_update = native_ebm_booster.get_best_model()
+            # model_update = native_ebm_booster.get_best_model()
+            model_update = native_ebm_booster.get_current_model()
 
         return model_update, min_metric, episode_index
 
