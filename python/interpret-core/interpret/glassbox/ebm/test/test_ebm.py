@@ -350,6 +350,11 @@ def test_ebm_sample_weight():
     w_train = np.ones_like(y_train)
     w_train[0] = 10
 
+    # Smoke test defaults (bagging, parallelization, interactions)
+    clf_default = ExplainableBoostingClassifier()
+    clf_default.fit(X_train, y_train, sample_weight=w_train)
+
+    # Minimal EBM to verify exact sample weight behavior
     clf = ExplainableBoostingClassifier(outer_bags=1, validation_size=0, early_stopping_rounds=-1, max_rounds=100, n_jobs=1)
     clf.fit(X_train, y_train, sample_weight=w_train)
 
@@ -362,7 +367,6 @@ def test_ebm_sample_weight():
     clf_u.fit(X_train_u, y_train_u)
 
     assert np.allclose(clf.predict_proba(X_test), clf_u.predict_proba(X_test))
-    assert True
 
 @pytest.mark.visual
 @pytest.mark.slow

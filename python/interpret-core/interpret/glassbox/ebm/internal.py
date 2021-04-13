@@ -1428,9 +1428,12 @@ class NativeHelper:
                 )
             )
 
-            # TODO: Add alternative | get_current_model
-            # model_update = native_ebm_booster.get_best_model()
-            model_update = native_ebm_booster.get_current_model()
+            # TODO: Add more ways to call alternative get_current_model
+            # Use latest model if there are no instances in the (transposed) validation set
+            if X_val.shape[1] == 0:
+                model_update = native_ebm_booster.get_current_model()
+            else:
+                model_update = native_ebm_booster.get_best_model()
 
         return model_update, min_metric, episode_index
 
