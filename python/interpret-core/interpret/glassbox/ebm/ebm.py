@@ -1,8 +1,8 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from typing import DefaultDict
 
+from typing import DefaultDict
 from ...utils import gen_perf_dicts
 from .utils import EBMUtils
 from .internal import NativeHelper, Native
@@ -138,7 +138,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             feature_names: Feature names as list.
             feature_types: Feature types as list, for example "continuous" or "categorical".
             max_bins: Max number of bins to process numeric features.
-            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform".
+            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform". 
             missing_str: By default np.nan values are missing for all datatypes. Setting this parameter changes the string representation for missing
         """
         self.feature_names = feature_names
@@ -200,24 +200,24 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         is_humanized = 1
 
                     (
-                        cuts,
-                        count_missing,
-                        min_val,
-                        max_val,
+                        cuts, 
+                        count_missing, 
+                        min_val, 
+                        max_val, 
                     ) = native.generate_quantile_cuts(
-                        col_data,
-                        min_samples_bin,
-                        is_humanized,
+                        col_data, 
+                        min_samples_bin, 
+                        is_humanized, 
                         self.max_bins - 2, # one bin for missing, and # of cuts is one less again
                     )
                 elif self.binning == "uniform":
                     (
-                        cuts,
-                        count_missing,
-                        min_val,
+                        cuts, 
+                        count_missing, 
+                        min_val, 
                         max_val,
                     ) = native.generate_uniform_cuts(
-                        col_data,
+                        col_data, 
                         self.max_bins - 2, # one bin for missing, and # of cuts is one less again
                     )
                 else:
@@ -229,7 +229,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
                 if count_missing != 0:
                     col_data = col_data[~np.isnan(col_data)]
-
+                
                 self.col_bin_counts_.append(bin_counts)
                 self.col_bin_edges_[col_idx] = cuts
                 self.col_min_[col_idx] = min_val
@@ -284,7 +284,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 cuts = self.col_bin_edges_[col_idx]
 
                 discretized = native.discretize(col_data, cuts)
-
+                
                 X_new[:, col_idx] = discretized
 
             elif col_type == "ordinal":
@@ -306,7 +306,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 X_new[:, col_idx] = np.fromiter(
                     (mapping.get(x, unknown_constant) for x in col_data), dtype=np.int64, count=X.shape[0]
                 )
-
+                
 
         return X_new.astype(np.int64)
 
@@ -433,7 +433,7 @@ class BaseCoreEBM:
             )
         else:
             X_pair_train, X_pair_val = None, None
-
+              
         # Build EBM allocation code
 
         # scikit-learn returns an np.array for classification and
@@ -479,8 +479,8 @@ class BaseCoreEBM:
         ) = NativeHelper.cyclic_gradient_boost(
             model_type=self.model_type,
             n_classes=self.n_classes_,
-            features_categorical = self.features_categorical,
-            features_bin_count = self.features_bin_count,
+            features_categorical = self.features_categorical, 
+            features_bin_count = self.features_bin_count, 
             feature_groups=main_feature_groups,
             X_train=X_train,
             y_train=y_train,
@@ -491,7 +491,7 @@ class BaseCoreEBM:
             w_val=w_val,
             scores_val=None,
             n_inner_bags=self.inner_bags,
-            generate_update_options=Native.GenerateUpdateOptions_Default,
+            generate_update_options=Native.GenerateUpdateOptions_Default, 
             learning_rate=self.learning_rate,
             min_samples_leaf=self.min_samples_leaf,
             max_leaves=self.max_leaves,
@@ -521,8 +521,8 @@ class BaseCoreEBM:
                 iter_feature_groups=iter_feature_groups,
                 model_type=self.model_type,
                 n_classes=self.n_classes_,
-                features_categorical = self.pair_features_categorical,
-                features_bin_count = self.pair_features_bin_count,
+                features_categorical = self.pair_features_categorical, 
+                features_bin_count = self.pair_features_bin_count, 
                 X=X_pair,
                 y=y_train,
                 w=w_train,
@@ -560,8 +560,8 @@ class BaseCoreEBM:
         ) = NativeHelper.cyclic_gradient_boost(
             model_type=self.model_type,
             n_classes=self.n_classes_,
-            features_categorical = self.pair_features_categorical,
-            features_bin_count = self.pair_features_bin_count,
+            features_categorical = self.pair_features_categorical, 
+            features_bin_count = self.pair_features_bin_count, 
             feature_groups=inter_indices,
             X_train=X_pair_train,
             y_train=y_train,
@@ -572,7 +572,7 @@ class BaseCoreEBM:
             w_val=w_val,
             scores_val=scores_val,
             n_inner_bags=self.inner_bags,
-            generate_update_options=Native.GenerateUpdateOptions_Default,
+            generate_update_options=Native.GenerateUpdateOptions_Default, 
             learning_rate=self.learning_rate,
             min_samples_leaf=self.min_samples_leaf,
             max_leaves=self.max_leaves,
