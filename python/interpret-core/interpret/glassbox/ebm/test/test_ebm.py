@@ -339,6 +339,29 @@ def test_ebm_adult():
 
     _smoke_test_explanations(global_exp, local_exp, 6000)
 
+@pytest.mark.visual
+@pytest.mark.slow
+def test_ebm_predict_proba_and_explain():
+    data = adult_classification()
+    X_tr = data["train"]["X"]
+    y_tr = data["train"]["y"]
+    X_te = data["test"]["X"]
+
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
+    clf.fit(X_tr, y_tr)
+
+    probabilities_orig = clf.predict_proba(X_te)
+    probabilities, explanations = clf.predict_proba_and_explain(X_te)
+
+    assert np.allclose(probabilities_orig, probabilities)
+
+    # TODO: Make a better test to ensure explanations are correct
+    explanations_sum_orig = clf.decision_function(X_te)
+    explanations_sum = np.sum(explanations, axis=1)
+    explanations_sum += clf.intercept_
+
+    assert np.allclose(explanations_sum_orig, explanations_sum)
+
 def test_ebm_sample_weight():
     data = adult_classification()
     X_train = data["train"]["X"][:, [0, 1]]
