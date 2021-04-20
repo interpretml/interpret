@@ -339,9 +339,8 @@ def test_ebm_adult():
 
     _smoke_test_explanations(global_exp, local_exp, 6000)
 
-@pytest.mark.visual
-@pytest.mark.slow
-def test_ebm_predict_proba_and_explain():
+
+def test_ebm_predict_and_explain_proba():
     data = adult_classification()
     X_tr = data["train"]["X"]
     y_tr = data["train"]["y"]
@@ -351,7 +350,7 @@ def test_ebm_predict_proba_and_explain():
     clf.fit(X_tr, y_tr)
 
     probabilities_orig = clf.predict_proba(X_te)
-    probabilities, explanations = clf.predict_proba_and_explain(X_te)
+    probabilities, explanations = clf.predict_and_explain(X_te, output='probabilities')
 
     assert np.allclose(probabilities_orig, probabilities)
 
@@ -361,6 +360,67 @@ def test_ebm_predict_proba_and_explain():
     explanations_sum += clf.intercept_
 
     assert np.allclose(explanations_sum_orig, explanations_sum)
+
+
+def test_ebm_predict_and_explain_logits():
+    data = adult_classification()
+    X_tr = data["train"]["X"]
+    y_tr = data["train"]["y"]
+    X_te = data["test"]["X"]
+
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
+    clf.fit(X_tr, y_tr)
+
+    logits_orig = clf.decision_function(X_te)
+    logits, explanations = clf.predict_and_explain(X_te, output='logits')
+
+    assert np.allclose(logits_orig, logits)
+
+    # TODO: Make a better test to ensure explanations are correct
+    explanations_sum = np.sum(explanations, axis=1)
+    explanations_sum += clf.intercept_
+
+    assert np.allclose(logits_orig, explanations_sum)
+
+def test_ebm_predict_and_explain_labels():
+    data = adult_classification()
+    X_tr = data["train"]["X"]
+    y_tr = data["train"]["y"]
+    X_te = data["test"]["X"]
+
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
+    clf.fit(X_tr, y_tr)
+
+    labels_orig = clf.predict(X_te)
+    labels, explanations = clf.predict_and_explain(X_te, 'labels')
+
+    assert np.array_equal(labels_orig, labels)
+
+    # TODO: Make a better test to ensure explanations are correct
+    explanations_sum_orig = clf.decision_function(X_te)
+    explanations_sum = np.sum(explanations, axis=1)
+    explanations_sum += clf.intercept_
+
+    assert np.allclose(explanations_sum_orig, explanations_sum)
+
+
+def test_ebm_predict_and_explain_regression():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf.fit(X, y)
+
+    predictions_orig = clf.predict(X)
+    predictions, explanations = clf.predict_and_explain(X)
+
+    assert np.allclose(predictions_orig, predictions)
+
+    explanations_sum = np.sum(explanations, axis=1)
+    explanations_sum += clf.intercept_
+    assert np.allclose(predictions_orig, explanations_sum)
+
 
 def test_ebm_sample_weight():
     data = adult_classification()

@@ -1537,15 +1537,23 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.classes_,
         )
 
-    def predict_proba_and_explain(self, X):
+    def predict_and_explain(self, X, output='probabilities'):
         """Predicts on provided samples, returning predictions and explanations for each sample.
 
         Args:
             X: Numpy array for samples.
+            output: Prediction type to output (i.e. one of 'probabilities', 'logits', 'labels')
 
         Returns:
-            Predicted probabilities and local explanation for each sample.
+            Predictions and local explanations for each sample.
         """
+
+        allowed_outputs = ['probabilities', 'logits', 'labels']
+        if output not in allowed_outputs:
+            msg = "Argument 'output' has invalid value.  Got '{}', expected one of " 
+            + repr(allowed_outputs)
+            raise ValueError(msg.format(output))
+
         check_is_fitted(self, "has_fitted_")
         X_orig, _, _, _ = unify_data(
             X, None, self.feature_names, self.feature_types, missing_data_allowed=False
@@ -1559,37 +1567,14 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         else:
             X_pair = None
 
-        if X.ndim == 1:
-            X = X.reshape(X.shape[0], 1)
-
-        # Initialize empty vector for predictions and an empty matrix for explanations
-        if isinstance(self.intercept_, numbers.Number) or len(self.intercept_) == 1:
-            scores_vector = np.empty(X.shape[1])
-        else:
-            scores_vector = np.empty((X.shape[1], len(self.intercept_)))
-
-        np.copyto(scores_vector, self.intercept_)
-
-        if isinstance(self.interactions, list):
-            n_interactions = len(self.interactions)
-        else:
-            n_interactions = self.interactions
-
-        explanations = np.empty((X_orig.shape[0], X_orig.shape[1] + n_interactions))
-
-        scores_gen = EBMUtils.scores_by_feature_group(
-            X, X_pair, self.feature_groups_, self.additive_terms_
-        )
-
-        # Fill out both the scores and explanations by iterating through the generator
-        for set_idx, feature_group, scores in scores_gen:
-            scores_vector += scores
-            explanations[:, set_idx] = scores
-
-        if scores_vector.ndim == 1:
-            scores_vector = np.c_[np.zeros(scores_vector.shape), scores_vector]
-
-        return softmax(scores_vector), explanations
+        return EBMUtils.classifier_predict_and_explain(
+            X,
+            X_pair,
+            self.feature_groups_,
+            self.additive_terms_,
+            self.intercept_,
+            self.classes_,
+            output)
 
 class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
     """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog. """
@@ -1700,5 +1685,33 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             X_pair = None
 
         return EBMUtils.regressor_predict(
+            X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
+        )
+
+
+    def predict_and_explain(self, X):
+        """Predicts on provided samples, returning predictions and explanations for each sample.
+
+        Args:
+            X: Numpy array for samples.
+
+        Returns:
+            Predictions and local explanations for each sample.
+        """
+
+        check_is_fitted(self, "has_fitted_")
+        X_orig, _, _, _ = unify_data(
+            X, None, self.feature_names, self.feature_types, missing_data_allowed=False
+        )
+        X = self.preprocessor_.transform(X_orig)
+        X = np.ascontiguousarray(X.T)
+
+        if self.interactions != 0:
+            X_pair = self.pair_preprocessor_.transform(X_orig)
+            X_pair = np.ascontiguousarray(X_pair.T)
+        else:
+            X_pair = None
+
+        return EBMUtils.regressor_predict_and_explain(
             X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
         )
