@@ -355,6 +355,311 @@ TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
    CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
 }
 
+TEST_CASE("weights are proportional, boosting, regression") {
+   TestApi test1 = TestApi(k_learningTypeRegression);
+   test1.AddFeatures({ FeatureTest(2) });
+   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTrainingSamples({
+      RegressionSample(10, { 0 }, 0, std::nextafter(0.3, 100)),
+      RegressionSample(10, { 1 }, 0, 0.3),
+      });
+   test1.AddValidationSamples({ 
+      RegressionSample(12, { 1 }, 0, std::nextafter(0.3, 100)),
+      RegressionSample(12, { 1 }, 0, 0.3)
+      });
+   test1.InitializeBoosting();
+   FloatEbmType validationMetric1 = test1.Boost(0);
+   FloatEbmType modelValue1;
+   modelValue1 = test1.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   CHECK_APPROX(modelValue1, test1.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
+
+   TestApi test2 = TestApi(k_learningTypeRegression);
+   test2.AddFeatures({ FeatureTest(2) });
+   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTrainingSamples({
+      RegressionSample(10, { 0 }, 0, std::nextafter(2, 100)),
+      RegressionSample(10, { 1 }, 0, 2),
+      });
+   test2.AddValidationSamples({ 
+      RegressionSample(12, { 1 }, 0, std::nextafter(2, 100)),
+      RegressionSample(12, { 1 }, 0, 2)
+      });
+   test2.InitializeBoosting();
+   FloatEbmType validationMetric2 = test2.Boost(0);
+   FloatEbmType modelValue2;
+   modelValue2 = test2.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   CHECK_APPROX(modelValue2, test2.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
+
+   TestApi test3 = TestApi(k_learningTypeRegression);
+   test3.AddFeatures({ FeatureTest(2) });
+   test3.AddFeatureGroups({ { 0 } });
+   test3.AddTrainingSamples({
+      RegressionSample(10, { 0 }, 0, 0),
+      RegressionSample(10, { 1 }, 0, 0),
+      });
+   test3.AddValidationSamples({ 
+      RegressionSample(12, { 1 }, 0, 0),
+      RegressionSample(12, { 1 }, 0, 0)
+      });
+   test3.InitializeBoosting();
+   FloatEbmType validationMetric3 = test3.Boost(0);
+   FloatEbmType modelValue3;
+   modelValue3 = test3.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   CHECK_APPROX(modelValue3, test3.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
+
+   CHECK_APPROX(validationMetric1, validationMetric2);
+   CHECK_APPROX(validationMetric1, validationMetric3);
+   CHECK_APPROX(modelValue1, modelValue2);
+   CHECK_APPROX(modelValue1, modelValue3);
+}
+
+TEST_CASE("weights are proportional, boosting, binary") {
+   TestApi test1 = TestApi(2);
+   test1.AddFeatures({ FeatureTest(2) });
+   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTrainingSamples({
+      ClassificationSample(0, { 0 }, { 0, 0 }, std::nextafter(0.3, 100)),
+      ClassificationSample(0, { 1 }, { 0, 0 }, 0.3),
+      });
+   test1.AddValidationSamples({ 
+      ClassificationSample(0, { 1 }, { 0, 0 }, std::nextafter(0.3, 100)),
+      ClassificationSample(0, { 1 }, { 0, 0 }, 0.3)
+      });
+   test1.InitializeBoosting();
+   FloatEbmType validationMetric1 = test1.Boost(0);
+   FloatEbmType modelValue1;
+   modelValue1 = test1.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   CHECK_APPROX(modelValue1, test1.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
+
+   TestApi test2 = TestApi(2);
+   test2.AddFeatures({ FeatureTest(2) });
+   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTrainingSamples({
+      ClassificationSample(1, { 0 }, { 0, 0 }, std::nextafter(2, 100)),
+      ClassificationSample(1, { 1 }, { 0, 0 }, 2),
+      });
+   test2.AddValidationSamples({ 
+      ClassificationSample(1, { 1 }, { 0, 0 }, std::nextafter(2, 100)),
+      ClassificationSample(1, { 1 }, { 0, 0 }, 2)
+      });
+   test2.InitializeBoosting();
+   FloatEbmType validationMetric2 = test2.Boost(0);
+   FloatEbmType modelValue2;
+   modelValue2 = test2.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   CHECK_APPROX(modelValue2, test2.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
+
+   TestApi test3 = TestApi(2);
+   test3.AddFeatures({ FeatureTest(2) });
+   test3.AddFeatureGroups({ { 0 } });
+   test3.AddTrainingSamples({
+      ClassificationSample(0, { 0 }, { 0, 0 }, 0),
+      ClassificationSample(0, { 1 }, { 0, 0 }, 0),
+      });
+   test3.AddValidationSamples({ 
+      ClassificationSample(0, { 1 }, { 0, 0 }, 0),
+      ClassificationSample(0, { 1 }, { 0, 0 }, 0)
+      });
+   test3.InitializeBoosting();
+   FloatEbmType validationMetric3 = test3.Boost(0);
+   FloatEbmType modelValue3;
+   modelValue3 = test3.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   CHECK_APPROX(modelValue3, test3.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
+
+   CHECK_APPROX(validationMetric1, validationMetric2);
+   CHECK_APPROX(validationMetric1, validationMetric3);
+   CHECK_APPROX(modelValue1, modelValue2);
+   CHECK_APPROX(modelValue1, modelValue3);
+}
+
+TEST_CASE("weights are proportional, boosting, multiclass") {
+   TestApi test1 = TestApi(3);
+   test1.AddFeatures({ FeatureTest(2) });
+   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTrainingSamples({
+      ClassificationSample(0, { 0 }, { 0, 0, 0 }, std::nextafter(0.3, 100)),
+      ClassificationSample(0, { 1 }, { 0, 0, 0 }, 0.3),
+      });
+   test1.AddValidationSamples({ 
+      ClassificationSample(0, { 1 }, { 0, 0, 0 }, std::nextafter(0.3, 100)),
+      ClassificationSample(0, { 1 }, { 0, 0, 0 }, 0.3)
+      });
+   test1.InitializeBoosting();
+   FloatEbmType validationMetric1 = test1.Boost(0);
+   FloatEbmType modelValue1;
+   modelValue1 = test1.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   CHECK_APPROX(modelValue1, test1.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
+
+   TestApi test2 = TestApi(3);
+   test2.AddFeatures({ FeatureTest(2) });
+   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTrainingSamples({
+      ClassificationSample(1, { 0 }, { 0, 0, 0 }, std::nextafter(2, 100)),
+      ClassificationSample(1, { 1 }, { 0, 0, 0 }, 2),
+      });
+   test2.AddValidationSamples({ 
+      ClassificationSample(1, { 1 }, { 0, 0, 0 }, std::nextafter(2, 100)),
+      ClassificationSample(1, { 1 }, { 0, 0, 0 }, 2)
+      });
+   test2.InitializeBoosting();
+   FloatEbmType validationMetric2 = test2.Boost(0);
+   FloatEbmType modelValue2;
+   modelValue2 = test2.GetCurrentModelPredictorScore(0, { 0 }, 1);
+   CHECK_APPROX(modelValue2, test2.GetCurrentModelPredictorScore(0, { 1 }, 1));
+
+
+   TestApi test3 = TestApi(3);
+   test3.AddFeatures({ FeatureTest(2) });
+   test3.AddFeatureGroups({ { 0 } });
+   test3.AddTrainingSamples({
+      ClassificationSample(2, { 0 }, { 0, 0, 0 }, 0),
+      ClassificationSample(2, { 1 }, { 0, 0, 0 }, 0),
+      });
+   test3.AddValidationSamples({ 
+      ClassificationSample(2, { 1 }, { 0, 0, 0 }, 0),
+      ClassificationSample(2, { 1 }, { 0, 0, 0 }, 0)
+      });
+   test3.InitializeBoosting();
+   FloatEbmType validationMetric3 = test3.Boost(0);
+   FloatEbmType modelValue3;
+   modelValue3 = test3.GetCurrentModelPredictorScore(0, { 0 }, 2);
+   CHECK_APPROX(modelValue3, test3.GetCurrentModelPredictorScore(0, { 1 }, 2));
+
+
+   CHECK_APPROX(validationMetric1, validationMetric2);
+   CHECK_APPROX(validationMetric1, validationMetric3);
+   CHECK_APPROX(modelValue1, modelValue2);
+   CHECK_APPROX(modelValue1, modelValue3);
+}
+
+TEST_CASE("weights totals equivalence, boosting, regression") {
+   TestApi test1 = TestApi(k_learningTypeRegression);
+   test1.AddFeatures({ FeatureTest(2) });
+   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTrainingSamples({
+      RegressionSample(10, { 0 }, 0, 0.15),
+      RegressionSample(10, { 0 }, 0, 0.15),
+      RegressionSample(12, { 1 }, 0, 1.2),
+      });
+   test1.AddValidationSamples({ 
+      RegressionSample(10, { 0 }, 0, 0.6),
+      RegressionSample(12, { 1 }, 0, 0.3) 
+      });
+   test1.InitializeBoosting();
+   FloatEbmType validationMetric1 = test1.Boost(0);
+   FloatEbmType modelValue1;
+   modelValue1 = test1.GetCurrentModelPredictorScore(0, { 0 }, 0);
+
+
+   TestApi test2 = TestApi(k_learningTypeRegression);
+   test2.AddFeatures({ FeatureTest(2) });
+   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTrainingSamples({
+      RegressionSample(10, { 0 }, 0, 0.5),
+      RegressionSample(12, { 1 }, 0, 2),
+      });
+   test2.AddValidationSamples({ 
+      RegressionSample(10, { 0 }, 0, 1),
+      RegressionSample(10, { 0 }, 0, 1),
+      RegressionSample(12, { 1 }, 0, 1)
+      });
+   test2.InitializeBoosting();
+   FloatEbmType validationMetric2 = test2.Boost(0);
+   FloatEbmType modelValue2;
+   modelValue2 = test2.GetCurrentModelPredictorScore(0, { 0 }, 0);
+
+   CHECK_APPROX(validationMetric1, validationMetric2);
+   CHECK_APPROX(modelValue1, modelValue2);
+}
+
+TEST_CASE("weights totals equivalence, boosting, binary") {
+   TestApi test1 = TestApi(2);
+   test1.AddFeatures({ FeatureTest(2) });
+   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTrainingSamples({
+      ClassificationSample(0, { 0 }, { 0, 0 }, 0.15),
+      ClassificationSample(0, { 0 }, { 0, 0 }, 0.15),
+      ClassificationSample(1, { 1 }, { 0, 0 }, 1.2),
+      });
+   test1.AddValidationSamples({ 
+      ClassificationSample(0, { 0 }, { 0, 0 }, 0.6),
+      ClassificationSample(1, { 1 }, { 0, 0 }, 0.3)
+      });
+   test1.InitializeBoosting();
+   FloatEbmType validationMetric1 = test1.Boost(0);
+   FloatEbmType modelValue1;
+   modelValue1 = test1.GetCurrentModelPredictorScore(0, { 0 }, 1);
+
+
+   TestApi test2 = TestApi(2);
+   test2.AddFeatures({ FeatureTest(2) });
+   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTrainingSamples({
+      ClassificationSample(0, { 0 }, { 0, 0 }, 0.5),
+      ClassificationSample(1, { 1 }, { 0, 0 }, 2),
+      });
+   test2.AddValidationSamples({ 
+      ClassificationSample(0, { 0 }, { 0, 0 }, 1),
+      ClassificationSample(0, { 0 }, { 0, 0 }, 1),
+      ClassificationSample(1, { 1 }, { 0, 0 }, 1)
+      });
+   test2.InitializeBoosting();
+   FloatEbmType validationMetric2 = test2.Boost(0);
+   FloatEbmType modelValue2;
+   modelValue2 = test2.GetCurrentModelPredictorScore(0, { 0 }, 1);
+
+
+   CHECK_APPROX(validationMetric1, validationMetric2);
+   CHECK_APPROX(modelValue1, modelValue2);
+}
+
+TEST_CASE("weights totals equivalence, boosting, multiclass") {
+   TestApi test1 = TestApi(3);
+   test1.AddFeatures({ FeatureTest(2) });
+   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTrainingSamples({
+      ClassificationSample(0, { 0 }, { 0, 0, 0 }, 0.15),
+      ClassificationSample(0, { 0 }, { 0, 0, 0 }, 0.15),
+      ClassificationSample(2, { 1 }, { 0, 0, 0 }, 1.2),
+      });
+   test1.AddValidationSamples({ 
+      ClassificationSample(0, { 0 }, { 0, 0, 0 }, 0.6),
+      ClassificationSample(2, { 1 }, { 0, 0, 0 }, 0.3)
+      });
+   test1.InitializeBoosting();
+   FloatEbmType validationMetric1 = test1.Boost(0);
+   FloatEbmType modelValue1;
+   modelValue1 = test1.GetCurrentModelPredictorScore(0, { 0 }, 1);
+
+
+   TestApi test2 = TestApi(3);
+   test2.AddFeatures({ FeatureTest(2) });
+   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTrainingSamples({
+      ClassificationSample(0, { 0 }, { 0, 0, 0 }, 0.5),
+      ClassificationSample(2, { 1 }, { 0, 0, 0 }, 2),
+      });
+   test2.AddValidationSamples({
+      ClassificationSample(0, { 0 }, { 0, 0, 0 }, 1),
+      ClassificationSample(0, { 0 }, { 0, 0, 0 }, 1),
+      ClassificationSample(2, { 1 }, { 0, 0, 0 }, 1)
+      });
+   test2.InitializeBoosting();
+   FloatEbmType validationMetric2 = test2.Boost(0);
+   FloatEbmType modelValue2;
+   modelValue2 = test2.GetCurrentModelPredictorScore(0, { 0 }, 1);
+
+
+   CHECK_APPROX(validationMetric1, validationMetric2);
+   CHECK_APPROX(modelValue1, modelValue2);
+}
+
 TEST_CASE("one leavesMax, boosting, regression") {
    // TODO : add classification binary and multiclass versions of this
 
@@ -580,16 +885,6 @@ TEST_CASE("features with 0 states, boosting") {
    model[0] = 9.99;
    test.GetCurrentModelFeatureGroupRaw(0, model);
    CHECK(9.99 == model[0]); // the model is a tensor with zero values since one of the dimensions is non-existant
-}
-
-TEST_CASE("features with 0 states, interaction") {
-   TestApi test = TestApi(k_learningTypeRegression);
-   test.AddFeatures({ FeatureTest(0) });
-   test.AddInteractionSamples(std::vector<RegressionSample> {});
-   test.InitializeInteraction();
-
-   FloatEbmType validationMetric = test.InteractionScore({ 0 });
-   CHECK(0 == validationMetric);
 }
 
 TEST_CASE("classification with 0 possible target states, boosting") {

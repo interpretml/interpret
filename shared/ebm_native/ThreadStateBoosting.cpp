@@ -35,8 +35,8 @@ void ThreadStateBoosting::Free(ThreadStateBoosting * const pThreadStateBoosting)
       free(pThreadStateBoosting->m_aThreadByteBuffer1);
       free(pThreadStateBoosting->m_aThreadByteBuffer2);
       free(pThreadStateBoosting->m_aSumHistogramTargetEntry);
-      free(pThreadStateBoosting->m_aSumHistogramTargetEntry1);
-      free(pThreadStateBoosting->m_aSumHistogramTargetEntry2);
+      free(pThreadStateBoosting->m_aSumHistogramTargetEntryLeft);
+      free(pThreadStateBoosting->m_aSumHistogramTargetEntryRight);
       free(pThreadStateBoosting->m_aTempFloatVector);
       free(pThreadStateBoosting->m_aEquivalentSplits);
 
@@ -70,14 +70,14 @@ ThreadStateBoosting * ThreadStateBoosting::Allocate(Booster * const pBooster) {
                EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
             if(LIKELY(nullptr != aSumHistogramTargetEntry)) {
                pNew->m_aSumHistogramTargetEntry = aSumHistogramTargetEntry;
-               HistogramTargetEntryBase * const aSumHistogramTargetEntry1 =
+               HistogramTargetEntryBase * const aSumHistogramTargetEntryLeft =
                   EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
-               if(LIKELY(nullptr != aSumHistogramTargetEntry1)) {
-                  pNew->m_aSumHistogramTargetEntry1 = aSumHistogramTargetEntry1;
-                  HistogramTargetEntryBase * const aSumHistogramTargetEntry2 =
+               if(LIKELY(nullptr != aSumHistogramTargetEntryLeft)) {
+                  pNew->m_aSumHistogramTargetEntryLeft = aSumHistogramTargetEntryLeft;
+                  HistogramTargetEntryBase * const aSumHistogramTargetEntryRight =
                      EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
-                  if(LIKELY(nullptr != aSumHistogramTargetEntry2)) {
-                     pNew->m_aSumHistogramTargetEntry2 = aSumHistogramTargetEntry2;
+                  if(LIKELY(nullptr != aSumHistogramTargetEntryRight)) {
+                     pNew->m_aSumHistogramTargetEntryRight = aSumHistogramTargetEntryRight;
                      FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
                      if(LIKELY(nullptr != aTempFloatVector)) {
                         pNew->m_aTempFloatVector = aTempFloatVector;

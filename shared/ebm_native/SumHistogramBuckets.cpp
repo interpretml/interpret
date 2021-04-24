@@ -37,6 +37,7 @@ public:
       const size_t cHistogramBuckets
 #ifndef NDEBUG
       , const size_t cSamplesTotal
+      , const FloatEbmType weightTotal
 #endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
@@ -58,6 +59,7 @@ public:
 
 #ifndef NDEBUG
       size_t cSamplesTotalDebug = 0;
+      FloatEbmType weightTotalDebug = 0;
 #endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -80,6 +82,7 @@ public:
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, pThreadStateBoosting->GetHistogramBucketsEndDebug());
 #ifndef NDEBUG
          cSamplesTotalDebug += pCopyFrom->GetCountSamplesInBucket();
+         weightTotalDebug += pCopyFrom->GetWeightInBucket();
 #endif // NDEBUG
 
          const HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
@@ -104,6 +107,7 @@ public:
       EBM_ASSERT(0 == (reinterpret_cast<const char *>(pCopyFrom) - reinterpret_cast<const char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
 
       EBM_ASSERT(cSamplesTotal == cSamplesTotalDebug);
+      EBM_ASSERT(weightTotalDebug * 0.999 <= weightTotal && weightTotal <= weightTotalDebug * 1.0001);
    }
 };
 
@@ -112,6 +116,7 @@ extern void SumHistogramBuckets(
    const size_t cHistogramBuckets
 #ifndef NDEBUG
    , const size_t cSamplesTotal
+   , const FloatEbmType weightTotal
 #endif // NDEBUG
 ) {
    LOG_0(TraceLevelVerbose, "Entered SumHistogramBuckets");
@@ -126,6 +131,7 @@ extern void SumHistogramBuckets(
             cHistogramBuckets
 #ifndef NDEBUG
             , cSamplesTotal
+            , weightTotal
 #endif // NDEBUG
          );
       } else {
@@ -134,6 +140,7 @@ extern void SumHistogramBuckets(
             cHistogramBuckets
 #ifndef NDEBUG
             , cSamplesTotal
+            , weightTotal
 #endif // NDEBUG
          );
       }
@@ -144,6 +151,7 @@ extern void SumHistogramBuckets(
          cHistogramBuckets
 #ifndef NDEBUG
          , cSamplesTotal
+         , weightTotal
 #endif // NDEBUG
       );
    }

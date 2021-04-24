@@ -42,6 +42,12 @@ class SamplingSet final {
       const DataFrameBoosting * const pOriginDataFrame,
       const FloatEbmType * const aWeights
    );
+   static SamplingSet * GenerateFlatSamplingSet(
+      const DataFrameBoosting * const pOriginDataFrame,
+      const FloatEbmType * const aWeights
+   );
+   void Free();
+   void InitZero();
 
 public:
 
@@ -77,10 +83,6 @@ public:
       return m_weightTotal;
    }
 
-   static SamplingSet * GenerateFlatSamplingSet(
-      const DataFrameBoosting * const pOriginDataFrame,
-      const FloatEbmType * const aWeights
-   );
    static SamplingSet ** GenerateSamplingSets(
       RandomStream * const pRandomStream, 
       const DataFrameBoosting * const pOriginDataFrame, 
@@ -88,7 +90,6 @@ public:
       const size_t cSamplingSets
    );
    static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);
-   static void FreeSamplingSet(SamplingSet * const pSamplingSet);
 };
 static_assert(std::is_standard_layout<SamplingSet>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

@@ -69,6 +69,10 @@ public:
       const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= cDimensions); // for interactions, we just return 0 for interactions with zero features
 
+#ifndef NDEBUG
+      FloatEbmType weightTotalDebug = 0;
+#endif // NDEBUG
+
       for(size_t iSample = 0; pGradientsAndHessiansEnd != pGradientAndHessian; ++iSample) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          // in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
@@ -113,6 +117,9 @@ public:
          if(nullptr != pWeight) {
             weight = *pWeight;
             ++pWeight;
+#ifndef NDEBUG
+            weightTotalDebug += weight;
+#endif // NDEBUG
          }
          pHistogramBucketEntry->SetWeightInBucket(pHistogramBucketEntry->GetWeightInBucket() + weight);
 
@@ -156,6 +163,12 @@ public:
             pGradientAndHessian += bClassification ? 2 : 1;
          }
       }
+      EBM_ASSERT(FloatEbmType { 0 } < pDataFrame->GetWeightTotal());
+      EBM_ASSERT(nullptr == pWeight || weightTotalDebug * 0.999 <= pDataFrame->GetWeightTotal() && 
+         pDataFrame->GetWeightTotal() <= 1.001 * weightTotalDebug);
+      EBM_ASSERT(nullptr != pWeight || 
+         static_cast<FloatEbmType>(pDataFrame->GetCountSamples()) == pDataFrame->GetWeightTotal());
+
       LOG_0(TraceLevelVerbose, "Exited BinInteractionInternal");
    }
 };

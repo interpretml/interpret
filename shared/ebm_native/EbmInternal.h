@@ -104,10 +104,10 @@ constexpr static bool k_bUseSIMD = false;
 constexpr static bool k_bUseLogitboost = false;
 
 template<typename T>
-INLINE_ALWAYS static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
+static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
    // floats have 23 bits of mantissa, so if you add 2^23 of them, the average value is below the threshold where
-   // it adds to the sum total value even by the smallest amount.  When that happens the sum stops advancing
-   // this function solves that by breaking the loop into 3 sections which allows us to go back to zero where
+   // it adds to the sum total value even by the smallest amount.  When that happens the sum stops advancing.
+   // This function solves that problem by breaking the loop into 3 sections, which allows us to go back to zero where
    // floats have more resolution
 
    EBM_ASSERT(nullptr != pVals);
@@ -116,9 +116,9 @@ INLINE_ALWAYS static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
       T totalMid = T { 0 };
       do {
          EBM_ASSERT(0 != cVals);
-         size_t cInner = cVals % k_cFloatSumLimit;
-         cInner = (size_t { 0 } == cInner) ? k_cFloatSumLimit : cInner;
+         const size_t cInner = ((cVals - 1) % k_cFloatSumLimit) + 1;
          cVals -= cInner;
+         EBM_ASSERT(0 == cVals % k_cFloatSumLimit);
          const T * const pValsEnd = pVals + cInner;
          T totalInner = T { 0 };
          do {
@@ -135,6 +135,23 @@ INLINE_ALWAYS static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
       totalOuter += totalMid;
    }
    return totalOuter;
+}
+
+template<typename T>
+static bool CheckAllWeightsEqual(const size_t cWeights, const T * pWeights) {
+   EBM_ASSERT(0 != cWeights);
+   EBM_ASSERT(nullptr != pWeights);
+   const T firstWeight = *pWeights;
+   const T * const pWeightsEnd = pWeights + cWeights;
+   do {
+      if(UNLIKELY(firstWeight != *pWeights)) {
+         // if firstWeight or *pWeight is NaN this should trigger, which is good since we don't want to
+         // replace arrays containing all NaN weights with weights of 1
+         return false;
+      }
+      ++pWeights;
+   } while(LIKELY(pWeightsEnd != pWeights));
+   return true;
 }
 
 

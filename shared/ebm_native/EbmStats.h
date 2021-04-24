@@ -501,9 +501,11 @@ public:
       // TODO: we should also add an option to optimize for mean absolute error
 
       EBM_ASSERT(!std::isnan(sumHessian)); // this starts as an integer
-      EBM_ASSERT(!std::isinf(sumHessian)); // this starts as an integer
+      // sumHessian can reach inf with big weights
 
-      //EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
+      // sumHessian can be zero if all the weights are zero, even if all splits are prevented using restrictions, 
+      // so we need to check the denominator for 0 regardless.
+      EBM_ASSERT(FloatEbmType { 0 } <= sumHessian);
       const FloatEbmType singlePartitionGain = FloatEbmType { 0 } == sumHessian ? FloatEbmType { 0 } : sumGradient / sumHessian * sumGradient;
 
       // for both classification and regression, we're squaring sumGradient, and sumHessian is positive.  No reasonable floating point implementation 
@@ -607,7 +609,9 @@ public:
       // Then, on the next feature we boost on, we'll calculate an model update for some samples (inside this function) as 
       // +-infinity/sumHessian, which will be +-infinity (of the same sign).  Then, when we go to find our new sample scores, we'll
       // subtract +infinity-(+infinity) or -infinity-(-infinity), which will result in NaN.  After that, everything melts down to NaN.
-      //EBM_ASSERT(FloatEbmType { 1 } <= sumHessian); // we shouldn't be making splits with children with less than 1 sample
+
+      // all the weights can be zero in which case even if we have no splits our sumHessian can be zero
+      EBM_ASSERT(FloatEbmType { 0 } <= sumHessian);
 
       return (FloatEbmType { 0 } == sumHessian) ? FloatEbmType { 0 } : (-sumGradient / sumHessian);
 

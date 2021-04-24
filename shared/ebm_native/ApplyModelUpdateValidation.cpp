@@ -46,7 +46,10 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
       const FloatEbmType * pWeight = pBooster->GetValidationWeights();
-  
+#ifndef NDEBUG
+      FloatEbmType weightTotalDebug = 0;
+#endif // NDEBUG
+
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
@@ -100,12 +103,22 @@ public:
 
          FloatEbmType weight = FloatEbmType { 1 };
          if(nullptr != pWeight) {
+            // TODO: template this check away
             weight = *pWeight;
             ++pWeight;
+#ifndef NDEBUG
+            weightTotalDebug += weight;
+#endif // NDEBUG
          }
          sumLogLoss += sampleLogLoss * weight;
       } while(pPredictorScoresEnd != pPredictorScores);
       const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+
+      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+
       return sumLogLoss / totalWeight;
    }
 };
@@ -127,6 +140,9 @@ public:
       EBM_ASSERT(0 < cSamples);
 
       const FloatEbmType * pWeight = pBooster->GetValidationWeights();
+#ifndef NDEBUG
+      FloatEbmType weightTotalDebug = 0;
+#endif // NDEBUG
 
       FloatEbmType sumLogLoss = 0;
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
@@ -145,12 +161,22 @@ public:
 
          FloatEbmType weight = FloatEbmType { 1 };
          if(nullptr != pWeight) {
+            // TODO: template this check away
             weight = *pWeight;
             ++pWeight;
+#ifndef NDEBUG
+            weightTotalDebug += weight;
+#endif // NDEBUG
          }
          sumLogLoss += sampleLogLoss * weight;
       } while(pPredictorScoresEnd != pPredictorScores);
       const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+
+      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+
       return sumLogLoss / totalWeight;
    }
 };
@@ -172,6 +198,9 @@ public:
       EBM_ASSERT(0 < cSamples);
 
       const FloatEbmType * pWeight = pBooster->GetValidationWeights();
+#ifndef NDEBUG
+      FloatEbmType weightTotalDebug = 0;
+#endif // NDEBUG
 
       FloatEbmType sumSquareError = FloatEbmType { 0 };
       // no hessians for regression
@@ -186,14 +215,24 @@ public:
 
          FloatEbmType weight = FloatEbmType { 1 };
          if(nullptr != pWeight) {
+            // TODO: template this check away
             weight = *pWeight;
             ++pWeight;
+#ifndef NDEBUG
+            weightTotalDebug += weight;
+#endif // NDEBUG
          }
          sumSquareError += singleSampleSquaredError * weight;
          *pGradient = gradient;
          ++pGradient;
       } while(pGradientsEnd != pGradient);
       const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+
+      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+
       return sumSquareError / totalWeight;
    }
 };
@@ -264,6 +303,9 @@ public:
       const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
       const FloatEbmType * pWeight = pBooster->GetValidationWeights();
+#ifndef NDEBUG
+      FloatEbmType weightTotalDebug = 0;
+#endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -346,8 +388,12 @@ public:
 
             FloatEbmType weight = FloatEbmType { 1 };
             if(nullptr != pWeight) {
+               // TODO: template this check away
                weight = *pWeight;
                ++pWeight;
+#ifndef NDEBUG
+               weightTotalDebug += weight;
+#endif // NDEBUG
             }
             sumLogLoss += sampleLogLoss * weight;
             iTensorBinCombined >>= cBitsPerItemMax;
@@ -361,6 +407,12 @@ public:
          goto one_last_loop;
       }
       const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+
+      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+
       return sumLogLoss / totalWeight;
    }
 };
@@ -383,6 +435,9 @@ public:
       const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
       const FloatEbmType * pWeight = pBooster->GetValidationWeights();
+#ifndef NDEBUG
+      FloatEbmType weightTotalDebug = 0;
+#endif // NDEBUG
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
@@ -437,8 +492,12 @@ public:
 
             FloatEbmType weight = FloatEbmType { 1 };
             if(nullptr != pWeight) {
+               // TODO: template this check away
                weight = *pWeight;
                ++pWeight;
+#ifndef NDEBUG
+               weightTotalDebug += weight;
+#endif // NDEBUG
             }
             sumLogLoss += sampleLogLoss * weight;
 
@@ -453,6 +512,12 @@ public:
          goto one_last_loop;
       }
       const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+
+      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+
       return sumLogLoss / totalWeight;
    }
 };
@@ -475,6 +540,9 @@ public:
       const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataFrameBoosting * const pValidationSet = pBooster->GetValidationSet();
       const FloatEbmType * pWeight = pBooster->GetValidationWeights();
+#ifndef NDEBUG
+      FloatEbmType weightTotalDebug = 0;
+#endif // NDEBUG
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
@@ -523,8 +591,12 @@ public:
 
             FloatEbmType weight = FloatEbmType { 1 };
             if(nullptr != pWeight) {
+               // TODO: template this check away
                weight = *pWeight;
                ++pWeight;
+#ifndef NDEBUG
+               weightTotalDebug += weight;
+#endif // NDEBUG
             }
             sumSquareError += sampleSquaredError * weight;
             *pGradient = gradient;
@@ -541,6 +613,12 @@ public:
          goto one_last_loop;
       }
       const FloatEbmType totalWeight = pBooster->GetValidationWeightTotal();
+
+      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
+         weightTotalDebug <= 1.001 * totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+
       return sumSquareError / totalWeight;
    }
 };

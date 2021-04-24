@@ -240,9 +240,12 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
    m_stage(Stage::Beginning),
    m_learningTypeOrCountTargetClasses(learningTypeOrCountTargetClasses),
    m_iZeroClassificationLogit(iZeroClassificationLogit),
+   m_bNullTrainingWeights(true),
+   m_bNullValidationWeights(true),
    m_bNullTrainingPredictionScores(true),
    m_bNullValidationPredictionScores(true),
    m_boosterHandle(nullptr),
+   m_bNullInteractionWeights(true),
    m_bNullInteractionPredictionScores(true),
    m_interactionDetectorHandle(nullptr) 
 {
@@ -310,14 +313,21 @@ void TestApi::AddTrainingSamples(const std::vector<RegressionSample> samples) {
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
       const size_t cFeatures = m_featureAtomicsBinCount.size();
-      const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
+
+      const bool bNullPredictionScores = samples[0].m_bNullPredictionScore;
       m_bNullTrainingPredictionScores = bNullPredictionScores;
+
+      const bool bNullWeights = samples[0].m_bNullWeight;
+      m_bNullTrainingWeights = bNullWeights;
 
       for(const RegressionSample oneSample : samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
+         if(bNullPredictionScores != oneSample.m_bNullPredictionScore) {
+            exit(1);
+         }
+         if(bNullWeights != oneSample.m_bNullWeight) {
             exit(1);
          }
          const FloatEbmType target = oneSample.m_target;
@@ -337,6 +347,16 @@ void TestApi::AddTrainingSamples(const std::vector<RegressionSample> samples) {
                exit(1);
             }
             m_trainingPredictionScores.push_back(score);
+         }
+         if(!bNullWeights) {
+            const FloatEbmType weight = oneSample.m_weight;
+            if(std::isnan(weight)) {
+               exit(1);
+            }
+            if(std::isinf(weight)) {
+               exit(1);
+            }
+            m_trainingWeights.push_back(weight);
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
@@ -366,14 +386,20 @@ void TestApi::AddTrainingSamples(const std::vector<ClassificationSample> samples
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
       const size_t cFeatures = m_featureAtomicsBinCount.size();
-      const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
+      const bool bNullPredictionScores = samples[0].m_bNullPredictionScore;
       m_bNullTrainingPredictionScores = bNullPredictionScores;
+
+      const bool bNullWeights = samples[0].m_bNullWeight;
+      m_bNullTrainingWeights = bNullWeights;
 
       for(const ClassificationSample oneSample : samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
+         if(bNullPredictionScores != oneSample.m_bNullPredictionScore) {
+            exit(1);
+         }
+         if(bNullWeights != oneSample.m_bNullWeight) {
             exit(1);
          }
          const IntEbmType target = oneSample.m_target;
@@ -444,6 +470,16 @@ void TestApi::AddTrainingSamples(const std::vector<ClassificationSample> samples
                ++iLogit;
             }
          }
+         if(!bNullWeights) {
+            const FloatEbmType weight = oneSample.m_weight;
+            if(std::isnan(weight)) {
+               exit(1);
+            }
+            if(std::isinf(weight)) {
+               exit(1);
+            }
+            m_trainingWeights.push_back(weight);
+         }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
          const IntEbmType countBins = m_featureAtomicsBinCount[iFeature];
@@ -472,14 +508,20 @@ void TestApi::AddValidationSamples(const std::vector<RegressionSample> samples) 
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
       const size_t cFeatures = m_featureAtomicsBinCount.size();
-      const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
+      const bool bNullPredictionScores = samples[0].m_bNullPredictionScore;
       m_bNullValidationPredictionScores = bNullPredictionScores;
+
+      const bool bNullWeights = samples[0].m_bNullWeight;
+      m_bNullValidationWeights = bNullWeights;
 
       for(const RegressionSample oneSample : samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
+         if(bNullPredictionScores != oneSample.m_bNullPredictionScore) {
+            exit(1);
+         }
+         if(bNullWeights != oneSample.m_bNullWeight) {
             exit(1);
          }
          const FloatEbmType target = oneSample.m_target;
@@ -499,6 +541,16 @@ void TestApi::AddValidationSamples(const std::vector<RegressionSample> samples) 
                exit(1);
             }
             m_validationPredictionScores.push_back(score);
+         }
+         if(!bNullWeights) {
+            const FloatEbmType weight = oneSample.m_weight;
+            if(std::isnan(weight)) {
+               exit(1);
+            }
+            if(std::isinf(weight)) {
+               exit(1);
+            }
+            m_validationWeights.push_back(weight);
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
@@ -528,14 +580,20 @@ void TestApi::AddValidationSamples(const std::vector<ClassificationSample> sampl
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
       const size_t cFeatures = m_featureAtomicsBinCount.size();
-      const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
+      const bool bNullPredictionScores = samples[0].m_bNullPredictionScore;
       m_bNullValidationPredictionScores = bNullPredictionScores;
+
+      const bool bNullWeights = samples[0].m_bNullWeight;
+      m_bNullValidationWeights = bNullWeights;
 
       for(const ClassificationSample oneSample : samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
+         if(bNullPredictionScores != oneSample.m_bNullPredictionScore) {
+            exit(1);
+         }
+         if(bNullWeights != oneSample.m_bNullWeight) {
             exit(1);
          }
          const IntEbmType target = oneSample.m_target;
@@ -606,6 +664,16 @@ void TestApi::AddValidationSamples(const std::vector<ClassificationSample> sampl
                ++iLogit;
             }
          }
+         if(!bNullWeights) {
+            const FloatEbmType weight = oneSample.m_weight;
+            if(std::isnan(weight)) {
+               exit(1);
+            }
+            if(std::isinf(weight)) {
+               exit(1);
+            }
+            m_validationWeights.push_back(weight);
+         }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
          const IntEbmType countBins = m_featureAtomicsBinCount[iFeature];
@@ -640,6 +708,12 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       if(m_bNullValidationPredictionScores) {
          m_validationPredictionScores.resize(cVectorLength * m_validationClassificationTargets.size());
       }
+      if(m_bNullTrainingWeights) {
+         m_trainingWeights.resize(m_trainingClassificationTargets.size());
+      }
+      if(m_bNullValidationWeights) {
+         m_validationWeights.resize(m_validationClassificationTargets.size());
+      }
       m_boosterHandle = CreateClassificationBooster(
          k_randomSeed,
          m_learningTypeOrCountTargetClasses,
@@ -668,6 +742,12 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       }
       if(m_bNullValidationPredictionScores) {
          m_validationPredictionScores.resize(cVectorLength * m_validationRegressionTargets.size());
+      }
+      if(m_bNullTrainingWeights) {
+         m_trainingWeights.resize(m_trainingRegressionTargets.size());
+      }
+      if(m_bNullValidationWeights) {
+         m_validationWeights.resize(m_validationRegressionTargets.size());
       }
       m_boosterHandle = CreateRegressionBooster(
          k_randomSeed,
@@ -880,14 +960,20 @@ void TestApi::AddInteractionSamples(const std::vector<RegressionSample> samples)
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
       const size_t cFeatureAtomics = m_featureAtomicsBinCount.size();
-      const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
+      const bool bNullPredictionScores = samples[0].m_bNullPredictionScore;
       m_bNullInteractionPredictionScores = bNullPredictionScores;
+
+      const bool bNullWeights = samples[0].m_bNullWeight;
+      m_bNullInteractionWeights = bNullWeights;
 
       for(const RegressionSample oneSample : samples) {
          if(cFeatureAtomics != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
+         if(bNullPredictionScores != oneSample.m_bNullPredictionScore) {
+            exit(1);
+         }
+         if(bNullWeights != oneSample.m_bNullWeight) {
             exit(1);
          }
          const FloatEbmType target = oneSample.m_target;
@@ -907,6 +993,16 @@ void TestApi::AddInteractionSamples(const std::vector<RegressionSample> samples)
                exit(1);
             }
             m_interactionPredictionScores.push_back(score);
+         }
+         if(!bNullWeights) {
+            const FloatEbmType weight = oneSample.m_weight;
+            if(std::isnan(weight)) {
+               exit(1);
+            }
+            if(std::isinf(weight)) {
+               exit(1);
+            }
+            m_interactionWeights.push_back(weight);
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatureAtomics; ++iFeature) {
@@ -936,14 +1032,20 @@ void TestApi::AddInteractionSamples(const std::vector<ClassificationSample> samp
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
       const size_t cFeatureAtomics = m_featureAtomicsBinCount.size();
-      const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
+      const bool bNullPredictionScores = samples[0].m_bNullPredictionScore;
       m_bNullInteractionPredictionScores = bNullPredictionScores;
+
+      const bool bNullWeights = samples[0].m_bNullWeight;
+      m_bNullInteractionWeights = bNullWeights;
 
       for(const ClassificationSample oneSample : samples) {
          if(cFeatureAtomics != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
+         if(bNullPredictionScores != oneSample.m_bNullPredictionScore) {
+            exit(1);
+         }
+         if(bNullWeights != oneSample.m_bNullWeight) {
             exit(1);
          }
          const IntEbmType target = oneSample.m_target;
@@ -1015,6 +1117,16 @@ void TestApi::AddInteractionSamples(const std::vector<ClassificationSample> samp
                ++iLogit;
             }
          }
+         if(!bNullWeights) {
+            const FloatEbmType weight = oneSample.m_weight;
+            if(std::isnan(weight)) {
+               exit(1);
+            }
+            if(std::isinf(weight)) {
+               exit(1);
+            }
+            m_interactionWeights.push_back(weight);
+         }
       }
       for(size_t iFeatureAtomic = 0; iFeatureAtomic < cFeatureAtomics; ++iFeatureAtomic) {
          const IntEbmType countBins = m_featureAtomicsBinCount[iFeatureAtomic];
@@ -1043,6 +1155,9 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionPredictionScores) {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionClassificationTargets.size());
       }
+      if(m_bNullInteractionWeights) {
+         m_interactionWeights.resize(m_interactionClassificationTargets.size());
+      }
       m_interactionDetectorHandle = CreateClassificationInteractionDetector(
          m_learningTypeOrCountTargetClasses,
          m_featureAtomicsBinCount.size(),
@@ -1058,6 +1173,9 @@ void TestApi::InitializeInteraction() {
    } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
       if(m_bNullInteractionPredictionScores) {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionRegressionTargets.size());
+      }
+      if(m_bNullInteractionWeights) {
+         m_interactionWeights.resize(m_interactionRegressionTargets.size());
       }
       m_interactionDetectorHandle = CreateRegressionInteractionDetector(
          m_featureAtomicsBinCount.size(),

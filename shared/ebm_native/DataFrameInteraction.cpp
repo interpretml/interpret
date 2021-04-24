@@ -237,21 +237,26 @@ bool DataFrameInteraction::Initialize(
                "WARNING DataFrameInteraction::Initialize IsMultiplyError(sizeof(*aWeights), cSamples)");
             goto exit_error;
          }
-         const size_t cBytes = sizeof(*aWeights) * cSamples;
-         FloatEbmType * aWeightInternal = static_cast<FloatEbmType *>(malloc(cBytes));
-         if(UNLIKELY(nullptr == aWeightInternal)) {
-            LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::Initialize nullptr == pWeightInternal");
-            goto exit_error;
+         if(!CheckAllWeightsEqual(cSamples, aWeights)) {
+            const FloatEbmType total = AddPositiveFloatsSafe(cSamples, aWeights);
+            if(std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }) {
+               LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
+               goto exit_error;
+            }
+            // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
+            // to zero though so check it after checking for negative
+            EBM_ASSERT(FloatEbmType { 0 } != total);
+            m_weightTotal = total;
+
+            const size_t cBytes = sizeof(*aWeights) * cSamples;
+            FloatEbmType * aWeightInternal = static_cast<FloatEbmType *>(malloc(cBytes));
+            if(UNLIKELY(nullptr == aWeightInternal)) {
+               LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::Initialize nullptr == pWeightInternal");
+               goto exit_error;
+            }
+            m_aWeights = aWeightInternal;
+            memcpy(aWeightInternal, aWeights, cBytes);
          }
-         memcpy(aWeightInternal, aWeights, cBytes);
-         const FloatEbmType total = AddPositiveFloatsSafe(cSamples, aWeightInternal);
-         if(std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }) {
-            LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::Initialize std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }");
-            free(aWeightInternal);
-            goto exit_error;
-         }
-         m_aWeights = aWeightInternal;
-         m_weightTotal = total;
       }
 
       FloatEbmType * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);

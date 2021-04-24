@@ -189,15 +189,18 @@ public:
                            EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                            splittingScore += splittingScoreUpdate1;
                            const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeSinglePartitionGain(
-                              pHistogramTargetEntryTotalsLowHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryTotalsLowHigh[iVector].GetSumHessians() : cLowHighWeightInBucket);
+                              pHistogramTargetEntryTotalsLowHigh[iVector].m_sumGradients, bUseLogitBoost ? 
+                              pHistogramTargetEntryTotalsLowHigh[iVector].GetSumHessians() : cLowHighWeightInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                            splittingScore += splittingScoreUpdate2;
                            const FloatEbmType splittingScoreUpdate3 = EbmStats::ComputeSinglePartitionGain(
-                              pHistogramTargetEntryTotalsHighLow[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryTotalsHighLow[iVector].GetSumHessians() : cHighLowWeightInBucket);
+                              pHistogramTargetEntryTotalsHighLow[iVector].m_sumGradients, bUseLogitBoost ? 
+                              pHistogramTargetEntryTotalsHighLow[iVector].GetSumHessians() : cHighLowWeightInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
                            splittingScore += splittingScoreUpdate3;
                            const FloatEbmType splittingScoreUpdate4 = EbmStats::ComputeSinglePartitionGain(
-                              pHistogramTargetEntryTotalsHighHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryTotalsHighHigh[iVector].GetSumHessians() : cHighHighWeightInBucket);
+                              pHistogramTargetEntryTotalsHighHigh[iVector].m_sumGradients, bUseLogitBoost ? 
+                              pHistogramTargetEntryTotalsHighHigh[iVector].GetSumHessians() : cHighHighWeightInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
                            splittingScore += splittingScoreUpdate4;
                         }
@@ -221,7 +224,10 @@ public:
          ++iBin1;
       } while(iBin1 < cBinsDimension1 - 1);
 
-      return bestSplittingScore;
+      const DataFrameInteraction * const pDataFrame = pInteractionDetector->GetDataFrameInteraction();
+      EBM_ASSERT(nullptr != pDataFrame);
+      EBM_ASSERT(FloatEbmType { 0 } < pDataFrame->GetWeightTotal()); // if all are zeros we assume there are no weights and use the count
+      return bestSplittingScore / pDataFrame->GetWeightTotal();
    }
 };
 

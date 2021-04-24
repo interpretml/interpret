@@ -537,6 +537,10 @@ public:
          do {
             const size_t cSamples = pCollapsedHistogramBucket2->GetCountSamplesInBucket();
             if(UNLIKELY(size_t { 0 } == cSamples)) {
+               // TODO: this section can probably be eliminated since ComputeSinglePartitionUpdate now checks
+               // for zero in the denominator, but I'm leaving it here to see how the removal of the 
+               // GetCountSamplesInBucket property works in the future in combination with the check on hessians
+
                // normally, we'd eliminate regions where the number of items was zero before putting down a cut
                // but for random cuts we can't know beforehand if there will be zero cuts, so we need to check
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -576,7 +580,7 @@ public:
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                      update = EbmStats::ComputeSinglePartitionUpdate(
                         pHistogramTargetEntry[iVector].m_sumGradients,
-                        static_cast<FloatEbmType>(cSamples)
+                        pCollapsedHistogramBucket2->GetWeightInBucket()
                      );
                   }
                   *pUpdate = update;

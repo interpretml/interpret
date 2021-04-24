@@ -128,24 +128,25 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
    // it's tempting to want to use GetSumHistogramTargetEntryArray here instead of 
-   // GetSumHistogramTargetEntry1Array, but the problem with that is that we sometimes re-do our work
+   // GetSumHistogramTargetEntryLeft, but the problem with that is that we sometimes re-do our work
    // when we exceed our memory size by goto retry_with_bigger_tree_node_children_array.  When that happens
    // we need to retrieve the original sum which resides at GetSumHistogramTargetEntryArray
    // since the memory pointed to at pRootTreeNode is freed and re-allocated.
    // So, DO NOT DO: pThreadStateBoosting->GetSumHistogramTargetEntryArray()->
    //   GetHistogramTargetEntry<bClassification>();
    HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntryLeft =
-      pThreadStateBoosting->GetSumHistogramTargetEntry1Array<bClassification>();
+      pThreadStateBoosting->GetSumHistogramTargetEntryLeft<bClassification>();
 
    for(size_t i = 0; i < cVectorLength; ++i) {
       aSumHistogramTargetEntryLeft[i].Zero();
    }
 
    HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntryRight =
-      pThreadStateBoosting->GetSumHistogramTargetEntry2Array<bClassification>();
+      pThreadStateBoosting->GetSumHistogramTargetEntryRight<bClassification>();
    const HistogramTargetEntry<bClassification> * pHistogramTargetEntryInit = 
       pTreeNode->GetHistogramTargetEntry();
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+      // TODO : memcpy this instead
       aSumHistogramTargetEntryRight[iVector] = pHistogramTargetEntryInit[iVector];
    }
 

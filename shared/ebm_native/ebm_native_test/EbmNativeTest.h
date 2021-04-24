@@ -151,24 +151,31 @@ public:
    const FloatEbmType m_target;
    const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
    const FloatEbmType m_priorPredictorPrediction;
-   const bool m_bNullPredictionScores;
+   const FloatEbmType m_weight;
+   const bool m_bNullPredictionScore;
+   const bool m_bNullWeight;
 
    inline RegressionSample(const FloatEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPrediction(0),
-      m_bNullPredictionScores(true) {
+      m_weight(1),
+      m_bNullPredictionScore(true),
+      m_bNullWeight(true) {
    }
 
    inline RegressionSample(
       const FloatEbmType target, 
       const std::vector<IntEbmType> binnedDataPerFeatureArray, 
-      const FloatEbmType priorPredictorPrediction
+      const FloatEbmType priorPredictorPrediction,
+      const FloatEbmType weight
    ) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPrediction(priorPredictorPrediction),
-      m_bNullPredictionScores(false) {
+      m_weight(weight),
+      m_bNullPredictionScore(false),
+      m_bNullWeight(false) {
    }
 };
 
@@ -177,23 +184,30 @@ public:
    const IntEbmType m_target;
    const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
    const std::vector<FloatEbmType> m_priorPredictorPerClassLogits;
-   const bool m_bNullPredictionScores;
+   const FloatEbmType m_weight;
+   const bool m_bNullPredictionScore;
+   const bool m_bNullWeight;
 
    inline ClassificationSample(const IntEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
-      m_bNullPredictionScores(true) {
+      m_weight(1),
+      m_bNullPredictionScore(true),
+      m_bNullWeight(true) {
    }
 
    inline ClassificationSample(
       const IntEbmType target,
       const std::vector<IntEbmType> binnedDataPerFeatureArray,
-      const std::vector<FloatEbmType> priorPredictorPerClassLogits)
-      :
+      const std::vector<FloatEbmType> priorPredictorPerClassLogits,
+      const FloatEbmType weight
+   ) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPerClassLogits(priorPredictorPerClassLogits),
-      m_bNullPredictionScores(false) {
+      m_weight(weight),
+      m_bNullPredictionScore(false),
+      m_bNullWeight(false) {
    }
 };
 
@@ -299,6 +313,7 @@ class TestApi {
    std::vector<IntEbmType> m_trainingBinnedData;
    std::vector<FloatEbmType> m_trainingWeights;
    std::vector<FloatEbmType> m_trainingPredictionScores;
+   bool m_bNullTrainingWeights;
    bool m_bNullTrainingPredictionScores;
 
    std::vector<FloatEbmType> m_validationRegressionTargets;
@@ -306,6 +321,7 @@ class TestApi {
    std::vector<IntEbmType> m_validationBinnedData;
    std::vector<FloatEbmType> m_validationWeights;
    std::vector<FloatEbmType> m_validationPredictionScores;
+   bool m_bNullValidationWeights;
    bool m_bNullValidationPredictionScores;
 
    BoosterHandle m_boosterHandle;
@@ -315,6 +331,7 @@ class TestApi {
    std::vector<IntEbmType> m_interactionBinnedData;
    std::vector<FloatEbmType> m_interactionWeights;
    std::vector<FloatEbmType> m_interactionPredictionScores;
+   bool m_bNullInteractionWeights;
    bool m_bNullInteractionPredictionScores;
 
    InteractionDetectorHandle m_interactionDetectorHandle;

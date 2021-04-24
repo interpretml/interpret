@@ -18,29 +18,30 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-static_assert(std::is_same<float, FloatEbmType>::value || std::is_same<double, FloatEbmType>::value, "FloatEbmType must be either float or double");
-typedef std::conditional<std::is_same<float, FloatEbmType>::value, uint32_t, uint64_t>::type FloatEquivalentEbmType;
-
 // TODO: use this in place of the hessian and the count of samples and the weight total.. we want to be able to convert everything to a float
 //  to pass them on the network
+template<typename TFloat>
 union FloatAndInt {
-   static_assert(sizeof(FloatEquivalentEbmType) == sizeof(FloatEbmType), 
-      "FloatEbmType and FloatEquivalentEbmType must be the same size");
+   static_assert(std::is_same<float, TFloat>::value || std::is_same<double, TFloat>::value,
+      "TFloat must be either float or double");
+   typedef typename std::conditional<std::is_same<float, TFloat>::value, uint32_t, uint64_t>::type UIntEquivalentType;
+
+   static_assert(sizeof(TFloat) == sizeof(UIntEquivalentType),
+      "TFloat and IntEquivalentType must be the same size");
 
    // these are paired to be the same size
-   FloatEbmType            m_float;
-   FloatEquivalentEbmType  m_int;
+   TFloat               m_float;
+   UIntEquivalentType   m_uint;
 };
-static_assert(std::is_standard_layout<FloatAndInt>::value,
-   "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<FloatAndInt>::value,
-   "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<FloatAndInt>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
+static_assert(std::is_standard_layout<FloatAndInt<float>>::value &&
+   std::is_trivially_copyable<FloatAndInt<float>>::value,
+   "This allows offsetof, memcpy, memset, the struct hack, inter-language, GPU or cross-machine");
+static_assert(std::is_standard_layout<FloatAndInt<double>>::value &&
+   std::is_trivially_copyable<FloatAndInt<double>>::value,
+   "This allows offsetof, memcpy, memset, the struct hack, inter-language, GPU or cross-machine");
 
-
-static_assert(sizeof(FloatAndInt) == sizeof(FloatEbmType),
-   "FloatEbmType and FloatAndInt must be the same size");
+static_assert(sizeof(FloatAndInt<float>) == sizeof(float), "FloatAndInt<float> and float must be the same size");
+static_assert(sizeof(FloatAndInt<double>) == sizeof(double), "FloatAndInt<double> and double must be the same size");
 
 template<bool bClassification>
 struct HistogramTargetEntry;

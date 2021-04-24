@@ -62,6 +62,11 @@ public:
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
       const FloatEbmType * pWeight = pTrainingSet->GetWeights();
+      EBM_ASSERT(nullptr != pWeight);
+#ifndef NDEBUG
+      FloatEbmType weightTotalDebug = 0;
+#endif // NDEBUG
+
       const FloatEbmType * pGradientAndHessian = pTrainingSet->GetDataFrameBoosting()->GetGradientsAndHessiansPointer();
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
@@ -83,6 +88,11 @@ public:
 
          const size_t cOccurences = *pCountOccurrences;
          const FloatEbmType weight = *pWeight;
+
+#ifndef NDEBUG
+         weightTotalDebug += weight;
+#endif // NDEBUG
+
          ++pCountOccurrences;
          ++pWeight;
          pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
@@ -127,6 +137,11 @@ public:
             -k_epsilonGradient < sumGradientsDebug && sumGradientsDebug < k_epsilonGradient
          );
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
+      
+      EBM_ASSERT(FloatEbmType { 0 } < weightTotalDebug);
+      EBM_ASSERT(weightTotalDebug * 0.999 <= pTrainingSet->GetWeightTotal() &&
+         pTrainingSet->GetWeightTotal() <= 1.001 * weightTotalDebug);
+
       LOG_0(TraceLevelVerbose, "Exited BinBoostingZeroDimensions");
    }
 };
@@ -228,6 +243,11 @@ public:
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
       const FloatEbmType * pWeight = pTrainingSet->GetWeights();
+      EBM_ASSERT(nullptr != pWeight);
+#ifndef NDEBUG
+      FloatEbmType weightTotalDebug = 0;
+#endif // NDEBUG
+
       const StorageDataType * pInputData = pTrainingSet->GetDataFrameBoosting()->GetInputDataPointer(pFeatureGroup);
       const FloatEbmType * pGradientAndHessian = pTrainingSet->GetDataFrameBoosting()->GetGradientsAndHessiansPointer();
 
@@ -273,6 +293,11 @@ public:
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pThreadStateBoosting->GetHistogramBucketsEndDebug());
             const size_t cOccurences = *pCountOccurrences;
             const FloatEbmType weight = *pWeight;
+
+#ifndef NDEBUG
+            weightTotalDebug += weight;
+#endif // NDEBUG
+
             ++pCountOccurrences;
             ++pWeight;
             pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
@@ -341,6 +366,10 @@ public:
 
          goto one_last_loop;
       }
+
+      EBM_ASSERT(FloatEbmType { 0 } < weightTotalDebug);
+      EBM_ASSERT(weightTotalDebug * 0.999 <= pTrainingSet->GetWeightTotal() &&
+         pTrainingSet->GetWeightTotal() <= 1.001 * weightTotalDebug);
 
       LOG_0(TraceLevelVerbose, "Exited BinBoostingInternal");
    }

@@ -32,55 +32,71 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    EBM_ASSERT(nullptr != pRandomStream);
    EBM_ASSERT(nullptr != pOriginDataFrame);
 
+   SamplingSet * pRet = EbmMalloc<SamplingSet>();
+   if(nullptr == pRet) {
+      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == pRet");
+      return nullptr;
+   }
+   pRet->InitZero();
+
    const size_t cSamples = pOriginDataFrame->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
    if(nullptr == aCountOccurrences) {
+      pRet->Free();
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aCountOccurrences");
       return nullptr;
    }
+   pRet->m_aCountOccurrences = aCountOccurrences;
+
    FloatEbmType * const aWeightsInternal = EbmMalloc<FloatEbmType>(cSamples);
    if(nullptr == aWeightsInternal) {
-      free(aCountOccurrences);
+      pRet->Free();
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aWeightsInternal");
       return nullptr;
    }
-   SamplingSet * pRet = EbmMalloc<SamplingSet>();
-   if(nullptr == pRet) {
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == pRet");
-      free(aWeightsInternal);
-      free(aCountOccurrences);
-      return nullptr;
-   }
+   pRet->m_aWeights = aWeightsInternal;
 
    for(size_t i = 0; i < cSamples; ++i) {
+      // TODO: use memset
       aCountOccurrences[i] = size_t { 0 };
    }
+
    for(size_t iSample = 0; iSample < cSamples; ++iSample) {
       const size_t iCountOccurrences = pRandomStream->Next(cSamples);
       ++aCountOccurrences[iCountOccurrences];
    }
 
-   for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-      FloatEbmType weight = static_cast<FloatEbmType>(aCountOccurrences[iSample]);
-      if(nullptr != aWeights) {
-         weight *= aWeights[iSample];
+   FloatEbmType total;
+   if(nullptr == aWeights || CheckAllWeightsEqual(cSamples, aWeights)) {
+      for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+         const FloatEbmType weight = static_cast<FloatEbmType>(aCountOccurrences[iSample]);
+         aWeightsInternal[iSample] = weight;
       }
-      aWeightsInternal[iSample] = weight;
+      total = static_cast<FloatEbmType>(cSamples);
+#ifndef NDEBUG
+      const FloatEbmType debugTotal = AddPositiveFloatsSafe(cSamples, aWeightsInternal);
+      EBM_ASSERT(debugTotal * 0.999 <= total && total <= 1.0001 * debugTotal);
+#endif // NDEBUG
+   } else {
+      for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+         FloatEbmType weight = static_cast<FloatEbmType>(aCountOccurrences[iSample]);
+         weight *= aWeights[iSample];
+         aWeightsInternal[iSample] = weight;
+      }
+      total = AddPositiveFloatsSafe(cSamples, aWeightsInternal);
+      if(std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }) {
+         pRet->Free();
+         LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
+         return nullptr;
+      }
    }
-   const FloatEbmType total = AddPositiveFloatsSafe(cSamples, aWeightsInternal);
-   if(std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }) {
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }");
-      free(aWeightsInternal);
-      free(aCountOccurrences);
-      free(pRet);
-      return nullptr;
-   }
+   // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
+   // to zero though so check it after checking for negative
+   EBM_ASSERT(FloatEbmType { 0 } != total);
 
    pRet->m_pOriginDataFrame = pOriginDataFrame;
-   pRet->m_aCountOccurrences = aCountOccurrences;
-   pRet->m_aWeights = aWeightsInternal;
    pRet->m_weightTotal = total;
 
    LOG_0(TraceLevelVerbose, "Exited SamplingSet::GenerateSingleSamplingSet");
@@ -95,68 +111,73 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
    EBM_ASSERT(nullptr != pOriginDataFrame);
+
+   SamplingSet * const pRet = EbmMalloc<SamplingSet>();
+   if(nullptr == pRet) {
+      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == pRet");
+      return nullptr;
+   }
+   pRet->InitZero();
+
    const size_t cSamples = pOriginDataFrame->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
    if(nullptr == aCountOccurrences) {
+      pRet->Free();
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == aCountOccurrences");
       return nullptr;
    }
-   for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-      aCountOccurrences[iSample] = 1;
-   }
+   pRet->m_aCountOccurrences = aCountOccurrences;
 
    FloatEbmType * const aWeightsInternal = EbmMalloc<FloatEbmType>(cSamples);
    if(nullptr == aWeightsInternal) {
-      free(aCountOccurrences);
+      pRet->Free();
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == aWeightsInternal");
       return nullptr;
    }
-   if(nullptr == aWeights) {
+   pRet->m_aWeights = aWeightsInternal;
+
+   FloatEbmType total;
+   if(nullptr == aWeights || CheckAllWeightsEqual(cSamples, aWeights)) {
       for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+         aCountOccurrences[iSample] = 1;
          aWeightsInternal[iSample] = 1;
       }
+      total = static_cast<FloatEbmType>(cSamples);
    } else {
+      total = AddPositiveFloatsSafe(cSamples, aWeights);
+      if(std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }) {
+         pRet->Free();
+         LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
+         return nullptr;
+      }
+      memcpy(aWeightsInternal, aWeights, sizeof(aWeights[0]) * cSamples);
       for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-         aWeightsInternal[iSample] = aWeights[iSample];
+         aCountOccurrences[iSample] = 1;
       }
    }
-
-   SamplingSet * pRet = EbmMalloc<SamplingSet>();
-   if(nullptr == pRet) {
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == pRet");
-      free(aWeightsInternal);
-      free(aCountOccurrences);
-      return nullptr;
-   }
-
-   const FloatEbmType total = AddPositiveFloatsSafe(cSamples, aWeightsInternal);
-   if(std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }) {
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }");
-      free(aWeightsInternal);
-      free(aCountOccurrences);
-      free(pRet);
-      return nullptr;
-   }
+   // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
+   // to zero though so check it after checking for negative
+   EBM_ASSERT(FloatEbmType { 0 } != total);
 
    pRet->m_pOriginDataFrame = pOriginDataFrame;
-   pRet->m_aCountOccurrences = aCountOccurrences;
-   pRet->m_aWeights = aWeightsInternal;
    pRet->m_weightTotal = total;
 
    LOG_0(TraceLevelInfo, "Exited SamplingSet::GenerateFlatSamplingSet");
    return pRet;
 }
 
-void SamplingSet::FreeSamplingSet(SamplingSet * const pSamplingSet) {
-   LOG_0(TraceLevelInfo, "Entered SamplingSet::FreeSamplingSet");
-   if(nullptr != pSamplingSet) {
-      free(pSamplingSet->m_aCountOccurrences);
-      free(pSamplingSet->m_aWeights);
-      free(pSamplingSet);
-   }
-   LOG_0(TraceLevelInfo, "Exited SamplingSet::FreeSamplingSet");
+void SamplingSet::Free() {
+   EBM_ASSERT(nullptr != this);
+   free(m_aCountOccurrences);
+   free(m_aWeights);
+   free(this);
+}
+
+void SamplingSet::InitZero() {
+   m_aCountOccurrences = nullptr;
+   m_aWeights = nullptr;
 }
 
 WARNING_PUSH
@@ -166,7 +187,10 @@ void SamplingSet::FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** co
    if(LIKELY(nullptr != apSamplingSets)) {
       const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
-         FreeSamplingSet(apSamplingSets[iSamplingSet]);
+         SamplingSet * const pSamplingSet = apSamplingSets[iSamplingSet];
+         if(nullptr != pSamplingSet) {
+            pSamplingSet->Free();
+         }
       }
       free(apSamplingSets);
    }

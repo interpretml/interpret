@@ -44,8 +44,8 @@ class ThreadStateBoosting final {
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
    HistogramTargetEntryBase * m_aSumHistogramTargetEntry;
-   HistogramTargetEntryBase * m_aSumHistogramTargetEntry1;
-   HistogramTargetEntryBase * m_aSumHistogramTargetEntry2;
+   HistogramTargetEntryBase * m_aSumHistogramTargetEntryLeft;
+   HistogramTargetEntryBase * m_aSumHistogramTargetEntryRight;
 
 #ifndef NDEBUG
    const unsigned char * m_aHistogramBucketsEndDebug;
@@ -72,8 +72,8 @@ public:
       m_aTempFloatVector = nullptr;
       m_aEquivalentSplits = nullptr;
       m_aSumHistogramTargetEntry = nullptr;
-      m_aSumHistogramTargetEntry1 = nullptr;
-      m_aSumHistogramTargetEntry2 = nullptr;
+      m_aSumHistogramTargetEntryLeft = nullptr;
+      m_aSumHistogramTargetEntryRight = nullptr;
    }
 
    static void Free(ThreadStateBoosting * const pThreadStateBoosting);
@@ -129,13 +129,13 @@ public:
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntry1Array() {
-      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntry1);
+   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntryLeft() {
+      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntryLeft);
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntry2Array() {
-      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntry2);
+   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntryRight() {
+      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntryRight);
    }
 
 #ifndef NDEBUG

@@ -45,23 +45,23 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS size_t GetCountBestSamplesLeft() {
+   INLINE_ALWAYS size_t GetCountBestSamplesLeft() const {
       return m_cBestSamplesLeft;
    }
 
-   INLINE_ALWAYS void SetCountBestSamplesLeft(size_t cBestSamplesLeft) {
+   INLINE_ALWAYS void SetCountBestSamplesLeft(const size_t cBestSamplesLeft) {
       m_cBestSamplesLeft = cBestSamplesLeft;
    }
 
-   INLINE_ALWAYS FloatEbmType GetBestWeightLeft() {
+   INLINE_ALWAYS FloatEbmType GetBestWeightLeft() const {
       return m_bestWeightLeft;
    }
 
-   INLINE_ALWAYS void SetBestWeightLeft(FloatEbmType bestWeightLeft) {
+   INLINE_ALWAYS void SetBestWeightLeft(const FloatEbmType bestWeightLeft) {
       m_bestWeightLeft = bestWeightLeft;
    }
 
-   INLINE_ALWAYS const HistogramBucket<bClassification> * GetBestHistogramBucketEntry() {
+   INLINE_ALWAYS const HistogramBucket<bClassification> * GetBestHistogramBucketEntry() const {
       return m_pBestHistogramBucketEntry;
    }
 

@@ -446,27 +446,33 @@ Booster * Booster::Allocate(
    pBooster->m_validationWeightTotal = static_cast<FloatEbmType>(cValidationSamples);
    if(0 != cValidationSamples && nullptr != aValidationWeights) {
       if(IsMultiplyError(sizeof(*aValidationWeights), cValidationSamples)) {
-         LOG_0(TraceLevelWarning, 
+         LOG_0(TraceLevelWarning,
             "WARNING Booster::Initialize IsMultiplyError(sizeof(*aValidationWeights), cValidationSamples)");
          Booster::Free(pBooster);
          return nullptr;
       }
-      const size_t cBytes = sizeof(*aValidationWeights) * cValidationSamples;
-      FloatEbmType * pValidationWeightInternal = static_cast<FloatEbmType *>(malloc(cBytes));
-      if(UNLIKELY(nullptr == pValidationWeightInternal)) {
-         LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pValidationWeightInternal");
-         Booster::Free(pBooster);
-         return nullptr;
+      if(!CheckAllWeightsEqual(cValidationSamples, aValidationWeights)) {
+         const FloatEbmType total = AddPositiveFloatsSafe(cValidationSamples, aValidationWeights);
+         if(std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }) {
+            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
+            Booster::Free(pBooster);
+            return nullptr;
+         }
+         // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
+         // to zero though so check it after checking for negative
+         EBM_ASSERT(FloatEbmType { 0 } != total);
+         pBooster->m_validationWeightTotal = total;
+
+         const size_t cBytes = sizeof(*aValidationWeights) * cValidationSamples;
+         FloatEbmType * pValidationWeightInternal = static_cast<FloatEbmType *>(malloc(cBytes));
+         if(UNLIKELY(nullptr == pValidationWeightInternal)) {
+            LOG_0(TraceLevelWarning, "WARNING Booster::Initialize nullptr == pValidationWeightInternal");
+            Booster::Free(pBooster);
+            return nullptr;
+         }
+         pBooster->m_aValidationWeights = pValidationWeightInternal;
+         memcpy(pValidationWeightInternal, aValidationWeights, cBytes);
       }
-      pBooster->m_aValidationWeights = pValidationWeightInternal;
-      memcpy(pValidationWeightInternal, aValidationWeights, cBytes);
-      const FloatEbmType total = AddPositiveFloatsSafe(cValidationSamples, pValidationWeightInternal);
-      if(std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }) {
-         LOG_0(TraceLevelWarning, "WARNING Booster::Initialize std::isnan(total) || std::isinf(total) || total < FloatEbmType { 0 }");
-         Booster::Free(pBooster);
-         return nullptr;
-      }
-      pBooster->m_validationWeightTotal = total;
    }
 
    if(bClassification) {

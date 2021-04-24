@@ -48,6 +48,7 @@ extern void SumHistogramBuckets(
    const size_t cHistogramBuckets
 #ifndef NDEBUG
    , const size_t cSamplesTotal
+   , const FloatEbmType weightTotal
 #endif // NDEBUG
 );
 
@@ -275,6 +276,7 @@ static bool BoostSingleDimensional(
       cHistogramBuckets
 #ifndef NDEBUG
       , pTrainingSet->GetTotalCountSampleOccurrences()
+      , pTrainingSet->GetWeightTotal()
 #endif // NDEBUG
    );
 
