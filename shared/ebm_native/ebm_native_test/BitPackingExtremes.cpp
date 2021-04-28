@@ -22,11 +22,11 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
             test.AddFeatures({ FeatureTest(cBins) });
             test.AddFeatureGroups({ { 0 } });
 
-            std::vector<RegressionSample> trainingSamples;
-            std::vector<RegressionSample> validationSamples;
+            std::vector<TestSample> trainingSamples;
+            std::vector<TestSample> validationSamples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-               trainingSamples.push_back(RegressionSample(7, { cBins - 1 }));
-               validationSamples.push_back(RegressionSample(8, { cBins - 1 }));
+               trainingSamples.push_back(TestSample({ cBins - 1 }, 7));
+               validationSamples.push_back(TestSample({ cBins - 1 }, 8));
             }
             test.AddTrainingSamples(trainingSamples);
             test.AddValidationSamples(validationSamples);
@@ -54,11 +54,11 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
             test.AddFeatures({ FeatureTest(cBins) });
             test.AddFeatureGroups({ { 0 } });
 
-            std::vector<ClassificationSample> trainingSamples;
-            std::vector<ClassificationSample> validationSamples;
+            std::vector<TestSample> trainingSamples;
+            std::vector<TestSample> validationSamples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-               trainingSamples.push_back(ClassificationSample(0, { cBins - 1 }));
-               validationSamples.push_back(ClassificationSample(1, { cBins - 1 }));
+               trainingSamples.push_back(TestSample({ cBins - 1 }, 0));
+               validationSamples.push_back(TestSample({ cBins - 1 }, 1));
             }
             test.AddTrainingSamples(trainingSamples);
             test.AddValidationSamples(validationSamples);
@@ -89,9 +89,9 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
             TestApi test = TestApi(k_learningTypeRegression);
             test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
 
-            std::vector<RegressionSample> samples;
+            std::vector<TestSample> samples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-               samples.push_back(RegressionSample(7, { 0, cBins - 1 }));
+               samples.push_back(TestSample({ 0, cBins - 1 }, 7));
             }
             test.AddInteractionSamples(samples);
             test.InitializeInteraction();
@@ -115,9 +115,9 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
             TestApi test = TestApi(2, 0);
             test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
 
-            std::vector<ClassificationSample> samples;
+            std::vector<TestSample> samples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-               samples.push_back(ClassificationSample(1, { 0, cBins - 1 }));
+               samples.push_back(TestSample({ 0, cBins - 1 }, 1));
             }
             test.AddInteractionSamples(samples);
             test.InitializeInteraction();

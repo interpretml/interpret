@@ -84,13 +84,13 @@ TEST_CASE("test random number generator equivalency") {
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
 
-   std::vector<ClassificationSample> samples;
+   std::vector<TestSample> samples;
    for(int i = 0; i < 1000; ++i) {
-      samples.push_back(ClassificationSample(i % 2, { 0 == (i * 7) % 3 }));
+      samples.push_back(TestSample({ 0 == (i * 7) % 3 }, i % 2));
    }
 
    test.AddTrainingSamples(samples);
-   test.AddValidationSamples({ ClassificationSample(0, { 0 }), ClassificationSample(1, { 1 }) });
+   test.AddValidationSamples({ TestSample({ 0 }, 0), TestSample({ 1 }, 1) });
 
    test.InitializeBoosting(2);
 

@@ -146,68 +146,32 @@ public:
    }
 };
 
-class RegressionSample final {
+class TestSample final {
 public:
+   const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
    const FloatEbmType m_target;
-   const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
-   const FloatEbmType m_priorPredictorPrediction;
-   const FloatEbmType m_weight;
-   const bool m_bNullPredictionScore;
    const bool m_bNullWeight;
+   const FloatEbmType m_weight;
+   const std::vector<FloatEbmType> m_priorScore;
 
-   inline RegressionSample(const FloatEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
-      m_target(target),
+   inline TestSample(const std::vector<IntEbmType> binnedDataPerFeatureArray, const FloatEbmType target) :
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
-      m_priorPredictorPrediction(0),
-      m_weight(1),
-      m_bNullPredictionScore(true),
-      m_bNullWeight(true) {
+      m_target(target),
+      m_bNullWeight(true),
+      m_weight(1) {
    }
 
-   inline RegressionSample(
-      const FloatEbmType target, 
+   inline TestSample(
       const std::vector<IntEbmType> binnedDataPerFeatureArray, 
-      const FloatEbmType priorPredictorPrediction,
-      const FloatEbmType weight
+      const FloatEbmType target,
+      const FloatEbmType weight,
+      const std::vector<FloatEbmType> priorScore = {}
    ) :
-      m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
-      m_priorPredictorPrediction(priorPredictorPrediction),
+      m_target(target),
+      m_bNullWeight(false),
       m_weight(weight),
-      m_bNullPredictionScore(false),
-      m_bNullWeight(false) {
-   }
-};
-
-class ClassificationSample final {
-public:
-   const IntEbmType m_target;
-   const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
-   const std::vector<FloatEbmType> m_priorPredictorPerClassLogits;
-   const FloatEbmType m_weight;
-   const bool m_bNullPredictionScore;
-   const bool m_bNullWeight;
-
-   inline ClassificationSample(const IntEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
-      m_target(target),
-      m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
-      m_weight(1),
-      m_bNullPredictionScore(true),
-      m_bNullWeight(true) {
-   }
-
-   inline ClassificationSample(
-      const IntEbmType target,
-      const std::vector<IntEbmType> binnedDataPerFeatureArray,
-      const std::vector<FloatEbmType> priorPredictorPerClassLogits,
-      const FloatEbmType weight
-   ) :
-      m_target(target),
-      m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
-      m_priorPredictorPerClassLogits(priorPredictorPerClassLogits),
-      m_weight(weight),
-      m_bNullPredictionScore(false),
-      m_bNullWeight(false) {
+      m_priorScore(priorScore) {
    }
 };
 
@@ -363,10 +327,8 @@ public:
 
    void AddFeatures(const std::vector<FeatureTest> features);
    void AddFeatureGroups(const std::vector<std::vector<size_t>> featureGroups);
-   void AddTrainingSamples(const std::vector<RegressionSample> samples);
-   void AddTrainingSamples(const std::vector<ClassificationSample> samples);
-   void AddValidationSamples(const std::vector<RegressionSample> samples);
-   void AddValidationSamples(const std::vector<ClassificationSample> samples);
+   void AddTrainingSamples(const std::vector<TestSample> samples);
+   void AddValidationSamples(const std::vector<TestSample> samples);
    void InitializeBoosting(const IntEbmType countInnerBags = k_countInnerBagsDefault);
    FloatEbmType Boost(
       const IntEbmType indexFeatureGroup,
@@ -387,8 +349,7 @@ public:
       const size_t iScore
    ) const;
    const void GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
-   void AddInteractionSamples(const std::vector<RegressionSample> samples);
-   void AddInteractionSamples(const std::vector<ClassificationSample> samples);
+   void AddInteractionSamples(const std::vector<TestSample> samples);
    void InitializeInteraction();
    FloatEbmType InteractionScore(
       const std::vector<IntEbmType> featuresInGroup, 

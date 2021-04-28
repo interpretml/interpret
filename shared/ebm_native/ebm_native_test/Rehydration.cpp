@@ -13,8 +13,8 @@ TEST_CASE("Test Rehydration, boosting, regression") {
    TestApi testContinuous = TestApi(k_learningTypeRegression);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureGroups({ {} });
-   testContinuous.AddTrainingSamples({ RegressionSample(10, {}) });
-   testContinuous.AddValidationSamples({ RegressionSample(12, {}) });
+   testContinuous.AddTrainingSamples({ TestSample({}, 10) });
+   testContinuous.AddValidationSamples({ TestSample({}, 12) });
    testContinuous.InitializeBoosting();
 
    FloatEbmType model0 = 0;
@@ -26,8 +26,8 @@ TEST_CASE("Test Rehydration, boosting, regression") {
       TestApi testRestart = TestApi(k_learningTypeRegression);
       testRestart.AddFeatures({});
       testRestart.AddFeatureGroups({ {} });
-      testRestart.AddTrainingSamples({ RegressionSample(10, {}, model0, 1) });
-      testRestart.AddValidationSamples({ RegressionSample(12, {}, model0, 1) });
+      testRestart.AddTrainingSamples({ TestSample({}, 10, 1, { model0 }) });
+      testRestart.AddValidationSamples({ TestSample({}, 12, 1, { model0 }) });
       testRestart.InitializeBoosting();
 
       validationMetricRestart = testRestart.Boost(0);
@@ -44,8 +44,8 @@ TEST_CASE("Test Rehydration, boosting, binary") {
    TestApi testContinuous = TestApi(2, 0);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureGroups({ {} });
-   testContinuous.AddTrainingSamples({ ClassificationSample(0, {}) });
-   testContinuous.AddValidationSamples({ ClassificationSample(0, {}) });
+   testContinuous.AddTrainingSamples({ TestSample({}, 0) });
+   testContinuous.AddValidationSamples({ TestSample({}, 0) });
    testContinuous.InitializeBoosting();
 
    FloatEbmType model0 = 0;
@@ -58,8 +58,8 @@ TEST_CASE("Test Rehydration, boosting, binary") {
       TestApi testRestart = TestApi(2, 0);
       testRestart.AddFeatures({});
       testRestart.AddFeatureGroups({ {} });
-      testRestart.AddTrainingSamples({ ClassificationSample(0, {}, { model0, model1 }, 1) });
-      testRestart.AddValidationSamples({ ClassificationSample(0, {}, { model0, model1 }, 1) });
+      testRestart.AddTrainingSamples({ TestSample({}, 0, 1, { model0, model1 }) });
+      testRestart.AddValidationSamples({ TestSample({}, 0, 1, { model0, model1 }) });
       testRestart.InitializeBoosting();
 
       validationMetricRestart = testRestart.Boost(0);
@@ -80,8 +80,8 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
    TestApi testContinuous = TestApi(3);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureGroups({ {} });
-   testContinuous.AddTrainingSamples({ ClassificationSample(0, {}) });
-   testContinuous.AddValidationSamples({ ClassificationSample(0, {}) });
+   testContinuous.AddTrainingSamples({ TestSample({}, 0) });
+   testContinuous.AddValidationSamples({ TestSample({}, 0) });
    testContinuous.InitializeBoosting();
 
    FloatEbmType model0 = 0;
@@ -95,8 +95,8 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
       TestApi testRestart = TestApi(3);
       testRestart.AddFeatures({});
       testRestart.AddFeatureGroups({ {} });
-      testRestart.AddTrainingSamples({ ClassificationSample(0, {}, { model0, model1, model2 }, 1) });
-      testRestart.AddValidationSamples({ ClassificationSample(0, {}, { model0, model1, model2 }, 1) });
+      testRestart.AddTrainingSamples({ TestSample({}, 0, 1, { model0, model1, model2 }) });
+      testRestart.AddValidationSamples({ TestSample({}, 0, 1, { model0, model1, model2 }) });
       testRestart.InitializeBoosting();
 
       validationMetricRestart = testRestart.Boost(0);
