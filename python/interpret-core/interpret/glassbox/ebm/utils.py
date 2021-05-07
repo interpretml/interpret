@@ -6,9 +6,11 @@
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax
 from sklearn.model_selection import train_test_split
+from sklearn.base import is_classifier
 import numbers
 import numpy as np
 import warnings
+import copy
 
 
 import logging
@@ -18,6 +20,179 @@ log = logging.getLogger(__name__)
 
 # TODO: Clean up
 class EBMUtils:
+    
+    @staticmethod
+    def weighted_std(a, axis, weights):
+
+        average = np.average(a, axis , weights)
+        
+        variance = np.average((a - average)**2, axis , weights)
+
+        return np.sqrt(variance)
+
+    @staticmethod
+    def merge_models(models):
+        """ Merging multiple EBM models trained on the same dataset.
+        Args:
+            models: List of EBM models to be merged.
+        Returns:
+            An EBM model with averaged mean and standard deviation of input models.
+        """
+
+        if len(models) < 2:
+            raise Exception("at least two models are required to merge.")
+            return
+
+        # many features are invalid. preprocessor_ and pair_preprocessor_ are cloned form the first model.
+        ebm = copy.deepcopy(models[0]) 
+        
+
+        ebm.additive_terms_ =[]
+        ebm.term_standard_deviations_ = []
+        ebm.bagged_models_=[]
+        ebm.pair_preprocessor_ = None       
+      
+         
+        if not all([  model.preprocessor_.col_types_ == ebm.preprocessor_.col_types_ for model in models]): # pragma: no cover
+            raise Exception("All models should have the same types of features.")
+       
+        if not all([  model.preprocessor_.col_bin_edges_.keys() == ebm.preprocessor_.col_bin_edges_.keys() for model in models]): # pragma: no cover
+                    raise Exception("All models should have the same types of numeric features.")
+
+
+        if not all([  model.preprocessor_.col_mapping_.keys() == ebm.preprocessor_.col_mapping_.keys() for model in models]): # pragma: no cover
+                    raise Exception("All models should have the same types of categorical features.")
+
+        if is_classifier(ebm): # pragma: no cover
+                if not all([is_classifier(model) for model in models]):
+                    raise Exception("All models should be the same type.")
+        else: # pragma: no cover
+                #if ebm is a regressor
+                if any([is_classifier(model) for model in models]):
+                    raise Exception("All models should be the same type.")
+
+        new_feature_groups = []
+        main_feature_len = len(ebm.preprocessor_.feature_names)
+
+        ebm.feature_groups_ = ebm.feature_groups_[:main_feature_len] 
+        ebm.feature_names = ebm.feature_names[:main_feature_len] 
+        ebm.feature_types = ebm.feature_types[:main_feature_len]
+
+        ebm.global_selector = ebm.global_selector.iloc[:main_feature_len]
+        ebm.interactions = 0
+        
+        warnings.warn("Interaction features are not supported.")
+        
+       
+        ebm.additive_terms_ = []
+        ebm.term_standard_deviations_ = []
+        
+        bagged_models = []
+        for x in models:
+            bagged_models.extend(x.bagged_models_) #             
+        ebm.bagged_models_ = bagged_models
+ 
+        for index, feature_group in enumerate(ebm.feature_groups_):           
+
+            # Exluding interaction features 
+            if len(feature_group) != 1:                
+                continue
+
+            log_odds_tensors = []
+            bin_weights = []
+            
+            # numeric features
+            if index in ebm.preprocessor_.col_bin_edges_.keys():           
+                        
+                # merging all bin edges for the current feature across all models.        
+                merged_bin_edges = sorted(set().union(*[ set(model.preprocessor_.col_bin_edges_[index]) for model in models]))
+                
+                ebm.preprocessor_.col_bin_edges_[index] = np.array(merged_bin_edges)
+                
+            
+                estimator_idx=0
+                model_bin_counts = []
+                for model in models:            
+                    # Merging the bin edges for different models for each feature group
+                    bin_edges = model.preprocessor_.col_bin_edges_[index]
+                    bin_counts = model.preprocessor_.col_bin_counts_[index]
+
+                    #bin_idx contains the index of each new merged bin edges against the existing bin edges
+                    bin_idx = np.searchsorted(bin_edges, merged_bin_edges + [np.inf])   
+                    # the first element of adjusted bin indexes is used for weighted average of misssing values.
+                    adj_bin_idx = [0] + ( [ x+1 for x in bin_idx ])
+                    
+                    # new_bin_count_ =  [ bin_counts[x] for x in adj_bin_idx ]  
+                    
+                    # model_bin_counts.append(new_bin_count_) 
+                                        
+                    # All the estimators of one ebm model share the same bin edges
+                    for estimator in model.bagged_models_: 
+
+                        mvalues = estimator.model_[index]      
+                        
+                        # expanding the prediction values to cover all the new merged bin edges                                              
+                        new_model_ = [ mvalues[x] for x in adj_bin_idx ]
+
+                        # updating the new EBM model estimator predictions with the new extended predictions
+                        ebm.bagged_models_[estimator_idx].model_[index] = new_model_
+                        
+                        # bin counts are used as weights to calculate weighted average of new merged bins.                        
+                        weights =[ bin_counts[x] for x in adj_bin_idx ]
+                        
+                        log_odds_tensors.append(new_model_)
+                        bin_weights.append( weights)
+                        
+                        estimator_idx +=1
+
+                                
+            else:
+                # Categorical features
+                merged_col_mapping = sorted(set().union(*[ set(model.preprocessor_.col_mapping_[index]) for model in models]))
+            
+                ebm.preprocessor_.col_mapping_[index] = dict( (key, idx +1) for idx, key in enumerate(merged_col_mapping))
+                
+                for model in models: 
+                                        
+                    bin_counts = model.preprocessor_.col_bin_counts_[index]
+                    
+                    # mask contains the category values for common categories and None for missing ones for each categorical feature
+                    mask = [ model.preprocessor_.col_mapping_[index].get(col, None ) for col in merged_col_mapping]
+
+                    for estimator in model.bagged_models_:
+
+                        mvalues = estimator.model_[index]                           
+                        new_model_ = [mvalues[0]] + [ mvalues[i] if i else 0.0 for i in mask]
+                        
+                        weights = [bin_counts[0]] + [ bin_counts[i] if i else 0.0 for i in mask ]
+                    
+                        log_odds_tensors.append(new_model_)
+                        bin_weights.append( weights)
+            
+                       
+            # Adjusting zero weight values to one to avoid sum-to-zero error for weighted average
+            if all([ w[0]==0 for w in bin_weights ])  :
+                 for bw in bin_weights:
+                     bw[0] = 1
+            
+            ebm.preprocessor_.col_bin_counts_[index] = np.round(np.average(bin_weights, axis=0))
+                   
+            averaged_model = np.average(log_odds_tensors, axis=0 , weights=bin_weights )
+            model_errors = EBMUtils.weighted_std(np.array(log_odds_tensors), axis=0, weights= np.array(bin_weights) )
+
+            ebm.additive_terms_.append(averaged_model)
+            ebm.term_standard_deviations_.append(model_errors)           
+            
+        
+        ebm.feature_importances_ = []        
+        for i in range(len(ebm.feature_groups_)):
+
+            mean_abs_score = np.average(np.abs(ebm.additive_terms_[i]), weights=ebm.preprocessor_.col_bin_counts_[i])
+
+            ebm.feature_importances_.append(mean_abs_score)
+           
+        return ebm
+    
     @staticmethod
     def normalize_initial_random_seed(seed):  # pragma: no cover
         # Some languages do not support 64-bit values.  Other languages do not support unsigned integers.
