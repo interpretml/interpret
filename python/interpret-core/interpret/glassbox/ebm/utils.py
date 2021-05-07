@@ -364,6 +364,37 @@ class EBMUtils:
         return score_vector
 
     @staticmethod
+    def decision_function_and_explain(X, X_pair, feature_groups, model, intercept):
+        if X.ndim == 1:
+            X = X.reshape(X.shape[0], 1)
+
+        # Initialize empty vector for predictions and explanations
+        if isinstance(intercept, numbers.Number) or len(intercept) == 1:
+            score_vector = np.empty(X.shape[1])
+        else:
+            score_vector = np.empty((X.shape[1], len(intercept)))
+
+        np.copyto(score_vector, intercept)
+
+        n_interactions = sum(len(fg) > 1 for fg in feature_groups)
+        explanations = np.empty((X.shape[1], X.shape[0] + n_interactions))
+
+        # Generate prediction scores
+        scores_gen = EBMUtils.scores_by_feature_group(
+            X, X_pair, feature_groups, model
+        )
+        for set_idx, _, scores in scores_gen:
+            score_vector += scores
+            explanations[:, set_idx] = scores
+
+        if not np.all(np.isfinite(score_vector)):  # pragma: no cover
+            msg = "Non-finite values present in log odds vector."
+            log.error(msg)
+            raise Exception(msg)
+
+        return score_vector, explanations
+
+    @staticmethod
     def classifier_predict_proba(X, X_pair, feature_groups, model, intercept):
         log_odds_vector = EBMUtils.decision_function(
             X, X_pair, feature_groups, model, intercept
@@ -386,9 +417,41 @@ class EBMUtils:
         return classes[np.argmax(log_odds_vector, axis=1)]
 
     @staticmethod
+    def classifier_predict_and_explain(X, X_pair, feature_groups, model, intercept, classes, output='probabilities'):
+        scores_vector, explanations = EBMUtils.decision_function_and_explain(
+            X,
+            X_pair,
+            feature_groups,
+            model,
+            intercept
+        )
+
+        if output == 'probabilities':
+            if scores_vector.ndim == 1:
+                scores_vector = np.c_[np.zeros(scores_vector.shape), scores_vector]
+            return softmax(scores_vector), explanations
+        elif output == 'labels':
+            if scores_vector.ndim == 1:
+                scores_vector = np.c_[np.zeros(scores_vector.shape), scores_vector]
+            return classes[np.argmax(scores_vector, axis=1)], explanations
+        else:
+            return scores_vector, explanations
+
+    @staticmethod
     def regressor_predict(X, X_pair, feature_groups, model, intercept):
         scores = EBMUtils.decision_function(X, X_pair, feature_groups, model, intercept)
         return scores
+
+    @staticmethod
+    def regressor_predict_and_explain(X, X_pair, feature_groups, model, intercept):
+        scores, explanations = EBMUtils.decision_function_and_explain(
+            X,
+            X_pair,
+            feature_groups,
+            model,
+            intercept
+        )
+        return scores, explanations
 
     @staticmethod
     def gen_feature_group_name(feature_idxs, col_names):

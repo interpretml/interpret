@@ -18,8 +18,10 @@ import numpy as np
 from warnings import warn
 
 from sklearn.base import is_classifier
+from sklearn.utils.extmath import softmax
 from sklearn.utils.validation import check_is_fitted
 from sklearn.metrics import log_loss, mean_squared_error
+import numbers
 from collections import Counter, defaultdict
 import heapq
 
@@ -1536,6 +1538,44 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.classes_,
         )
 
+    def predict_and_explain(self, X, output='probabilities'):
+        """Predicts on provided samples, returning predictions and explanations for each sample.
+
+        Args:
+            X: Numpy array for samples.
+            output: Prediction type to output (i.e. one of 'probabilities', 'logits', 'labels')
+
+        Returns:
+            Predictions and local explanations for each sample.
+        """
+
+        allowed_outputs = ['probabilities', 'logits', 'labels']
+        if output not in allowed_outputs:
+            msg = "Argument 'output' has invalid value.  Got '{}', expected one of " 
+            + repr(allowed_outputs)
+            raise ValueError(msg.format(output))
+
+        check_is_fitted(self, "has_fitted_")
+        X_orig, _, _, _ = unify_data(
+            X, None, self.feature_names, self.feature_types, missing_data_allowed=False
+        )
+        X = self.preprocessor_.transform(X_orig)
+        X = np.ascontiguousarray(X.T)
+
+        if self.interactions != 0:
+            X_pair = self.pair_preprocessor_.transform(X_orig)
+            X_pair = np.ascontiguousarray(X_pair.T)
+        else:
+            X_pair = None
+
+        return EBMUtils.classifier_predict_and_explain(
+            X,
+            X_pair,
+            self.feature_groups_,
+            self.additive_terms_,
+            self.intercept_,
+            self.classes_,
+            output)
 
 class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
     """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog. """
@@ -1646,5 +1686,33 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             X_pair = None
 
         return EBMUtils.regressor_predict(
+            X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
+        )
+
+
+    def predict_and_explain(self, X):
+        """Predicts on provided samples, returning predictions and explanations for each sample.
+
+        Args:
+            X: Numpy array for samples.
+
+        Returns:
+            Predictions and local explanations for each sample.
+        """
+
+        check_is_fitted(self, "has_fitted_")
+        X_orig, _, _, _ = unify_data(
+            X, None, self.feature_names, self.feature_types, missing_data_allowed=False
+        )
+        X = self.preprocessor_.transform(X_orig)
+        X = np.ascontiguousarray(X.T)
+
+        if self.interactions != 0:
+            X_pair = self.pair_preprocessor_.transform(X_orig)
+            X_pair = np.ascontiguousarray(X_pair.T)
+        else:
+            X_pair = None
+
+        return EBMUtils.regressor_predict_and_explain(
             X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
         )
