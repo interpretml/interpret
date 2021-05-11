@@ -28,3 +28,4 @@ EXPORTS
   SuggestGraphBounds
   GenerateRandomNumber
   SampleWithoutReplacement
+  StratifiedSamplingWithoutReplacement

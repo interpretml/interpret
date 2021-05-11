@@ -27,5 +27,6 @@
       SuggestGraphBounds;
       GenerateRandomNumber;
       SampleWithoutReplacement;
+      StratifiedSamplingWithoutReplacement;
    local: *;
 };

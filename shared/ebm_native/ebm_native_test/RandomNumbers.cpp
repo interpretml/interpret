@@ -35,6 +35,143 @@ TEST_CASE("GenerateRandomNumber, lowest") {
    CHECK(879100963 == ret);
 }
 
+TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
+   constexpr size_t cSamples = 500;
+   IntEbmType targets[cSamples];
+   IntEbmType sampleCounts[cSamples];
+   constexpr size_t cClasses = 10;
+   size_t trainingCount[cClasses];
+   size_t valCount[cClasses];
+   size_t classCount[cClasses];
+
+   RandomStreamTest randomStream(k_randomSeed);
+   if (!randomStream.IsSuccess()) {
+      exit(1);
+   }
+
+   SeedEbmType randomSeed = k_randomSeed;
+
+   for (IntEbmType iRun = 0; iRun < 10000; ++iRun) {
+      size_t cRandomSamples = randomStream.Next(cSamples + 1);
+      size_t cClassSize = randomStream.Next(cClasses) + 1;
+      size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t{ 1 });
+      size_t cValidationSamples = cRandomSamples - cTrainingSamples;
+
+      memset(trainingCount, 0, sizeof(trainingCount));
+      memset(valCount, 0, sizeof(valCount));
+      memset(classCount, 0, sizeof(classCount));
+
+      ++randomSeed;
+
+      for (size_t iSample = 0; iSample < cRandomSamples; ++iSample) {
+         size_t iRandom = randomStream.Next(cClassSize);
+         IntEbmType targetClass = static_cast<IntEbmType>(iRandom);
+         targets[iSample] = targetClass;
+         ++classCount[targetClass];
+      }
+
+      StratifiedSamplingWithoutReplacement(
+         randomSeed,
+         cClassSize,
+         cTrainingSamples,
+         cValidationSamples,
+         targets,
+         sampleCounts
+      );
+
+      // Check the overall correct number of training/validation samples have been returned
+      size_t cTrainingSamplesVerified = 0;
+      size_t cValidationSamplesVerified = 0;
+      for (size_t i = 0; i < cRandomSamples; ++i) {
+         const IntEbmType targetClass = targets[i];
+         const IntEbmType val = sampleCounts[i];
+         CHECK(-1 == val || 1 == val);
+         if (val == 1) {
+            ++cTrainingSamplesVerified;
+            ++trainingCount[targetClass];
+         }
+         if (val == -1) {
+            ++cValidationSamplesVerified;
+            ++valCount[targetClass];
+         }
+      }
+      CHECK(cTrainingSamplesVerified == cTrainingSamples);
+      CHECK(cValidationSamplesVerified == cValidationSamples);
+
+      // Class guarantees:
+      // (1) Either the splits work out perfectly -or- for every class that is above the ideal split, 
+      //     there is one below the ideal split
+      // (2) If a class has only one sample, it should go to train
+      // (3) If a class only has two samples, one should go to train and one should go to test
+      // (4) If a class has enough samples to hit the target train/validation split, its actual
+      //     train/validation split should be no more than one away from the ideal split
+
+      double idealTrainSplit = static_cast<double>(cTrainingSamples) / (cTrainingSamples + cValidationSamples);
+
+      // Should (4) be tested?
+      bool checkProportions = true;
+      for (size_t iClass = 0; iClass < cClassSize; ++iClass) {
+         double cTrainingPerClass = idealTrainSplit * classCount[iClass];
+         double cValidationPerClass = (1 - idealTrainSplit) * classCount[iClass];
+         if (cTrainingPerClass < 1 || cValidationPerClass < 1) {
+            checkProportions = false;
+         }
+      }
+
+      size_t cLower = 0;
+      size_t cHigher = 0;
+
+      for (size_t iClass = 0; iClass < cClassSize; ++iClass) {
+         CHECK(trainingCount[iClass] + valCount[iClass] == classCount[iClass]);
+
+         if (classCount[iClass] == 0) {
+            continue;
+         }
+
+         double actualTrainSplit = trainingCount[iClass] / static_cast<double>(classCount[iClass]);
+
+         cHigher = (idealTrainSplit <= actualTrainSplit) ? ++cHigher : cHigher;
+         cLower = (idealTrainSplit >= actualTrainSplit) ? ++cLower : cLower;
+
+         // Test (2)
+         if (classCount[iClass] == 1) {
+            CHECK(trainingCount[iClass] == 1 && valCount[iClass] == 0);
+         }
+
+         // Test (3)
+         else if (classCount[iClass] == 2) {
+            CHECK(trainingCount[iClass] == 1 && valCount[iClass] == 1);
+         }
+
+         // Test (4)
+         if (checkProportions) {
+            double cTrainIdeal = classCount[iClass] * idealTrainSplit;
+            double cValIdeal = classCount[iClass] * (1 - idealTrainSplit);
+
+            if (idealTrainSplit > actualTrainSplit) {
+               CHECK(static_cast<size_t>(std::floor(cTrainIdeal)) == trainingCount[iClass]);
+               CHECK(static_cast<size_t>(std::ceil(cValIdeal)) == valCount[iClass]);
+            }
+            else if (idealTrainSplit < actualTrainSplit) {
+               CHECK(static_cast<size_t>(std::ceil(cTrainIdeal)) == trainingCount[iClass]);
+               CHECK(static_cast<size_t>(std::floor(cValIdeal)) == valCount[iClass]);
+            }
+            else {
+               CHECK(cTrainIdeal == trainingCount[iClass]);
+               CHECK(cValIdeal == valCount[iClass]);
+            }
+         }
+      }
+
+      // Test (1)
+      size_t cLowHighDiff = cLower > cHigher ? cLower - cHigher : cHigher - cLower;
+      //if (cLowHighDiff != 0 && cLowHighDiff != 1) {
+      //   break;
+      //}
+      CHECK(cLowHighDiff == 0 || cLowHighDiff == 1);
+   }
+}
+
 TEST_CASE("SampleWithoutReplacement, stress test") {
    constexpr size_t cSamples = 1000;
    IntEbmType samples[cSamples];
@@ -45,15 +182,13 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
    }
 
    SeedEbmType randomSeed = k_randomSeed;
-   SeedEbmType stageRandomizationMix = SeedEbmType { 34298572 };
 
    for(IntEbmType iRun = 0; iRun < 10000; ++iRun) {
       size_t cRandomSamples = randomStream.Next(cSamples + 1);
       size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
       size_t cValidationSamples = cRandomSamples - cTrainingSamples;
 
-      randomSeed = GenerateRandomNumber(randomSeed, stageRandomizationMix);
-
+      ++randomSeed;
       SampleWithoutReplacement(
          randomSeed,
          static_cast<IntEbmType>(cTrainingSamples),

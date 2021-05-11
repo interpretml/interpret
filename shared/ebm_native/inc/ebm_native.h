@@ -173,6 +173,7 @@ typedef UIntEbmType UGenerateUpdateOptionsType;
 #define Error_LossIllegalRegistrationName             (EBM_ERROR_CAST(10))
 #define Error_LossIllegalParamName                    (EBM_ERROR_CAST(11))
 #define Error_LossDuplicateParamName                  (EBM_ERROR_CAST(12))
+#define Error_InvalidParameter                        (EBM_ERROR_CAST(13))
 
 #define GenerateUpdateOptions_Default              (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
 #define GenerateUpdateOptions_DisableNewtonGain    (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))
@@ -434,6 +435,15 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SampleWithou
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
    IntEbmType * sampleCountsOut
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
+   SeedEbmType randomSeed,
+   IntEbmType countTargetClasses,
+   IntEbmType countTrainingSamples,
+   IntEbmType countValidationSamples,
+   IntEbmType* targets,
+   IntEbmType* sampleCountsOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
