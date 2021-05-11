@@ -105,7 +105,6 @@ class BuildCommand(build):
         import subprocess
         import os
         import shutil
-        import stat
         
         script_path = os.path.dirname(os.path.abspath(__file__))
         sym_path = os.path.join(script_path, 'symbolic')
@@ -113,11 +112,11 @@ class BuildCommand(build):
         # Native compile
         if os.name == 'nt':
             build_script = os.path.join(sym_path, "build.bat")
+            subprocess.check_call([build_script], cwd=script_path)
         else:
             build_script = os.path.join(sym_path, "build.sh")
-            os.chmod(build_script, stat.S_IXUSR)
+            subprocess.check_call(['bash', build_script], cwd=script_path)
 
-        subprocess.check_call([build_script], cwd=script_path)
         source_dir = os.path.join(sym_path, 'python', 'interpret-core', 'interpret', 'lib')
         target_dir = os.path.join(script_path, 'interpret', 'lib')
         os.makedirs(target_dir, exist_ok=True )
