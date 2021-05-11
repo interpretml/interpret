@@ -100,11 +100,12 @@ extras = {
 
 class BuildCommand(build):
     def run(self):
-       # Run native compilation as well as JavaScript build,
-       # then delegate rest of sdist to default.
+        # Run native compilation as well as JavaScript build,
+        # then delegate rest of sdist to default.
         import subprocess
         import os
         import shutil
+        import stat
         
         script_path = os.path.dirname(os.path.abspath(__file__))
         sym_path = os.path.join(script_path, 'symbolic')
@@ -114,6 +115,8 @@ class BuildCommand(build):
             build_script = os.path.join(sym_path, "build.bat")
         else:
             build_script = os.path.join(sym_path, "build.sh")
+            os.chmod(build_script, stat.S_IXUSR)
+
         subprocess.check_call([build_script], cwd=script_path)
         source_dir = os.path.join(sym_path, 'python', 'interpret-core', 'interpret', 'lib')
         target_dir = os.path.join(script_path, 'interpret', 'lib')
