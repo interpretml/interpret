@@ -101,18 +101,21 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
       // Class guarantees:
       // (1) Either the splits work out perfectly -or- for every class that is above the ideal split, 
       //     there is one below the ideal split
-      // (2) If a class has only one sample, it should go to train
-      // (3) If a class only has two samples, one should go to train and one should go to test
+      // (2) Given a sufficient amount of training samples, if a class has only one sample, it 
+      //     should go to training
+      // (3) Given a sufficient amount of training samples, if a class only has two samples, one 
+      //     should go to train and one should go to test
       // (4) If a class has enough samples to hit the target train/validation split, its actual
-      //     train/validation split should be no more than one away from the ideal split
+      //     train/validation split should be no more than two away from the ideal split (and most of the
+      //     time no more than 1 away)
 
-      double idealTrainSplit = static_cast<double>(cTrainingSamples) / (cTrainingSamples + cValidationSamples);
+      const double idealTrainSplit = static_cast<double>(cTrainingSamples) / (cTrainingSamples + cValidationSamples);
 
       // Should (4) be tested?
       bool checkProportions = true;
       for (size_t iClass = 0; iClass < cClassSize; ++iClass) {
-         double cTrainingPerClass = idealTrainSplit * classCount[iClass];
-         double cValidationPerClass = (1 - idealTrainSplit) * classCount[iClass];
+         const double cTrainingPerClass = idealTrainSplit * classCount[iClass];
+         const double cValidationPerClass = (1 - idealTrainSplit) * classCount[iClass];
          if (cTrainingPerClass < 1 || cValidationPerClass < 1) {
             checkProportions = false;
          }
@@ -128,46 +131,49 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
             continue;
          }
 
-         double actualTrainSplit = trainingCount[iClass] / static_cast<double>(classCount[iClass]);
+         const double actualTrainSplit = trainingCount[iClass] / static_cast<double>(classCount[iClass]);
 
          cHigher = (idealTrainSplit <= actualTrainSplit) ? ++cHigher : cHigher;
          cLower = (idealTrainSplit >= actualTrainSplit) ? ++cLower : cLower;
-
-         // Test (2)
-         if (classCount[iClass] == 1) {
-            CHECK(trainingCount[iClass] == 1 && valCount[iClass] == 0);
-         }
-
-         // Test (3)
-         else if (classCount[iClass] == 2) {
-            CHECK(trainingCount[iClass] == 1 && valCount[iClass] == 1);
+         
+         if (cClassSize < cTrainingSamples) {
+            // Test (2)
+            if (classCount[iClass] == 1) {
+               CHECK(trainingCount[iClass] == 1 && valCount[iClass] == 0);
+            }
+            // Test (3)
+            else if (cClassSize < cValidationSamples && classCount[iClass] == 2) {
+               CHECK(trainingCount[iClass] == 1 && valCount[iClass] == 1);
+            }
          }
 
          // Test (4)
+         // Note: never more than 2 off
          if (checkProportions) {
-            double cTrainIdeal = classCount[iClass] * idealTrainSplit;
-            double cValIdeal = classCount[iClass] * (1 - idealTrainSplit);
+            const double cTrainIdeal = classCount[iClass] * idealTrainSplit;
+            const double cValIdeal = classCount[iClass] * (1 - idealTrainSplit);
 
             if (idealTrainSplit > actualTrainSplit) {
                CHECK(static_cast<size_t>(std::floor(cTrainIdeal)) == trainingCount[iClass]);
                CHECK(static_cast<size_t>(std::ceil(cValIdeal)) == valCount[iClass]);
             }
             else if (idealTrainSplit < actualTrainSplit) {
+               if (static_cast<size_t>(std::ceil(cTrainIdeal)) != trainingCount[iClass]) {
+                  int x = 0;
+               }
                CHECK(static_cast<size_t>(std::ceil(cTrainIdeal)) == trainingCount[iClass]);
                CHECK(static_cast<size_t>(std::floor(cValIdeal)) == valCount[iClass]);
             }
             else {
-               CHECK(cTrainIdeal == trainingCount[iClass]);
-               CHECK(cValIdeal == valCount[iClass]);
+               CHECK_APPROX(trainingCount[iClass], cTrainIdeal);
+               CHECK_APPROX(valCount[iClass], cValIdeal);
             }
          }
       }
 
       // Test (1)
       size_t cLowHighDiff = cLower > cHigher ? cLower - cHigher : cHigher - cLower;
-      //if (cLowHighDiff != 0 && cLowHighDiff != 1) {
-      //   break;
-      //}
+
       CHECK(cLowHighDiff == 0 || cLowHighDiff == 1);
    }
 }

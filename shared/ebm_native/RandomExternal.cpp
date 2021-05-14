@@ -282,7 +282,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
          const size_t cClassTraining = aTargetSamplingCounts[iTargetClass].m_cTraining;
          const size_t cClassRemaining = aTargetSamplingCounts[iTargetClass].m_cTotalRemaining;
 
-         if (cClassTraining == cClassRemaining ) {
+         if (cClassTraining == cClassRemaining) {
             continue;
          }
          EBM_ASSERT(0 < cClassRemaining); // because cClassTraining == cClassRemaining if cClassRemaining is zero
