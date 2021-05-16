@@ -129,8 +129,12 @@ class BuildCommand(build):
 
         # JavaScript compile
         js_path = os.path.join(script_path, 'js')
-        subprocess.run(["npm", "install"], cwd=js_path, shell=True)
-        subprocess.run(["npm", "run", "build-prod"], cwd=js_path, shell=True)
+        if os.getenv('Agent.Id'):  # In Azure DevOps
+            subprocess.run(["npm", "install"], cwd=js_path, shell=True)
+            subprocess.run(["npm", "run", "build-prod"], cwd=js_path, shell=True)
+        else:
+            subprocess.run(["npm install"], cwd=js_path, shell=True)
+            subprocess.run(["npm run build-prod"], cwd=js_path, shell=True)
         js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
         js_bundle_dest = os.path.join(
             "interpret", "lib", "interpret-inline.js"
