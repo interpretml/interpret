@@ -332,7 +332,8 @@ jobs:
       echo "backend: TkAgg" >> ~/.matplotlib/matplotlibrc
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Matplotlib patch for mac.'
-  - script: python -m pip install -r dev-requirements.txt
+  # - script: python -m pip install -r dev-requirements.txt
+  - script: python -m pip install -e .[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,treeinterpreter,dash,skoperules,testing]
     condition: succeeded()
     workingDirectory: python/interpret-core
     displayName: 'Install requirements (Linux/Mac/Windows)'
