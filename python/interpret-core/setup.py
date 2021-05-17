@@ -129,7 +129,7 @@ class BuildCommand(build):
 
         # JavaScript compile
         js_path = os.path.join(script_path, 'js')
-        if os.getenv('AGENT_NAME'):  # In DevOps
+        if os.getenv('AGENT_NAME') or os.name != 'nt':  # In DevOps / Linux
             subprocess.run(["npm install"], cwd=js_path, shell=True)
             subprocess.run(["npm run build-prod"], cwd=js_path, shell=True)
         else:
