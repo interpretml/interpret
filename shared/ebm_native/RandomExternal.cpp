@@ -122,6 +122,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
 static int g_cLogEnterStratifiedSamplingWithoutReplacementParametersMessages = 5;
 static int g_cLogExitStratifiedSamplingWithoutReplacementParametersMessages = 5;
 
+
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
@@ -216,17 +217,25 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
       return Error_InvalidParameter;
    }
 
-   const size_t aTargetSamplingCountsSize = sizeof(TargetSamplingCounts) * cTargetClasses;
-   TargetSamplingCounts* aTargetSamplingCounts = static_cast<TargetSamplingCounts*>(malloc(aTargetSamplingCountsSize));
+   if (UNLIKELY(cTrainingSamples < cTargetClasses)) {
+      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cTrainingSamples < cTargetClasses");
+   }
+
+   if (UNLIKELY(cValidationSamples < cTargetClasses)) {
+      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cValidationSamples < cTargetClasses");
+   }
+
+   const size_t targetSamplingCountsSize = sizeof(TargetSamplingCounts) * cTargetClasses;
+   TargetSamplingCounts* aTargetSamplingCounts = static_cast<TargetSamplingCounts*>(malloc(targetSamplingCountsSize));
 
    if (UNLIKELY(nullptr == aTargetSamplingCounts)) {
       LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement out of memory nullptr == aTargetSamplingCounts");
       return Error_OutOfMemory;
    }
 
-   memset(aTargetSamplingCounts, 0, aTargetSamplingCountsSize);
+   memset(aTargetSamplingCounts, 0, targetSamplingCountsSize);
 
-   // calculate how many samples with each label is available in the target
+   // calculate number of samples per label in the target
    for (size_t i = 0; i < cSamples; i++) {
       IntEbmType label = targets[i];
 
@@ -239,34 +248,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
       ++aTargetSamplingCounts[label].m_cTotalRemaining;
    }
 
-   size_t globalLeftover = cTrainingSamples;
-
-   size_t numerator = 0;
-   if (cTargetClasses < cTrainingSamples) {
-      numerator = cTrainingSamples - cTargetClasses;
-   } else {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement cTargetClasses >= cTrainingSamples");
-   }
-
-   double idealTrainingProportionReduced = static_cast<double>(numerator) / cSamples;
-   EBM_ASSERT(!std::isnan(idealTrainingProportionReduced)); // since we checked cSamples not zero above
-   EBM_ASSERT(!std::isinf(idealTrainingProportionReduced)); // since we checked cSamples not zero above
-   EBM_ASSERT(0 <= idealTrainingProportionReduced);
-   EBM_ASSERT(idealTrainingProportionReduced <= 1);
-
-   for (size_t iTargetClass = 0; iTargetClass < cTargetClasses; iTargetClass++) {
-      size_t cTrainingPerClass = static_cast<size_t>(std::floor(idealTrainingProportionReduced * aTargetSamplingCounts[iTargetClass].m_cTotalRemaining));
-      if (0 < cTrainingPerClass) {
-         // this is to guarantee that we have 1 leftover per class to assign so that we can give 1 to any classes
-         // that have 0 samples.  Floating point numbers are inexact
-         --cTrainingPerClass;
-      }
-      aTargetSamplingCounts[iTargetClass].m_cTraining = cTrainingPerClass;
-      EBM_ASSERT(cTrainingPerClass <= globalLeftover);
-      globalLeftover -= cTrainingPerClass;
-   }
-   EBM_ASSERT(globalLeftover <= cSamples);
-   EBM_ASSERT(cTargetClasses <= globalLeftover || (cTrainingSamples < cTargetClasses && cTrainingSamples == globalLeftover));
+   // This stratified sampling algorithm guarantees:
+   // (1) Either the train/validation counts work out perfectly for each class -or- there is at 
+   //     least one class with a count above the ideal training count and at least one class with
+   //     a training count below the ideal count,
+   // (2) Given a sufficient amount of training samples, if a class has only one sample, it 
+   //     should go to training,
+   // (3) Given a sufficient amount of training samples, if a class only has two samples, one 
+   //     should go to train and one should go to test,
+   // (4) If a class has enough samples to hit the target train/validation count, its actual
+   //     train/validation count should be no more than one away from the ideal count. 
+   // 
+   // Given these guarantees, the sketch of this algorithm is that for the common case where there 
+   // are enough training samples to have more than one sample per class, we initialize the count 
+   // of the training samples per class to be the floor of the ideal training count.  This will 
+   // leave some amount of samples to be "leftover".  We assign leftovers to classes by determining
+   // which class will get closest to its ideal training count by giving it one more training 
+   // sample.  If there is more than one class that gets the same improvement, we'll randomly 
+   // assign the "leftover" to one of the classes.
+   // 
+   // In addition to having leftovers as a result of taking the floor of the ideal training count 
+   // of each class, we decrement the ideal training count of each class by 1 and consider those
+   // samples leftovers as well.  This assures us we have enough leftovers to give 1 to any classes
+   // that have 0 training samples when looking at leftovers.  We use this to achieve the 2nd 
+   // guarantee that any class with at 1 sample will get at least one sample assigned to training.
+   //
+   // For the odd cases where there aren't enough training samples given to give at least one 
+   // sample to each class, we'll let all the training samples be considered leftover and allow our
+   // boosting of improvement for classes with no samples to drive how assignment of training 
+   // samples is done as ideal training counts are impossible to achieve, but we'll try to assign
+   // at least one training sample to each class that has samples.
 
    double idealTrainingProportion = static_cast<double>(cTrainingSamples) / cSamples;
    EBM_ASSERT(!std::isnan(idealTrainingProportion)); // since we checked cSamples not zero above
@@ -274,9 +285,45 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    EBM_ASSERT(0 <= idealTrainingProportion);
    EBM_ASSERT(idealTrainingProportion <= 1);
 
+   size_t globalLeftover = cTrainingSamples;
+
+   if (cTrainingSamples > cTargetClasses) {
+
+      size_t cClassesWithSamples = 0;
+
+      for (size_t iTargetClass = 0; iTargetClass < cTargetClasses; iTargetClass++) {
+         double fTrainingPerClass = std::floor(idealTrainingProportion * aTargetSamplingCounts[iTargetClass].m_cTotalRemaining);
+         size_t cTrainingPerClass = static_cast<size_t>(fTrainingPerClass);
+         if (0 < cTrainingPerClass) {
+            // 
+            --cTrainingPerClass;
+         }
+         cClassesWithSamples = (aTargetSamplingCounts[iTargetClass].m_cTotalRemaining > 0) ? cClassesWithSamples + 1 : cClassesWithSamples;
+         aTargetSamplingCounts[iTargetClass].m_cTraining = cTrainingPerClass;
+         EBM_ASSERT(cTrainingPerClass <= globalLeftover);
+         globalLeftover -= cTrainingPerClass;
+      }
+
+      EBM_ASSERT(cClassesWithSamples <= globalLeftover);
+   }
+
+   EBM_ASSERT(globalLeftover <= cSamples);
+
+   const size_t mostImprovedClassesCapacity = sizeof(size_t) * cTargetClasses;
+   size_t* aMostImprovedClasses = static_cast<size_t*>(malloc(mostImprovedClassesCapacity));
+
+   if (UNLIKELY(nullptr == aMostImprovedClasses)) {
+      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement out of memory nullptr == aMostImprovedClasses");
+      return Error_OutOfMemory;
+   }
+
+   RandomStream randomStream;
+   randomStream.InitializeUnsigned(randomSeed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
+
    for (size_t iLeftover = 0; iLeftover < globalLeftover; iLeftover++) {
       double maxImprovement = std::numeric_limits<double>::lowest();
-      size_t mostImprovedClass = 0;
+      size_t mostImprovedClassesSize = 0;
+      memset(aMostImprovedClasses, 0, mostImprovedClassesCapacity);
 
       for (size_t iTargetClass = 0; iTargetClass < cTargetClasses; iTargetClass++) {
          const size_t cClassTraining = aTargetSamplingCounts[iTargetClass].m_cTraining;
@@ -286,12 +333,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
             continue;
          }
          EBM_ASSERT(0 < cClassRemaining); // because cClassTraining == cClassRemaining if cClassRemaining is zero
-        
-         double curProportion = cClassTraining / static_cast<double>(cClassRemaining);
-         double newProportion = (cClassTraining + 1) / static_cast<double>(cClassRemaining);
-         double curProportionDiff = (idealTrainingProportion - curProportion);
-         double newProportionDiff = (idealTrainingProportion - newProportion);
-         double improvement = (curProportionDiff * curProportionDiff) - (newProportionDiff * newProportionDiff);
+
+         double idealClassTraining = idealTrainingProportion * static_cast<double>(cClassRemaining);
+         double curTrainingDiff = idealClassTraining - cClassTraining;
+         double newTrainingDiff = idealClassTraining - (cClassTraining + 1);
+         double improvement = (curTrainingDiff * curTrainingDiff) - (newTrainingDiff * newTrainingDiff);
          
          if (0 == cClassTraining) {
             // improvement should not be able to be larger than 9
@@ -300,14 +346,24 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
             // improvement should not be able to be larger than 9
             improvement -= 32;
          }
+         
          if (improvement > maxImprovement) {
             maxImprovement = improvement;
-            mostImprovedClass = iTargetClass;
+            memset(aMostImprovedClasses, 0, mostImprovedClassesCapacity);
+            mostImprovedClassesSize = 0;
+         }
+         
+         if (improvement == maxImprovement) {
+            aMostImprovedClasses[mostImprovedClassesSize] = iTargetClass;
+            ++mostImprovedClassesSize;
          }
       }
       EBM_ASSERT(std::numeric_limits<double>::lowest() != maxImprovement);
 
-      ++aTargetSamplingCounts[mostImprovedClass].m_cTraining;
+      // If more than one class has the same max improvement, randomly select between the classes
+      // to give the leftover to.
+      size_t iRandom = randomStream.Next(mostImprovedClassesSize);
+      ++aTargetSamplingCounts[aMostImprovedClasses[iRandom]].m_cTraining;
    }
 
 #ifndef NDEBUG
@@ -317,9 +373,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    }
    EBM_ASSERT(assignedTrainingCount == cTrainingSamples);
 #endif
-
-   RandomStream randomStream;
-   randomStream.InitializeUnsigned(randomSeed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
 
    for (size_t iSample = 0; iSample < cSamples; iSample++) {
       TargetSamplingCounts* pTargetSample = &aTargetSamplingCounts[targets[iSample]];
@@ -346,6 +399,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
 #endif
 
    free(aTargetSamplingCounts);
+   free(aMostImprovedClasses);
 
    LOG_COUNTED_0(
       &g_cLogExitStratifiedSamplingWithoutReplacementParametersMessages,

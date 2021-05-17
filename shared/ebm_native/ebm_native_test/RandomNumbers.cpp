@@ -98,16 +98,16 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
       CHECK(cTrainingSamplesVerified == cTrainingSamples);
       CHECK(cValidationSamplesVerified == cValidationSamples);
 
-      // Class guarantees:
-      // (1) Either the splits work out perfectly -or- for every class that is above the ideal split, 
-      //     there is one below the ideal split
+      // This stratified sampling algorithm guarantees:
+      // (1) Either the train/validation counts work out perfectly for each class -or- there is at 
+      //     least one class with a count above the ideal training count and at least one class with
+      //     a training count below the ideal count,
       // (2) Given a sufficient amount of training samples, if a class has only one sample, it 
-      //     should go to training
+      //     should go to training,
       // (3) Given a sufficient amount of training samples, if a class only has two samples, one 
-      //     should go to train and one should go to test
-      // (4) If a class has enough samples to hit the target train/validation split, its actual
-      //     train/validation split should be no more than two away from the ideal split (and most of the
-      //     time no more than 1 away)
+      //     should go to train and one should go to test,
+      // (4) If a class has enough samples to hit the target train/validation count, its actual
+      //     train/validation count should be no more than one away from the ideal count. 
 
       const double idealTrainSplit = static_cast<double>(cTrainingSamples) / (cTrainingSamples + cValidationSamples);
 
@@ -148,7 +148,7 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
          }
 
          // Test (4)
-         // Note: never more than 2 off
+         // Note: never more than 1 off
          if (checkProportions) {
             const double cTrainIdeal = classCount[iClass] * idealTrainSplit;
             const double cValIdeal = classCount[iClass] * (1 - idealTrainSplit);
@@ -158,9 +158,6 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
                CHECK(static_cast<size_t>(std::ceil(cValIdeal)) == valCount[iClass]);
             }
             else if (idealTrainSplit < actualTrainSplit) {
-               if (static_cast<size_t>(std::ceil(cTrainIdeal)) != trainingCount[iClass]) {
-                  int x = 0;
-               }
                CHECK(static_cast<size_t>(std::ceil(cTrainIdeal)) == trainingCount[iClass]);
                CHECK(static_cast<size_t>(std::floor(cValIdeal)) == valCount[iClass]);
             }
@@ -172,9 +169,7 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
       }
 
       // Test (1)
-      size_t cLowHighDiff = cLower > cHigher ? cLower - cHigher : cHigher - cLower;
-
-      CHECK(cLowHighDiff == 0 || cLowHighDiff == 1);
+      CHECK((cLower > 0 && cHigher > 0) || (cRandomSamples == 0));
    }
 }
 
