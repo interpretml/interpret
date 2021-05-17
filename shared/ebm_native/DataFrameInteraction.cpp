@@ -161,6 +161,7 @@ void DataFrameInteraction::Destruct() {
    LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::Destruct");
 
    free(m_aGradientsAndHessians);
+   free(m_aWeights);
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(1 <= m_cFeatureAtomics);
       StorageDataType ** paInputData = m_aaInputData;
