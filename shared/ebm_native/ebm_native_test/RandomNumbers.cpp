@@ -162,8 +162,8 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
                CHECK(static_cast<size_t>(std::floor(cValIdeal)) == valCount[iClass]);
             }
             else {
-               CHECK_APPROX(trainingCount[iClass], cTrainIdeal);
-               CHECK_APPROX(valCount[iClass], cValIdeal);
+               CHECK_APPROX(static_cast<double>(trainingCount[iClass]), cTrainIdeal);
+               CHECK_APPROX(static_cast<double>(valCount[iClass]), cValIdeal);
             }
          }
       }

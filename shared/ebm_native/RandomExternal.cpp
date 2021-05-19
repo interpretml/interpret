@@ -186,7 +186,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    }
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
 
-   if (UNLIKELY(IsAddError(countTrainingSamples, countValidationSamples))) {
+   if (UNLIKELY(IsAddError(cTrainingSamples, cValidationSamples))) {
       LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement IsAddError(countTrainingSamples, countValidationSamples))");
       return Error_InvalidParameter;
    }
@@ -295,7 +295,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
          double fTrainingPerClass = std::floor(idealTrainingProportion * aTargetSamplingCounts[iTargetClass].m_cTotalRemaining);
          size_t cTrainingPerClass = static_cast<size_t>(fTrainingPerClass);
          if (0 < cTrainingPerClass) {
-            // 
             --cTrainingPerClass;
          }
          cClassesWithSamples = (aTargetSamplingCounts[iTargetClass].m_cTotalRemaining > 0) ? cClassesWithSamples + 1 : cClassesWithSamples;
@@ -314,6 +313,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
 
    if (UNLIKELY(nullptr == aMostImprovedClasses)) {
       LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement out of memory nullptr == aMostImprovedClasses");
+      free(aTargetSamplingCounts);
       return Error_OutOfMemory;
    }
 
