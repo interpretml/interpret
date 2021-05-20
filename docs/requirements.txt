@@ -1,0 +1,6 @@
+jupyter-book
+matplotlib
+numpy
+ghp-import
+sphinxcontrib-napoleon
+sphinxcontrib-katex

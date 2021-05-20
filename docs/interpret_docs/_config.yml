@@ -1,0 +1,45 @@
+#######################################################################################
+# A default configuration that will be loaded for all jupyter books
+# See the documentation for help and more options: 
+# https://jupyterbook.org/customize/config.html
+
+#######################################################################################
+# Book settings
+title                       : ""  # The title of the book. Will be placed in the left navbar.
+author                      : InterpretML Team  # The author of the book
+copyright                   : "2021"  # Copyright year to be placed in the footer
+logo                        : logo.png  # A path to the book logo
+
+execute:
+  timeout: 120
+  allow_errors: true
+
+bibtex_bibfiles:
+  - references.bib
+
+
+images_url: "/assets/images"
+
+myst_enable_extensions:
+  # - amsmath
+  - colon_fence
+  # - deflist
+  - dollarmath
+  # - html_admonition
+  - html_image
+  - linkify
+  # - replacements
+  # - smartquotes
+  - substitution
+
+sphinx:
+  config:
+    # mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+    napoleon_google_docstring: True
+    napoleon_use_param: True
+    napoleon_use_ivar: True
+    autoclass_content: 'init'
+  extra_extensions:
+    - 'sphinx.ext.autodoc'
+    - 'sphinx.ext.napoleon'
+    - 'sphinxcontrib.katex'

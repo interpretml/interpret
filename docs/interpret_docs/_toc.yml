@@ -1,0 +1,33 @@
+# Table of content
+# Learn more at https://jupyterbook.org/customize/toc.html
+#
+
+- file: intro
+- part: Quick Overview
+  chapters:
+    - file: getting-started-intro
+      sections:
+        - file: getting-started
+    - file: what-the-faq
+      sections:
+        - file: faq
+- part: Algorithms
+  chapters:
+    - file: glassbox
+      sections:
+      - file: ebm
+      - file: lr
+      - file: dt
+      - file: dr
+    - file: blackbox
+      sections:
+      - file: shap
+      - file: lime
+      - file: pdp
+      - file: msa
+- part: Framework
+  chapters:
+    - file: framework
+- part: Deployment Guide
+  chapters:
+    - file: deployment-guide
