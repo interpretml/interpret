@@ -39,9 +39,8 @@ class EBMUtils:
             An EBM model with averaged mean and standard deviation of input models.
         """
 
-        if len(models) < 2:
+        if len(models) < 2:  # pragma: no cover
             raise Exception("at least two models are required to merge.")
-            return
 
         # many features are invalid. preprocessor_ and pair_preprocessor_ are cloned form the first model.
         ebm = copy.deepcopy(models[0]) 
@@ -53,25 +52,24 @@ class EBMUtils:
         ebm.pair_preprocessor_ = None       
       
          
-        if not all([  model.preprocessor_.col_types_ == ebm.preprocessor_.col_types_ for model in models]): # pragma: no cover
+        if not all([  model.preprocessor_.col_types_ == ebm.preprocessor_.col_types_ for model in models]):  # pragma: no cover
             raise Exception("All models should have the same types of features.")
        
-        if not all([  model.preprocessor_.col_bin_edges_.keys() == ebm.preprocessor_.col_bin_edges_.keys() for model in models]): # pragma: no cover
+        if not all([  model.preprocessor_.col_bin_edges_.keys() == ebm.preprocessor_.col_bin_edges_.keys() for model in models]):  # pragma: no cover
                     raise Exception("All models should have the same types of numeric features.")
 
 
-        if not all([  model.preprocessor_.col_mapping_.keys() == ebm.preprocessor_.col_mapping_.keys() for model in models]): # pragma: no cover
+        if not all([  model.preprocessor_.col_mapping_.keys() == ebm.preprocessor_.col_mapping_.keys() for model in models]):  # pragma: no cover
                     raise Exception("All models should have the same types of categorical features.")
 
-        if is_classifier(ebm): # pragma: no cover
+        if is_classifier(ebm):  # pragma: no cover
                 if not all([is_classifier(model) for model in models]):
                     raise Exception("All models should be the same type.")
-        else: # pragma: no cover
-                #if ebm is a regressor
+        else:  # pragma: no cover
+                # Check if ebm is a regressor
                 if any([is_classifier(model) for model in models]):
                     raise Exception("All models should be the same type.")
 
-        new_feature_groups = []
         main_feature_len = len(ebm.preprocessor_.feature_names)
 
         ebm.feature_groups_ = ebm.feature_groups_[:main_feature_len] 
@@ -111,7 +109,6 @@ class EBMUtils:
                 
             
                 estimator_idx=0
-                model_bin_counts = []
                 for model in models:            
                     # Merging the bin edges for different models for each feature group
                     bin_edges = model.preprocessor_.col_bin_edges_[index]
@@ -123,8 +120,6 @@ class EBMUtils:
                     adj_bin_idx = [0] + ( [ x+1 for x in bin_idx ])
                     
                     # new_bin_count_ =  [ bin_counts[x] for x in adj_bin_idx ]  
-                    
-                    # model_bin_counts.append(new_bin_count_) 
                                         
                     # All the estimators of one ebm model share the same bin edges
                     for estimator in model.bagged_models_: 

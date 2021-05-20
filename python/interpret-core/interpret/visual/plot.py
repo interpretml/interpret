@@ -796,7 +796,7 @@ def plot_ebm_multiple_booleans(feat_names, ebm_global, mpl_style=False, figname=
             else:
                 print("Feature: {} is not observed as a Boolean variable.".format(feat_name))
     if mpl_style:
-        fig = plt.figure(figsize=(12, 12))
+        _ = plt.figure(figsize=(12, 12))
         sorted_i = np.argsort(impacts)
         for counter, i in enumerate(sorted_i):
             plt.bar(counter, impacts[i], width=0.5, color='blue', edgecolor='black',

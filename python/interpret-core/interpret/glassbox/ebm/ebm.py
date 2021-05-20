@@ -18,11 +18,8 @@ import numpy as np
 from warnings import warn
 
 from sklearn.base import is_classifier
-from sklearn.utils.extmath import softmax
 from sklearn.utils.validation import check_is_fitted
 from sklearn.metrics import log_loss, mean_squared_error
-import numbers
-from collections import Counter, defaultdict
 import heapq
 
 from sklearn.base import (
@@ -1199,7 +1196,7 @@ class BaseEBM(BaseEstimator):
             elif len(feature_indexes) == 2:
                 # hack. remove the 0th index which is for missing values
                 model_graph = model_graph[1:, 1:]
-                errors = errors[1:, 1:]
+                # errors = errors[1:, 1:]  # NOTE: This is commented as it's not used in this branch.
 
 
                 bin_labels_left = self.pair_preprocessor_._get_bin_labels(feature_indexes[0])
