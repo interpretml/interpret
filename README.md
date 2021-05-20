@@ -46,17 +46,16 @@ EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations
 
 # Supported Techniques
 
-|Interpretability Technique|Type|Examples|
-|--|--|--------------------|
-|Explainable Boosting|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
-|Decision Tree|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
-|Decision Rule List|glassbox model|Coming Soon|
-|Linear/Logistic Regression|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
-|SHAP Kernel Explainer|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
-|SHAP Tree Explainer|blackbox explainer|Coming Soon|
-|LIME|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
-|Morris Sensitivity Analysis|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
-|Partial Dependence|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
+| Interpretability Technique  | Type               |
+|-----------------------------|--------------------|
+| [Explainable Boosting](https://interpret.ml/docs/ebm.html)        | glassbox model     |
+| [Decision Tree](https://interpret.ml/docs/dt.html)                | glassbox model     |
+| [Decision Rule List](https://interpret.ml/docs/dr.html)           | glassbox model     |
+| [Linear/Logistic Regression](https://interpret.ml/docs/lr.html)   | glassbox model     |
+| [SHAP Kernel Explainer](https://interpret.ml/docs/shap.html)      | blackbox explainer |
+| [LIME](https://interpret.ml/docs/lime.html)                       | blackbox explainer |
+| [Morris Sensitivity Analysis](https://interpret.ml/docs/msa.html) | blackbox explainer |
+| [Partial Dependence](https://interpret.ml/docs/pdp.html)          | blackbox explainer |
 
 # Train a glassbox model
 
