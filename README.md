@@ -100,6 +100,10 @@ show([logistic_regression_global, decision_tree_global])
 <br/>
 <br/>
 
+For more information, see the [documentation](https://interpret.ml/docs/getting-started.html).
+<br/>
+<br/>
+
 # Acknowledgements
 
 InterpretML was originally created by (equal contributions): Samuel Jenkins, Harsha Nori, Paul Koch, and Rich Caruana
