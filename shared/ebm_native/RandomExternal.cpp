@@ -122,6 +122,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
 static int g_cLogEnterStratifiedSamplingWithoutReplacementParametersMessages = 5;
 static int g_cLogExitStratifiedSamplingWithoutReplacementParametersMessages = 5;
 
+WARNING_PUSH
+WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
    SeedEbmType randomSeed,
@@ -226,14 +228,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    }
 
    const size_t targetSamplingCountsSize = sizeof(TargetSamplingCounts) * cTargetClasses;
-   TargetSamplingCounts* aTargetSamplingCounts = static_cast<TargetSamplingCounts*>(malloc(targetSamplingCountsSize));
+   TargetSamplingCounts* pTargetSamplingCounts = static_cast<TargetSamplingCounts*>(malloc(targetSamplingCountsSize));
 
-   if (UNLIKELY(nullptr == aTargetSamplingCounts)) {
+   if (UNLIKELY(nullptr == pTargetSamplingCounts)) {
       LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement out of memory nullptr == aTargetSamplingCounts");
       return Error_OutOfMemory;
    }
 
-   memset(aTargetSamplingCounts, 0, targetSamplingCountsSize);
+   memset(pTargetSamplingCounts, 0, targetSamplingCountsSize);
 
    // calculate number of samples per label in the target
    for (size_t i = 0; i < cSamples; i++) {
@@ -241,11 +243,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
 
       if (UNLIKELY(label < 0 || label >= countTargetClasses)) {
          LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement label >= cTargetClasses");
-         free(aTargetSamplingCounts);
+         free(pTargetSamplingCounts);
          return Error_InvalidParameter;
       }
 
-      ++aTargetSamplingCounts[label].m_cTotalRemaining;
+      (pTargetSamplingCounts + label)->m_cTotalRemaining++;
    }
 
    // This stratified sampling algorithm guarantees:
@@ -288,17 +290,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    size_t globalLeftover = cTrainingSamples;
 
    if (cTrainingSamples > cTargetClasses) {
-
       size_t cClassesWithSamples = 0;
 
       for (size_t iTargetClass = 0; iTargetClass < cTargetClasses; iTargetClass++) {
-         double fTrainingPerClass = std::floor(idealTrainingProportion * aTargetSamplingCounts[iTargetClass].m_cTotalRemaining);
+         size_t cClassTotalRemaining = (pTargetSamplingCounts + iTargetClass)->m_cTotalRemaining;
+         double fTrainingPerClass = std::floor(idealTrainingProportion * cClassTotalRemaining);
          size_t cTrainingPerClass = static_cast<size_t>(fTrainingPerClass);
          if (0 < cTrainingPerClass) {
             --cTrainingPerClass;
          }
-         cClassesWithSamples = (aTargetSamplingCounts[iTargetClass].m_cTotalRemaining > 0) ? cClassesWithSamples + 1 : cClassesWithSamples;
-         aTargetSamplingCounts[iTargetClass].m_cTraining = cTrainingPerClass;
+         cClassesWithSamples = (cClassTotalRemaining > 0) ? cClassesWithSamples + 1 : cClassesWithSamples;
+         (pTargetSamplingCounts + iTargetClass)->m_cTraining = cTrainingPerClass;
          EBM_ASSERT(cTrainingPerClass <= globalLeftover);
          globalLeftover -= cTrainingPerClass;
       }
@@ -309,11 +311,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    EBM_ASSERT(globalLeftover <= cSamples);
 
    const size_t mostImprovedClassesCapacity = sizeof(size_t) * cTargetClasses;
-   size_t* aMostImprovedClasses = static_cast<size_t*>(malloc(mostImprovedClassesCapacity));
+   size_t* pMostImprovedClasses = static_cast<size_t*>(malloc(mostImprovedClassesCapacity));
 
-   if (UNLIKELY(nullptr == aMostImprovedClasses)) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement out of memory nullptr == aMostImprovedClasses");
-      free(aTargetSamplingCounts);
+   if (UNLIKELY(nullptr == pMostImprovedClasses)) {
+      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement out of memory nullptr == pMostImprovedClasses");
+      free(pTargetSamplingCounts);
       return Error_OutOfMemory;
    }
 
@@ -323,11 +325,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    for (size_t iLeftover = 0; iLeftover < globalLeftover; iLeftover++) {
       double maxImprovement = std::numeric_limits<double>::lowest();
       size_t mostImprovedClassesSize = 0;
-      memset(aMostImprovedClasses, 0, mostImprovedClassesCapacity);
+      memset(pMostImprovedClasses, 0, mostImprovedClassesCapacity);
 
       for (size_t iTargetClass = 0; iTargetClass < cTargetClasses; iTargetClass++) {
-         const size_t cClassTraining = aTargetSamplingCounts[iTargetClass].m_cTraining;
-         const size_t cClassRemaining = aTargetSamplingCounts[iTargetClass].m_cTotalRemaining;
+         const size_t cClassTraining = (pTargetSamplingCounts + iTargetClass)->m_cTraining;
+         const size_t cClassRemaining = (pTargetSamplingCounts + iTargetClass)->m_cTotalRemaining;
 
          if (cClassTraining == cClassRemaining) {
             continue;
@@ -349,12 +351,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
          
          if (improvement > maxImprovement) {
             maxImprovement = improvement;
-            memset(aMostImprovedClasses, 0, mostImprovedClassesCapacity);
+            memset(pMostImprovedClasses, 0, mostImprovedClassesCapacity);
             mostImprovedClassesSize = 0;
          }
          
          if (improvement == maxImprovement) {
-            aMostImprovedClasses[mostImprovedClassesSize] = iTargetClass;
+            *(pMostImprovedClasses + mostImprovedClassesSize) = iTargetClass;
             ++mostImprovedClassesSize;
          }
       }
@@ -363,19 +365,25 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
       // If more than one class has the same max improvement, randomly select between the classes
       // to give the leftover to.
       size_t iRandom = randomStream.Next(mostImprovedClassesSize);
-      ++aTargetSamplingCounts[aMostImprovedClasses[iRandom]].m_cTraining;
+      size_t classToImprove = *(pMostImprovedClasses + iRandom);
+      (pTargetSamplingCounts + classToImprove)->m_cTraining++;
    }
 
 #ifndef NDEBUG
+   const TargetSamplingCounts* pTargetSamplingCountsEnd = pTargetSamplingCounts + cTargetClasses;
    size_t assignedTrainingCount = 0;
-   for (size_t iTargetClass = 0; iTargetClass < cTargetClasses; iTargetClass++) {
-      assignedTrainingCount += aTargetSamplingCounts[iTargetClass].m_cTraining;
+
+   for (TargetSamplingCounts* pTargetSamplingCountsCur = pTargetSamplingCounts;
+      pTargetSamplingCountsEnd != pTargetSamplingCountsCur;
+      ++pTargetSamplingCountsCur) {
+      assignedTrainingCount += pTargetSamplingCountsCur->m_cTraining;
    }
+
    EBM_ASSERT(assignedTrainingCount == cTrainingSamples);
 #endif
 
    for (size_t iSample = 0; iSample < cSamples; iSample++) {
-      TargetSamplingCounts* pTargetSample = &aTargetSamplingCounts[targets[iSample]];
+      TargetSamplingCounts* pTargetSample = pTargetSamplingCounts + targets[iSample];
       EBM_ASSERT(pTargetSample->m_cTotalRemaining > 0);
       const size_t iRandom = randomStream.Next(pTargetSample->m_cTotalRemaining);
       const bool bTrainingSample = UNPREDICTABLE(iRandom < pTargetSample->m_cTraining);
@@ -392,14 +400,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    }
 
 #ifndef NDEBUG
-   for (size_t iTargetClass = 0; iTargetClass < cTargetClasses; iTargetClass++) {
-      EBM_ASSERT(aTargetSamplingCounts[iTargetClass].m_cTraining == 0);
-      EBM_ASSERT(aTargetSamplingCounts[iTargetClass].m_cTotalRemaining == 0);
+   for (TargetSamplingCounts* pTargetSamplingCountsCur = pTargetSamplingCounts;
+      pTargetSamplingCountsEnd != pTargetSamplingCountsCur;
+      ++pTargetSamplingCountsCur) {
+      EBM_ASSERT(pTargetSamplingCountsCur->m_cTraining == 0);
+      EBM_ASSERT(pTargetSamplingCountsCur->m_cTotalRemaining == 0);
    }
 #endif
 
-   free(aTargetSamplingCounts);
-   free(aMostImprovedClasses);
+   free(pTargetSamplingCounts);
+   free(pMostImprovedClasses);
 
    LOG_COUNTED_0(
       &g_cLogExitStratifiedSamplingWithoutReplacementParametersMessages,
@@ -410,5 +420,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
 
    return Error_None;
 }
-
+WARNING_POP
 } // DEFINED_ZONE_NAME
