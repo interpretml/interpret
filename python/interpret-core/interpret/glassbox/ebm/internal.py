@@ -115,15 +115,12 @@ class Native:
 
         sample_counts_out = np.empty(count_samples, dtype=np.int64, order="C")
 
-        return_code = self._unsafe.SampleWithoutReplacement(
+        self._unsafe.SampleWithoutReplacement(
             random_seed,
             count_training_samples,
             count_validation_samples,
             sample_counts_out
         )
-
-        if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in SampleWithoutReplacement")
 
         return sample_counts_out
 
@@ -136,6 +133,10 @@ class Native:
         targets
     ):
         count_samples = count_training_samples + count_validation_samples
+
+        if len(targets) != count_samples:
+            raise ValueError("count_training_samples + count_validation_samples should be equal to len(targets)")
+
         random_seed = ct.c_int32(random_seed)
         count_target_classes = ct.c_int64(count_target_classes)
         count_training_samples = ct.c_int64(count_training_samples)
@@ -338,7 +339,7 @@ class Native:
             # int64_t * sampleCountsOut
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
+        self._unsafe.SampleWithoutReplacement.restype = None
 
         self._unsafe.StratifiedSamplingWithoutReplacement.argtypes = [
             # int32_t randomSeed
@@ -354,7 +355,7 @@ class Native:
             # int64_t * sampleCountsOut
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.StratifiedSamplingWithoutReplacement.restype = ct.c_int32
+        self._unsafe.StratifiedSamplingWithoutReplacement.restype = ct.c_int64
 
         self._unsafe.GenerateQuantileCuts.argtypes = [
             # int64_t countSamples

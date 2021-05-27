@@ -35,14 +35,14 @@ def test_ebm_train_test_split_regression():
     num_test_expected = ceil(test_size * num_samples)
     num_train_expected = num_samples - num_test_expected
 
-    assert X_train.shape == (num_train_expected, num_features)
-    assert X_val.shape == (num_test_expected, num_features)
+    assert X_train.shape == (num_features, num_train_expected)
+    assert X_val.shape == (num_features, num_test_expected)
     assert y_train.shape == (num_train_expected, )
     assert y_val.shape == (num_test_expected, )
     assert w_train.shape == (num_train_expected, )
     assert w_val.shape == (num_test_expected, )
 
-    X_all = np.concatenate((X_train, X_val))
+    X_all = np.concatenate((X_train.T, X_val.T))
     np.array_equal(np.sort(X, axis=0), np.sort(X_all, axis=0))
 
 def test_ebm_train_test_split_classification():
@@ -73,14 +73,14 @@ def test_ebm_train_test_split_classification():
     num_train_expected = num_samples - num_test_expected
 
     # global guarantee: correct number of overall train/val/weights returned
-    assert X_train.shape == (num_train_expected, num_features)
-    assert X_val.shape == (num_test_expected, num_features)
+    assert X_train.shape == (num_features, num_train_expected)
+    assert X_val.shape == (num_features, num_test_expected)
     assert y_train.shape == (num_train_expected, )
     assert y_val.shape == (num_test_expected, )
     assert w_train.shape == (num_train_expected, )
     assert w_val.shape == (num_test_expected, )
 
-    X_all = np.concatenate((X_train, X_val))
+    X_all = np.concatenate((X_train.T, X_val.T))
     np.array_equal(np.sort(X, axis=0), np.sort(X_all, axis=0))
 
     # per class guarantee: train/val count should be no more than one away from ideal

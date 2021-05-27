@@ -384,6 +384,16 @@ class EBMUtils:
         if not is_train:
             X_train, y_train = None, None
 
+        # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
+        #         push the re-ordering right to our first call to fit(..) AND stripe convert
+        #         groups of rows at once and they process them in fortran order after that
+        # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
+        # AND our C code expects it in that ordering
+        if X_train is not None:
+            X_train = np.ascontiguousarray(X_train.T)
+
+        X_val = np.ascontiguousarray(X_val.T)
+
         return X_train, X_val, y_train, y_val, w_train, w_val
 
     @staticmethod
