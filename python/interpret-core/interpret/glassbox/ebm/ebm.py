@@ -1535,7 +1535,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.classes_,
         )
 
-    def predict_and_explain(self, X, output='probabilities'):
+    def predict_and_contrib(self, X, output='probabilities'):
         """Predicts on provided samples, returning predictions and explanations for each sample.
 
         Args:
@@ -1565,7 +1565,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         else:
             X_pair = None
 
-        return EBMUtils.classifier_predict_and_explain(
+        return EBMUtils.classifier_predict_and_contrib(
             X,
             X_pair,
             self.feature_groups_,
@@ -1687,7 +1687,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         )
 
 
-    def predict_and_explain(self, X):
+    def predict_and_contrib(self, X):
         """Predicts on provided samples, returning predictions and explanations for each sample.
 
         Args:
@@ -1710,6 +1710,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         else:
             X_pair = None
 
-        return EBMUtils.regressor_predict_and_explain(
+        return EBMUtils.regressor_predict_and_contrib(
             X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
         )

@@ -412,7 +412,7 @@ class EBMUtils:
         return classes[np.argmax(log_odds_vector, axis=1)]
 
     @staticmethod
-    def classifier_predict_and_explain(X, X_pair, feature_groups, model, intercept, classes, output='probabilities'):
+    def classifier_predict_and_contrib(X, X_pair, feature_groups, model, intercept, classes, output='probabilities'):
         scores_vector, explanations = EBMUtils.decision_function_and_explain(
             X,
             X_pair,
@@ -438,7 +438,7 @@ class EBMUtils:
         return scores
 
     @staticmethod
-    def regressor_predict_and_explain(X, X_pair, feature_groups, model, intercept):
+    def regressor_predict_and_contrib(X, X_pair, feature_groups, model, intercept):
         scores, explanations = EBMUtils.decision_function_and_explain(
             X,
             X_pair,
