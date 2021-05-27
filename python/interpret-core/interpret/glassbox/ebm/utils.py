@@ -3,6 +3,9 @@
 # Distributed under the MIT software license
 # TODO: Test EBMUtils
 
+from math import ceil
+from .internal import NativeHelper, Native
+
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax
 from sklearn.model_selection import train_test_split
@@ -305,6 +308,81 @@ class EBMUtils:
             X_train = np.ascontiguousarray(X_train.T)
 
         X_val = np.ascontiguousarray(X_val.T)
+
+        return X_train, X_val, y_train, y_val, w_train, w_val
+
+    @staticmethod
+    def ebm_train_test_split_new(
+        X, y, w, test_size, random_state, is_classification, is_train=True
+    ):
+        # all test/train splits should be done with this function to ensure that
+        # if we re-generate the train/test splits that they are generated exactly
+        # the same as before
+
+        if (X.shape[0] != len(y) or X.shape[0] != len(w)):
+            raise Exception("Data, labels and weights should have the same number of rows.")
+
+        sampling_result = None
+
+        if test_size == 0:
+            X_train, y_train, w_train = X, y, w
+            X_val = np.empty(shape=(0, X.shape[1]), dtype=X.dtype)
+            y_val = np.empty(shape=(0,), dtype=y.dtype)
+            w_val = np.empty(shape=(0,), dtype=w.dtype)
+
+        elif test_size > 0:
+            n_samples = X.shape[0]
+            n_test_samples = 0
+
+            if test_size >= 1:
+                if test_size % 1:
+                    raise Exception("If test_size >= 1, test_size should be a whole number.")
+                n_test_samples = test_size 
+            else:
+                n_test_samples = ceil(n_samples * test_size)
+
+            n_train_samples = n_samples - n_test_samples
+            native = Native.get_native_singleton()
+
+            # Adapt test size if too small relative to number of classes
+            if is_classification:
+                y_uniq = len(set(y))
+                if n_test_samples < y_uniq:  # pragma: no cover
+                    warnings.warn(
+                        "Too few samples per class, adapting test size to guarantee 1 sample per class."
+                    )
+                    n_test_samples = y_uniq
+                    n_train_samples = n_samples - n_test_samples
+
+                sampling_result = native.stratified_sampling_without_replacement(
+                    random_state,
+                    y_uniq,
+                    n_train_samples,
+                    n_test_samples,
+                    y
+                )
+            else:
+                sampling_result = native.sample_without_replacement(
+                    random_state,
+                    n_train_samples,
+                    n_test_samples\
+                )
+
+        else:  # pragma: no cover
+            raise Exception("test_size must be a positive numeric value.")
+
+        if sampling_result is not None:
+            train_indices = np.where(sampling_result == 1)
+            test_indices = np.where(sampling_result == -1)
+            X_train = X[train_indices]
+            X_val = X[test_indices]
+            y_train = y[train_indices]
+            y_val = y[test_indices]
+            w_train = w[train_indices]
+            w_val = w[test_indices]
+
+        if not is_train:
+            X_train, y_train = None, None
 
         return X_train, X_val, y_train, y_val, w_train, w_val
 
