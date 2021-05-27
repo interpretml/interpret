@@ -513,6 +513,7 @@ We also build on top of many great packages. Please check them out!
 
 # External links
 
+- [Interpretable or Accurate? Why Not Both?](https://towardsdatascience.com/interpretable-or-accurate-why-not-both-4d9c73512192)
 - [The Explainable Boosting Machine. As accurate as gradient boosting, as interpretable as linear regression.](https://towardsdatascience.com/the-explainable-boosting-machine-f24152509ebb)
 - [Performance And Explainability With EBM](https://blog.oakbits.com/ebm-algorithm.html)
 - [A gentle introduction to GA2Ms, a white box model](https://blog.fiddler.ai/2019/06/a-gentle-introduction-to-ga2ms-a-white-box-model)
