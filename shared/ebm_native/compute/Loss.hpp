@@ -463,9 +463,12 @@ public:
       LossWrapper * const pLossWrapperOut
    ) noexcept;
 };
-static_assert(std::is_standard_layout<Loss>::value &&
-   std::is_trivially_copyable<Loss>::value,
+static_assert(std::is_standard_layout<Loss>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#if !(defined(__GNUC__) && __GNUC__ < 5)
+static_assert(std::is_trivially_copyable<Loss>::value,
+   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#endif // !(defined(__GNUC__) && __GNUC__ < 5)
 
 // TODO: include ranking
 //

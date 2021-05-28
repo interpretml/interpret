@@ -34,10 +34,10 @@ union FloatAndInt {
    UIntEquivalentType   m_uint;
 };
 static_assert(std::is_standard_layout<FloatAndInt<float>>::value &&
-   std::is_trivially_copyable<FloatAndInt<float>>::value,
+   std::is_trivial<FloatAndInt<float>>::value,
    "This allows offsetof, memcpy, memset, the struct hack, inter-language, GPU or cross-machine");
 static_assert(std::is_standard_layout<FloatAndInt<double>>::value &&
-   std::is_trivially_copyable<FloatAndInt<double>>::value,
+   std::is_trivial<FloatAndInt<double>>::value,
    "This allows offsetof, memcpy, memset, the struct hack, inter-language, GPU or cross-machine");
 
 static_assert(sizeof(FloatAndInt<float>) == sizeof(float), "FloatAndInt<float> and float must be the same size");

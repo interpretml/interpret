@@ -41,7 +41,7 @@ extern "C" {
 // R has it's own way of exporting functions.  There is a single entry point that describes to 
 // R how to call our functions.  Also, we export R specific functions rather than the generic 
 // ones that we can consume from other languages
-#define EBM_NATIVE_IMPORT_EXPORT_BODY extern
+#define EBM_NATIVE_IMPORT_EXPORT_BODY EBM_EXTERN_C
 #else // EBM_NATIVE_R
 #define EBM_NATIVE_IMPORT_EXPORT_BODY EBM_EXTERN_C __attribute__ ((visibility ("default")))
 #endif // EBM_NATIVE_R
@@ -55,7 +55,7 @@ extern "C" {
 // R how to call our functions.  Also, we export R specific functions rather than the generic 
 // ones that we can consume from other languages
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
-#define EBM_NATIVE_IMPORT_EXPORT_BODY extern
+#define EBM_NATIVE_IMPORT_EXPORT_BODY EBM_EXTERN_C
 #else // EBM_NATIVE_R
 
 #ifdef EBM_NATIVE_EXPORTS
@@ -531,6 +531,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
 );
 
+// TODO : elimiante this as a public object and just expose a BoosterHandle which will be for the shell object
+//        and also expose a CreateBoosterShell which will copy the shell boster and refer to the same core booster
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ThreadStateBoostingHandle EBM_NATIVE_CALLING_CONVENTION CreateThreadStateBoosting(
    BoosterHandle boosterHandle
 );

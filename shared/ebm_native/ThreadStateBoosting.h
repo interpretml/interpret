@@ -25,6 +25,8 @@ namespace DEFINED_ZONE_NAME {
 struct HistogramBucketBase;
 
 class ThreadStateBoosting final {
+   static constexpr size_t k_handleVerification = 25077; // random 15 bit number
+   size_t m_handleVerification; // this needs to be at the top and make it pointer sized to keep best alignment
 
    Booster * m_pBooster;
    size_t m_iFeatureGroup;
@@ -61,6 +63,7 @@ public:
    constexpr static size_t k_illegalFeatureGroupIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
 
    INLINE_ALWAYS void InitializeZero() {
+      m_handleVerification = k_handleVerification;
       m_pBooster = nullptr;
       m_iFeatureGroup = k_illegalFeatureGroupIndex;
       m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
@@ -78,6 +81,12 @@ public:
 
    static void Free(ThreadStateBoosting * const pThreadStateBoosting);
    static ThreadStateBoosting * Allocate(Booster * const pBooster);
+
+   INLINE_ALWAYS bool IsValid() {
+      // TODO : call this function before using this object whenever we get it from outside our control, just to verify
+      // TODO : make a similar verification for the InteractionDetector
+      return k_handleVerification == m_handleVerification;
+   }
 
    INLINE_ALWAYS Booster * GetBooster() {
       return m_pBooster;

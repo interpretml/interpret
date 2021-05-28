@@ -222,9 +222,13 @@ class RegistrationPack final : public Registration {
       void * const pRegistrableMemory = malloc(sizeof(TRegistrable<TFloat>));
       if(nullptr != pRegistrableMemory) {
          try {
-            static_assert(std::is_standard_layout<TRegistrable<TFloat>>::value &&
-               std::is_trivially_copyable<TRegistrable<TFloat>>::value,
+            static_assert(std::is_standard_layout<TRegistrable<TFloat>>::value,
                "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#if !(defined(__GNUC__) && __GNUC__ < 5)
+            static_assert(std::is_trivially_copyable<TRegistrable<TFloat>>::value,
+               "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#endif // !(defined(__GNUC__) && __GNUC__ < 5)
+
             // use the in-place constructor to constrct our specialized Loss/Metric function in our pre-reserved memory
             // this works because the *Loss/Metric classes need to be standard layout and trivially copyable anyways
             TRegistrable<TFloat> * const pRegistrable = new (pRegistrableMemory) TRegistrable<TFloat>(*pConfig, args...);

@@ -4,7 +4,7 @@ SETLOCAL
 SET root_path=%~dp0
 
 REM exclude the ebm_native directory so that it doesn't delete our existing source files which we mirror separately
-robocopy "%root_path%\" "%root_path%..\tmp\R" /S /PURGE /R:2 /NP /XF Makevars /XF Makevars.interpret /XF build_R.bat /XF cran_lic.txt /XF LICENSE /XD ebm_native
+robocopy "%root_path%\" "%root_path%..\tmp\R" /S /PURGE /R:2 /NP /XF build_R.bat /XF cran_format_licence.txt /XF LICENSE /XF Makevars /XF Makevars.interpret /XD ebm_native
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 8 (
    EXIT /B %ERRORLEVEL%
@@ -12,9 +12,9 @@ IF %ERRORLEVEL% GEQ 8 (
 
 copy /Y "%root_path%src\Makevars.interpret" "%root_path%..\tmp\R\src\Makevars"
 
-copy /Y "%root_path%cran_lic.txt" "%root_path%..\tmp\R\LICENSE"
+copy /Y "%root_path%cran_format_licence.txt" "%root_path%..\tmp\R\LICENSE"
 
-robocopy "%root_path%..\shared\ebm_native" "%root_path%..\tmp\R\src\ebm_native" /S /PURGE /R:2 /NP /XF interpret.sln /XF ebm_native.vcxproj /XF ebm_native.vcxproj.user /XF PrecompiledHeader.cpp /XF DllMainEbmNative.cpp /XF wrap_func.cpp /XF ebm_native_exports.def /XF ebm_native_exports.txt /XF style.md /XD .vs /XD ebm_native_test /XD TestResults
+robocopy "%root_path%..\shared\ebm_native" "%root_path%..\tmp\R\src\ebm_native" /S /PURGE /R:2 /NP /XF *.sln /XF *.vcxproj.* /XF ebm_native_exports.* /XF *.md /XD .vs /XD ebm_native_test /XD TestResults /XD special /XD avx512_ebm /XD cuda_ebm /XD cuda_missing_ebm /XF Directory.Build.targets /XF sse2_32.cpp /XF sse2_64.cpp
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 8 (
    EXIT /B %ERRORLEVEL%

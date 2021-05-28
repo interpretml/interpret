@@ -152,31 +152,41 @@ create_regression_booster <- function(
    return(booster_handle)
 }
 
-free_boosting <- function(booster_handle) {
-   .Call(FreeBooster_R, booster_handle)
-   return(NULL)
-}
-
-boosting_step <- function(
-   booster_handle, 
+generate_model_update <- function(
+   thread_state_boosting_handle, 
    index_feature_group, 
    learning_rate, 
    count_samples_required_for_child_split_min, 
    max_leaves
 ) {
-   stopifnot(class(booster_handle) == "externalptr")
+   stopifnot(class(thread_state_boosting_handle) == "externalptr")
    index_feature_group <- as.double(index_feature_group)
    learning_rate <- as.double(learning_rate)
    count_samples_required_for_child_split_min <- as.double(count_samples_required_for_child_split_min)
    max_leaves <- as.double(max_leaves)
 
-   validation_metric <- .Call(
-      BoostingStep_R, 
-      booster_handle, 
+   gain <- .Call(
+      GenerateModelUpdate_R, 
+      thread_state_boosting_handle, 
       index_feature_group, 
       learning_rate, 
       count_samples_required_for_child_split_min, 
       max_leaves
+   )
+   if(is.null(gain)) {
+      stop("error in GenerateModelUpdate_R")
+   }
+   return(gain)
+}
+
+apply_model_update <- function(
+   thread_state_boosting_handle
+) {
+   stopifnot(class(thread_state_boosting_handle) == "externalptr")
+
+   validation_metric <- .Call(
+      ApplyModelUpdate_R, 
+      thread_state_boosting_handle
    )
    if(is.null(validation_metric)) {
       stop("error in BoostingStep_R")
@@ -204,6 +214,24 @@ get_current_model_feature_group <- function(booster_handle, index_feature_group)
       stop("error in GetCurrentModelFeatureGroup_R")
    }
    return(model_feature_group_tensor)
+}
+
+free_boosting <- function(booster_handle) {
+   .Call(FreeBooster_R, booster_handle)
+   return(NULL)
+}
+
+create_thread_state_boosting <- function(booster_handle) {
+   thread_state_boosting_handle <- .Call(CreateThreadStateBoosting_R, booster_handle)
+   if(is.null(thread_state_boosting_handle)) {
+      stop("Error in CreateThreadStateBoosting")
+   }
+   return(thread_state_boosting_handle)
+}
+
+free_thread_state_boosting <- function(thread_state_boosting_handle) {
+   .Call(FreeThreadStateBoosting_R, thread_state_boosting_handle)
+   return(NULL)
 }
 
 get_best_model <- function(native_ebm_booster) {
@@ -280,12 +308,15 @@ native_ebm_booster <- function(
       stop("Unrecognized model_type")
    }
 
+   thread_state_boosting_handle <- create_thread_state_boosting(booster_handle)
+
    self <- structure(list(
       model_type = model_type, 
       n_classes = n_classes, 
       feature_groups = feature_groups, 
-      booster_handle = booster_handle
-      ), class = "native_ebm_booster")
+      booster_handle = booster_handle,
+      thread_state_boosting_handle = thread_state_boosting_handle
+   ), class = "native_ebm_booster")
    return(self)
 }
 
@@ -338,13 +369,16 @@ cyclic_gradient_boost <- function(
 
       for(episode_index in 1:max_rounds) {
          for(feature_group_index in seq_along(feature_groups)) {
-            validation_metric <- boosting_step(
-               ebm_booster$booster_handle, 
+            gain <- generate_model_update(
+               ebm_booster$thread_state_boosting_handle, 
                feature_group_index - 1, 
                learning_rate, 
                min_samples_leaf, 
                max_leaves
             )
+
+            validation_metric <- apply_model_update(ebm_booster$thread_state_boosting_handle)
+
             if(validation_metric < min_metric) {
                min_metric <- validation_metric
             }
@@ -368,6 +402,7 @@ cyclic_gradient_boost <- function(
 
       return(list(model_update = model_update, min_metric = min_metric, episode_index = episode_index))
    }, finally = {
+      free_thread_state_boosting(ebm_booster$thread_state_boosting_handle)
       free_boosting(ebm_booster$booster_handle)
    })
    return(result_list)

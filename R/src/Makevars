@@ -5,40 +5,48 @@
 NATIVEDIR=../../shared/ebm_native
 
 CXX_STD = CXX11
-PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -DEBM_NATIVE_R
+PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/common_c -I$(NATIVEDIR)/common_cpp -I$(NATIVEDIR)/bridge_c -I$(NATIVEDIR)/bridge_cpp -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/loss_functions -I$(NATIVEDIR)/compute/metrics -I$(NATIVEDIR)/compute/cpu_ebm -DEBM_NATIVE_R -DZONE_R
 # TODO test adding the g++/clang flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
 PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 
-OBJECTS = interpret_R.o \
+OBJECTS = \
    $(NATIVEDIR)/ApplyModelUpdate.o \
    $(NATIVEDIR)/ApplyModelUpdateTraining.o \
    $(NATIVEDIR)/ApplyModelUpdateValidation.o \
    $(NATIVEDIR)/BinBoosting.o \
    $(NATIVEDIR)/BinInteraction.o \
-   $(NATIVEDIR)/BinningQuantile.o \
-   $(NATIVEDIR)/BinningUniform.o \
-   $(NATIVEDIR)/BinningWinsorized.o \
    $(NATIVEDIR)/Booster.o \
    $(NATIVEDIR)/CalculateInteractionScore.o \
    $(NATIVEDIR)/CutRandom.o \
    $(NATIVEDIR)/DataFrameBoosting.o \
    $(NATIVEDIR)/DataFrameInteraction.o \
    $(NATIVEDIR)/DataFrameShared.o \
-   $(NATIVEDIR)/Discretization.o \
+   $(NATIVEDIR)/DebugEbm.o \
+   $(NATIVEDIR)/Discretize.o \
    $(NATIVEDIR)/FeatureGroup.o \
    $(NATIVEDIR)/FindBestBoostingSplitsPairs.o \
    $(NATIVEDIR)/FindBestInteractionScorePairs.o \
-   $(NATIVEDIR)/GenerateModelFeatureGroupUpdate.o \
+   $(NATIVEDIR)/GenerateModelUpdate.o \
+   $(NATIVEDIR)/GenerateQuantileCuts.o \
+   $(NATIVEDIR)/GenerateUniformCuts.o \
+   $(NATIVEDIR)/GenerateWinsorizedCuts.o \
    $(NATIVEDIR)/GrowDecisionTree.o \
    $(NATIVEDIR)/InitializeResiduals.o \
    $(NATIVEDIR)/InteractionDetector.o \
    $(NATIVEDIR)/InterpretableNumerics.o \
-   $(NATIVEDIR)/Logging.o \
    $(NATIVEDIR)/RandomExternal.o \
    $(NATIVEDIR)/RandomStream.o \
    $(NATIVEDIR)/SamplingSet.o \
    $(NATIVEDIR)/SegmentedTensor.o \
    $(NATIVEDIR)/SumHistogramBuckets.o \
-   $(NATIVEDIR)/TensorTotalsBuild.o 
+   $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/ThreadStateBoosting.o \
    $(NATIVEDIR)/ThreadStateInteraction.o \
+   $(NATIVEDIR)/common_c/common_c.o \
+   $(NATIVEDIR)/common_c/logging.o \
+   $(NATIVEDIR)/compute/Loss.o \
+   $(NATIVEDIR)/compute/Registration.o \
+   $(NATIVEDIR)/compute/zoned_bridge_c_functions.o \
+   $(NATIVEDIR)/compute/cpu_ebm/cpu_32.o \
+   $(NATIVEDIR)/compute/cpu_ebm/cpu_64.o \
+   interpret_R.o

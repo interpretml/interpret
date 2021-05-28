@@ -19,6 +19,8 @@ extern "C" {
 #define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_CUDA
 #elif defined(ZONE_cuda_missing)
 #define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_CUDA_MISSING
+#elif defined(ZONE_R)
+#define DEFINED_ZONE_NAME      NAMESPACE_R
 #else
 #error ZONE not recognized
 #endif

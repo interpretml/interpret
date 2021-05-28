@@ -107,9 +107,12 @@ public:
       return Error_None;
    }
 };
-static_assert(std::is_standard_layout<Sse_32_Operators>::value &&
-   std::is_trivially_copyable<Sse_32_Operators>::value,
+static_assert(std::is_standard_layout<Sse_32_Operators>::value,
    "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#if !(defined(__GNUC__) && __GNUC__ < 5)
+static_assert(std::is_trivially_copyable<Sse_32_Operators>::value,
+   "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+#endif // !(defined(__GNUC__) && __GNUC__ < 5)
 
 // FIRST, define the RegisterLoss function that we'll be calling from our registrations.  This is a static 
 // function, so we can have duplicate named functions in other files and they'll refer to different functions
