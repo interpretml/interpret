@@ -7,6 +7,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
+#include <thread>
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -132,6 +133,11 @@ void Booster::Free(Booster * const pBooster) {
    LOG_0(TraceLevelInfo, "Exited Booster::Free");
 }
 
+static int g_TODO_removeThisThreadTest = 0;
+void TODO_removeThisThreadTest() {
+   g_TODO_removeThisThreadTest = 1;
+}
+
 Booster * Booster::Allocate(
    const SeedEbmType randomSeed,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -159,6 +165,21 @@ Booster * Booster::Allocate(
    UNUSED(optionalTempParams);
 
    LOG_0(TraceLevelInfo, "Entered Booster::Initialize");
+
+   try {
+      // TODO: eliminate this code I added to test that threads are available on the majority of our systems
+      std::thread testThread(TODO_removeThisThreadTest);
+      testThread.join();
+      if(0 == g_TODO_removeThisThreadTest) {
+         LOG_0(TraceLevelWarning, "WARNING Booster::Initialize thread not started");
+         return nullptr;
+      }
+   } catch(...) {
+      LOG_0(TraceLevelWarning, "WARNING Booster::Initialize thread start failed");
+      return nullptr;
+   }
+
+   LOG_0(TraceLevelInfo, "Entered Booster::Initialize thread started");
 
    Booster * const pBooster = EbmMalloc<Booster>();
    if(UNLIKELY(nullptr == pBooster)) {

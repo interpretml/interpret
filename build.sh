@@ -279,6 +279,7 @@ both_args="$both_args -fvisibility=hidden"
 both_args="$both_args -fno-math-errno -fno-trapping-math"
 both_args="$both_args -march=core2"
 both_args="$both_args -fpic"
+both_args="$both_args -pthread"
 both_args="$both_args -DEBM_NATIVE_EXPORTS"
 
 c_args="-std=c99"
