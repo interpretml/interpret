@@ -25,6 +25,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 struct Sse_32_Operators final {
+   constexpr static size_t countPackedItems = 4; // the number of Unpacked items in a Packed structure
    typedef float Unpacked;
    typedef __m128 Packed;
 

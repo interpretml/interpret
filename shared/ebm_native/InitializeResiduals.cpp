@@ -110,7 +110,7 @@ public:
          do {
             FloatEbmType gradient;
             FloatEbmType hessian;
-            EbmStats::TransformScoreToGradientAndHessianMulticlass(sumExp, *pExpVector, target, iVector, gradient, hessian);
+            EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(sumExp, *pExpVector, target, iVector, gradient, hessian);
             ++pExpVector;
             *pGradientAndHessian = gradient;
             *(pGradientAndHessian + 1) = hessian;
@@ -168,7 +168,7 @@ public:
          EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
          const FloatEbmType predictionScore = *pPredictorScores;
          ++pPredictorScores;
-         const FloatEbmType gradient = EbmStats::TransformScoreToGradientBinaryClassification(predictionScore, target);
+         const FloatEbmType gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictionScore, target);
          *pGradientAndHessian = gradient;
          *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
          pGradientAndHessian += 2;

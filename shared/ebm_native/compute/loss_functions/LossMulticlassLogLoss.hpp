@@ -11,8 +11,6 @@ template<typename TFloat>
 struct LossMulticlassLogLoss : public LossMulticlass {
    LOSS_CLASS_BOILERPLATE(LossMulticlassLogLoss, true, 1)
 
-   size_t m_countTargetClasses;
-
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
    INLINE_ALWAYS LossMulticlassLogLoss(const Config & config) {
       UNUSED(config);
@@ -25,22 +23,28 @@ struct LossMulticlassLogLoss : public LossMulticlass {
       if(config.cOutputs <= 0) {
          throw ParameterMismatchWithConfigException();
       }
-
-      m_countTargetClasses = config.cOutputs;
    }
 
-   GPU_DEVICE INLINE_ALWAYS TFloat CalculatePrediction(TFloat score) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass1(size_t countTargetClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempValue) const {
       //TODO implement
-      return -score * 999;
+      // use the countTargetClasses since it can be a templated constant, unlike m_countTargetClasses
+      return 999;
    }
 
+   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass2(size_t countTargetClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempValue) const {
+      //TODO implement
+      // use the countTargetClasses since it can be a templated constant, unlike m_countTargetClasses
+      return 999;
+   }
+
+   //TODO USE THIS FORMAT FOR MULTICLASS: GPU_DEVICE INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction, TFloat tempStorage, TFloat tempValue) const {
    GPU_DEVICE INLINE_ALWAYS TFloat CalculateGradient(TFloat target, TFloat prediction) const {
       //TODO implement
       return 999.9999;
    }
 
    // if the loss function doesn't have a second derivative, then delete the CalculateHessian function.
-   GPU_DEVICE INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat CalculateHessian(TFloat target, TFloat prediction, TFloat tempStorage, TFloat tempValue) const {
       //TODO implement
       return 999.9999;
    }

@@ -24,6 +24,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 struct Cpu_64_Operators final {
+   constexpr static size_t countPackedItems = 1; // the number of Unpacked items in a Packed structure
    typedef double Unpacked;
    typedef double Packed;
 
@@ -76,6 +77,16 @@ public:
 
    INLINE_ALWAYS Cpu_64_Operators Sqrt() const noexcept {
       return Cpu_64_Operators(std::sqrt(m_data));
+   }
+
+   INLINE_ALWAYS Unpacked GetUnpacked(const size_t indexPack) const noexcept {
+      UNUSED(indexPack);
+      return m_data; // we only have 1 packed item
+   }
+
+   INLINE_ALWAYS void SetUnpacked(const size_t indexPack, const Unpacked data) noexcept {
+      UNUSED(indexPack);
+      m_data = data; // we only have 1 packed item
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>

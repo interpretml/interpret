@@ -102,7 +102,7 @@ public:
          do {
             FloatEbmType gradient;
             FloatEbmType hessian;
-            EbmStats::TransformScoreToGradientAndHessianMulticlass(
+            EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(
                sumExp,
                *pExpVector,
                targetData,
@@ -148,7 +148,7 @@ public:
          const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
          *pPredictorScores = predictorScore;
          ++pPredictorScores;
-         const FloatEbmType gradient = EbmStats::TransformScoreToGradientBinaryClassification(predictorScore, targetData);
+         const FloatEbmType gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictorScore, targetData);
          *pGradientAndHessian = gradient;
          *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
          pGradientAndHessian += 2;
@@ -334,7 +334,7 @@ public:
             do {
                FloatEbmType gradient;
                FloatEbmType hessian;
-               EbmStats::TransformScoreToGradientAndHessianMulticlass(
+               EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(
                   sumExp,
                   *pExpVector,
                   targetData,
@@ -427,7 +427,7 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType gradient = EbmStats::TransformScoreToGradientBinaryClassification(predictorScore, targetData);
+            const FloatEbmType gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictorScore, targetData);
 
             *pGradientAndHessian = gradient;
             *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);

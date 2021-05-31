@@ -33,7 +33,7 @@ struct LossRegressionPseudoHuber : public LossRegression {
       m_deltaInverted = deltaInverted;
    }
 
-   GPU_DEVICE INLINE_ALWAYS TFloat CalculatePrediction(TFloat score) const {
+   GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunction(TFloat score) const {
       return score;
    }
 

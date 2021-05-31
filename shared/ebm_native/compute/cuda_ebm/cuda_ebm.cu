@@ -35,6 +35,7 @@ struct Cuda_32_Operators final {
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__SINGLE.html#group__CUDA__MATH__SINGLE
    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__DOUBLE.html#group__CUDA__MATH__DOUBLE
 
+   constexpr static size_t countPackedItems = 1; // the number of Unpacked items in a Packed structure
    typedef float Unpacked;
    typedef float Packed;
 

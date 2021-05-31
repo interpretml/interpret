@@ -248,9 +248,9 @@ static_assert(
 //     division that can overflow to infinity or NaN values making the logits in our graph infinity or NaN.
 //   - for any learning, adversarial inputs like ridiculously huge learningRate parameters or NaN values 
 //     could cause these conditions
-//   - In TransformScoreToGradientBinaryClassification, the exp term could get to zero or +infinity, but division 
+//   - In InverseLinkFunctionThenCalculateGradientBinaryClassification, the exp term could get to zero or +infinity, but division 
 //     by infinity leads to zero, so this shouldn't propagate the infinity term, or create new NaN values.  
-//     Even if our logits reached +-infinity TransformScoreToGradientBinaryClassification should 
+//     Even if our logits reached +-infinity InverseLinkFunctionThenCalculateGradientBinaryClassification should 
 //     return valid numbers
 //   - if our boosting code gets passed NaN or +-infinity values as predictor scores 
 //     (regression predictions or logits)  Normally, our higher level library (python, R, etc..) calculates 
@@ -267,7 +267,7 @@ static_assert(
 //
 // - ComputeSinglePartitionUpdate will end with a divide by zero if the hessian is zero.
 //   The hessian can be zero if the gradient is +-1.  For binary classification, if 1 + ? = 1, due to 
-//   numeracy issues, then the denominator term in TransformScoreToGradientBinaryClassification will be one, 
+//   numeracy issues, then the denominator term in InverseLinkFunctionThenCalculateGradientBinaryClassification will be one, 
 //   leading to numeracy issues later on due to the 1.  Epsilon is the smallest number that you can 
 //   add to 1 and get a non-1. For doubles epsilon is 2.2204460492503131e-016.  e^-36.043 and with an 
 //   update rate of 0.01, that means around 3604 rounds of boosting.  We're still good given that our default 
@@ -354,20 +354,20 @@ public:
 
       // gradient can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
       //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
-      //   logit, and TransformScoreToGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
+      //   logit, and InverseLinkFunctionThenCalculateGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
       //   sumGradient can always be zero since it's a sum of positive and negative values sumHessian is harder to get to zero, 
       //   since it's a sum of positive numbers.  The sumHessian is the sum of values returned from this function.  gradient 
       //   must be -1, 0, or +1 to make the denominator zero.  -1 and +1 are hard, but not impossible to get to with really bad inputs, 
       //   since boosting tends to push errors towards 0.  An error of 0 is most likely when the hessian term in either
-      //   TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
-      //   for TransformScoreToGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
+      //   InverseLinkFunctionThenCalculateGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
+      //   for InverseLinkFunctionThenCalculateGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
       //   This can happen after as little as 3604 rounds of boosting, if learningRate is 0.01, and every boosting round we update by the limit of
       //   0.01 [see notes at top of EbmStats.h].  It might happen for a single sample even faster if multiple variables boost the logit
       //   upwards.  We just terminate boosting after that many rounds if this occurs.
 
-      // gradient CANNOT be +-infinity -> even with an +-infinity logit, see TransformScoreToGradientBinaryClassification and TransformScoreToGradientMulticlass
+      // gradient CANNOT be +-infinity -> even with an +-infinity logit, see InverseLinkFunctionThenCalculateGradientBinaryClassification and TransformScoreToGradientMulticlass
 
-      // for binary classification, -1 <= gradient && gradient <= 1 -> see TransformScoreToGradientBinaryClassification
+      // for binary classification, -1 <= gradient && gradient <= 1 -> see InverseLinkFunctionThenCalculateGradientBinaryClassification
 
       // for multiclass, -1 - k_epsilonGradient <= gradient && gradient <= 1 -> see TransformScoreToGradientMulticlass
 
@@ -464,13 +464,13 @@ public:
 
       // for classification, sumGradient can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
       //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
-      //   logit, and TransformScoreToGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
+      //   logit, and InverseLinkFunctionThenCalculateGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
       //   sumGradient can always be zero since it's a sum of positive and negative values sumHessian is harder to get to zero, 
       //   since it's a sum of positive numbers.  The sumHessian is the sum of values returned from CalculateHessianFromGradientBinaryClassification.  gradient 
       //   must be -1, 0, or +1 to make the hessian zero.  -1 and +1 are hard, but not impossible to get to with really bad inputs, 
       //   since boosting tends to push errors towards 0.  An error of 0 is most likely when the denominator term in either
-      //   TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
-      //   for TransformScoreToGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
+      //   InverseLinkFunctionThenCalculateGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
+      //   for InverseLinkFunctionThenCalculateGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
       //   This can happen after as little as 3604 rounds of boosting, if learningRate is 0.01, and every boosting round we update by the limit of
       //   0.01 [see notes at top of EbmStats.h].  It might happen for a single sample even faster if multiple variables boost the logit
       //   upwards.  We just terminate boosting after that many rounds if this occurs.
@@ -485,7 +485,7 @@ public:
       //   If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value 
       //   (of 7.2e+134)
 
-      // for classification, sumGradient CANNOT be +-infinity-> even with an +-infinity logit, see TransformScoreToGradientBinaryClassification and 
+      // for classification, sumGradient CANNOT be +-infinity-> even with an +-infinity logit, see InverseLinkFunctionThenCalculateGradientBinaryClassification and 
       //   TransformScoreToGradientMulticlass also, since -cSamples <= sumGradient && sumGradient <= cSamples, and since cSamples must be 64 bits 
       //   or lower, we cann't overflow to infinity when taking the sum
 
@@ -543,20 +543,20 @@ public:
 
       // for classification, sumGradient can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
       //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
-      //   logit, and TransformScoreToGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
+      //   logit, and InverseLinkFunctionThenCalculateGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
       //   sumGradient can always be zero since it's a sum of positive and negative values sumHessian is harder to get to zero, 
       //   since it's a sum of positive numbers.  The sumHessian is the sum of values returned from this function.  gradient 
       //   must be -1, 0, or +1 to make the denominator zero.  -1 and +1 are hard, but not impossible to get to with really inputs, 
       //   since boosting tends to push errors towards 0.  An error of 0 is most likely when the denominator term in either
-      //   TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
-      //   for TransformScoreToGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
+      //   InverseLinkFunctionThenCalculateGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
+      //   for InverseLinkFunctionThenCalculateGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
       //   This can happen after as little as 3604 rounds of boosting, if learningRate is 0.01, and every boosting round we update by the limit of
       //   0.01 [see notes at top of EbmStats.h].  It might happen for a single sample even faster if multiple variables boost the logit
       //   upwards.  We just terminate boosting after that many rounds if this occurs.
 
       // for regression, sumGradient can be any legal value, including +infinity or -infinity
       //
-      // for classification, sumGradient CANNOT be +-infinity-> even with an +-infinity logit, see TransformScoreToGradientBinaryClassification and TransformScoreToGradientMulticlass
+      // for classification, sumGradient CANNOT be +-infinity-> even with an +-infinity logit, see InverseLinkFunctionThenCalculateGradientBinaryClassification and TransformScoreToGradientMulticlass
       //   also, since -cSamples <= sumGradient && sumGradient <= cSamples, and since cSamples must be 64 bits or lower, we cann't overflow 
       //   to infinity when taking the sum
 
@@ -656,12 +656,12 @@ public:
 
       // originalGradient can be +-infinity, or NaN.  See note in ComputeSinglePartitionUpdate
 
-      // this function is here to document where we're calculating regression, like TransformScoreToGradientBinaryClassification below.  It doesn't do anything, 
+      // this function is here to document where we're calculating regression, like InverseLinkFunctionThenCalculateGradientBinaryClassification below.  It doesn't do anything, 
       //   but it serves as an indication that the calculation would be placed here if we changed it in the future
       return originalGradient + modelUpdate;
    }
 
-   INLINE_ALWAYS static FloatEbmType TransformScoreToGradientBinaryClassification(
+   INLINE_ALWAYS static FloatEbmType InverseLinkFunctionThenCalculateGradientBinaryClassification(
       const FloatEbmType predictorScore, 
       const size_t target
    ) {
@@ -732,7 +732,7 @@ public:
       const FloatEbmType expVal = std::exp(predictorScore);
       FloatEbmType gradientDebug;
       FloatEbmType hessianDebug;
-      TransformScoreToGradientAndHessianMulticlass(FloatEbmType { 1 } + expVal, expVal, target, 1, gradientDebug, hessianDebug);
+      InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(FloatEbmType { 1 } + expVal, expVal, target, 1, gradientDebug, hessianDebug);
       // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
@@ -741,7 +741,7 @@ public:
       return gradient;
    }
 
-   INLINE_ALWAYS static void TransformScoreToGradientAndHessianMulticlass(
+   INLINE_ALWAYS static void InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(
       const FloatEbmType sumExp, 
       const FloatEbmType itemExp, 
       const size_t target, 
@@ -786,7 +786,7 @@ public:
       //   therefor the exp of those numbers non-zero
       // - it is possible, but difficult to see how both itemExp AND sumExp could be infinity because all we need is for itemExp to be greater than
       //   about 709.79.  If one itemExp is +infinity then so is sumExp.  Each update is mostly limited to units of 0.01 logits 
-      //   (0.01 learningRate * 1 from TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass), so if we've done more than 70,900 boosting 
+      //   (0.01 learningRate * 1 from InverseLinkFunctionThenCalculateGradientBinaryClassification or TransformScoreToGradientMulticlass), so if we've done more than 70,900 boosting 
       //   rounds we can get infinities or NaN values.  This isn't very likekly by itself given that our default is a max of 2000 rounds, but it is possible
       //   if someone is tweaking the parameters way past their natural values
 
@@ -928,7 +928,7 @@ public:
       //   therefore the exp of those numbers non-zero
       // - it is possible, but difficult to see how both itemExp AND sumExp could be infinity because all we need is for itemExp to be greater than
       //   about 709.79.  If one itemExp is +infinity then so is sumExp.  Each update is mostly limited to units of 0.01 logits 
-      //   (0.01 learningRate * 1 from TransformScoreToGradientBinaryClassification or TransformScoreToGradientMulticlass), so if we've done more than 70,900 boosting 
+      //   (0.01 learningRate * 1 from InverseLinkFunctionThenCalculateGradientBinaryClassification or TransformScoreToGradientMulticlass), so if we've done more than 70,900 boosting 
       //   rounds we can get infinities or NaN values.  This isn't very likekly by itself given that our default is a max of 2000 rounds, but it is possible
       //   if someone is tweaking the parameters way past their natural values
 

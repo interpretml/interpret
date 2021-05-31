@@ -15,7 +15,7 @@
 //   }
 //
 //   template <typename T>
-//   static INLINE_ALWAYS T CalculatePrediction(const T score) {
+//   static INLINE_ALWAYS T InverseLinkFunction(const T score) {
 //      return score * 10000;
 //   }
 //
@@ -50,7 +50,7 @@ struct LossBinaryLogLoss : public LossBinary {
       }
    }
 
-   INLINE_ALWAYS TFloat CalculatePrediction(TFloat score) const {
+   INLINE_ALWAYS TFloat InverseLinkFunction(TFloat score) const {
       UNUSED(score);
       return 9999999.99;
    }
