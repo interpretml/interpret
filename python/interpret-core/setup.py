@@ -107,7 +107,25 @@ class BuildCommand(build):
         import shutil
         
         script_path = os.path.dirname(os.path.abspath(__file__))
+        root_path = os.path.join(script_path, '..', '..')
         sym_path = os.path.join(script_path, 'symbolic')
+
+        # Copy files to the symbolic folder instead of using symlinks.
+        # If the 'shared' folder already exists, remove it, to avoid
+        # an exception in shutil.copytree().
+        if os.path.exists(os.path.join(sym_path, 'shared')):
+            shutil.rmtree(os.path.join(sym_path, 'shared'))
+        shutil.copytree(
+            os.path.join(root_path, 'shared'),
+            os.path.join(sym_path, 'shared')
+        )
+
+        file_names = ["build.bat", "build.sh", "LICENSE", "README.md"]
+        for file_name in file_names:
+            shutil.copy(
+                os.path.join(root_path, file_name),
+                os.path.join(sym_path, file_name)
+            )
 
         # Native compile
         if os.name == 'nt':
