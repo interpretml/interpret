@@ -31,3 +31,7 @@
 - part: Deployment Guide
   chapters:
     - file: deployment-guide
+- part: Development Guide
+  chapters:
+    - file: installation-guide
+    - file: debugging-guide
