@@ -930,6 +930,22 @@ class BaseEBM(BaseEstimator):
         elif isinstance(self.interactions, list):
             pair_indices = self.interactions
             if len(pair_indices) != 0:
+                # Check and remove duplicate interaction terms
+                existing_terms = set()
+                unique_terms = []
+
+                for i, term in enumerate(pair_indices):
+                    sorted_tuple = tuple(sorted(term))
+                    if sorted_tuple not in existing_terms:
+                        existing_terms.add(sorted_tuple)
+                        unique_terms.append(term)
+
+                # Warn the users that we have made change to the interactions list
+                if len(unique_terms) != len(pair_indices):
+                    warn("Detected duplicate interaction terms: removing duplicate interaction terms")
+                    pair_indices = unique_terms
+                    self.interactions = pair_indices
+
                 # Retrain interactions for base models
                 def staged_fit_fn(estimator, X, y, w, X_pair, inter_indices=[]):
                     return estimator.staged_fit_interactions_parallel(
