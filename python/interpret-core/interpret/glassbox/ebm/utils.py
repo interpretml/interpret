@@ -526,7 +526,7 @@ class DPUtils:
 
         # Greedily collapse bins until they meet or exceed target_count threshold
         target_count = col_data.shape[0] / max_bins
-        bin_counts, bin_cuts = [], [uniform_edges[0]]
+        bin_counts, bin_cuts = [0], [uniform_edges[0]]
         curr_count = 0
         for index, right_edge in enumerate(uniform_edges[1:]):
             curr_count += noisy_counts[index]
