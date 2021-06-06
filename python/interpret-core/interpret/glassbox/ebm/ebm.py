@@ -4,7 +4,7 @@
 
 from typing import DefaultDict
 from ...utils import gen_perf_dicts
-from .utils import EBMUtils
+from .utils import DPUtils, EBMUtils
 from .internal import NativeHelper, Native
 from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -127,7 +127,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
     """ Transformer that preprocesses data to be ready before EBM. """
 
     def __init__(
-        self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", missing_str=str(np.nan)
+        self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", missing_str=str(np.nan), 
+        epsilon=None, delta=None, privacy_schema=None
     ):
         """ Initializes EBM preprocessor.
 
@@ -135,14 +136,20 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             feature_names: Feature names as list.
             feature_types: Feature types as list, for example "continuous" or "categorical".
             max_bins: Max number of bins to process numeric features.
-            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform". 
+            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform", or "private". 
             missing_str: By default np.nan values are missing for all datatypes. Setting this parameter changes the string representation for missing
+            epsilon: Privacy budget parameter. Only applicable when binning is "private".
+            delta: Privacy budget parameter. Only applicable when binning is "private".
+            privacy_schema: User specified min/maxes for numeric features as dictionary. Only applicable when binning is "private".
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
         self.max_bins = max_bins
         self.binning = binning
         self.missing_str = missing_str
+        self.epsilon = epsilon
+        self.delta = delta
+        self.privacy_schema = privacy_schema
 
     def fit(self, X):
         """ Fits transformer to provided samples.
@@ -174,6 +181,21 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             X, feature_names=self.feature_names, feature_types=self.feature_types
         )
 
+        noise_scale = None # only applicable for private binning
+        if "private" in self.binning:
+            DPUtils.validate_eps_delta(self.epsilon, self.delta)
+            noise_scale = DPUtils.calc_gdp_noise_multi(
+                total_queries = X.shape[1], 
+                target_epsilon = self.epsilon, 
+                delta = self.delta
+            )
+            if self.privacy_schema is None:
+                warn("Possible privacy violation: calculating min/max values per feature using data. \
+                     Pass a privacy schema with known public ranges per feature to avoid this warning. \
+                     Privacy schemas are simple dictionaries containing min and max values per numeric feature, \
+                     e.g.: {0 : (18,100), 2 : (-23, 45.5)}")
+                self.privacy_schema = DPUtils.build_privacy_schema(X)
+                
         if self.max_bins < 2:
             raise ValueError("max_bins must be 2 or higher.  One bin is required for missing, and annother for non-missing values.")
 
@@ -188,51 +210,60 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             self.col_types_.append(col_info["type"])
             if col_info["type"] == "continuous":
                 col_data = col_data.astype(float)
+                count_missing = 0
 
-                min_samples_bin = 1 # TODO: Expose
-                is_humanized = 0
-
-                if self.binning == 'quantile' or self.binning == 'quantile_humanized':
-                    if self.binning == 'quantile_humanized':
-                        is_humanized = 1
-
-                    (
-                        cuts, 
-                        count_missing, 
-                        min_val, 
-                        max_val, 
-                    ) = native.generate_quantile_cuts(
-                        col_data, 
-                        min_samples_bin, 
-                        is_humanized, 
-                        self.max_bins - 2, # one bin for missing, and # of cuts is one less again
+                if self.binning == "private":
+                    min_val, max_val = self.privacy_schema[col_idx]
+                    cuts, bin_counts = DPUtils.private_numeric_binning(
+                        col_data, noise_scale, self.max_bins, min_val, max_val
                     )
-                elif self.binning == "uniform":
-                    (
-                        cuts, 
-                        count_missing, 
-                        min_val, 
-                        max_val,
-                    ) = native.generate_uniform_cuts(
-                        col_data, 
-                        self.max_bins - 2, # one bin for missing, and # of cuts is one less again
-                    )
-                else:
-                    raise ValueError(f"Unrecognized bin type: {self.binning}")
 
-                discretized = native.discretize(col_data, cuts)
+                    # Use previously calculated bins for density estimates
+                    hist_edges = np.concatenate([[min_val], cuts, [max_val]])
+                    hist_counts = bin_counts[1:]
+                else:  # Standard binning
+                    min_samples_bin = 1 # TODO: Expose
+                    is_humanized = 0
+                    if self.binning == 'quantile' or self.binning == 'quantile_humanized':
+                        if self.binning == 'quantile_humanized':
+                            is_humanized = 1
 
-                bin_counts = np.bincount(discretized, minlength=len(cuts) + 2)
+                        (
+                            cuts, 
+                            count_missing, 
+                            min_val, 
+                            max_val, 
+                        ) = native.generate_quantile_cuts(
+                            col_data, 
+                            min_samples_bin, 
+                            is_humanized, 
+                            self.max_bins - 2, # one bin for missing, and # of cuts is one less again
+                        )
+                    elif self.binning == "uniform":
+                        (
+                            cuts, 
+                            count_missing, 
+                            min_val, 
+                            max_val,
+                        ) = native.generate_uniform_cuts(
+                            col_data, 
+                            self.max_bins - 2, # one bin for missing, and # of cuts is one less again
+                        )
+                    else:
+                        raise ValueError(f"Unrecognized bin type: {self.binning}")
 
-                if count_missing != 0:
-                    col_data = col_data[~np.isnan(col_data)]
+                    discretized = native.discretize(col_data, cuts)
+                    bin_counts = np.bincount(discretized, minlength=len(cuts) + 2)
+                    if count_missing != 0:
+                        col_data = col_data[~np.isnan(col_data)]
+
+                    hist_counts, hist_edges = np.histogram(col_data, bins="doane")
+
                 
                 self.col_bin_counts_.append(bin_counts)
                 self.col_bin_edges_[col_idx] = cuts
                 self.col_min_[col_idx] = min_val
                 self.col_max_[col_idx] = max_val
-
-                hist_counts, hist_edges = np.histogram(col_data, bins="doane")
                 self.hist_edges_[col_idx] = hist_edges
                 self.hist_counts_[col_idx] = hist_counts
             elif col_info["type"] == "ordinal":
@@ -241,7 +272,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 self.col_bin_counts_.append(None) # TODO count the values in each bin
             elif col_info["type"] == "categorical":
                 col_data = col_data.astype('U')
-                uniq_vals, counts = np.unique(col_data, return_counts=True)
+
+                if self.binning == "private":
+                    uniq_vals, counts = DPUtils.private_categorical_binning(col_data, noise_scale, self.max_bins)
+                else: # Standard binning
+                    uniq_vals, counts = np.unique(col_data, return_counts=True)
 
                 missings = np.isin(uniq_vals, self.missing_str)
 
@@ -292,6 +327,13 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 X_new[:, col_idx] = vec_map(col_data)
             elif col_type == "categorical":
                 mapping = self.col_mapping_[col_idx].copy()
+
+                # Use "DPOther" bin when possible to handle unknown values during DP.
+                if "private" in self.binning:
+                    for key, val in mapping.items():
+                        if key == "DPOther": 
+                            unknown_constant = val
+                            missing_constant = val
 
                 if isinstance(self.missing_str, list):
                     for val in self.missing_str:

@@ -12,6 +12,8 @@ import numpy as np
 import warnings
 import copy
 
+from scipy.stats import norm
+from scipy.optimize import minimize_scalar, root_scalar
 
 import logging
 
@@ -469,3 +471,120 @@ class EBMUtils:
             # TODO PK we should consider changing the feature type to the same " x " separator
             # style as gen_feature_name, for human understanability
             return "interaction"
+
+
+class DPUtils:
+
+    @staticmethod
+    def calc_classic_noise_multi(total_queries, target_epsilon, delta, sensitivity):
+        variance = (8*total_queries*sensitivity**2 * np.log(np.exp(1) + target_epsilon / delta)) / target_epsilon ** 2
+        return np.sqrt(variance)
+
+    @staticmethod
+    def calc_gdp_noise_multi(total_queries, target_epsilon, delta):
+        ''' Loose GDP analysis following Algorithm 2. 
+        '''
+        err_noise = 50_000 # Absurdly large value for error cases
+        def f(x):
+            mu = np.sqrt(total_queries) / x
+            eps = DPUtils.eps_from_mu(mu, delta)
+            return x if eps < target_epsilon else err_noise
+
+        noise_multi = minimize_scalar(f, bounds=(0, err_noise), method='bounded')
+        if noise_multi == err_noise:
+            raise Exception("Cannot find reasonable solution for specified combination of eps, delta.")
+
+        return noise_multi.x
+
+    # General calculations, largely borrowed from tensorflow/privacy and presented in https://arxiv.org/abs/1911.11607
+    @staticmethod
+    def delta_eps_mu(eps, mu):
+        ''' Code adapted from: https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/analysis/gdp_accountant.py#L44
+        '''
+        return norm.cdf(-eps/mu + mu/2) - np.exp(eps) * norm.cdf(-eps/mu - mu/2)
+
+    @staticmethod
+    def eps_from_mu(mu, delta):
+        ''' Code adapted from: https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/analysis/gdp_accountant.py#L50
+        '''
+        def f(x):
+            return DPUtils.delta_eps_mu(x, mu)-delta    
+        return root_scalar(f, bracket=[0, 500], method='brentq').root
+
+    @staticmethod
+    def validate_eps_delta(eps, delta):
+        if eps is None or eps <= 0 or delta is None or delta <= 0:
+            raise ValueError(f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers")
+
+    @staticmethod
+    def private_numeric_binning(col_data, noise_scale, max_bins, min_val, max_val):
+        uniform_counts, uniform_edges = np.histogram(col_data, bins=max_bins*2, range=(min_val, max_val))
+        noisy_counts = uniform_counts + np.random.normal(0, noise_scale, size=uniform_counts.shape[0])
+        
+        # Postprocess to ensure realistic bin values (integers, min=1)
+        noisy_counts = np.clip(np.round(noisy_counts), 1, None)
+
+        # Greedily collapse bins until they meet or exceed target_count threshold
+        target_count = col_data.shape[0] / max_bins
+        bin_counts, bin_cuts = [], [uniform_edges[0]]
+        curr_count = 0
+        for index, right_edge in enumerate(uniform_edges[1:]):
+            curr_count += noisy_counts[index]
+            if curr_count >= target_count:
+                bin_cuts.append(right_edge)
+                bin_counts.append(curr_count)
+                curr_count = 0
+
+        # Ignore min/max value as part of cut definition
+        bin_cuts = np.array(bin_cuts)[1:-1] 
+
+        # All leftover datapoints get collapsed into final bin
+        bin_counts[-1] += curr_count
+
+        return bin_cuts, bin_counts
+
+    @staticmethod
+    def private_categorical_binning(col_data, noise_scale, max_bins):
+        # Initialize estimate
+        col_data = col_data.astype('U')
+        uniq_vals, counts = np.unique(col_data, return_counts=True)
+
+        counts = counts + np.random.normal(0, noise_scale, size=counts.shape[0])
+        counts = np.clip(np.round(counts), 1, None) # Postprocessing: Clip and round counts to be realistic (positive ints)
+
+        # Collapse bins until target_size is achieved.
+        target_count = col_data.shape[0] / max_bins
+        small_bins = np.where(counts < target_count)[0]
+        if len(small_bins) > 0:
+            other_count = np.sum(counts[small_bins])
+            mask = np.ones(counts.shape, dtype=bool)
+            mask[small_bins] = False
+
+            # Collapse all small bins into "DPOther"
+            uniq_vals = np.append(uniq_vals[mask], "DPOther")
+            counts = np.append(counts[mask], other_count)
+
+            # # If "DPOther" bin is too small, absorb 1 more bin (guaranteed above threshold)
+            if other_count < target_count:                               
+                collapse_bin = np.argmin(counts[:-1])
+                mask = np.ones(counts.shape, dtype=bool)
+                mask[collapse_bin] = False
+
+                # Pack data into the final "DPOther" bin
+                counts[-1] += counts[collapse_bin]
+
+                # Delete absorbed bin
+                uniq_vals = uniq_vals[mask]
+                counts = counts[mask]
+
+        return uniq_vals, counts
+
+    @staticmethod
+    def build_privacy_schema(X):
+        privacy_schema = {}
+        for index in range(X.shape[1]):
+            min_val, max_val = (np.min(X[:, index]), np.max(X[:, index]))
+            if isinstance(min_val, numbers.Number) and isinstance(max_val, numbers.Number):
+                privacy_schema[index] = (min_val, max_val)
+
+        return privacy_schema
