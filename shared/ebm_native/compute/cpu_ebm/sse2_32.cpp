@@ -144,7 +144,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Sse_32(
    UNUSED(sMetric);
    UNUSED(sMetricEnd);
 
-   return Error_UnknownInternalError;
+   return Error_UnexpectedInternal;
 }
 
 } // DEFINED_ZONE_NAME

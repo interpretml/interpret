@@ -221,7 +221,7 @@ public:
          error = cudaDeviceReset();
       }
 
-      return bExitError ? Error_UnknownInternalError : Error_None;
+      return bExitError ? Error_UnexpectedInternal : Error_None;
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>

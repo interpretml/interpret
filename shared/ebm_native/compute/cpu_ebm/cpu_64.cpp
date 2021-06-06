@@ -148,7 +148,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Cpu_64(
    UNUSED(sMetric);
    UNUSED(sMetricEnd);
 
-   return Error_UnknownInternalError;
+   return Error_UnexpectedInternal;
 }
 
 

@@ -851,7 +851,7 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(
    return cSamples;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countCuts,
    FloatEbmType lowestCut,
    FloatEbmType highestCut,
@@ -860,202 +860,432 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBou
    FloatEbmType * lowGraphBoundOut,
    FloatEbmType * highGraphBoundOut
 ) {
+   // There are a lot of complexities in choosing the graphing bounds.  Let's start from the beginning:
+   // - cuts occur on floating point values.  We need to make a choice whether features that are the exact value 
+   //   of the cut point go into the upper or lower bounds
+   // - we choose lower bound inclusivity so that if a cut is at 5, then the numbers 5.0 and 5.1 will be in the same bound
+   // - unfortunately, this means that -1.0 is NOT in the same bounds as -1.1, but negative numbers should be rarer
+   //   and in general we shouldn't be putting cuts on whole numbers anyways.  Cuts at 0.5, 1.5, etc are better
+   //   and this is where the algorithm will tend to put cuts anyways for whole numbers.
+   // - if we wanted -1.0 to be in the same bin as -1.1 AND also have +1.0 be in the same bin as +1.1 there is
+   //   an alternative of making 0 it's own bin and using lower bound inclusive for positives, and upper bound 
+   //   inclusive for negatives.  We do however want other people to be able to write EBM evaluators and this kind
+   //   of oddity is just a bit too odd and non-standard.  It's also hard to optimize this in the binary search.
+   // - With lower bound inclusivity, no cut should ever be -inf, since -inf will be included in the upper bound
+   //   and nothing can be lower than -inf (NaN means missing)
+   // - In theory, +inf cut points might have a use to separate max and +inf feature values, but it's kind of weird 
+   //   to disallow cuts at -inf but allow them at +inf, so we declare +inf to be an illegal cut point as well.  
+   //   The consequence of this is that the highest legal cut point at max can't separate max from +inf values, 
+   //   but we can live with that.  lowest can however separate -inf from lowest, but that's just the consequence 
+   //   of our decisions above.
+   // - NaN cut points don't make any sense, so in conclusion cuts can be any normal floating point number.
+   // - To preserve interpretability, our graphs should initially be displayed over the range from the min value in
+   //   the data to the maximum value in the data.  This is a strong indicator of issues in the data if the range
+   //   is too wide, and the user can rapidly zoom into the main area if they need to see more detail.  We could
+   //   later add some kind of button to zoom to a point that keeps the outer most bounds in view as an option. 
+   // - Annother important aspect is that all bins and their scores should be visible in principle on the graphs.
+   //   We can't prevent a bin though from being vanishingly small such that it wouldn't be effectively visible, but
+   //   it should at least be within the observable range on the graphs.
+   // - Under normal circumstances when the user doesn't edit the graphs or provide custom cut points we can offer
+   //   an absolute guarantee that when the graphing view goes from the min to the max value that it includes all cut 
+   //   points IF the following are true:
+   //   - the user has not stripped the min and max value information from the model.  It would be nice to allow 
+   //     the user to do this as an option though if they want to for privacy reasons since the min and max are 
+   //     potentially egregious violations of privacy (eg: the max net worth in the dataset is $100,000,000,000).  
+   //   - The end user doesn't edit the graphs after the fact.  Our automatic binning never put cuts automatically 
+   //     above the max or below the min, however if the user later edits graphs they could want to put cuts outside 
+   //     of the min/max range.  If the user wants to put a range between 999 and 1001 with a value of +10 and the 
+   //     max value in the natural data was 100, then we'll have a cut point outside of the normally displayed 
+   //     min -> max range.  The scenario of wanting a previously unseen bin might happen if the data changes after
+   //     training and the user wants to correct the model to handle these cases (eg: a sensor fails and the user wants
+   //     to give all values scores of 0 in some range where they were previously +3.1), so I believe we should support
+   //     these kinds of scenarios of adding bins outside the natural data range.
+   //   - The end user didn't supply user defined cut points upfront before fitting.  If the user supplies user 
+   //     defined cut points of 1,2,3 and no data is larger than 2.5, then the 3 value cut is above the max
+   //   - There is a corner case where the max value is for example 10 and there is a lot of data at 10, but also
+   //     there is data one floating point tick below 10 (9.9999999 as a close example).  Since we use lower bound
+   //     inclusivity, the cut point will be at 10, and the max value will be at 10, so if our graph goes from the
+   //     min value to 10, then the score in the bin ABOVE 10 isn't visible on the graph.  The worse case of this
+   //     would occur if one third of the data was at the max float minus one float tick, one third of the data
+   //     was at the max, and one third of the data was at +inf.  The only valid cut would be at max, with 1/3 of the
+   //     data on the left and 2/3 of the data on the right and the graph bounds ending at max value with no 
+   //     possibility to show the upper score bin unless the graph shows beyond the max value and in fact shows 
+   //     beyond the max float value.
+   //   - There is an odd case, but one that'll happen with regularity on real data where all the feature values
+   //     are the same.  For instance a sensor that has never worked and always reports 0.  In this case the
+   //     min and max value are both 0, and there are no cuts (for non-editied or pre-specified cuts), but the
+   //     interesting aspect is that the range has zero mass since (0 - 0) = 0 and thus the graph doesn't have
+   //     a range that is representable as a 2D graph.  I would recommend putting the single value on a graph with
+   //     one tick at the specific value and showing no other tick marks on the graph leaving the impression that
+   //     the graph has infinite resolution, which it does.
+   //   - To handle the scenario where the max and the highest next data value is max minus one tick AND to handle
+   //     the more likely scenario where there is only one value, Slicer needs to be able to handle zero width
+   //     regions where the upper and lower bound is the same number.  Other than these two special cases though
+   //     since cut points should always increase, it should not be possible for the lower and upper bound to be
+   //     identical
+   // - we could disallow Slicer from having zero width slices (low bound and high bound identical) if we were 
+   //   willing to do the following:
+   //   - if all the data is identical (eg: all values are 5.0), then we could choose some arbitrary zone to graph
+   //     by showing for instance 4.9999999 to 5.0000001 which would be purposely narrow to show that there is
+   //     only 1 value in the data, and then we have the width on the graph to show the score in the "bin"
+   //   - if we encounter the scenario where the top value and next lower value are separated by a float tick,
+   //     we can move the graph bound outwards a bit.  This violates our rule that the graph should initially show
+   //     from min to max, but this is an exceptional circumstance.
+   //   - alternatively, we could simply remove zero width bins at the top and just accept that this is a truely
+   //     exceptional scenario that just doesn't get graphed.  In this case since we want to avoid the zero width
+   //     zone in the programming interface it's not just a UI change but we need to filter it out when genereating
+   //     the explanation
+   //   - If we choose to increment up one tick, since we can't increment up from max, we need to disallow cuts on 
+   //     exactly max, so we should therefore throw exceptions if the user specifies max as a cut point and force 
+   //     cuts to not choose max on automated cut selection
+   //   - disallowing NaN and infinities for cut points is expected, but I think many users would be surprised to
+   //     recieve an exception if they specify a cut point at max.  For this reason, I prefer allowing zero
+   //     width intervals in Slicer and detecting handling this scenario in the graphs.  I also don't like removing
+   //     one Slicer zone if the end slices are zero width since this will be surprizing behaviour to anyone
+   //     using our interface and even if they don't get an exception it could lead to a crash bug or worse.
+   // - In general, I think that we should allow the user to edit graphs and add bins beyond the original graphing
+   //   range because there are valid reasons why the user might want to do this:
+   //   - adding special casing after the fact, like if a sensor stops working and the returned value of 1000 should
+   //     be ignored, yet this particular odd value never appears in the training data.
+   //   - the user will get a surprising to them exception if we disallow editing outside of the min/max range.  Model
+   //     evaluation could work during initial model building, but then fail later in a model building pipeline if one 
+   //     of the upper bins is rare.  For example if it's rare for data to be above 1000, but the user still wants 
+   //     to special case edit models to handle that differently, if in a production environment they just happen to 
+   //     get a dataset that doesn't have values above 1000 in it.  I think it shouldn't fail since then the user 
+   //     needs to carefully check their data for all kinds of rare exceptional events which they won't know about 
+   //     beforehand unless they read our code very carefully to know all the failure cases.  A warning would be a 
+   //     far nicer option in these circumstances, which we have enough information to do.
+   // - if we allow the user to edit graphs to put cut points beyond the min/max value, then we need to break one of
+   //   our two cardinal rules above in those exceptoinal cirumstances where the user edits features:
+   //   - If we choose to continue to show the graph between the min and max then
+   //     there will be cuts and scores not visible on our graphs, and the data inside Slicer will look very odd
+   //     with the last bin having negative width where the lower bound would be the last cut and the upper bound
+   //     be the maximum, which is now lower than the upper bound cut
+   //   - if we choose to expand the graph viewing area beyond the min and max value, then we can now show the entire
+   //     range of valid scores.  We need to though expand BEYOND the outer cut points in this case because there
+   //     is a range that extends from the highest cut point until infinity and from the lowest cut point to negative
+   //     infinity and those score values won't be shown if our graph terminates at the lowest and highest cut points
+   // - Of these two bad options, probably expanding the view of the graph is the least worse since it at least 
+   //   notifies the user of an odd/unusual situation with that feature and it allows them to see all values which
+   //   wouldn't be possible, and it avoids the issues of really super odd negative width ranges in Slicer.
+   // - Under this scenario there are 3 types of values:
+   //   - cut points
+   //   - min/max value of the data (storing this as is is nice to keep in the model file, and maybe indicate on the graphs)
+   //   - the graph low and grpah high values.  We can use these values in Slicer intervals.  The graph low and graph high values
+   //     can be made to guarantee that they are always beyond the outside cut points AND either equal to or beyond
+   //     the min/max values
+   // - slicer should only include the cut points and the graph bounds in the ranges (never the min or max values!).  
+   //   We should keep the true min and max values as separate data fields outside of the Slicer ranges since 
+   //   otherwise we'll get negative range widths in some bad cases
+   // - We don't need to store the graph min and graph max in the model.  We can generate these when we generate
+   //   an explanation object since they derive precicely from the cut points and min/max values which we do store
+   // - if the user chooses to remove the min/max value for privacy reasons (or any other reason), then we'd use
+   //   the same algorithm of putting the graph view just a bit outside of the range of the lower and upper cut points
+   // - There is one more wrinkle however.  What if the min is -inf or the max is +inf:
+   //   - infinity isn't a JSON compatible value, so we should avoid serializing it as JSON
+   //   - it's impossible to make a graph that starts on +-infinity since then all other features are 1/+-inf and
+   //     then you can't even zoom into them, even in theory since your range is infinite to begin with
+   //   - our options are:
+   //     - make +inf as max and -inf as lowest
+   //     - write out non-JSON compliant +-inf values and special case the graphs
+   //     - store the non-infinity min and non-infinity max AND also keep bools to know if the true min and max were
+   //       inf values.  (we should store this as -1/0/+1 for each since the max can be -inf if all data values
+   //       are -inf OR if all data values are +inf then the min can be +inf!
+   //     - I like the latter option since it might be nice for debugging to know what the min/max values were other
+   //       than the +-inf values
+   //   - If we choose the latter though of storing the non-infinity min/max, then we need to be careful when we
+   //     we choose automatic cut points.  If we replaced +inf with max, and -inf with min for the purposes of
+   //     cut point calculation, then we can have a cut point that is outside the min/max range for non-edited and
+   //     non-pre-specified cut points.  We can avoid this scenario though by not allowing the automatic cut point 
+   //     algorithm to select cut points between the non-infinity min/max values and min/lowest.  We essentially 
+   //     ignore the +inf and -inf values beside using their counts.  This does however resolve another kind of 
+   //     issue that we can get huge unnatural values if we attempt to put cuts between the 
+   //     non-inf min/max and +-inf or max/lowest
+   //   - as a nicety, we can avoid the scenario where the upper cut point and the max are the same value for the
+   //     automatic binning code by disallowing a cut at the max value.  So if the data consisted of:
+   //     4.999999, 5.000000, 5.000001 (assuming these are 1 float tick apart), then 5.000001 would be the max value
+   //     and the cutting algorithm would tend to put a cut at 5.000001 in order to separate 5.000000 from 5.000001
+   //     but then we'd get a zero width Slicer interval and we wouldn't be able to show the score value for 
+   //     5.000001 and beyond since our graph ends at 5.000001, but if we disallow an automatic cut there then
+   //     the only cut allowed here would be at 5.000000 with our graph going from 4.999999 to 5.000001, thus
+   //     we'd show some region for both the lower and upper bin (exactly 1 float point tick's worth).
+   // - consider two clarifying scenarios:
+   //   - you have values between -5 and +10 and a single +inf value
+   //     - obviously the cut should be below +10, but what should the max be?  We can't really show a range
+   //       of +inf since graphs don't work that way.  We could show max_float but that's confusing to end users
+   //       and brittle if the number is changed between float/double
+   //     - probably using 10 is the right max here.. what else makes sense?
+   //   - you have values between -5 and +10 and 1/100 of the data is +inf
+   //     - if we set the max to +inf then we can't really make a graph and we can't write to JSON
+   //     - if we set the maxValue to max_float then people won't really undrestand why the graph goes unitl 
+   //       3.402823466e+38
+   //     - if we set the upper cut below 10, then we get to keep it less than the max, but then +10 will be bunched
+   //       with +inf and that seems like a bad clusting
+   //     - PROBABLY, choosing something like 1000 times the range of the data beyond the max is the right thing
+   //       to do.  If someone said the data ranged from 0 to 1 with +inf values too, but then you get a value 
+   //       at 10,000, you might wonder if it should go into the 0 to 1 bin or the +inf bin.
+   // - since we can't graph to +-inf anyways, we might want to include a field to indicate if there are infinities
+   //   at either the min or the max, but it gets complicated if all values are +inf for instance then the min
+   //   value is +inf and that makes it confusing.  You'd need to have -1/0/+1 to cover all the -inf/no_inf/+inf cases
+   //   so I tend to think it's not worth preserving the information that there are +inf or -inf values in the dataset
+   // - generally, max_float and min_float are problematic to graph or reason about.  If we set the bounds to
+   //   min_float to max_float then the distance between them goes to infinity since max_float - (min_float) = +inf
+   //   Also, people don't generally know that max_float is 3.402823466e+38 so it just confuses them.
+   //   Also, if the user tries to zoom past max_float, then the graphing software might fail, and we do want to
+   //   allow people to use graphing software other than ours.
+
+//-we want to get the max and min non - infinity values to write in JSON and to graph
+//- BUT, if there are a lot of + inf or -inf values we have to decide where to put cut points if automatic cutting is selected
+//- the graph is going to go from min to max then it's tempting to want to put the cut points slightly below the max and slightly above the min
+//by bunching the max and min values with the + inf or -inf values, but + inf or -inf might be truely special scenarios so
+//we'd rather keep them in their own bins if there is enough data for them
+//so we'd rather put the cut point above max and below min to separate the max and min
+//- but where to put the cut points above max or min.In theory they have a huge range(to infinity!)
+//but we can't graph infinity anyways, and making a graph go to 10^38 seems excessive
+//- if I asked a human where they'd put a cut if they had data going from 1 to 10 and then +inf and -inf, I think a reasonable answer is that
+//if a new value poped in that was above 100 or 1000 times larger than the previous max it would be ambiguous if that should be binned with
+//the + inf / -inf values or with the min / max values.So, let's say we go with 100 times larger, that would mean we'd have a cut point at 10 * 100
+//= 1000 and -1000 (because our range is
+//
+
+
    if(nullptr == lowGraphBoundOut) {
-      LOG_0(TraceLevelWarning, "ERROR SuggestGraphBounds nullptr == lowGraphBoundOut");
-      return;
+      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds nullptr == lowGraphBoundOut");
+      return Error_IllegalParamValue;
    }
    if(nullptr == highGraphBoundOut) {
-      LOG_0(TraceLevelWarning, "ERROR SuggestGraphBounds nullptr == highGraphBoundOut");
-      return;
+      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds nullptr == highGraphBoundOut");
+      return Error_IllegalParamValue;
+   }
+   if(maxValue < minValue) {
+      // silly caller, these should be reversed.  If either or both are NaN this won't execute, which is good
+      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < minValue");
+      *lowGraphBoundOut = 0;
+      *highGraphBoundOut = 0;
+      return Error_IllegalParamValue;
    }
 
-   FloatEbmType lowGraphBound;
-   FloatEbmType highGraphBound;
    if(countCuts <= IntEbmType { 0 }) {
       if(countCuts < IntEbmType { 0 }) {
-         LOG_0(TraceLevelWarning, "ERROR SuggestGraphBounds countCuts < IntEbmType { 0 }");
-         lowGraphBound = FloatEbmType { 0 };
-         highGraphBound = FloatEbmType { 0 };
-      } else {
-      use_just_min_max:;
+         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds countCuts < IntEbmType { 0 }");
+         *lowGraphBoundOut = 0;
+         *highGraphBoundOut = 0;
+         return Error_IllegalParamValue;
+      }
+      // countCuts was zero, so the only information we have to go on are the minValue and maxValue..
+      if(std::isnan(minValue)) {
+         if(std::isnan(maxValue)) {
+            // no cuts and min and max are both unknown, let's return 0 -> 0 since 
+            // going from lowest_float -> max_float leads to overflows when you subtract and makes graphing hard
+            // and most people don't know what lowest_float and max_float are anyways, and the range also changes
+            // depending on if you're using floats or doubles
 
-         if(std::isnan(minValue) || -std::numeric_limits<FloatEbmType>::infinity() == minValue) {
-            minValue = std::numeric_limits<FloatEbmType>::lowest();
-         } else if(std::numeric_limits<FloatEbmType>::infinity() == minValue) {
-            minValue = std::numeric_limits<FloatEbmType>::max();
+            *lowGraphBoundOut = 0;
+            *highGraphBoundOut = 0;
+            return Error_None;
+         } 
+
+         // no min value, but we do have a max value?? Ok, well, since we only have one value let's return that
+         if(std::isinf(maxValue)) {
+            // you can't graph +inf, so return 0 -> 0
+            *lowGraphBoundOut = 0;
+            *highGraphBoundOut = 0;
+            return Error_None;
          }
 
-         if(std::isnan(maxValue) || std::numeric_limits<FloatEbmType>::infinity() == maxValue) {
-            maxValue = std::numeric_limits<FloatEbmType>::max();
-         } else if(-std::numeric_limits<FloatEbmType>::infinity() == maxValue) {
-            maxValue = std::numeric_limits<FloatEbmType>::lowest();
+         *lowGraphBoundOut = maxValue;
+         *highGraphBoundOut = maxValue;
+         return Error_None;
+      } else if(std::isnan(maxValue)) {
+         // no max value, but we do have a min value?? Ok, well, since we only have one value let's return that
+         if(std::isinf(minValue)) {
+            // you can't graph -inf, so return 0 -> 0
+            *lowGraphBoundOut = 0;
+            *highGraphBoundOut = 0;
+            return Error_None;
          }
 
-         if(maxValue < minValue) {
-            // silly caller, these should be reversed
-            LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < minValue");
-            const FloatEbmType tmp = minValue;
-            minValue = maxValue;
-            maxValue = tmp;
-         }
+         *lowGraphBoundOut = minValue;
+         *highGraphBoundOut = minValue;
+         return Error_None;
+      }
 
-         // if countCuts was zero, we can ignore lowestCut and highestCut since they have no meaning.
-         // Since there are no cuts, don't turn these into interpretable values.  We show 
-         // the most information on the graph by showing the true bounds on the graph.
-         lowGraphBound = minValue;
-         highGraphBound = maxValue;
+      // great, both the min and max are known.  We still don't want to use +-inf values if they are present
+      // for the graph bounds.  Normally we woudn't return +-inf, but this is a field which the user might
+      // modify, so let's handle +inf or -inf values
+
+      if(std::isinf(minValue)) {
+         if(std::isinf(maxValue)) {
+            // both are inf values.  You can't graph +-inf, so return 0 -> 0
+            *lowGraphBoundOut = 0;
+            *highGraphBoundOut = 0;
+            return Error_None;
+         }
+         // minValue is an infinity but maxValue isn't, so let's return that
+         *lowGraphBoundOut = maxValue;
+         *highGraphBoundOut = maxValue;
+         return Error_None;
+      } else if(std::isinf(maxValue)) {
+         // maxValue is an infinity but minValue isn't, so let's return that
+         *lowGraphBoundOut = minValue;
+         *highGraphBoundOut = minValue;
+         return Error_None;
       }
-   } else if(IntEbmType { 1 } == countCuts) {
-      if(std::isnan(lowestCut)) {
-         LOG_0(TraceLevelWarning, "WARNING SuggestGraphBounds std::isnan(lowestCut)");
-         goto use_just_min_max;
-      }
-      if(std::isnan(highestCut)) {
-         LOG_0(TraceLevelWarning, "WARNING SuggestGraphBounds std::isnan(highestCut)");
-         goto use_just_min_max;
-      }
+
+      *lowGraphBoundOut = minValue;
+      *highGraphBoundOut = maxValue;
+      return Error_None;
+   }
+
+   if(std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)) {
+      LOG_0(TraceLevelError, "ERROR SuggestGraphBounds std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)");
+      *lowGraphBoundOut = 0;
+      *highGraphBoundOut = 0;
+      return Error_IllegalParamValue;
+   }
+
+   // we're going to be checking lowestCut and highestCut, so we should check that they have valid values
+   if(IntEbmType { 1 } == countCuts) {
       if(lowestCut != highestCut) {
-         // if there's only one cut then the lowestCut should be the same as the highestCut.  If they aren't
-         // the same, then there's a serious problem and we can't really know which to trust, so ignore them
-         LOG_0(TraceLevelError, 
+         LOG_0(TraceLevelError,
             "ERROR SuggestGraphBounds when 1 == countCuts, then lowestCut and highestCut should be identical");
-         goto use_just_min_max;
-      }
-      const FloatEbmType center = lowestCut;
-      if(maxValue < minValue) {
-         // silly caller, these should be reversed
-         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < minValue");
-         const FloatEbmType tmp = minValue;
-         minValue = maxValue;
-         maxValue = tmp;
-      }
-      if(maxValue < center || center < minValue) {
-         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < center || center < minValue");
-         // hmmm.. the center value isn't between highGraphBound and highGraphBound, so they don't really make sense. Ignore them
-         // and just use the full range (which also alerts the user to something odd).
-         lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
-         highGraphBound = std::numeric_limits<FloatEbmType>::max();
-      } else {
-         EBM_ASSERT(-std::numeric_limits<FloatEbmType>::infinity() != maxValue);
-         EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != minValue);
-
-         if(-std::numeric_limits<FloatEbmType>::infinity() == minValue) {
-            minValue = std::numeric_limits<FloatEbmType>::lowest();
-         }
-         if(std::numeric_limits<FloatEbmType>::infinity() == maxValue) {
-            maxValue = std::numeric_limits<FloatEbmType>::max();
-         }
-
-         // since there's just 1 cut, don't turn these into interpretable values.  We show 
-         // the most information on the graph by showing the true bounds on the graph.
-         const FloatEbmType lowDiff = center - minValue;
-         EBM_ASSERT(!std::isnan(lowDiff));
-         EBM_ASSERT(FloatEbmType { 0 } <= lowDiff);
-         const FloatEbmType highDiff = maxValue - center;
-         EBM_ASSERT(!std::isnan(highDiff));
-         EBM_ASSERT(FloatEbmType { 0 } <= highDiff);
-
-         if(std::isinf(lowDiff) || std::isinf(highDiff)) {
-            // the range is so big that once we extend it both sides will be at infinity, so put them both at the max
-            lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
-            highGraphBound = std::numeric_limits<FloatEbmType>::max();
-         } else {
-            if(lowDiff < highDiff) {
-               highGraphBound = maxValue;
-               // highGraphBound is farther from our single cut than the lowGraphBound, so let's make it symmetric to the highGraphBound
-               // so that lowGraphBound can be shown on the graph
-               lowGraphBound = center - highDiff;
-               EBM_ASSERT(!std::isnan(lowGraphBound));
-               if(-std::numeric_limits<FloatEbmType>::infinity() == lowGraphBound) {
-                  lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
-               }
-            } else {
-               lowGraphBound = minValue;
-               // lowGraphBound is farther from our single cut than the highGraphBound, so let's make it symmetric to the lowGraphBound
-               // so that highGraphBound can be shown on the graph
-               highGraphBound = center + lowDiff;
-               EBM_ASSERT(!std::isnan(highGraphBound));
-               if(std::numeric_limits<FloatEbmType>::infinity() == highGraphBound) {
-                  highGraphBound = std::numeric_limits<FloatEbmType>::max();
-               }
-            }
-         }
+         *lowGraphBoundOut = 0;
+         *highGraphBoundOut = 0;
+         return Error_IllegalParamValue;
       }
    } else {
-      // ignore the min and max value.  We have complexity in our graph with multiple cuts so we want to focus on that
-      // part.  
-
-      if(std::isnan(lowestCut) || -std::numeric_limits<FloatEbmType>::infinity() == lowestCut) {
-         lowestCut = std::numeric_limits<FloatEbmType>::lowest();
-      } else if(std::numeric_limits<FloatEbmType>::infinity() == lowestCut) {
-         lowestCut = std::numeric_limits<FloatEbmType>::max();
+      if(highestCut <= lowestCut) {
+         LOG_0(TraceLevelError,
+            "ERROR SuggestGraphBounds highestCut <= lowestCut");
+         *lowGraphBoundOut = 0;
+         *highGraphBoundOut = 0;
+         return Error_IllegalParamValue;
       }
+   }
 
-      if(std::isnan(highestCut) || std::numeric_limits<FloatEbmType>::infinity() == highestCut) {
-         highestCut = std::numeric_limits<FloatEbmType>::max();
-      } else if(-std::numeric_limits<FloatEbmType>::infinity() == highestCut) {
-         highestCut = std::numeric_limits<FloatEbmType>::lowest();
+   bool bExpandLower;
+   FloatEbmType lowGraphBound;
+   if(std::isnan(minValue)) {
+      // the user removed the min value from the model so we need to use the available info, which is the lowestCut
+      lowGraphBound = lowestCut;
+      bExpandLower = true;
+   } else if(-std::numeric_limits<FloatEbmType>::infinity() == minValue) {
+      // we can't graph -inf, and don't use lowest since that can lead to graph issues too
+      lowGraphBound = lowestCut;
+      bExpandLower = true;
+   } else {
+      if(lowestCut <= minValue) {
+         // the model has been edited or supplied with non-data derived cut points
+         // our automatic binning code should disallow cuts on the exact min value
+         // if equal and we don't expand lower, then there won't be any place on the graph to see the lowest bin score
+         lowGraphBound = lowestCut;
+         bExpandLower = true;
+      } else {
+         lowGraphBound = minValue;
+         bExpandLower = false;
       }
+   }
+   EBM_ASSERT(!std::isnan(lowGraphBound));
+   EBM_ASSERT(!std::isinf(lowGraphBound));
 
-      if(highestCut < lowestCut) {
-         // silly caller, these should be reversed
-         LOG_0(TraceLevelError, "ERROR SuggestGraphBounds highestCut < lowestCut");
-         const FloatEbmType tmp = lowestCut;
-         lowestCut = highestCut;
-         highestCut = tmp;
+   bool bExpandHigher;
+   FloatEbmType highGraphBound;
+   if(std::isnan(maxValue)) {
+      // the user removed the max value from the model so we need to use the available info, which is the highestCut
+      highGraphBound = highestCut;
+      bExpandHigher = true;
+   } else if(std::numeric_limits<FloatEbmType>::infinity() == maxValue) {
+      highGraphBound = highestCut;
+      bExpandHigher = true;
+   } else {
+      if(maxValue <= highestCut) {
+         // the model has been edited or supplied with non-data derived cut points
+         // our automatic binning code should disallow cuts on the exact max value
+         // if equal and we don't expand higher, then there won't be any place on the graph to see the highest bin score
+         highGraphBound = highestCut;
+         bExpandHigher = true;
+      } else {
+         highGraphBound = maxValue;
+         bExpandHigher = false;
       }
+   }
+   EBM_ASSERT(!std::isnan(highGraphBound));
+   EBM_ASSERT(!std::isinf(highGraphBound));
 
-      const FloatEbmType scaleMin = highestCut - lowestCut;
-      // scaleMin can be +infinity if highestCut is max and lowestCut is lowest.  We can handle it.
-      EBM_ASSERT(!std::isnan(scaleMin));
-      // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
-      EBM_ASSERT(FloatEbmType { 0 } <= scaleMin);
+   if(lowGraphBound == highGraphBound) {
+      // we handled zero cuts above, and if there were two cuts they'd have to have unique increasing values
+      // so the only way we can have the low and high graph bounds the same is if we have one cut and both the
+      // minValue and maxValue are the same as that cut (otherwise we'd create some space), or they are missing (NaN)
+      EBM_ASSERT(IntEbmType { 1 } == countCuts);
+      EBM_ASSERT(std::isnan(minValue) || minValue == highGraphBound);
+      EBM_ASSERT(std::isnan(maxValue) || maxValue == lowGraphBound);
 
-      // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
-      // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
-      // 1.5% on the right)
+      // if the regular binning code was kept and the min/max value wasn't removed from the model, then we should
+      // not be able to get here, since minValue == maxValue can only happen if there is only one value, and if there
+      // is only one value we would never create cut points, so the cut points or min/max have been user edited
+      // we can therefore put our bounds outside of the original min/max values.  We'll create a visible bin on the
+      // lower side and higher side
 
-      const size_t cCutsLimited = static_cast<size_t>(IntEbmType { 32 } < countCuts ? IntEbmType { 32 } : countCuts);
+      // it's possible that this creates zero sized regions for Slicer if lowGraphBound/highGraphBound was lowest_float
+      // or max_float, but as we've covered above, zero width regions should be legal for user defined binning
+      *lowGraphBoundOut = std::nextafter(lowGraphBound, std::numeric_limits<FloatEbmType>::lowest());
+      *highGraphBoundOut = std::nextafter(highGraphBound, std::numeric_limits<FloatEbmType>::max());
+      return Error_None;
+   }
 
-      // the leftmost and rightmost cuts can legally be right outside of the bounds between scaleHighLow and
-      // scaleLowHigh, so we subtract these two cuts, leaving us the number of ranges between the two end
-      // points.  Half a range on the bottom, N - 1 ranges in the middle, and half a range on the top
-      // Dividing by that number of ranges gives us the average range width.  We don't want to get the final
-      // cut though from the previous inner cut.  We want to move outwards from the scaleHighLow and
-      // scaleLowHigh values, which should be half a cut inwards (not exactly but in spirit), so we
-      // divide by two, which is the same as multiplying the divisor by 2, which is the right shift below
-      EBM_ASSERT(IntEbmType { 2 } <= countCuts); // if there's just one cut then suggest bounds surrounding it
-      const size_t denominator = (cCutsLimited - size_t { 1 }) << 1;
-      EBM_ASSERT(size_t { 0 } < denominator);
-      const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
-      // movementFromEnds can be +infinity if scaleMin is infinity. We can handle it.
-      EBM_ASSERT(!std::isnan(movementFromEnds));
-      EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
+   EBM_ASSERT(lowGraphBound < highGraphBound);
 
-      lowestCut = lowestCut - movementFromEnds;
-      // lowestCut can be -infinity if movementFromEnds is +infinity.  We can handle it.
-      EBM_ASSERT(!std::isnan(lowestCut));
-      EBM_ASSERT(lowestCut <= std::numeric_limits<FloatEbmType>::max());
+   const FloatEbmType scaleMin = highGraphBound - lowGraphBound;
+   // scaleMin can be +infinity if highestCut is max and lowestCut is lowest.  We can handle it.
+   EBM_ASSERT(!std::isnan(scaleMin));
+   // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
+   EBM_ASSERT(FloatEbmType { 0 } < scaleMin);
+
+   // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
+   // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
+   // 1.5% on the right)
+
+   const size_t cCutsLimited = static_cast<size_t>(IntEbmType { 32 } < countCuts ? IntEbmType { 32 } : countCuts);
+
+   EBM_ASSERT(size_t { 1 } <= cCutsLimited);
+   const size_t denominator = cCutsLimited << 1;
+   EBM_ASSERT(size_t { 2 } <= denominator);
+   const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
+   // movementFromEnds can be +infinity if scaleMin is infinity. We can handle it.  It could also underflow to zero
+   EBM_ASSERT(!std::isnan(movementFromEnds));
+   EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
+
+   if(bExpandLower) {
+      lowGraphBound = lowGraphBound - movementFromEnds;
+      // lowGraphBound can be -infinity if movementFromEnds is +infinity.  We can handle it.
+      EBM_ASSERT(!std::isnan(lowGraphBound));
+      EBM_ASSERT(lowGraphBound <= std::numeric_limits<FloatEbmType>::max());
       // GetInterpretableEndpoint can accept -infinity, but it'll return -infinity in that case
-      lowGraphBound = GetInterpretableEndpoint(lowestCut, movementFromEnds);
+      lowGraphBound = GetInterpretableEndpoint(lowGraphBound, movementFromEnds);
       // lowGraphBound can legally be -infinity and we handle this scenario below
       if(-std::numeric_limits<FloatEbmType>::infinity() == lowGraphBound) {
+         // in this case the real data has huge magnitudes, so returning lowest is the best solution
          lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
       }
+   }
 
-      highestCut = highestCut + movementFromEnds;
-      // highestCut can be +infinity if movementFromEnds is +infinity.  We can handle it.
-      EBM_ASSERT(!std::isnan(highestCut));
-      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() <= highestCut);
+   if(bExpandHigher) {
+      highGraphBound = highGraphBound + movementFromEnds;
+      // highGraphBound can be +infinity if movementFromEnds is +infinity.  We can handle it.
+      EBM_ASSERT(!std::isnan(highGraphBound));
+      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() <= highGraphBound);
       // GetInterpretableEndpoint can accept infinity, but it'll return infinity in that case
-      highGraphBound = GetInterpretableEndpoint(highestCut, movementFromEnds);
+      highGraphBound = GetInterpretableEndpoint(highGraphBound, movementFromEnds);
       // highGraphBound can legally be +infinity and we handle this scenario below
       if(std::numeric_limits<FloatEbmType>::infinity() == highGraphBound) {
+         // in this case the real data has huge magnitudes, so returning max_float is the best solution
          highGraphBound = std::numeric_limits<FloatEbmType>::max();
       }
    }
+
    *lowGraphBoundOut = lowGraphBound;
    *highGraphBoundOut = highGraphBound;
+   return Error_None;
 }
 
 } // DEFINED_ZONE_NAME

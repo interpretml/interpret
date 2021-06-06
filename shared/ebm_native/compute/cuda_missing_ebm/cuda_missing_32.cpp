@@ -21,5 +21,5 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateLoss_Cuda_32(
    UNUSED(sLossEnd);
    UNUSED(pLossWrapperOut);
 
-   return Error_UnknownInternalError;
+   return Error_UnexpectedInternal;
 }

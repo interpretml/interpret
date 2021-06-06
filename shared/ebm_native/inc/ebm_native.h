@@ -149,31 +149,37 @@ typedef int32_t SeedEbmType;
 #define SeedEbmTypePrintf PRId32
 typedef int32_t TraceEbmType;
 #define TraceEbmTypePrintf PRId32
-typedef IntEbmType BoolEbmType;
-#define BoolEbmTypePrintf IntEbmTypePrintf
-typedef IntEbmType ErrorEbmType;
-#define ErrorEbmTypePrintf IntEbmTypePrintf
-typedef IntEbmType GenerateUpdateOptionsType;
+typedef int64_t BoolEbmType;
+#define BoolEbmTypePrintf PRId64
+typedef int32_t ErrorEbmType;
+#define ErrorEbmTypePrintf PRId32
+typedef int64_t GenerateUpdateOptionsType;
 // technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
-typedef UIntEbmType UGenerateUpdateOptionsType;
+typedef uint64_t UGenerateUpdateOptionsType;
 #define UGenerateUpdateOptionsTypePrintf PRIx64
 
 #define EBM_FALSE          (EBM_BOOL_CAST(0))
 #define EBM_TRUE           (EBM_BOOL_CAST(1))
 
-#define Error_None                                    (EBM_ERROR_CAST(0))
-#define Error_OutOfMemory                             (EBM_ERROR_CAST(1))
-#define Error_UnknownInternalError                    (EBM_ERROR_CAST(2))
-#define Error_LossConstructorException                (EBM_ERROR_CAST(3))
-#define Error_LossParameterUnknown                    (EBM_ERROR_CAST(4))
-#define Error_LossParameterValueMalformed             (EBM_ERROR_CAST(5))
-#define Error_LossParameterValueOutOfRange            (EBM_ERROR_CAST(6))
-#define Error_LossParameterMismatchWithConfig         (EBM_ERROR_CAST(7))
-#define Error_LossUnknown                             (EBM_ERROR_CAST(8))
-#define Error_LossIllegalRegistrationName             (EBM_ERROR_CAST(10))
-#define Error_LossIllegalParamName                    (EBM_ERROR_CAST(11))
-#define Error_LossDuplicateParamName                  (EBM_ERROR_CAST(12))
-#define Error_InvalidParameter                        (EBM_ERROR_CAST(13))
+#define Error_None                                 (EBM_ERROR_CAST(0))
+// reserve the return code 1 as illegal, since 1 is often "TRUE"
+#define Error_OutOfMemory                          (EBM_ERROR_CAST(2))
+// errors occuring entirely within the C/C++ code
+#define Error_UnexpectedInternal                   (EBM_ERROR_CAST(3))
+// input parameters received that are clearly due to bugs in the higher level caller
+#define Error_IllegalParamValue                    (EBM_ERROR_CAST(4))
+// input parameters received from the end user that are illegal.  These should have been filtered by our caller
+#define Error_UserParamValue                       (EBM_ERROR_CAST(5))
+
+#define Error_LossConstructorException             (EBM_ERROR_CAST(6))
+#define Error_LossParamUnknown                     (EBM_ERROR_CAST(7))
+#define Error_LossParamValueMalformed              (EBM_ERROR_CAST(8))
+#define Error_LossParamValueOutOfRange             (EBM_ERROR_CAST(9))
+#define Error_LossParamMismatchWithConfig          (EBM_ERROR_CAST(10))
+#define Error_LossUnknown                          (EBM_ERROR_CAST(11))
+#define Error_LossIllegalRegistrationName          (EBM_ERROR_CAST(12))
+#define Error_LossIllegalParamName                 (EBM_ERROR_CAST(13))
+#define Error_LossDuplicateParamName               (EBM_ERROR_CAST(14))
 
 #define GenerateUpdateOptions_Default              (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
 #define GenerateUpdateOptions_DisableNewtonGain    (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))
@@ -405,7 +411,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    IntEbmType * countPositiveInfinityOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countCuts,
    FloatEbmType lowestCut,
    FloatEbmType highestCut,

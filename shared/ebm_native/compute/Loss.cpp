@@ -66,11 +66,11 @@ ErrorEbmType Loss::CreateLoss(
       } catch(const ParameterValueMalformedException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueMalformedException");
-         error = Error_LossParameterValueMalformed;
+         error = Error_LossParamValueMalformed;
       } catch(const ParameterUnknownException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterUnknownException");
-         error = Error_LossParameterUnknown;
+         error = Error_LossParamUnknown;
       } catch(const RegistrationConstructorException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss RegistrationConstructorException");
@@ -78,11 +78,11 @@ ErrorEbmType Loss::CreateLoss(
       } catch(const ParameterValueOutOfRangeException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueOutOfRangeException");
-         error = Error_LossParameterValueOutOfRange;
+         error = Error_LossParamValueOutOfRange;
       } catch(const ParameterMismatchWithConfigException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterMismatchWithConfigException");
-         error = Error_LossParameterMismatchWithConfig;
+         error = Error_LossParamMismatchWithConfig;
       } catch(const IllegalRegistrationNameException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss IllegalRegistrationNameException");
@@ -100,7 +100,7 @@ ErrorEbmType Loss::CreateLoss(
          error = Error_OutOfMemory;
       } catch(...) {
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss internal error, unknown exception");
-         error = Error_UnknownInternalError;
+         error = Error_UnexpectedInternal;
       }
       free(const_cast<Registrable *>(pLossWrapperOut->m_pLoss)); // this is legal if pLossWrapper->m_pLoss is nullptr
       pLossWrapperOut->m_pLoss = nullptr;
