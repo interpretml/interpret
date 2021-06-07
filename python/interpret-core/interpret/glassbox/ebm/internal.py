@@ -1420,7 +1420,7 @@ class NativeHelper:
                             instance_count = np.sum(bin_counts[feature_group_index][f:s])
                             noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_count
 
-                        noisy_update_tensor = noisy_update_tensor * -1 # Invert gradients to match residuals
+                        noisy_update_tensor = noisy_update_tensor * -1 # Invert gradients before updates
                         native_ebm_booster.set_model_update_expanded(feature_group_index, noisy_update_tensor)
 
 

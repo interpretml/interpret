@@ -512,11 +512,6 @@ class DPUtils:
         return root_scalar(f, bracket=[0, 500], method='brentq').root
 
     @staticmethod
-    def validate_eps_delta(eps, delta):
-        if eps is None or eps <= 0 or delta is None or delta <= 0:
-            raise ValueError(f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers")
-
-    @staticmethod
     def private_numeric_binning(col_data, noise_scale, max_bins, min_val, max_val):
         uniform_counts, uniform_edges = np.histogram(col_data, bins=max_bins*2, range=(min_val, max_val))
         noisy_counts = uniform_counts + np.random.normal(0, noise_scale, size=uniform_counts.shape[0])
@@ -580,11 +575,43 @@ class DPUtils:
         return uniq_vals, counts
 
     @staticmethod
-    def build_privacy_schema(X):
+    def build_privacy_schema(X, y=None):
         privacy_schema = {}
         for index in range(X.shape[1]):
             min_val, max_val = (np.min(X[:, index]), np.max(X[:, index]))
             if isinstance(min_val, numbers.Number) and isinstance(max_val, numbers.Number):
                 privacy_schema[index] = (min_val, max_val)
 
+        if y is not None:
+            privacy_schema['target'] = (np.min(y), np.max(y))
+
         return privacy_schema
+
+    @staticmethod
+    def validate_eps_delta(eps, delta):
+        if eps is None or eps <= 0 or delta is None or delta <= 0:
+            raise ValueError(f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers")
+
+    @staticmethod
+    def validate_DP_EBM(ebm, sample_weight):
+        if sample_weight is not None:
+            raise ValueError("Sample weights are not currently supported for differentially private training.")
+
+        fixed_params = dict(
+            max_interaction_bins=None,
+            interactions=0,
+            outer_bags=1,
+            inner_bags=0,
+            validation_size=0,
+            early_stopping_rounds=-1,
+            early_stopping_tolerance=-1,
+            n_jobs=1,
+        )
+
+        error_params = []
+        for param in fixed_params:
+            if getattr(ebm, param) != fixed_params[param]:
+                error_params.append(param)
+
+        if len(error_params) > 0:
+            raise ValueError(f"The following parameters: {error_params} cannot be changed when training with differential privacy.")

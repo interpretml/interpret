@@ -543,3 +543,16 @@ def test_dp_ebm_adult():
     local_exp = clf.explain_local(X_te[:5, :], y_te[:5])
 
     _smoke_test_explanations(global_exp, local_exp, 6000)
+
+def test_dp_ebm_synthetic_regression():
+    from ..ebm import DPExplainableBoostingRegressor
+
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = DPExplainableBoostingRegressor()
+    clf.fit(X, y)
+    clf.predict(X)
+
+    valid_ebm(clf)

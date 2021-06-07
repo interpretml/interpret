@@ -190,10 +190,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 delta = self.delta
             )
             if self.privacy_schema is None:
-                warn("Possible privacy violation: calculating min/max values per feature using data. \
-                     Pass a privacy schema with known public ranges per feature to avoid this warning. \
-                     Privacy schemas are simple dictionaries containing min and max values per numeric feature, \
-                     e.g.: {0 : (18,100), 2 : (-23, 45.5)}")
+                warn("Possible privacy violation: assuming min/max values per feature are public info. \
+                      Pass a privacy schema with known public ranges per feature to avoid this warning.")
                 self.privacy_schema = DPUtils.build_privacy_schema(X)
                 
         if self.max_bins < 2:
@@ -740,6 +738,7 @@ class BaseEBM(BaseEstimator):
         delta=None,
         composition=None,
         bin_budget_frac=None,
+        privacy_schema=None,
     ):
         # NOTE: Per scikit-learn convention, we shouldn't attempt to sanity check these inputs here.  We just
         #       Store these values for future use.  Validate inputs in the fit or other functions.  More details in:
@@ -780,6 +779,7 @@ class BaseEBM(BaseEstimator):
         self.delta = delta
         self.composition = composition
         self.bin_budget_frac = bin_budget_frac
+        self.privacy_schema = privacy_schema
 
     def fit(self, X, y, sample_weight=None):  # noqa: C901
         """ Fits model to provided samples.
@@ -826,52 +826,25 @@ class BaseEBM(BaseEstimator):
         w = sample_weight if sample_weight is not None else np.ones_like(y, dtype=np.float64)
         w = unify_vector(w).astype(np.float64, casting="unsafe", copy=False)
 
+        # Privacy calculations
         if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
+            DPUtils.validate_eps_delta(self.epsilon, self.delta)
+            DPUtils.validate_DP_EBM(self, sample_weight)
+
+            if self.privacy_schema is None:
+                warn("Possible privacy violation: assuming min/max values per feature/target are public info. \
+                      Pass a privacy schema with known public ranges to avoid this warning.")
+                self.privacy_schema = DPUtils.build_privacy_schema(X, y)
+
+            self.domain_size_ = self.privacy_schema['target'][1] - self.privacy_schema['target'][0]
+
             # Split epsilon, delta budget for binning and learning
             self.bin_eps_ = self.epsilon * self.bin_budget_frac
             self.training_eps_ = self.epsilon - self.bin_eps_
             self.bin_delta_ = self.delta / 2
             self.training_delta_ = self.delta / 2
-        else:
-            self.bin_eps_, self.bin_delta_ = None, None
-            self.training_eps_, self.training_delta_ = None, None
-
-        # Build preprocessor
-        self.preprocessor_ = EBMPreprocessor(
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
-            max_bins=self.max_bins,
-            binning=self.binning,
-            epsilon=self.bin_eps_,
-            delta = self.bin_delta_
-        )
-        self.preprocessor_.fit(X)
-        X_orig = X
-        X = self.preprocessor_.transform(X_orig)
-
-        features_categorical = np.array([x == "categorical" for x in self.preprocessor_.col_types_], dtype=ct.c_int64)
-        features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_], dtype=ct.c_int64)
-
-        if self.interactions != 0:
-            self.pair_preprocessor_ = EBMPreprocessor(
-                feature_names=self.feature_names,
-                feature_types=self.feature_types,
-                max_bins=self.max_interaction_bins,
-                binning=self.binning,
-            )
-            self.pair_preprocessor_.fit(X_orig)
-            X_pair = self.pair_preprocessor_.transform(X_orig)
-            pair_features_categorical = np.array([x == "categorical" for x in self.pair_preprocessor_.col_types_], dtype=ct.c_int64)
-            pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_], dtype=ct.c_int64)
-        else:
-            self.pair_preprocessor_, X_pair, pair_features_categorical, pair_features_bin_count = None, None, None, None
-
-
-                # TODO: [DP] Raise warning and provide override -- we currently assume this is public info.
-        self.domain_size_ = np.max(y) - np.min(y)
-
-        # [DP] Calculate how much noise will be applied to each iteration of the algorithm
-        if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
+            
+             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             if self.composition == 'classic':
                 self.noise_scale_ = DPUtils.calc_classic_noise_multi(
                     total_queries = self.max_rounds * X.shape[1], 
@@ -889,10 +862,45 @@ class BaseEBM(BaseEstimator):
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
         else: # Unused if not in private training mode
+            self.bin_eps_, self.bin_delta_ = None, None
+            self.training_eps_, self.training_delta_ = None, None
+            self.domain_size_ = None
             self.noise_scale_ = None
 
+        # Build preprocessor
+        self.preprocessor_ = EBMPreprocessor(
+            feature_names=self.feature_names,
+            feature_types=self.feature_types,
+            max_bins=self.max_bins,
+            binning=self.binning,
+            epsilon=self.bin_eps_,
+            delta=self.bin_delta_,
+            privacy_schema=self.privacy_schema
+        )
+        self.preprocessor_.fit(X)
+        X_orig = X
+        X = self.preprocessor_.transform(X_orig)
+
+        features_categorical = np.array([x == "categorical" for x in self.preprocessor_.col_types_], dtype=ct.c_int64)
+        features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_], dtype=ct.c_int64)
+
         # NOTE: [DP] Passthrough to lower level layers for noise addition
-        self.bin_counts_ = {i : self.preprocessor_.col_bin_counts_[i] for i in range(X.shape[1])}
+        self.bin_data_counts_ = {i : self.preprocessor_.col_bin_counts_[i] for i in range(X.shape[1])}
+
+        if self.interactions != 0:
+            self.pair_preprocessor_ = EBMPreprocessor(
+                feature_names=self.feature_names,
+                feature_types=self.feature_types,
+                max_bins=self.max_interaction_bins,
+                binning=self.binning,
+            )
+            self.pair_preprocessor_.fit(X_orig)
+            X_pair = self.pair_preprocessor_.transform(X_orig)
+            pair_features_categorical = np.array([x == "categorical" for x in self.pair_preprocessor_.col_types_], dtype=ct.c_int64)
+            pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_], dtype=ct.c_int64)
+        else:
+            self.pair_preprocessor_, X_pair, pair_features_categorical, pair_features_bin_count = None, None, None, None
+
 
         estimators = []
         seed = EBMUtils.normalize_initial_random_seed(self.random_state)
@@ -934,7 +942,7 @@ class BaseEBM(BaseEstimator):
                     random_state=seed,
                     # Differential Privacy
                     noise_scale=self.noise_scale_,
-                    bin_counts=self.bin_counts_,
+                    bin_counts=self.bin_data_counts_,
                 )
                 estimators.append(estimator)
         else:
@@ -965,7 +973,7 @@ class BaseEBM(BaseEstimator):
                     random_state=seed,
                     # Differential Privacy
                     noise_scale=self.noise_scale_,
-                    bin_counts=self.bin_counts_,
+                    bin_counts=self.bin_data_counts_,
                 )
                 estimators.append(estimator)
 
