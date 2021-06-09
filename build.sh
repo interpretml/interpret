@@ -421,7 +421,7 @@ elif [ "$os_type" = "Linux" ]; then
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$intermediate_path_unsanitized" "main"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$intermediate_path_unsanitized" "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$intermediate_path_unsanitized" "avx512"
-      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "NONE"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$intermediate_path_unsanitized" "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
@@ -446,7 +446,7 @@ elif [ "$os_type" = "Linux" ]; then
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$intermediate_path_unsanitized" "main"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$intermediate_path_unsanitized" "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$intermediate_path_unsanitized" "avx512"
-      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "NONE"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$intermediate_path_unsanitized" "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi
@@ -504,7 +504,7 @@ elif [ "$os_type" = "Linux" ]; then
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$intermediate_path_unsanitized" "main"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$intermediate_path_unsanitized" "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$intermediate_path_unsanitized" "avx512"
-      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "NONE"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$intermediate_path_unsanitized" "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
 
@@ -529,7 +529,7 @@ elif [ "$os_type" = "Linux" ]; then
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$intermediate_path_unsanitized" "main"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$intermediate_path_unsanitized" "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$intermediate_path_unsanitized" "avx512"
-      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/wrap_func.cpp "$intermediate_path_unsanitized" "NONE"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$intermediate_path_unsanitized" "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$all_object_files_sanitized" "$bin_path_unsanitized" "$bin_file" "$log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
    fi

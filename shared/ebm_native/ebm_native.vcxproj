@@ -102,7 +102,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ZONE_main;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>precompiled_header_cpp.hpp</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -148,7 +148,7 @@ EXIT /B 0
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ZONE_main;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>precompiled_header_cpp.hpp</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -196,7 +196,7 @@ EXIT /B 0
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>ZONE_main;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>precompiled_header_cpp.hpp</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -247,7 +247,7 @@ EXIT /B 0
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>ZONE_main;EBM_NATIVE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>precompiled_header_cpp.hpp</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)inc;$(ProjectDir)common_c;$(ProjectDir)bridge_c;$(ProjectDir)common_cpp;$(ProjectDir)bridge_cpp;$(ProjectDir);</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -289,34 +289,34 @@ EXIT /B 0
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="ApproximateMath.h" />
+    <ClInclude Include="approximate_math.hpp" />
     <ClInclude Include="bridge_cpp\bridge_cpp.hpp" />
     <ClInclude Include="bridge_c\bridge_c.h" />
     <ClInclude Include="common_c\logging.h" />
     <ClInclude Include="bridge_c\zones.h" />
     <ClInclude Include="common_cpp\common_cpp.hpp" />
     <ClInclude Include="common_c\common_c.h" />
-    <ClInclude Include="loss_metric_main.hpp" />
-    <ClInclude Include="ThreadStateInteraction.h" />
-    <ClInclude Include="InteractionDetector.h" />
-    <ClInclude Include="Booster.h" />
+    <ClInclude Include="compute_accessors.hpp" />
+    <ClInclude Include="InteractionShell.hpp" />
+    <ClInclude Include="InteractionCore.hpp" />
+    <ClInclude Include="BoosterCore.hpp" />
     <ClInclude Include="inc\ebm_native.h" />
-    <ClInclude Include="FeatureAtomic.h" />
-    <ClInclude Include="FeatureGroup.h" />
-    <ClInclude Include="HistogramBucket.h" />
-    <ClInclude Include="ThreadStateBoosting.h" />
-    <ClInclude Include="DataFrameInteraction.h" />
-    <ClInclude Include="DataFrameBoosting.h" />
-    <ClInclude Include="EbmInternal.h" />
-    <ClInclude Include="EbmStats.h" />
-    <ClInclude Include="PrecompiledHeader.h" />
-    <ClInclude Include="HistogramTargetEntry.h" />
-    <ClInclude Include="RandomStream.h" />
-    <ClInclude Include="SamplingSet.h" />
-    <ClInclude Include="SegmentedTensor.h" />
-    <ClInclude Include="TensorTotalsSum.h" />
-    <ClInclude Include="TreeNode.h" />
-    <ClInclude Include="TreeSweep.h" />
+    <ClInclude Include="Feature.hpp" />
+    <ClInclude Include="FeatureGroup.hpp" />
+    <ClInclude Include="HistogramBucket.hpp" />
+    <ClInclude Include="BoosterShell.hpp" />
+    <ClInclude Include="DataSetInteraction.hpp" />
+    <ClInclude Include="DataSetBoosting.hpp" />
+    <ClInclude Include="ebm_internal.hpp" />
+    <ClInclude Include="ebm_stats.hpp" />
+    <ClInclude Include="precompiled_header_cpp.hpp" />
+    <ClInclude Include="HistogramTargetEntry.hpp" />
+    <ClInclude Include="RandomStream.hpp" />
+    <ClInclude Include="SamplingSet.hpp" />
+    <ClInclude Include="SegmentedTensor.hpp" />
+    <ClInclude Include="TensorTotalsSum.hpp" />
+    <ClInclude Include="TreeNode.hpp" />
+    <ClInclude Include="TreeSweep.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApplyModelUpdate.cpp" />
@@ -336,32 +336,32 @@ EXIT /B 0
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="DataFrameShared.cpp" />
-    <ClCompile Include="GenerateQuantileCuts.cpp" />
-    <ClCompile Include="GenerateUniformCuts.cpp" />
-    <ClCompile Include="GenerateWinsorizedCuts.cpp" />
-    <ClCompile Include="ThreadStateBoosting.cpp" />
-    <ClCompile Include="ThreadStateInteraction.cpp" />
+    <ClCompile Include="DataSetShared.cpp" />
+    <ClCompile Include="CutQuantile.cpp" />
+    <ClCompile Include="CutUniform.cpp" />
+    <ClCompile Include="CutWinsorized.cpp" />
+    <ClCompile Include="BoosterShell.cpp" />
+    <ClCompile Include="InteractionShell.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
-    <ClCompile Include="CutRandom.cpp" />
-    <ClCompile Include="DebugEbm.cpp" />
+    <ClCompile Include="TensorRandomCut.cpp" />
+    <ClCompile Include="debug_ebm.cpp" />
     <ClCompile Include="FeatureGroup.cpp" />
     <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
     <ClCompile Include="FindBestInteractionScorePairs.cpp" />
     <ClCompile Include="GenerateModelUpdate.cpp" />
     <ClCompile Include="GrowDecisionTree.cpp" />
-    <ClCompile Include="InitializeResiduals.cpp" />
-    <ClCompile Include="InterpretableNumerics.cpp" />
-    <ClCompile Include="RandomExternal.cpp" />
+    <ClCompile Include="InitializeGradientsAndHessians.cpp" />
+    <ClCompile Include="interpretable_numerics.cpp" />
+    <ClCompile Include="sampling.cpp" />
     <ClCompile Include="SegmentedTensor.cpp" />
     <ClCompile Include="SumHistogramBuckets.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
-    <ClCompile Include="DataFrameInteraction.cpp" />
-    <ClCompile Include="DataFrameBoosting.cpp" />
+    <ClCompile Include="DataSetInteraction.cpp" />
+    <ClCompile Include="DataSetBoosting.cpp" />
     <ClCompile Include="Discretize.cpp" />
-    <ClCompile Include="special\DllMainEbmNative.cpp" />
-    <ClCompile Include="InteractionDetector.cpp" />
-    <ClCompile Include="special\PrecompiledHeader.cpp">
+    <ClCompile Include="special\windows_DllMain.cpp" />
+    <ClCompile Include="InteractionCore.cpp" />
+    <ClCompile Include="special\precompiled_header_cpp.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -369,8 +369,8 @@ EXIT /B 0
     </ClCompile>
     <ClCompile Include="RandomStream.cpp" />
     <ClCompile Include="SamplingSet.cpp" />
-    <ClCompile Include="Booster.cpp" />
-    <ClCompile Include="special\wrap_func.cpp">
+    <ClCompile Include="BoosterCore.cpp" />
+    <ClCompile Include="special\linux_wrap_functions.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -379,7 +379,8 @@ EXIT /B 0
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />
-    <None Include="style.md" />
+    <None Include="CODING_STYLE.md" />
+    <None Include="IMPORTANT.md" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="ebm_native_exports.txt" />

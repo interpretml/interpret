@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="EbmNativeTest.cpp">
+    <ClCompile Include="ebm_native_test.cpp">
       <Filter>non_tests</Filter>
     </ClCompile>
-    <ClCompile Include="PrecompiledHeaderEbmNativeTest.cpp">
+    <ClCompile Include="precompiled_header_test.cpp">
       <Filter>non_tests</Filter>
     </ClCompile>
-    <ClCompile Include="BitPackingExtremes.cpp" />
-    <ClCompile Include="BoostingUnusualInputs.cpp" />
+    <ClCompile Include="bit_packing_extremes.cpp" />
+    <ClCompile Include="boosting_unusual_inputs.cpp" />
     <ClCompile Include="Discretize.cpp" />
-    <ClCompile Include="InteractionUnusualInputs.cpp" />
-    <ClCompile Include="Rehydration.cpp" />
+    <ClCompile Include="interaction_unusual_inputs.cpp" />
+    <ClCompile Include="rehydrate_booster.cpp" />
     <ClCompile Include="SuggestGraphBounds.cpp" />
-    <ClCompile Include="RandomNumbers.cpp" />
-    <ClCompile Include="CIncludeTest.c" />
-    <ClCompile Include="GenerateQuantileCuts.cpp" />
-    <ClCompile Include="GenerateUniformCuts.cpp" />
-    <ClCompile Include="GenerateWinsorizedCuts.cpp" />
+    <ClCompile Include="random_numbers.cpp" />
+    <ClCompile Include="include_c.c" />
+    <ClCompile Include="CutQuantile.cpp" />
+    <ClCompile Include="CutUniform.cpp" />
+    <ClCompile Include="CutWinsorized.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="EbmNativeTest.h">
+    <ClInclude Include="ebm_native_test.hpp">
       <Filter>non_tests</Filter>
     </ClInclude>
-    <ClInclude Include="PrecompiledHeaderEbmNativeTest.h">
+    <ClInclude Include="precompiled_header_test.hpp">
       <Filter>non_tests</Filter>
     </ClInclude>
-    <ClInclude Include="RandomStreamTest.h">
+    <ClInclude Include="RandomStreamTest.hpp">
       <Filter>non_tests</Filter>
     </ClInclude>
   </ItemGroup>
