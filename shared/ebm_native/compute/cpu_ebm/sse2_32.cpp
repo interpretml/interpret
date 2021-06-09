@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <cmath>
-#include <immintrin.h> // SIMD.  Do not include in PrecompiledHeader.h!
+#include <immintrin.h> // SIMD.  Do not include in precompiled_header_cpp.hpp!
 
 #include "ebm_native.h"
 #include "logging.h"

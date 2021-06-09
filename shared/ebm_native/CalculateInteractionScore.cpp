@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
@@ -11,18 +11,18 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
 // feature includes
-#include "FeatureAtomic.h"
-#include "FeatureGroup.h"
+#include "Feature.hpp"
+#include "FeatureGroup.hpp"
 // dataset depends on features
-#include "DataFrameInteraction.h"
-#include "ThreadStateInteraction.h"
+#include "DataSetInteraction.hpp"
+#include "InteractionShell.hpp"
 
-#include "InteractionDetector.h"
+#include "InteractionCore.hpp"
 
-#include "TensorTotalsSum.h"
+#include "TensorTotalsSum.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

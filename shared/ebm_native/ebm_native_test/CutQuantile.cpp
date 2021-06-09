@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeaderEbmNativeTest.h"
+#include "precompiled_header_test.hpp"
 
 #include "ebm_native.h"
-#include "EbmNativeTest.h"
-#include "RandomStreamTest.h"
+#include "ebm_native_test.hpp"
+#include "RandomStreamTest.hpp"
 
 static const TestPriority k_filePriority = TestPriority::GenerateQuantileCuts;
 

@@ -12,10 +12,10 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "EbmStats.h"
-#include "HistogramBucket.h"
+#include "ebm_stats.hpp"
+#include "HistogramBucket.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

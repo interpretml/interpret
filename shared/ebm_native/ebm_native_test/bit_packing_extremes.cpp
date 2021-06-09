@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeaderEbmNativeTest.h"
+#include "precompiled_header_test.hpp"
 
 #include "ebm_native.h"
-#include "EbmNativeTest.h"
+#include "ebm_native_test.hpp"
 
 static const TestPriority k_filePriority = TestPriority::BitPackingExtremes;
 

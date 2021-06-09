@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeaderEbmNativeTest.h"
+#include "precompiled_header_test.hpp"
 
 // we roll our own test framework here since it's nice having no dependencies, and we just need a few simple tests for the C API.
 // If we ended up needing something more substantial, I'd consider using doctest ( https://github.com/onqtam/doctest ) because:
@@ -40,7 +40,7 @@
 #include <string.h>
 
 #include "ebm_native.h"
-#include "EbmNativeTest.h"
+#include "ebm_native_test.hpp"
 
 #ifdef _MSC_VER
 // we want to be able to put breakpoints in the FAILED function below, so in release mode turn off optimizations

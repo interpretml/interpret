@@ -10,7 +10,7 @@
 // builds.  Don't include significant code here, since the DEBUG build does get included in the package.  Normally
 // it'll just eat some filespace though as the RELEASE build is the only one loaded by default
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <random>
@@ -19,9 +19,9 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "ApproximateMath.h"
+#include "approximate_math.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

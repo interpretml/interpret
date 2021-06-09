@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 // this file is only included in Windows builds.  We don't want to require windows.h in our precompiled header since then it will be needed in linux builds,
 // which doesn't make sense

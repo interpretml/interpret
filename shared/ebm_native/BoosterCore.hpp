@@ -13,18 +13,18 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "RandomStream.h"
-#include "SegmentedTensor.h"
+#include "RandomStream.hpp"
+#include "SegmentedTensor.hpp"
 // feature includes
-#include "FeatureAtomic.h"
+#include "Feature.hpp"
 // FeatureGroup.h depends on FeatureInternal.h
-#include "FeatureGroup.h"
+#include "FeatureGroup.hpp"
 // dataset depends on features
-#include "DataFrameBoosting.h"
+#include "DataSetBoosting.hpp"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
-#include "SamplingSet.h"
+#include "SamplingSet.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

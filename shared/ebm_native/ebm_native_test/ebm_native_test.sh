@@ -40,7 +40,9 @@ compile_all="$compile_all \"$src_path/rehydrate_booster.cpp\""
 compile_all="$compile_all \"$src_path/SuggestGraphBounds.cpp\""
 compile_all="$compile_all -I\"$src_path\""
 compile_all="$compile_all -I\"$root_path/shared/ebm_native/inc\""
-compile_all="$compile_all -std=c++11 -march=core2"
+compile_all="$compile_all -fno-math-errno -fno-trapping-math"
+compile_all="$compile_all -march=core2"
+compile_all="$compile_all -std=c++11"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html

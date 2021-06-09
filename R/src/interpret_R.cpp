@@ -12,11 +12,11 @@
 #include "zones.h"
 
 #include "common_cpp.hpp"
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "Booster.h"
-#include "InteractionDetector.h"
-#include "ThreadStateBoosting.h"
+#include "BoosterCore.hpp"
+#include "InteractionCore.hpp"
+#include "BoosterShell.hpp"
 
 #include <Rinternals.h>
 #include <R_ext/Visibility.h>

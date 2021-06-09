@@ -22,15 +22,15 @@
 //   6) Enjoy your new Loss function, and send us a PR on Github if you think others would benefit  :-)
 
 // Add new Loss*.h include files here:
-#include "LossBinaryCrossEntropy.hpp"
-#include "LossBinaryLogLoss.hpp"
-#include "LossMulticlassCrossEntropy.hpp"
-#include "LossMulticlassLogLoss.hpp"
-#include "LossMultitaskBinaryLogLoss.hpp"
-#include "LossMultitaskMulticlassCrossEntropy.hpp"
-#include "LossMultitaskRegressionMse.hpp"
-#include "LossRegressionMse.hpp"
-#include "LossRegressionPseudoHuber.hpp"
+#include "CrossEntropyBinaryLoss.hpp"
+#include "LogLossBinaryLoss.hpp"
+#include "CrossEntropyMulticlassLoss.hpp"
+#include "LogLossMulticlassLoss.hpp"
+#include "LogLossBinaryMultitaskLoss.hpp"
+#include "CrossEntropyMulticlassMultitaskLoss.hpp"
+#include "MseRegressionMultitaskLoss.hpp"
+#include "MseRegressionLoss.hpp"
+#include "PseudoHuberRegressionLoss.hpp"
 
 // Add new Loss* type registrations to this list:
 static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {

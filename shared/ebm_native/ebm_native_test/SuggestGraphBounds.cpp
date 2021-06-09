@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeaderEbmNativeTest.h"
+#include "precompiled_header_test.hpp"
 
 #include "ebm_native.h"
-#include "EbmNativeTest.h"
-#include "RandomStreamTest.h"
+#include "ebm_native_test.hpp"
+#include "RandomStreamTest.hpp"
 
 static const TestPriority k_filePriority = TestPriority::SuggestGraphBounds;
 
@@ -344,7 +344,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow high") {
       &highGraphBound
    );
 
-   CHECK(std::numeric_limits<FloatEbmType>::max() - 1e307 == lowGraphBound);
+   CHECK(minValue == lowGraphBound);
    CHECK(std::numeric_limits<FloatEbmType>::max() == highGraphBound);
 }
 
@@ -369,7 +369,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow low") {
    );
 
    CHECK(std::numeric_limits<FloatEbmType>::lowest() == lowGraphBound);
-   CHECK(std::numeric_limits<FloatEbmType>::lowest() + 1e307 == highGraphBound);
+   CHECK(maxValue == highGraphBound);
 }
 
 TEST_CASE("SuggestGraphBounds, 2 cuts") {

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -12,25 +12,25 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "SegmentedTensor.h"
-#include "EbmStats.h"
+#include "SegmentedTensor.hpp"
+#include "ebm_stats.hpp"
 // feature includes
-#include "FeatureAtomic.h"
+#include "Feature.hpp"
 // FeatureGroup.h depends on FeatureInternal.h
-#include "FeatureGroup.h"
+#include "FeatureGroup.hpp"
 // dataset depends on features
-#include "DataFrameBoosting.h"
+#include "DataSetBoosting.hpp"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
-#include "SamplingSet.h"
-#include "HistogramTargetEntry.h"
-#include "HistogramBucket.h"
+#include "SamplingSet.hpp"
+#include "HistogramTargetEntry.hpp"
+#include "HistogramBucket.hpp"
 
-#include "Booster.h"
-#include "ThreadStateBoosting.h"
+#include "BoosterCore.hpp"
+#include "BoosterShell.hpp"
 
-#include "TensorTotalsSum.h"
+#include "TensorTotalsSum.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

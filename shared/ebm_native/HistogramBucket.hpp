@@ -14,17 +14,17 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "HistogramTargetEntry.h"
-#include "FeatureAtomic.h"
-#include "FeatureGroup.h"
-#include "DataFrameBoosting.h"
-#include "DataFrameInteraction.h"
-#include "SamplingSet.h"
+#include "HistogramTargetEntry.hpp"
+#include "Feature.hpp"
+#include "FeatureGroup.hpp"
+#include "DataSetBoosting.hpp"
+#include "DataSetInteraction.hpp"
+#include "SamplingSet.hpp"
 
-#include "Booster.h"
-#include "InteractionDetector.h"
+#include "BoosterCore.hpp"
+#include "InteractionCore.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -10,17 +10,17 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "ApproximateMath.h"
-#include "EbmStats.h"
+#include "approximate_math.hpp"
+#include "ebm_stats.hpp"
 // FeatureGroup.h depends on FeatureInternal.h
-#include "FeatureGroup.h"
+#include "FeatureGroup.hpp"
 // dataset depends on features
-#include "DataFrameBoosting.h"
+#include "DataSetBoosting.hpp"
 
-#include "Booster.h"
-#include "ThreadStateBoosting.h"
+#include "BoosterCore.hpp"
+#include "BoosterShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

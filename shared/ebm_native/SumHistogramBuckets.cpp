@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -10,16 +10,16 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "FeatureAtomic.h"
-#include "FeatureGroup.h"
+#include "Feature.hpp"
+#include "FeatureGroup.hpp"
 
-#include "HistogramTargetEntry.h"
-#include "HistogramBucket.h"
+#include "HistogramTargetEntry.hpp"
+#include "HistogramBucket.hpp"
 
-#include "Booster.h"
-#include "ThreadStateBoosting.h"
+#include "BoosterCore.hpp"
+#include "BoosterShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
