@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef EBM_NATIVE_TEST_H
-#define EBM_NATIVE_TEST_H
+#ifndef EBM_NATIVE_TEST_HPP
+#define EBM_NATIVE_TEST_HPP
 
 #define UNUSED(x) (void)(x)
 
@@ -265,10 +265,10 @@ class TestApi {
    const ptrdiff_t m_learningTypeOrCountTargetClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<BoolEbmType> m_featureAtomicsCategorical;
-   std::vector<IntEbmType> m_featureAtomicsBinCount;
+   std::vector<BoolEbmType> m_featuresCategorical;
+   std::vector<IntEbmType> m_featuresBinCount;
    std::vector<IntEbmType> m_featureGroupsDimensionCount;
-   std::vector<IntEbmType> m_featureGroupsFeatureAtomicIndexes;
+   std::vector<IntEbmType> m_featureGroupsFeatureIndexes;
 
    std::vector<std::vector<size_t>> m_countBinsByFeatureGroup;
 
@@ -369,4 +369,4 @@ void DisplayCuts(
    FloatEbmType maxValue
 );
 
-#endif // EBM_NATIVE_TEST_H
+#endif // EBM_NATIVE_TEST_HPP

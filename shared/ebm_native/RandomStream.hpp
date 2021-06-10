@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef RANDOM_STREAM_H
-#define RANDOM_STREAM_H
+#ifndef RANDOM_STREAM_HPP
+#define RANDOM_STREAM_HPP
 
 #include <inttypes.h> // uint32_t, uint_fast64_t
 #include <stddef.h> // size_t, ptrdiff_t
@@ -202,4 +202,4 @@ static_assert(std::is_pod<RandomStream>::value,
 
 } // DEFINED_ZONE_NAME
 
-#endif // RANDOM_STREAM_H
+#endif // RANDOM_STREAM_HPP

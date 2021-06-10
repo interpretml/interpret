@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef LOSS_METRIC_MAIN_H
-#define LOSS_METRIC_MAIN_H
+#ifndef COMPUTE_ACCESSORS_HPP
+#define COMPUTE_ACCESSORS_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -93,4 +93,4 @@ INLINE_ALWAYS static ErrorEbmType GetMetrics(
 
 } // DEFINED_ZONE_NAME
 
-#endif // LOSS_METRIC_MAIN_H
+#endif // COMPUTE_ACCESSORS_HPP

@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef SAMPLING_SET_H
-#define SAMPLING_SET_H
+#ifndef SAMPLING_SET_HPP
+#define SAMPLING_SET_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -19,14 +19,14 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class RandomStream;
-class DataFrameBoosting;
+class DataSetBoosting;
 
 class SamplingSet final {
    // Sampling with replacement is the more theoretically correct method of sampling, but it has the drawback that 
    // we need to keep a count of the number of times each sample is selected in the dataset.  
    // Sampling without replacement would require 1 bit per case, so it can be faster.
 
-   const DataFrameBoosting * m_pOriginDataFrame;
+   const DataSetBoosting * m_pOriginDataSet;
 
    // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or 
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
@@ -35,15 +35,15 @@ class SamplingSet final {
    FloatEbmType * m_aWeights;
    FloatEbmType m_weightTotal;
 
-   // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataFrame since many 
+   // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataSet since many 
    // SamplingSet objects will refer to the original one
    static SamplingSet * GenerateSingleSamplingSet(
       RandomStream * const pRandomStream, 
-      const DataFrameBoosting * const pOriginDataFrame,
+      const DataSetBoosting * const pOriginDataSet,
       const FloatEbmType * const aWeights
    );
    static SamplingSet * GenerateFlatSamplingSet(
-      const DataFrameBoosting * const pOriginDataFrame,
+      const DataSetBoosting * const pOriginDataSet,
       const FloatEbmType * const aWeights
    );
    void Free();
@@ -58,10 +58,10 @@ public:
 
    size_t GetTotalCountSampleOccurrences() const {
       // for SamplingSet (bootstrap sampling), we have the same number of samples as our original dataset
-      size_t cTotalCountSampleOccurrences = m_pOriginDataFrame->GetCountSamples();
+      size_t cTotalCountSampleOccurrences = m_pOriginDataSet->GetCountSamples();
 #ifndef NDEBUG
       size_t cTotalCountSampleOccurrencesDebug = 0;
-      for(size_t i = 0; i < m_pOriginDataFrame->GetCountSamples(); ++i) {
+      for(size_t i = 0; i < m_pOriginDataSet->GetCountSamples(); ++i) {
          cTotalCountSampleOccurrencesDebug += m_aCountOccurrences[i];
       }
       EBM_ASSERT(cTotalCountSampleOccurrencesDebug == cTotalCountSampleOccurrences);
@@ -69,8 +69,8 @@ public:
       return cTotalCountSampleOccurrences;
    }
 
-   const DataFrameBoosting * GetDataFrameBoosting() const {
-      return m_pOriginDataFrame;
+   const DataSetBoosting * GetDataSetBoosting() const {
+      return m_pOriginDataSet;
    }
 
    const size_t * GetCountOccurrences() const {
@@ -85,7 +85,7 @@ public:
 
    static SamplingSet ** GenerateSamplingSets(
       RandomStream * const pRandomStream, 
-      const DataFrameBoosting * const pOriginDataFrame, 
+      const DataSetBoosting * const pOriginDataSet, 
       const FloatEbmType * const aWeights,
       const size_t cSamplingSets
    );
@@ -100,4 +100,4 @@ static_assert(std::is_pod<SamplingSet>::value,
 
 } // DEFINED_ZONE_NAME
 
-#endif // SAMPLING_SET_H
+#endif // SAMPLING_SET_HPP

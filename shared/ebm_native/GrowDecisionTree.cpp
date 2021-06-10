@@ -100,7 +100,7 @@ static void Flatten(
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
-   ThreadStateBoosting * const pThreadStateBoosting,
+   BoosterShell * const pBoosterShell,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
    const size_t cSamplesRequiredForChildSplitMin
@@ -109,17 +109,17 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    LOG_N(
       TraceLevelVerbose,
-      "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pThreadStateBoosting=%p, pTreeNode=%p, "
+      "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pBoosterShell=%p, pTreeNode=%p, "
       "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cSamplesRequiredForChildSplitMin=%zu",
-      static_cast<const void *>(pThreadStateBoosting),
+      static_cast<const void *>(pBoosterShell),
       static_cast<void *>(pTreeNode),
       static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur),
       cSamplesRequiredForChildSplitMin
    );
    constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
 
-   Booster * const pBooster = pThreadStateBoosting->GetBooster();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
@@ -132,17 +132,17 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // when we exceed our memory size by goto retry_with_bigger_tree_node_children_array.  When that happens
    // we need to retrieve the original sum which resides at GetSumHistogramTargetEntryArray
    // since the memory pointed to at pRootTreeNode is freed and re-allocated.
-   // So, DO NOT DO: pThreadStateBoosting->GetSumHistogramTargetEntryArray()->
+   // So, DO NOT DO: pBoosterShell->GetSumHistogramTargetEntryArray()->
    //   GetHistogramTargetEntry<bClassification>();
    HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntryLeft =
-      pThreadStateBoosting->GetSumHistogramTargetEntryLeft<bClassification>();
+      pBoosterShell->GetSumHistogramTargetEntryLeft<bClassification>();
 
    for(size_t i = 0; i < cVectorLength; ++i) {
       aSumHistogramTargetEntryLeft[i].Zero();
    }
 
    HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntryRight =
-      pThreadStateBoosting->GetSumHistogramTargetEntryRight<bClassification>();
+      pBoosterShell->GetSumHistogramTargetEntryRight<bClassification>();
    const HistogramTargetEntry<bClassification> * pHistogramTargetEntryInit = 
       pTreeNode->GetHistogramTargetEntry();
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -177,7 +177,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cVectorLength);
 
    TreeSweep<bClassification> * pTreeSweepStart =
-      static_cast<TreeSweep<bClassification> *>(pThreadStateBoosting->GetEquivalentSplits());
+      static_cast<TreeSweep<bClassification> *>(pBoosterShell->GetEquivalentSplits());
    TreeSweep<bClassification> * pTreeSweepCur = pTreeSweepStart;
 
    size_t cSamplesRight = pTreeNode->AMBIGUOUS_GetCountSamples();
@@ -190,7 +190,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
    EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
    do {
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, pThreadStateBoosting->GetHistogramBucketsEndDebug());
+      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, pBoosterShell->GetHistogramBucketsEndDebug());
 
       const size_t CHANGE_cSamples = pHistogramBucketEntryCur->GetCountSamplesInBucket();
       cSamplesRight -= CHANGE_cSamples;
@@ -317,7 +317,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    }
    EBM_ASSERT(FloatEbmType { 0 } <= BEST_nodeSplittingScore);
 
-   RandomStream * const pRandomStream = pBooster->GetRandomStream();
+   RandomStream * const pRandomStream = pBoosterCore->GetRandomStream();
 
    const size_t cSweepItems = CountTreeSweep(pTreeSweepStart, pTreeSweepCur, cBytesPerTreeSweep);
    if(UNLIKELY(1 < cSweepItems)) {
@@ -338,7 +338,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntryNext =
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
-   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, pThreadStateBoosting->GetHistogramBucketsEndDebug());
+   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, pBoosterShell->GetHistogramBucketsEndDebug());
 
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
@@ -412,7 +412,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(std::isnan(splitGain) || (!bClassification) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
    pTreeNode->AFTER_SetSplitGain(splitGain);
 
-   HistogramBucketBase * const aHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
+   HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
    const HistogramBucket<bClassification> * const aHistogramBucket =
       aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
@@ -446,13 +446,13 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class GrowDecisionTreeInternal final {
+class PartitionOneDimensionalBoostingInternal final {
 public:
 
-   GrowDecisionTreeInternal() = delete; // this is a static class.  Do not construct
+   PartitionOneDimensionalBoostingInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
-      ThreadStateBoosting * const pThreadStateBoosting,
+      BoosterShell * const pBoosterShell,
       const size_t cHistogramBuckets,
       const size_t cSamplesTotal,
       const FloatEbmType weightTotal,
@@ -462,17 +462,17 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      HistogramBucketBase * const aHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
       const HistogramBucket<bClassification> * const aHistogramBucket =
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
       HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
-         pThreadStateBoosting->GetSumHistogramTargetEntryArray();
+         pBoosterShell->GetSumHistogramTargetEntryArray();
       const HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntry =
          aSumHistogramTargetEntryBase->GetHistogramTargetEntry<bClassification>();
 
-      Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -488,7 +488,7 @@ public:
       // there will be at least one split
 
       if(GetTreeNodeSizeOverflow(bClassification, cVectorLength)) {
-         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree GetTreeNodeSizeOverflow<bClassification>(cVectorLength)");
+         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting GetTreeNodeSizeOverflow<bClassification>(cVectorLength)");
          return true; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
       }
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
@@ -497,22 +497,22 @@ public:
 
    retry_with_bigger_tree_node_children_array:
 
-      size_t cBytesBuffer2 = pThreadStateBoosting->GetThreadByteBuffer2Size();
+      size_t cBytesBuffer2 = pBoosterShell->GetThreadByteBuffer2Size();
       // we need 1 TreeNode for the root, 1 for the left child of the root and 1 for the right child of the root
       const size_t cBytesInitialNeededAllocation = 3 * cBytesPerTreeNode;
       if(cBytesBuffer2 < cBytesInitialNeededAllocation) {
          // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of three 
          // TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode), or the number of bins (interactions multiply bins) on the 
          // highest bin count feature
-         if(pThreadStateBoosting->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
-            LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pThreadStateBoosting->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
+         if(pBoosterShell->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
+            LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pBoosterShell->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
             return true;
          }
-         cBytesBuffer2 = pThreadStateBoosting->GetThreadByteBuffer2Size();
+         cBytesBuffer2 = pBoosterShell->GetThreadByteBuffer2Size();
          EBM_ASSERT(cBytesInitialNeededAllocation <= cBytesBuffer2);
       }
       TreeNode<bClassification> * pRootTreeNode =
-         static_cast<TreeNode<bClassification> *>(pThreadStateBoosting->GetThreadByteBuffer2());
+         static_cast<TreeNode<bClassification> *>(pBoosterShell->GetThreadByteBuffer2());
 
 #ifndef NDEBUG
       pRootTreeNode->SetExaminedForPossibleSplitting(false);
@@ -525,7 +525,7 @@ public:
       ASSERT_BINNED_BUCKET_OK(
          cBytesPerHistogramBucket,
          pRootTreeNode->BEFORE_GetHistogramBucketEntryLast(),
-         pThreadStateBoosting->GetHistogramBucketsEndDebug()
+         pBoosterShell->GetHistogramBucketsEndDebug()
       );
       pRootTreeNode->AMBIGUOUS_SetCountSamples(cSamplesTotal);
       pRootTreeNode->SetWeight(weightTotal);
@@ -538,18 +538,18 @@ public:
       );
 
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
-         pThreadStateBoosting->GetOverwritableModelUpdate();
+         pBoosterShell->GetOverwritableModelUpdate();
 
       size_t cLeaves;
       if(ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
-         pThreadStateBoosting,
+         pBoosterShell,
          pRootTreeNode,
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
          cSamplesRequiredForChildSplitMin
       )) {
          // there will be no splits at all
          if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
-            LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
+            LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
             return true;
          }
 
@@ -602,7 +602,7 @@ public:
          );
 
          if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
-            LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
+            LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
             return true;
          }
 
@@ -744,8 +744,8 @@ public:
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                if(cBytesBuffer2 <
                   static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
-                  if(pThreadStateBoosting->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                     LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pThreadStateBoosting->GrowThreadByteBuffer2(cBytesPerTreeNode)");
+                  if(pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
+                     LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)");
                      return true;
                   }
                   goto retry_with_bigger_tree_node_children_array;
@@ -753,7 +753,7 @@ public:
                // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED
                // because splitting sets splitGain to a non-illegalGain value
                if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
-                  pThreadStateBoosting,
+                  pBoosterShell,
                   pLeftChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
                   cSamplesRequiredForChildSplitMin
@@ -787,8 +787,8 @@ public:
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                if(cBytesBuffer2 <
                   static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
-                  if(pThreadStateBoosting->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                     LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pThreadStateBoosting->GrowThreadByteBuffer2(cBytesPerTreeNode)");
+                  if(pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
+                     LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)");
                      return true;
                   }
                   goto retry_with_bigger_tree_node_children_array;
@@ -796,7 +796,7 @@ public:
                // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED 
                // because splitting sets splitGain to a non-NaN value
                if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
-                  pThreadStateBoosting,
+                  pBoosterShell,
                   pRightChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
                   cSamplesRequiredForChildSplitMin
@@ -837,20 +837,20 @@ public:
          );
       } catch(...) {
          // calling anything inside bestTreeNodeToSplit can throw exceptions
-         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree exception");
+         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting exception");
          return true;
       }
 
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 }))) {
-         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 })");
+         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 })");
          return true;
       }
       if(IsMultiplyError(cVectorLength, cLeaves)) {
-         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree IsMultiplyError(cVectorLength, cLeaves)");
+         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cVectorLength, cLeaves)");
          return true;
       }
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves))) {
-         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves");
+         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves");
          return true;
       }
       ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
@@ -869,8 +869,8 @@ public:
    }
 };
 
-extern bool GrowDecisionTree(
-   ThreadStateBoosting * const pThreadStateBoosting,
+extern bool PartitionOneDimensionalBoosting(
+   BoosterShell * const pBoosterShell,
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
    const FloatEbmType weightTotal,
@@ -878,16 +878,16 @@ extern bool GrowDecisionTree(
    const size_t cLeavesMax,
    FloatEbmType * const pTotalGain
 ) {
-   LOG_0(TraceLevelVerbose, "Entered GrowDecisionTree");
+   LOG_0(TraceLevelVerbose, "Entered PartitionOneDimensionalBoosting");
 
-   Booster * const pBooster = pThreadStateBoosting->GetBooster();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    bool bRet;
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         bRet = GrowDecisionTreeInternal<2>::Func(
-            pThreadStateBoosting,
+         bRet = PartitionOneDimensionalBoostingInternal<2>::Func(
+            pBoosterShell,
             cHistogramBuckets,
             cSamplesTotal,
             weightTotal,
@@ -896,8 +896,8 @@ extern bool GrowDecisionTree(
             pTotalGain
          );
       } else {
-         bRet = GrowDecisionTreeInternal<k_dynamicClassification>::Func(
-            pThreadStateBoosting,
+         bRet = PartitionOneDimensionalBoostingInternal<k_dynamicClassification>::Func(
+            pBoosterShell,
             cHistogramBuckets,
             cSamplesTotal,
             weightTotal,
@@ -908,8 +908,8 @@ extern bool GrowDecisionTree(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      bRet = GrowDecisionTreeInternal<k_regression>::Func(
-         pThreadStateBoosting,
+      bRet = PartitionOneDimensionalBoostingInternal<k_regression>::Func(
+         pBoosterShell,
          cHistogramBuckets,
          cSamplesTotal,
          weightTotal,
@@ -919,7 +919,7 @@ extern bool GrowDecisionTree(
       );
    }
 
-   LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree");
+   LOG_0(TraceLevelVerbose, "Exited PartitionOneDimensionalBoosting");
 
    return bRet;
 }

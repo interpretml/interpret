@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef THREAD_STATE_BOOSTING_H
-#define THREAD_STATE_BOOSTING_H
+#ifndef BOOSTER_SHELL_HPP
+#define BOOSTER_SHELL_HPP
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -24,11 +24,11 @@ namespace DEFINED_ZONE_NAME {
 
 struct HistogramBucketBase;
 
-class ThreadStateBoosting final {
+class BoosterShell final {
    static constexpr size_t k_handleVerification = 25077; // random 15 bit number
    size_t m_handleVerification; // this needs to be at the top and make it pointer sized to keep best alignment
 
-   Booster * m_pBooster;
+   BoosterCore * m_pBoosterCore;
    size_t m_iFeatureGroup;
 
    SegmentedTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
@@ -55,8 +55,8 @@ class ThreadStateBoosting final {
 
 public:
 
-   ThreadStateBoosting() = default; // preserve our POD status
-   ~ThreadStateBoosting() = default; // preserve our POD status
+   BoosterShell() = default; // preserve our POD status
+   ~BoosterShell() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -64,7 +64,7 @@ public:
 
    INLINE_ALWAYS void InitializeZero() {
       m_handleVerification = k_handleVerification;
-      m_pBooster = nullptr;
+      m_pBoosterCore = nullptr;
       m_iFeatureGroup = k_illegalFeatureGroupIndex;
       m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
       m_pSmallChangeToModelOverwriteSingleSamplingSet = nullptr;
@@ -79,17 +79,17 @@ public:
       m_aSumHistogramTargetEntryRight = nullptr;
    }
 
-   static void Free(ThreadStateBoosting * const pThreadStateBoosting);
-   static ThreadStateBoosting * Allocate(Booster * const pBooster);
+   static void Free(BoosterShell * const pBoosterShell);
+   static BoosterShell * Allocate(BoosterCore * const pBoosterCore);
 
    INLINE_ALWAYS bool IsValid() {
       // TODO : call this function before using this object whenever we get it from outside our control, just to verify
-      // TODO : make a similar verification for the InteractionDetector
+      // TODO : make a similar verification for the InteractionShell
       return k_handleVerification == m_handleVerification;
    }
 
-   INLINE_ALWAYS Booster * GetBooster() {
-      return m_pBooster;
+   INLINE_ALWAYS BoosterCore * GetBoosterCore() {
+      return m_pBoosterCore;
    }
 
    INLINE_ALWAYS size_t GetFeatureGroupIndex() {
@@ -157,13 +157,13 @@ public:
    }
 #endif // NDEBUG
 };
-static_assert(std::is_standard_layout<ThreadStateBoosting>::value,
+static_assert(std::is_standard_layout<BoosterShell>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<ThreadStateBoosting>::value,
+static_assert(std::is_trivial<BoosterShell>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<ThreadStateBoosting>::value,
+static_assert(std::is_pod<BoosterShell>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME
 
-#endif // THREAD_STATE_BOOSTING_H
+#endif // BOOSTER_SHELL_HPP

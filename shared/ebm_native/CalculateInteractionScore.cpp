@@ -30,7 +30,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 extern void BinInteraction(
-   InteractionDetector * const pInteractionDetector,
+   InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
    HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -38,8 +38,8 @@ extern void BinInteraction(
 #endif // NDEBUG
 );
 
-extern FloatEbmType FindBestInteractionScorePairs(
-   InteractionDetector * const pInteractionDetector,
+extern FloatEbmType PartitionTwoDimensionalInteraction(
+   InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
@@ -51,8 +51,8 @@ extern FloatEbmType FindBestInteractionScorePairs(
 );
 
 static bool CalculateInteractionScoreInternal(
-   ThreadStateInteraction * const pThreadStateInteraction,
-   InteractionDetector * const pInteractionDetector,
+   InteractionShell * const pInteractionShell,
+   InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    FloatEbmType * const pInteractionScoreReturn
@@ -61,7 +61,7 @@ static bool CalculateInteractionScoreInternal(
    // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
    // use the hessian as part of the gain function!!!
 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScoreInternal");
@@ -76,7 +76,7 @@ static bool CalculateInteractionScoreInternal(
    const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
    const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
    do {
-      const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
+      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
       // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // our tensor code strips out features with 1 bin, and we'd need to do that here too if cBins was 1
       EBM_ASSERT(size_t { 2 } <= cBins);
@@ -127,8 +127,8 @@ static bool CalculateInteractionScoreInternal(
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
-   // this doesn't need to be freed since it's tracked and re-used by the class ThreadStateInteraction
-   HistogramBucketBase * const aHistogramBuckets = pThreadStateInteraction->GetHistogramBucketBase(cBytesBuffer);
+   // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
+   HistogramBucketBase * const aHistogramBuckets = pInteractionShell->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal nullptr == aHistogramBuckets");
       return true;
@@ -158,7 +158,7 @@ static bool CalculateInteractionScoreInternal(
 #endif // NDEBUG
 
    BinInteraction(
-      pInteractionDetector,
+      pInteractionCore,
       pFeatureGroup,
       aHistogramBuckets
 #ifndef NDEBUG
@@ -191,8 +191,8 @@ static bool CalculateInteractionScoreInternal(
    if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
       LOG_0(TraceLevelVerbose, "CalculateInteractionScoreInternal Starting bin sweep loop");
 
-      FloatEbmType bestSplittingScore = FindBestInteractionScorePairs(
-         pInteractionDetector,
+      FloatEbmType bestSplittingScore = PartitionTwoDimensionalInteraction(
+         pInteractionCore,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -244,15 +244,15 @@ static bool CalculateInteractionScoreInternal(
    return false;
 }
 
-// we made this a global because if we had put this variable inside the InteractionDetector object, then we would need to dereference that before getting 
-// the count.  By making this global we can send a log message incase a bad InteractionDetector object is sent into us we only decrease the count if the 
+// we made this a global because if we had put this variable inside the InteractionCore object, then we would need to dereference that before getting 
+// the count.  By making this global we can send a log message incase a bad InteractionCore object is sent into us we only decrease the count if the 
 // count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static int g_cLogCalculateInteractionScoreParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
    InteractionDetectorHandle interactionDetectorHandle,
    IntEbmType countDimensions,
-   const IntEbmType * featureAtomicIndexes,
+   const IntEbmType * featureIndexes,
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 ) {
@@ -260,16 +260,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       &g_cLogCalculateInteractionScoreParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "CalculateInteractionScore parameters: interactionDetectorHandle=%p, countDimensions=%" IntEbmTypePrintf ", featureAtomicIndexes=%p, countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
+      "CalculateInteractionScore parameters: interactionDetectorHandle=%p, countDimensions=%" IntEbmTypePrintf ", featureIndexes=%p, countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
       static_cast<void *>(interactionDetectorHandle),
       countDimensions,
-      static_cast<const void *>(featureAtomicIndexes),
+      static_cast<const void *>(featureIndexes),
       countSamplesRequiredForChildSplitMin,
       static_cast<void *>(interactionScoreOut)
    );
 
-   InteractionDetector * pInteractionDetector = reinterpret_cast<InteractionDetector *>(interactionDetectorHandle);
-   if(nullptr == pInteractionDetector) {
+   InteractionCore * pInteractionCore = reinterpret_cast<InteractionCore *>(interactionDetectorHandle);
+   if(nullptr == pInteractionCore) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
@@ -277,7 +277,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       return 1;
    }
 
-   LOG_COUNTED_0(pInteractionDetector->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered CalculateInteractionScore");
+   LOG_COUNTED_0(pInteractionCore->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered CalculateInteractionScore");
 
    if(countDimensions < 0) {
       if(LIKELY(nullptr != interactionScoreOut)) {
@@ -286,11 +286,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countDimensions must be positive");
       return 1;
    }
-   if(0 != countDimensions && nullptr == featureAtomicIndexes) {
+   if(0 != countDimensions && nullptr == featureIndexes) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureAtomicIndexes cannot be nullptr if 0 < countDimensions");
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes cannot be nullptr if 0 < countDimensions");
       return 1;
    }
    if(!IsNumberConvertable<size_t>(countDimensions)) {
@@ -310,7 +310,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       }
       return 0;
    }
-   if(0 == pInteractionDetector->GetDataFrameInteraction()->GetCountSamples()) {
+   if(0 == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore zero samples");
       if(nullptr != interactionScoreOut) {
@@ -333,36 +333,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
-   const FeatureAtomic * const aFeatureAtomics = pInteractionDetector->GetFeatureAtomics();
-   const IntEbmType * pFeatureAtomicIndexes = featureAtomicIndexes;
-   const IntEbmType * const pFeatureAtomicIndexesEnd = featureAtomicIndexes + cDimensions;
+   const Feature * const aFeatures = pInteractionCore->GetFeatures();
+   const IntEbmType * pFeatureIndexes = featureIndexes;
+   const IntEbmType * const pFeatureIndexesEnd = featureIndexes + cDimensions;
 
    do {
-      const IntEbmType indexFeatureAtomicInterop = *pFeatureAtomicIndexes;
-      if(indexFeatureAtomicInterop < 0) {
+      const IntEbmType indexFeatureInterop = *pFeatureIndexes;
+      if(indexFeatureInterop < 0) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureAtomicIndexes value cannot be negative");
+         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value cannot be negative");
          return 1;
       }
-      if(!IsNumberConvertable<size_t>(indexFeatureAtomicInterop)) {
+      if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureAtomicIndexes value too big to reference memory");
+         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value too big to reference memory");
          return 1;
       }
-      const size_t iFeatureAtomic = static_cast<size_t>(indexFeatureAtomicInterop);
-      if(pInteractionDetector->GetCountFeatureAtomics() <= iFeatureAtomic) {
+      const size_t iFeature = static_cast<size_t>(indexFeatureInterop);
+      if(pInteractionCore->GetCountFeatures() <= iFeature) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureAtomicIndexes value must be less than the number of features");
+         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value must be less than the number of features");
          return 1;
       }
-      const FeatureAtomic * const pFeatureAtomic = &aFeatureAtomics[iFeatureAtomic];
-      if(pFeatureAtomic->GetCountBins() <= size_t { 1 }) {
+      const Feature * const pFeature = &aFeatures[iFeature];
+      if(pFeature->GetCountBins() <= size_t { 1 }) {
          if(nullptr != interactionScoreOut) {
             // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
             // our caler be smarter about this condition
@@ -371,8 +371,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore feature group contains a feature with only 1 bin");
          return IntEbmType { 0 };
       }
-      ++pFeatureAtomicIndexes;
-   } while(pFeatureAtomicIndexesEnd != pFeatureAtomicIndexes);
+      ++pFeatureIndexes;
+   } while(pFeatureIndexesEnd != pFeatureIndexes);
 
    if(k_cDimensionsMax < cDimensions) {
       // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
@@ -391,25 +391,25 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    pFeatureGroup->Initialize(cDimensions, 0);
    pFeatureGroup->SetCountSignificantFeatures(cDimensions);
 
-   pFeatureAtomicIndexes = featureAtomicIndexes; // restart from the start
+   pFeatureIndexes = featureIndexes; // restart from the start
    FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
    do {
       // TODO: move this into the loop above
 
-      const IntEbmType indexFeatureAtomicInterop = *pFeatureAtomicIndexes;
-      EBM_ASSERT(0 <= indexFeatureAtomicInterop);
-      EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureAtomicInterop)); // we already checked indexFeatureInterop was good above
-      size_t iFeatureAtomic = static_cast<size_t>(indexFeatureAtomicInterop);
-      EBM_ASSERT(iFeatureAtomic < pInteractionDetector->GetCountFeatureAtomics());
-      const FeatureAtomic * const pFeatureAtomic = &aFeatureAtomics[iFeatureAtomic];
-      EBM_ASSERT(2 <= pFeatureAtomic->GetCountBins()); // we should have filtered out anything with 1 bin above
+      const IntEbmType indexFeatureInterop = *pFeatureIndexes;
+      EBM_ASSERT(0 <= indexFeatureInterop);
+      EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureInterop)); // we already checked indexFeatureInterop was good above
+      size_t iFeature = static_cast<size_t>(indexFeatureInterop);
+      EBM_ASSERT(iFeature < pInteractionCore->GetCountFeatures());
+      const Feature * const pFeature = &aFeatures[iFeature];
+      EBM_ASSERT(2 <= pFeature->GetCountBins()); // we should have filtered out anything with 1 bin above
 
-      pFeatureGroupEntry->m_pFeatureAtomic = pFeatureAtomic;
+      pFeatureGroupEntry->m_pFeature = pFeature;
       ++pFeatureGroupEntry;
-      ++pFeatureAtomicIndexes;
-   } while(pFeatureAtomicIndexesEnd != pFeatureAtomicIndexes);
+      ++pFeatureIndexes;
+   } while(pFeatureIndexesEnd != pFeatureIndexes);
 
-   if(ptrdiff_t { 0 } == pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses()) {
+   if(ptrdiff_t { 0 } == pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore target with 0/1 classes");
       if(nullptr != interactionScoreOut) {
          // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or 
@@ -419,21 +419,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       return 0;
    }
 
-   // TODO : be smarter about our ThreadStateInteraction, otherwise why have it?
-   ThreadStateInteraction * const pThreadStateInteraction = ThreadStateInteraction::Allocate();
-   if(nullptr == pThreadStateInteraction) {
+   // TODO : be smarter about our InteractionShell, otherwise why have it?
+   InteractionShell * const pInteractionShell = InteractionShell::Allocate();
+   if(nullptr == pInteractionShell) {
       return 1;
    }
 
    IntEbmType ret = CalculateInteractionScoreInternal(
-      pThreadStateInteraction,
-      pInteractionDetector,
+      pInteractionShell,
+      pInteractionCore,
       pFeatureGroup,
       cSamplesRequiredForChildSplitMin,
       interactionScoreOut
    );
 
-   ThreadStateInteraction::Free(pThreadStateInteraction);
+   InteractionShell::Free(pInteractionShell);
 
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" IntEbmTypePrintf, ret);
@@ -443,13 +443,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       // if *interactionScoreOut was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
       EBM_ASSERT(FloatEbmType { 0 } <= *interactionScoreOut);
       LOG_COUNTED_N(
-         pInteractionDetector->GetPointerCountLogExitMessages(),
+         pInteractionCore->GetPointerCountLogExitMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
          "Exited CalculateInteractionScore %" FloatEbmTypePrintf, *interactionScoreOut
       );
    } else {
-      LOG_COUNTED_0(pInteractionDetector->GetPointerCountLogExitMessages(), TraceLevelInfo, TraceLevelVerbose, "Exited CalculateInteractionScore");
+      LOG_COUNTED_0(pInteractionCore->GetPointerCountLogExitMessages(), TraceLevelInfo, TraceLevelVerbose, "Exited CalculateInteractionScore");
    }
    return ret;
 }

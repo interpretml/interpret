@@ -4,18 +4,18 @@
 
 // !! To add a new loss/objective function in C++ follow the steps at the top of the "loss_registrations.hpp" file !!
 
-// LossRegressionMse is a VERY VERY special Loss function.  
+// MseRegressionLoss is a VERY VERY special Loss function.  
 // Anyone writing a custom loss function in C++ should start from a different loss function
 
 #include "Loss.hpp"
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
-struct LossRegressionMse : public LossRegression {
+struct MseRegressionLoss : public RegressionLoss {
 
-   INLINE_ALWAYS LossRegressionMse(const Config & config) {
+   INLINE_ALWAYS MseRegressionLoss(const Config & config) {
       if(1 != config.cOutputs) {
-         throw ParameterMismatchWithConfigException();
+         throw ParamMismatchWithConfigException();
       }
    }
 

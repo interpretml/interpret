@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// TODO: rename this file InitializeGradients.cpp
 
 #include "precompiled_header_cpp.hpp"
 
@@ -25,10 +24,10 @@ namespace DEFINED_ZONE_NAME {
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class InitializeGradientsInternal final {
+class InitializeGradientsAndHessiansInternal final {
 public:
 
-   InitializeGradientsInternal() = delete; // this is a static class.  Do not construct
+   InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -40,7 +39,7 @@ public:
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
-      LOG_0(TraceLevelInfo, "Entered InitializeGradients");
+      LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
       EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
@@ -58,7 +57,7 @@ public:
       ];
       FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? EbmMalloc<FloatEbmType>(cVectorLength) : aLocalExpVector;
       if(UNLIKELY(nullptr == aExpVector)) {
-         LOG_0(TraceLevelWarning, "WARNING InitializeGradients nullptr == aExpVector");
+         LOG_0(TraceLevelWarning, "WARNING InitializeGradientsAndHessians nullptr == aExpVector");
          return true;
       }
 
@@ -123,17 +122,17 @@ public:
          free(aExpVector);
       }
 
-      LOG_0(TraceLevelInfo, "Exited InitializeGradients");
+      LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
       return false;
    }
 };
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class InitializeGradientsInternal<2> final {
+class InitializeGradientsAndHessiansInternal<2> final {
 public:
 
-   InitializeGradientsInternal() = delete; // this is a static class.  Do not construct
+   InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -143,7 +142,7 @@ public:
       FloatEbmType * pGradientAndHessian
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      LOG_0(TraceLevelInfo, "Entered InitializeGradients");
+      LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
       // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
@@ -173,17 +172,17 @@ public:
          *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
          pGradientAndHessian += 2;
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
-      LOG_0(TraceLevelInfo, "Exited InitializeGradients");
+      LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
       return false;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class InitializeGradientsInternal<k_regression> final {
+class InitializeGradientsAndHessiansInternal<k_regression> final {
 public:
 
-   InitializeGradientsInternal() = delete; // this is a static class.  Do not construct
+   InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -193,7 +192,7 @@ public:
       FloatEbmType * pGradientAndHessian
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      LOG_0(TraceLevelInfo, "Entered InitializeGradients");
+      LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
       // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
@@ -224,12 +223,12 @@ public:
          *pGradientAndHessian = gradient;
          ++pGradientAndHessian;
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
-      LOG_0(TraceLevelInfo, "Exited InitializeGradients");
+      LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
       return false;
    }
 };
 
-extern bool InitializeGradients(
+extern bool InitializeGradientsAndHessians(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
@@ -238,7 +237,7 @@ extern bool InitializeGradients(
 ) {
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         return InitializeGradientsInternal<2>::Func(
+         return InitializeGradientsAndHessiansInternal<2>::Func(
             runtimeLearningTypeOrCountTargetClasses,
             cSamples,
             aTargetData,
@@ -246,7 +245,7 @@ extern bool InitializeGradients(
             pGradientAndHessian
          );
       } else {
-         return InitializeGradientsInternal<k_dynamicClassification>::Func(
+         return InitializeGradientsAndHessiansInternal<k_dynamicClassification>::Func(
             runtimeLearningTypeOrCountTargetClasses,
             cSamples,
             aTargetData,
@@ -256,7 +255,7 @@ extern bool InitializeGradients(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      return InitializeGradientsInternal<k_regression>::Func(
+      return InitializeGradientsAndHessiansInternal<k_regression>::Func(
          runtimeLearningTypeOrCountTargetClasses,
          cSamples,
          aTargetData,

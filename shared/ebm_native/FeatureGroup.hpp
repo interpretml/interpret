@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef FEATURE_GROUP_H
-#define FEATURE_GROUP_H
+#ifndef FEATURE_GROUP_HPP
+#define FEATURE_GROUP_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -27,7 +27,7 @@ struct FeatureGroupEntry final {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    // TODO : we can put the entire Feature data into this location instead of using a pointer
-   const FeatureAtomic * m_pFeatureAtomic;
+   const Feature * m_pFeature;
 };
 static_assert(std::is_standard_layout<FeatureGroupEntry>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -142,4 +142,4 @@ static_assert(std::is_pod<FeatureGroup>::value,
 
 } // DEFINED_ZONE_NAME
 
-#endif // FEATURE_GROUP_H
+#endif // FEATURE_GROUP_HPP

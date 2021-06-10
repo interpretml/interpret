@@ -53,21 +53,21 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    const size_t cVectorLength, 
    const FloatEbmType * const aPredictorScoresFrom
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::ConstructPredictorScores");
+   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructPredictorScores");
 
    EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(0 < cVectorLength);
    EBM_ASSERT(nullptr != aPredictorScoresFrom);
 
    if(IsMultiplyError(cSamples, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructPredictorScores IsMultiplyError(cSamples, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores IsMultiplyError(cSamples, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cSamples * cVectorLength;
    FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType>(cElements);
    if(nullptr == aPredictorScoresTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructPredictorScores nullptr == aPredictorScoresTo");
+      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
    }
 
@@ -92,7 +92,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
 
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::ConstructPredictorScores");
+   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::ConstructPredictorScores");
    return aPredictorScoresTo;
 }
 
@@ -101,7 +101,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    const IntEbmType * const aTargets, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::ConstructTargetData");
+   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructTargetData");
 
    EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(nullptr != aTargets);
@@ -120,27 +120,27 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    do {
       const IntEbmType data = *pTargetFrom;
       if(data < 0) {
-         LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructTargetData target value cannot be negative");
+         LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData target value cannot be negative");
          free(aTargetData);
          return nullptr;
       }
       if(!IsNumberConvertable<StorageDataType>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
-         LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructTargetData data target too big to reference memory");
+         LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
          free(aTargetData);
          return nullptr;
       }
       if(!IsNumberConvertable<size_t>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
-         LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructTargetData data target too big to reference memory");
+         LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
          free(aTargetData);
          return nullptr;
       }
       const StorageDataType iData = static_cast<StorageDataType>(data);
       if(countTargetClasses <= static_cast<size_t>(iData)) {
-         LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructTargetData target value larger than number of classes");
+         LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
          free(aTargetData);
          return nullptr;
       }
@@ -149,7 +149,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
       ++pTargetFrom;
    } while(pTargetFromEnd != pTargetFrom);
 
-   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::ConstructTargetData");
+   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::ConstructTargetData");
    return aTargetData;
 }
 
@@ -176,7 +176,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cSamples, 
    const IntEbmType * const aInputDataFrom
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatureGroups);
    EBM_ASSERT(nullptr != apFeatureGroup);
@@ -186,7 +186,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatureGroups);
    if(nullptr == aaInputDataTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -213,7 +213,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
          StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cDataUnits);
          if(nullptr == pInputDataTo) {
-            LOG_0(TraceLevelWarning, "WARNING DataFrameBoosting::ConstructInputData nullptr == pInputDataTo");
+            LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
@@ -234,11 +234,11 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfoInit = &dimensionInfo[0];
          do {
-            const FeatureAtomic * const pFeatureAtomic = pFeatureGroupEntry->m_pFeatureAtomic;
-            const size_t cBins = pFeatureAtomic->GetCountBins();
+            const Feature * const pFeature = pFeatureGroupEntry->m_pFeature;
+            const size_t cBins = pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we don't construct datasets on empty training sets
             if(size_t { 1 } < cBins) {
-               pDimensionInfoInit->m_pInputData = &aInputDataFrom[pFeatureAtomic->GetIndexFeatureAtomicData() * cSamples];
+               pDimensionInfoInit->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cSamples];
                pDimensionInfoInit->m_cBins = cBins;
                ++pDimensionInfoInit;
             }
@@ -267,17 +267,17 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                   const IntEbmType inputData = *pInputData;
                   pDimensionInfo->m_pInputData = pInputData + 1;
                   if(inputData < 0) {
-                     LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructInputData inputData value cannot be negative");
+                     LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData inputData value cannot be negative");
                      goto free_all;
                   }
                   if(!IsNumberConvertable<size_t>(inputData)) {
-                     LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructInputData inputData value too big to reference memory");
+                     LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData inputData value too big to reference memory");
                      goto free_all;
                   }
                   const size_t iData = static_cast<size_t>(inputData);
 
                   if(pDimensionInfo->m_cBins <= iData) {
-                     LOG_0(TraceLevelError, "ERROR DataFrameBoosting::ConstructInputData iData value must be less than the number of bins");
+                     LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData iData value must be less than the number of bins");
                      goto free_all;
                   }
                   // we check for overflows during FeatureGroup construction, but let's check here again
@@ -311,7 +311,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       ++ppFeatureGroup;
    } while(ppFeatureGroupEnd != ppFeatureGroup);
 
-   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -323,7 +323,7 @@ free_all:
    return nullptr;
 }
 
-bool DataFrameBoosting::Initialize(
+bool DataSetBoosting::Initialize(
    const bool bAllocateGradients, 
    const bool bAllocateHessians,
    const bool bAllocatePredictorScores,
@@ -341,7 +341,7 @@ bool DataFrameBoosting::Initialize(
    EBM_ASSERT(nullptr == m_aTargetData);
    EBM_ASSERT(nullptr == m_aaInputData);
 
-   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::Initialize");
+   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::Initialize");
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
    if(0 != cSamples) {
@@ -349,7 +349,7 @@ bool DataFrameBoosting::Initialize(
       if(bAllocateGradients) {
          aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, cVectorLength);
          if(nullptr == aGradientsAndHessians) {
-            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aGradientsAndHessians");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
             return true;
          }
       } else {
@@ -360,7 +360,7 @@ bool DataFrameBoosting::Initialize(
          aPredictorScores = ConstructPredictorScores(cSamples, cVectorLength, aPredictorScoresFrom);
          if(nullptr == aPredictorScores) {
             free(aGradientsAndHessians);
-            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aPredictorScores");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aPredictorScores");
             return true;
          }
       }
@@ -370,7 +370,7 @@ bool DataFrameBoosting::Initialize(
          if(nullptr == aTargetData) {
             free(aGradientsAndHessians);
             free(aPredictorScores);
-            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aTargetData");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aTargetData");
             return true;
          }
       }
@@ -381,7 +381,7 @@ bool DataFrameBoosting::Initialize(
             free(aGradientsAndHessians);
             free(aPredictorScores);
             free(aTargetData);
-            LOG_0(TraceLevelWarning, "WARNING Exited DataFrameBoosting::Initialize nullptr == aaInputData");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aaInputData");
             return true;
          }
       }
@@ -394,15 +394,15 @@ bool DataFrameBoosting::Initialize(
       m_cFeatureGroups = cFeatureGroups;
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::Initialize");
+   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::Initialize");
 
    return false;
 }
 
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
-void DataFrameBoosting::Destruct() {
-   LOG_0(TraceLevelInfo, "Entered DataFrameBoosting::Destruct");
+void DataSetBoosting::Destruct() {
+   LOG_0(TraceLevelInfo, "Entered DataSetBoosting::Destruct");
 
    free(m_aGradientsAndHessians);
    free(m_aPredictorScores);
@@ -419,7 +419,7 @@ void DataFrameBoosting::Destruct() {
       free(m_aaInputData);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataFrameBoosting::Destruct");
+   LOG_0(TraceLevelInfo, "Exited DataSetBoosting::Destruct");
 }
 WARNING_POP
 

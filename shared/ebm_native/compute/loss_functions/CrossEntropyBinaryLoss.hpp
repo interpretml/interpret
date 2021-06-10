@@ -8,6 +8,6 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>
-struct LossBinaryCrossEntropy : public LossBinary {
+struct CrossEntropyBinaryLoss : public BinaryLoss {
    // this one needs to be special cased!
 };

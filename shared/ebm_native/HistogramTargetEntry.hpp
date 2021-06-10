@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef HISTOGRAM_TARGET_ENTRY_H
-#define HISTOGRAM_TARGET_ENTRY_H
+#ifndef HISTOGRAM_TARGET_ENTRY_HPP
+#define HISTOGRAM_TARGET_ENTRY_HPP
 
 #include <type_traits> // std::is_standard_layout
 
@@ -183,4 +183,4 @@ static_assert(std::is_pod<HistogramTargetEntry<false>>::value,
 
 } // DEFINED_ZONE_NAME
 
-#endif // HISTOGRAM_TARGET_ENTRY_H
+#endif // HISTOGRAM_TARGET_ENTRY_HPP

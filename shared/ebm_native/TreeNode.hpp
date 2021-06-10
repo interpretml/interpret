@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef TREE_NODE_H
-#define TREE_NODE_H
+#ifndef TREE_NODE_HPP
+#define TREE_NODE_HPP
 
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
@@ -511,4 +511,4 @@ INLINE_ALWAYS const TreeNode<bClassification> * GetRightTreeNodeChild(const Tree
 
 } // DEFINED_ZONE_NAME
 
-#endif // TREE_NODE_H
+#endif // TREE_NODE_HPP

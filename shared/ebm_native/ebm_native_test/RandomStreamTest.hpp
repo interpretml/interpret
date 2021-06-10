@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef RANDOM_STREAM_TEST_H
-#define RANDOM_STREAM_TEST_H
+#ifndef RANDOM_STREAM_TEST_HPP
+#define RANDOM_STREAM_TEST_HPP
 
 #include <inttypes.h> // uint32_t seed
 #include <random>
@@ -101,4 +101,4 @@ public:
    }
 };
 
-#endif // RANDOM_STREAM_TEST_H
+#endif // RANDOM_STREAM_TEST_HPP

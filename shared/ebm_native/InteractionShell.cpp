@@ -20,34 +20,34 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-void ThreadStateInteraction::Free(ThreadStateInteraction * const pThreadStateInteraction) {
-   LOG_0(TraceLevelInfo, "Entered ThreadStateInteraction::Free");
+void InteractionShell::Free(InteractionShell * const pInteractionShell) {
+   LOG_0(TraceLevelInfo, "Entered InteractionShell::Free");
 
-   free(pThreadStateInteraction->m_aThreadByteBuffer1);
+   free(pInteractionShell->m_aThreadByteBuffer1);
 
-   free(pThreadStateInteraction);
+   free(pInteractionShell);
 
-   LOG_0(TraceLevelInfo, "Exited ThreadStateInteraction::Free");
+   LOG_0(TraceLevelInfo, "Exited InteractionShell::Free");
 }
 
-ThreadStateInteraction * ThreadStateInteraction::Allocate() {
-   LOG_0(TraceLevelInfo, "Entered ThreadStateInteraction::Allocate");
+InteractionShell * InteractionShell::Allocate() {
+   LOG_0(TraceLevelInfo, "Entered InteractionShell::Allocate");
 
-   ThreadStateInteraction * const pNew = EbmMalloc<ThreadStateInteraction>();
+   InteractionShell * const pNew = EbmMalloc<InteractionShell>();
    if(nullptr != pNew) {
       pNew->InitializeZero();
    }
 
-   LOG_0(TraceLevelInfo, "Exited ThreadStateInteraction::Allocate");
+   LOG_0(TraceLevelInfo, "Exited InteractionShell::Allocate");
 
    return pNew;
 }
 
-HistogramBucketBase * ThreadStateInteraction::GetHistogramBucketBase(const size_t cBytesRequired) {
+HistogramBucketBase * InteractionShell::GetHistogramBucketBase(const size_t cBytesRequired) {
    HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
    if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
       m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
-      LOG_N(TraceLevelInfo, "Growing ThreadStateInteraction::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
+      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
 
       free(aBuffer);
       aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(m_cThreadByteBufferCapacity1));

@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef HISTOGRAM_BUCKET_H
-#define HISTOGRAM_BUCKET_H
+#ifndef HISTOGRAM_BUCKET_HPP
+#define HISTOGRAM_BUCKET_HPP
 
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
@@ -274,4 +274,4 @@ INLINE_ALWAYS const HistogramBucketBase * GetHistogramBucketByIndex(
 
 } // DEFINED_ZONE_NAME
 
-#endif // HISTOGRAM_BUCKET_H
+#endif // HISTOGRAM_BUCKET_HPP

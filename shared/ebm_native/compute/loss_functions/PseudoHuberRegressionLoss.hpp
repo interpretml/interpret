@@ -8,26 +8,26 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
-struct LossRegressionPseudoHuber : public LossRegression {
-   LOSS_CLASS_BOILERPLATE(LossRegressionPseudoHuber, true, 1)
+struct PseudoHuberRegressionLoss : public RegressionLoss {
+   LOSS_CLASS_BOILERPLATE(PseudoHuberRegressionLoss, true, 1)
 
    TFloat m_deltaInverted;
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
-   INLINE_ALWAYS LossRegressionPseudoHuber(const Config & config, TFloat delta) {
+   INLINE_ALWAYS PseudoHuberRegressionLoss(const Config & config, TFloat delta) {
       UNUSED(config);
 
       if(1 != config.cOutputs) {
-         throw ParameterMismatchWithConfigException();
+         throw ParamMismatchWithConfigException();
       }
 
       if(delta.IsAnyEqual(TFloat(0)) || delta.IsAnyNaN() || delta.IsAnyInf()) {
-         throw ParameterValueOutOfRangeException();
+         throw ParamValueOutOfRangeException();
       }
 
       TFloat deltaInverted = TFloat(1) / delta;
       if(deltaInverted.IsAnyInf()) {
-         throw ParameterValueOutOfRangeException();
+         throw ParamValueOutOfRangeException();
       }
 
       m_deltaInverted = deltaInverted;

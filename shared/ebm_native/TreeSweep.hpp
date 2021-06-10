@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef TREE_SWEEP_H
-#define TREE_SWEEP_H
+#ifndef TREE_SWEEP_HPP
+#define TREE_SWEEP_HPP
 
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
@@ -131,4 +131,4 @@ INLINE_ALWAYS size_t CountTreeSweep(
 
 } // DEFINED_ZONE_NAME
 
-#endif // TREE_SWEEP_H
+#endif // TREE_SWEEP_HPP

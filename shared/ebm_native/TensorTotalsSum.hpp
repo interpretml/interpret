@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef TENSOR_TOTALS_SUM_H
-#define TENSOR_TOTALS_SUM_H
+#ifndef TENSOR_TOTALS_SUM_HPP
+#define TENSOR_TOTALS_SUM_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -56,7 +56,7 @@ void TensorTotalsSumDebugSlow(
    const FeatureGroupEntry * pFeatureGroupEntryInit = pFeatureGroup->GetFeatureGroupEntries();
    const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntryInit + pFeatureGroup->GetCountDimensions();
    do {
-      const size_t cBins = pFeatureGroupEntryInit->m_pFeatureAtomic->GetCountBins();
+      const size_t cBins = pFeatureGroupEntryInit->m_pFeature->GetCountBins();
       // cBins can only be 0 if there are zero training and zero validation samples
       // we don't boost or allow interaction updates if there are zero training samples
       EBM_ASSERT(size_t { 1 } <= cBins);
@@ -100,7 +100,7 @@ void TensorTotalsSumDebugSlow(
 
          size_t cBins;
          do {
-            cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
+            cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
             // cBins can only be 0 if there are zero training and zero validation samples
             // we don't boost or allow interaction updates if there are zero training samples
             EBM_ASSERT(size_t { 1 } <= cBins);
@@ -143,7 +143,7 @@ void TensorTotalsCompareDebug(
 
    size_t iDimensionDebug = 0;
    do {
-      const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
+      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
       // cBins can only be 0 if there are zero training and zero validation samples
       // we don't boost or allow interaction updates if there are zero training samples
       EBM_ASSERT(size_t { 1 } <= cBins);
@@ -226,7 +226,7 @@ void TensorTotalsSum(
    if(0 == directionVector) {
       // we would require a check in our inner loop below to handle the case of zero FeatureGroupEntry items, so let's handle it separetly here instead
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // cBins can only be 0 if there are zero training and zero validation samples
          // we don't boost or allow interaction updates if there are zero training samples
          EBM_ASSERT(size_t { 1 } <= cBins);
@@ -266,7 +266,7 @@ void TensorTotalsSum(
    {
       size_t directionVectorDestroy = directionVector;
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // cBins can only be 0 if there are zero training and zero validation samples
          // we don't boost or allow interaction updates if there are zero training samples
          EBM_ASSERT(size_t { 1 } <= cBins);
@@ -348,4 +348,4 @@ void TensorTotalsSum(
 
 } // DEFINED_ZONE_NAME
 
-#endif // TENSOR_TOTALS_SUM_H
+#endif // TENSOR_TOTALS_SUM_HPP

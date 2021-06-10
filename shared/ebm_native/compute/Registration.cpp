@@ -154,7 +154,7 @@ void Registration::FinalCheckParameters(
    if(size_t { 0 } != cRemainingParams) {
       // our counts don't match up, so there are strings in the sRegistration string that we didn't
       // process as params.  cRemainingParams should be a very big number since we would have underflowed
-      throw ParameterUnknownException();
+      throw ParamUnknownException();
    }
 }
 

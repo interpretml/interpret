@@ -63,25 +63,25 @@ ErrorEbmType Loss::CreateLoss(
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss unknown loss");
          error = Error_LossUnknown;
-      } catch(const ParameterValueMalformedException &) {
+      } catch(const ParamValueMalformedException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueMalformedException");
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamValueMalformedException");
          error = Error_LossParamValueMalformed;
-      } catch(const ParameterUnknownException &) {
+      } catch(const ParamUnknownException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterUnknownException");
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamUnknownException");
          error = Error_LossParamUnknown;
       } catch(const RegistrationConstructorException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss RegistrationConstructorException");
          error = Error_LossConstructorException;
-      } catch(const ParameterValueOutOfRangeException &) {
+      } catch(const ParamValueOutOfRangeException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueOutOfRangeException");
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamValueOutOfRangeException");
          error = Error_LossParamValueOutOfRange;
-      } catch(const ParameterMismatchWithConfigException &) {
+      } catch(const ParamMismatchWithConfigException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterMismatchWithConfigException");
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamMismatchWithConfigException");
          error = Error_LossParamMismatchWithConfig;
       } catch(const IllegalRegistrationNameException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);

@@ -265,10 +265,10 @@ bool SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
 
       // first, get basic counts of how many divisions and values we'll have in our final result
       do {
-         const size_t cBins = pFeatureGroupEntry1->m_pFeatureAtomic->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry1->m_pFeature->GetCountBins();
 
          // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack 
-         // featureGroupsFeatureAtomicIndexes and in CalculateInteractionScore for interactions
+         // featureGroupsFeatureIndexes and in CalculateInteractionScore for interactions
          EBM_ASSERT(!IsMultiplyError(cNewValues, cBins));
          cNewValues *= cBins;
 
@@ -402,7 +402,7 @@ bool SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
          const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
          size_t iDimension = 0;
          do {
-            const size_t cBins = pFeatureGroupEntry2->m_pFeatureAtomic->GetCountBins();
+            const size_t cBins = pFeatureGroupEntry2->m_pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
             const size_t cDivisions = cBins - size_t { 1 };
             if(size_t { 0 } < cDivisions) {
@@ -557,7 +557,7 @@ bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
          p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
       }
       pDimensionInfoStackFirst->m_cNewDivisions = cNewSingleDimensionDivisions;
-      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureAtomicIndexes and in 
+      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes and in 
       // CalculateInteractionScore for interactions
       EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1));
       cNewValues *= cNewSingleDimensionDivisions + 1;

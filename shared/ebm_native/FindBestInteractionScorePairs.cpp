@@ -30,13 +30,13 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class FindBestInteractionScorePairsInternal final {
+class PartitionTwoDimensionalInteractionInternal final {
 public:
 
-   FindBestInteractionScorePairsInternal() = delete; // this is a static class.  Do not construct
+   PartitionTwoDimensionalInteractionInternal() = delete; // this is a static class.  Do not construct
 
    static FloatEbmType Func(
-      InteractionDetector * const pInteractionDetector,
+      InteractionCore * const pInteractionCore,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
@@ -61,7 +61,7 @@ public:
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
-         pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses()
+         pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
@@ -82,8 +82,8 @@ public:
 
       // we return an interaction score of 0 if any features are useless before calling here
       EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions());
-      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeatureAtomic->GetCountBins();
-      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeatureAtomic->GetCountBins();
+      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
+      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->GetCountBins();
 
       // any pair with a feature with 1 cBins returns an interaction score of 0
       EBM_ASSERT(2 <= cBinsDimension1);
@@ -224,21 +224,21 @@ public:
          ++iBin1;
       } while(iBin1 < cBinsDimension1 - 1);
 
-      const DataFrameInteraction * const pDataFrame = pInteractionDetector->GetDataFrameInteraction();
-      EBM_ASSERT(nullptr != pDataFrame);
-      EBM_ASSERT(FloatEbmType { 0 } < pDataFrame->GetWeightTotal()); // if all are zeros we assume there are no weights and use the count
-      return bestSplittingScore / pDataFrame->GetWeightTotal();
+      const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
+      EBM_ASSERT(nullptr != pDataSet);
+      EBM_ASSERT(FloatEbmType { 0 } < pDataSet->GetWeightTotal()); // if all are zeros we assume there are no weights and use the count
+      return bestSplittingScore / pDataSet->GetWeightTotal();
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class FindBestInteractionScorePairsTarget final {
+class PartitionTwoDimensionalInteractionTarget final {
 public:
 
-   FindBestInteractionScorePairsTarget() = delete; // this is a static class.  Do not construct
+   PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static FloatEbmType Func(
-      InteractionDetector * const pInteractionDetector,
+      InteractionCore * const pInteractionCore,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
@@ -251,13 +251,13 @@ public:
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return FindBestInteractionScorePairsInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
-            pInteractionDetector,
+         return PartitionTwoDimensionalInteractionInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+            pInteractionCore,
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
@@ -268,8 +268,8 @@ public:
 #endif // NDEBUG
          );
       } else {
-         return FindBestInteractionScorePairsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pInteractionDetector,
+         return PartitionTwoDimensionalInteractionTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+            pInteractionCore,
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
@@ -284,13 +284,13 @@ public:
 };
 
 template<>
-class FindBestInteractionScorePairsTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class PartitionTwoDimensionalInteractionTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   FindBestInteractionScorePairsTarget() = delete; // this is a static class.  Do not construct
+   PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static FloatEbmType Func(
-      InteractionDetector * const pInteractionDetector,
+      InteractionCore * const pInteractionCore,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
@@ -302,11 +302,11 @@ public:
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return FindBestInteractionScorePairsInternal<k_dynamicClassification>::Func(
-         pInteractionDetector,
+      return PartitionTwoDimensionalInteractionInternal<k_dynamicClassification>::Func(
+         pInteractionCore,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -319,8 +319,8 @@ public:
    }
 };
 
-extern FloatEbmType FindBestInteractionScorePairs(
-   InteractionDetector * const pInteractionDetector,
+extern FloatEbmType PartitionTwoDimensionalInteraction(
+   InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
@@ -330,11 +330,11 @@ extern FloatEbmType FindBestInteractionScorePairs(
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionDetector->GetRuntimeLearningTypeOrCountTargetClasses();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      return FindBestInteractionScorePairsTarget<2>::Func(
-         pInteractionDetector,
+      return PartitionTwoDimensionalInteractionTarget<2>::Func(
+         pInteractionCore,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -346,8 +346,8 @@ extern FloatEbmType FindBestInteractionScorePairs(
       );
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      return FindBestInteractionScorePairsInternal<k_regression>::Func(
-         pInteractionDetector,
+      return PartitionTwoDimensionalInteractionInternal<k_regression>::Func(
+         pInteractionCore,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,

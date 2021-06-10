@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef EBM_STATS_H
-#define EBM_STATS_H
+#ifndef EBM_STATS_HPP
+#define EBM_STATS_HPP
 
 #include <cmath> // log, exp, etc
 #include <stddef.h> // size_t, ptrdiff_t
@@ -975,4 +975,4 @@ public:
 
 } // DEFINED_ZONE_NAME
 
-#endif // EBM_STATS_H
+#endif // EBM_STATS_HPP

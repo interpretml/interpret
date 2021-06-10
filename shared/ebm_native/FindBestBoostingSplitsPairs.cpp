@@ -180,16 +180,16 @@ static FloatEbmType SweepMultiDimensional(
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class FindBestBoostingSplitPairsInternal final {
+class PartitionTwoDimensionalBoostingInternal final {
 public:
 
-   FindBestBoostingSplitPairsInternal() = delete; // this is a static class.  Do not construct
+   PartitionTwoDimensionalBoostingInternal() = delete; // this is a static class.  Do not construct
 
    WARNING_PUSH
    WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 
    static bool Func(
-      ThreadStateBoosting * const pThreadStateBoosting,
+      BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
@@ -201,17 +201,17 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      Booster * const pBooster = pThreadStateBoosting->GetBooster();
+      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      HistogramBucketBase * const aHistogramBucketBase = pThreadStateBoosting->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
-         pThreadStateBoosting->GetOverwritableModelUpdate();
+         pBoosterShell->GetOverwritableModelUpdate();
 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
-         pBooster->GetRuntimeLearningTypeOrCountTargetClasses()
+         pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
@@ -235,7 +235,7 @@ public:
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
             EBM_ASSERT(0 == cBinsDimension2);
@@ -265,7 +265,7 @@ public:
       HistogramBucket<bClassification> * pTotals1HighHighBest =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, pThreadStateBoosting->GetHistogramBucketsEndDebug());
+      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, pBoosterShell->GetHistogramBucketsEndDebug());
 
       EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
@@ -315,7 +315,7 @@ public:
             &cutSecond1LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy
-            , pThreadStateBoosting->GetHistogramBucketsEndDebug()
+            , pBoosterShell->GetHistogramBucketsEndDebug()
 #endif // NDEBUG
             );
 
@@ -344,7 +344,7 @@ public:
                &cutSecond1HighBest
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy
-               , pThreadStateBoosting->GetHistogramBucketsEndDebug()
+               , pBoosterShell->GetHistogramBucketsEndDebug()
 #endif // NDEBUG
                );
             // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
@@ -423,7 +423,7 @@ public:
             &cutSecond2LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy
-            , pThreadStateBoosting->GetHistogramBucketsEndDebug()
+            , pBoosterShell->GetHistogramBucketsEndDebug()
 #endif // NDEBUG
             );
 
@@ -452,7 +452,7 @@ public:
                &cutSecond2HighBest
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy
-               , pThreadStateBoosting->GetHistogramBucketsEndDebug()
+               , pBoosterShell->GetHistogramBucketsEndDebug()
 #endif // NDEBUG
                );
             // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
@@ -863,13 +863,13 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class FindBestBoostingSplitPairsTarget final {
+class PartitionTwoDimensionalBoostingTarget final {
 public:
 
-   FindBestBoostingSplitPairsTarget() = delete; // this is a static class.  Do not construct
+   PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static bool Func(
-      ThreadStateBoosting * const pThreadStateBoosting,
+      BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
@@ -882,14 +882,14 @@ public:
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
-      Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return FindBestBoostingSplitPairsInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
-            pThreadStateBoosting,
+         return PartitionTwoDimensionalBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+            pBoosterShell,
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
@@ -900,8 +900,8 @@ public:
 #endif // NDEBUG
          );
       } else {
-         return FindBestBoostingSplitPairsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pThreadStateBoosting,
+         return PartitionTwoDimensionalBoostingTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+            pBoosterShell,
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
@@ -916,13 +916,13 @@ public:
 };
 
 template<>
-class FindBestBoostingSplitPairsTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class PartitionTwoDimensionalBoostingTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   FindBestBoostingSplitPairsTarget() = delete; // this is a static class.  Do not construct
+   PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static bool Func(
-      ThreadStateBoosting * const pThreadStateBoosting,
+      BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
@@ -934,11 +934,11 @@ public:
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return FindBestBoostingSplitPairsInternal<k_dynamicClassification>::Func(
-         pThreadStateBoosting,
+      return PartitionTwoDimensionalBoostingInternal<k_dynamicClassification>::Func(
+         pBoosterShell,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -951,8 +951,8 @@ public:
    }
 };
 
-extern bool FindBestBoostingSplitPairs(
-   ThreadStateBoosting * const pThreadStateBoosting,
+extern bool PartitionTwoDimensionalBoosting(
+   BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
@@ -962,12 +962,12 @@ extern bool FindBestBoostingSplitPairs(
    , const HistogramBucketBase * const aHistogramBucketsDebugCopy
 #endif // NDEBUG
 ) {
-   Booster * const pBooster = pThreadStateBoosting->GetBooster();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      return FindBestBoostingSplitPairsTarget<2>::Func(
-         pThreadStateBoosting,
+      return PartitionTwoDimensionalBoostingTarget<2>::Func(
+         pBoosterShell,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -979,8 +979,8 @@ extern bool FindBestBoostingSplitPairs(
       );
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      return FindBestBoostingSplitPairsInternal<k_regression>::Func(
-         pThreadStateBoosting,
+      return PartitionTwoDimensionalBoostingInternal<k_regression>::Func(
+         pBoosterShell,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,

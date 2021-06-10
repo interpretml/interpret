@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef SEGMENTED_TENSOR_H
-#define SEGMENTED_TENSOR_H
+#ifndef SEGMENTED_TENSOR_HPP
+#define SEGMENTED_TENSOR_HPP
 
 #include <type_traits> // std::is_standard_layout
 #include <stdlib.h> // malloc, realloc, free
@@ -237,4 +237,4 @@ static_assert(std::is_pod<SegmentedTensor>::value,
 
 } // DEFINED_ZONE_NAME
 
-#endif // SEGMENTED_TENSOR_H
+#endif // SEGMENTED_TENSOR_HPP

@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef EBM_INTERNAL_H
-#define EBM_INTERNAL_H
+#ifndef EBM_INTERNAL_HPP
+#define EBM_INTERNAL_HPP
 
 #include <inttypes.h>
 #include <stddef.h> // size_t, ptrdiff_t
@@ -159,4 +159,4 @@ static bool CheckAllWeightsEqual(const size_t cWeights, const T * pWeights) {
 
 } // DEFINED_ZONE_NAME
 
-#endif // EBM_INTERNAL_H
+#endif // EBM_INTERNAL_HPP

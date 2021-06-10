@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef BOOSTER_H
-#define BOOSTER_H
+#ifndef BOOSTER_CORE_HPP
+#define BOOSTER_CORE_HPP
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -31,17 +31,17 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-class Booster final {
+class BoosterCore final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
-   size_t m_cFeatureAtomics;
-   FeatureAtomic * m_aFeatureAtomics;
+   size_t m_cFeatures;
+   Feature * m_aFeatures;
 
    size_t m_cFeatureGroups;
    FeatureGroup ** m_apFeatureGroups;
 
-   DataFrameBoosting m_trainingSet;
-   DataFrameBoosting m_validationSet;
+   DataSetBoosting m_trainingSet;
+   DataSetBoosting m_validationSet;
 
    size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
@@ -67,16 +67,16 @@ class Booster final {
 
 public:
 
-   Booster() = default; // preserve our POD status
-   ~Booster() = default; // preserve our POD status
+   BoosterCore() = default; // preserve our POD status
+   ~BoosterCore() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS void InitializeZero() {
       m_runtimeLearningTypeOrCountTargetClasses = 0;
 
-      m_cFeatureAtomics = 0;
-      m_aFeatureAtomics = nullptr;
+      m_cFeatures = 0;
+      m_aFeatures = nullptr;
 
       m_cFeatureGroups = 0;
       m_apFeatureGroups = nullptr;
@@ -113,11 +113,11 @@ public:
       return m_apFeatureGroups;
    }
 
-   INLINE_ALWAYS DataFrameBoosting * GetTrainingSet() {
+   INLINE_ALWAYS DataSetBoosting * GetTrainingSet() {
       return &m_trainingSet;
    }
 
-   INLINE_ALWAYS DataFrameBoosting * GetValidationSet() {
+   INLINE_ALWAYS DataSetBoosting * GetValidationSet() {
       return &m_validationSet;
    }
 
@@ -157,19 +157,19 @@ public:
       return &m_randomStream;
    }
 
-   static void Free(Booster * const pBooster);
+   static void Free(BoosterCore * const pBoosterCore);
 
-   static Booster * Allocate(
+   static BoosterCore * Allocate(
       const SeedEbmType randomSeed,
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cFeatures,
       const size_t cFeatureGroups,
       const size_t cSamplingSets,
       const FloatEbmType * const optionalTempParams,
-      const BoolEbmType * const aFeatureAtomicsCategorical,
-      const IntEbmType * const aFeatureAtomicsBinCount,
+      const BoolEbmType * const aFeaturesCategorical,
+      const IntEbmType * const aFeaturesBinCount,
       const IntEbmType * const aFeatureGroupsDimensionCounts,
-      const IntEbmType * const aFeatureGroupsFeatureAtomicIndexes, 
+      const IntEbmType * const aFeatureGroupsFeatureIndexes, 
       const size_t cTrainingSamples, 
       const void * const aTrainingTargets, 
       const IntEbmType * const aTrainingBinnedData, 
@@ -182,13 +182,13 @@ public:
       const FloatEbmType * const aValidationPredictorScores
    );
 };
-static_assert(std::is_standard_layout<Booster>::value,
+static_assert(std::is_standard_layout<BoosterCore>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<Booster>::value,
+static_assert(std::is_trivial<BoosterCore>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<Booster>::value,
+static_assert(std::is_pod<BoosterCore>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME
 
-#endif // BOOSTER_H
+#endif // BOOSTER_CORE_HPP

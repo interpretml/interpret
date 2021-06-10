@@ -968,27 +968,27 @@ TEST_CASE("classification with 0 possible target states, boosting") {
 }
 
 TEST_CASE("classification with 1 possible target, boosting") {
-   BoolEbmType featureAtomicsCategorical[1];
-   featureAtomicsCategorical[0] = EBM_FALSE;
+   BoolEbmType featuresCategorical[1];
+   featuresCategorical[0] = EBM_FALSE;
 
-   IntEbmType featureAtomicsBinCount[1];
-   featureAtomicsBinCount[0] = 2;
+   IntEbmType featuresBinCount[1];
+   featuresBinCount[0] = 2;
 
    IntEbmType featureGroupsDimensionCount[1];
    featureGroupsDimensionCount[0] = 1;
 
-   IntEbmType featureGroupsFeatureAtomicIndexes[1];
-   featureGroupsFeatureAtomicIndexes[0] = 0;
+   IntEbmType featureGroupsFeatureIndexes[1];
+   featureGroupsFeatureIndexes[0] = 0;
 
    const BoosterHandle boosterHandle = CreateClassificationBooster(
       k_randomSeed,
       1,
       1,
-      featureAtomicsCategorical,
-      featureAtomicsBinCount,
+      featuresCategorical,
+      featuresBinCount,
       1,
       featureGroupsDimensionCount,
-      featureGroupsFeatureAtomicIndexes,
+      featureGroupsFeatureIndexes,
       0,
       nullptr,
       nullptr,

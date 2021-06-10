@@ -22,6 +22,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// TODO : create our shared dataframe here!
+// TODO : create our shared dataset here for shared memory.  We want to put the complete description in an outside
+//        piece of memory, so this is likely a set of functions rather than a class!
 
 } // DEFINED_ZONE_NAME

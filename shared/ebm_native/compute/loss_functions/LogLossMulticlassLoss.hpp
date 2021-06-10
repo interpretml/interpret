@@ -8,11 +8,11 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
-struct LossMulticlassLogLoss : public LossMulticlass {
-   LOSS_CLASS_BOILERPLATE(LossMulticlassLogLoss, true, 1)
+struct LogLossMulticlassLoss : public MulticlassLoss {
+   LOSS_CLASS_BOILERPLATE(LogLossMulticlassLoss, true, 1)
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
-   INLINE_ALWAYS LossMulticlassLogLoss(const Config & config) {
+   INLINE_ALWAYS LogLossMulticlassLoss(const Config & config) {
       UNUSED(config);
 
       if(1 == config.cOutputs) {
@@ -21,7 +21,7 @@ struct LossMulticlassLogLoss : public LossMulticlass {
       }
 
       if(config.cOutputs <= 0) {
-         throw ParameterMismatchWithConfigException();
+         throw ParamMismatchWithConfigException();
       }
    }
 

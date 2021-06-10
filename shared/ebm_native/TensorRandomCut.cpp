@@ -31,13 +31,13 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class CutRandomInternal final {
+class PartitionRandomBoostingInternal final {
 public:
 
-   CutRandomInternal() = delete; // this is a static class.  Do not construct
+   PartitionRandomBoostingInternal() = delete; // this is a static class.  Do not construct
 
    static bool Func(
-      ThreadStateBoosting * const pThreadStateBoosting,
+      BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
@@ -55,25 +55,25 @@ public:
       // TODO: accept 0 == countSamplesRequiredForChildSplitMin as a minimum number of items so that we can always choose to allow a tensor cut (for DP)
       // TODO: move most of this code out of this function into a non-templated place
 
-      Booster * const pBooster = pThreadStateBoosting->GetBooster();
+      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
-         pBooster->GetRuntimeLearningTypeOrCountTargetClasses()
+         pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-      HistogramBucketBase * const aHistogramBucketsBase = pThreadStateBoosting->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBase();
       HistogramBucket<bClassification> * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<bClassification>();
 
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
 
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
-         pThreadStateBoosting->GetOverwritableModelUpdate();
+         pBoosterShell->GetOverwritableModelUpdate();
 
       const IntEbmType * pLeavesMax1 = aLeavesMax;
       const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
@@ -100,8 +100,8 @@ public:
             }
          }
 
-         const FeatureAtomic * const pFeatureAtomic = pFeatureGroupEntry1->m_pFeatureAtomic;
-         const size_t cBins = pFeatureAtomic->GetCountBins();
+         const Feature * const pFeature = pFeatureGroupEntry1->m_pFeature;
+         const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
          const size_t cPossibleCutLocations = cBins - size_t { 1 };
@@ -109,7 +109,7 @@ public:
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
             if(IsAddError(cSlicesTotal, cPossibleCutLocations)) {
-               LOG_0(TraceLevelWarning, "WARNING CutRandomInternal IsAddError(cSlicesTotal, cPossibleCutLocations)");
+               LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cSlicesTotal, cPossibleCutLocations)");
                return true;
             }
             const size_t cSlicesPlusRandom = cSlicesTotal + cPossibleCutLocations;
@@ -132,7 +132,7 @@ public:
       cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesTotal);
 
       if(IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))) {
-         LOG_0(TraceLevelWarning, "WARNING CutRandomInternal IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))");
+         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))");
          return true;
       }
       const size_t cBytesSlicesPlusRandom = cSlicesPlusRandomMax * sizeof(size_t);
@@ -142,7 +142,7 @@ public:
       {
          LOG_0(
             TraceLevelWarning,
-            "WARNING CutRandomInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells)"
+            "WARNING PartitionRandomBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells)"
          );
          return true;
       }
@@ -155,7 +155,7 @@ public:
       EBM_ASSERT(!IsMultiplyError(cCollapsedTensorCells, cBytesPerHistogramBucket)); // our allocated histogram is bigger
       cCollapsedTensorCells *= cBytesPerHistogramBucket;
       if(IsAddError(cBytesSlices, cCollapsedTensorCells)) {
-         LOG_0(TraceLevelWarning, "WARNING CutRandomInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
+         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
          return true;
       }
       const size_t cBytesSlicesAndCollapsedTensor = cBytesSlices + cCollapsedTensorCells;
@@ -165,13 +165,13 @@ public:
       // TODO: use GrowThreadByteBuffer2 for this, but first we need to change that to allocate void or bytes
       char * const pBuffer = static_cast<char *>(malloc(cBytesBuffer));
       if(UNLIKELY(nullptr == pBuffer)) {
-         LOG_0(TraceLevelWarning, "WARNING CutRandomInternal nullptr == pBuffer");
+         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal nullptr == pBuffer");
          return true;
       }
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
       const IntEbmType * pLeavesMax2 = aLeavesMax;
-      RandomStream * const pRandomStream = pBooster->GetRandomStream();
+      RandomStream * const pRandomStream = pBoosterCore->GetRandomStream();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
       do {
@@ -193,8 +193,8 @@ public:
             }
          }
 
-         const FeatureAtomic * const pFeatureAtomic = pFeatureGroupEntry2->m_pFeatureAtomic;
-         const size_t cBins = pFeatureAtomic->GetCountBins();
+         const Feature * const pFeature = pFeatureGroupEntry2->m_pFeature;
+         const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          size_t cPossibleCutLocations = cBins - size_t { 1 };
          if(size_t { 0 } < cPossibleCutLocations) {
@@ -259,9 +259,9 @@ public:
          }
 
          // the first dimension is special.  we put byte until next item into it instead of counts remaining
-         const FeatureAtomic * const pFirstFeatureAtomic = pFeatureGroupEntry3->m_pFeatureAtomic;
+         const Feature * const pFirstFeature = pFeatureGroupEntry3->m_pFeature;
          ++pFeatureGroupEntry3;
-         const size_t cFirstBins = pFirstFeatureAtomic->GetCountBins();
+         const size_t cFirstBins = pFirstFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cFirstBins); // we don't boost on empty training sets
          if(size_t { 1 } < cFirstBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
@@ -315,8 +315,8 @@ public:
             }
          }
 
-         const FeatureAtomic * const pFeatureAtomic = pFeatureGroupEntry3->m_pFeatureAtomic;
-         const size_t cBins = pFeatureAtomic->GetCountBins();
+         const Feature * const pFeature = pFeatureGroupEntry3->m_pFeature;
+         const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
@@ -391,7 +391,7 @@ public:
                reinterpret_cast<const char *>(pHistogramBucket) + *pcItemsInNextSliceOrBytesInCurrentSlice);
 
             do {
-               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, pThreadStateBoosting->GetHistogramBucketsEndDebug());
+               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, pBoosterShell->GetHistogramBucketsEndDebug());
                pCollapsedHistogramBucket1->Add(*pHistogramBucket, cVectorLength);
 
                // we're walking through all buckets, so just move to the next one in the flat array, 
@@ -460,7 +460,7 @@ public:
       // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 cuts and 
       // one last item to indicate the termination point
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cFirstCuts))) {
-         LOG_0(TraceLevelWarning, "WARNING CutRandomInternal SetCountDivisions(0, cFirstCuts)");
+         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal SetCountDivisions(0, cFirstCuts)");
          free(pBuffer);
          return true;
       }
@@ -490,7 +490,7 @@ public:
 
             const size_t * pcItemsInNextSliceLast = pState->m_pcItemsInNextSliceEnd - size_t { 1 };
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2)) {
-               LOG_0(TraceLevelWarning, "WARNING CutRandomInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2)");
+               LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2)");
                free(pBuffer);
                return true;
             }
@@ -599,13 +599,13 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class CutRandomTarget final {
+class PartitionRandomBoostingTarget final {
 public:
 
-   CutRandomTarget() = delete; // this is a static class.  Do not construct
+   PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static bool Func(
-      ThreadStateBoosting * const pThreadStateBoosting,
+      BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
@@ -614,22 +614,22 @@ public:
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
-      Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
       EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return CutRandomInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
-            pThreadStateBoosting,
+         return PartitionRandomBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+            pBoosterShell,
             pFeatureGroup,
             options,
             aLeavesMax,
             pTotalGain
          );
       } else {
-         return CutRandomTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
-            pThreadStateBoosting,
+         return PartitionRandomBoostingTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
+            pBoosterShell,
             pFeatureGroup,
             options,
             aLeavesMax,
@@ -640,13 +640,13 @@ public:
 };
 
 template<>
-class CutRandomTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class PartitionRandomBoostingTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   CutRandomTarget() = delete; // this is a static class.  Do not construct
+   PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static bool Func(
-      ThreadStateBoosting * const pThreadStateBoosting,
+      BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
@@ -654,11 +654,11 @@ public:
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
-      EBM_ASSERT(IsClassification(pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses()));
-      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pThreadStateBoosting->GetBooster()->GetRuntimeLearningTypeOrCountTargetClasses());
+      EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return CutRandomInternal<k_dynamicClassification>::Func(
-         pThreadStateBoosting,
+      return PartitionRandomBoostingInternal<k_dynamicClassification>::Func(
+         pBoosterShell,
          pFeatureGroup,
          options,
          aLeavesMax,
@@ -667,19 +667,19 @@ public:
    }
 };
 
-extern bool CutRandom(
-   ThreadStateBoosting * const pThreadStateBoosting,
+extern bool PartitionRandomBoosting(
+   BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
    FloatEbmType * const pTotalGain
 ) {
-   Booster * const pBooster = pThreadStateBoosting->GetBooster();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      return CutRandomTarget<2>::Func(
-         pThreadStateBoosting,
+      return PartitionRandomBoostingTarget<2>::Func(
+         pBoosterShell,
          pFeatureGroup,
          options,
          aLeavesMax,
@@ -687,8 +687,8 @@ extern bool CutRandom(
       );
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      return CutRandomInternal<k_regression>::Func(
-         pThreadStateBoosting,
+      return PartitionRandomBoostingInternal<k_regression>::Func(
+         pBoosterShell,
          pFeatureGroup,
          options,
          aLeavesMax,

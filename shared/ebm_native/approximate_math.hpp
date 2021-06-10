@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef APPROXIMATE_MATH_H
-#define APPROXIMATE_MATH_H
+#ifndef APPROXIMATE_MATH_HPP
+#define APPROXIMATE_MATH_HPP
 
 #include <type_traits> // std::is_same
 #include <inttypes.h>
@@ -799,4 +799,4 @@ INLINE_ALWAYS T LogForLogLoss(const T val) {
 
 } // DEFINED_ZONE_NAME
 
-#endif // APPROXIMATE_MATH_H
+#endif // APPROXIMATE_MATH_HPP

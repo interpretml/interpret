@@ -455,12 +455,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stra
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
-   IntEbmType countFeatureAtomics,
-   const BoolEbmType * featureAtomicsCategorical,
-   const IntEbmType * featureAtomicsBinCount,
+   IntEbmType countFeatures,
+   const BoolEbmType * featuresCategorical,
+   const IntEbmType * featuresBinCount,
    IntEbmType countFeatureGroups,
    const IntEbmType * featureGroupsDimensionCount,
-   const IntEbmType * featureGroupsFeatureAtomicIndexes,
+   const IntEbmType * featureGroupsFeatureIndexes,
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
@@ -476,12 +476,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
    SeedEbmType randomSeed,
-   IntEbmType countFeatureAtomics,
-   const BoolEbmType * featureAtomicsCategorical,
-   const IntEbmType * featureAtomicsBinCount,
+   IntEbmType countFeatures,
+   const BoolEbmType * featuresCategorical,
+   const IntEbmType * featuresBinCount,
    IntEbmType countFeatureGroups,
    const IntEbmType * featureGroupsDimensionCount, 
-   const IntEbmType * featureGroupsFeatureAtomicIndexes, 
+   const IntEbmType * featureGroupsFeatureIndexes, 
    IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData, 
    const FloatEbmType * trainingTargets,
@@ -538,7 +538,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 );
 
 // TODO : elimiante this as a public object and just expose a BoosterHandle which will be for the shell object
-//        and also expose a CreateBoosterShell which will copy the shell boster and refer to the same core booster
+//        and also expose a CreateBoosterView which will copy the shell boster and refer to the same core booster
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ThreadStateBoostingHandle EBM_NATIVE_CALLING_CONVENTION CreateThreadStateBoosting(
    BoosterHandle boosterHandle
 );
@@ -549,9 +549,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeThreadSt
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
-   IntEbmType countFeatureAtomics,
-   const BoolEbmType * featureAtomicsCategorical,
-   const IntEbmType * featureAtomicsBinCount,
+   IntEbmType countFeatures,
+   const BoolEbmType * featuresCategorical,
+   const IntEbmType * featuresBinCount,
    IntEbmType countSamples,
    const IntEbmType * binnedData,
    const IntEbmType * targets,
@@ -560,9 +560,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
-   IntEbmType countFeatureAtomics, 
-   const BoolEbmType * featureAtomicsCategorical,
-   const IntEbmType * featureAtomicsBinCount,
+   IntEbmType countFeatures, 
+   const BoolEbmType * featuresCategorical,
+   const IntEbmType * featuresBinCount,
    IntEbmType countSamples,
    const IntEbmType * binnedData, 
    const FloatEbmType * targets,
@@ -573,7 +573,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
    InteractionDetectorHandle interactionDetectorHandle, 
    IntEbmType countDimensions,
-   const IntEbmType * featureAtomicIndexes,
+   const IntEbmType * featureIndexes,
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 );

@@ -8,7 +8,7 @@
 
 // TFloat could be double, float, or some SIMD intrinsic type
 template <typename TFloat>
-struct LossMultitaskMulticlassCrossEntropy : public LossMultitaskMulticlass {
+struct CrossEntropyMulticlassMultitaskLoss : public MulticlassMultitaskLoss {
 
    // This is the most general format that I could envision we'd handle as a non-custom loss function.
    // It's not clear that we can really handle it nicely, but I'm leaving a placeholder here to think about it.  
@@ -39,8 +39,8 @@ struct LossMultitaskMulticlassCrossEntropy : public LossMultitaskMulticlass {
    // There's an even more general case of multi-task learning with the targets being a mix of 
    // regression, binary classification, and multiclass, but that would obviously require a custom loss function.
 
-   // In terms of being able to use the compiler to optimize the number of scores, LossMultitaskMulticlass is different
-   // than LossMulticlass*, LossMultitaskBinary*, and LossMultitaskRegression* because those other task types
+   // In terms of being able to use the compiler to optimize the number of scores, MulticlassMultitaskLoss is different
+   // than MulticlassLoss*, BinaryMultitaskLoss*, and RegressionMultitaskLoss* because those other task types
    // have a last dimension that is uniform, which can therefore use the templating system to get complier optimized 
    // counts of scores, unlike this more general case that needs to be special cased since the last
    // array is a jagged one with different inner array sizes.

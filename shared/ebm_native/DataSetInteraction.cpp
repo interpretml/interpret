@@ -21,7 +21,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern bool InitializeGradients(
+extern bool InitializeGradientsAndHessians(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
@@ -67,7 +67,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(
       return nullptr;
    }
 
-   if(UNLIKELY(InitializeGradients(
+   if(UNLIKELY(InitializeGradientsAndHessians(
       runtimeLearningTypeOrCountTargetClasses,
       cSamples,
       aTargetData,
@@ -85,54 +85,54 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cFeatures, 
-   const FeatureAtomic * const aFeatureAtomics, 
+   const Feature * const aFeatures, 
    const size_t cSamples, 
    const IntEbmType * const aBinnedData
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Entered DataSetInteraction::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
-   EBM_ASSERT(nullptr != aFeatureAtomics);
+   EBM_ASSERT(nullptr != aFeatures);
    EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(nullptr != aBinnedData);
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatures);
    if(nullptr == aaInputDataTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
    StorageDataType ** paInputDataTo = aaInputDataTo;
-   const FeatureAtomic * pFeatureAtomic = aFeatureAtomics;
-   const FeatureAtomic * const pFeatureAtomicEnd = aFeatureAtomics + cFeatures;
+   const Feature * pFeature = aFeatures;
+   const Feature * const pFeatureEnd = aFeatures + cFeatures;
    do {
       StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cSamples);
       if(nullptr == pInputDataTo) {
-         LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::ConstructInputData nullptr == pInputDataTo");
+         LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::ConstructInputData nullptr == pInputDataTo");
          goto free_all;
       }
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      const IntEbmType * pInputDataFrom = &aBinnedData[pFeatureAtomic->GetIndexFeatureAtomicData() * cSamples];
+      const IntEbmType * pInputDataFrom = &aBinnedData[pFeature->GetIndexFeatureData() * cSamples];
       const IntEbmType * pInputDataFromEnd = &pInputDataFrom[cSamples];
       do {
          const IntEbmType inputData = *pInputDataFrom;
          if(inputData < 0) {
-            LOG_0(TraceLevelError, "ERROR DataFrameInteraction::ConstructInputData inputData value cannot be negative");
+            LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData inputData value cannot be negative");
             goto free_all;
          }
          if(!IsNumberConvertable<StorageDataType>(inputData)) {
-            LOG_0(TraceLevelError, "ERROR DataFrameInteraction::ConstructInputData inputData value too big to reference memory");
+            LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
          if(!IsNumberConvertable<size_t>(inputData)) {
-            LOG_0(TraceLevelError, "ERROR DataFrameInteraction::ConstructInputData inputData value too big to reference memory");
+            LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
          const size_t iData = static_cast<size_t>(inputData);
-         if(pFeatureAtomic->GetCountBins() <= iData) {
-            LOG_0(TraceLevelError, "ERROR DataFrameInteraction::ConstructInputData iData value must be less than the number of bins");
+         if(pFeature->GetCountBins() <= iData) {
+            LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData iData value must be less than the number of bins");
             goto free_all;
          }
          *pInputDataTo = static_cast<StorageDataType>(inputData);
@@ -140,10 +140,10 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          ++pInputDataFrom;
       } while(pInputDataFromEnd != pInputDataFrom);
 
-      ++pFeatureAtomic;
-   } while(pFeatureAtomicEnd != pFeatureAtomic);
+      ++pFeature;
+   } while(pFeatureEnd != pFeature);
 
-   LOG_0(TraceLevelInfo, "Exited DataFrameInteraction::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Exited DataSetInteraction::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -157,15 +157,15 @@ free_all:
 
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
-void DataFrameInteraction::Destruct() {
-   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::Destruct");
+void DataSetInteraction::Destruct() {
+   LOG_0(TraceLevelInfo, "Entered DataSetInteraction::Destruct");
 
    free(m_aGradientsAndHessians);
    free(m_aWeights);
    if(nullptr != m_aaInputData) {
-      EBM_ASSERT(1 <= m_cFeatureAtomics);
+      EBM_ASSERT(1 <= m_cFeatures);
       StorageDataType ** paInputData = m_aaInputData;
-      const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatureAtomics;
+      const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatures;
       do {
          EBM_ASSERT(nullptr != *paInputData);
          free(*paInputData);
@@ -174,14 +174,14 @@ void DataFrameInteraction::Destruct() {
       free(m_aaInputData);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataFrameInteraction::Destruct");
+   LOG_0(TraceLevelInfo, "Exited DataSetInteraction::Destruct");
 }
 WARNING_POP
 
-bool DataFrameInteraction::Initialize(
+bool DataSetInteraction::Initialize(
    const bool bAllocateHessians,
-   const size_t cFeatureAtomics,
-   const FeatureAtomic * const aFeatureAtomics, 
+   const size_t cFeatures,
+   const Feature * const aFeatures, 
    const size_t cSamples, 
    const IntEbmType * const aBinnedData, 
    const FloatEbmType * const aWeights,
@@ -193,7 +193,7 @@ bool DataFrameInteraction::Initialize(
    EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
    EBM_ASSERT(0 == m_cSamples); // we expect to start with zeroed values
 
-   LOG_0(TraceLevelInfo, "Entered DataFrameInteraction::Initialize");
+   LOG_0(TraceLevelInfo, "Entered DataSetInteraction::Initialize");
 
    if(0 != cSamples) {
       // runtimeLearningTypeOrCountTargetClasses can only be zero if 
@@ -210,20 +210,20 @@ bool DataFrameInteraction::Initialize(
          do {
             const IntEbmType data = *pTargetFrom;
             if(data < 0) {
-               LOG_0(TraceLevelError, "ERROR DataFrameInteraction::Initialize target value cannot be negative");
+               LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize target value cannot be negative");
                return true;
             }
             if(!IsNumberConvertable<StorageDataType>(data)) {
-               LOG_0(TraceLevelError, "ERROR DataFrameInteraction::Initialize data target too big to reference memory");
+               LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize data target too big to reference memory");
                return true;
             }
             if(!IsNumberConvertable<size_t>(data)) {
-               LOG_0(TraceLevelError, "ERROR DataFrameInteraction::Initialize data target too big to reference memory");
+               LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize data target too big to reference memory");
                return true;
             }
             const size_t iData = static_cast<size_t>(data);
             if(countTargetClasses <= iData) {
-               LOG_0(TraceLevelError, "ERROR DataFrameInteraction::Initialize target value larger than number of classes");
+               LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize target value larger than number of classes");
                return true;
             }
             ++pTargetFrom;
@@ -235,13 +235,13 @@ bool DataFrameInteraction::Initialize(
       if(nullptr != aWeights) {
          if(IsMultiplyError(sizeof(*aWeights), cSamples)) {
             LOG_0(TraceLevelWarning,
-               "WARNING DataFrameInteraction::Initialize IsMultiplyError(sizeof(*aWeights), cSamples)");
+               "WARNING DataSetInteraction::Initialize IsMultiplyError(sizeof(*aWeights), cSamples)");
             goto exit_error;
          }
          if(!CheckAllWeightsEqual(cSamples, aWeights)) {
             const FloatEbmType total = AddPositiveFloatsSafe(cSamples, aWeights);
             if(std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }) {
-               LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
+               LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
                goto exit_error;
             }
             // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
@@ -252,7 +252,7 @@ bool DataFrameInteraction::Initialize(
             const size_t cBytes = sizeof(*aWeights) * cSamples;
             FloatEbmType * aWeightInternal = static_cast<FloatEbmType *>(malloc(cBytes));
             if(UNLIKELY(nullptr == aWeightInternal)) {
-               LOG_0(TraceLevelWarning, "WARNING DataFrameInteraction::Initialize nullptr == pWeightInternal");
+               LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::Initialize nullptr == pWeightInternal");
                goto exit_error;
             }
             m_aWeights = aWeightInternal;
@@ -266,8 +266,8 @@ bool DataFrameInteraction::Initialize(
          m_aWeights = nullptr;
          goto exit_error;
       }
-      if(0 != cFeatureAtomics) {
-         StorageDataType ** const aaInputData = ConstructInputData(cFeatureAtomics, aFeatureAtomics, cSamples, aBinnedData);
+      if(0 != cFeatures) {
+         StorageDataType ** const aaInputData = ConstructInputData(cFeatures, aFeatures, cSamples, aBinnedData);
          if(nullptr == aaInputData) {
             free(aGradientsAndHessians);
             free(m_aWeights);
@@ -280,13 +280,13 @@ bool DataFrameInteraction::Initialize(
       m_aGradientsAndHessians = aGradientsAndHessians;
       m_cSamples = cSamples;
    }
-   m_cFeatureAtomics = cFeatureAtomics;
+   m_cFeatures = cFeatures;
 
-   LOG_0(TraceLevelInfo, "Exited DataFrameInteraction::Initialize");
+   LOG_0(TraceLevelInfo, "Exited DataSetInteraction::Initialize");
    return false;
 
 exit_error:;
-   LOG_0(TraceLevelWarning, "WARNING Exited DataFrameInteraction::Initialize");
+   LOG_0(TraceLevelWarning, "WARNING Exited DataSetInteraction::Initialize");
    return true;
 }
 
