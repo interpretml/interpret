@@ -165,6 +165,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
    // bin is in the Nth item because we then need to know what N is and use multiplication and badly ordered memory
    // accesses to reach it if we want to use the missing bin during cutting.  Lastly, in higher level languages, it's
    // easier to detect missing values in the discretized data, since it's always just a zero.
+   //
+   // this function has exactly the same behavior as numpy.digitize, including the lower bound inclusive semantics
    
    LOG_COUNTED_N(
       &g_cLogEnterDiscretizeParametersMessages,

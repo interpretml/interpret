@@ -133,7 +133,7 @@ class Native:
     def generate_random_number(self, random_seed, stage_randomization_mix):
         return self._unsafe.GenerateRandomNumber(random_seed, stage_randomization_mix)
 
-    def generate_quantile_cuts(
+    def cut_quantile(
         self, 
         col_data, 
         min_samples_bin, 
@@ -148,7 +148,7 @@ class Native:
         max_val = ct.c_double(0)
         count_inf = ct.c_int64(0)
 
-        return_code = self._unsafe.GenerateQuantileCuts(
+        return_code = self._unsafe.CutQuantile(
             col_data.shape[0],
             col_data, 
             min_samples_bin,
@@ -163,7 +163,7 @@ class Native:
         )
 
         if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in GenerateQuantileCuts")
+            raise Exception("Out of memory in CutQuantile")
 
         cuts = cuts[:count_cuts.value]
         count_missing = count_missing.value
@@ -172,7 +172,7 @@ class Native:
 
         return cuts, count_missing, min_val, max_val
 
-    def generate_uniform_cuts(
+    def cut_uniform(
         self, 
         col_data, 
         max_cuts, 
@@ -185,7 +185,7 @@ class Native:
         max_val = ct.c_double(0)
         count_inf = ct.c_int64(0)
 
-        self._unsafe.GenerateUniformCuts(
+        self._unsafe.CutUniform(
             col_data.shape[0],
             col_data, 
             ct.byref(count_cuts),
@@ -320,7 +320,7 @@ class Native:
         self._unsafe.SampleWithoutReplacement.restype = None
 
 
-        self._unsafe.GenerateQuantileCuts.argtypes = [
+        self._unsafe.CutQuantile.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
@@ -344,9 +344,9 @@ class Native:
             # int64_t * countPositiveInfinityOut
             ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.GenerateQuantileCuts.restype = ct.c_int64
+        self._unsafe.CutQuantile.restype = ct.c_int64
 
-        self._unsafe.GenerateUniformCuts.argtypes = [
+        self._unsafe.CutUniform.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
@@ -366,9 +366,9 @@ class Native:
             # int64_t * countPositiveInfinityOut
             ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.GenerateUniformCuts.restype = None
+        self._unsafe.CutUniform.restype = None
 
-        self._unsafe.GenerateWinsorizedCuts.argtypes = [
+        self._unsafe.CutWinsorized.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
@@ -388,7 +388,7 @@ class Native:
             # int64_t * countPositiveInfinityOut
             ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.GenerateWinsorizedCuts.restype = ct.c_int64
+        self._unsafe.CutWinsorized.restype = ct.c_int64
 
 
         self._unsafe.SuggestGraphBounds.argtypes = [
@@ -443,17 +443,17 @@ class Native:
             ct.c_int32,
             # int64_t countTargetClasses
             ct.c_int64,
-            # int64_t countFeatureAtomics
+            # int64_t countFeatures
             ct.c_int64,
-            # int64_t * featureAtomicsCategorical
+            # int64_t * featuresCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featureAtomicsBinCount
+            # int64_t * featuresBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countFeatureGroups
             ct.c_int64,
             # int64_t * featureGroupsDimensionCount
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featureGroupsFeatureAtomicIndexes
+            # int64_t * featureGroupsFeatureIndexes
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countTrainingSamples
             ct.c_int64,
@@ -489,17 +489,17 @@ class Native:
         self._unsafe.CreateRegressionBooster.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
-            # int64_t countFeatureAtomics
+            # int64_t countFeatures
             ct.c_int64,
-            # int64_t * featureAtomicsCategorical
+            # int64_t * featuresCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featureAtomicsBinCount
+            # int64_t * featuresBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countFeatureGroups
             ct.c_int64,
             # int64_t * featureGroupsDimensionCount
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featureGroupsFeatureAtomicIndexes
+            # int64_t * featureGroupsFeatureIndexes
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countTrainingSamples
             ct.c_int64,
@@ -629,11 +629,11 @@ class Native:
         self._unsafe.CreateClassificationInteractionDetector.argtypes = [
             # int64_t countTargetClasses
             ct.c_int64,
-            # int64_t countFeatureAtomics
+            # int64_t countFeatures
             ct.c_int64,
-            # int64_t * featureAtomicsCategorical
+            # int64_t * featuresCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featureAtomicsBinCount
+            # int64_t * featuresBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countSamples
             ct.c_int64,
@@ -653,11 +653,11 @@ class Native:
         self._unsafe.CreateClassificationInteractionDetector.restype = ct.c_void_p
 
         self._unsafe.CreateRegressionInteractionDetector.argtypes = [
-            # int64_t countFeatureAtomics
+            # int64_t countFeatures
             ct.c_int64,
-            # int64_t * featureAtomicsCategorical
+            # int64_t * featuresCategorical
             ndpointer(dtype=ct.c_int64, ndim=1),
-            # int64_t * featureAtomicsBinCount
+            # int64_t * featuresBinCount
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countSamples
             ct.c_int64,
@@ -680,7 +680,7 @@ class Native:
             ct.c_void_p,
             # int64_t countDimensions
             ct.c_int64,
-            # int64_t * featureAtomicIndexes
+            # int64_t * featureIndexes
             ndpointer(dtype=ct.c_int64, ndim=1),
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_int64,

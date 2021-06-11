@@ -116,10 +116,10 @@ INLINE_RELEASE_UNTEMPLATED static size_t DetermineBounds(
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterGenerateUniformCutsParametersMessages = 25;
-static int g_cLogExitGenerateUniformCutsParametersMessages = 25;
+static int g_cLogEnterCutUniformParametersMessages = 25;
+static int g_cLogExitCutUniformParametersMessages = 25;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION GenerateUniformCuts(
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType * countCutsInOut,
@@ -131,10 +131,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION GenerateUniform
    IntEbmType * countPositiveInfinityOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogEnterGenerateUniformCutsParametersMessages,
+      &g_cLogEnterCutUniformParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered GenerateUniformCuts: "
+      "Entered CutUniform: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countCutsInOut=%p, "
@@ -164,7 +164,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION GenerateUniform
    IntEbmType countPositiveInfinityRet;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
-      LOG_0(TraceLevelError, "ERROR GenerateUniformCuts nullptr == countCutsInOut");
+      LOG_0(TraceLevelError, "ERROR CutUniform nullptr == countCutsInOut");
       countMissingValuesRet = IntEbmType { 0 };
       minNonInfinityValueRet = FloatEbmType { 0 };
       countNegativeInfinityRet = IntEbmType { 0 };
@@ -181,11 +181,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION GenerateUniform
          maxNonInfinityValueRet = FloatEbmType { 0 };
          countPositiveInfinityRet = IntEbmType { 0 };
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-            LOG_0(TraceLevelError, "ERROR GenerateUniformCuts countSamples < IntEbmType { 0 }");
+            LOG_0(TraceLevelError, "ERROR CutUniform countSamples < IntEbmType { 0 }");
          }
       } else {
          if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateUniformCuts !IsNumberConvertable<size_t>(countSamples)");
+            LOG_0(TraceLevelWarning, "WARNING CutUniform !IsNumberConvertable<size_t>(countSamples)");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -196,7 +196,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION GenerateUniform
          }
 
          if(UNLIKELY(nullptr == featureValues)) {
-            LOG_0(TraceLevelError, "ERROR GenerateUniformCuts nullptr == featureValues");
+            LOG_0(TraceLevelError, "ERROR CutUniform nullptr == featureValues");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -209,7 +209,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION GenerateUniform
          const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
 
          if(UNLIKELY(IsMultiplyError(sizeof(*featureValues), cSamplesIncludingMissingValues))) {
-            LOG_0(TraceLevelError, "ERROR GenerateUniformCuts countSamples was too large to fit into featureValues");
+            LOG_0(TraceLevelError, "ERROR CutUniform countSamples was too large to fit into featureValues");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -258,25 +258,25 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION GenerateUniform
 
                if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
                   if(UNLIKELY(countCuts < IntEbmType { 0 })) {
-                     LOG_0(TraceLevelError, "ERROR GenerateUniformCuts countCuts can't be negative.");
+                     LOG_0(TraceLevelError, "ERROR CutUniform countCuts can't be negative.");
                   }
                   goto exit_with_log;
                }
 
                if(UNLIKELY(!IsNumberConvertable<size_t>(countCuts))) {
-                  LOG_0(TraceLevelWarning, "WARNING GenerateUniformCuts !IsNumberConvertable<size_t>(countCuts)");
+                  LOG_0(TraceLevelWarning, "WARNING CutUniform !IsNumberConvertable<size_t>(countCuts)");
                   goto exit_with_log;
                }
                const size_t cCuts = static_cast<size_t>(countCuts);
 
                if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
-                  LOG_0(TraceLevelError, "ERROR GenerateUniformCuts countCuts was too large to fit into cutsLowerBoundInclusiveOut");
+                  LOG_0(TraceLevelError, "ERROR CutUniform countCuts was too large to fit into cutsLowerBoundInclusiveOut");
                   goto exit_with_log;
                }
 
                if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
                   // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
-                  LOG_0(TraceLevelError, "ERROR GenerateUniformCuts nullptr == cutsLowerBoundInclusiveOut");
+                  LOG_0(TraceLevelError, "ERROR CutUniform nullptr == cutsLowerBoundInclusiveOut");
                   goto exit_with_log;
                }
 
@@ -370,10 +370,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION GenerateUniform
    }
 
    LOG_COUNTED_N(
-      &g_cLogExitGenerateUniformCutsParametersMessages,
+      &g_cLogExitCutUniformParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Exited GenerateUniformCuts: "
+      "Exited CutUniform: "
       "countCuts=%" IntEbmTypePrintf ", "
       "countMissingValues=%" IntEbmTypePrintf ", "
       "minNonInfinityValue=%" FloatEbmTypePrintf ", "

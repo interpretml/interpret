@@ -19,9 +19,9 @@
       CreateRegressionInteractionDetector;
       CalculateInteractionScore;
       FreeInteractionDetector;
-      GenerateQuantileCuts;
-      GenerateWinsorizedCuts;
-      GenerateUniformCuts;
+      CutQuantile;
+      CutWinsorized;
+      CutUniform;
       Discretize;
       Softmax;
       SuggestGraphBounds;

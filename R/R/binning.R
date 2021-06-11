@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-generate_quantile_cuts <- function(
+cut_quantile <- function(
    feature_values, 
    count_samples_per_bin_min, 
    is_humanized, 
@@ -14,14 +14,14 @@ generate_quantile_cuts <- function(
    count_cuts <- as.double(count_cuts)
 
    cuts_lower_bound_inclusive <- .Call(
-      GenerateQuantileCuts_R, 
+      CutQuantile_R, 
       feature_values, 
       count_samples_per_bin_min, 
       is_humanized, 
       count_cuts
    )
    if(is.null(cuts_lower_bound_inclusive)) {
-      stop("error in GenerateQuantileCuts_R")
+      stop("error in CutQuantile_R")
    }
    return(cuts_lower_bound_inclusive)
 }

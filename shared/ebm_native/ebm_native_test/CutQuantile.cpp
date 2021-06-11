@@ -8,7 +8,7 @@
 #include "ebm_native_test.hpp"
 #include "RandomStreamTest.hpp"
 
-static const TestPriority k_filePriority = TestPriority::GenerateQuantileCuts;
+static const TestPriority k_filePriority = TestPriority::CutQuantile;
 
 class CompareFloatWithNan final {
 public:
@@ -87,7 +87,7 @@ void TestQuantileBinning(
    FloatEbmType maxNonInfinityValue;
    IntEbmType countPositiveInfinity;
 
-   // do this before calling GenerateQuantileCuts, since GenerateQuantileCuts modifies featureValues
+   // do this before calling CutQuantile, since CutQuantile modifies featureValues
    IntEbmType countMissingValuesExpected;
    FloatEbmType minNonInfinityValueExpected;
    IntEbmType countNegativeInfinityExpected;
@@ -104,7 +104,7 @@ void TestQuantileBinning(
    );
 
    IntEbmType countCuts = countCutsMax;
-   IntEbmType ret = GenerateQuantileCuts(
+   IntEbmType ret = CutQuantile(
       featureValues1.size(),
       0 == featureValues1.size() ? nullptr : &featureValues1[0],
       countSamplesPerBinMin,
@@ -142,7 +142,7 @@ void TestQuantileBinning(
       // try the reverse now.  We try very hard to ensure that we preserve symmetry in the cutting algorithm
 
       countCuts = countCutsMax;
-      ret = GenerateQuantileCuts(
+      ret = CutQuantile(
          featureValues2.size(),
          0 == featureValues2.size() ? nullptr : &featureValues2[0],
          countSamplesPerBinMin,
@@ -178,7 +178,7 @@ void TestQuantileBinning(
    }
 }
 
-TEST_CASE("GenerateQuantileCuts, 0 samples") {
+TEST_CASE("CutQuantile, 0 samples") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -197,7 +197,7 @@ TEST_CASE("GenerateQuantileCuts, 0 samples") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, only missing") {
+TEST_CASE("CutQuantile, only missing") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -216,7 +216,7 @@ TEST_CASE("GenerateQuantileCuts, only missing") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, zero cuts") {
+TEST_CASE("CutQuantile, zero cuts") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 0;
@@ -235,7 +235,7 @@ TEST_CASE("GenerateQuantileCuts, zero cuts") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, too small") {
+TEST_CASE("CutQuantile, too small") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -254,7 +254,7 @@ TEST_CASE("GenerateQuantileCuts, too small") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, positive and +infinity") {
+TEST_CASE("CutQuantile, positive and +infinity") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -273,7 +273,7 @@ TEST_CASE("GenerateQuantileCuts, positive and +infinity") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, positive and +max") {
+TEST_CASE("CutQuantile, positive and +max") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -292,7 +292,7 @@ TEST_CASE("GenerateQuantileCuts, positive and +max") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, one and +max minus one tick backwards") {
+TEST_CASE("CutQuantile, one and +max minus one tick backwards") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -311,7 +311,7 @@ TEST_CASE("GenerateQuantileCuts, one and +max minus one tick backwards") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, zero and +max") {
+TEST_CASE("CutQuantile, zero and +max") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -330,7 +330,7 @@ TEST_CASE("GenerateQuantileCuts, zero and +max") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, negative and +max") {
+TEST_CASE("CutQuantile, negative and +max") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -349,7 +349,7 @@ TEST_CASE("GenerateQuantileCuts, negative and +max") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, negative and -infinity") {
+TEST_CASE("CutQuantile, negative and -infinity") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -368,7 +368,7 @@ TEST_CASE("GenerateQuantileCuts, negative and -infinity") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, negative and lowest") {
+TEST_CASE("CutQuantile, negative and lowest") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -387,7 +387,7 @@ TEST_CASE("GenerateQuantileCuts, negative and lowest") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, -1 and lowest plus one tick backwards") {
+TEST_CASE("CutQuantile, -1 and lowest plus one tick backwards") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -406,7 +406,7 @@ TEST_CASE("GenerateQuantileCuts, -1 and lowest plus one tick backwards") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, zero and lowest") {
+TEST_CASE("CutQuantile, zero and lowest") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -425,7 +425,7 @@ TEST_CASE("GenerateQuantileCuts, zero and lowest") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, positive and lowest") {
+TEST_CASE("CutQuantile, positive and lowest") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -444,7 +444,7 @@ TEST_CASE("GenerateQuantileCuts, positive and lowest") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, splitable") {
+TEST_CASE("CutQuantile, splitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -463,7 +463,7 @@ TEST_CASE("GenerateQuantileCuts, splitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, splitable (first interior check not splitable)") {
+TEST_CASE("CutQuantile, splitable (first interior check not splitable)") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -482,7 +482,7 @@ TEST_CASE("GenerateQuantileCuts, splitable (first interior check not splitable)"
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, splitable except middle isn't available") {
+TEST_CASE("CutQuantile, splitable except middle isn't available") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -501,7 +501,7 @@ TEST_CASE("GenerateQuantileCuts, splitable except middle isn't available") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable") {
+TEST_CASE("CutQuantile, unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -520,7 +520,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, left+unsplitable") {
+TEST_CASE("CutQuantile, left+unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -539,7 +539,7 @@ TEST_CASE("GenerateQuantileCuts, left+unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable+right") {
+TEST_CASE("CutQuantile, unsplitable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -558,7 +558,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable+right") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, left+unsplitable+right") {
+TEST_CASE("CutQuantile, left+unsplitable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -577,7 +577,7 @@ TEST_CASE("GenerateQuantileCuts, left+unsplitable+right") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable+unsplitable") {
+TEST_CASE("CutQuantile, unsplitable+unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -596,7 +596,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable+unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, left+unsplitable+unsplitable") {
+TEST_CASE("CutQuantile, left+unsplitable+unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -615,7 +615,7 @@ TEST_CASE("GenerateQuantileCuts, left+unsplitable+unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable+unsplitable+right") {
+TEST_CASE("CutQuantile, unsplitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -634,7 +634,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable+unsplitable+right") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable+mid+unsplitable") {
+TEST_CASE("CutQuantile, unsplitable+mid+unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -653,7 +653,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable+mid+unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, left+unsplitable+mid+unsplitable") {
+TEST_CASE("CutQuantile, left+unsplitable+mid+unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -672,7 +672,7 @@ TEST_CASE("GenerateQuantileCuts, left+unsplitable+mid+unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable+mid+unsplitable+right") {
+TEST_CASE("CutQuantile, unsplitable+mid+unsplitable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -691,7 +691,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable+mid+unsplitable+right") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable+splitable") {
+TEST_CASE("CutQuantile, unsplitable+splitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -710,7 +710,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable+splitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable") {
+TEST_CASE("CutQuantile, left+unsplitable+splitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -729,7 +729,7 @@ TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, splitable+unsplitable") {
+TEST_CASE("CutQuantile, splitable+unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -748,7 +748,7 @@ TEST_CASE("GenerateQuantileCuts, splitable+unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -767,7 +767,7 @@ TEST_CASE("GenerateQuantileCuts, splitable+unsplitable+right") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, splitable+unsplitable+splitable") {
+TEST_CASE("CutQuantile, splitable+unsplitable+splitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -786,7 +786,7 @@ TEST_CASE("GenerateQuantileCuts, splitable+unsplitable+splitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable+splitable+unsplitable") {
+TEST_CASE("CutQuantile, unsplitable+splitable+unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -805,7 +805,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable+splitable+unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable+unsplitable") {
+TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -824,7 +824,7 @@ TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable+unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable+splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, unsplitable+splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -843,7 +843,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable+splitable+unsplitable+right") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -862,7 +862,7 @@ TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable+unsplitable+right") 
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, unsplitable+splitable+unsplitable+splitable") {
+TEST_CASE("CutQuantile, unsplitable+splitable+unsplitable+splitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -881,7 +881,7 @@ TEST_CASE("GenerateQuantileCuts, unsplitable+splitable+unsplitable+splitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable+unsplitable+splitable") {
+TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable+splitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -900,7 +900,7 @@ TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable+unsplitable+splitabl
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, splitable+unsplitable+splitable+unsplitable") {
+TEST_CASE("CutQuantile, splitable+unsplitable+splitable+unsplitable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -919,7 +919,7 @@ TEST_CASE("GenerateQuantileCuts, splitable+unsplitable+splitable+unsplitable") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, splitable+unsplitable+splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, splitable+unsplitable+splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -938,7 +938,7 @@ TEST_CASE("GenerateQuantileCuts, splitable+unsplitable+splitable+unsplitable+rig
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable+unsplitable+splitable+unsplitable+splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable+splitable+unsplitable+splitable+unsplitable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -957,7 +957,7 @@ TEST_CASE("GenerateQuantileCuts, left+unsplitable+splitable+unsplitable+splitabl
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, infinities") {
+TEST_CASE("CutQuantile, infinities") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -987,7 +987,7 @@ TEST_CASE("GenerateQuantileCuts, infinities") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, average division sizes that requires the ceiling instead of rounding") {
+TEST_CASE("CutQuantile, average division sizes that requires the ceiling instead of rounding") {
    // our algorithm makes an internal assumption that we can give each cut point a split.  This is guaranteed if we 
    // make the average length of the equal value long ranges the ceiling of the average samples per bin.  
    // This test stresses that average calculation by having an average bin lenght of 2.2222222222 but if you use 
@@ -1016,7 +1016,7 @@ TEST_CASE("GenerateQuantileCuts, average division sizes that requires the ceilin
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, reversibility, 2") {
+TEST_CASE("CutQuantile, reversibility, 2") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -1035,7 +1035,7 @@ TEST_CASE("GenerateQuantileCuts, reversibility, 2") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, reversibility, 3") {
+TEST_CASE("CutQuantile, reversibility, 3") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -1054,7 +1054,7 @@ TEST_CASE("GenerateQuantileCuts, reversibility, 3") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, reversibility") {
+TEST_CASE("CutQuantile, reversibility") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -1073,7 +1073,7 @@ TEST_CASE("GenerateQuantileCuts, reversibility") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, imbalanced") {
+TEST_CASE("CutQuantile, imbalanced") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -1092,7 +1092,7 @@ TEST_CASE("GenerateQuantileCuts, imbalanced") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, extreme tails") {
+TEST_CASE("CutQuantile, extreme tails") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -1111,7 +1111,7 @@ TEST_CASE("GenerateQuantileCuts, extreme tails") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, far tails") {
+TEST_CASE("CutQuantile, far tails") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -1130,7 +1130,7 @@ TEST_CASE("GenerateQuantileCuts, far tails") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, close tails") {
+TEST_CASE("CutQuantile, close tails") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -1149,7 +1149,7 @@ TEST_CASE("GenerateQuantileCuts, close tails") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, non-smart") {
+TEST_CASE("CutQuantile, non-smart") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = false;
    constexpr size_t cCutsMax = 1000;
@@ -1168,7 +1168,7 @@ TEST_CASE("GenerateQuantileCuts, non-smart") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, overflow interpretable ends") {
+TEST_CASE("CutQuantile, overflow interpretable ends") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -1197,7 +1197,7 @@ TEST_CASE("GenerateQuantileCuts, overflow interpretable ends") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, maximum non-overflow interpretable ends") {
+TEST_CASE("CutQuantile, maximum non-overflow interpretable ends") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -1226,7 +1226,7 @@ TEST_CASE("GenerateQuantileCuts, maximum non-overflow interpretable ends") {
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, stress test the guarantee of one split per SplittingRange, by 2") {
+TEST_CASE("CutQuantile, stress test the guarantee of one split per SplittingRange, by 2") {
    constexpr IntEbmType countSamplesPerBinMin = 1;
    constexpr size_t cItemsPerRange = 10;
    constexpr size_t cInteriorRanges = 3;
@@ -1275,7 +1275,7 @@ TEST_CASE("GenerateQuantileCuts, stress test the guarantee of one split per Spli
    );
 }
 
-TEST_CASE("GenerateQuantileCuts, randomized fairness check") {
+TEST_CASE("CutQuantile, randomized fairness check") {
    RandomStreamTest randomStream(k_randomSeed);
    if(!randomStream.IsSuccess()) {
       exit(1);
@@ -1315,7 +1315,7 @@ TEST_CASE("GenerateQuantileCuts, randomized fairness check") {
          FloatEbmType maxNonInfinityValue;
          IntEbmType countPositiveInfinity;
 
-         // do this before calling GenerateQuantileCuts, since GenerateQuantileCuts modifies featureValues
+         // do this before calling CutQuantile, since CutQuantile modifies featureValues
          IntEbmType countMissingValuesExpected;
          FloatEbmType minNonInfinityValueExpected;
          IntEbmType countNegativeInfinityExpected;
@@ -1334,7 +1334,7 @@ TEST_CASE("GenerateQuantileCuts, randomized fairness check") {
          memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * countSamples);
 
          IntEbmType countCutsForward = static_cast<IntEbmType>(cCuts);
-         IntEbmType ret = GenerateQuantileCuts(
+         IntEbmType ret = CutQuantile(
             countSamples,
             featureValuesForward,
             countSamplesPerBinMin,
@@ -1371,7 +1371,7 @@ TEST_CASE("GenerateQuantileCuts, randomized fairness check") {
             [](FloatEbmType & val) { return -val; });
 
          IntEbmType countCutsReversed = static_cast<IntEbmType>(cCuts);
-         ret = GenerateQuantileCuts(
+         ret = CutQuantile(
             countSamples,
             featureValuesReversed,
             countSamplesPerBinMin,
@@ -1442,7 +1442,7 @@ TEST_CASE("GenerateQuantileCuts, randomized fairness check") {
    CHECK(0.97 <= ratio || 0 == cMax);
 }
 
-TEST_CASE("GenerateQuantileCuts, chunky randomized check") {
+TEST_CASE("CutQuantile, chunky randomized check") {
    RandomStreamTest randomStream(k_randomSeed);
    if(!randomStream.IsSuccess()) {
       exit(1);
@@ -1510,7 +1510,7 @@ TEST_CASE("GenerateQuantileCuts, chunky randomized check") {
       FloatEbmType maxNonInfinityValue;
       IntEbmType countPositiveInfinity;
 
-      // do this before calling GenerateQuantileCuts, since GenerateQuantileCuts modifies featureValues
+      // do this before calling CutQuantile, since CutQuantile modifies featureValues
       IntEbmType countMissingValuesExpected;
       FloatEbmType minNonInfinityValueExpected;
       IntEbmType countNegativeInfinityExpected;
@@ -1529,7 +1529,7 @@ TEST_CASE("GenerateQuantileCuts, chunky randomized check") {
       memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * cSamples);
 
       IntEbmType countCutsForward = static_cast<IntEbmType>(cCuts);
-      IntEbmType ret = GenerateQuantileCuts(
+      IntEbmType ret = CutQuantile(
          countSamples,
          featureValuesForward,
          countSamplesPerBinMin,
@@ -1554,7 +1554,7 @@ TEST_CASE("GenerateQuantileCuts, chunky randomized check") {
          [](FloatEbmType & val) { return -val; });
 
       IntEbmType countCutsReversed = static_cast<IntEbmType>(cCuts);
-      ret = GenerateQuantileCuts(
+      ret = CutQuantile(
          countSamples,
          featureValuesReversed,
          countSamplesPerBinMin,

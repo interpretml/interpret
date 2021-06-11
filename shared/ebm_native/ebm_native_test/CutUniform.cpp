@@ -7,11 +7,11 @@
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
-static const TestPriority k_filePriority = TestPriority::GenerateUniformCuts;
+static const TestPriority k_filePriority = TestPriority::CutUniform;
 
 constexpr FloatEbmType illegalVal = FloatEbmType { -888.88 };
 
-TEST_CASE("GenerateUniformCuts, 0 samples") {
+TEST_CASE("CutUniform, 0 samples") {
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues {};
@@ -25,7 +25,7 @@ TEST_CASE("GenerateUniformCuts, 0 samples") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -51,7 +51,7 @@ TEST_CASE("GenerateUniformCuts, 0 samples") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, only missing") {
+TEST_CASE("CutUniform, only missing") {
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::quiet_NaN(), std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -65,7 +65,7 @@ TEST_CASE("GenerateUniformCuts, only missing") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -91,7 +91,7 @@ TEST_CASE("GenerateUniformCuts, only missing") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, one cut, -infinity") {
+TEST_CASE("CutUniform, one cut, -infinity") {
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { -std::numeric_limits<FloatEbmType>::infinity(), -std::numeric_limits<FloatEbmType>::infinity() };
@@ -105,7 +105,7 @@ TEST_CASE("GenerateUniformCuts, one cut, -infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -131,7 +131,7 @@ TEST_CASE("GenerateUniformCuts, one cut, -infinity") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, one cut, +infinity") {
+TEST_CASE("CutUniform, one cut, +infinity") {
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::infinity(), std::numeric_limits<FloatEbmType>::infinity() };
@@ -145,7 +145,7 @@ TEST_CASE("GenerateUniformCuts, one cut, +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -171,7 +171,7 @@ TEST_CASE("GenerateUniformCuts, one cut, +infinity") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, one cut, -infinity and +infinity") {
+TEST_CASE("CutUniform, one cut, -infinity and +infinity") {
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { -std::numeric_limits<FloatEbmType>::infinity(), std::numeric_limits<FloatEbmType>::infinity() };
@@ -185,7 +185,7 @@ TEST_CASE("GenerateUniformCuts, one cut, -infinity and +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -211,7 +211,7 @@ TEST_CASE("GenerateUniformCuts, one cut, -infinity and +infinity") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, one item") {
+TEST_CASE("CutUniform, one item") {
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 1 };
@@ -225,7 +225,7 @@ TEST_CASE("GenerateUniformCuts, one item") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -251,7 +251,7 @@ TEST_CASE("GenerateUniformCuts, one item") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, zero cuts") {
+TEST_CASE("CutUniform, zero cuts") {
    IntEbmType countCuts = 0;
 
    std::vector<FloatEbmType> featureValues { 1, 2, 3, 4 };
@@ -265,7 +265,7 @@ TEST_CASE("GenerateUniformCuts, zero cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -291,7 +291,7 @@ TEST_CASE("GenerateUniformCuts, zero cuts") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, identical values") {
+TEST_CASE("CutUniform, identical values") {
    IntEbmType countCuts = 2;
 
    std::vector<FloatEbmType> featureValues { 1, 1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 1 };
@@ -305,7 +305,7 @@ TEST_CASE("GenerateUniformCuts, identical values") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -331,7 +331,7 @@ TEST_CASE("GenerateUniformCuts, identical values") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, underflow") {
+TEST_CASE("CutUniform, underflow") {
    IntEbmType countCuts = 9;
 
    std::vector<FloatEbmType> featureValues { 0, std::numeric_limits<FloatEbmType>::denorm_min() };
@@ -345,7 +345,7 @@ TEST_CASE("GenerateUniformCuts, underflow") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -371,7 +371,7 @@ TEST_CASE("GenerateUniformCuts, underflow") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, normal") {
+TEST_CASE("CutUniform, normal") {
    IntEbmType countCuts = 9;
 
    std::vector<FloatEbmType> featureValues { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
@@ -385,7 +385,7 @@ TEST_CASE("GenerateUniformCuts, normal") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -411,7 +411,7 @@ TEST_CASE("GenerateUniformCuts, normal") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, 1 cut, -infinity, lowest, max, and +infinity") {
+TEST_CASE("CutUniform, 1 cut, -infinity, lowest, max, and +infinity") {
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues {
@@ -430,7 +430,7 @@ TEST_CASE("GenerateUniformCuts, 1 cut, -infinity, lowest, max, and +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -456,7 +456,7 @@ TEST_CASE("GenerateUniformCuts, 1 cut, -infinity, lowest, max, and +infinity") {
    }
 }
 
-TEST_CASE("GenerateUniformCuts, 1 cut, -infinity, lowest + 1, max - 1, and +infinity") {
+TEST_CASE("CutUniform, 1 cut, -infinity, lowest + 1, max - 1, and +infinity") {
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues {
@@ -475,7 +475,7 @@ TEST_CASE("GenerateUniformCuts, 1 cut, -infinity, lowest + 1, max - 1, and +infi
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   GenerateUniformCuts(
+   CutUniform(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,

@@ -332,7 +332,7 @@ static FloatEbmType CalculatePriority(
    if(LIKELY(k_valNotLegal != pCutCur->m_iVal)) {
       // TODO: This calculation doesn't take into account that we can trade our cut points with neighbours
       // with m_cPredeterminedMovementOnCut.  For an example, see test:
-      // GenerateQuantileCuts, left+unsplitable+splitable+unsplitable+splitable
+      // CutQuantile, left+unsplitable+splitable+unsplitable+splitable
       // I'm not sure if this is bad or not.  In general, if we're swapping cut points, we're probably moving
       // pretty far, but I think if we're swaping cut points then we probably do in fact want to add priority
       // to those potential cut points since they are shuffling cut points around and we want to ensure that this
@@ -2451,10 +2451,10 @@ INLINE_RELEASE_UNTEMPLATED static size_t GetUncuttableRangeLengthMin(
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterGenerateQuantileCutsParametersMessages = 25;
-static int g_cLogExitGenerateQuantileCutsParametersMessages = 25;
+static int g_cLogEnterCutQuantileParametersMessages = 25;
+static int g_cLogExitCutQuantileParametersMessages = 25;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCuts(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuantile(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
@@ -2474,10 +2474,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    const SeedEbmType randomSeed = SeedEbmType { 1260428135 };
 
    LOG_COUNTED_N(
-      &g_cLogEnterGenerateQuantileCutsParametersMessages,
+      &g_cLogEnterCutQuantileParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered GenerateQuantileCuts: "
+      "Entered CutQuantile: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
@@ -2512,7 +2512,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    IntEbmType ret;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
-      LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts nullptr == countCutsInOut");
+      LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == countCutsInOut");
       countCutsRet = IntEbmType { 0 };
       countMissingValuesRet = IntEbmType { 0 };
       minNonInfinityValueRet = FloatEbmType { 0 };
@@ -2533,12 +2533,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          countPositiveInfinityRet = IntEbmType { 0 };
          ret = IntEbmType { 0 };
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-            LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts countSamples < IntEbmType { 0 }");
+            LOG_0(TraceLevelError, "ERROR CutQuantile countSamples < IntEbmType { 0 }");
             ret = IntEbmType { 1 };
          }
       } else {
          if(UNLIKELY(nullptr == featureValues)) {
-            LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts nullptr == featureValues");
+            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == featureValues");
 
             countCutsRet = IntEbmType { 0 };
             countMissingValuesRet = IntEbmType { 0 };
@@ -2551,7 +2551,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          }
 
          if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts !IsNumberConvertable<size_t>(countSamples)");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile !IsNumberConvertable<size_t>(countSamples)");
 
             countCutsRet = IntEbmType { 0 };
             countMissingValuesRet = IntEbmType { 0 };
@@ -2567,7 +2567,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          FloatEbmType * const aFeatureValues = EbmMalloc<FloatEbmType>(cSamplesIncludingMissingValues);
          if(UNLIKELY(nullptr == aFeatureValues)) {
-            LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts nullptr == aFeatureValues");
+            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == aFeatureValues");
 
             countCutsRet = IntEbmType { 0 };
             countMissingValuesRet = IntEbmType { 0 };
@@ -2618,7 +2618,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             countCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 0 };
             if(UNLIKELY(countCuts < IntEbmType { 0 })) {
-               LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts countCuts can't be negative.");
+               LOG_0(TraceLevelError, "ERROR CutQuantile countCuts can't be negative.");
                ret = IntEbmType { 1 };
             }
             goto exit_with_log;
@@ -2626,7 +2626,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          
          if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
             // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
-            LOG_0(TraceLevelError, "ERROR GenerateQuantileCuts nullptr == cutsLowerBoundInclusiveOut");
+            LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == cutsLowerBoundInclusiveOut");
 
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
@@ -2637,7 +2637,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          if(UNLIKELY(countSamplesPerBinMin <= IntEbmType { 0 })) {
             LOG_0(TraceLevelWarning,
-               "WARNING GenerateQuantileCuts countSamplesPerBinMin shouldn't be zero or negative.  Setting to 1");
+               "WARNING CutQuantile countSamplesPerBinMin shouldn't be zero or negative.  Setting to 1");
 
             countSamplesPerBinMin = IntEbmType { 1 };
          }
@@ -2683,7 +2683,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          // we need to be able to index both the cutsLowerBoundInclusiveOut AND we also allocate an array
          // of pointers below of FloatEbmType * to index into aFeatureValues 
          if(UNLIKELY(IsMultiplyError(cCutsMax, std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *))))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts IsMultiplyError(cCutsMax, std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)))");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCutsMax, std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -2718,7 +2718,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          }
 
          if(UNLIKELY(IsMultiplyError(cSamples, sizeof(NeighbourJump)))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts IsMultiplyError(cSamples, sizeof(NeighbourJump))");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cSamples, sizeof(NeighbourJump))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -2738,7 +2738,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          // include storage for the end points
          const size_t cCutsWithEndpointsMax = cCutsMax + size_t { 2 };
          if(UNLIKELY(IsMultiplyError(cCutsWithEndpointsMax, sizeof(CutPoint)))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts IsMultiplyError(cCutsWithEndpointsMax, sizeof(CutPoint))");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCutsWithEndpointsMax, sizeof(CutPoint))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -2747,7 +2747,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const size_t cBytesCuts = cCutsWithEndpointsMax * sizeof(CutPoint);
 
          if(UNLIKELY(IsMultiplyError(cCuttingRanges, sizeof(CuttingRange)))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts IsMultiplyError(cCuttingRanges, sizeof(CuttingRange))");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCuttingRanges, sizeof(CuttingRange))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -2760,7 +2760,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const size_t cBytesToValueCutPointers = cBytesToNeighbourJump + cBytesNeighbourJumps;
 
          if(UNLIKELY(IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -2769,7 +2769,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const size_t cBytesToCuts = cBytesToValueCutPointers + cBytesValueCutPointers;
 
          if(UNLIKELY(IsAddError(cBytesToCuts, cBytesCuts))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts IsAddError(cBytesToCuts, cBytesCuts))");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToCuts, cBytesCuts))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -2778,7 +2778,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const size_t cBytesToCuttingRange = cBytesToCuts + cBytesCuts;
 
          if(UNLIKELY(IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -2788,7 +2788,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          char * const pMem = static_cast<char *>(malloc(cBytesToEnd));
          if(UNLIKELY(nullptr == pMem)) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts nullptr == pMem");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile nullptr == pMem");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -3052,7 +3052,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                }
             } while(!priorityQueue.empty());
          } catch(...) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCuts exception");
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile exception");
 
             free(pMem);
             free(aFeatureValues);
@@ -3297,10 +3297,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    }
 
    LOG_COUNTED_N(
-      &g_cLogExitGenerateQuantileCutsParametersMessages,
+      &g_cLogExitCutQuantileParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Exited GenerateQuantileCuts: "
+      "Exited CutQuantile: "
       "countCuts=%" IntEbmTypePrintf ", "
       "countMissingValues=%" IntEbmTypePrintf ", "
       "minNonInfinityValue=%" FloatEbmTypePrintf ", "

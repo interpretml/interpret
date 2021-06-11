@@ -79,7 +79,7 @@ ebm_classify <- function(
    discretized <- vector("numeric", length(y))
    for(i_feature in 1:n_features) {
       X_feature <- X[, i_feature] # if our originator X matrix is byrow, pay the transpose cost once
-      feature_cuts <- generate_quantile_cuts(
+      feature_cuts <- cut_quantile(
          X_feature, 
          min_samples_bin, 
          humanized, 

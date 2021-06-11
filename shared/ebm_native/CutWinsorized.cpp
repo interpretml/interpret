@@ -34,11 +34,11 @@ extern FloatEbmType ArithmeticMean(
 ) noexcept;
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterGenerateWinsorizedCutsParametersMessages = 25;
-static int g_cLogExitGenerateWinsorizedCutsParametersMessages = 25;
+static int g_cLogEnterCutWinsorizedParametersMessages = 25;
+static int g_cLogExitCutWinsorizedParametersMessages = 25;
 
 // TODO: add this as a python/R option "winsorized"
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateWinsorizedCuts(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsorized(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType * countCutsInOut,
@@ -50,10 +50,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
    IntEbmType * countPositiveInfinityOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogEnterGenerateWinsorizedCutsParametersMessages,
+      &g_cLogEnterCutWinsorizedParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered GenerateWinsorizedCuts: "
+      "Entered CutWinsorized: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countCutsInOut=%p, "
@@ -84,7 +84,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
    IntEbmType ret;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
-      LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts nullptr == countCutsInOut");
+      LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == countCutsInOut");
       countMissingValuesRet = IntEbmType { 0 };
       minNonInfinityValueRet = FloatEbmType { 0 };
       countNegativeInfinityRet = IntEbmType { 0 };
@@ -103,12 +103,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
          countPositiveInfinityRet = IntEbmType { 0 };
          ret = IntEbmType { 0 };
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts countSamples < IntEbmType { 0 }");
+            LOG_0(TraceLevelError, "ERROR CutWinsorized countSamples < IntEbmType { 0 }");
             ret = IntEbmType { 1 };
          }
       } else {
          if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedCuts !IsNumberConvertable<size_t>(countSamples)");
+            LOG_0(TraceLevelWarning, "WARNING CutWinsorized !IsNumberConvertable<size_t>(countSamples)");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -120,7 +120,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
          }
 
          if(UNLIKELY(nullptr == featureValues)) {
-            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts nullptr == featureValues");
+            LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == featureValues");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -135,7 +135,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
          FloatEbmType * const aFeatureValues = EbmMalloc<FloatEbmType>(cSamplesIncludingMissingValues);
          if(UNLIKELY(nullptr == aFeatureValues)) {
-            LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts nullptr == aFeatureValues");
+            LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == aFeatureValues");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -178,14 +178,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
                free(aFeatureValues);
                ret = IntEbmType { 0 };
                if(UNLIKELY(countCuts < IntEbmType { 0 })) {
-                  LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts countCuts can't be negative.");
+                  LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts can't be negative.");
                   ret = IntEbmType { 1 };
                }
                goto exit_with_log;
             }
 
             if(UNLIKELY(!IsNumberConvertable<size_t>(countCuts))) {
-               LOG_0(TraceLevelWarning, "WARNING GenerateWinsorizedCuts !IsNumberConvertable<size_t>(countCuts)");
+               LOG_0(TraceLevelWarning, "WARNING CutWinsorized !IsNumberConvertable<size_t>(countCuts)");
                free(aFeatureValues);
                ret = IntEbmType { 1 };
                goto exit_with_log;
@@ -193,7 +193,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
             const size_t cCuts = static_cast<size_t>(countCuts);
 
             if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
-               LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts countCuts was too large to fit into cutsLowerBoundInclusiveOut");
+               LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts was too large to fit into cutsLowerBoundInclusiveOut");
                free(aFeatureValues);
                ret = IntEbmType { 1 };
                goto exit_with_log;
@@ -201,7 +201,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
 
             if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
                // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
-               LOG_0(TraceLevelError, "ERROR GenerateWinsorizedCuts nullptr == cutsLowerBoundInclusiveOut");
+               LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == cutsLowerBoundInclusiveOut");
                free(aFeatureValues);
                ret = IntEbmType { 1 };
                goto exit_with_log;
@@ -515,10 +515,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateW
    }
 
    LOG_COUNTED_N(
-      &g_cLogExitGenerateWinsorizedCutsParametersMessages,
+      &g_cLogExitCutWinsorizedParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Exited GenerateWinsorizedCuts: "
+      "Exited CutWinsorized: "
       "countCuts=%" IntEbmTypePrintf ", "
       "countMissingValues=%" IntEbmTypePrintf ", "
       "minNonInfinityValue=%" FloatEbmTypePrintf ", "

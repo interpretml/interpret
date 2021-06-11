@@ -15,9 +15,9 @@ enum class TestPriority {
    RandomNumbers,
    SuggestGraphBounds,
    Discretize,
-   GenerateUniformCuts,
-   GenerateWinsorizedCuts,
-   GenerateQuantileCuts
+   CutUniform,
+   CutWinsorized,
+   CutQuantile
 };
 
 class TestCaseHidden;
