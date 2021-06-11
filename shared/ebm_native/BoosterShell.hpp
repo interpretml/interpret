@@ -80,7 +80,8 @@ public:
    }
 
    static void Free(BoosterShell * const pBoosterShell);
-   static BoosterShell * Allocate(BoosterCore * const pBoosterCore);
+   static BoosterShell * Create();
+   ErrorEbmType FillAllocations();
 
    INLINE_ALWAYS bool IsValid() {
       // TODO : call this function before using this object whenever we get it from outside our control, just to verify
@@ -89,7 +90,14 @@ public:
    }
 
    INLINE_ALWAYS BoosterCore * GetBoosterCore() {
+      EBM_ASSERT(nullptr != m_pBoosterCore);
       return m_pBoosterCore;
+   }
+
+   INLINE_ALWAYS void SetBoosterCore(BoosterCore * const pBoosterCore) {
+      EBM_ASSERT(nullptr != pBoosterCore);
+      EBM_ASSERT(nullptr == m_pBoosterCore); // only set it once
+      m_pBoosterCore = pBoosterCore;
    }
 
    INLINE_ALWAYS size_t GetFeatureGroupIndex() {

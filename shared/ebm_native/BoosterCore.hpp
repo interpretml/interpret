@@ -159,7 +159,7 @@ public:
 
    static void Free(BoosterCore * const pBoosterCore);
 
-   static BoosterCore * Allocate(
+   static BoosterCore * Create(
       const SeedEbmType randomSeed,
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cFeatures,
