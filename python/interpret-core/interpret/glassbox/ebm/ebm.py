@@ -190,8 +190,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 delta = self.delta
             )
             if self.privacy_schema is None:
-                warn("Possible privacy violation: assuming min/max values per feature are public info. \
-                      Pass a privacy schema with known public ranges per feature to avoid this warning.")
+                warn("Possible privacy violation: assuming min/max values per feature are public info."
+                     "Pass a privacy schema with known public ranges per feature to avoid this warning.")
                 self.privacy_schema = DPUtils.build_privacy_schema(X)
                 
         if self.max_bins < 2:
@@ -832,40 +832,38 @@ class BaseEBM(BaseEstimator):
             DPUtils.validate_DP_EBM(self, sample_weight)
 
             if self.privacy_schema is None:
-                warn("Possible privacy violation: assuming min/max values per feature/target are public info. \
-                      Pass a privacy schema with known public ranges to avoid this warning.")
+                warn("Possible privacy violation: assuming min/max values per feature/target are public info."
+                     "Pass a privacy schema with known public ranges to avoid this warning.")
                 self.privacy_schema = DPUtils.build_privacy_schema(X, y)
 
             self.domain_size_ = self.privacy_schema['target'][1] - self.privacy_schema['target'][0]
 
             # Split epsilon, delta budget for binning and learning
-            self.bin_eps_ = self.epsilon * self.bin_budget_frac
-            self.training_eps_ = self.epsilon - self.bin_eps_
-            self.bin_delta_ = self.delta / 2
-            self.training_delta_ = self.delta / 2
+            bin_eps_ = self.epsilon * self.bin_budget_frac
+            training_eps_ = self.epsilon - bin_eps_
+            bin_delta_ = self.delta / 2
+            training_delta_ = self.delta / 2
             
              # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             if self.composition == 'classic':
                 self.noise_scale_ = DPUtils.calc_classic_noise_multi(
                     total_queries = self.max_rounds * X.shape[1], 
-                    target_epsilon = self.training_eps_, 
-                    delta = self.training_delta_, 
+                    target_epsilon = training_eps_, 
+                    delta = training_delta_, 
                     sensitivity = self.domain_size_ * self.learning_rate
                 )
             elif self.composition == 'gdp':
                 self.noise_scale_ = DPUtils.calc_gdp_noise_multi(
                     total_queries = self.max_rounds * X.shape[1], 
-                    target_epsilon = self.training_eps_, 
-                    delta = self.training_delta_
+                    target_epsilon = training_eps_, 
+                    delta = training_delta_
                 )
-                self.noise_scale_ = self.noise_scale_ * self.domain_size_ * self.learning_rate
+                self.noise_scale_ = self.noise_scale_ * self.domain_size_ * self.learning_rate # Alg Line 17
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
-        else: # Unused if not in private training mode
-            self.bin_eps_, self.bin_delta_ = None, None
-            self.training_eps_, self.training_delta_ = None, None
-            self.domain_size_ = None
-            self.noise_scale_ = None
+        else:
+            bin_eps_, bin_delta_ = None, None
+            training_eps_, training_delta_ = None, None
 
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
@@ -873,9 +871,9 @@ class BaseEBM(BaseEstimator):
             feature_types=self.feature_types,
             max_bins=self.max_bins,
             binning=self.binning,
-            epsilon=self.bin_eps_,
-            delta=self.bin_delta_,
-            privacy_schema=self.privacy_schema
+            epsilon=bin_eps_, # Only defined during private training
+            delta=bin_delta_,
+            privacy_schema=getattr(self, 'privacy_schema', None)
         )
         self.preprocessor_.fit(X)
         X_orig = X
@@ -885,7 +883,7 @@ class BaseEBM(BaseEstimator):
         features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_], dtype=ct.c_int64)
 
         # NOTE: [DP] Passthrough to lower level layers for noise addition
-        self.bin_data_counts_ = {i : self.preprocessor_.col_bin_counts_[i] for i in range(X.shape[1])}
+        bin_data_counts = {i : self.preprocessor_.col_bin_counts_[i] for i in range(X.shape[1])}
 
         if self.interactions != 0:
             self.pair_preprocessor_ = EBMPreprocessor(
@@ -941,8 +939,8 @@ class BaseEBM(BaseEstimator):
                     # Overall
                     random_state=seed,
                     # Differential Privacy
-                    noise_scale=self.noise_scale_,
-                    bin_counts=self.bin_data_counts_,
+                    noise_scale=getattr(self, 'noise_scale_', None),
+                    bin_counts=bin_data_counts,
                 )
                 estimators.append(estimator)
         else:
@@ -972,8 +970,8 @@ class BaseEBM(BaseEstimator):
                     # Overall
                     random_state=seed,
                     # Differential Privacy
-                    noise_scale=self.noise_scale_,
-                    bin_counts=self.bin_data_counts_,
+                    noise_scale=getattr(self, 'noise_scale_', None),
+                    bin_counts=bin_data_counts,
                 )
                 estimators.append(estimator)
 
