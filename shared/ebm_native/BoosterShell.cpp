@@ -39,6 +39,7 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       free(pBoosterShell->m_aSumHistogramTargetEntryRight);
       free(pBoosterShell->m_aTempFloatVector);
       free(pBoosterShell->m_aEquivalentSplits);
+      BoosterCore::Free(pBoosterShell->m_pBoosterCore);
 
       free(pBoosterShell);
    }
@@ -151,45 +152,16 @@ bool BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
 EBM_NATIVE_IMPORT_EXPORT_BODY ThreadStateBoostingHandle EBM_NATIVE_CALLING_CONVENTION CreateThreadStateBoosting(
    BoosterHandle boosterHandle
 ) {
-   LOG_N(TraceLevelInfo, "Entered CreateThreadStateBoosting: boosterHandle=%p", static_cast<void *>(boosterHandle));
-
-   BoosterCore * const pBoosterCore = reinterpret_cast<BoosterCore *>(boosterHandle);
-   if(nullptr == pBoosterCore) {
-      LOG_0(TraceLevelError, "ERROR CreateThreadStateBoosting boosterHandle cannot be nullptr");
-      return nullptr;
-   }
-
-   BoosterShell * const pBoosterShell = BoosterShell::Create();
-   if(UNLIKELY(nullptr == pBoosterShell)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateThreadStateBoosting nullptr == pBoosterShell");
-      return nullptr;
-   }
-
-   pBoosterShell->SetBoosterCore(pBoosterCore);
-
-   if(Error_None != pBoosterShell->FillAllocations()) {
-      BoosterShell::Free(pBoosterShell);
-      return nullptr;
-   }
-
-   LOG_N(TraceLevelInfo, "Exited CreateThreadStateBoosting: %p", static_cast<void *>(pBoosterShell));
-   return reinterpret_cast<ThreadStateBoostingHandle>(pBoosterShell);
+   // TODO : eliminate this
+   return reinterpret_cast<ThreadStateBoostingHandle>(boosterHandle);
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeThreadStateBoosting(
    ThreadStateBoostingHandle threadStateBoostingHandle
 ) {
-   LOG_N(TraceLevelInfo, 
-      "Entered FreeThreadStateBoosting: threadStateBoostingHandle=%p", 
-      static_cast<void *>(threadStateBoostingHandle)
-   );
-
-   BoosterShell * const pThreadStateBoostingHandle = reinterpret_cast<BoosterShell *>(threadStateBoostingHandle);
-
-   // it's legal to call free on nullptr, just like for free().  This is checked inside ThreadStateBoostingHandle::Free()
-   BoosterShell::Free(pThreadStateBoostingHandle);
-
-   LOG_0(TraceLevelInfo, "Exited FreeThreadStateBoosting");
+   UNUSED(threadStateBoostingHandle);
+   // TODO : eliminate this
+   return;
 }
 
 
@@ -331,6 +303,15 @@ static BoosterHandle CreateBooster(
       return nullptr;
    }
 
+   BoosterShell * const pBoosterShell = BoosterShell::Create();
+   if(UNLIKELY(nullptr == pBoosterShell)) {
+      LOG_0(TraceLevelWarning, "WARNING CreateBooster nullptr == pBoosterShell");
+      return nullptr;
+   }
+
+   // TODO: pass in the pBoosterShell so that BoosterCore can immediately attach itself to the pBoosterShell
+   //       this is important in R and other languages that might want to exit with longjump because we can attach
+   //       the pBoosterShell object to a managed destructor that'll clean up all our memory allocations
    BoosterCore * const pBoosterCore = BoosterCore::Create(
       randomSeed,
       runtimeLearningTypeOrCountTargetClasses,
@@ -354,10 +335,20 @@ static BoosterHandle CreateBooster(
       validationPredictorScores
    );
    if(UNLIKELY(nullptr == pBoosterCore)) {
+      BoosterShell::Free(pBoosterShell);
       LOG_0(TraceLevelWarning, "WARNING CreateBooster pBoosterCore->Initialize");
       return nullptr;
    }
-   return reinterpret_cast<BoosterHandle>(pBoosterCore);
+
+   pBoosterShell->SetBoosterCore(pBoosterCore); // assume ownership of pBoosterCore
+
+   if(Error_None != pBoosterShell->FillAllocations()) {
+      // don't free the pBoosterCore since pBoosterShell now owns it
+      BoosterShell::Free(pBoosterShell);
+      return nullptr;
+   }
+
+   return reinterpret_cast<BoosterHandle>(pBoosterShell);
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
@@ -573,8 +564,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetBestMo
       modelFeatureGroupTensorOut
    );
 
-   BoosterCore * pBoosterCore = reinterpret_cast<BoosterCore *>(boosterHandle);
-   if(nullptr == pBoosterCore) {
+   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   if(nullptr == pBoosterShell) {
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup boosterHandle cannot be nullptr");
       return IntEbmType { 1 };
    }
@@ -588,6 +579,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetBestMo
       return IntEbmType { 1 };
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
       return IntEbmType { 1 };
@@ -661,8 +654,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetCurren
       modelFeatureGroupTensorOut
    );
 
-   BoosterCore * pBoosterCore = reinterpret_cast<BoosterCore *>(boosterHandle);
-   if(nullptr == pBoosterCore) {
+   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   if(nullptr == pBoosterShell) {
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup boosterHandle cannot be nullptr");
       return IntEbmType { 1 };
    }
@@ -676,6 +669,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetCurren
       return IntEbmType { 1 };
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
       return IntEbmType { 1 };
@@ -737,10 +732,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeBooster: boosterHandle=%p", static_cast<void *>(boosterHandle));
 
-   BoosterCore * pBoosterCore = reinterpret_cast<BoosterCore *>(boosterHandle);
+   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
 
    // it's legal to call free on nullptr, just like for free().  This is checked inside BoosterCore::Free()
-   BoosterCore::Free(pBoosterCore);
+   BoosterShell::Free(pBoosterShell);
 
    LOG_0(TraceLevelInfo, "Exited FreeBooster");
 }
