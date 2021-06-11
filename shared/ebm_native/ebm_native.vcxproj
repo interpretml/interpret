@@ -343,13 +343,13 @@ EXIT /B 0
     <ClCompile Include="BoosterShell.cpp" />
     <ClCompile Include="InteractionShell.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
-    <ClCompile Include="TensorRandomCut.cpp" />
+    <ClCompile Include="PartitionRandomBoosting.cpp" />
     <ClCompile Include="debug_ebm.cpp" />
     <ClCompile Include="FeatureGroup.cpp" />
-    <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
-    <ClCompile Include="FindBestInteractionScorePairs.cpp" />
+    <ClCompile Include="PartitionTwoDimensionalBoosting.cpp" />
+    <ClCompile Include="PartitionTwoDimensionalInteraction.cpp" />
     <ClCompile Include="GenerateModelUpdate.cpp" />
-    <ClCompile Include="GrowDecisionTree.cpp" />
+    <ClCompile Include="PartitionOneDimensionalBoosting.cpp" />
     <ClCompile Include="InitializeGradientsAndHessians.cpp" />
     <ClCompile Include="interpretable_numerics.cpp" />
     <ClCompile Include="sampling.cpp" />

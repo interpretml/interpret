@@ -27,20 +27,20 @@ OBJECTS = \
    $(NATIVEDIR)/debug_ebm.o \
    $(NATIVEDIR)/Discretize.o \
    $(NATIVEDIR)/FeatureGroup.o \
-   $(NATIVEDIR)/FindBestBoostingSplitsPairs.o \
-   $(NATIVEDIR)/FindBestInteractionScorePairs.o \
    $(NATIVEDIR)/GenerateModelUpdate.o \
-   $(NATIVEDIR)/GrowDecisionTree.o \
    $(NATIVEDIR)/InitializeGradientsAndHessians.o \
    $(NATIVEDIR)/InteractionCore.o \
    $(NATIVEDIR)/InteractionShell.o \
    $(NATIVEDIR)/interpretable_numerics.o \
+   $(NATIVEDIR)/PartitionOneDimensionalBoosting.o \
+   $(NATIVEDIR)/PartitionRandomBoosting.o \
+   $(NATIVEDIR)/PartitionTwoDimensionalBoosting.o \
+   $(NATIVEDIR)/PartitionTwoDimensionalInteraction.o \
    $(NATIVEDIR)/RandomStream.o \
    $(NATIVEDIR)/sampling.o \
    $(NATIVEDIR)/SamplingSet.o \
    $(NATIVEDIR)/SegmentedTensor.o \
    $(NATIVEDIR)/SumHistogramBuckets.o \
-   $(NATIVEDIR)/TensorRandomCut.o \
    $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/common_c/common_c.o \
    $(NATIVEDIR)/common_c/logging.o \
