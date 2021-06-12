@@ -41,6 +41,9 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       free(pBoosterShell->m_aEquivalentSplits);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
 
+      // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
+      // a chance to detect the error
+      pBoosterShell->m_handleVerification = k_handleVerificationFreed;
       free(pBoosterShell);
    }
 
@@ -328,7 +331,7 @@ static BoosterHandle CreateBooster(
       return nullptr;
    }
 
-   return reinterpret_cast<BoosterHandle>(pBoosterShell);
+   return pBoosterShell->GetHandle();
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
@@ -544,11 +547,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetBestMo
       modelFeatureGroupTensorOut
    );
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup boosterHandle cannot be nullptr");
-      return IntEbmType { 1 };
+      // already logged
+      return 1;
    }
+
    if(indexFeatureGroup < 0) {
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup must be positive");
       return IntEbmType { 1 };
@@ -634,11 +638,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetCurren
       modelFeatureGroupTensorOut
    );
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup boosterHandle cannot be nullptr");
-      return IntEbmType { 1 };
+      // already logged
+      return 1;
    }
+
    if(indexFeatureGroup < 0) {
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup must be positive");
       return IntEbmType { 1 };
@@ -712,7 +717,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeBooster: boosterHandle=%p", static_cast<void *>(boosterHandle));
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   // if the conversion above doesn't work, it'll return null, and our free will not in fact free any memory,
+   // but it will not crash. We'll leak memory, but at least we'll log that.
 
    // it's legal to call free on nullptr, just like for free().  This is checked inside BoosterCore::Free()
    BoosterShell::Free(pBoosterShell);

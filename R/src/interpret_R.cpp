@@ -1065,13 +1065,10 @@ SEXP GenerateModelUpdate_R(
       LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
-   BoosterShell * pBoosterShell = static_cast<BoosterShell *>(R_ExternalPtrAddr(boosterHandleWrapped));
+   const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R nullptr == pBoosterShell");
-      return R_NilValue;
-   }
-   if(!pBoosterShell->IsValid()) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R !pBoosterShell->IsValid()");
+      // already logged
       return R_NilValue;
    }
 
@@ -1128,7 +1125,7 @@ SEXP GenerateModelUpdate_R(
 
    FloatEbmType gainOut;
    if(0 != GenerateModelUpdate(
-      reinterpret_cast<BoosterHandle>(pBoosterShell),
+      boosterHandle,
       static_cast<IntEbmType>(iFeatureGroup),
       GenerateUpdateOptions_Default,
       learningRateLocal,
@@ -1155,15 +1152,12 @@ SEXP ApplyModelUpdate_R(
       LOG_0(TraceLevelError, "ERROR ApplyModelUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
-   BoosterShell * pBoosterShell = static_cast<BoosterShell *>(R_ExternalPtrAddr(boosterHandleWrapped));
-   if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate_R nullptr == pBoosterShell");
-      return R_NilValue;
-   }
+   const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
+   // we don't use boosterHandle in this function, so let ApplyModelUpdate check if it's null or invalid
 
    FloatEbmType validationMetricOut;
    if(0 != ApplyModelUpdate(
-      reinterpret_cast<BoosterHandle>(pBoosterShell),
+      boosterHandle,
       &validationMetricOut
    )) {
       LOG_0(TraceLevelWarning, "WARNING ApplyModelUpdate_R ApplyModelUpdate returned error code");
@@ -1187,9 +1181,10 @@ SEXP GetBestModelFeatureGroup_R(
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
-   BoosterShell * const pBoosterShell = static_cast<BoosterShell *>(R_ExternalPtrAddr(boosterHandleWrapped));
+   const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R nullptr == pBoosterShell");
+      // already logged
       return R_NilValue;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -1229,7 +1224,7 @@ SEXP GetBestModelFeatureGroup_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   const IntEbmType error = GetBestModelFeatureGroup(reinterpret_cast<BoosterHandle>(pBoosterShell), static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   const IntEbmType error = GetBestModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 
    UNPROTECT(1);
 
@@ -1251,9 +1246,10 @@ SEXP GetCurrentModelFeatureGroup_R(
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
-   BoosterShell * const pBoosterShell = static_cast<BoosterShell *>(R_ExternalPtrAddr(boosterHandleWrapped));
+   const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R nullptr == pBoosterShell");
+      // already logged
       return R_NilValue;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -1293,7 +1289,7 @@ SEXP GetCurrentModelFeatureGroup_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   const IntEbmType error = GetCurrentModelFeatureGroup(reinterpret_cast<BoosterHandle>(pBoosterShell), static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   const IntEbmType error = GetCurrentModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 
    UNPROTECT(1);
 

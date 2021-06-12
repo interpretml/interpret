@@ -25,7 +25,8 @@ namespace DEFINED_ZONE_NAME {
 struct HistogramBucketBase;
 
 class BoosterShell final {
-   static constexpr size_t k_handleVerification = 25077; // random 15 bit number
+   static constexpr size_t k_handleVerificationOk = 25077; // random 15 bit number
+   static constexpr size_t k_handleVerificationFreed = 25073; // random 15 bit number
    size_t m_handleVerification; // this needs to be at the top and make it pointer sized to keep best alignment
 
    BoosterCore * m_pBoosterCore;
@@ -63,7 +64,7 @@ public:
    constexpr static size_t k_illegalFeatureGroupIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
 
    INLINE_ALWAYS void InitializeZero() {
-      m_handleVerification = k_handleVerification;
+      m_handleVerification = k_handleVerificationOk;
       m_pBoosterCore = nullptr;
       m_iFeatureGroup = k_illegalFeatureGroupIndex;
       m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
@@ -83,10 +84,24 @@ public:
    static BoosterShell * Create();
    ErrorEbmType FillAllocations();
 
-   INLINE_ALWAYS bool IsValid() {
-      // TODO : call this function before using this object whenever we get it from outside our control, just to verify
-      // TODO : make a similar verification for the InteractionShell
-      return k_handleVerification == m_handleVerification;
+   static INLINE_ALWAYS BoosterShell * GetBoosterShellFromBoosterHandle(const BoosterHandle boosterHandle) {
+      if(nullptr == boosterHandle) {
+         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromBoosterHandle null boosterHandle");
+         return nullptr;
+      }
+      BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+      if(k_handleVerificationOk == pBoosterShell->m_handleVerification) {
+         return pBoosterShell;
+      }
+      if(k_handleVerificationFreed == pBoosterShell->m_handleVerification) {
+         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromBoosterHandle attempt to use freed BoosterHandle");
+      } else {
+         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromBoosterHandle attempt to use invalid BoosterHandle");
+      }
+      return nullptr;
+   }
+   INLINE_ALWAYS BoosterHandle GetHandle() {
+      return reinterpret_cast<BoosterHandle>(this);
    }
 
    INLINE_ALWAYS BoosterCore * GetBoosterCore() {

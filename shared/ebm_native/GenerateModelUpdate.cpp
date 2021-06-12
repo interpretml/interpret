@@ -950,13 +950,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       static_cast<void *>(gainOut)
    );
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate boosterHandle cannot be nullptr");
-      return IntEbmType { 1 };
+      // already logged
+      return 1;
    }
 
    // set this to illegal so if we exit with an error we have an invalid index

@@ -153,12 +153,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       static_cast<void *>(validationMetricOut)
    );
 
-   BoosterShell * pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate boosterHandle cannot be nullptr");
+      // already logged
       return 1;
    }
 
@@ -264,11 +264,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       return IntEbmType { 1 };
    }
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       *countCutsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts boosterHandle cannot be nullptr");
-      return IntEbmType { 1 };
+      // already logged
+      return 1;
    }
 
    const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
@@ -373,10 +373,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       static_cast<void *>(modelFeatureGroupUpdateTensorOut)
    );
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded boosterHandle cannot be nullptr");
-      return IntEbmType { 1 };
+      // already logged
+      return 1;
    }
 
    const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
@@ -442,10 +442,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
       static_cast<void *>(modelFeatureGroupUpdateTensor)
    );
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded boosterHandle cannot be nullptr");
-      return IntEbmType { 1 };
+      // already logged
+      return 1;
    }
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
