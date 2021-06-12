@@ -13,8 +13,6 @@
       GetBestModelFeatureGroup;
       GetCurrentModelFeatureGroup;
       FreeBooster;
-      CreateThreadStateBoosting;
-      FreeThreadStateBoosting;
       CreateClassificationInteractionDetector;
       CreateRegressionInteractionDetector;
       CalculateInteractionScore;

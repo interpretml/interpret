@@ -531,7 +531,7 @@ class Native:
         self._unsafe.CreateRegressionBooster.restype = ct.c_void_p
 
         self._unsafe.GenerateModelUpdate.argtypes = [
-            # void * threadStateBoosting
+            # void * boosterHandle
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
@@ -549,7 +549,7 @@ class Native:
         self._unsafe.GenerateModelUpdate.restype = ct.c_int64
 
         self._unsafe.GetModelUpdateCuts.argtypes = [
-            # void * threadStateBoosting
+            # void * boosterHandle
             ct.c_void_p,
             # int64_t indexDimension
             ct.c_int64,
@@ -561,7 +561,7 @@ class Native:
         self._unsafe.GetModelUpdateCuts.restype = ct.c_int64
 
         self._unsafe.GetModelUpdateExpanded.argtypes = [
-            # void * threadStateBoosting
+            # void * boosterHandle
             ct.c_void_p,
             # double * modelFeatureGroupUpdateTensorOut
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
@@ -569,7 +569,7 @@ class Native:
         self._unsafe.GetModelUpdateExpanded.restype = ct.c_int64
 
         self._unsafe.SetModelUpdateExpanded.argtypes = [
-            # void * threadStateBoosting
+            # void * boosterHandle
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
@@ -579,7 +579,7 @@ class Native:
         self._unsafe.SetModelUpdateExpanded.restype = ct.c_int64
 
         self._unsafe.ApplyModelUpdate.argtypes = [
-            # void * threadStateBoosting
+            # void * boosterHandle
             ct.c_void_p,
             # double * validationMetricOut
             ct.POINTER(ct.c_double),
@@ -611,19 +611,6 @@ class Native:
             ct.c_void_p
         ]
         self._unsafe.FreeBooster.restype = None
-
-
-        self._unsafe.CreateThreadStateBoosting.argtypes = [
-            # void * boosterHandle
-            ct.c_void_p
-        ]
-        self._unsafe.CreateThreadStateBoosting.restype = ct.c_void_p
-
-        self._unsafe.FreeThreadStateBoosting.argtypes = [
-            # void * threadStateBoosting
-            ct.c_void_p
-        ]
-        self._unsafe.FreeThreadStateBoosting.restype = None
 
 
         self._unsafe.CreateClassificationInteractionDetector.argtypes = [
@@ -763,7 +750,6 @@ class NativeEBMBooster:
 
         # first set the one thing that we will close on
         self._booster_handle = None
-        self._thread_state_boosting = None
         self._feature_group_index = -1
 
         # check inputs for important inputs or things that would segfault in C
@@ -935,17 +921,11 @@ class NativeEBMBooster:
         else:  # pragma: no cover
             raise AttributeError("Unrecognized model_type")
 
-        self._thread_state_boosting = self._native._unsafe.CreateThreadStateBoosting(self._booster_handle)
-        if not self._thread_state_boosting:  # pragma: no cover
-            self._native._unsafe.FreeBooster(self._booster_handle)
-            raise MemoryError("Out of memory in CreateThreadStateBoosting")
-
         log.info("Allocation boosting end")
 
     def close(self):
         """ Deallocates C objects used to boost EBM. """
         log.info("Deallocation boosting start")
-        self._native._unsafe.FreeThreadStateBoosting(self._thread_state_boosting)
         self._native._unsafe.FreeBooster(self._booster_handle)
         log.info("Deallocation boosting end")
 
@@ -980,7 +960,7 @@ class NativeEBMBooster:
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
         return_code = self._native._unsafe.GenerateModelUpdate(
-            self._thread_state_boosting, 
+            self._booster_handle, 
             feature_group_index,
             generate_update_options,
             learning_rate,
@@ -1011,7 +991,7 @@ class NativeEBMBooster:
 
         metric_output = ct.c_double(0.0)
         return_code = self._native._unsafe.ApplyModelUpdate(
-            self._thread_state_boosting, 
+            self._booster_handle, 
             ct.byref(metric_output),
         )
         if return_code:  # pragma: no cover
@@ -1149,7 +1129,7 @@ class NativeEBMBooster:
         count_cuts = ct.c_int64(count_cuts)
 
         return_code = self._native._unsafe.GetModelUpdateCuts(
-            self._thread_state_boosting, 
+            self._booster_handle, 
             dimension_index, 
             ct.byref(count_cuts), 
             cuts
@@ -1173,7 +1153,7 @@ class NativeEBMBooster:
         shape = self._get_feature_group_shape(self._feature_group_index)
         model_update = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = self._native._unsafe.GetModelUpdateExpanded(self._thread_state_boosting, model_update)
+        return_code = self._native._unsafe.GetModelUpdateExpanded(self._booster_handle, model_update)
 
         if return_code:  # pragma: no cover
             raise MemoryError("Out of memory in GetModelUpdateExpanded")
@@ -1207,7 +1187,7 @@ class NativeEBMBooster:
             raise ValueError("incorrect tensor shape in call to set_model_update_expanded")
 
         return_code = self._native._unsafe.SetModelUpdateExpanded(
-            self._thread_state_boosting, feature_group_index, model_update
+            self._booster_handle, feature_group_index, model_update
         )
         if return_code:  # pragma: no cover
             raise MemoryError("Out of memory in SetModelUpdateExpanded")

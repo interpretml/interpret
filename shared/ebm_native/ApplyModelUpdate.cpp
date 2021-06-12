@@ -138,7 +138,7 @@ static IntEbmType ApplyModelUpdateInternal(
 static int g_cLogApplyModelUpdateParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    FloatEbmType * validationMetricOut
 ) {
    LOG_COUNTED_N(
@@ -146,19 +146,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       TraceLevelInfo,
       TraceLevelVerbose,
       "ApplyModelUpdate: "
-      "threadStateBoostingHandle=%p, "
+      "boosterHandle=%p, "
       "validationMetricOut=%p"
       ,
-      static_cast<void *>(threadStateBoostingHandle),
+      static_cast<void *>(boosterHandle),
       static_cast<void *>(validationMetricOut)
    );
 
-   BoosterShell * pBoosterShell = reinterpret_cast<BoosterShell *>(threadStateBoostingHandle);
+   BoosterShell * pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate threadStateBoosting cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate boosterHandle cannot be nullptr");
       return 1;
    }
 
@@ -238,7 +238,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
 static int g_cLogGetModelUpdateCutsParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateCuts(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    IntEbmType indexDimension,
    IntEbmType * countCutsInOut,
    IntEbmType * cutIndexesOut
@@ -248,12 +248,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       TraceLevelInfo,
       TraceLevelVerbose,
       "GetModelUpdateCuts: "
-      "threadStateBoostingHandle=%p, "
+      "boosterHandle=%p, "
       "indexDimension=%" IntEbmTypePrintf ", "
       "countCutsInOut=%p"
       "cutIndexesOut=%p"
       ,
-      static_cast<void *>(threadStateBoostingHandle),
+      static_cast<void *>(boosterHandle),
       indexDimension, 
       static_cast<void *>(countCutsInOut),
       static_cast<void *>(cutIndexesOut)
@@ -264,10 +264,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       return IntEbmType { 1 };
    }
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(threadStateBoostingHandle);
+   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
    if(nullptr == pBoosterShell) {
       *countCutsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts threadStateBoosting cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts boosterHandle cannot be nullptr");
       return IntEbmType { 1 };
    }
 
@@ -359,7 +359,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
 static int g_cLogGetModelUpdateExpandedParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    FloatEbmType * modelFeatureGroupUpdateTensorOut
 ) {
    LOG_COUNTED_N(
@@ -367,15 +367,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
       TraceLevelInfo,
       TraceLevelVerbose,
       "GetModelUpdateExpanded: "
-      "threadStateBoostingHandle=%p, "
+      "boosterHandle=%p, "
       "modelFeatureGroupUpdateTensorOut=%p",
-      static_cast<void *>(threadStateBoostingHandle),
+      static_cast<void *>(boosterHandle),
       static_cast<void *>(modelFeatureGroupUpdateTensorOut)
    );
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(threadStateBoostingHandle);
+   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
    if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded threadStateBoosting cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded boosterHandle cannot be nullptr");
       return IntEbmType { 1 };
    }
 
@@ -425,7 +425,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelU
 static int g_cLogSetModelUpdateExpandedParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
    FloatEbmType * modelFeatureGroupUpdateTensor
 ) {
@@ -434,17 +434,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelU
       TraceLevelInfo,
       TraceLevelVerbose,
       "SetModelUpdateExpanded: "
-      "threadStateBoostingHandle=%p, "
+      "boosterHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
       "modelFeatureGroupUpdateTensor=%p",
-      static_cast<void *>(threadStateBoostingHandle),
+      static_cast<void *>(boosterHandle),
       indexFeatureGroup,
       static_cast<void *>(modelFeatureGroupUpdateTensor)
    );
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(threadStateBoostingHandle);
+   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
    if(nullptr == pBoosterShell) {
-      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded threadStateBoosting cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded boosterHandle cannot be nullptr");
       return IntEbmType { 1 };
    }
 

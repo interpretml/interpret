@@ -920,7 +920,7 @@ static int g_cLogGenerateModelUpdateParametersMessages = 10;
 //        Right now you can't call it in parallel since we're updating our internal single tensor
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelUpdate(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options,
    FloatEbmType learningRate,
@@ -933,7 +933,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       TraceLevelInfo,
       TraceLevelVerbose,
       "GenerateModelUpdate: "
-      "threadStateBoostingHandle=%p, "
+      "boosterHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
       "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
       "learningRate=%" FloatEbmTypePrintf ", "
@@ -941,7 +941,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       "leavesMax=%p, "
       "gainOut=%p"
       ,
-      static_cast<void *>(threadStateBoostingHandle),
+      static_cast<void *>(boosterHandle),
       indexFeatureGroup,
       static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
       learningRate,
@@ -950,12 +950,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateM
       static_cast<void *>(gainOut)
    );
 
-   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(threadStateBoostingHandle);
+   BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate threadStateBoosting cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate boosterHandle cannot be nullptr");
       return IntEbmType { 1 };
    }
 

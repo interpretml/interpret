@@ -149,26 +149,6 @@ bool BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    return false;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ThreadStateBoostingHandle EBM_NATIVE_CALLING_CONVENTION CreateThreadStateBoosting(
-   BoosterHandle boosterHandle
-) {
-   // TODO : eliminate this
-   return reinterpret_cast<ThreadStateBoostingHandle>(boosterHandle);
-}
-
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeThreadStateBoosting(
-   ThreadStateBoostingHandle threadStateBoostingHandle
-) {
-   UNUSED(threadStateBoostingHandle);
-   // TODO : eliminate this
-   return;
-}
-
-
-
-
-
-
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification

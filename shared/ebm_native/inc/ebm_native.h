@@ -93,12 +93,6 @@ typedef struct _BoosterHandle {
    char unused;
 } * BoosterHandle;
 
-typedef struct _ThreadStateBoostingHandle {
-   // this struct exists to enforce that our caller doesn't mix handle types.
-   // In C/C++ languages the caller will get an error if they try to mix these pointer types.
-   char unused;
-} *ThreadStateBoostingHandle;
-
 typedef struct _InteractionDetectorHandle {
    // this struct exists to enforce that our caller doesn't mix handle types.
    // In C/C++ languages the caller will get an error if they try to mix these pointer types.
@@ -496,7 +490,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelUpdate(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options, 
    FloatEbmType learningRate, 
@@ -505,22 +499,22 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    FloatEbmType * gainOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateCuts(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    IntEbmType indexDimension,
    IntEbmType * countCutsInOut,
    IntEbmType * cutIndexesOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    FloatEbmType * modelFeatureGroupUpdateTensorOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
    FloatEbmType * modelFeatureGroupUpdateTensor
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
-   ThreadStateBoostingHandle threadStateBoostingHandle,
+   BoosterHandle boosterHandle,
    FloatEbmType * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
@@ -535,15 +529,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetCur
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
-);
-
-// TODO : elimiante this as a public object and just expose a BoosterHandle which will be for the shell object
-//        and also expose a CreateBoosterView which will copy the shell boster and refer to the same core booster
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ThreadStateBoostingHandle EBM_NATIVE_CALLING_CONVENTION CreateThreadStateBoosting(
-   BoosterHandle boosterHandle
-);
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeThreadStateBoosting(
-   ThreadStateBoostingHandle threadStateBoostingHandle
 );
 
 
