@@ -530,6 +530,53 @@ EBM_NATIVE_IMPORT_EXPORT_BODY BoosterHandle EBM_NATIVE_CALLING_CONVENTION Create
    return boosterHandle;
 }
 
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBoosterView(
+   BoosterHandle boosterHandle,
+   BoosterHandle * boosterHandleViewOut
+) {
+   LOG_N(
+      TraceLevelInfo,
+      "Entered CreateBoosterView: "
+      "boosterHandle=%p, "
+      "boosterHandleViewOut=%p"
+      ,
+      static_cast<void *>(boosterHandle),
+      static_cast<void *>(boosterHandleViewOut)
+   );
+
+   BoosterShell * const pBoosterShellOriginal = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   if(nullptr == pBoosterShellOriginal) {
+      // already logged
+      return Error_IllegalParamValue;
+   }
+   if(UNLIKELY(nullptr == boosterHandleViewOut)) {
+      LOG_0(TraceLevelWarning, "WARNING CreateBooster nullptr == boosterHandleViewOut");
+      return Error_IllegalParamValue;
+   }
+   *boosterHandleViewOut = nullptr; // don't set this if our passed pointers are messed up above
+
+   BoosterShell * const pBoosterShellNew = BoosterShell::Create();
+   if(UNLIKELY(nullptr == pBoosterShellNew)) {
+      LOG_0(TraceLevelWarning, "WARNING CreateBooster nullptr == pBoosterShellNew");
+      return Error_OutOfMemory;
+   }
+
+   BoosterCore * const pBoosterCore = pBoosterShellOriginal->GetBoosterCore();
+   pBoosterCore->AddReferenceCount();
+   pBoosterShellNew->SetBoosterCore(pBoosterCore); // assume ownership of pBoosterCore reference count increment
+
+   if(Error_None != pBoosterShellNew->FillAllocations()) {
+      // TODO: we might move the call to FillAllocations to be more lazy incase the caller doesn't use it all
+      BoosterShell::Free(pBoosterShellNew);
+      return Error_OutOfMemory;
+   }
+
+   LOG_0(TraceLevelInfo, "Exited CreateBoosterView");
+
+   *boosterHandleViewOut = pBoosterShellNew->GetHandle();
+   return Error_None;
+}
+
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,

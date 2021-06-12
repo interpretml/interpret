@@ -489,6 +489,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE BoosterHandle EBM_NATIVE_CALLING_CONVENTION Cre
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams
 );
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBoosterView(
+   BoosterHandle boosterHandle,
+   BoosterHandle * boosterHandleViewOut
+);
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelUpdate(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,

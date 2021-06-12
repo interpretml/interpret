@@ -996,6 +996,9 @@ TEST_CASE("classification with 1 possible target, boosting") {
    CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
    CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
+   BoosterHandle boosterHandle1;
+   CreateBoosterView(boosterHandle, &boosterHandle1);
+
    FloatEbmType gain = 9.99;
    const IntEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
@@ -1009,6 +1012,9 @@ TEST_CASE("classification with 1 possible target, boosting") {
    CHECK(0 == retGenerate);
    CHECK(0 == gain);
 
+   BoosterHandle boosterHandle2;
+   CreateBoosterView(boosterHandle, &boosterHandle2);
+
    IntEbmType countCuts = 1;
    IntEbmType cutIndexes[1];
    IntEbmType retCuts = GetModelUpdateCuts(
@@ -1020,11 +1026,20 @@ TEST_CASE("classification with 1 possible target, boosting") {
    CHECK(0 == retCuts);
    CHECK(0 == countCuts);
 
+   BoosterHandle boosterHandle3;
+   CreateBoosterView(boosterHandle2, &boosterHandle3);
+
    IntEbmType retGetModel = GetModelUpdateExpanded(boosterHandle, nullptr);
    CHECK(0 == retGetModel);
 
+   BoosterHandle boosterHandle4;
+   CreateBoosterView(boosterHandle3, &boosterHandle4);
+
    IntEbmType retSetModel = SetModelUpdateExpanded(boosterHandle, 0, nullptr);
    CHECK(0 == retSetModel);
+
+   BoosterHandle boosterHandle5;
+   CreateBoosterView(boosterHandle4, &boosterHandle5);
 
    FloatEbmType metric = 9.99;
    const IntEbmType retApply = ApplyModelUpdate(
@@ -1034,10 +1049,19 @@ TEST_CASE("classification with 1 possible target, boosting") {
    CHECK(0 == retApply);
    CHECK(0 == metric);
 
+   BoosterHandle boosterHandle6;
+   CreateBoosterView(boosterHandle1, &boosterHandle6);
+
    CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
    CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
+   FreeBooster(boosterHandle6);
+   FreeBooster(boosterHandle4);
+   FreeBooster(boosterHandle2);
    FreeBooster(boosterHandle);
+   FreeBooster(boosterHandle1);
+   FreeBooster(boosterHandle3);
+   FreeBooster(boosterHandle5);
 }
 
 TEST_CASE("features with 1 state in various positions, boosting") {
@@ -1829,4 +1853,3 @@ TEST_CASE("Random splitting, no cuts, binary, sums") {
    // we're generating updates from gradient sums, which isn't good, so we expect a bad result
    CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529f, double { 1e-1 });
 }
-

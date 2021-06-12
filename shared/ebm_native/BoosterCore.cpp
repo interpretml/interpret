@@ -115,20 +115,23 @@ SegmentedTensor ** BoosterCore::InitializeSegmentedTensors(
 void BoosterCore::Free(BoosterCore * const pBoosterCore) {
    LOG_0(TraceLevelInfo, "Entered BoosterCore::Free");
    if(nullptr != pBoosterCore) {
-      pBoosterCore->m_trainingSet.Destruct();
-      pBoosterCore->m_validationSet.Destruct();
-
-      SamplingSet::FreeSamplingSets(pBoosterCore->m_cSamplingSets, pBoosterCore->m_apSamplingSets);
-      free(pBoosterCore->m_aValidationWeights);
-
-      FeatureGroup::FreeFeatureGroups(pBoosterCore->m_cFeatureGroups, pBoosterCore->m_apFeatureGroups);
-
-      free(pBoosterCore->m_aFeatures);
-
-      DeleteSegmentedTensors(pBoosterCore->m_cFeatureGroups, pBoosterCore->m_apCurrentModel);
-      DeleteSegmentedTensors(pBoosterCore->m_cFeatureGroups, pBoosterCore->m_apBestModel);
-
-      free(pBoosterCore);
+      // for reference counting in general, a release is needed during the decrement and aquire is needed if freeing
+      // https://www.boost.org/doc/libs/1_59_0/doc/html/atomic/usage_examples.html
+      // We need to ensure that writes on this thread are not allowed to be re-ordered to a point below the 
+      // decrement because if we happened to decrement to 2, and then get interrupted, and annother thread
+      // decremented to 1 after us, we don't want our unclean writes to memory to be visible in the other thread
+      // so we use memory_order_release on the decrement.
+      if(size_t { 1 } == pBoosterCore->m_REFERENCE_COUNT.fetch_sub(1, std::memory_order_release)) {
+         // we need to ensure that reads on this thread do not get reordered to a point before the decrement, otherwise
+         // another thread might write some information, write the decrement to 2, then our thread decrements to 1
+         // and then if we're allowed to read from data that occured before our decrement to 1 then we could have
+         // stale data from before the other thread decrementing.  If our thread isn't freeing the memory though
+         // we don't have to worry about staleness, so only use memory_order_acquire if we're going to delete the
+         // object
+         std::atomic_thread_fence(std::memory_order_acquire);
+         LOG_0(TraceLevelInfo, "INFO BoosterCore::Free deleting BoosterCore");
+         delete pBoosterCore;
+      }
    }
    LOG_0(TraceLevelInfo, "Exited BoosterCore::Free");
 }
@@ -181,12 +184,21 @@ BoosterCore * BoosterCore::Create(
 
    LOG_0(TraceLevelInfo, "Entered BoosterCore::Create thread started");
 
-   BoosterCore * const pBoosterCore = EbmMalloc<BoosterCore>();
-   if(UNLIKELY(nullptr == pBoosterCore)) {
+   BoosterCore * pBoosterCore;
+   try {
+      pBoosterCore = new BoosterCore();
+   } catch(const std::bad_alloc &) {
+      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create Out of memory allocating BoosterCore");
+      return nullptr;
+   } catch(...) {
+      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create Unknown error");
+      return nullptr;
+   }
+   if(nullptr == pBoosterCore) {
+      // this should be impossible since bad_alloc should have been thrown, but let's be untrusting
       LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == pBoosterCore");
       return nullptr;
    }
-   pBoosterCore->InitializeZero();
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 

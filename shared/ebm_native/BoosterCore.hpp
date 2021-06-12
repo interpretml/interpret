@@ -8,6 +8,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
+#include <atomic>
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -32,6 +33,14 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class BoosterCore final {
+
+   // std::atomic_size_t used to be standard layout and trivial, but the C++ standard comitee judged that an error
+   // and revoked the trivial nature of the class.  So, this means our BoosterCore class needs to have a constructor 
+   // and destructor
+   // https://stackoverflow.com/questions/48794325/why-stdatomic-is-not-trivial-type-in-only-visual-c
+   // https://stackoverflow.com/questions/41308372/stdatomic-for-built-in-types-non-lock-free-vs-trivial-destructor
+   std::atomic_size_t m_REFERENCE_COUNT;
+
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
    size_t m_cFeatures;
@@ -39,9 +48,6 @@ class BoosterCore final {
 
    size_t m_cFeatureGroups;
    FeatureGroup ** m_apFeatureGroups;
-
-   DataSetBoosting m_trainingSet;
-   DataSetBoosting m_validationSet;
 
    size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
@@ -57,6 +63,9 @@ class BoosterCore final {
 
    RandomStream m_randomStream;
 
+   DataSetBoosting m_trainingSet;
+   DataSetBoosting m_validationSet;
+
    static void DeleteSegmentedTensors(const size_t cFeatureGroups, SegmentedTensor ** const apSegmentedTensors);
 
    static SegmentedTensor ** InitializeSegmentedTensors(
@@ -65,37 +74,51 @@ class BoosterCore final {
       const size_t cVectorLength
    );
 
-public:
 
-   BoosterCore() = default; // preserve our POD status
-   ~BoosterCore() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
+   INLINE_ALWAYS ~BoosterCore() {
+      // this only gets called after our reference count has been decremented to zero
 
-   INLINE_ALWAYS void InitializeZero() {
-      m_runtimeLearningTypeOrCountTargetClasses = 0;
+      m_trainingSet.Destruct();
+      m_validationSet.Destruct();
 
-      m_cFeatures = 0;
-      m_aFeatures = nullptr;
+      SamplingSet::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
+      free(m_aValidationWeights);
 
-      m_cFeatureGroups = 0;
-      m_apFeatureGroups = nullptr;
+      FeatureGroup::FreeFeatureGroups(m_cFeatureGroups, m_apFeatureGroups);
 
+      free(m_aFeatures);
+
+      DeleteSegmentedTensors(m_cFeatureGroups, m_apCurrentModel);
+      DeleteSegmentedTensors(m_cFeatureGroups, m_apBestModel);
+   };
+
+   INLINE_ALWAYS BoosterCore() noexcept :
+      m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
+      m_runtimeLearningTypeOrCountTargetClasses(0),
+      m_cFeatures(0),
+      m_aFeatures(nullptr),
+      m_cFeatureGroups(0),
+      m_apFeatureGroups(nullptr),
+      m_cSamplingSets(0),
+      m_apSamplingSets(nullptr),
+      m_validationWeightTotal(0),
+      m_aValidationWeights(nullptr),
+      m_apCurrentModel(nullptr),
+      m_apBestModel(nullptr),
+      m_bestModelMetric(0),
+      m_cBytesArrayEquivalentSplitMax(0)    {
       m_trainingSet.InitializeZero();
       m_validationSet.InitializeZero();
-
-      m_cSamplingSets = 0;
-      m_apSamplingSets = nullptr;
-      m_validationWeightTotal = 0;
-      m_aValidationWeights = nullptr;
-
-      m_apCurrentModel = nullptr;
-      m_apBestModel = nullptr;
-
-      m_bestModelMetric = FloatEbmType { 0 };
-
-      m_cBytesArrayEquivalentSplitMax = size_t { 0 };
    }
+
+public:
+
+   INLINE_ALWAYS void AddReferenceCount() {
+      // incrementing reference counts can be relaxed memory order since we're guaranteed to be above 1, 
+      // so no result will change our behavior below
+      // https://www.boost.org/doc/libs/1_59_0/doc/html/atomic/usage_examples.html
+      m_REFERENCE_COUNT.fetch_add(1, std::memory_order_relaxed);
+   };
 
    INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() const {
       return m_runtimeLearningTypeOrCountTargetClasses;
@@ -182,12 +205,6 @@ public:
       const FloatEbmType * const aValidationPredictorScores
    );
 };
-static_assert(std::is_standard_layout<BoosterCore>::value,
-   "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<BoosterCore>::value,
-   "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<BoosterCore>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME
 

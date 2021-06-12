@@ -5,6 +5,7 @@
       GetTraceLevelString;
       CreateClassificationBooster;
       CreateRegressionBooster;
+      CreateBoosterView;
       GenerateModelUpdate;
       GetModelUpdateCuts;
       GetModelUpdateExpanded;
