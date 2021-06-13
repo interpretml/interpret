@@ -355,7 +355,7 @@ class Native:
             # int64_t * sampleCountsOut
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.StratifiedSamplingWithoutReplacement.restype = ct.c_int64
+        self._unsafe.StratifiedSamplingWithoutReplacement.restype = ct.c_int32
 
         self._unsafe.GenerateQuantileCuts.argtypes = [
             # int64_t countSamples
