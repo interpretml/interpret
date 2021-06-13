@@ -8,6 +8,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
+#include <atomic>
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -26,34 +27,51 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class InteractionCore final {
+
+   // std::atomic_size_t used to be standard layout and trivial, but the C++ standard comitee judged that an error
+   // and revoked the trivial nature of the class.  So, this means our BoosterCore class needs to have a constructor 
+   // and destructor
+   // https://stackoverflow.com/questions/48794325/why-stdatomic-is-not-trivial-type-in-only-visual-c
+   // https://stackoverflow.com/questions/41308372/stdatomic-for-built-in-types-non-lock-free-vs-trivial-destructor
+   std::atomic_size_t m_REFERENCE_COUNT;
+
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
    size_t m_cFeatures;
    Feature * m_aFeatures;
 
-   DataSetInteraction m_dataFrame;
-
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
+   
+   DataSetInteraction m_dataFrame;
+
+   INLINE_ALWAYS ~InteractionCore() {
+      // this only gets called after our reference count has been decremented to zero
+
+      m_dataFrame.Destruct();
+      free(m_aFeatures);
+   };
+
+   INLINE_ALWAYS InteractionCore() noexcept :
+      m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
+      m_runtimeLearningTypeOrCountTargetClasses(0),
+      m_cFeatures(0),
+      m_aFeatures(nullptr),
+
+      m_cLogEnterMessages(0),
+      m_cLogExitMessages(0)
+   {
+      m_dataFrame.InitializeZero();
+   }
 
 public:
 
-   InteractionCore() = default; // preserve our POD status
-   ~InteractionCore() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
-
-   INLINE_ALWAYS void InitializeZero() {
-      m_runtimeLearningTypeOrCountTargetClasses = 0;
-
-      m_cFeatures = 0;
-      m_aFeatures = nullptr;
-
-      m_dataFrame.InitializeZero();
-
-      m_cLogEnterMessages = 0;
-      m_cLogExitMessages = 0;
-   }
+   INLINE_ALWAYS void AddReferenceCount() {
+      // incrementing reference counts can be relaxed memory order since we're guaranteed to be above 1, 
+      // so no result will change our behavior below
+      // https://www.boost.org/doc/libs/1_59_0/doc/html/atomic/usage_examples.html
+      m_REFERENCE_COUNT.fetch_add(1, std::memory_order_relaxed);
+   };
 
    INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() {
       return m_runtimeLearningTypeOrCountTargetClasses;
@@ -80,7 +98,7 @@ public:
    }
 
    static void Free(InteractionCore * const pInteractionCore);
-   static InteractionCore * Allocate(
+   static InteractionCore * Create(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cFeatures,
       const FloatEbmType * const optionalTempParams,
@@ -93,12 +111,6 @@ public:
       const FloatEbmType * const aPredictorScores
    );
 };
-static_assert(std::is_standard_layout<InteractionCore>::value,
-   "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<InteractionCore>::value,
-   "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<InteractionCore>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME
 

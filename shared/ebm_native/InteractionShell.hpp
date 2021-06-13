@@ -14,6 +14,8 @@
 
 #include "ebm_internal.hpp"
 
+#include "InteractionCore.hpp"
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
@@ -22,6 +24,12 @@ namespace DEFINED_ZONE_NAME {
 struct HistogramBucketBase;
 
 class InteractionShell final {
+   static constexpr size_t k_handleVerificationOk = 27917; // random 15 bit number
+   static constexpr size_t k_handleVerificationFreed = 27913; // random 15 bit number
+   size_t m_handleVerification; // this needs to be at the top and make it pointer sized to keep best alignment
+
+   InteractionCore * m_pInteractionCore;
+
    HistogramBucketBase * m_aThreadByteBuffer1;
    size_t m_cThreadByteBufferCapacity1;
 
@@ -33,12 +41,49 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS void InitializeZero() {
+      m_handleVerification = k_handleVerificationOk;
+      m_pInteractionCore = nullptr;
+
       m_aThreadByteBuffer1 = nullptr;
       m_cThreadByteBufferCapacity1 = 0;
    }
 
    static void Free(InteractionShell * const pInteractionShell);
-   static InteractionShell * Allocate();
+   static InteractionShell * Create();
+
+   static INLINE_ALWAYS InteractionShell * GetInteractionShellFromInteractionDetectorHandle(
+      const InteractionDetectorHandle interactionDetectorHandle
+   ) {
+      if(nullptr == interactionDetectorHandle) {
+         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle null interactionDetectorHandle");
+         return nullptr;
+      }
+      InteractionShell * const pInteractionShell = reinterpret_cast<InteractionShell *>(interactionDetectorHandle);
+      if(k_handleVerificationOk == pInteractionShell->m_handleVerification) {
+         return pInteractionShell;
+      }
+      if(k_handleVerificationFreed == pInteractionShell->m_handleVerification) {
+         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle attempt to use freed InteractionHandle");
+      } else {
+         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle attempt to use invalid InteractionHandle");
+      }
+      return nullptr;
+   }
+   INLINE_ALWAYS InteractionDetectorHandle GetHandle() {
+      return reinterpret_cast<InteractionDetectorHandle>(this);
+   }
+
+   INLINE_ALWAYS InteractionCore * GetInteractionCore() {
+      EBM_ASSERT(nullptr != m_pInteractionCore);
+      return m_pInteractionCore;
+   }
+
+   INLINE_ALWAYS void SetInteractionCore(InteractionCore * const pInteractionCore) {
+      EBM_ASSERT(nullptr != pInteractionCore);
+      EBM_ASSERT(nullptr == m_pInteractionCore); // only set it once
+      m_pInteractionCore = pInteractionCore;
+   }
+
    HistogramBucketBase * GetHistogramBucketBase(const size_t cBytesRequired);
 
 };

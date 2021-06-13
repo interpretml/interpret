@@ -74,7 +74,6 @@ class BoosterCore final {
       const size_t cVectorLength
    );
 
-
    INLINE_ALWAYS ~BoosterCore() {
       // this only gets called after our reference count has been decremented to zero
 
@@ -106,7 +105,8 @@ class BoosterCore final {
       m_apCurrentModel(nullptr),
       m_apBestModel(nullptr),
       m_bestModelMetric(0),
-      m_cBytesArrayEquivalentSplitMax(0)    {
+      m_cBytesArrayEquivalentSplitMax(0)
+   {
       m_trainingSet.InitializeZero();
       m_validationSet.InitializeZero();
    }

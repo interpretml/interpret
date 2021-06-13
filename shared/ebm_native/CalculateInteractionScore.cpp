@@ -268,14 +268,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       static_cast<void *>(interactionScoreOut)
    );
 
-   InteractionCore * pInteractionCore = reinterpret_cast<InteractionCore *>(interactionDetectorHandle);
-   if(nullptr == pInteractionCore) {
+   InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromInteractionDetectorHandle(interactionDetectorHandle);
+   if(nullptr == pInteractionShell) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore ebmInteraction cannot be nullptr");
+      // already logged
       return 1;
    }
+   InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
 
    LOG_COUNTED_0(pInteractionCore->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered CalculateInteractionScore");
 
@@ -419,12 +420,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       return 0;
    }
 
-   // TODO : be smarter about our InteractionShell, otherwise why have it?
-   InteractionShell * const pInteractionShell = InteractionShell::Allocate();
-   if(nullptr == pInteractionShell) {
-      return 1;
-   }
-
+   // TODO: remove the pInteractionCore object here.  pInteractionShell contains pInteractionCore
    IntEbmType ret = CalculateInteractionScoreInternal(
       pInteractionShell,
       pInteractionCore,
@@ -432,8 +428,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       cSamplesRequiredForChildSplitMin,
       interactionScoreOut
    );
-
-   InteractionShell::Free(pInteractionShell);
 
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" IntEbmTypePrintf, ret);

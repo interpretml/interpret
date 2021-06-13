@@ -18,7 +18,6 @@
 #include "HistogramTargetEntry.hpp"
 
 #include "BoosterCore.hpp"
-
 #include "BoosterShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -59,6 +58,7 @@ BoosterShell * BoosterShell::Create() {
    }
 
    LOG_0(TraceLevelInfo, "Exited BoosterShell::Create");
+
    return pNew;
 }
 
