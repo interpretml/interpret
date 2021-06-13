@@ -589,6 +589,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    }
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
+   ErrorEbmType error;
    if(IsClassification(m_learningTypeOrCountTargetClasses)) {
       if(m_bNullTrainingPredictionScores) {
          m_trainingPredictionScores.resize(cVectorLength * m_trainingClassificationTargets.size());
@@ -602,7 +603,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       if(m_bNullValidationWeights) {
          m_validationWeights.resize(m_validationClassificationTargets.size());
       }
-      m_boosterHandle = CreateClassificationBooster(
+      error = CreateClassificationBooster(
          k_randomSeed,
          m_learningTypeOrCountTargetClasses,
          m_featuresBinCount.size(),
@@ -622,7 +623,8 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          0 == m_validationWeights.size() ? nullptr : &m_validationWeights[0],
          0 == m_validationPredictionScores.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
-         nullptr
+         nullptr,
+         &m_boosterHandle
       );
    } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
       if(m_bNullTrainingPredictionScores) {
@@ -637,7 +639,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       if(m_bNullValidationWeights) {
          m_validationWeights.resize(m_validationRegressionTargets.size());
       }
-      m_boosterHandle = CreateRegressionBooster(
+      error = CreateRegressionBooster(
          k_randomSeed,
          m_featuresBinCount.size(),
          0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
@@ -656,12 +658,17 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          0 == m_validationWeights.size() ? nullptr : &m_validationWeights[0],
          0 == m_validationPredictionScores.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
-         nullptr
+         nullptr,
+         &m_boosterHandle
       );
    } else {
       exit(1);
    }
 
+   if(Error_None != error) {
+      printf("\nClean exit with nullptr from InitializeBoosting*.\n");
+      exit(1);
+   }
    if(nullptr == m_boosterHandle) {
       printf("\nClean exit with nullptr from InitializeBoosting*.\n");
       exit(1);
@@ -697,7 +704,7 @@ FloatEbmType TestApi::Boost(
 
    FloatEbmType validationMetricOut = FloatEbmType { 0 };
 
-   const IntEbmType retGenerate = GenerateModelUpdate(
+   const ErrorEbmType retGenerate = GenerateModelUpdate(
       m_boosterHandle,
       indexFeatureGroup,
       options,
@@ -706,7 +713,7 @@ FloatEbmType TestApi::Boost(
       0 == leavesMax.size() ? nullptr : &leavesMax[0],
       nullptr
    );
-   if(0 != retGenerate) {
+   if(Error_None != retGenerate) {
       exit(1);
    }
    if(0 != (GenerateUpdateOptions_GradientSums & options)) {
@@ -723,7 +730,7 @@ FloatEbmType TestApi::Boost(
       FloatEbmType * aMem = new FloatEbmType[cValues];
       memset(aMem, 0, sizeof(*aMem) * cValues);
 
-      const IntEbmType retSet = SetModelUpdateExpanded(
+      const ErrorEbmType retSet = SetModelUpdateExpanded(
          m_boosterHandle,
          indexFeatureGroup,
          aMem
@@ -731,16 +738,16 @@ FloatEbmType TestApi::Boost(
 
       delete[] aMem;
 
-      if(0 != retSet) {
+      if(Error_None != retSet) {
          exit(1);
       }
    }
-   const IntEbmType ret = ApplyModelUpdate(
+   const ErrorEbmType ret = ApplyModelUpdate(
       m_boosterHandle,
       &validationMetricOut
    );
 
-   if(0 != ret) {
+   if(Error_None != ret) {
       exit(1);
    }
    return validationMetricOut;
@@ -769,8 +776,8 @@ FloatEbmType TestApi::GetBestModelPredictorScore(
    std::vector<FloatEbmType> model;
    model.resize(multiple);
 
-   const IntEbmType ret = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
-   if(0 != ret) {
+   const ErrorEbmType ret = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   if(Error_None != ret) {
       exit(1);
    }
 
@@ -785,8 +792,8 @@ const void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, Floa
    if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
       exit(1);
    }
-   const IntEbmType ret = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
-   if(0 != ret) {
+   const ErrorEbmType ret = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   if(Error_None != ret) {
       exit(1);
    }
 }
@@ -814,8 +821,8 @@ FloatEbmType TestApi::GetCurrentModelPredictorScore(
    std::vector<FloatEbmType> model;
    model.resize(multiple);
 
-   const IntEbmType ret = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
-   if(0 != ret) {
+   const ErrorEbmType ret = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   if(Error_None != ret) {
       exit(1);
    }
 
@@ -830,8 +837,8 @@ const void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, F
    if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
       exit(1);
    }
-   const IntEbmType ret = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
-   if(0 != ret) {
+   const ErrorEbmType ret = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   if(Error_None != ret) {
       exit(1);
    }
 }

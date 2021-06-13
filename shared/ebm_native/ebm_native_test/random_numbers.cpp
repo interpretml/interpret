@@ -70,7 +70,7 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
          ++classCount[targetClass];
       }
 
-      StratifiedSamplingWithoutReplacement(
+      const ErrorEbmType error = StratifiedSamplingWithoutReplacement(
          randomSeed,
          cClassSize,
          cTrainingSamples,
@@ -78,6 +78,7 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
          targets,
          sampleCounts
       );
+      CHECK(Error_None == error);
 
       // Check the overall correct number of training/validation samples have been returned
       size_t cTrainingSamplesVerified = 0;

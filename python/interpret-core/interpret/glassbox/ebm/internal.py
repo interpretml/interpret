@@ -161,9 +161,8 @@ class Native:
             ct.byref(max_val),
             ct.byref(count_inf)
         )
-
         if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in CutQuantile")
+            raise Native._get_native_exception(return_code, "CutQuantile")
 
         cuts = cuts[:count_cuts.value]
         count_missing = count_missing.value
@@ -239,9 +238,8 @@ class Native:
             cuts,
             discretized
         )
-
         if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in Discretize")
+            raise Native._get_native_exception(return_code, "Discretize")
 
         return discretized
 
@@ -344,7 +342,7 @@ class Native:
             # int64_t * countPositiveInfinityOut
             ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.CutQuantile.restype = ct.c_int64
+        self._unsafe.CutQuantile.restype = ct.c_int32
 
         self._unsafe.CutUniform.argtypes = [
             # int64_t countSamples
@@ -388,7 +386,7 @@ class Native:
             # int64_t * countPositiveInfinityOut
             ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.CutWinsorized.restype = ct.c_int64
+        self._unsafe.CutWinsorized.restype = ct.c_int32
 
 
         self._unsafe.SuggestGraphBounds.argtypes = [
@@ -422,7 +420,7 @@ class Native:
             # int64_t * discretizedOut
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.Discretize.restype = ct.c_int64
+        self._unsafe.Discretize.restype = ct.c_int32
 
 
         self._unsafe.Softmax.argtypes = [
@@ -435,7 +433,7 @@ class Native:
             # double * probabilitiesOut
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.Softmax.restype = ct.c_int64
+        self._unsafe.Softmax.restype = ct.c_int32
 
 
         self._unsafe.CreateClassificationBooster.argtypes = [
@@ -483,8 +481,10 @@ class Native:
             ct.c_int64,
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
+            # double * boosterHandleOut
+            ct.POINTER(ct.c_void_p),
         ]
-        self._unsafe.CreateClassificationBooster.restype = ct.c_void_p
+        self._unsafe.CreateClassificationBooster.restype = ct.c_int32
 
         self._unsafe.CreateRegressionBooster.argtypes = [
             # int32_t randomSeed
@@ -527,8 +527,10 @@ class Native:
             ct.c_int64,
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
+            # double * boosterHandleOut
+            ct.POINTER(ct.c_void_p),
         ]
-        self._unsafe.CreateRegressionBooster.restype = ct.c_void_p
+        self._unsafe.CreateRegressionBooster.restype = ct.c_int32
 
         self._unsafe.GenerateModelUpdate.argtypes = [
             # void * boosterHandle
@@ -546,7 +548,7 @@ class Native:
             # double * gainOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.GenerateModelUpdate.restype = ct.c_int64
+        self._unsafe.GenerateModelUpdate.restype = ct.c_int32
 
         self._unsafe.GetModelUpdateCuts.argtypes = [
             # void * boosterHandle
@@ -558,7 +560,7 @@ class Native:
             # int64_t * cutIndexesOut
             ndpointer(dtype=ct.c_int64, ndim=1),
         ]
-        self._unsafe.GetModelUpdateCuts.restype = ct.c_int64
+        self._unsafe.GetModelUpdateCuts.restype = ct.c_int32
 
         self._unsafe.GetModelUpdateExpanded.argtypes = [
             # void * boosterHandle
@@ -566,7 +568,7 @@ class Native:
             # double * modelFeatureGroupUpdateTensorOut
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.GetModelUpdateExpanded.restype = ct.c_int64
+        self._unsafe.GetModelUpdateExpanded.restype = ct.c_int32
 
         self._unsafe.SetModelUpdateExpanded.argtypes = [
             # void * boosterHandle
@@ -576,7 +578,7 @@ class Native:
             # double * modelFeatureGroupUpdateTensor
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.SetModelUpdateExpanded.restype = ct.c_int64
+        self._unsafe.SetModelUpdateExpanded.restype = ct.c_int32
 
         self._unsafe.ApplyModelUpdate.argtypes = [
             # void * boosterHandle
@@ -584,7 +586,7 @@ class Native:
             # double * validationMetricOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.ApplyModelUpdate.restype = ct.c_int64
+        self._unsafe.ApplyModelUpdate.restype = ct.c_int32
 
         self._unsafe.GetBestModelFeatureGroup.argtypes = [
             # void * boosterHandle
@@ -594,7 +596,7 @@ class Native:
             # double * modelFeatureGroupTensorOut
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.GetBestModelFeatureGroup.restype = ct.c_int64
+        self._unsafe.GetBestModelFeatureGroup.restype = ct.c_int32
 
         self._unsafe.GetCurrentModelFeatureGroup.argtypes = [
             # void * boosterHandle
@@ -604,7 +606,7 @@ class Native:
             # double * modelFeatureGroupTensorOut
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
         ]
-        self._unsafe.GetCurrentModelFeatureGroup.restype = ct.c_int64
+        self._unsafe.GetCurrentModelFeatureGroup.restype = ct.c_int32
 
         self._unsafe.FreeBooster.argtypes = [
             # void * boosterHandle
@@ -870,7 +872,8 @@ class NativeEBMBooster:
 
         # Allocate external resources
         if model_type == "classification":
-            self._booster_handle = self._native._unsafe.CreateClassificationBooster(
+            booster_handle = ct.c_void_p(0)
+            return_code = self._native._unsafe.CreateClassificationBooster(
                 random_state,
                 n_classes,
                 len(features_bin_count),
@@ -891,11 +894,14 @@ class NativeEBMBooster:
                 scores_val,
                 n_inner_bags,
                 optional_temp_params,
+                ct.byref(booster_handle),
             )
-            if not self._booster_handle:  # pragma: no cover
-                raise MemoryError("Out of memory in CreateClassificationBooster")
+            self._booster_handle = booster_handle.value
+            if return_code != 0:  # pragma: no cover
+                raise Native._get_native_exception(return_code, "CreateClassificationBooster")
         elif model_type == "regression":
-            self._booster_handle = self._native._unsafe.CreateRegressionBooster(
+            booster_handle = ct.c_void_p(0)
+            return_code = self._native._unsafe.CreateRegressionBooster(
                 random_state,
                 len(features_bin_count),
                 features_categorical, 
@@ -915,9 +921,11 @@ class NativeEBMBooster:
                 scores_val,
                 n_inner_bags,
                 optional_temp_params,
+                ct.byref(booster_handle),
             )
-            if not self._booster_handle:  # pragma: no cover
-                raise MemoryError("Out of memory in CreateRegressionBooster")
+            self._booster_handle = booster_handle.value
+            if return_code != 0:  # pragma: no cover
+                raise Native._get_native_exception(return_code, "CreateRegressionBooster")
         else:  # pragma: no cover
             raise AttributeError("Unrecognized model_type")
 
@@ -969,7 +977,7 @@ class NativeEBMBooster:
             ct.byref(gain),
         )
         if return_code:  # pragma: no cover
-            raise MemoryError("Out of memory in GenerateModelUpdate")
+            raise Native._get_native_exception(return_code, "GenerateModelUpdate")
             
         self._feature_group_index = feature_group_index
 
@@ -995,7 +1003,7 @@ class NativeEBMBooster:
             ct.byref(metric_output),
         )
         if return_code:  # pragma: no cover
-            raise Exception("Out of memory in ApplyModelUpdate")
+            raise Native._get_native_exception(return_code, "ApplyModelUpdate")
 
         # log.debug("Boosting step end")
         return metric_output.value
@@ -1076,7 +1084,7 @@ class NativeEBMBooster:
             self._booster_handle, feature_group_index, model_feature_group
         )
         if return_code:  # pragma: no cover
-            raise MemoryError("Out of memory in GetBestModelFeatureGroup")
+            raise Native._get_native_exception(return_code, "GetBestModelFeatureGroup")
 
         if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
@@ -1110,7 +1118,7 @@ class NativeEBMBooster:
             self._booster_handle, feature_group_index, model_feature_group
         )
         if return_code:  # pragma: no cover
-            raise MemoryError("Out of memory in GetCurrentModelFeatureGroup")
+            raise Native._get_native_exception(return_code, "GetCurrentModelFeatureGroup")
 
         if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
@@ -1135,7 +1143,7 @@ class NativeEBMBooster:
             cuts
         )
         if return_code:  # pragma: no cover
-            raise MemoryError("Out of memory in GetModelUpdateCuts")
+            raise Native._get_native_exception(return_code, "GetModelUpdateCuts")
 
         cuts = cuts[:count_cuts.value]
         return cuts
@@ -1154,9 +1162,8 @@ class NativeEBMBooster:
         model_update = np.empty(shape, dtype=np.float64, order="C")
 
         return_code = self._native._unsafe.GetModelUpdateExpanded(self._booster_handle, model_update)
-
         if return_code:  # pragma: no cover
-            raise MemoryError("Out of memory in GetModelUpdateExpanded")
+            raise Native._get_native_exception(return_code, "GetModelUpdateExpanded")
 
         if len(self._feature_groups[self._feature_group_index]) == 2:
             if 2 < self._n_classes:
@@ -1190,7 +1197,7 @@ class NativeEBMBooster:
             self._booster_handle, feature_group_index, model_update
         )
         if return_code:  # pragma: no cover
-            raise MemoryError("Out of memory in SetModelUpdateExpanded")
+            raise Native._get_native_exception(return_code, "SetModelUpdateExpanded")
 
         self._feature_group_index = feature_group_index
 

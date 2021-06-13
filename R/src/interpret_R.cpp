@@ -344,7 +344,7 @@ SEXP CutQuantile_R(
       R_alloc(static_cast<size_t>(countCutsIntEbmType), static_cast<int>(sizeof(FloatEbmType))));
    EBM_ASSERT(nullptr != aCutsLowerBoundInclusive); // R_alloc doesn't return nullptr, so we don't need to check aItems
 
-   const IntEbmType error = CutQuantile(
+   const ErrorEbmType error = CutQuantile(
       static_cast<IntEbmType>(cFeatureValues),
       aFeatureValues,
       countSamplesPerBinMinIntEbmType,
@@ -358,7 +358,7 @@ SEXP CutQuantile_R(
       nullptr
    );
 
-   if(0 != error) {
+   if(Error_None != error) {
       return R_NilValue;
    }
 
@@ -435,7 +435,7 @@ SEXP Discretize_R(
          reinterpret_cast<IntEbmType *>(R_alloc(cFeatureValues, static_cast<int>(sizeof(IntEbmType))));
       EBM_ASSERT(nullptr != aDiscretized); // this can't be nullptr since R_alloc uses R error handling
 
-      if(0 != Discretize(
+      if(Error_None != Discretize(
          static_cast<IntEbmType>(cFeatureValues),
          aFeatureValues,
          static_cast<IntEbmType>(cCuts),
@@ -777,7 +777,8 @@ SEXP CreateClassificationBooster_R(
       pValidationWeights = REAL(validationWeights);
    }
 
-   const BoosterHandle boosterHandle = CreateClassificationBooster(
+   BoosterHandle boosterHandle;
+   const ErrorEbmType error = CreateClassificationBooster(
       randomSeedLocal,
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures, 
@@ -797,10 +798,11 @@ SEXP CreateClassificationBooster_R(
       pValidationWeights,
       aValidationPredictorScores,
       countInnerBagsLocal, 
-      nullptr
+      nullptr,
+      &boosterHandle
    );
 
-   if(nullptr == boosterHandle) {
+   if(Error_None != error || nullptr == boosterHandle) {
       return R_NilValue;
    }
 
@@ -1013,7 +1015,8 @@ SEXP CreateRegressionBooster_R(
       pValidationWeights = REAL(validationWeights);
    }
 
-   const BoosterHandle boosterHandle = CreateRegressionBooster(
+   BoosterHandle boosterHandle;
+   const ErrorEbmType error = CreateRegressionBooster(
       randomSeedLocal,
       countFeatures,
       aFeaturesCategorical,
@@ -1032,10 +1035,10 @@ SEXP CreateRegressionBooster_R(
       pValidationWeights, 
       aValidationPredictorScores,
       countInnerBagsLocal, 
-      nullptr
+      nullptr,
+      &boosterHandle
    );
-
-   if(nullptr == boosterHandle) {
+   if(Error_None != error || nullptr == boosterHandle) {
       return R_NilValue;
    }
 
@@ -1124,7 +1127,8 @@ SEXP GenerateModelUpdate_R(
    }
 
    FloatEbmType gainOut;
-   if(0 != GenerateModelUpdate(
+
+   const ErrorEbmType error = GenerateModelUpdate(
       boosterHandle,
       static_cast<IntEbmType>(iFeatureGroup),
       GenerateUpdateOptions_Default,
@@ -1132,7 +1136,8 @@ SEXP GenerateModelUpdate_R(
       countEbmSamplesRequiredForChildSplitMin,
       aLeavesMax,
       &gainOut
-   )) {
+   );
+   if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate_R BoostingStep returned error code");
       return R_NilValue;
    }
@@ -1156,10 +1161,8 @@ SEXP ApplyModelUpdate_R(
    // we don't use boosterHandle in this function, so let ApplyModelUpdate check if it's null or invalid
 
    FloatEbmType validationMetricOut;
-   if(0 != ApplyModelUpdate(
-      boosterHandle,
-      &validationMetricOut
-   )) {
+   const ErrorEbmType error = ApplyModelUpdate(boosterHandle, &validationMetricOut);
+   if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING ApplyModelUpdate_R ApplyModelUpdate returned error code");
       return R_NilValue;
    }
@@ -1224,11 +1227,11 @@ SEXP GetBestModelFeatureGroup_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   const IntEbmType error = GetBestModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   const ErrorEbmType error = GetBestModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 
    UNPROTECT(1);
 
-   if(IntEbmType { 0 } != error) {
+   if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureGroup_R IntEbmType { 0 } != error");
       return R_NilValue;
    }
@@ -1289,11 +1292,11 @@ SEXP GetCurrentModelFeatureGroup_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   const IntEbmType error = GetCurrentModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   const ErrorEbmType error = GetCurrentModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 
    UNPROTECT(1);
 
-   if(IntEbmType { 0 } != error) {
+   if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureGroup_R IntEbmType { 0 } != error");
       return R_NilValue;
    }

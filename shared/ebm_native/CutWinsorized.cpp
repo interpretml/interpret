@@ -38,7 +38,7 @@ static int g_cLogEnterCutWinsorizedParametersMessages = 25;
 static int g_cLogExitCutWinsorizedParametersMessages = 25;
 
 // TODO: add this as a python/R option "winsorized"
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsorized(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsorized(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType * countCutsInOut,
@@ -81,7 +81,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
    IntEbmType countNegativeInfinityRet;
    FloatEbmType maxNonInfinityValueRet;
    IntEbmType countPositiveInfinityRet;
-   IntEbmType ret;
+   ErrorEbmType ret;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
       LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == countCutsInOut");
@@ -90,7 +90,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
       countNegativeInfinityRet = IntEbmType { 0 };
       maxNonInfinityValueRet = FloatEbmType { 0 };
       countPositiveInfinityRet = IntEbmType { 0 };
-      ret = IntEbmType { 1 };
+      ret = Error_IllegalParamValue;
    } else {
       if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
          // if there's 1 sample, then we can't split it, but we'd still want to determine the min, max, etc
@@ -101,10 +101,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
          countNegativeInfinityRet = IntEbmType { 0 };
          maxNonInfinityValueRet = FloatEbmType { 0 };
          countPositiveInfinityRet = IntEbmType { 0 };
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
             LOG_0(TraceLevelError, "ERROR CutWinsorized countSamples < IntEbmType { 0 }");
-            ret = IntEbmType { 1 };
+            ret = Error_IllegalParamValue;
          }
       } else {
          if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
@@ -115,7 +115,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
             countNegativeInfinityRet = IntEbmType { 0 };
             maxNonInfinityValueRet = FloatEbmType { 0 };
             countPositiveInfinityRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_IllegalParamValue;
             goto exit_with_log;
          }
 
@@ -127,7 +127,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
             countNegativeInfinityRet = IntEbmType { 0 };
             maxNonInfinityValueRet = FloatEbmType { 0 };
             countPositiveInfinityRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_IllegalParamValue;
             goto exit_with_log;
          }
 
@@ -142,7 +142,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
             countNegativeInfinityRet = IntEbmType { 0 };
             maxNonInfinityValueRet = FloatEbmType { 0 };
             countPositiveInfinityRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
          const size_t cBytesFeatureValues = sizeof(*featureValues) * cSamplesIncludingMissingValues;
@@ -176,10 +176,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
 
             if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
                free(aFeatureValues);
-               ret = IntEbmType { 0 };
+               ret = Error_None;
                if(UNLIKELY(countCuts < IntEbmType { 0 })) {
                   LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts can't be negative.");
-                  ret = IntEbmType { 1 };
+                  ret = Error_IllegalParamValue;
                }
                goto exit_with_log;
             }
@@ -187,7 +187,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
             if(UNLIKELY(!IsNumberConvertable<size_t>(countCuts))) {
                LOG_0(TraceLevelWarning, "WARNING CutWinsorized !IsNumberConvertable<size_t>(countCuts)");
                free(aFeatureValues);
-               ret = IntEbmType { 1 };
+               ret = Error_IllegalParamValue;
                goto exit_with_log;
             }
             const size_t cCuts = static_cast<size_t>(countCuts);
@@ -195,7 +195,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
             if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
                LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts was too large to fit into cutsLowerBoundInclusiveOut");
                free(aFeatureValues);
-               ret = IntEbmType { 1 };
+               ret = Error_IllegalParamValue;
                goto exit_with_log;
             }
 
@@ -203,7 +203,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
                // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
                LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == cutsLowerBoundInclusiveOut");
                free(aFeatureValues);
-               ret = IntEbmType { 1 };
+               ret = Error_IllegalParamValue;
                goto exit_with_log;
             }
 
@@ -489,7 +489,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
             }
          }
          free(aFeatureValues);
-         ret = IntEbmType { 0 };
+         ret = Error_None;
       }
 
    exit_with_log:;
@@ -525,7 +525,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsor
       "countNegativeInfinity=%" IntEbmTypePrintf ", "
       "maxNonInfinityValue=%" FloatEbmTypePrintf ", "
       "countPositiveInfinity=%" IntEbmTypePrintf ", "
-      "return=%" IntEbmTypePrintf
+      "return=%" ErrorEbmTypePrintf
       ,
       countCutsRet,
       countMissingValuesRet,

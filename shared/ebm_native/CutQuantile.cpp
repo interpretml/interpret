@@ -815,7 +815,7 @@ static void BuildNeighbourhoodPlan(
    EBM_ASSERT(!pCutCur->IsCut());
 }
 
-static bool CutCuttingRange(
+static ErrorEbmType CutCuttingRange(
    std::set<CutPoint *, CompareCutPoint> * const pBestCuts,
 
    const size_t cSamples,
@@ -1488,17 +1488,20 @@ static bool CutCuttingRange(
             pBestCuts->insert(pCutHighPriorityCur);
          }
       }
+   } catch(const std::bad_alloc &) {
+      LOG_0(TraceLevelWarning, "WARNING CutSegment out of memory");
+      return Error_OutOfMemory;
    } catch(...) {
       LOG_0(TraceLevelWarning, "WARNING CutSegment exception");
-      return true;
+      return Error_UnexpectedInternal;
    }
 
    IronCuts();
 
-   return false;
+   return Error_None;
 }
 
-static bool TreeSearchCutSegment(
+static ErrorEbmType TreeSearchCutSegment(
    std::set<CutPoint *, CompareCutPoint> * pBestCuts,
 
    const size_t cSamples,
@@ -1675,9 +1678,12 @@ static bool TreeSearchCutSegment(
 
          pCutCenter = pCutCenter->m_pNext;
       } while(pCutNext != pCutCenter);
+   } catch(const std::bad_alloc &) {
+      LOG_0(TraceLevelWarning, "WARNING TreeSearchCutSegment out of memory exception");
+      return Error_OutOfMemory;
    } catch(...) {
       LOG_0(TraceLevelWarning, "WARNING TreeSearchCutSegment exception");
-      return true;
+      return Error_UnexpectedInternal;
    }
 
    return CutCuttingRange(
@@ -1691,7 +1697,7 @@ static bool TreeSearchCutSegment(
    );
 }
 
-INLINE_RELEASE_UNTEMPLATED static bool TradeCutSegment(
+INLINE_RELEASE_UNTEMPLATED static ErrorEbmType TradeCutSegment(
    std::set<CutPoint *, CompareCutPoint> * const pBestCuts,
 
    const size_t cSamples,
@@ -2454,7 +2460,7 @@ INLINE_RELEASE_UNTEMPLATED static size_t GetUncuttableRangeLengthMin(
 static int g_cLogEnterCutQuantileParametersMessages = 25;
 static int g_cLogExitCutQuantileParametersMessages = 25;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuantile(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuantile(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
@@ -2509,7 +2515,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
    IntEbmType countNegativeInfinityRet;
    FloatEbmType maxNonInfinityValueRet;
    IntEbmType countPositiveInfinityRet;
-   IntEbmType ret;
+   ErrorEbmType ret;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
       LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == countCutsInOut");
@@ -2519,7 +2525,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
       countNegativeInfinityRet = IntEbmType { 0 };
       maxNonInfinityValueRet = FloatEbmType { 0 };
       countPositiveInfinityRet = IntEbmType { 0 };
-      ret = IntEbmType { 1 };
+      ret = Error_IllegalParamValue;
    } else {
       if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
          // if there's 1 sample, then we can't split it, but we'd still want to determine the min, max, etc
@@ -2531,10 +2537,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
          countNegativeInfinityRet = IntEbmType { 0 };
          maxNonInfinityValueRet = FloatEbmType { 0 };
          countPositiveInfinityRet = IntEbmType { 0 };
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
             LOG_0(TraceLevelError, "ERROR CutQuantile countSamples < IntEbmType { 0 }");
-            ret = IntEbmType { 1 };
+            ret = Error_IllegalParamValue;
          }
       } else {
          if(UNLIKELY(nullptr == featureValues)) {
@@ -2546,7 +2552,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             countNegativeInfinityRet = IntEbmType { 0 };
             maxNonInfinityValueRet = FloatEbmType { 0 };
             countPositiveInfinityRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_IllegalParamValue;
             goto exit_with_log;
          }
 
@@ -2559,7 +2565,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             countNegativeInfinityRet = IntEbmType { 0 };
             maxNonInfinityValueRet = FloatEbmType { 0 };
             countPositiveInfinityRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_IllegalParamValue;
             goto exit_with_log;
          }
 
@@ -2575,7 +2581,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             countNegativeInfinityRet = IntEbmType { 0 };
             maxNonInfinityValueRet = FloatEbmType { 0 };
             countPositiveInfinityRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
          const size_t cBytesFeatureValues = sizeof(*featureValues) * cSamplesIncludingMissingValues;
@@ -2606,7 +2612,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             // we can't really split 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
             // or if there was only 1 non-missing value
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
 
@@ -2616,10 +2622,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
          if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             if(UNLIKELY(countCuts < IntEbmType { 0 })) {
                LOG_0(TraceLevelError, "ERROR CutQuantile countCuts can't be negative.");
-               ret = IntEbmType { 1 };
+               ret = Error_IllegalParamValue;
             }
             goto exit_with_log;
          }
@@ -2630,7 +2636,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
 
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_IllegalParamValue;
 
             goto exit_with_log;
          }
@@ -2650,7 +2656,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
 
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
 
@@ -2686,7 +2692,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCutsMax, std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
 
@@ -2713,7 +2719,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
          if(UNLIKELY(size_t { 0 } == cCuttingRanges)) {
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
 
@@ -2721,7 +2727,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cSamples, sizeof(NeighbourJump))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
          const size_t cBytesNeighbourJumps = cSamples * sizeof(NeighbourJump);
@@ -2741,7 +2747,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCutsWithEndpointsMax, sizeof(CutPoint))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
          const size_t cBytesCuts = cCutsWithEndpointsMax * sizeof(CutPoint);
@@ -2750,7 +2756,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCuttingRanges, sizeof(CuttingRange))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
          const size_t cBytesCuttingRanges = cCuttingRanges * sizeof(CuttingRange);
@@ -2763,7 +2769,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
          const size_t cBytesToCuts = cBytesToValueCutPointers + cBytesValueCutPointers;
@@ -2772,7 +2778,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToCuts, cBytesCuts))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
          const size_t cBytesToCuttingRange = cBytesToCuts + cBytesCuts;
@@ -2781,7 +2787,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
          const size_t cBytesToEnd = cBytesToCuttingRange + cBytesCuttingRanges;
@@ -2791,7 +2797,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             LOG_0(TraceLevelWarning, "WARNING CutQuantile nullptr == pMem");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_OutOfMemory;
             goto exit_with_log;
          }
 
@@ -2884,7 +2890,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
 #endif // NEVER
 
                   FillTiebreakers(bSymmetryReversal, &randomStream, cRanges - size_t { 1 }, aCuts + 1);
-                  if(TradeCutSegment(
+
+                  ret = TradeCutSegment(
                      &bestCuts,
                      cSamples,
                      bSymmetryReversal,
@@ -2895,14 +2902,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
                      cRanges,
                      // for efficiency we include space for the end point cuts even if they don't exist
                      aCuts
-                  )) {
+                  );
+                  if(Error_None != ret) {
                      // any error messages should have been written to the log inside TradeCutSegment
 
                      free(pMem);
                      free(aFeatureValues);
 
                      countCutsRet = IntEbmType { 0 };
-                     ret = IntEbmType { 1 };
                      goto exit_with_log;
                   }
 
@@ -3051,6 +3058,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
                   }
                }
             } while(!priorityQueue.empty());
+         } catch(const std::bad_alloc &) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile out of memory");
+
+            free(pMem);
+            free(aFeatureValues);
+
+            countCutsRet = IntEbmType { 0 };
+            ret = Error_OutOfMemory;
+            goto exit_with_log;
          } catch(...) {
             LOG_0(TraceLevelWarning, "WARNING CutQuantile exception");
 
@@ -3058,7 +3074,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
             free(aFeatureValues);
 
             countCutsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
+            ret = Error_UnexpectedInternal;
             goto exit_with_log;
          }
 
@@ -3271,7 +3287,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
          free(pMem);
          free(aFeatureValues);
 
-         ret = IntEbmType { 0 };
+         ret = Error_None;
       }
 
    exit_with_log:;
@@ -3307,7 +3323,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutQuanti
       "countNegativeInfinity=%" IntEbmTypePrintf ", "
       "maxNonInfinityValue=%" FloatEbmTypePrintf ", "
       "countPositiveInfinity=%" IntEbmTypePrintf ", "
-      "return=%" IntEbmTypePrintf
+      "return=%" ErrorEbmTypePrintf
       ,
       countCutsRet,
       countMissingValuesRet,

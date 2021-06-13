@@ -199,7 +199,7 @@ public:
    bool MultiplyAndCheckForIssues(const FloatEbmType v);
    bool Expand(const FeatureGroup * const pFeatureGroup);
    void AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues);
-   bool Add(const SegmentedTensor & rhs);
+   ErrorEbmType Add(const SegmentedTensor & rhs);
 
 #ifndef NDEBUG
    bool IsEqual(const SegmentedTensor & rhs) const;

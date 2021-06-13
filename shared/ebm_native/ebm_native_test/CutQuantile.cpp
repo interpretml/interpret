@@ -104,7 +104,7 @@ void TestQuantileBinning(
    );
 
    IntEbmType countCuts = countCutsMax;
-   IntEbmType ret = CutQuantile(
+   ErrorEbmType ret = CutQuantile(
       featureValues1.size(),
       0 == featureValues1.size() ? nullptr : &featureValues1[0],
       countSamplesPerBinMin,
@@ -117,7 +117,7 @@ void TestQuantileBinning(
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
 
    CHECK(illegalVal == cutsLowerBoundInclusive[0]);
    for(size_t iCheck = static_cast<size_t>(countCuts) + 1; iCheck < cCutsMax + 2; ++iCheck) {
@@ -155,7 +155,7 @@ void TestQuantileBinning(
          &maxNonInfinityValue,
          &countPositiveInfinity
       );
-      CHECK(0 == ret);
+      CHECK(Error_None == ret);
 
       CHECK(illegalVal == cutsLowerBoundInclusive[0]);
       for(size_t iCheck = static_cast<size_t>(countCuts) + 1; iCheck < cCutsMax + 2; ++iCheck) {
@@ -1334,7 +1334,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * countSamples);
 
          IntEbmType countCutsForward = static_cast<IntEbmType>(cCuts);
-         IntEbmType ret = CutQuantile(
+         ErrorEbmType ret = CutQuantile(
             countSamples,
             featureValuesForward,
             countSamplesPerBinMin,
@@ -1347,7 +1347,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
             &maxNonInfinityValue,
             &countPositiveInfinity
          );
-         CHECK(0 == ret);
+         CHECK(Error_None == ret);
 
          CHECK(countMissingValuesExpected == countMissingValues);
          CHECK(minNonInfinityValueExpected == minNonInfinityValue);
@@ -1384,7 +1384,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
             &maxNonInfinityValue,
             &countPositiveInfinity
          );
-         CHECK(0 == ret);
+         CHECK(Error_None == ret);
 
          CHECK(countMissingValuesExpected == countMissingValues);
          CHECK(-maxNonInfinityValueExpected == minNonInfinityValue);
@@ -1529,7 +1529,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
       memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * cSamples);
 
       IntEbmType countCutsForward = static_cast<IntEbmType>(cCuts);
-      IntEbmType ret = CutQuantile(
+      ErrorEbmType ret = CutQuantile(
          countSamples,
          featureValuesForward,
          countSamplesPerBinMin,
@@ -1542,7 +1542,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          &maxNonInfinityValue,
          &countPositiveInfinity
       );
-      CHECK(0 == ret);
+      CHECK(Error_None == ret);
 
       CHECK(countMissingValuesExpected == countMissingValues);
       CHECK(minNonInfinityValueExpected == minNonInfinityValue);
@@ -1567,7 +1567,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          &maxNonInfinityValue,
          &countPositiveInfinity
       );
-      CHECK(0 == ret);
+      CHECK(Error_None == ret);
 
       CHECK(countMissingValuesExpected == countMissingValues);
       CHECK(-maxNonInfinityValueExpected == minNonInfinityValue);

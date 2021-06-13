@@ -13,7 +13,8 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
    IntEbmType featureGroupsDimensionCount[1];
    featureGroupsDimensionCount[0] = 0;
 
-   const BoosterHandle boosterHandle = CreateRegressionBooster(
+   BoosterHandle boosterHandle;
+   ErrorEbmType error = CreateRegressionBooster(
       k_randomSeed,
       0,
       nullptr,
@@ -32,9 +33,12 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr,
       nullptr,
       0,
-      nullptr
+      nullptr,
+      &boosterHandle
    );
-   const IntEbmType retGenerate = GenerateModelUpdate(
+   CHECK(Error_None == error);
+
+   const ErrorEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       IntEbmType { 0 },
       GenerateUpdateOptions_Default,
@@ -43,12 +47,12 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       &k_leavesMaxDefault[0],
       nullptr
    );
-   CHECK(0 == retGenerate);
-   const IntEbmType ret = ApplyModelUpdate(
+   CHECK(Error_None == retGenerate);
+   const ErrorEbmType ret = ApplyModelUpdate(
       boosterHandle,
       nullptr
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    FreeBooster(boosterHandle);
 }
 
@@ -56,7 +60,8 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
    IntEbmType featureGroupsDimensionCount[1];
    featureGroupsDimensionCount[0] = 0;
 
-   const BoosterHandle boosterHandle = CreateClassificationBooster(
+   BoosterHandle boosterHandle;
+   ErrorEbmType error = CreateClassificationBooster(
       k_randomSeed,
       2,
       0,
@@ -76,9 +81,12 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr,
       nullptr,
       0,
-      nullptr
+      nullptr,
+      &boosterHandle
    );
-   const IntEbmType retGenerate = GenerateModelUpdate(
+   CHECK(Error_None == error);
+
+   const ErrorEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       IntEbmType { 0 },
       GenerateUpdateOptions_Default,
@@ -87,12 +95,12 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       &k_leavesMaxDefault[0],
       nullptr
    );
-   CHECK(0 == retGenerate);
-   const IntEbmType ret = ApplyModelUpdate(
+   CHECK(Error_None == retGenerate);
+   const ErrorEbmType ret = ApplyModelUpdate(
       boosterHandle,
       nullptr
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    FreeBooster(boosterHandle);
 }
 
@@ -100,7 +108,8 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
    IntEbmType featureGroupsDimensionCount[1];
    featureGroupsDimensionCount[0] = 0;
 
-   const BoosterHandle boosterHandle = CreateClassificationBooster(
+   BoosterHandle boosterHandle;
+   ErrorEbmType error = CreateClassificationBooster(
       k_randomSeed,
       3,
       0,
@@ -120,9 +129,12 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr,
       nullptr,
       0,
-      nullptr
+      nullptr,
+      &boosterHandle
    );
-   const IntEbmType retGenerate = GenerateModelUpdate(
+   CHECK(Error_None == error);
+
+   const ErrorEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       IntEbmType { 0 },
       GenerateUpdateOptions_Default,
@@ -131,12 +143,12 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       &k_leavesMaxDefault[0],
       nullptr
    );
-   CHECK(0 == retGenerate);
-   const IntEbmType ret = ApplyModelUpdate(
+   CHECK(Error_None == retGenerate);
+   const ErrorEbmType ret = ApplyModelUpdate(
       boosterHandle,
       nullptr
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    FreeBooster(boosterHandle);
 }
 
@@ -887,7 +899,8 @@ TEST_CASE("classification with 0 possible target states, boosting") {
    IntEbmType featureGroupsDimensionCount[1];
    featureGroupsDimensionCount[0] = 0;
 
-   const BoosterHandle boosterHandle = CreateClassificationBooster(
+   BoosterHandle boosterHandle;
+   ErrorEbmType error = CreateClassificationBooster(
       k_randomSeed,
       0,
       0,
@@ -907,14 +920,16 @@ TEST_CASE("classification with 0 possible target states, boosting") {
       nullptr,
       nullptr,
       0,
-      nullptr
+      nullptr,
+      &boosterHandle
    );
+   CHECK(Error_None == error);
 
-   CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
-   CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(Error_None == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(Error_None == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
    FloatEbmType gain = 9.99;
-   const IntEbmType retGenerate = GenerateModelUpdate(
+   const ErrorEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       IntEbmType { 0 },
       GenerateUpdateOptions_Default,
@@ -923,36 +938,36 @@ TEST_CASE("classification with 0 possible target states, boosting") {
       &k_leavesMaxDefault[0],
       &gain
    );
-   CHECK(0 == retGenerate);
+   CHECK(Error_None == retGenerate);
    CHECK(0 == gain);
 
    IntEbmType countCuts = 0;
    IntEbmType cutIndexes[1];
-   IntEbmType retCuts = GetModelUpdateCuts(
+   const ErrorEbmType retCuts = GetModelUpdateCuts(
       boosterHandle,
       0,
       &countCuts,
       cutIndexes
    );
-   CHECK(1 == retCuts); // we have no dimensions, so 0 is invalid
+   CHECK(Error_IllegalParamValue == retCuts); // we have no dimensions, so 0 is invalid
    CHECK(0 == countCuts);
    
-   IntEbmType retGetModel = GetModelUpdateExpanded(boosterHandle, nullptr);
-   CHECK(0 == retGetModel);
+   ErrorEbmType retGetModel = GetModelUpdateExpanded(boosterHandle, nullptr);
+   CHECK(Error_None == retGetModel);
 
-   IntEbmType retSetModel = SetModelUpdateExpanded(boosterHandle, 0, nullptr);
-   CHECK(0 == retSetModel);
+   const ErrorEbmType retSetModel = SetModelUpdateExpanded(boosterHandle, 0, nullptr);
+   CHECK(Error_None == retSetModel);
 
    FloatEbmType metric = 9.99;
-   const IntEbmType retApply = ApplyModelUpdate(
+   const ErrorEbmType retApply = ApplyModelUpdate(
       boosterHandle,
       &metric
    );
-   CHECK(0 == retApply);
+   CHECK(Error_None == retApply);
    CHECK(0 == metric);
 
-   CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
-   CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(Error_None == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(Error_None == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
    FreeBooster(boosterHandle);
 }
@@ -970,7 +985,8 @@ TEST_CASE("classification with 1 possible target, boosting") {
    IntEbmType featureGroupsFeatureIndexes[1];
    featureGroupsFeatureIndexes[0] = 0;
 
-   const BoosterHandle boosterHandle = CreateClassificationBooster(
+   BoosterHandle boosterHandle;
+   ErrorEbmType error = CreateClassificationBooster(
       k_randomSeed,
       1,
       1,
@@ -990,17 +1006,19 @@ TEST_CASE("classification with 1 possible target, boosting") {
       nullptr,
       nullptr,
       0,
-      nullptr
+      nullptr,
+      &boosterHandle
    );
+   CHECK(Error_None == error);
 
-   CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
-   CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(Error_None == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(Error_None == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
    BoosterHandle boosterHandle1;
    CreateBoosterView(boosterHandle, &boosterHandle1);
 
    FloatEbmType gain = 9.99;
-   const IntEbmType retGenerate = GenerateModelUpdate(
+   const ErrorEbmType retGenerate = GenerateModelUpdate(
       boosterHandle,
       IntEbmType { 0 },
       GenerateUpdateOptions_Default,
@@ -1009,7 +1027,7 @@ TEST_CASE("classification with 1 possible target, boosting") {
       &k_leavesMaxDefault[0],
       &gain
    );
-   CHECK(0 == retGenerate);
+   CHECK(Error_None == retGenerate);
    CHECK(0 == gain);
 
    BoosterHandle boosterHandle2;
@@ -1017,43 +1035,43 @@ TEST_CASE("classification with 1 possible target, boosting") {
 
    IntEbmType countCuts = 1;
    IntEbmType cutIndexes[1];
-   IntEbmType retCuts = GetModelUpdateCuts(
+   const ErrorEbmType retCuts = GetModelUpdateCuts(
       boosterHandle,
       0,
       &countCuts,
       cutIndexes
    );
-   CHECK(0 == retCuts);
+   CHECK(Error_None == retCuts);
    CHECK(0 == countCuts);
 
    BoosterHandle boosterHandle3;
    CreateBoosterView(boosterHandle2, &boosterHandle3);
 
-   IntEbmType retGetModel = GetModelUpdateExpanded(boosterHandle, nullptr);
-   CHECK(0 == retGetModel);
+   ErrorEbmType retGetModel = GetModelUpdateExpanded(boosterHandle, nullptr);
+   CHECK(Error_None == retGetModel);
 
    BoosterHandle boosterHandle4;
    CreateBoosterView(boosterHandle3, &boosterHandle4);
 
-   IntEbmType retSetModel = SetModelUpdateExpanded(boosterHandle, 0, nullptr);
-   CHECK(0 == retSetModel);
+   const ErrorEbmType retSetModel = SetModelUpdateExpanded(boosterHandle, 0, nullptr);
+   CHECK(Error_None == retSetModel);
 
    BoosterHandle boosterHandle5;
    CreateBoosterView(boosterHandle4, &boosterHandle5);
 
    FloatEbmType metric = 9.99;
-   const IntEbmType retApply = ApplyModelUpdate(
+   const ErrorEbmType retApply = ApplyModelUpdate(
       boosterHandle,
       &metric
    );
-   CHECK(0 == retApply);
+   CHECK(Error_None == retApply);
    CHECK(0 == metric);
 
    BoosterHandle boosterHandle6;
    CreateBoosterView(boosterHandle1, &boosterHandle6);
 
-   CHECK(0 == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
-   CHECK(0 == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(Error_None == GetBestModelFeatureGroup(boosterHandle, 0, nullptr));
+   CHECK(Error_None == GetCurrentModelFeatureGroup(boosterHandle, 0, nullptr));
 
    FreeBooster(boosterHandle6);
    FreeBooster(boosterHandle4);

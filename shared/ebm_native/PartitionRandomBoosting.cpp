@@ -36,7 +36,7 @@ public:
 
    PartitionRandomBoostingInternal() = delete; // this is a static class.  Do not construct
 
-   static bool Func(
+   static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const GenerateUpdateOptionsType options,
@@ -110,7 +110,7 @@ public:
 
             if(IsAddError(cSlicesTotal, cPossibleCutLocations)) {
                LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cSlicesTotal, cPossibleCutLocations)");
-               return true;
+               return Error_OutOfMemory;
             }
             const size_t cSlicesPlusRandom = cSlicesTotal + cPossibleCutLocations;
             cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesPlusRandom);
@@ -133,7 +133,7 @@ public:
 
       if(IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))) {
          LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))");
-         return true;
+         return Error_OutOfMemory;
       }
       const size_t cBytesSlicesPlusRandom = cSlicesPlusRandomMax * sizeof(size_t);
 
@@ -144,7 +144,7 @@ public:
             TraceLevelWarning,
             "WARNING PartitionRandomBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells)"
          );
-         return true;
+         return Error_OutOfMemory;
       }
 
       // our allocated histogram is bigger since it has more elements and the elements contain a size_t
@@ -156,7 +156,7 @@ public:
       cCollapsedTensorCells *= cBytesPerHistogramBucket;
       if(IsAddError(cBytesSlices, cCollapsedTensorCells)) {
          LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
-         return true;
+         return Error_OutOfMemory;
       }
       const size_t cBytesSlicesAndCollapsedTensor = cBytesSlices + cCollapsedTensorCells;
 
@@ -166,7 +166,7 @@ public:
       char * const pBuffer = static_cast<char *>(malloc(cBytesBuffer));
       if(UNLIKELY(nullptr == pBuffer)) {
          LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal nullptr == pBuffer");
-         return true;
+         return Error_OutOfMemory;
       }
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
@@ -462,7 +462,7 @@ public:
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cFirstCuts))) {
          LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal SetCountDivisions(0, cFirstCuts)");
          free(pBuffer);
-         return true;
+         return Error_OutOfMemory;
       }
       const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       if(LIKELY(size_t { 0 } != cFirstCuts)) {
@@ -492,7 +492,7 @@ public:
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2)) {
                LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2)");
                free(pBuffer);
-               return true;
+               return Error_OutOfMemory;
             }
             if(pcItemsInNextSliceLast != pcBytesInSlice2) {
                ActiveDataType * pDivision = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(iDivision);
@@ -594,7 +594,7 @@ public:
 
       free(pBuffer);
       *pTotalGain = gain;
-      return false;
+      return Error_None;
    }
 };
 
@@ -604,7 +604,7 @@ public:
 
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static bool Func(
+   INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const GenerateUpdateOptionsType options,
@@ -645,7 +645,7 @@ public:
 
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static bool Func(
+   INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const GenerateUpdateOptionsType options,
@@ -667,7 +667,7 @@ public:
    }
 };
 
-extern bool PartitionRandomBoosting(
+extern ErrorEbmType PartitionRandomBoosting(
    BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup,
    const GenerateUpdateOptionsType options,

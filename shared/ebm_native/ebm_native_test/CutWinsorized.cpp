@@ -25,7 +25,7 @@ TEST_CASE("CutWinsorized, 0 samples") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -36,7 +36,7 @@ TEST_CASE("CutWinsorized, 0 samples") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -66,7 +66,7 @@ TEST_CASE("CutWinsorized, only missing") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -77,7 +77,7 @@ TEST_CASE("CutWinsorized, only missing") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(2 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -107,7 +107,7 @@ TEST_CASE("CutWinsorized, one item") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -118,7 +118,7 @@ TEST_CASE("CutWinsorized, one item") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -148,7 +148,7 @@ TEST_CASE("CutWinsorized, zero cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -159,7 +159,7 @@ TEST_CASE("CutWinsorized, zero cuts") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -189,7 +189,7 @@ TEST_CASE("CutWinsorized, one cut, identical values") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -200,7 +200,7 @@ TEST_CASE("CutWinsorized, one cut, identical values") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(1 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -230,7 +230,7 @@ TEST_CASE("CutWinsorized, one cut, even") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -241,7 +241,7 @@ TEST_CASE("CutWinsorized, one cut, even") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -271,7 +271,7 @@ TEST_CASE("CutWinsorized, one cut, odd") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -282,7 +282,7 @@ TEST_CASE("CutWinsorized, one cut, odd") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -312,7 +312,7 @@ TEST_CASE("CutWinsorized, one cut, even, two loops") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -323,7 +323,7 @@ TEST_CASE("CutWinsorized, one cut, even, two loops") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -353,7 +353,7 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -364,7 +364,7 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -394,7 +394,7 @@ TEST_CASE("CutWinsorized, one cut, even, two loops, exit up") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -405,7 +405,7 @@ TEST_CASE("CutWinsorized, one cut, even, two loops, exit up") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(2 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -435,7 +435,7 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -446,7 +446,7 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(4 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -476,7 +476,7 @@ TEST_CASE("CutWinsorized, one cut, even, two loops, exit down") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -487,7 +487,7 @@ TEST_CASE("CutWinsorized, one cut, even, two loops, exit down") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -517,7 +517,7 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -528,7 +528,7 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -558,7 +558,7 @@ TEST_CASE("CutWinsorized, one cut, -infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -569,7 +569,7 @@ TEST_CASE("CutWinsorized, one cut, -infinity") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(2 == countNegativeInfinity);
@@ -599,7 +599,7 @@ TEST_CASE("CutWinsorized, one cut, +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -610,7 +610,7 @@ TEST_CASE("CutWinsorized, one cut, +infinity") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -640,7 +640,7 @@ TEST_CASE("CutWinsorized, one cut, -infinity and +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -651,7 +651,7 @@ TEST_CASE("CutWinsorized, one cut, -infinity and +infinity") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(1 == countNegativeInfinity);
@@ -681,7 +681,7 @@ TEST_CASE("CutWinsorized, outer test, cuts both sides") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -692,7 +692,7 @@ TEST_CASE("CutWinsorized, outer test, cuts both sides") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -722,7 +722,7 @@ TEST_CASE("CutWinsorized, outer test, cut bottom") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -733,7 +733,7 @@ TEST_CASE("CutWinsorized, outer test, cut bottom") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -763,7 +763,7 @@ TEST_CASE("CutWinsorized, outer test, cut top") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -774,7 +774,7 @@ TEST_CASE("CutWinsorized, outer test, cut top") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -804,7 +804,7 @@ TEST_CASE("CutWinsorized, outer test, no cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -815,7 +815,7 @@ TEST_CASE("CutWinsorized, outer test, no cuts") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -845,7 +845,7 @@ TEST_CASE("CutWinsorized, center, one transition") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -856,7 +856,7 @@ TEST_CASE("CutWinsorized, center, one transition") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -886,7 +886,7 @@ TEST_CASE("CutWinsorized, center, two transitions") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -897,7 +897,7 @@ TEST_CASE("CutWinsorized, center, two transitions") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(1 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -927,7 +927,7 @@ TEST_CASE("CutWinsorized, two cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -938,7 +938,7 @@ TEST_CASE("CutWinsorized, two cuts") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -968,7 +968,7 @@ TEST_CASE("CutWinsorized, three cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -979,7 +979,7 @@ TEST_CASE("CutWinsorized, three cuts") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -1009,7 +1009,7 @@ TEST_CASE("CutWinsorized, four cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -1020,7 +1020,7 @@ TEST_CASE("CutWinsorized, four cuts") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(0 == minNonInfinityValue);
    CHECK(0 == countNegativeInfinity);
@@ -1055,7 +1055,7 @@ TEST_CASE("CutWinsorized, one cut, -infinity, lowest, max, and +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -1066,7 +1066,7 @@ TEST_CASE("CutWinsorized, one cut, -infinity, lowest, max, and +infinity") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(std::numeric_limits<FloatEbmType>::lowest() == minNonInfinityValue);
    CHECK(1 == countNegativeInfinity);
@@ -1101,7 +1101,7 @@ TEST_CASE("CutWinsorized, one cut, -infinity, lowest + 1, max - 1, and +infinity
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -1112,7 +1112,7 @@ TEST_CASE("CutWinsorized, one cut, -infinity, lowest + 1, max - 1, and +infinity
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), 0)
       == minNonInfinityValue);
@@ -1149,7 +1149,7 @@ TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest, max, and +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -1160,7 +1160,7 @@ TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest, max, and +infinity") {
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(std::numeric_limits<FloatEbmType>::lowest() == minNonInfinityValue);
    CHECK(1 == countNegativeInfinity);
@@ -1199,7 +1199,7 @@ TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest + 1, max - 1, and +infinity"
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   IntEbmType ret = CutWinsorized(
+   ErrorEbmType ret = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
@@ -1210,7 +1210,7 @@ TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest + 1, max - 1, and +infinity"
       &maxNonInfinityValue,
       &countPositiveInfinity
    );
-   CHECK(0 == ret);
+   CHECK(Error_None == ret);
    CHECK(0 == countMissingValues);
    CHECK(std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), 0)
       == minNonInfinityValue);

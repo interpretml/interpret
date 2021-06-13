@@ -476,7 +476,7 @@ void SegmentedTensor::AddExpandedWithBadValueProtection(const FloatEbmType * con
 
 // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops 
 //   without needing to super-optimize it
-bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
+ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
    DimensionInfoStack dimensionStack[k_cDimensionsMax];
 
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
@@ -494,7 +494,7 @@ bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
          ++pFrom;
       } while(pToEnd != pTo);
 
-      return false;
+      return Error_None;
    }
 
    if(m_bExpanded) {
@@ -570,12 +570,12 @@ bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
 
    if(IsMultiplyError(cNewValues, m_cVectorLength)) {
       LOG_0(TraceLevelWarning, "WARNING Add IsMultiplyError(cNewValues, m_cVectorLength)");
-      return true;
+      return Error_OutOfMemory;
    }
    // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
    if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
       LOG_0(TraceLevelWarning, "WARNING Add EnsureValueCapacity(cNewValues * m_cVectorLength)");
-      return true;
+      return Error_OutOfMemory;
    }
 
    const FloatEbmType * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
@@ -698,7 +698,7 @@ bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
       // before set set all our pointers
       if(UNLIKELY(SetCountDivisions(iDimension, cNewDivisions))) {
          LOG_0(TraceLevelWarning, "WARNING Add SetCountDivisions(iDimension, cNewDivisions)");
-         return true;
+         return Error_OutOfMemory;
       }
 
       const ActiveDataType * p1Cur = &pDimension1Cur->m_aDivisions[cOriginalDivisionsBeforeSetting];
@@ -751,7 +751,7 @@ bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
       ++pDimensionInfoStackCur;
       ++iDimension;
    } while(iDimension != m_cDimensions);
-   return false;
+   return Error_None;
 }
 
 #ifndef NDEBUG
