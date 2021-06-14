@@ -161,7 +161,7 @@ class Native:
             ct.byref(max_val),
             ct.byref(count_inf)
         )
-        if return_code != 0:  # pragma: no cover
+        if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "CutQuantile")
 
         cuts = cuts[:count_cuts.value]
@@ -220,7 +220,7 @@ class Native:
             ct.byref(low_graph_bound),
             ct.byref(high_graph_bound),
         )
-        if return_code != 0:  # pragma: no cover
+        if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "SuggestGraphBounds")
 
         return low_graph_bound.value, high_graph_bound.value
@@ -238,7 +238,7 @@ class Native:
             cuts,
             discretized
         )
-        if return_code != 0:  # pragma: no cover
+        if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "Discretize")
 
         return discretized
@@ -481,7 +481,7 @@ class Native:
             ct.c_int64,
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
-            # double * boosterHandleOut
+            # BoosterHandle * boosterHandleOut
             ct.POINTER(ct.c_void_p),
         ]
         self._unsafe.CreateClassificationBooster.restype = ct.c_int32
@@ -527,7 +527,7 @@ class Native:
             ct.c_int64,
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
-            # double * boosterHandleOut
+            # BoosterHandle * boosterHandleOut
             ct.POINTER(ct.c_void_p),
         ]
         self._unsafe.CreateRegressionBooster.restype = ct.c_int32
@@ -638,8 +638,10 @@ class Native:
             ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
+            # InteractionHandle * interactionHandleOut
+            ct.POINTER(ct.c_void_p),
         ]
-        self._unsafe.CreateClassificationInteractionDetector.restype = ct.c_void_p
+        self._unsafe.CreateClassificationInteractionDetector.restype = ct.c_int32
 
         self._unsafe.CreateRegressionInteractionDetector.argtypes = [
             # int64_t countFeatures
@@ -661,8 +663,10 @@ class Native:
             ndpointer(dtype=ct.c_double, ndim=1),
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
+            # InteractionHandle * interactionHandleOut
+            ct.POINTER(ct.c_void_p),
         ]
-        self._unsafe.CreateRegressionInteractionDetector.restype = ct.c_void_p
+        self._unsafe.CreateRegressionInteractionDetector.restype = ct.c_int32
 
         self._unsafe.CalculateInteractionScore.argtypes = [
             # void * interactionHandle
@@ -676,7 +680,7 @@ class Native:
             # double * interactionScoreOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.CalculateInteractionScore.restype = ct.c_int64
+        self._unsafe.CalculateInteractionScore.restype = ct.c_int32
 
         self._unsafe.FreeInteractionDetector.argtypes = [
             # void * interactionHandle
@@ -871,8 +875,8 @@ class NativeEBMBooster:
             )
 
         # Allocate external resources
+        booster_handle = ct.c_void_p(0)
         if model_type == "classification":
-            booster_handle = ct.c_void_p(0)
             return_code = self._native._unsafe.CreateClassificationBooster(
                 random_state,
                 n_classes,
@@ -896,11 +900,9 @@ class NativeEBMBooster:
                 optional_temp_params,
                 ct.byref(booster_handle),
             )
-            self._booster_handle = booster_handle.value
-            if return_code != 0:  # pragma: no cover
+            if return_code:  # pragma: no cover
                 raise Native._get_native_exception(return_code, "CreateClassificationBooster")
         elif model_type == "regression":
-            booster_handle = ct.c_void_p(0)
             return_code = self._native._unsafe.CreateRegressionBooster(
                 random_state,
                 len(features_bin_count),
@@ -923,11 +925,12 @@ class NativeEBMBooster:
                 optional_temp_params,
                 ct.byref(booster_handle),
             )
-            self._booster_handle = booster_handle.value
-            if return_code != 0:  # pragma: no cover
+            if return_code:  # pragma: no cover
                 raise Native._get_native_exception(return_code, "CreateRegressionBooster")
         else:  # pragma: no cover
             raise AttributeError("Unrecognized model_type")
+
+        self._booster_handle = booster_handle.value
 
         log.info("Allocation boosting end")
 
@@ -1292,8 +1295,9 @@ class NativeEBMInteraction:
             )
 
         # Allocate external resources
+        interaction_handle = ct.c_void_p(0)
         if model_type == "classification":
-            self._interaction_handle = self._native._unsafe.CreateClassificationInteractionDetector(
+            return_code = self._native._unsafe.CreateClassificationInteractionDetector(
                 n_classes,
                 len(features_bin_count),
                 features_categorical, 
@@ -1304,13 +1308,12 @@ class NativeEBMInteraction:
                 w,
                 scores,
                 optional_temp_params,
+                ct.byref(interaction_handle),
             )
-            if not self._interaction_handle:  # pragma: no cover
-                raise MemoryError(
-                    "Out of memory in CreateClassificationInteractionDetector"
-                )
+            if return_code:  # pragma: no cover
+                raise Native._get_native_exception(return_code, "CreateClassificationInteractionDetector")
         elif model_type == "regression":
-            self._interaction_handle = self._native._unsafe.CreateRegressionInteractionDetector(
+            return_code = self._native._unsafe.CreateRegressionInteractionDetector(
                 len(features_bin_count),
                 features_categorical, 
                 features_bin_count,
@@ -1320,11 +1323,14 @@ class NativeEBMInteraction:
                 w,
                 scores,
                 optional_temp_params,
+                ct.byref(interaction_handle),
             )
-            if not self._interaction_handle:  # pragma: no cover
-                raise MemoryError("Out of memory in CreateRegressionInteractionDetector")
+            if return_code:  # pragma: no cover
+                raise Native._get_native_exception(return_code, "CreateRegressionInteractionDetector")
         else:  # pragma: no cover
             raise AttributeError("Unrecognized model_type")
+
+        self._interaction_handle = interaction_handle.value
 
         log.info("Allocation interaction end")
 
@@ -1345,8 +1351,8 @@ class NativeEBMInteraction:
             min_samples_leaf,
             ct.byref(score),
         )
-        if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in CalculateInteractionScore")
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "CalculateInteractionScore")
 
         log.info("Fast interaction score end")
         return score.value

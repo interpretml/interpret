@@ -410,6 +410,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateC
       static_cast<const void *>(optionalTempParams),
       static_cast<const void *>(boosterHandleOut)
    );
+
    if(nullptr == boosterHandleOut) {
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster nullptr == boosterHandleOut");
       return Error_IllegalParamValue;

@@ -989,6 +989,7 @@ void TestApi::InitializeInteraction() {
    }
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
+   ErrorEbmType error;
    if(IsClassification(m_learningTypeOrCountTargetClasses)) {
       if(m_bNullInteractionPredictionScores) {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionClassificationTargets.size());
@@ -996,7 +997,7 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionWeights) {
          m_interactionWeights.resize(m_interactionClassificationTargets.size());
       }
-      m_interactionHandle = CreateClassificationInteractionDetector(
+      error = CreateClassificationInteractionDetector(
          m_learningTypeOrCountTargetClasses,
          m_featuresBinCount.size(),
          0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
@@ -1006,7 +1007,8 @@ void TestApi::InitializeInteraction() {
          0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0],
          0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0],
          0 == m_interactionPredictionScores.size() ? nullptr : &m_interactionPredictionScores[0],
-         nullptr
+         nullptr,
+         &m_interactionHandle
       );
    } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
       if(m_bNullInteractionPredictionScores) {
@@ -1015,7 +1017,7 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionWeights) {
          m_interactionWeights.resize(m_interactionRegressionTargets.size());
       }
-      m_interactionHandle = CreateRegressionInteractionDetector(
+      error = CreateRegressionInteractionDetector(
          m_featuresBinCount.size(),
          0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
          0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
@@ -1024,13 +1026,19 @@ void TestApi::InitializeInteraction() {
          0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0],
          0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0],
          0 == m_interactionPredictionScores.size() ? nullptr : &m_interactionPredictionScores[0],
-         nullptr
+         nullptr,
+         &m_interactionHandle
       );
    } else {
       exit(1);
    }
 
+   if(Error_None != error) {
+      printf("\nClean exit with nullptr from InitializeInteraction*.\n");
+      exit(1);
+   }
    if(nullptr == m_interactionHandle) {
+      printf("\nClean exit with nullptr from InitializeInteraction*.\n");
       exit(1);
    }
    m_stage = Stage::InitializedInteraction;
@@ -1053,14 +1061,14 @@ FloatEbmType TestApi::InteractionScore(
    }
 
    FloatEbmType interactionScoreOut = FloatEbmType { 0 };
-   const IntEbmType ret = CalculateInteractionScore(
+   const ErrorEbmType ret = CalculateInteractionScore(
       m_interactionHandle,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
       countSamplesRequiredForChildSplitMin,
       &interactionScoreOut
    );
-   if(0 != ret) {
+   if(Error_None != ret) {
       exit(1);
    }
    return interactionScoreOut;

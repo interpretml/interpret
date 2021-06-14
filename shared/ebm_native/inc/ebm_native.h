@@ -538,7 +538,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 );
 
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const BoolEbmType * featuresCategorical,
@@ -548,9 +548,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionHandle EBM_NATIVE_CALLING_CONVENTION
    const IntEbmType * targets,
    const FloatEbmType * weights,
    const FloatEbmType * predictorScores,
-   const FloatEbmType * optionalTempParams
+   const FloatEbmType * optionalTempParams,
+   InteractionHandle * interactionHandleOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
    IntEbmType countFeatures, 
    const BoolEbmType * featuresCategorical,
    const IntEbmType * featuresBinCount,
@@ -559,9 +560,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionHandle EBM_NATIVE_CALLING_CONVENTION
    const FloatEbmType * targets,
    const FloatEbmType * weights,
    const FloatEbmType * predictorScores,
-   const FloatEbmType * optionalTempParams
+   const FloatEbmType * optionalTempParams,
+   InteractionHandle * interactionHandleOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
    InteractionHandle interactionHandle, 
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,

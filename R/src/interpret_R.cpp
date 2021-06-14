@@ -1422,7 +1422,8 @@ SEXP CreateClassificationInteractionDetector_R(
       pWeights = REAL(weights);
    }
 
-   const InteractionHandle interactionHandle = CreateClassificationInteractionDetector(
+   InteractionHandle interactionHandle;
+   const ErrorEbmType error = CreateClassificationInteractionDetector(
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures,
       aFeaturesCategorical,
@@ -1432,10 +1433,11 @@ SEXP CreateClassificationInteractionDetector_R(
       aTargets,
       pWeights,
       aPredictorScores,
-      nullptr
+      nullptr,
+      &interactionHandle
    );
 
-   if(nullptr == interactionHandle) {
+   if(Error_None != error || nullptr == interactionHandle) {
       return R_NilValue;
    }
 
@@ -1537,7 +1539,8 @@ SEXP CreateRegressionInteractionDetector_R(
       pWeights = REAL(weights);
    }
 
-   const InteractionHandle interactionHandle = CreateRegressionInteractionDetector(
+   InteractionHandle interactionHandle;
+   const ErrorEbmType error = CreateRegressionInteractionDetector(
       countFeatures, 
       aFeaturesCategorical,
       aFeaturesBinCount,
@@ -1546,13 +1549,14 @@ SEXP CreateRegressionInteractionDetector_R(
       aTargets, 
       pWeights,
       aPredictorScores,
-      nullptr
+      nullptr,
+      &interactionHandle
    );
 
-   if(nullptr == interactionHandle) {
+   if(Error_None != error || nullptr == interactionHandle) {
       return R_NilValue;
    }
-   
+
    SEXP interactionHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
    PROTECT(interactionHandleWrapped);
 
@@ -1609,7 +1613,7 @@ SEXP CalculateInteractionScore_R(
    }
 
    FloatEbmType interactionScoreOut;
-   if(0 != CalculateInteractionScore(interactionHandle, countDimensions, aFeatureIndexes, countEbmSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
+   if(Error_None != CalculateInteractionScore(interactionHandle, countDimensions, aFeatureIndexes, countEbmSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R CalculateInteractionScore returned error code");
       return R_NilValue;
    }

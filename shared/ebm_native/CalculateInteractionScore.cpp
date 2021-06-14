@@ -50,7 +50,7 @@ extern FloatEbmType PartitionTwoDimensionalInteraction(
 #endif // NDEBUG
 );
 
-static bool CalculateInteractionScoreInternal(
+static ErrorEbmType CalculateInteractionScoreInternal(
    InteractionShell * const pInteractionShell,
    InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
@@ -93,7 +93,7 @@ static bool CalculateInteractionScoreInternal(
          // we don't know what group of features our caller will give us for calculating the interaction scores,
          // so we need to check if our caller gave us a tensor that overflows multiplication
          LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cTotalBucketsMainSpace, cBins)");
-         return true;
+         return Error_OutOfMemory;
       }
       cTotalBucketsMainSpace *= cBins;
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -107,7 +107,7 @@ static bool CalculateInteractionScoreInternal(
       cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
    if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
-      return true;
+      return Error_OutOfMemory;
    }
    const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
@@ -118,12 +118,12 @@ static bool CalculateInteractionScoreInternal(
          TraceLevelWarning,
          "WARNING CalculateInteractionScoreInternal GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
       );
-      return true;
+      return Error_OutOfMemory;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
-      return true;
+      return Error_OutOfMemory;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
@@ -131,7 +131,7 @@ static bool CalculateInteractionScoreInternal(
    HistogramBucketBase * const aHistogramBuckets = pInteractionShell->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal nullptr == aHistogramBuckets");
-      return true;
+      return Error_OutOfMemory;
    }
 
    if(bClassification) {
@@ -241,7 +241,7 @@ static bool CalculateInteractionScoreInternal(
 #endif // NDEBUG
 
    LOG_0(TraceLevelVerbose, "Exited CalculateInteractionScoreInternal");
-   return false;
+   return Error_None;
 }
 
 // we made this a global because if we had put this variable inside the InteractionCore object, then we would need to dereference that before getting 
@@ -249,7 +249,7 @@ static bool CalculateInteractionScoreInternal(
 // count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static int g_cLogCalculateInteractionScoreParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
    InteractionHandle interactionHandle,
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
@@ -274,7 +274,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          *interactionScoreOut = FloatEbmType { 0 };
       }
       // already logged
-      return 1;
+      return Error_IllegalParamValue;
    }
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
 
@@ -285,21 +285,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          *interactionScoreOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countDimensions must be positive");
-      return 1;
+      return Error_IllegalParamValue;
    }
    if(0 != countDimensions && nullptr == featureIndexes) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes cannot be nullptr if 0 < countDimensions");
-      return 1;
+      return Error_IllegalParamValue;
    }
    if(!IsNumberConvertable<size_t>(countDimensions)) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countDimensions too large to index");
-      return 1;
+      return Error_IllegalParamValue;
    }
    size_t cDimensions = static_cast<size_t>(countDimensions);
    if(0 == cDimensions) {
@@ -309,7 +309,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          // caler be smarter about this condition
          *interactionScoreOut = FloatEbmType { 0 };
       }
-      return 0;
+      return Error_None;
    }
    if(0 == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
@@ -319,7 +319,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          // caler be smarter about this condition
          *interactionScoreOut = 0;
       }
-      return 0;
+      return Error_None;
    }
 
    size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
@@ -345,14 +345,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
             *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value cannot be negative");
-         return 1;
+         return Error_IllegalParamValue;
       }
       if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value too big to reference memory");
-         return 1;
+         return Error_IllegalParamValue;
       }
       const size_t iFeature = static_cast<size_t>(indexFeatureInterop);
       if(pInteractionCore->GetCountFeatures() <= iFeature) {
@@ -360,7 +360,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
             *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value must be less than the number of features");
-         return 1;
+         return Error_IllegalParamValue;
       }
       const Feature * const pFeature = &aFeatures[iFeature];
       if(pFeature->GetCountBins() <= size_t { 1 }) {
@@ -370,7 +370,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
             *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore feature group contains a feature with only 1 bin");
-         return IntEbmType { 0 };
+         return Error_None;
       }
       ++pFeatureIndexes;
    } while(pFeatureIndexesEnd != pFeatureIndexes);
@@ -378,7 +378,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    if(k_cDimensionsMax < cDimensions) {
       // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore k_cDimensionsMax < cDimensions");
-      return 1;
+      return Error_OutOfMemory;
    }
 
    // TODO: instead of putting the FeatureGroup into a character buffer, consider putting k_cDimensionsMax
@@ -417,20 +417,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          // interactions or anything else.  We return 0 since interactions have no benefit
          *interactionScoreOut = FloatEbmType { 0 };
       }
-      return 0;
+      return Error_None;
    }
 
    // TODO: remove the pInteractionCore object here.  pInteractionShell contains pInteractionCore
-   IntEbmType ret = CalculateInteractionScoreInternal(
+   ErrorEbmType ret = CalculateInteractionScoreInternal(
       pInteractionShell,
       pInteractionCore,
       pFeatureGroup,
       cSamplesRequiredForChildSplitMin,
       interactionScoreOut
    );
-
-   if(0 != ret) {
-      LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" IntEbmTypePrintf, ret);
+   if(Error_None != ret) {
+      LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" ErrorEbmTypePrintf, ret);
    }
 
    if(nullptr != interactionScoreOut) {
