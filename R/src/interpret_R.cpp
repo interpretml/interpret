@@ -105,13 +105,13 @@ void BoostingFinalizer(SEXP boosterHandleWrapped) {
    }
 }
 
-void InteractionFinalizer(SEXP interactionDetectorHandleWrapped) {
-   EBM_ASSERT(nullptr != interactionDetectorHandleWrapped); // shouldn't be possible
-   if(EXTPTRSXP == TYPEOF(interactionDetectorHandleWrapped)) {
-      const InteractionDetectorHandle interactionDetectorHandle = static_cast<InteractionDetectorHandle>(R_ExternalPtrAddr(interactionDetectorHandleWrapped));
-      if(nullptr != interactionDetectorHandle) {
-         FreeInteractionDetector(interactionDetectorHandle);
-         R_ClearExternalPtr(interactionDetectorHandleWrapped);
+void InteractionFinalizer(SEXP interactionHandleWrapped) {
+   EBM_ASSERT(nullptr != interactionHandleWrapped); // shouldn't be possible
+   if(EXTPTRSXP == TYPEOF(interactionHandleWrapped)) {
+      const InteractionHandle interactionHandle = static_cast<InteractionHandle>(R_ExternalPtrAddr(interactionHandleWrapped));
+      if(nullptr != interactionHandle) {
+         FreeInteractionDetector(interactionHandle);
+         R_ClearExternalPtr(interactionHandleWrapped);
       }
    }
 }
@@ -1422,7 +1422,7 @@ SEXP CreateClassificationInteractionDetector_R(
       pWeights = REAL(weights);
    }
 
-   const InteractionDetectorHandle interactionDetectorHandle = CreateClassificationInteractionDetector(
+   const InteractionHandle interactionHandle = CreateClassificationInteractionDetector(
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures,
       aFeaturesCategorical,
@@ -1435,17 +1435,17 @@ SEXP CreateClassificationInteractionDetector_R(
       nullptr
    );
 
-   if(nullptr == interactionDetectorHandle) {
+   if(nullptr == interactionHandle) {
       return R_NilValue;
    }
 
-   SEXP interactionDetectorHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionDetectorHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-   PROTECT(interactionDetectorHandleWrapped);
+   SEXP interactionHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+   PROTECT(interactionHandleWrapped);
 
-   R_RegisterCFinalizerEx(interactionDetectorHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
+   R_RegisterCFinalizerEx(interactionHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
 
    UNPROTECT(1);
-   return interactionDetectorHandleWrapped;
+   return interactionHandleWrapped;
 }
 
 SEXP CreateRegressionInteractionDetector_R(
@@ -1537,7 +1537,7 @@ SEXP CreateRegressionInteractionDetector_R(
       pWeights = REAL(weights);
    }
 
-   const InteractionDetectorHandle interactionDetectorHandle = CreateRegressionInteractionDetector(
+   const InteractionHandle interactionHandle = CreateRegressionInteractionDetector(
       countFeatures, 
       aFeaturesCategorical,
       aFeaturesBinCount,
@@ -1549,35 +1549,35 @@ SEXP CreateRegressionInteractionDetector_R(
       nullptr
    );
 
-   if(nullptr == interactionDetectorHandle) {
+   if(nullptr == interactionHandle) {
       return R_NilValue;
    }
    
-   SEXP interactionDetectorHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionDetectorHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-   PROTECT(interactionDetectorHandleWrapped);
+   SEXP interactionHandleWrapped = R_MakeExternalPtr(static_cast<void *>(interactionHandle), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+   PROTECT(interactionHandleWrapped);
 
-   R_RegisterCFinalizerEx(interactionDetectorHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
+   R_RegisterCFinalizerEx(interactionHandleWrapped, &InteractionFinalizer, Rboolean::TRUE);
 
    UNPROTECT(1);
-   return interactionDetectorHandleWrapped;
+   return interactionHandleWrapped;
 }
 
 SEXP CalculateInteractionScore_R(
-   SEXP interactionDetectorHandleWrapped,
+   SEXP interactionHandleWrapped,
    SEXP featureIndexes,
    SEXP countSamplesRequiredForChildSplitMin
 ) {
-   EBM_ASSERT(nullptr != interactionDetectorHandleWrapped); // shouldn't be possible
+   EBM_ASSERT(nullptr != interactionHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
 
-   if(EXTPTRSXP != TYPEOF(interactionDetectorHandleWrapped)) {
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R EXTPTRSXP != TYPEOF(interactionDetectorHandleWrapped)");
+   if(EXTPTRSXP != TYPEOF(interactionHandleWrapped)) {
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R EXTPTRSXP != TYPEOF(interactionHandleWrapped)");
       return R_NilValue;
    }
-   InteractionCore * pInteractionCore = static_cast<InteractionCore *>(R_ExternalPtrAddr(interactionDetectorHandleWrapped));
-   if(nullptr == pInteractionCore) {
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R nullptr == pInteractionCore");
+   const InteractionHandle interactionHandle = static_cast<InteractionHandle>(R_ExternalPtrAddr(interactionHandleWrapped));
+   if(nullptr == interactionHandle) {
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R nullptr == interactionHandle");
       return R_NilValue;
    }
 
@@ -1609,7 +1609,7 @@ SEXP CalculateInteractionScore_R(
    }
 
    FloatEbmType interactionScoreOut;
-   if(0 != CalculateInteractionScore(reinterpret_cast<InteractionDetectorHandle>(pInteractionCore), countDimensions, aFeatureIndexes, countEbmSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
+   if(0 != CalculateInteractionScore(interactionHandle, countDimensions, aFeatureIndexes, countEbmSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R CalculateInteractionScore returned error code");
       return R_NilValue;
    }
@@ -1621,9 +1621,9 @@ SEXP CalculateInteractionScore_R(
 }
 
 SEXP FreeInteractionDetector_R(
-   SEXP interactionDetectorHandleWrapped
+   SEXP interactionHandleWrapped
 ) {
-   InteractionFinalizer(interactionDetectorHandleWrapped);
+   InteractionFinalizer(interactionHandleWrapped);
    return R_NilValue;
 }
 

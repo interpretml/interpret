@@ -51,14 +51,14 @@ public:
    static void Free(InteractionShell * const pInteractionShell);
    static InteractionShell * Create();
 
-   static INLINE_ALWAYS InteractionShell * GetInteractionShellFromInteractionDetectorHandle(
-      const InteractionDetectorHandle interactionDetectorHandle
+   static INLINE_ALWAYS InteractionShell * GetInteractionShellFromInteractionHandle(
+      const InteractionHandle interactionHandle
    ) {
-      if(nullptr == interactionDetectorHandle) {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle null interactionDetectorHandle");
+      if(nullptr == interactionHandle) {
+         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle null interactionHandle");
          return nullptr;
       }
-      InteractionShell * const pInteractionShell = reinterpret_cast<InteractionShell *>(interactionDetectorHandle);
+      InteractionShell * const pInteractionShell = reinterpret_cast<InteractionShell *>(interactionHandle);
       if(k_handleVerificationOk == pInteractionShell->m_handleVerification) {
          return pInteractionShell;
       }
@@ -69,8 +69,8 @@ public:
       }
       return nullptr;
    }
-   INLINE_ALWAYS InteractionDetectorHandle GetHandle() {
-      return reinterpret_cast<InteractionDetectorHandle>(this);
+   INLINE_ALWAYS InteractionHandle GetHandle() {
+      return reinterpret_cast<InteractionHandle>(this);
    }
 
    INLINE_ALWAYS InteractionCore * GetInteractionCore() {

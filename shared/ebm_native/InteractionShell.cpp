@@ -66,7 +66,7 @@ HistogramBucketBase * InteractionShell::GetHistogramBucketBase(const size_t cByt
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static InteractionDetectorHandle CreateInteractionDetector(
+static InteractionHandle CreateInteractionDetector(
    const IntEbmType countFeatures,
    const BoolEbmType * const aFeaturesCategorical,
    const IntEbmType * const aFeaturesBinCount,
@@ -150,7 +150,7 @@ static InteractionDetectorHandle CreateInteractionDetector(
    return pInteractionShell->GetHandle();
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
+EBM_NATIVE_IMPORT_EXPORT_BODY InteractionHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const BoolEbmType * featuresCategorical,
@@ -200,7 +200,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   const InteractionDetectorHandle interactionDetectorHandle = CreateInteractionDetector(
+   const InteractionHandle interactionHandle = CreateInteractionDetector(
       countFeatures,
       featuresCategorical,
       featuresBinCount,
@@ -212,11 +212,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
       predictorScores,
       optionalTempParams
    );
-   LOG_N(TraceLevelInfo, "Exited CreateClassificationInteractionDetector %p", static_cast<void *>(interactionDetectorHandle));
-   return interactionDetectorHandle;
+   LOG_N(TraceLevelInfo, "Exited CreateClassificationInteractionDetector %p", static_cast<void *>(interactionHandle));
+   return interactionHandle;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
+EBM_NATIVE_IMPORT_EXPORT_BODY InteractionHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
    IntEbmType countFeatures,
    const BoolEbmType * featuresCategorical,
    const IntEbmType * featuresBinCount,
@@ -248,7 +248,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
       static_cast<const void *>(predictorScores),
       static_cast<const void *>(optionalTempParams)
    );
-   const InteractionDetectorHandle interactionDetectorHandle = CreateInteractionDetector(
+   const InteractionHandle interactionHandle = CreateInteractionDetector(
       countFeatures,
       featuresCategorical,
       featuresBinCount,
@@ -260,16 +260,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY InteractionDetectorHandle EBM_NATIVE_CALLING_CONVE
       predictorScores,
       optionalTempParams
    );
-   LOG_N(TraceLevelInfo, "Exited CreateRegressionInteractionDetector %p", static_cast<void *>(interactionDetectorHandle));
-   return interactionDetectorHandle;
+   LOG_N(TraceLevelInfo, "Exited CreateRegressionInteractionDetector %p", static_cast<void *>(interactionHandle));
+   return interactionHandle;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
-   InteractionDetectorHandle interactionDetectorHandle
+   InteractionHandle interactionHandle
 ) {
-   LOG_N(TraceLevelInfo, "Entered FreeInteractionDetector: interactionDetectorHandle=%p", static_cast<void *>(interactionDetectorHandle));
+   LOG_N(TraceLevelInfo, "Entered FreeInteractionDetector: interactionHandle=%p", static_cast<void *>(interactionHandle));
 
-   InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromInteractionDetectorHandle(interactionDetectorHandle);
+   InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromInteractionHandle(interactionHandle);
    // if the conversion above doesn't work, it'll return null, and our free will not in fact free any memory,
    // but it will not crash. We'll leak memory, but at least we'll log that.
 

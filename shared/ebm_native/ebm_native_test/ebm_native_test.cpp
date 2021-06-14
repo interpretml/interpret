@@ -247,7 +247,7 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
    m_boosterHandle(nullptr),
    m_bNullInteractionWeights(true),
    m_bNullInteractionPredictionScores(true),
-   m_interactionDetectorHandle(nullptr) 
+   m_interactionHandle(nullptr) 
 {
    if(IsClassification(learningTypeOrCountTargetClasses)) {
       if(learningTypeOrCountTargetClasses <= iZeroClassificationLogit) {
@@ -264,8 +264,8 @@ TestApi::~TestApi() {
    if(nullptr != m_boosterHandle) {
       FreeBooster(m_boosterHandle);
    }
-   if(nullptr != m_interactionDetectorHandle) {
-      FreeInteractionDetector(m_interactionDetectorHandle);
+   if(nullptr != m_interactionHandle) {
+      FreeInteractionDetector(m_interactionHandle);
    }
 }
 
@@ -996,7 +996,7 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionWeights) {
          m_interactionWeights.resize(m_interactionClassificationTargets.size());
       }
-      m_interactionDetectorHandle = CreateClassificationInteractionDetector(
+      m_interactionHandle = CreateClassificationInteractionDetector(
          m_learningTypeOrCountTargetClasses,
          m_featuresBinCount.size(),
          0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
@@ -1015,7 +1015,7 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionWeights) {
          m_interactionWeights.resize(m_interactionRegressionTargets.size());
       }
-      m_interactionDetectorHandle = CreateRegressionInteractionDetector(
+      m_interactionHandle = CreateRegressionInteractionDetector(
          m_featuresBinCount.size(),
          0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
          0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
@@ -1030,7 +1030,7 @@ void TestApi::InitializeInteraction() {
       exit(1);
    }
 
-   if(nullptr == m_interactionDetectorHandle) {
+   if(nullptr == m_interactionHandle) {
       exit(1);
    }
    m_stage = Stage::InitializedInteraction;
@@ -1054,7 +1054,7 @@ FloatEbmType TestApi::InteractionScore(
 
    FloatEbmType interactionScoreOut = FloatEbmType { 0 };
    const IntEbmType ret = CalculateInteractionScore(
-      m_interactionDetectorHandle,
+      m_interactionHandle,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
       countSamplesRequiredForChildSplitMin,

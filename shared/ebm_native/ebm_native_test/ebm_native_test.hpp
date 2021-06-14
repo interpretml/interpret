@@ -298,7 +298,7 @@ class TestApi {
    bool m_bNullInteractionWeights;
    bool m_bNullInteractionPredictionScores;
 
-   InteractionDetectorHandle m_interactionDetectorHandle;
+   InteractionHandle m_interactionHandle;
 
    const FloatEbmType * GetPredictorScores(
       const size_t iFeatureGroup,

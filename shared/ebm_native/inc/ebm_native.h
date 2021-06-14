@@ -93,11 +93,11 @@ typedef struct _BoosterHandle {
    char unused;
 } * BoosterHandle;
 
-typedef struct _InteractionDetectorHandle {
+typedef struct _InteractionHandle {
    // this struct exists to enforce that our caller doesn't mix handle types.
    // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
-} * InteractionDetectorHandle;
+} * InteractionHandle;
 
 #ifndef PRId32
 // this should really be defined, but some compilers aren't compliant
@@ -538,7 +538,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 );
 
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionHandle EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const BoolEbmType * featuresCategorical,
@@ -550,7 +550,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionHandle EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
    IntEbmType countFeatures, 
    const BoolEbmType * featuresCategorical,
    const IntEbmType * featuresBinCount,
@@ -562,14 +562,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE InteractionDetectorHandle EBM_NATIVE_CALLING_CO
    const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
-   InteractionDetectorHandle interactionDetectorHandle, 
+   InteractionHandle interactionHandle, 
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
-   InteractionDetectorHandle interactionDetectorHandle
+   InteractionHandle interactionHandle
 );
 
 // TODO PK Implement the following for memory efficiency and speed of initialization :

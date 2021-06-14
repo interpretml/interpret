@@ -250,7 +250,7 @@ static bool CalculateInteractionScoreInternal(
 static int g_cLogCalculateInteractionScoreParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
-   InteractionDetectorHandle interactionDetectorHandle,
+   InteractionHandle interactionHandle,
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
    IntEbmType countSamplesRequiredForChildSplitMin,
@@ -260,15 +260,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       &g_cLogCalculateInteractionScoreParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "CalculateInteractionScore parameters: interactionDetectorHandle=%p, countDimensions=%" IntEbmTypePrintf ", featureIndexes=%p, countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
-      static_cast<void *>(interactionDetectorHandle),
+      "CalculateInteractionScore parameters: interactionHandle=%p, countDimensions=%" IntEbmTypePrintf ", featureIndexes=%p, countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
+      static_cast<void *>(interactionHandle),
       countDimensions,
       static_cast<const void *>(featureIndexes),
       countSamplesRequiredForChildSplitMin,
       static_cast<void *>(interactionScoreOut)
    );
 
-   InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromInteractionDetectorHandle(interactionDetectorHandle);
+   InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromInteractionHandle(interactionHandle);
    if(nullptr == pInteractionShell) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };

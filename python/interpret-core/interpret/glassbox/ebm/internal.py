@@ -665,7 +665,7 @@ class Native:
         self._unsafe.CreateRegressionInteractionDetector.restype = ct.c_void_p
 
         self._unsafe.CalculateInteractionScore.argtypes = [
-            # void * interactionDetectorHandle
+            # void * interactionHandle
             ct.c_void_p,
             # int64_t countDimensions
             ct.c_int64,
@@ -679,7 +679,7 @@ class Native:
         self._unsafe.CalculateInteractionScore.restype = ct.c_int64
 
         self._unsafe.FreeInteractionDetector.argtypes = [
-            # void * interactionDetectorHandle
+            # void * interactionHandle
             ct.c_void_p
         ]
         self._unsafe.FreeInteractionDetector.restype = None

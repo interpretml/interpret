@@ -21,8 +21,8 @@ extern void TestCHeaderConstructs() {
    BoosterHandle boosterHandle = NULL;
    snprintf(buffer, cBytesBuffer, "%p\n", boosterHandle);
 
-   InteractionDetectorHandle interactionDetectorHandle = NULL;
-   snprintf(buffer, cBytesBuffer, "%p\n", interactionDetectorHandle);
+   InteractionHandle interactionHandle = NULL;
+   snprintf(buffer, cBytesBuffer, "%p\n", interactionHandle);
 
    FloatEbmType testFloat = -123.456;
    snprintf(buffer, cBytesBuffer, "%" FloatEbmTypePrintf "\n", testFloat);
