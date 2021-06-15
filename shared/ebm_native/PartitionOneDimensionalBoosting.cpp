@@ -451,7 +451,7 @@ public:
 
    PartitionOneDimensionalBoostingInternal() = delete; // this is a static class.  Do not construct
 
-   static bool Func(
+   static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const size_t cHistogramBuckets,
       const size_t cSamplesTotal,
@@ -489,7 +489,7 @@ public:
 
       if(GetTreeNodeSizeOverflow(bClassification, cVectorLength)) {
          LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting GetTreeNodeSizeOverflow<bClassification>(cVectorLength)");
-         return true; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
+         return Error_OutOfMemory; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
       }
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
@@ -506,7 +506,7 @@ public:
          // highest bin count feature
          if(pBoosterShell->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
             LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pBoosterShell->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
-            return true;
+            return Error_OutOfMemory;
          }
          cBytesBuffer2 = pBoosterShell->GetThreadByteBuffer2Size();
          EBM_ASSERT(cBytesInitialNeededAllocation <= cBytesBuffer2);
@@ -550,7 +550,7 @@ public:
          // there will be no splits at all
          if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
             LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
-            return true;
+            return Error_OutOfMemory;
          }
 
          // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
@@ -587,7 +587,7 @@ public:
          }
 
          *pTotalGain = FloatEbmType { 0 };
-         return false;
+         return Error_None;
       }
 
       if(UNPREDICTABLE(PREDICTABLE(2 == cLeavesMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
@@ -603,7 +603,7 @@ public:
 
          if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
             LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
-            return true;
+            return Error_OutOfMemory;
          }
 
          ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
@@ -675,7 +675,7 @@ public:
          EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
          // don't normalize totalGain here, because we normalize the average outside of this function!
          *pTotalGain = totalGain;
-         return false;
+         return Error_None;
       }
 
       // it's very likely that there will be more than 1 split below this point.  The only case where we wouldn't 
@@ -746,7 +746,7 @@ public:
                   static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
                   if(pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
                      LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)");
-                     return true;
+                     return Error_OutOfMemory;
                   }
                   goto retry_with_bigger_tree_node_children_array;
                }
@@ -789,7 +789,7 @@ public:
                   static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
                   if(pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
                      LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)");
-                     return true;
+                     return Error_OutOfMemory;
                   }
                   goto retry_with_bigger_tree_node_children_array;
                }
@@ -835,23 +835,27 @@ public:
          EBM_ASSERT(
             static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2
          );
+      } catch(const std::bad_alloc &) {
+         // calling anything inside bestTreeNodeToSplit can throw exceptions
+         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting out of memory exception");
+         return Error_OutOfMemory;
       } catch(...) {
          // calling anything inside bestTreeNodeToSplit can throw exceptions
          LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting exception");
-         return true;
+         return Error_UnexpectedInternal;
       }
 
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 }))) {
          LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 })");
-         return true;
+         return Error_OutOfMemory;
       }
       if(IsMultiplyError(cVectorLength, cLeaves)) {
          LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cVectorLength, cLeaves)");
-         return true;
+         return Error_OutOfMemory;
       }
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves))) {
          LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves");
-         return true;
+         return Error_OutOfMemory;
       }
       ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
       FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
@@ -865,11 +869,11 @@ public:
       EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer() < pValues);
       EBM_ASSERT(static_cast<size_t>(pValues - pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()) == cVectorLength * cLeaves);
 
-      return false;
+      return Error_None;
    }
 };
 
-extern bool PartitionOneDimensionalBoosting(
+extern ErrorEbmType PartitionOneDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
@@ -883,7 +887,7 @@ extern bool PartitionOneDimensionalBoosting(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
-   bool bRet;
+   ErrorEbmType bRet;
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
          bRet = PartitionOneDimensionalBoostingInternal<2>::Func(

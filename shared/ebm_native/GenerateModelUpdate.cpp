@@ -52,7 +52,7 @@ extern void SumHistogramBuckets(
 #endif // NDEBUG
 );
 
-extern bool PartitionOneDimensionalBoosting(
+extern ErrorEbmType PartitionOneDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
@@ -62,7 +62,7 @@ extern bool PartitionOneDimensionalBoosting(
    FloatEbmType * const pTotalGain
 );
 
-extern bool PartitionTwoDimensionalBoosting(
+extern ErrorEbmType PartitionTwoDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
@@ -188,7 +188,7 @@ static ErrorEbmType BoostZeroDimensional(
    return Error_None;
 }
 
-static bool BoostSingleDimensional(
+static ErrorEbmType BoostSingleDimensional(
    BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup,
    const size_t cHistogramBuckets,
@@ -216,20 +216,20 @@ static bool BoostSingleDimensional(
    if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
-      return true;
+      return Error_OutOfMemory;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
    if(IsMultiplyError(cHistogramBuckets, cBytesPerHistogramBucket)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cHistogramBuckets, cBytesPerHistogramBucket)");
-      return true;
+      return Error_OutOfMemory;
    }
    const size_t cBytesBuffer = cHistogramBuckets * cBytesPerHistogramBucket;
 
    HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional nullptr == aHistogramBuckets");
-      return true;
+      return Error_OutOfMemory;
    }
 
    HistogramTargetEntryBase * const aSumHistogramTargetEntry =
@@ -284,7 +284,7 @@ static bool BoostSingleDimensional(
    EBM_ASSERT(1 <= cSamplesTotal);
    const FloatEbmType weightTotal = pTrainingSet->GetWeightTotal();
 
-   bool bRet = PartitionOneDimensionalBoosting(
+   const ErrorEbmType bRet = PartitionOneDimensionalBoosting(
       pBoosterShell,
       cHistogramBuckets,
       cSamplesTotal,
@@ -301,7 +301,7 @@ static bool BoostSingleDimensional(
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the hessian isn't required (yet) in order to make decisions about
 //   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the gradients and then 
 //    go back to our original tensor after splits to determine the hessian
-static bool BoostMultiDimensional(
+static ErrorEbmType BoostMultiDimensional(
    BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
@@ -342,7 +342,7 @@ static bool BoostMultiDimensional(
       cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
    if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
-      return true;
+      return Error_OutOfMemory;
    }
    const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
@@ -355,12 +355,12 @@ static bool BoostMultiDimensional(
          TraceLevelWarning,
          "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
       );
-      return true;
+      return Error_OutOfMemory;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
-      return true;
+      return Error_OutOfMemory;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
@@ -368,7 +368,7 @@ static bool BoostMultiDimensional(
    HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional nullptr == aHistogramBuckets");
-      return true;
+      return Error_OutOfMemory;
    }
 
    if(bClassification) {
@@ -530,7 +530,7 @@ static bool BoostMultiDimensional(
          cTotalBucketsMainSpace - 1
       );
 
-      bool bError = PartitionTwoDimensionalBoosting(
+      const ErrorEbmType error = PartitionTwoDimensionalBoosting(
          pBoosterShell,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
@@ -541,14 +541,14 @@ static bool BoostMultiDimensional(
          , aHistogramBucketsDebugCopy
 #endif // NDEBUG
       );
-      if(bError) {
+      if(Error_None != error) {
 #ifndef NDEBUG
          free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
 
          LOG_0(TraceLevelVerbose, "Exited BoostMultiDimensional with Error code");
 
-         return true;
+         return error;
       }
 
       // gain can be -infinity for regression in a super-super-super-rare condition.  
@@ -560,12 +560,13 @@ static bool BoostMultiDimensional(
    } else {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional 2 != pFeatureGroup->GetCountSignificantFeatures()");
 
-      // TODO: handle this better
+      // TODO: eventually handle this in our caller and this function can specialize in handling just 2 dimensional
+      //       then we can replace this branch with an assert
 #ifndef NDEBUG
       EBM_ASSERT(false);
       free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
-      return true;
+      return Error_UnexpectedInternal;
    }
 
 #ifndef NDEBUG
@@ -573,7 +574,7 @@ static bool BoostMultiDimensional(
 #endif // NDEBUG
 
    LOG_0(TraceLevelVerbose, "Exited BoostMultiDimensional");
-   return false;
+   return Error_None;
 }
 
 static ErrorEbmType BoostRandom(
@@ -781,7 +782,8 @@ static ErrorEbmType GenerateModelUpdateInternal(
             EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
             EBM_ASSERT(IntEbmType { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
             EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
-            if(BoostSingleDimensional(
+
+            const ErrorEbmType error = BoostSingleDimensional(
                pBoosterShell,
                pFeatureGroup,
                cSignificantBinCount,
@@ -789,24 +791,26 @@ static ErrorEbmType GenerateModelUpdateInternal(
                cSamplesRequiredForChildSplitMin,
                lastDimensionLeavesMax,
                &gain
-            )) {
+            );
+            if(Error_None != error) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
                }
-               return Error_OutOfMemory;
+               return error;
             }
          } else {
-            if(BoostMultiDimensional(
+            const ErrorEbmType error = BoostMultiDimensional(
                pBoosterShell,
                pFeatureGroup,
                pBoosterCore->GetSamplingSets()[iSamplingSet],
                cSamplesRequiredForChildSplitMin,
                &gain
-            )) {
+            );
+            if(Error_None != error) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
                }
-               return Error_OutOfMemory;
+               return error;
             }
          }
          // regression can be -infinity or slightly negative in extremely rare circumstances.  

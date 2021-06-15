@@ -6,7 +6,7 @@
     <ClCompile Include="ApplyModelUpdateValidation.cpp" />
     <ClCompile Include="BinBoosting.cpp" />
     <ClCompile Include="BinInteraction.cpp" />
-    <ClCompile Include="DataSetShared.cpp" />
+    <ClCompile Include="data_set_shared.cpp" />
     <ClCompile Include="CutQuantile.cpp" />
     <ClCompile Include="CutUniform.cpp" />
     <ClCompile Include="CutWinsorized.cpp" />

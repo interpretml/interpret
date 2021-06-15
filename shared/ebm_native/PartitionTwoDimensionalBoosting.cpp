@@ -188,7 +188,7 @@ public:
    WARNING_PUSH
    WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 
-   static bool Func(
+   static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
@@ -290,7 +290,7 @@ public:
       }
       EBM_ASSERT(std::isnan(splittingScoreParent) || FloatEbmType { 0 } <= splittingScoreParent); // sumation of positive numbers should be positive
 
-      LOG_0(TraceLevelVerbose, "BoostMultiDimensional Starting FIRST bin sweep loop");
+      LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
       do {
          aiStart[0] = iBin1;
@@ -398,7 +398,7 @@ public:
       HistogramBucket<bClassification> * pTotals2HighHighBest =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 15);
 
-      LOG_0(TraceLevelVerbose, "BoostMultiDimensional Starting SECOND bin sweep loop");
+      LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Starting SECOND bin sweep loop");
       size_t iBin2 = 0;
       do {
          aiStart[1] = iBin2;
@@ -491,7 +491,7 @@ public:
          }
          ++iBin2;
       } while(iBin2 < cBinsDimension2 - 1);
-      LOG_0(TraceLevelVerbose, "BoostMultiDimensional Done sweep loops");
+      LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Done sweep loops");
 
       FloatEbmType gain;
       // if we get a NaN result for bestSplittingScore, we might as well do less work and just create a zero split update right now.  The rules 
@@ -554,8 +554,8 @@ public:
          if(bCutFirst2) {
             // if bCutFirst2 is true, then there definetly was a cut, so we don't have to check for zero cuts
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
-               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
-               return true;
+               LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
+               return Error_OutOfMemory;
             }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst2Best;
 
@@ -563,13 +563,13 @@ public:
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
                   LOG_0(
                      TraceLevelWarning,
-                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
+                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
                   );
-                  return true;
+                  return Error_OutOfMemory;
                }
                if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
-                  return true;
+                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
+                  return Error_OutOfMemory;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2HighBest;
@@ -577,28 +577,28 @@ public:
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
                   LOG_0(
                      TraceLevelWarning,
-                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
+                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
                   );
-                  return true;
+                  return Error_OutOfMemory;
                }
                if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
-                  return true;
+                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
+                  return Error_OutOfMemory;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2HighBest;
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2LowBest;
             } else {
                if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
-                  return true;
+                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
+                  return Error_OutOfMemory;
                }
 
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
                   LOG_0(
                      TraceLevelWarning,
-                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)"
+                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)"
                   );
-                  return true;
+                  return Error_OutOfMemory;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
             }
@@ -701,8 +701,8 @@ public:
             }
          } else {
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
-               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
-               return true;
+               LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
+               return Error_OutOfMemory;
             }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst1Best;
 
@@ -710,14 +710,14 @@ public:
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
                   LOG_0(
                      TraceLevelWarning,
-                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
+                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
                   );
-                  return true;
+                  return Error_OutOfMemory;
                }
 
                if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
-                  return true;
+                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
+                  return Error_OutOfMemory;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
@@ -725,28 +725,28 @@ public:
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
                   LOG_0(
                      TraceLevelWarning,
-                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
+                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
                   );
-                  return true;
+                  return Error_OutOfMemory;
                }
 
                if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
-                  return true;
+                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
+                  return Error_OutOfMemory;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1HighBest;
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
             } else {
                if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
-                  return true;
+                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
+                  return Error_OutOfMemory;
                }
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
                   LOG_0(
                      TraceLevelWarning,
-                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)"
+                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)"
                   );
-                  return true;
+                  return Error_OutOfMemory;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
             }
@@ -857,7 +857,7 @@ public:
       // TODO: this gain value is untested.  We should build a new test that compares the single feature gains to the multi-dimensional gains by
       // making a pair where one of the dimensions duplicates values in the 0 and 1 bin.  Then the gain should be identical, if there is only 1 split allowed
       *pTotalGain = gain;
-      return false;
+      return Error_None;
    }
    WARNING_POP
 };
@@ -868,7 +868,7 @@ public:
 
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static bool Func(
+   INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
@@ -921,7 +921,7 @@ public:
 
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static bool Func(
+   INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
@@ -951,7 +951,7 @@ public:
    }
 };
 
-extern bool PartitionTwoDimensionalBoosting(
+extern ErrorEbmType PartitionTwoDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,

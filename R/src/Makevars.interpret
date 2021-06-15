@@ -21,9 +21,9 @@ OBJECTS = \
    $(NATIVEDIR)/CutQuantile.o \
    $(NATIVEDIR)/CutUniform.o \
    $(NATIVEDIR)/CutWinsorized.o \
+   $(NATIVEDIR)/data_set_shared.o \
    $(NATIVEDIR)/DataSetBoosting.o \
    $(NATIVEDIR)/DataSetInteraction.o \
-   $(NATIVEDIR)/DataSetShared.o \
    $(NATIVEDIR)/debug_ebm.o \
    $(NATIVEDIR)/Discretize.o \
    $(NATIVEDIR)/FeatureGroup.o \
