@@ -2,6 +2,7 @@ import numpy as np
 from json import JSONEncoder, JSONDecoder
 from slicer import Alias
 from slicer import Obj
+from slicer import Dim
 from importlib import import_module
 
 
@@ -41,6 +42,11 @@ class ExplanationJSONEncoder(JSONEncoder):
                 "value": o.o,
                 "dim": o.dim,
             }
+        elif isinstance(o, Dim):
+            return {
+                "_type": "dim",
+                "value": o.o,
+            }
         else:
             return JSONEncoder.default(self, o)
 
@@ -65,4 +71,6 @@ class ExplanationJSONDecoder(JSONDecoder):
             return Obj(obj["value"], obj["dim"])
         elif _type == "alias":
             return Alias(obj["value"], obj["dim"])
+        elif _type == "dim":
+            return Dim(obj["dim"])
         return obj
