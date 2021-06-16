@@ -14,14 +14,13 @@
 
 #include "ebm_internal.hpp"
 
-#include "InteractionCore.hpp"
-
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
 struct HistogramBucketBase;
+class InteractionCore;
 
 class InteractionShell final {
    static constexpr size_t k_handleVerificationOk = 27917; // random 15 bit number

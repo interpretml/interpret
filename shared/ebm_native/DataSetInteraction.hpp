@@ -47,7 +47,7 @@ public:
       m_weightTotal = 0;
    }
 
-   bool Initialize(
+   ErrorEbmType Initialize(
       const bool bAllocateHessians,
       const size_t cFeatures,
       const Feature * const aFeatures, 

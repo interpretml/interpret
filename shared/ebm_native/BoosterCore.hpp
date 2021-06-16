@@ -32,6 +32,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+class BoosterShell;
+
 class BoosterCore final {
 
    // std::atomic_size_t used to be standard layout and trivial, but the C++ standard comitee judged that an error
@@ -182,7 +184,8 @@ public:
 
    static void Free(BoosterCore * const pBoosterCore);
 
-   static BoosterCore * Create(
+   static ErrorEbmType Create(
+      BoosterShell * const pBoosterShell,
       const SeedEbmType randomSeed,
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cFeatures,

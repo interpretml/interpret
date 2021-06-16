@@ -178,7 +178,7 @@ void DataSetInteraction::Destruct() {
 }
 WARNING_POP
 
-bool DataSetInteraction::Initialize(
+ErrorEbmType DataSetInteraction::Initialize(
    const bool bAllocateHessians,
    const size_t cFeatures,
    const Feature * const aFeatures, 
@@ -211,20 +211,20 @@ bool DataSetInteraction::Initialize(
             const IntEbmType data = *pTargetFrom;
             if(data < 0) {
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize target value cannot be negative");
-               return true;
+               return Error_IllegalParamValue;
             }
             if(!IsNumberConvertable<StorageDataType>(data)) {
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize data target too big to reference memory");
-               return true;
+               return Error_IllegalParamValue;
             }
             if(!IsNumberConvertable<size_t>(data)) {
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize data target too big to reference memory");
-               return true;
+               return Error_IllegalParamValue;
             }
             const size_t iData = static_cast<size_t>(data);
             if(countTargetClasses <= iData) {
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize target value larger than number of classes");
-               return true;
+               return Error_IllegalParamValue;
             }
             ++pTargetFrom;
          } while(pTargetFromEnd != pTargetFrom);
@@ -236,13 +236,13 @@ bool DataSetInteraction::Initialize(
          if(IsMultiplyError(sizeof(*aWeights), cSamples)) {
             LOG_0(TraceLevelWarning,
                "WARNING DataSetInteraction::Initialize IsMultiplyError(sizeof(*aWeights), cSamples)");
-            goto exit_error;
+            return Error_IllegalParamValue;
          }
          if(!CheckAllWeightsEqual(cSamples, aWeights)) {
             const FloatEbmType total = AddPositiveFloatsSafe(cSamples, aWeights);
             if(std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }) {
                LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
-               goto exit_error;
+               return Error_UserParamValue;
             }
             // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
             // to zero though so check it after checking for negative
@@ -253,7 +253,7 @@ bool DataSetInteraction::Initialize(
             FloatEbmType * aWeightInternal = static_cast<FloatEbmType *>(malloc(cBytes));
             if(UNLIKELY(nullptr == aWeightInternal)) {
                LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::Initialize nullptr == pWeightInternal");
-               goto exit_error;
+               return Error_OutOfMemory;
             }
             m_aWeights = aWeightInternal;
             memcpy(aWeightInternal, aWeights, cBytes);
@@ -262,32 +262,24 @@ bool DataSetInteraction::Initialize(
 
       FloatEbmType * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
       if(nullptr == aGradientsAndHessians) {
-         free(m_aWeights);
-         m_aWeights = nullptr;
-         goto exit_error;
+         // we should have already logged the failure
+         return Error_OutOfMemory;
       }
+      m_aGradientsAndHessians = aGradientsAndHessians;
       if(0 != cFeatures) {
          StorageDataType ** const aaInputData = ConstructInputData(cFeatures, aFeatures, cSamples, aBinnedData);
          if(nullptr == aaInputData) {
-            free(aGradientsAndHessians);
-            free(m_aWeights);
-            m_aWeights = nullptr;
-            goto exit_error;
+            return Error_OutOfMemory;
          }
          m_aaInputData = aaInputData;
       }
 
-      m_aGradientsAndHessians = aGradientsAndHessians;
       m_cSamples = cSamples;
    }
    m_cFeatures = cFeatures;
 
    LOG_0(TraceLevelInfo, "Exited DataSetInteraction::Initialize");
-   return false;
-
-exit_error:;
-   LOG_0(TraceLevelWarning, "WARNING Exited DataSetInteraction::Initialize");
-   return true;
+   return Error_None;
 }
 
 } // DEFINED_ZONE_NAME

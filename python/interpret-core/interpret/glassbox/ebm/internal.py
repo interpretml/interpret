@@ -59,22 +59,24 @@ class Native:
         elif error_code == 5:
             return Exception(f'User native parameter value error in {native_function}')
         elif error_code == 6:
-            return Exception(f'Loss constructor native exception in {native_function}')
-        elif error_code == 7:
-            return Exception(f'Loss parameter unknown')
-        elif error_code == 8:
-            return Exception(f'Loss parameter value malformed')
-        elif error_code == 9:
-            return Exception(f'Loss parameter value out of range')
+            return Exception(f'Thread start failed in {native_function}')
         elif error_code == 10:
-            return Exception(f'Loss parameter mismatch')
+            return Exception(f'Loss constructor native exception in {native_function}')
         elif error_code == 11:
-            return Exception(f'Unrecognized loss type')
+            return Exception(f'Loss parameter unknown')
         elif error_code == 12:
-            return Exception(f'Illegal loss registration name')
+            return Exception(f'Loss parameter value malformed')
         elif error_code == 13:
-            return Exception(f'Illegal loss parameter name')
+            return Exception(f'Loss parameter value out of range')
         elif error_code == 14:
+            return Exception(f'Loss parameter mismatch')
+        elif error_code == 15:
+            return Exception(f'Unrecognized loss type')
+        elif error_code == 16:
+            return Exception(f'Illegal loss registration name')
+        elif error_code == 17:
+            return Exception(f'Illegal loss parameter name')
+        elif error_code == 18:
             return Exception(f'Duplicate loss parameter name')
         else:
             return Exception(f'Unrecognized native return code {error_code} in {native_function}')

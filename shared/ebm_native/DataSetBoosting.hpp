@@ -47,7 +47,7 @@ public:
 
    void Destruct();
 
-   bool Initialize(
+   ErrorEbmType Initialize(
       const bool bAllocateGradients, 
       const bool bAllocateHessians,
       const bool bAllocatePredictorScores,

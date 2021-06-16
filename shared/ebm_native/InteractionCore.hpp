@@ -26,6 +26,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+class InteractionShell;
+
 class InteractionCore final {
 
    // std::atomic_size_t used to be standard layout and trivial, but the C++ standard comitee judged that an error
@@ -98,7 +100,8 @@ public:
    }
 
    static void Free(InteractionCore * const pInteractionCore);
-   static InteractionCore * Create(
+   static ErrorEbmType Create(
+      InteractionShell * const pInteractionShell,
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cFeatures,
       const FloatEbmType * const optionalTempParams,

@@ -22,6 +22,7 @@
 #include "InteractionShell.hpp"
 
 #include "InteractionCore.hpp"
+#include "InteractionShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -54,7 +55,8 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
    LOG_0(TraceLevelInfo, "Exited InteractionCore::Free");
 }
 
-InteractionCore * InteractionCore::Create(
+ErrorEbmType InteractionCore::Create(
+   InteractionShell * const pInteractionShell,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cFeatures,
    const FloatEbmType * const optionalTempParams,
@@ -77,26 +79,27 @@ InteractionCore * InteractionCore::Create(
       pRet = new InteractionCore();
    } catch(const std::bad_alloc &) {
       LOG_0(TraceLevelWarning, "WARNING InteractionCore::Create Out of memory allocating InteractionCore");
-      return nullptr;
+      return Error_OutOfMemory;
    } catch(...) {
       LOG_0(TraceLevelWarning, "WARNING InteractionCore::Create Unknown error");
-      return nullptr;
+      return Error_UnexpectedInternal;
    }
    if(nullptr == pRet) {
       // this should be impossible since bad_alloc should have been thrown, but let's be untrusting
       LOG_0(TraceLevelWarning, "WARNING InteractionCore::Create nullptr == pInteractionCore");
-      return nullptr;
+      return Error_OutOfMemory;
    }
+   // give ownership of our object to pInteractionShell
+   pInteractionShell->SetInteractionCore(pRet);
 
    LOG_0(TraceLevelInfo, "InteractionCore::Allocate starting feature processing");
    if(0 != cFeatures) {
+      pRet->m_cFeatures = cFeatures;
       Feature * const aFeatures = EbmMalloc<Feature>(cFeatures);
       if(nullptr == aFeatures) {
          LOG_0(TraceLevelWarning, "WARNING InteractionCore::Allocate nullptr == aFeatures");
-         InteractionCore::Free(pRet);
-         return nullptr;
+         return Error_OutOfMemory;
       }
-      pRet->m_cFeatures = cFeatures;
       pRet->m_aFeatures = aFeatures;
 
       const BoolEbmType * pFeatureCategorical = aFeaturesCategorical;
@@ -106,18 +109,15 @@ InteractionCore * InteractionCore::Create(
          const IntEbmType countBins = *pFeatureBinCount;
          if(countBins < 0) {
             LOG_0(TraceLevelError, "ERROR InteractionCore::Allocate countBins cannot be negative");
-            InteractionCore::Free(pRet);
-            return nullptr;
+            return Error_IllegalParamValue;
          }
          if(0 == countBins && 0 != cSamples) {
             LOG_0(TraceLevelError, "ERROR InteractionCore::Allocate countBins cannot be zero if 0 < cSamples");
-            InteractionCore::Free(pRet);
-            return nullptr;
+            return Error_IllegalParamValue;
          }
          if(!IsNumberConvertable<size_t>(countBins)) {
             LOG_0(TraceLevelWarning, "WARNING InteractionCore::Allocate countBins is too high for us to allocate enough memory");
-            InteractionCore::Free(pRet);
-            return nullptr;
+            return Error_IllegalParamValue;
          }
          const size_t cBins = static_cast<size_t>(countBins);
          if(0 == cBins) {
@@ -150,7 +150,7 @@ InteractionCore * InteractionCore::Create(
    pRet->m_cLogEnterMessages = 1000;
    pRet->m_cLogExitMessages = 1000;
 
-   if(pRet->m_dataFrame.Initialize(
+   const ErrorEbmType error = pRet->m_dataFrame.Initialize(
       IsClassification(runtimeLearningTypeOrCountTargetClasses),
       cFeatures,
       pRet->m_aFeatures,
@@ -160,14 +160,14 @@ InteractionCore * InteractionCore::Create(
       aTargets,
       aPredictorScores,
       runtimeLearningTypeOrCountTargetClasses
-   )) {
+   );
+   if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING InteractionCore::Allocate m_dataFrame.Initialize");
-      InteractionCore::Free(pRet);
-      return nullptr;
+      return error;
    }
 
    LOG_0(TraceLevelInfo, "Exited InteractionCore::Allocate");
-   return pRet;
+   return Error_None;
 }
 
 } // DEFINED_ZONE_NAME

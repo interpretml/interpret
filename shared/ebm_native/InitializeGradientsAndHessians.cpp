@@ -20,6 +20,10 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+// TODO: we can replace this (I think) with an "ApplyModelUpdate" which has all zeros.  That might be useful
+//       when we get to templating those functions hundreds of times since then we won't have to duplicate all
+//       that instruction address space here
+
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression

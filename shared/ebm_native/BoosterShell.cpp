@@ -296,10 +296,8 @@ static ErrorEbmType CreateBooster(
       return Error_OutOfMemory;
    }
 
-   // TODO: pass in the pBoosterShell so that BoosterCore can immediately attach itself to the pBoosterShell
-   //       this is important in R and other languages that might want to exit with longjump because we can attach
-   //       the pBoosterShell object to a managed destructor that'll clean up all our memory allocations
-   BoosterCore * const pBoosterCore = BoosterCore::Create(
+   ErrorEbmType error1 = BoosterCore::Create(
+      pBoosterShell,
       randomSeed,
       runtimeLearningTypeOrCountTargetClasses,
       cFeatures,
@@ -321,19 +319,16 @@ static ErrorEbmType CreateBooster(
       aValidationWeights,
       validationPredictorScores
    );
-   if(UNLIKELY(nullptr == pBoosterCore)) {
+   if(UNLIKELY(Error_None != error1)) {
       BoosterShell::Free(pBoosterShell);
       LOG_0(TraceLevelWarning, "WARNING CreateBooster pBoosterCore->Initialize");
-      return Error_OutOfMemory;
+      return error1;
    }
 
-   pBoosterShell->SetBoosterCore(pBoosterCore); // assume ownership of pBoosterCore
-
-   const ErrorEbmType error = pBoosterShell->FillAllocations();
-   if(Error_None != error) {
-      // don't free the pBoosterCore since pBoosterShell now owns it
+   const ErrorEbmType error2 = pBoosterShell->FillAllocations();
+   if(Error_None != error2) {
       BoosterShell::Free(pBoosterShell);
-      return error;
+      return error2;
    }
 
    *boosterHandleOut = pBoosterShell->GetHandle();

@@ -131,10 +131,8 @@ static ErrorEbmType CreateInteractionDetector(
       return Error_OutOfMemory;
    }
 
-   // TODO: pass in the pInteractionShell so that InteractionCore can immediately attach itself to the pInteractionShell
-   //       this is important in R and other languages that might want to exit with longjump because we can attach
-   //       the pInteractionShell object to a managed destructor that'll clean up all our memory allocations
-   InteractionCore * const pInteractionCore = InteractionCore::Create(
+   const ErrorEbmType error = InteractionCore::Create(
+      pInteractionShell,
       runtimeLearningTypeOrCountTargetClasses,
       cFeatures,
       optionalTempParams,
@@ -146,13 +144,11 @@ static ErrorEbmType CreateInteractionDetector(
       aWeights,
       predictorScores
    );
-   if(UNLIKELY(nullptr == pInteractionCore)) {
+   if(Error_None != error) {
       InteractionShell::Free(pInteractionShell);
       LOG_0(TraceLevelWarning, "WARNING CreateInteractionDetector nullptr == pInteractionCore");
       return Error_OutOfMemory;
    }
-
-   pInteractionShell->SetInteractionCore(pInteractionCore); // assume ownership of pInteractionCore
 
    *interactionHandleOut = pInteractionShell->GetHandle();
    return Error_None;

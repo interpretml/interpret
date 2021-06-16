@@ -15,7 +15,6 @@
 #include "ebm_internal.hpp"
 
 #include "HistogramTargetEntry.hpp"
-#include "BoosterCore.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -23,6 +22,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 struct HistogramBucketBase;
+class BoosterCore;
 
 class BoosterShell final {
    static constexpr size_t k_handleVerificationOk = 25077; // random 15 bit number

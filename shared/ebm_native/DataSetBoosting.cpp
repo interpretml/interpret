@@ -323,7 +323,7 @@ free_all:
    return nullptr;
 }
 
-bool DataSetBoosting::Initialize(
+ErrorEbmType DataSetBoosting::Initialize(
    const bool bAllocateGradients, 
    const bool bAllocateHessians,
    const bool bAllocatePredictorScores,
@@ -345,58 +345,47 @@ bool DataSetBoosting::Initialize(
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
    if(0 != cSamples) {
-      FloatEbmType * aGradientsAndHessians = nullptr;
       if(bAllocateGradients) {
-         aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, cVectorLength);
+         FloatEbmType * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, cVectorLength);
          if(nullptr == aGradientsAndHessians) {
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
-            return true;
+            return Error_OutOfMemory;
          }
+         m_aGradientsAndHessians = aGradientsAndHessians;
       } else {
          EBM_ASSERT(!bAllocateHessians);
       }
-      FloatEbmType * aPredictorScores = nullptr;
       if(bAllocatePredictorScores) {
-         aPredictorScores = ConstructPredictorScores(cSamples, cVectorLength, aPredictorScoresFrom);
+         FloatEbmType * aPredictorScores = ConstructPredictorScores(cSamples, cVectorLength, aPredictorScoresFrom);
          if(nullptr == aPredictorScores) {
-            free(aGradientsAndHessians);
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aPredictorScores");
-            return true;
+            return Error_OutOfMemory;
          }
+         m_aPredictorScores = aPredictorScores;
       }
-      StorageDataType * aTargetData = nullptr;
       if(bAllocateTargetData) {
-         aTargetData = ConstructTargetData(cSamples, static_cast<const IntEbmType *>(aTargets), runtimeLearningTypeOrCountTargetClasses);
+         StorageDataType * aTargetData = ConstructTargetData(cSamples, static_cast<const IntEbmType *>(aTargets), runtimeLearningTypeOrCountTargetClasses);
          if(nullptr == aTargetData) {
-            free(aGradientsAndHessians);
-            free(aPredictorScores);
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aTargetData");
-            return true;
+            return Error_OutOfMemory;
          }
+         m_aTargetData = aTargetData;
       }
-      StorageDataType ** aaInputData = nullptr;
       if(0 != cFeatureGroups) {
-         aaInputData = ConstructInputData(cFeatureGroups, apFeatureGroup, cSamples, aInputDataFrom);
+         StorageDataType ** aaInputData = ConstructInputData(cFeatureGroups, apFeatureGroup, cSamples, aInputDataFrom);
          if(nullptr == aaInputData) {
-            free(aGradientsAndHessians);
-            free(aPredictorScores);
-            free(aTargetData);
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aaInputData");
-            return true;
+            return Error_OutOfMemory;
          }
+         m_aaInputData = aaInputData;
       }
-
-      m_aGradientsAndHessians = aGradientsAndHessians;
-      m_aPredictorScores = aPredictorScores;
-      m_aTargetData = aTargetData;
-      m_aaInputData = aaInputData;
       m_cSamples = cSamples;
       m_cFeatureGroups = cFeatureGroups;
    }
 
    LOG_0(TraceLevelInfo, "Exited DataSetBoosting::Initialize");
 
-   return false;
+   return Error_None;
 }
 
 WARNING_PUSH
