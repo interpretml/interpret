@@ -19,6 +19,7 @@ TestResults/
 *.ipynb_checkpoints/
 venv/
 .pytest_cache/
+__pycache__
 
 # General
 *.bak
