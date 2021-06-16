@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.5] - 2021-06-15
+### Added
+- Sample weight support added for EBM.
+- Joint `predict_and_contrib` added to EBM where both predictions and feature contributions are generated in one call.
+- EBM predictions now substantially faster with categorical featured predictions.
+- Preliminary documentation for all of `interpret` now public at https://interpret.ml/docs.
+- Decision trees now work in cloud environments (InlineRenderer support).
+- Packages `interpret` and `interpret-core` now distributed via conda.
+- Packages `interpret` and `interpret-core` now distributed via sdist.
+- Published dockerfile for `interpret` at `interpretml/interpret` on docker.io
+### Fixed
+- EBM uniform binning bug fixed where empty bins can raise exceptions.
+- Users can no longer include duplicate interaction terms for EBM.
+- CSS adjusted for inline rendering such that it does not interfere with its hosting environment.
+- JS dependencies updated.
+### Experimental
+- Ability to merge multiple EBM models into one. Found in `interpret.glassbox.ebm.utils`.
+
 ## [v0.2.4] - 2021-01-19
 ### Fixed
 - Bug fix on global EBM plots.
@@ -380,6 +398,7 @@ Expect similar or slightly slower training times due to interactions.
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.2.5]: https://github.com/microsoft/interpret/releases/tag/v0.2.5
 [v0.2.4]: https://github.com/microsoft/interpret/releases/tag/v0.2.4
 [v0.2.3]: https://github.com/microsoft/interpret/releases/tag/v0.2.3
 [v0.2.2]: https://github.com/microsoft/interpret/releases/tag/v0.2.2

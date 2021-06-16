@@ -8,7 +8,7 @@ from distutils.command.build import build
 
 name = "interpret-core"
 # NOTE: Version is replaced by a regex script.
-version = "0.2.4"
+version = "0.2.5"
 long_description = """
 Core system for **the** interpret package.
 
