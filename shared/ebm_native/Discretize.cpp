@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 // TODO: use noexcept throughout our codebase (exception extern "C" functions) !  The compiler can optimize functions better if it knows there are no exceptions
 // TODO: review all the C++ library calls, including things like std::abs and verify that none of them throw exceptions, otherwise use the C versions that provide this guarantee
@@ -14,32 +14,39 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
    IntEbmType countTargetClasses,
    IntEbmType countSamples,
    const FloatEbmType * logits,
    FloatEbmType * probabilitiesOut
 ) {
-   if(2 != countTargetClasses) {
-      // TODO: handle multiclass
-      exit(1);
-   };
+   UNUSED(countTargetClasses);
+   UNUSED(countSamples);
+   UNUSED(logits);
+   UNUSED(probabilitiesOut);
 
-   UNUSED(countTargetClasses); // TODO: use this
-   for(size_t i = 0; i < static_cast<size_t>(countSamples); ++i) {
-      // NOTE: we use the non-approximate std::exp because we want our predictions to match what other softmax functions
-      // will generate instead of the approximation, and ordering is more sensitive to noise than boosting
-      const FloatEbmType odds = std::exp(logits[i]);
-      probabilitiesOut[i] = odds / (FloatEbmType { 1 } + odds);
-   }
-   return IntEbmType { 0 };
+   return Error_UnexpectedInternal;
+
+   //if(2 != countTargetClasses) {
+   //   // TODO: handle multiclass
+   //   exit(1);
+   //};
+
+   //UNUSED(countTargetClasses); // TODO: use this
+   //for(size_t i = 0; i < static_cast<size_t>(countSamples); ++i) {
+   //   // NOTE: we use the non-approximate std::exp because we want our predictions to match what other softmax functions
+   //   // will generate instead of the approximation, and ordering is more sensitive to noise than boosting
+   //   const FloatEbmType odds = std::exp(logits[i]);
+   //   probabilitiesOut[i] = odds / (FloatEbmType { 1 } + odds);
+   //}
+   //return Error_None;
 }
 
 // Plan:
@@ -150,7 +157,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
 static int g_cLogEnterDiscretizeParametersMessages = 25;
 static int g_cLogExitDiscretizeParametersMessages = 25;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countCuts,
@@ -165,7 +172,41 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
    // bin is in the Nth item because we then need to know what N is and use multiplication and badly ordered memory
    // accesses to reach it if we want to use the missing bin during cutting.  Lastly, in higher level languages, it's
    // easier to detect missing values in the discretized data, since it's always just a zero.
+   //
+   // this function has exactly the same behavior as numpy.digitize, including the lower bound inclusive semantics
    
+   // TODO: we want this function super-fast to handle the case where someone calls Discretize repeatedly
+   //       once per-sample.  We can make this faster by eliminating a lot of the initial checks by:
+   //       - eliminate the checks for nullptr on our input points.  We just crash if we get these illegal inputs
+   //         we can't handle bad input points in general, so this is just accepting a reality for a tradeoff in speed
+   //       - create a function that converts any signed value into the proper unsigned value 
+   //         we can do this using std::make_unsigned to find the type and then use the twos compliment
+   //         trick in RandomStream to convert the signed value into the corresponding unsigned value
+   //         (also replace the code in RandomStream with this new function).  This function will be 
+   //         a no-op in assembly.
+   //       - we check for both negative AND positive countCuts values that are too high.  We can
+   //         combine these checks by first converting negatives into big positive unsigned values
+   //         which are guaranteed to be larger than our largest valid index.  We then find via
+   //         constexpr the biggest of the maxes that we care about, and then make one comparison
+   //         for all these conditions.  We might have code that differentiates the results if we trigger
+   //         an error return
+   //       - we have comparisons to both size_t and IntEbmType max values, which we can collapse into
+   //         just a single max value comparison.  If the max unsigned size_t is bigger than the max unsigned
+   //         UIntEbmType then do the comparison in the bigger domain.
+   //       - we can write a constexpr function that takes the value we have, and the max value in
+   //         the same type and the max value in annother type and does all the right things to compare
+   //         them properly.  Use SINAFE to have 2 functions (one where the initial value type is lower
+   //         and another where it is higher).  We could probably use this function in a number of places
+   //       - special case a function that handles when countSamples is 1 and make the check at the top
+   //         since getting just 1 sample is going to be the norm a lot.  In that case it doesn't
+   //         make sense to check all the other possible values or copy the cuts to new memory or use SIMD
+   //         we can even eliminate the loop stuff we construct to handle multiple samples and just write
+   //         directly to the pointers
+   //       - we'll probably need to check countCuts for zero, which we can do by first converting it
+   //         to unsigned, then decrementing it (which is legal in C++) to a huge number if it was zero
+   //         then doing our upper bound comparison all in one check.  We can then filter our 0 ==countCuts
+   //         after that as a special case
+
    LOG_COUNTED_N(
       &g_cLogEnterDiscretizeParametersMessages,
       TraceLevelInfo,
@@ -184,22 +225,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
       static_cast<void *>(discretizedOut)
    );
 
-   IntEbmType ret;
+   ErrorEbmType ret;
    if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
       if(UNLIKELY(countSamples < IntEbmType { 0 })) {
          LOG_0(TraceLevelError, "ERROR Discretize countSamples cannot be negative");
-         ret = IntEbmType { 1 };
+         ret = Error_IllegalParamValue;
          goto exit_with_log;
       } else {
          EBM_ASSERT(IntEbmType { 0 } == countSamples);
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          goto exit_with_log;
       }
    } else {
       if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into memory");
-         ret = IntEbmType { 1 };
+         ret = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
@@ -207,25 +248,25 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
 
       if(IsMultiplyError(sizeof(*featureValues), cSamples)) {
          LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into featureValues");
-         ret = IntEbmType { 1 };
+         ret = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*discretizedOut), cSamples)) {
          LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into discretizedOut");
-         ret = IntEbmType { 1 };
+         ret = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == featureValues)) {
          LOG_0(TraceLevelError, "ERROR Discretize featureValues cannot be null");
-         ret = IntEbmType { 1 };
+         ret = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == discretizedOut)) {
          LOG_0(TraceLevelError, "ERROR Discretize discretizedOut cannot be null");
-         ret = IntEbmType { 1 };
+         ret = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
@@ -236,7 +277,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
       if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
          if(UNLIKELY(countCuts < IntEbmType { 0 })) {
             LOG_0(TraceLevelError, "ERROR Discretize countCuts cannot be negative");
-            ret = IntEbmType { 1 };
+            ret = Error_IllegalParamValue;
             goto exit_with_log;
          }
          EBM_ASSERT(IntEbmType { 0 } == countCuts);
@@ -249,13 +290,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == cutsLowerBoundInclusive)) {
          LOG_0(TraceLevelError, "ERROR Discretize cutsLowerBoundInclusive cannot be null");
-         ret = IntEbmType { 1 };
+         ret = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
@@ -292,7 +333,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          goto exit_with_log;
       }
 
@@ -311,7 +352,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          goto exit_with_log;
       }
 
@@ -332,7 +373,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          goto exit_with_log;
       }
 
@@ -355,7 +396,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          goto exit_with_log;
       }
 
@@ -380,7 +421,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          goto exit_with_log;
       }
 
@@ -407,7 +448,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = IntEbmType { 0 };
+         ret = Error_None;
          goto exit_with_log;
       }
 
@@ -459,7 +500,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 30 })) {
@@ -503,7 +544,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 62 })) {
@@ -548,7 +589,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 126 })) {
@@ -594,7 +635,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 254 })) {
@@ -641,7 +682,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 510 })) {
@@ -689,7 +730,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 1022 })) {
@@ -738,31 +779,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = IntEbmType { 0 };
+            ret = Error_None;
             goto exit_with_log;
          }
-      }
-
-      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() == countCuts)) {
-         // we convert back to IntEbmType when we return, and if countCuts is at the limit, then we don't
-         // have any value to indicate missing
-         LOG_0(TraceLevelError,
-            "ERROR Discretize countCuts was too large to allow for a missing value placeholder");
-         ret = IntEbmType { 1 };
-         goto exit_with_log;
       }
 
       if(UNLIKELY(!IsNumberConvertable<size_t>(countCuts))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(TraceLevelError, "ERROR Discretize countCuts was too large to fit into memory");
-         ret = IntEbmType { 1 };
+         ret = Error_IllegalParamValue; // the cutsLowerBoundInclusive wouldn't be possible
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*cutsLowerBoundInclusive), cCuts)) {
          LOG_0(TraceLevelError,
             "ERROR Discretize countCuts was too large to fit into cutsLowerBoundInclusive");
-         ret = IntEbmType { 1 };
+         ret = Error_IllegalParamValue; // the cutsLowerBoundInclusive array wouldn't be possible
+         goto exit_with_log;
+      }
+
+      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() == countCuts)) {
+         // we convert back to IntEbmType when we return, and if countCuts is at the limit, then we don't
+         // have any value to indicate missing
+         // 1 cut means 3 bins (missing, and the left discretization, and the right discretization)
+         // max cuts means max + 2 bins.  Since bins are zero indexed, we need 1 + max as an index which is illegal
+         LOG_0(TraceLevelError,
+            "ERROR Discretize countCuts was too large to allow for a missing value placeholder");
+         // this is a non-overflow somewhat arbitrary number for the upper level software to understand
+         // so instead of returning illegal parameter, we should return out of memory and pretend that we
+         // tried to allocate it since it doesn't seem worth creating a new error class for it
+         ret = Error_OutOfMemory;
          goto exit_with_log;
       }
 
@@ -770,7 +816,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          // we add 1 to cCuts as our missing value, so this addition must succeed
          LOG_0(TraceLevelError,
             "ERROR Discretize countCuts was too large to allow for a missing value placeholder");
-         ret = IntEbmType { 1 };
+
+         // this is a non-overflow somewhat arbitrary number for the upper level software to understand
+         // so instead of returning illegal parameter, we should return out of memory and pretend that we
+         // tried to allocate it since it doesn't seem worth creating a new error class for it
+         ret = Error_OutOfMemory;
          goto exit_with_log;
       }
 
@@ -778,7 +828,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          // the low value can increase until it's equal to cCuts, so cCuts must be expressable as a ptrdiff_t
          LOG_0(TraceLevelError,
             "ERROR Discretize countCuts was too large to allow for the binary search comparison");
-         ret = IntEbmType { 1 };
+
+         // this is a non-overflow somewhat arbitrary number for the upper level software to understand
+         // so instead of returning illegal parameter, we should return out of memory and pretend that we
+         // tried to allocate it since it doesn't seem worth creating a new error class for it
+         ret = Error_OutOfMemory;
          goto exit_with_log;
       }
 
@@ -787,7 +841,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
          LOG_0(TraceLevelError,
             "ERROR Discretize countCuts was too large to allow for the binary search add");
-         ret = IntEbmType { 1 };
+
+         // this is a non-overflow somewhat arbitrary number for the upper level software to understand
+         // so instead of returning illegal parameter, we should return out of memory and pretend that we
+         // tried to allocate it since it doesn't seem worth creating a new error class for it
+         ret = Error_OutOfMemory;
          goto exit_with_log;
       }
 
@@ -854,7 +912,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          ++pDiscretized;
          ++pValue;
       } while(LIKELY(pValueEnd != pValue));
-      ret = IntEbmType { 0 };
+      ret = Error_None;
    }
 
 exit_with_log:;
@@ -864,7 +922,7 @@ exit_with_log:;
       TraceLevelInfo, 
       TraceLevelVerbose, 
       "Exited Discretize: "
-      "return=%" IntEbmTypePrintf
+      "return=%" ErrorEbmTypePrintf
       ,
       ret
    );

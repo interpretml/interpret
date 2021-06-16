@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <cmath>
 
@@ -148,7 +148,7 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Cpu_64(
    UNUSED(sMetric);
    UNUSED(sMetricEnd);
 
-   return Error_UnknownInternalError;
+   return Error_UnexpectedInternal;
 }
 
 

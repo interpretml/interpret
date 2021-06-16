@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -10,15 +10,15 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "FeatureAtomic.h"
-#include "FeatureGroup.h"
+#include "Feature.hpp"
+#include "FeatureGroup.hpp"
 
-#include "HistogramTargetEntry.h"
-#include "HistogramBucket.h"
+#include "HistogramTargetEntry.hpp"
+#include "HistogramBucket.hpp"
 
-#include "TensorTotalsSum.h"
+#include "TensorTotalsSum.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -181,7 +181,7 @@ public:
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
       // TODO: we can get rid of the cCompilerDimensions aspect here by making the 1 or 2 inner loops register/pointer
-      //       based and then having a stack based pointer system like the RandomCutState class in CutRandomInternal
+      //       based and then having a stack based pointer system like the RandomCutState class in PartitionRandomBoostingInternal
       //       to handle any dimensions at the 3rd level and above.  We'll never need to make any additional checks 
       //       on main memory until we reach the 3rd dimension which should be enough for any performance geek
       const size_t cSignificantDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountSignificantDimensions());
@@ -205,7 +205,7 @@ public:
          do {
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, aHistogramBucketsEndDebug);
 
-            const size_t cBins = pFeatureGroupEntry->m_pFeatureAtomic->GetCountBins();
+            const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
             // cBins can only be 0 if there are zero training and zero validation samples
             // we don't boost or allow interaction updates if there are zero training samples
             EBM_ASSERT(1 <= cBins);
@@ -983,8 +983,8 @@ extern void TensorTotalsBuild(
 
 
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//bool BoostMultiDimensionalPaulAlgorithm(ThreadStateBoosting<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const FeatureGroup * const pFeatureGroup, SegmentedRegion<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
-//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = BinDataFrame<compilerLearningTypeOrCountTargetClasses>(pThreadState, pFeatureGroup, pTrainingSet, pTargetFeature);
+//bool BoostMultiDimensionalPaulAlgorithm(BoosterShell<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const FeatureGroup * const pFeatureGroup, SegmentedRegion<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
+//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = BinDataSet<compilerLearningTypeOrCountTargetClasses>(pThreadState, pFeatureGroup, pTrainingSet, pTargetFeature);
 //   if(UNLIKELY(nullptr == aHistogramBuckets)) {
 //      return true;
 //   }

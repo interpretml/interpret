@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\special\PrecompiledHeader.cpp">
+    <ClCompile Include="..\special\precompiled_header_cpp.cpp">
       <Filter>special</Filter>
     </ClCompile>
   </ItemGroup>
@@ -11,6 +11,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="cuda_ebm.cu" />
+    <CudaCompile Include="cuda_32.cu" />
   </ItemGroup>
 </Project>

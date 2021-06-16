@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeaderEbmNativeTest.h"
+#include "precompiled_header_test.hpp"
 
 #include "ebm_native.h"
-#include "EbmNativeTest.h"
+#include "ebm_native_test.hpp"
 
 static const TestPriority k_filePriority = TestPriority::Discretize;
 
@@ -15,21 +15,23 @@ TEST_CASE("Discretize, zero samples") {
    constexpr IntEbmType countCuts = sizeof(cutsLowerBoundInclusive) / sizeof(cutsLowerBoundInclusive[0]);
    constexpr IntEbmType  cSamples = 0;
 
-   Discretize(
+   ErrorEbmType error = Discretize(
       cSamples,
       nullptr,
       countCuts,
       cutsLowerBoundInclusive,
       nullptr
    );
+   CHECK(Error_None == error);
 
-   Discretize(
+   error = Discretize(
       cSamples,
       nullptr,
       countCuts,
       cutsLowerBoundInclusive,
       nullptr
    );
+   CHECK(Error_None == error);
 }
 
 TEST_CASE("Discretize, increasing lengths") {
@@ -70,13 +72,14 @@ TEST_CASE("Discretize, increasing lengths") {
 
       const size_t cSamples = cData - cRemoveLow - cRemoveHigh;
       memset(singleFeatureDiscretized + cRemoveLow, 0, cSamples * sizeof(*singleFeatureDiscretized));
-      Discretize(
+      const ErrorEbmType error = Discretize(
          static_cast<IntEbmType>(cSamples),
          featureValues + cRemoveLow,
          cCuts,
          cutsLowerBoundInclusive,
          singleFeatureDiscretized + cRemoveLow
       );
+      CHECK(Error_None == error);
 
       for(size_t iCutPoint = 0; iCutPoint < cCutsEnd; ++iCutPoint) {
          CHECK(singleFeatureDiscretized[11 * iCutPoint + 0] == IntEbmType { 1 });

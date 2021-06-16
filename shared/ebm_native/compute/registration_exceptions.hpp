@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef REGISTRATION_EXCEPTIONS_H
-#define REGISTRATION_EXCEPTIONS_H
+#ifndef REGISTRATION_EXCEPTIONS_HPP
+#define REGISTRATION_EXCEPTIONS_HPP
 
 #include <exception>
 
@@ -20,26 +20,26 @@ public:
    SkipRegistrationException() = default;
 };
 
-class ParameterValueOutOfRangeException final : public std::exception {
+class ParamValueOutOfRangeException final : public std::exception {
 public:
-   ParameterValueOutOfRangeException() = default;
+   ParamValueOutOfRangeException() = default;
 };
 
-class ParameterMismatchWithConfigException final : public std::exception {
+class ParamMismatchWithConfigException final : public std::exception {
 public:
-   ParameterMismatchWithConfigException() = default;
+   ParamMismatchWithConfigException() = default;
 };
 
-class ParameterValueMalformedException final : public std::exception {
+class ParamValueMalformedException final : public std::exception {
    // this should not be thrown from the Registrable constructor
 public:
-   ParameterValueMalformedException() = default;
+   ParamValueMalformedException() = default;
 };
 
-class ParameterUnknownException final : public std::exception {
+class ParamUnknownException final : public std::exception {
    // this should not be thrown from the Registrable constructor
 public:
-   ParameterUnknownException() = default;
+   ParamUnknownException() = default;
 };
 
 class RegistrationConstructorException final : public std::exception {
@@ -68,4 +68,4 @@ public:
 
 } // DEFINED_ZONE_NAME
 
-#endif // REGISTRATION_EXCEPTIONS_H
+#endif // REGISTRATION_EXCEPTIONS_HPP

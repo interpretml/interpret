@@ -9,7 +9,7 @@
 
 // Steps for adding a new loss/objective function in C++:
 //   1) Copy one of the existing Loss*.h include files into a new renamed Loss*.h file
-//      (for regression, we recommend starting from LossRegressionPseudoHuber.h)
+//      (for regression, we recommend starting from PseudoHuberRegressionLoss.h)
 //   2) Modify the new Loss*.h file to handle the new loss function
 //   3) Add [#include "Loss*.h"] to the list of other include files right below this guide
 //   4) Add the Loss* type to the list of loss registrations in the RegisterLosses() function right below the includes
@@ -22,22 +22,22 @@
 //   6) Enjoy your new Loss function, and send us a PR on Github if you think others would benefit  :-)
 
 // Add new Loss*.h include files here:
-#include "LossBinaryCrossEntropy.hpp"
-#include "LossBinaryLogLoss.hpp"
-#include "LossMulticlassCrossEntropy.hpp"
-#include "LossMulticlassLogLoss.hpp"
-#include "LossMultitaskBinaryLogLoss.hpp"
-#include "LossMultitaskMulticlassCrossEntropy.hpp"
-#include "LossMultitaskRegressionMse.hpp"
-#include "LossRegressionMse.hpp"
-#include "LossRegressionPseudoHuber.hpp"
+#include "CrossEntropyBinaryLoss.hpp"
+#include "CrossEntropyMulticlassLoss.hpp"
+#include "CrossEntropyMulticlassMultitaskLoss.hpp"
+#include "LogLossBinaryLoss.hpp"
+#include "LogLossBinaryMultitaskLoss.hpp"
+#include "LogLossMulticlassLoss.hpp"
+#include "MseRegressionLoss.hpp"
+#include "MseRegressionMultitaskLoss.hpp"
+#include "PseudoHuberRegressionLoss.hpp"
 
 // Add new Loss* type registrations to this list:
 static const std::vector<std::shared_ptr<const Registration>> RegisterLosses() {
    // IMPORTANT: the *LossParam types here must match the parameters types in your Loss* constructor
    return {
-      RegisterLoss<LossMulticlassLogLoss>("log_loss"),
-      RegisterLoss<LossRegressionPseudoHuber>("pseudo_huber", FloatParam("delta", 1))
+      RegisterLoss<LogLossMulticlassLoss>("log_loss"),
+      RegisterLoss<PseudoHuberRegressionLoss>("pseudo_huber", FloatParam("delta", 1))
       // TODO: add a "c_sample" here and adapt the instructions above to handle it
    };
 }

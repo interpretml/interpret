@@ -4,8 +4,8 @@
 
 // !!! NOTE: To add a new loss/objective function in C++, follow the steps listed at the top of the "Loss.cpp" file !!!
 
-#ifndef LOSS_H
-#define LOSS_H
+#ifndef LOSS_HPP
+#define LOSS_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <memory> // shared_ptr, unique_ptr
@@ -29,15 +29,15 @@ namespace DEFINED_ZONE_NAME {
 class Registration;
 typedef const std::vector<std::shared_ptr<const Registration>> (* REGISTER_LOSSES_FUNCTION)();
 
-struct LossSingletask;
-struct LossBinary;
-struct LossMulticlass;
-struct LossRegression;
+struct SingletaskLoss;
+struct BinaryLoss;
+struct MulticlassLoss;
+struct RegressionLoss;
 
-struct LossMultitask;
-struct LossMultitaskBinary;
-struct LossMultitaskMulticlass;
-struct LossMultitaskRegression;
+struct MultitaskLoss;
+struct BinaryMultitaskLoss;
+struct MulticlassMultitaskLoss;
+struct RegressionMultitaskLoss;
 
 
 template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
@@ -97,7 +97,7 @@ struct Loss : public Registrable {
          return BitPack<TLoss, k_oneScore, k_cItemsPerBitPackMax2>::ApplyValidation(this, pData);
       }
    }
-   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
+   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
@@ -108,7 +108,7 @@ struct Loss : public Registrable {
          return BitPackPostApplyTraining<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic2>(pData);
       }
    }
-   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
+   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
@@ -119,7 +119,7 @@ struct Loss : public Registrable {
          return BitPackPostApplyValidation<TLoss, k_dynamicClassification, k_cItemsPerBitPackDynamic2>(pData);
       }
    }
-   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
+   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyTraining(ApplyTrainingData * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
@@ -128,7 +128,7 @@ struct Loss : public Registrable {
          return CountScores<TLoss, (k_cCompilerOptimizedTargetClassesMax2 < k_cCompilerOptimizedTargetClassesStart2 ? k_dynamicClassification : k_cCompilerOptimizedTargetClassesStart2)>::ApplyTraining(this, pData);
       }
    }
-   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<LossMultitaskMulticlass, TLoss>::value, TLoss>::type * = nullptr>
+   template<typename TLoss, typename std::enable_if<TLoss::IsMultiScore && !std::is_base_of<MulticlassMultitaskLoss, TLoss>::value, TLoss>::type * = nullptr>
    INLINE_RELEASE_TEMPLATED ErrorEbmType CountScoresPreApplyValidation(ApplyValidationData * const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cRuntimePack) {
          // don't blow up our complexity if we have only 1 bin.. just use dynamic for the count of scores
@@ -397,12 +397,12 @@ protected:
    template<typename TLoss>
    constexpr static bool IsEdgeLoss() { 
       return
-         std::is_base_of<LossBinary, TLoss>::value ||
-         std::is_base_of<LossMulticlass, TLoss>::value ||
-         std::is_base_of<LossRegression, TLoss>::value ||
-         std::is_base_of<LossMultitaskBinary, TLoss>::value ||
-         std::is_base_of<LossMultitaskMulticlass, TLoss>::value ||
-         std::is_base_of<LossMultitaskRegression, TLoss>::value;
+         std::is_base_of<BinaryLoss, TLoss>::value ||
+         std::is_base_of<MulticlassLoss, TLoss>::value ||
+         std::is_base_of<RegressionLoss, TLoss>::value ||
+         std::is_base_of<BinaryMultitaskLoss, TLoss>::value ||
+         std::is_base_of<MulticlassMultitaskLoss, TLoss>::value ||
+         std::is_base_of<RegressionMultitaskLoss, TLoss>::value;
    }
 
 
@@ -498,54 +498,54 @@ static_assert(std::is_trivially_copyable<Loss>::value,
 // 
 // The most general loss function that we could handle in C++ would be to take a custom loss function that jointly 
 // optimizes a multitask problem that contains regression, binary, and multiclass tasks.  This would be: 
-// "LossMultitaskCustom"
+// "MultitaskLossCustom"
 
-struct LossSingletask : public Loss {
+struct SingletaskLoss : public Loss {
 protected:
-   LossSingletask() = default;
+   SingletaskLoss() = default;
 };
 
-struct LossBinary : public LossSingletask {
+struct BinaryLoss : public SingletaskLoss {
 protected:
-   LossBinary() = default;
+   BinaryLoss() = default;
 public:
    static constexpr bool IsMultiScore = false;
 };
 
-struct LossMulticlass : public LossSingletask {
+struct MulticlassLoss : public SingletaskLoss {
 protected:
-   LossMulticlass() = default;
+   MulticlassLoss() = default;
 public:
    static constexpr bool IsMultiScore = true;
 };
 
-struct LossRegression : public LossSingletask {
+struct RegressionLoss : public SingletaskLoss {
 protected:
-   LossRegression() = default;
+   RegressionLoss() = default;
 public:
    static constexpr bool IsMultiScore = false;
 };
 
-struct LossMultitask : public Loss {
+struct MultitaskLoss : public Loss {
 protected:
-   LossMultitask() = default;
+   MultitaskLoss() = default;
 public:
    static constexpr bool IsMultiScore = true;
 };
 
-struct LossMultitaskBinary : public LossMultitask {
+struct BinaryMultitaskLoss : public MultitaskLoss {
 protected:
-   LossMultitaskBinary() = default;
+   BinaryMultitaskLoss() = default;
 };
 
-struct LossMultitaskMulticlass : public LossMultitask {
+struct MulticlassMultitaskLoss : public MultitaskLoss {
 protected:
-   LossMultitaskMulticlass() = default;
+   MulticlassMultitaskLoss() = default;
 };
 
-struct LossMultitaskRegression : public LossMultitask {
+struct RegressionMultitaskLoss : public MultitaskLoss {
 protected:
-   LossMultitaskRegression() = default;
+   RegressionMultitaskLoss() = default;
 };
 
 
@@ -591,4 +591,4 @@ protected:
 
 } // DEFINED_ZONE_NAME
 
-#endif // LOSS_H
+#endif // LOSS_HPP

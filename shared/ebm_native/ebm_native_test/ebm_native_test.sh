@@ -27,21 +27,22 @@ if [ $build_pipeline -eq 0 ]; then
 fi
 
 compile_all=""
-compile_all="$compile_all \"$src_path/EbmNativeTest.cpp\""
-
-compile_all="$compile_all \"$src_path/BitPackingExtremes.cpp\""
-compile_all="$compile_all \"$src_path/BoostingUnusualInputs.cpp\""
+compile_all="$compile_all \"$src_path/bit_packing_extremes.cpp\""
+compile_all="$compile_all \"$src_path/boosting_unusual_inputs.cpp\""
+compile_all="$compile_all \"$src_path/CutQuantile.cpp\""
+compile_all="$compile_all \"$src_path/CutUniform.cpp\""
+compile_all="$compile_all \"$src_path/CutWinsorized.cpp\""
 compile_all="$compile_all \"$src_path/Discretize.cpp\""
-compile_all="$compile_all \"$src_path/GenerateQuantileCuts.cpp\""
-compile_all="$compile_all \"$src_path/GenerateUniformCuts.cpp\""
-compile_all="$compile_all \"$src_path/GenerateWinsorizedCuts.cpp\""
-compile_all="$compile_all \"$src_path/InteractionUnusualInputs.cpp\""
-compile_all="$compile_all \"$src_path/RandomNumbers.cpp\""
-compile_all="$compile_all \"$src_path/Rehydration.cpp\""
+compile_all="$compile_all \"$src_path/ebm_native_test.cpp\""
+compile_all="$compile_all \"$src_path/interaction_unusual_inputs.cpp\""
+compile_all="$compile_all \"$src_path/random_numbers.cpp\""
+compile_all="$compile_all \"$src_path/rehydrate_booster.cpp\""
 compile_all="$compile_all \"$src_path/SuggestGraphBounds.cpp\""
 compile_all="$compile_all -I\"$src_path\""
 compile_all="$compile_all -I\"$root_path/shared/ebm_native/inc\""
-compile_all="$compile_all -std=c++11 -march=core2"
+compile_all="$compile_all -fno-math-errno -fno-trapping-math"
+compile_all="$compile_all -march=core2"
+compile_all="$compile_all -std=c++11"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html

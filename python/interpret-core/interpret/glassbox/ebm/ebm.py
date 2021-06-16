@@ -201,7 +201,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         count_missing, 
                         min_val, 
                         max_val, 
-                    ) = native.generate_quantile_cuts(
+                    ) = native.cut_quantile(
                         col_data, 
                         min_samples_bin, 
                         is_humanized, 
@@ -213,7 +213,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         count_missing, 
                         min_val, 
                         max_val,
-                    ) = native.generate_uniform_cuts(
+                    ) = native.cut_uniform(
                         col_data, 
                         self.max_bins - 2, # one bin for missing, and # of cuts is one less again
                     )

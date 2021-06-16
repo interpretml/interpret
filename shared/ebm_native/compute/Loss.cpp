@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <memory> // shared_ptr, unique_ptr
@@ -63,26 +63,26 @@ ErrorEbmType Loss::CreateLoss(
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelInfo, "Exited Loss::CreateLoss unknown loss");
          error = Error_LossUnknown;
-      } catch(const ParameterValueMalformedException &) {
+      } catch(const ParamValueMalformedException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueMalformedException");
-         error = Error_LossParameterValueMalformed;
-      } catch(const ParameterUnknownException &) {
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamValueMalformedException");
+         error = Error_LossParamValueMalformed;
+      } catch(const ParamUnknownException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterUnknownException");
-         error = Error_LossParameterUnknown;
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamUnknownException");
+         error = Error_LossParamUnknown;
       } catch(const RegistrationConstructorException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss RegistrationConstructorException");
          error = Error_LossConstructorException;
-      } catch(const ParameterValueOutOfRangeException &) {
+      } catch(const ParamValueOutOfRangeException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterValueOutOfRangeException");
-         error = Error_LossParameterValueOutOfRange;
-      } catch(const ParameterMismatchWithConfigException &) {
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamValueOutOfRangeException");
+         error = Error_LossParamValueOutOfRange;
+      } catch(const ParamMismatchWithConfigException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
-         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParameterMismatchWithConfigException");
-         error = Error_LossParameterMismatchWithConfig;
+         LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss ParamMismatchWithConfigException");
+         error = Error_LossParamMismatchWithConfig;
       } catch(const IllegalRegistrationNameException &) {
          EBM_ASSERT(nullptr == pLossWrapperOut->m_pLoss);
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss IllegalRegistrationNameException");
@@ -100,7 +100,7 @@ ErrorEbmType Loss::CreateLoss(
          error = Error_OutOfMemory;
       } catch(...) {
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss internal error, unknown exception");
-         error = Error_UnknownInternalError;
+         error = Error_UnexpectedInternal;
       }
       free(const_cast<Registrable *>(pLossWrapperOut->m_pLoss)); // this is legal if pLossWrapper->m_pLoss is nullptr
       pLossWrapperOut->m_pLoss = nullptr;

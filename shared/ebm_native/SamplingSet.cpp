@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -11,11 +11,11 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "RandomStream.h" // our header didn't need the full definition, but we use the RandomStream in here, so we need it
-#include "DataFrameBoosting.h"
-#include "SamplingSet.h"
+#include "RandomStream.hpp" // our header didn't need the full definition, but we use the RandomStream in here, so we need it
+#include "DataSetBoosting.hpp"
+#include "SamplingSet.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -24,13 +24,13 @@ namespace DEFINED_ZONE_NAME {
 
 SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    RandomStream * const pRandomStream, 
-   const DataFrameBoosting * const pOriginDataFrame,
+   const DataSetBoosting * const pOriginDataSet,
    const FloatEbmType * const aWeights
 ) {
    LOG_0(TraceLevelVerbose, "Entered SamplingSet::GenerateSingleSamplingSet");
 
    EBM_ASSERT(nullptr != pRandomStream);
-   EBM_ASSERT(nullptr != pOriginDataFrame);
+   EBM_ASSERT(nullptr != pOriginDataSet);
 
    SamplingSet * pRet = EbmMalloc<SamplingSet>();
    if(nullptr == pRet) {
@@ -39,7 +39,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    }
    pRet->InitZero();
 
-   const size_t cSamples = pOriginDataFrame->GetCountSamples();
+   const size_t cSamples = pOriginDataSet->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
@@ -96,7 +96,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    // to zero though so check it after checking for negative
    EBM_ASSERT(FloatEbmType { 0 } != total);
 
-   pRet->m_pOriginDataFrame = pOriginDataFrame;
+   pRet->m_pOriginDataSet = pOriginDataSet;
    pRet->m_weightTotal = total;
 
    LOG_0(TraceLevelVerbose, "Exited SamplingSet::GenerateSingleSamplingSet");
@@ -104,13 +104,13 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
 }
 
 SamplingSet * SamplingSet::GenerateFlatSamplingSet(
-   const DataFrameBoosting * const pOriginDataFrame,
+   const DataSetBoosting * const pOriginDataSet,
    const FloatEbmType * const aWeights
 ) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateFlatSamplingSet");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
-   EBM_ASSERT(nullptr != pOriginDataFrame);
+   EBM_ASSERT(nullptr != pOriginDataSet);
 
    SamplingSet * const pRet = EbmMalloc<SamplingSet>();
    if(nullptr == pRet) {
@@ -119,7 +119,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
    }
    pRet->InitZero();
 
-   const size_t cSamples = pOriginDataFrame->GetCountSamples();
+   const size_t cSamples = pOriginDataSet->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
    size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
@@ -161,7 +161,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
    // to zero though so check it after checking for negative
    EBM_ASSERT(FloatEbmType { 0 } != total);
 
-   pRet->m_pOriginDataFrame = pOriginDataFrame;
+   pRet->m_pOriginDataSet = pOriginDataSet;
    pRet->m_weightTotal = total;
 
    LOG_0(TraceLevelInfo, "Exited SamplingSet::GenerateFlatSamplingSet");
@@ -200,14 +200,14 @@ WARNING_POP
 
 SamplingSet ** SamplingSet::GenerateSamplingSets(
    RandomStream * const pRandomStream, 
-   const DataFrameBoosting * const pOriginDataFrame, 
+   const DataSetBoosting * const pOriginDataSet, 
    const FloatEbmType * const aWeights,
    const size_t cSamplingSets
 ) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateSamplingSets");
 
    EBM_ASSERT(nullptr != pRandomStream);
-   EBM_ASSERT(nullptr != pOriginDataFrame);
+   EBM_ASSERT(nullptr != pOriginDataSet);
 
    const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
 
@@ -222,7 +222,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
 
    if(0 == cSamplingSets) {
       // zero is a special value that really means allocate one set that contains all samples.
-      SamplingSet * const pSingleSamplingSet = GenerateFlatSamplingSet(pOriginDataFrame, aWeights);
+      SamplingSet * const pSingleSamplingSet = GenerateFlatSamplingSet(pOriginDataSet, aWeights);
       if(UNLIKELY(nullptr == pSingleSamplingSet)) {
          LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");
          free(apSamplingSets);
@@ -231,7 +231,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
       apSamplingSets[0] = pSingleSamplingSet;
    } else {
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSets; ++iSamplingSet) {
-         SamplingSet * const pSingleSamplingSet = GenerateSingleSamplingSet(pRandomStream, pOriginDataFrame, aWeights);
+         SamplingSet * const pSingleSamplingSet = GenerateSingleSamplingSet(pRandomStream, pOriginDataSet, aWeights);
          if(UNLIKELY(nullptr == pSingleSamplingSet)) {
             LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");
             FreeSamplingSets(cSamplingSets, apSamplingSets);

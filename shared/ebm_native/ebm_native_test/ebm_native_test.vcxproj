@@ -103,8 +103,9 @@
       <PreprocessorDefinitions>_CONSOLE;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\ebm_native\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeTest.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,8 +136,9 @@ EXIT /B 0
       <PreprocessorDefinitions>_CONSOLE;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\ebm_native\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeTest.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -169,8 +171,9 @@ EXIT /B 0
       <PreprocessorDefinitions>_CONSOLE;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\ebm_native\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeTest.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -205,8 +208,9 @@ EXIT /B 0
       <PreprocessorDefinitions>_CONSOLE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\shared\ebm_native\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeTest.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>precompiled_header_test.hpp</PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -231,34 +235,34 @@ EXIT /B 0
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BitPackingExtremes.cpp" />
-    <ClCompile Include="BoostingUnusualInputs.cpp" />
-    <ClCompile Include="CIncludeTest.c">
+    <ClCompile Include="bit_packing_extremes.cpp" />
+    <ClCompile Include="boosting_unusual_inputs.cpp" />
+    <ClCompile Include="include_c.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Discretize.cpp" />
-    <ClCompile Include="GenerateQuantileCuts.cpp" />
-    <ClCompile Include="GenerateUniformCuts.cpp" />
-    <ClCompile Include="GenerateWinsorizedCuts.cpp" />
-    <ClCompile Include="InteractionUnusualInputs.cpp" />
-    <ClCompile Include="PrecompiledHeaderEbmNativeTest.cpp">
+    <ClCompile Include="CutQuantile.cpp" />
+    <ClCompile Include="CutUniform.cpp" />
+    <ClCompile Include="CutWinsorized.cpp" />
+    <ClCompile Include="interaction_unusual_inputs.cpp" />
+    <ClCompile Include="precompiled_header_test.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="EbmNativeTest.cpp" />
-    <ClCompile Include="RandomNumbers.cpp" />
-    <ClCompile Include="Rehydration.cpp" />
+    <ClCompile Include="ebm_native_test.cpp" />
+    <ClCompile Include="random_numbers.cpp" />
+    <ClCompile Include="rehydrate_booster.cpp" />
     <ClCompile Include="SuggestGraphBounds.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="EbmNativeTest.h" />
-    <ClInclude Include="PrecompiledHeaderEbmNativeTest.h" />
-    <ClInclude Include="RandomStreamTest.h" />
+    <ClInclude Include="ebm_native_test.hpp" />
+    <ClInclude Include="precompiled_header_test.hpp" />
+    <ClInclude Include="RandomStreamTest.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_test.bat" />

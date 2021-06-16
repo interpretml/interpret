@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -10,16 +10,16 @@
 #include "logging.h"
 #include "zones.h"
 
-#include "EbmInternal.h"
+#include "ebm_internal.hpp"
 
-#include "FeatureAtomic.h"
-#include "FeatureGroup.h"
+#include "Feature.hpp"
+#include "FeatureGroup.hpp"
 
-#include "HistogramTargetEntry.h"
-#include "HistogramBucket.h"
+#include "HistogramTargetEntry.hpp"
+#include "HistogramBucket.hpp"
 
-#include "Booster.h"
-#include "ThreadStateBoosting.h"
+#include "BoosterCore.hpp"
+#include "BoosterShell.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -33,7 +33,7 @@ public:
    SumHistogramBucketsInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
-      ThreadStateBoosting * const pThreadStateBoosting,
+      BoosterShell * const pBoosterShell,
       const size_t cHistogramBuckets
 #ifndef NDEBUG
       , const size_t cSamplesTotal
@@ -42,13 +42,13 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      Booster * const pBooster = pThreadStateBoosting->GetBooster();
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
       HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
-         pThreadStateBoosting->GetSumHistogramTargetEntryArray();
+         pBoosterShell->GetSumHistogramTargetEntryArray();
 
-      HistogramBucketBase * const aHistogramBucketsBase = pThreadStateBoosting->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBase();
 
       const HistogramBucket<bClassification> * const aHistogramBuckets = 
          aHistogramBucketsBase->GetHistogramBucket<bClassification>();
@@ -74,12 +74,12 @@ public:
       const HistogramBucket<bClassification> * pCopyFromEnd =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, cHistogramBuckets);
 
-      // we do a lot more work in the GrowDecisionTree function per binned bucket entry, so if we can compress it by any amount, then it will probably be a win
+      // we do a lot more work in the PartitionOneDimensionalBoosting function per binned bucket entry, so if we can compress it by any amount, then it will probably be a win
       // for binned bucket arrays that have a small set of labels, this loop will be fast and result in no movements.  For binned bucket arrays that are long 
       // and have many different labels, we are more likley to find bins with zero items, and that's where we get a win by compressing it down to just the 
       // non-zero binned buckets, even though this requires one more member variable in the binned bucket array
       do {
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, pThreadStateBoosting->GetHistogramBucketsEndDebug());
+         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, pBoosterShell->GetHistogramBucketsEndDebug());
 #ifndef NDEBUG
          cSamplesTotalDebug += pCopyFrom->GetCountSamplesInBucket();
          weightTotalDebug += pCopyFrom->GetWeightInBucket();
@@ -112,7 +112,7 @@ public:
 };
 
 extern void SumHistogramBuckets(
-   ThreadStateBoosting * const pThreadStateBoosting,
+   BoosterShell * const pBoosterShell,
    const size_t cHistogramBuckets
 #ifndef NDEBUG
    , const size_t cSamplesTotal
@@ -121,13 +121,13 @@ extern void SumHistogramBuckets(
 ) {
    LOG_0(TraceLevelVerbose, "Entered SumHistogramBuckets");
 
-   Booster * const pBooster = pThreadStateBoosting->GetBooster();
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBooster->GetRuntimeLearningTypeOrCountTargetClasses();
+   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
          SumHistogramBucketsInternal<2>::Func(
-            pThreadStateBoosting,
+            pBoosterShell,
             cHistogramBuckets
 #ifndef NDEBUG
             , cSamplesTotal
@@ -136,7 +136,7 @@ extern void SumHistogramBuckets(
          );
       } else {
          SumHistogramBucketsInternal<k_dynamicClassification>::Func(
-            pThreadStateBoosting,
+            pBoosterShell,
             cHistogramBuckets
 #ifndef NDEBUG
             , cSamplesTotal
@@ -147,7 +147,7 @@ extern void SumHistogramBuckets(
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       SumHistogramBucketsInternal<k_regression>::Func(
-         pThreadStateBoosting,
+         pBoosterShell,
          cHistogramBuckets
 #ifndef NDEBUG
          , cSamplesTotal

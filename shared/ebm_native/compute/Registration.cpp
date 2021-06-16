@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeader.h"
+#include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <vector>
@@ -154,7 +154,7 @@ void Registration::FinalCheckParameters(
    if(size_t { 0 } != cRemainingParams) {
       // our counts don't match up, so there are strings in the sRegistration string that we didn't
       // process as params.  cRemainingParams should be a very big number since we would have underflowed
-      throw ParameterUnknownException();
+      throw ParamUnknownException();
    }
 }
 

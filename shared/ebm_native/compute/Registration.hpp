@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef REGISTRATION_H
-#define REGISTRATION_H
+#ifndef REGISTRATION_HPP
+#define REGISTRATION_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <vector>
@@ -126,14 +126,14 @@ protected:
                sRegistration = sNext + 1;
                sRegistration = ConvertStringToRegistrationType(sRegistration, &paramValue);
                if(nullptr == sRegistration) {
-                  throw ParameterValueMalformedException();
+                  throw ParamValueMalformedException();
                }
                if(sRegistrationEnd <= sRegistration) {
                   // if there are trailing spaces we can blow past the sRegistrationEnd which has spaces removed
                   break;
                }
                if(k_paramSeparator != *sRegistration) {
-                  throw ParameterValueMalformedException();
+                  throw ParamValueMalformedException();
                }
                ++sRegistration;
                continue;
@@ -240,10 +240,10 @@ class RegistrationPack final : public Registration {
          } catch(const SkipRegistrationException &) {
             free(const_cast<void *>(pRegistrableMemory));
             return true;
-         } catch(const ParameterValueOutOfRangeException &) {
+         } catch(const ParamValueOutOfRangeException &) {
             free(const_cast<void *>(pRegistrableMemory));
             throw;
-         } catch(const ParameterMismatchWithConfigException &) {
+         } catch(const ParamMismatchWithConfigException &) {
             free(const_cast<void *>(pRegistrableMemory));
             throw;
          } catch(const std::bad_alloc &) {
@@ -320,4 +320,4 @@ std::shared_ptr<const Registration> Register(const char * const sRegistrationNam
 
 } // DEFINED_ZONE_NAME
 
-#endif // REGISTRATION_H
+#endif // REGISTRATION_HPP

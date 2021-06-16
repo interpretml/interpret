@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef ZONED_BRIDGE_C_FUNCTIONS_H
-#define ZONED_BRIDGE_C_FUNCTIONS_H
+#ifndef ZONED_BRIDGE_C_FUNCTIONS_HPP
+#define ZONED_BRIDGE_C_FUNCTIONS_HPP
 
 #include "ebm_native.h"
 #include "bridge_c.h"
@@ -27,4 +27,4 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbmType MAKE_ZONED_C_FUNCTION_NAME(ApplyVali
 }
 #endif // __cplusplus
 
-#endif // ZONED_BRIDGE_C_FUNCTIONS_H
+#endif // ZONED_BRIDGE_C_FUNCTIONS_HPP

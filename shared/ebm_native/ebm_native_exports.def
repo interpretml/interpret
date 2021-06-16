@@ -6,6 +6,7 @@ EXPORTS
   GetTraceLevelString
   CreateClassificationBooster
   CreateRegressionBooster
+  CreateBoosterView
   GenerateModelUpdate
   GetModelUpdateCuts
   GetModelUpdateExpanded
@@ -14,15 +15,13 @@ EXPORTS
   GetBestModelFeatureGroup
   GetCurrentModelFeatureGroup
   FreeBooster
-  CreateThreadStateBoosting
-  FreeThreadStateBoosting
   CreateClassificationInteractionDetector
   CreateRegressionInteractionDetector
   CalculateInteractionScore
   FreeInteractionDetector
-  GenerateQuantileCuts
-  GenerateWinsorizedCuts
-  GenerateUniformCuts
+  CutQuantile
+  CutWinsorized
+  CutUniform
   Discretize
   Softmax
   SuggestGraphBounds

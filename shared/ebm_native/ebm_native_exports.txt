@@ -5,6 +5,7 @@
       GetTraceLevelString;
       CreateClassificationBooster;
       CreateRegressionBooster;
+      CreateBoosterView;
       GenerateModelUpdate;
       GetModelUpdateCuts;
       GetModelUpdateExpanded;
@@ -13,15 +14,13 @@
       GetBestModelFeatureGroup;
       GetCurrentModelFeatureGroup;
       FreeBooster;
-      CreateThreadStateBoosting;
-      FreeThreadStateBoosting;
       CreateClassificationInteractionDetector;
       CreateRegressionInteractionDetector;
       CalculateInteractionScore;
       FreeInteractionDetector;
-      GenerateQuantileCuts;
-      GenerateWinsorizedCuts;
-      GenerateUniformCuts;
+      CutQuantile;
+      CutWinsorized;
+      CutUniform;
       Discretize;
       Softmax;
       SuggestGraphBounds;
