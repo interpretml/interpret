@@ -83,7 +83,7 @@ public:
       m_pInteractionCore = pInteractionCore;
    }
 
-   HistogramBucketBase * GetHistogramBucketBase(const size_t cBytesRequired);
+   HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);
 
 };
 static_assert(std::is_standard_layout<InteractionShell>::value,

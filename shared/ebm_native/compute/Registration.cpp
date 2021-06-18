@@ -97,20 +97,20 @@ bool Registration::CreateRegistrable(
 
    LOG_0(TraceLevelInfo, "Entered Registrable::CreateRegistrable");
 
-   bool bFailed = true;
+   bool bNoMatch = true;
    for(const std::shared_ptr<const Registration> & registration : registrations) {
       if(nullptr != registration) {
          // normally we shouldn't have nullptr registrations, but let's not complain if someone is writing
          // their own custom one and accidentally puts one in.  We still understand the intent.
-         bFailed = registration->AttemptCreate(pConfig, sRegistration, sRegistrationEnd, pWrapperOut);
-         if(!bFailed) {
+         bNoMatch = registration->AttemptCreate(pConfig, sRegistration, sRegistrationEnd, pWrapperOut);
+         if(!bNoMatch) {
             break;
          }
       }
    }
 
    LOG_0(TraceLevelInfo, "Exited Registrable::CreateRegistrable");
-   return bFailed;
+   return bNoMatch;
 }
 
 void Registration::FinalCheckParameters(

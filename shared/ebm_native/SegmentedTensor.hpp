@@ -193,11 +193,11 @@ public:
    static void Free(SegmentedTensor * const pSegmentedRegion);
    static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength);
    void Reset();
-   bool SetCountDivisions(const size_t iDimension, const size_t cDivisions);
-   bool EnsureValueCapacity(const size_t cValues);
-   bool Copy(const SegmentedTensor & rhs);
+   ErrorEbmType SetCountDivisions(const size_t iDimension, const size_t cDivisions);
+   ErrorEbmType EnsureValueCapacity(const size_t cValues);
+   ErrorEbmType Copy(const SegmentedTensor & rhs);
    bool MultiplyAndCheckForIssues(const FloatEbmType v);
-   bool Expand(const FeatureGroup * const pFeatureGroup);
+   ErrorEbmType Expand(const FeatureGroup * const pFeatureGroup);
    void AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues);
    ErrorEbmType Add(const SegmentedTensor & rhs);
 

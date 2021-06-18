@@ -39,7 +39,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern bool InitializeGradientsAndHessians(
+extern ErrorEbmType InitializeGradientsAndHessians(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
@@ -68,25 +68,29 @@ void BoosterCore::DeleteSegmentedTensors(const size_t cFeatureGroups, SegmentedT
    LOG_0(TraceLevelInfo, "Exited DeleteSegmentedTensors");
 }
 
-SegmentedTensor ** BoosterCore::InitializeSegmentedTensors(
+ErrorEbmType BoosterCore::InitializeSegmentedTensors(
    const size_t cFeatureGroups, 
    const FeatureGroup * const * const apFeatureGroups, 
-   const size_t cVectorLength) 
+   const size_t cVectorLength,
+   SegmentedTensor *** papSegmentedTensorsOut)
 {
    LOG_0(TraceLevelInfo, "Entered InitializeSegmentedTensors");
 
    EBM_ASSERT(0 < cFeatureGroups);
    EBM_ASSERT(nullptr != apFeatureGroups);
    EBM_ASSERT(1 <= cVectorLength);
+   EBM_ASSERT(nullptr != papSegmentedTensorsOut);
+   EBM_ASSERT(nullptr == *papSegmentedTensorsOut);
 
    SegmentedTensor ** const apSegmentedTensors = EbmMalloc<SegmentedTensor *>(cFeatureGroups);
    if(UNLIKELY(nullptr == apSegmentedTensors)) {
       LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == apSegmentedTensors");
-      return nullptr;
+      return Error_OutOfMemory;
    }
    for(size_t i = 0; i < cFeatureGroups; ++i) {
       apSegmentedTensors[i] = nullptr;
    }
+   *papSegmentedTensorsOut = apSegmentedTensors; // transfer ownership for future deletion
 
    SegmentedTensor ** ppSegmentedTensors = apSegmentedTensors;
    for(size_t iFeatureGroup = 0; iFeatureGroup < cFeatureGroups; ++iFeatureGroup) {
@@ -95,22 +99,21 @@ SegmentedTensor ** BoosterCore::InitializeSegmentedTensors(
          SegmentedTensor::Allocate(pFeatureGroup->GetCountSignificantDimensions(), cVectorLength);
       if(UNLIKELY(nullptr == pSegmentedTensors)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedTensors");
-         DeleteSegmentedTensors(cFeatureGroups, apSegmentedTensors);
-         return nullptr;
+         return Error_OutOfMemory;
+      }
+      *ppSegmentedTensors = pSegmentedTensors; // transfer ownership for future deletion
+
+      const ErrorEbmType error = pSegmentedTensors->Expand(pFeatureGroup);
+      if(Error_None != error) {
+         // already logged
+         return error;
       }
 
-      if(pSegmentedTensors->Expand(pFeatureGroup)) {
-         LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors pSegmentedTensors->Expand(pFeatureGroup)");
-         DeleteSegmentedTensors(cFeatureGroups, apSegmentedTensors);
-         return nullptr;
-      }
-
-      *ppSegmentedTensors = pSegmentedTensors;
       ++ppSegmentedTensors;
    }
 
    LOG_0(TraceLevelInfo, "Exited InitializeSegmentedTensors");
-   return apSegmentedTensors;
+   return Error_None;
 }
 
 void BoosterCore::Free(BoosterCore * const pBoosterCore) {
@@ -402,15 +405,15 @@ ErrorEbmType BoosterCore::Create(
       } while(iFeatureGroup < cFeatureGroups);
 
       if(!bClassification || ptrdiff_t { 2 } <= runtimeLearningTypeOrCountTargetClasses) {
-         pBoosterCore->m_apCurrentModel = InitializeSegmentedTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength);
-         if(nullptr == pBoosterCore->m_apCurrentModel) {
+         ErrorEbmType error = InitializeSegmentedTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apCurrentModel);
+         if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentModel");
-            return Error_OutOfMemory;
+            return error;
          }
-         pBoosterCore->m_apBestModel = InitializeSegmentedTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength);
-         if(nullptr == pBoosterCore->m_apBestModel) {
+         error = InitializeSegmentedTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apBestModel);
+         if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apBestModel");
-            return Error_OutOfMemory;
+            return error;
          }
       }
    }
@@ -498,22 +501,23 @@ ErrorEbmType BoosterCore::Create(
 
    if(bClassification) {
       if(0 != cTrainingSamples) {
-         if(InitializeGradientsAndHessians(
+         const ErrorEbmType error = InitializeGradientsAndHessians(
             runtimeLearningTypeOrCountTargetClasses,
             cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
             pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
-         )) {
+         );
+         if(Error_None != error) {
             // error already logged
-            return Error_OutOfMemory;
+            return error;
          }
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       if(0 != cTrainingSamples) {
 #ifndef NDEBUG
-         const bool isFailed = 
+         const ErrorEbmType error =
 #endif // NDEBUG
          InitializeGradientsAndHessians(
             k_regression,
@@ -522,11 +526,11 @@ ErrorEbmType BoosterCore::Create(
             aTrainingPredictorScores,
             pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
          );
-         EBM_ASSERT(!isFailed);
+         EBM_ASSERT(Error_None == error); // InitializeGradientsAndHessians doesn't allocate on regression
       }
       if(0 != cValidationSamples) {
 #ifndef NDEBUG
-         const bool isFailed =
+         const ErrorEbmType error =
 #endif // NDEBUG
          InitializeGradientsAndHessians(
             k_regression,
@@ -535,7 +539,7 @@ ErrorEbmType BoosterCore::Create(
             aValidationPredictorScores,
             pBoosterCore->m_validationSet.GetGradientsAndHessiansPointer()
          );
-         EBM_ASSERT(!isFailed);
+         EBM_ASSERT(Error_None == error); // InitializeGradientsAndHessians doesn't allocate on regression
       }
    }
 

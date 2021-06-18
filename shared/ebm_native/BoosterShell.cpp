@@ -117,20 +117,24 @@ failed_allocation:;
    return Error_OutOfMemory;
 }
 
-HistogramBucketBase * BoosterShell::GetHistogramBucketBase(const size_t cBytesRequired) {
+HistogramBucketBase * BoosterShell::GetHistogramBucketBase(size_t cBytesRequired) {
    HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
    if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
-      m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
-      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
+      cBytesRequired <<= 1;
+      m_cThreadByteBufferCapacity1 = cBytesRequired;
+      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1 to %zu", cBytesRequired);
 
       free(aBuffer);
-      aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(m_cThreadByteBufferCapacity1));
-      m_aThreadByteBuffer1 = aBuffer;
+      aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
+      m_aThreadByteBuffer1 = aBuffer; // store it before checking it incase it's null so that we don't free old memory
+      if(nullptr == aBuffer) {
+         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetHistogramBucketBase OutOfMemory");
+      }
    }
    return aBuffer;
 }
 
-bool BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
+ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    // by adding cByteBoundaries and shifting our existing size, we do 2 things:
    //   1) we ensure that if we have zero size, we'll get some size that we'll get a non-zero size after the shift
    //   2) we'll always get back an odd number of items, which is good because we always have an odd number of TreeNodeChilden
@@ -145,11 +149,12 @@ bool BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    void * aBuffer = m_aThreadByteBuffer2;
    free(aBuffer);
    aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity2);
-   m_aThreadByteBuffer2 = aBuffer;
+   m_aThreadByteBuffer2 = aBuffer; // store it before checking it incase it's null so that we don't free old memory
    if(UNLIKELY(nullptr == aBuffer)) {
-      return true;
+      LOG_0(TraceLevelWarning, "WARNING GrowThreadByteBuffer2 OutOfMemory");
+      return Error_OutOfMemory;
    }
-   return false;
+   return Error_None;
 }
 
 
@@ -296,7 +301,7 @@ static ErrorEbmType CreateBooster(
       return Error_OutOfMemory;
    }
 
-   ErrorEbmType error1 = BoosterCore::Create(
+   const ErrorEbmType error1 = BoosterCore::Create(
       pBoosterShell,
       randomSeed,
       runtimeLearningTypeOrCountTargetClasses,

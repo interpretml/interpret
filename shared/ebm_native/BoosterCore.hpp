@@ -70,10 +70,11 @@ class BoosterCore final {
 
    static void DeleteSegmentedTensors(const size_t cFeatureGroups, SegmentedTensor ** const apSegmentedTensors);
 
-   static SegmentedTensor ** InitializeSegmentedTensors(
+   static ErrorEbmType InitializeSegmentedTensors(
       const size_t cFeatureGroups,
       const FeatureGroup * const * const apFeatureGroups,
-      const size_t cVectorLength
+      const size_t cVectorLength,
+      SegmentedTensor *** papSegmentedTensorsOut
    );
 
    INLINE_ALWAYS ~BoosterCore() {

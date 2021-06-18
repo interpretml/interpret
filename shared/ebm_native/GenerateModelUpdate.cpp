@@ -101,11 +101,9 @@ static ErrorEbmType BoostZeroDimensional(
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-   HistogramBucketBase * const pHistogramBucket =
-      pBoosterShell->GetHistogramBucketBase(cBytesPerHistogramBucket);
-
+   HistogramBucketBase * const pHistogramBucket = pBoosterShell->GetHistogramBucketBase(cBytesPerHistogramBucket);
    if(UNLIKELY(nullptr == pHistogramBucket)) {
-      LOG_0(TraceLevelWarning, "WARNING nullptr == pHistogramBucket");
+      // already logged
       return Error_OutOfMemory;
    }
 
@@ -228,7 +226,7 @@ static ErrorEbmType BoostSingleDimensional(
 
    HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional nullptr == aHistogramBuckets");
+      // already logged
       return Error_OutOfMemory;
    }
 
@@ -367,7 +365,7 @@ static ErrorEbmType BoostMultiDimensional(
    // we don't need to free this!  It's tracked and reused by pBoosterShell
    HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional nullptr == aHistogramBuckets");
+      // already logged
       return Error_OutOfMemory;
    }
 
@@ -622,7 +620,7 @@ static ErrorEbmType BoostRandom(
    // we don't need to free this!  It's tracked and reused by pBoosterShell
    HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostRandom nullptr == aHistogramBuckets");
+      // already logged
       return Error_OutOfMemory;
    }
 

@@ -131,14 +131,14 @@ public:
       return m_pSmallChangeToModelOverwriteSingleSamplingSet;
    }
 
-   HistogramBucketBase * GetHistogramBucketBase(const size_t cBytesRequired);
+   HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);
 
    INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBase() {
       // call this if the histograms were already allocated and we just need the pointer
       return m_aThreadByteBuffer1;
    }
 
-   bool GrowThreadByteBuffer2(const size_t cByteBoundaries);
+   ErrorEbmType GrowThreadByteBuffer2(const size_t cByteBoundaries);
 
    INLINE_ALWAYS void * GetThreadByteBuffer2() {
       return m_aThreadByteBuffer2;

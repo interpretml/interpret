@@ -462,6 +462,8 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
+      ErrorEbmType error;
+
       HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
       const HistogramBucket<bClassification> * const aHistogramBucket =
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
@@ -504,9 +506,10 @@ public:
          // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of three 
          // TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode), or the number of bins (interactions multiply bins) on the 
          // highest bin count feature
-         if(pBoosterShell->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
-            LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pBoosterShell->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
-            return Error_OutOfMemory;
+         error = pBoosterShell->GrowThreadByteBuffer2(cBytesInitialNeededAllocation);
+         if(Error_None != error) {
+            // already logged
+            return error;
          }
          cBytesBuffer2 = pBoosterShell->GetThreadByteBuffer2Size();
          EBM_ASSERT(cBytesInitialNeededAllocation <= cBytesBuffer2);
@@ -548,9 +551,10 @@ public:
          cSamplesRequiredForChildSplitMin
       )) {
          // there will be no splits at all
-         if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
-            LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
-            return Error_OutOfMemory;
+         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0);
+         if(UNLIKELY(Error_None != error)) {
+            // already logged
+            return error;
          }
 
          // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
@@ -601,9 +605,10 @@ public:
                )->IsSplittable()
          );
 
-         if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
-            LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
-            return Error_OutOfMemory;
+         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1);
+         if(UNLIKELY(Error_None != error)) {
+            // already logged
+            return error;
          }
 
          ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
@@ -744,9 +749,10 @@ public:
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                if(cBytesBuffer2 <
                   static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
-                  if(pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                     LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)");
-                     return Error_OutOfMemory;
+                  error = pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode);
+                  if(Error_None != error) {
+                     // already logged
+                     return error;
                   }
                   goto retry_with_bigger_tree_node_children_array;
                }
@@ -787,9 +793,10 @@ public:
                   AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
                if(cBytesBuffer2 <
                   static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
-                  if(pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                     LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode)");
-                     return Error_OutOfMemory;
+                  error = pBoosterShell->GrowThreadByteBuffer2(cBytesPerTreeNode);
+                  if(Error_None != error) {
+                     // already logged
+                     return error;
                   }
                   goto retry_with_bigger_tree_node_children_array;
                }
@@ -845,17 +852,19 @@ public:
          return Error_UnexpectedInternal;
       }
 
-      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 }))) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 })");
-         return Error_OutOfMemory;
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 });
+      if(UNLIKELY(Error_None != error)) {
+         // already logged
+         return error;
       }
       if(IsMultiplyError(cVectorLength, cLeaves)) {
          LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cVectorLength, cLeaves)");
          return Error_OutOfMemory;
       }
-      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves))) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves");
-         return Error_OutOfMemory;
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves);
+      if(UNLIKELY(Error_None != error)) {
+         // already logged
+         return error;
       }
       ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
       FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();

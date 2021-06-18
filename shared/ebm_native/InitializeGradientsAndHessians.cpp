@@ -33,7 +33,7 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   static bool Func(
+   static ErrorEbmType Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cSamples,
       const void * const aTargetData,
@@ -62,7 +62,7 @@ public:
       FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? EbmMalloc<FloatEbmType>(cVectorLength) : aLocalExpVector;
       if(UNLIKELY(nullptr == aExpVector)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeGradientsAndHessians nullptr == aExpVector");
-         return true;
+         return Error_OutOfMemory;
       }
 
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
@@ -127,7 +127,7 @@ public:
       }
 
       LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
-      return false;
+      return Error_None;
    }
 };
 
@@ -138,7 +138,7 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   static bool Func(
+   static ErrorEbmType Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cSamples,
       const void * const aTargetData,
@@ -177,7 +177,7 @@ public:
          pGradientAndHessian += 2;
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
       LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
-      return false;
+      return Error_None;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -188,7 +188,7 @@ public:
 
    InitializeGradientsAndHessiansInternal() = delete; // this is a static class.  Do not construct
 
-   static bool Func(
+   static ErrorEbmType Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cSamples,
       const void * const aTargetData,
@@ -228,11 +228,11 @@ public:
          ++pGradientAndHessian;
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
       LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
-      return false;
+      return Error_None;
    }
 };
 
-extern bool InitializeGradientsAndHessians(
+extern ErrorEbmType InitializeGradientsAndHessians(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,

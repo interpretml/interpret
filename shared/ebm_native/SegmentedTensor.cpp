@@ -116,7 +116,7 @@ void SegmentedTensor::Reset() {
    m_bExpanded = false;
 }
 
-bool SegmentedTensor::SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
+ErrorEbmType SegmentedTensor::SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
    EBM_ASSERT(iDimension < m_cDimensions);
    DimensionInfo * const pDimension = &GetDimensions()[iDimension];
    // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
@@ -126,7 +126,7 @@ bool SegmentedTensor::SetCountDivisions(const size_t iDimension, const size_t cD
 
       if(IsAddError(cDivisions, cDivisions >> 1)) {
          LOG_0(TraceLevelWarning, "WARNING SetCountDivisions IsAddError(cDivisions, cDivisions >> 1)");
-         return true;
+         return Error_OutOfMemory;
       }
       // just increase it by 50% since we don't expect to grow our divisions often after an initial period, 
       // and realloc takes some of the cost of growing away
@@ -135,7 +135,7 @@ bool SegmentedTensor::SetCountDivisions(const size_t iDimension, const size_t cD
 
       if(IsMultiplyError(sizeof(ActiveDataType), cNewDivisionCapacity)) {
          LOG_0(TraceLevelWarning, "WARNING SetCountDivisions IsMultiplyError(sizeof(ActiveDataType), cNewDivisionCapacity)");
-         return true;
+         return Error_OutOfMemory;
       }
       size_t cBytes = sizeof(ActiveDataType) * cNewDivisionCapacity;
       ActiveDataType * const aNewDivisions = static_cast<ActiveDataType *>(realloc(pDimension->m_aDivisions, cBytes));
@@ -143,22 +143,22 @@ bool SegmentedTensor::SetCountDivisions(const size_t iDimension, const size_t cD
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
          LOG_0(TraceLevelWarning, "WARNING SetCountDivisions nullptr == aNewDivisions");
-         return true;
+         return Error_OutOfMemory;
       }
       pDimension->m_aDivisions = aNewDivisions;
       pDimension->m_cDivisionCapacity = cNewDivisionCapacity;
    } // never shrink our array unless the user chooses to Trim()
    pDimension->m_cDivisions = cDivisions;
-   return false;
+   return Error_None;
 }
 
-bool SegmentedTensor::EnsureValueCapacity(const size_t cValues) {
+ErrorEbmType SegmentedTensor::EnsureValueCapacity(const size_t cValues) {
    if(UNLIKELY(m_cValueCapacity < cValues)) {
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
       if(IsAddError(cValues, cValues >> 1)) {
          LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsAddError(cValues, cValues >> 1)");
-         return true;
+         return Error_OutOfMemory;
       }
       // just increase it by 50% since we don't expect to grow our values often after an initial period, and realloc takes some of the cost of growing away
       size_t cNewValueCapacity = cValues + (cValues >> 1);
@@ -166,7 +166,7 @@ bool SegmentedTensor::EnsureValueCapacity(const size_t cValues) {
 
       if(IsMultiplyError(sizeof(FloatEbmType), cNewValueCapacity)) {
          LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(FloatEbmType), cNewValueCapacity)");
-         return true;
+         return Error_OutOfMemory;
       }
       size_t cBytes = sizeof(FloatEbmType) * cNewValueCapacity;
       FloatEbmType * const aNewValues = static_cast<FloatEbmType *>(realloc(m_aValues, cBytes));
@@ -174,15 +174,15 @@ bool SegmentedTensor::EnsureValueCapacity(const size_t cValues) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
          LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity nullptr == aNewValues");
-         return true;
+         return Error_OutOfMemory;
       }
       m_aValues = aNewValues;
       m_cValueCapacity = cNewValueCapacity;
    } // never shrink our array unless the user chooses to Trim()
-   return false;
+   return Error_None;
 }
 
-bool SegmentedTensor::Copy(const SegmentedTensor & rhs) {
+ErrorEbmType SegmentedTensor::Copy(const SegmentedTensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
@@ -194,21 +194,23 @@ bool SegmentedTensor::Copy(const SegmentedTensor & rhs) {
       size_t cDivisions = pDimension->m_cDivisions;
       EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're copying this memory, so multiplication can't overflow
       cValues *= (cDivisions + 1);
-      if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
+      const ErrorEbmType error = SetCountDivisions(iDimension, cDivisions);
+      if(UNLIKELY(Error_None != error)) {
          LOG_0(TraceLevelWarning, "WARNING Copy SetCountDivisions(iDimension, cDivisions)");
-         return true;
+         return error;
       }
       EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cDivisions)); // we're copying this memory, so multiplication can't overflow
       memcpy(pThisDimensionInfo[iDimension].m_aDivisions, pDimension->m_aDivisions, sizeof(ActiveDataType) * cDivisions);
    }
-   if(UNLIKELY(EnsureValueCapacity(cValues))) {
-      LOG_0(TraceLevelWarning, "WARNING Copy EnsureValueCapacity(cValues)");
-      return true;
+   const ErrorEbmType error = EnsureValueCapacity(cValues);
+   if(UNLIKELY(Error_None != error)) {
+      // already logged
+      return error;
    }
    EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType), cValues)); // we're copying this memory, so multiplication can't overflow
    memcpy(m_aValues, rhs.m_aValues, sizeof(FloatEbmType) * cValues);
    m_bExpanded = rhs.m_bExpanded;
-   return false;
+   return Error_None;
 }
 
 bool SegmentedTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
@@ -239,17 +241,19 @@ bool SegmentedTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
    return !!bBad;
 }
 
-bool SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
+ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
    // checking the max isn't really the best here, but doing this right seems pretty complicated
    static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<ActiveDataType>::max() &&
       0 == std::numeric_limits<ActiveDataType>::min(), "bad AcitveDataType size");
+
+   ErrorEbmType error;
 
    LOG_0(TraceLevelVerbose, "Entered Expand");
 
    if(m_bExpanded) {
       // we're already expanded
       LOG_0(TraceLevelVerbose, "Exited Expand");
-      return false;
+      return Error_None;
    }
 
    EBM_ASSERT(nullptr != pFeatureGroup);
@@ -302,13 +306,14 @@ bool SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
       } else {
          if(IsMultiplyError(cNewValues, m_cVectorLength)) {
             LOG_0(TraceLevelWarning, "WARNING Expand IsMultiplyError(cNewValues, m_cVectorLength)");
-            return true;
+            return Error_OutOfMemory;
          }
          const size_t cVectoredNewValues = cNewValues * m_cVectorLength;
          // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
-         if(UNLIKELY(EnsureValueCapacity(cVectoredNewValues))) {
-            LOG_0(TraceLevelWarning, "WARNING Expand EnsureValueCapacity(cVectoredNewValues))");
-            return true;
+         error = EnsureValueCapacity(cVectoredNewValues);
+         if(UNLIKELY(Error_None != error)) {
+            // already logged
+            return error;
          }
 
          FloatEbmType * const aValues = m_aValues;
@@ -411,9 +416,10 @@ bool SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
 
                const DimensionInfo * const pDimension = &aDimension1[iDimension];
                if(cDivisions != pDimension->m_cDivisions) {
-                  if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
-                     LOG_0(TraceLevelWarning, "WARNING Expand SetCountDivisions(iDimension, cDivisions)");
-                     return true;
+                  error = SetCountDivisions(iDimension, cDivisions);
+                  if(UNLIKELY(Error_None != error)) {
+                     // already logged
+                     return error;
                   }
 
                   ActiveDataType * const aDivision = pDimension->m_aDivisions;
@@ -432,7 +438,7 @@ bool SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
    m_bExpanded = true;
    
    LOG_0(TraceLevelVerbose, "Exited Expand");
-   return false;
+   return Error_None;
 }
 
 void SegmentedTensor::AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues) {
@@ -478,6 +484,8 @@ void SegmentedTensor::AddExpandedWithBadValueProtection(const FloatEbmType * con
 //   without needing to super-optimize it
 ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
    DimensionInfoStack dimensionStack[k_cDimensionsMax];
+
+   ErrorEbmType error;
 
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
@@ -573,9 +581,10 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
       return Error_OutOfMemory;
    }
    // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
-   if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
-      LOG_0(TraceLevelWarning, "WARNING Add EnsureValueCapacity(cNewValues * m_cVectorLength)");
-      return Error_OutOfMemory;
+   error = EnsureValueCapacity(cNewValues * m_cVectorLength);
+   if(UNLIKELY(Error_None != error)) {
+      // already logged
+      return error;
    }
 
    const FloatEbmType * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
@@ -696,9 +705,10 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
       // this will increase our capacity, if required.  It will also change m_cDivisions, so we get that before calling it.  
       // SetCountDivisions might change m_aValuesAndDivisions, so we need to actually keep it here after getting m_cDivisions but 
       // before set set all our pointers
-      if(UNLIKELY(SetCountDivisions(iDimension, cNewDivisions))) {
-         LOG_0(TraceLevelWarning, "WARNING Add SetCountDivisions(iDimension, cNewDivisions)");
-         return Error_OutOfMemory;
+      error = SetCountDivisions(iDimension, cNewDivisions);
+      if(UNLIKELY(Error_None != error)) {
+         // already logged
+         return error;
       }
 
       const ActiveDataType * p1Cur = &pDimension1Cur->m_aDivisions[cOriginalDivisionsBeforeSetting];

@@ -201,6 +201,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
+      ErrorEbmType error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
@@ -500,18 +501,18 @@ public:
       if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain != bestSplittingScore))) {
          // there were no good cuts found, or we hit a NaN value
 #ifndef NDEBUG
-         const bool bSetCountDivisions0 =
+         const ErrorEbmType errorDebug1 =
 #endif // NDEBUG
-            pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0);
+         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0);
          // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
-         EBM_ASSERT(!bSetCountDivisions0);
+         EBM_ASSERT(Error_None == errorDebug1);
 
 #ifndef NDEBUG
-         const bool bSetCountDivisions1 =
+         const ErrorEbmType errorDebug2 =
 #endif // NDEBUG
-            pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 0);
+         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 0);
          // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
-         EBM_ASSERT(!bSetCountDivisions1);
+         EBM_ASSERT(Error_None == errorDebug2);
 
          // we don't need to call pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity, 
          // since our value capacity would be 1, which is pre-allocated
@@ -553,52 +554,50 @@ public:
          EBM_ASSERT(k_illegalGain != bestSplittingScore);
          if(bCutFirst2) {
             // if bCutFirst2 is true, then there definetly was a cut, so we don't have to check for zero cuts
-            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
-               LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
-               return Error_OutOfMemory;
+            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1);
+            if(Error_None != error) {
+               // already logged
+               return error;
             }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst2Best;
 
             if(cutFirst2LowBest < cutFirst2HighBest) {
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-                  LOG_0(
-                     TraceLevelWarning,
-                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
-                  );
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
-                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2HighBest;
             } else if(cutFirst2HighBest < cutFirst2LowBest) {
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-                  LOG_0(
-                     TraceLevelWarning,
-                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
-                  );
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
-                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2HighBest;
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2LowBest;
             } else {
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
-                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
 
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
-                  LOG_0(
-                     TraceLevelWarning,
-                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)"
-                  );
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
             }
@@ -700,53 +699,51 @@ public:
                }
             }
          } else {
-            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
-               LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
-               return Error_OutOfMemory;
+            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1);
+            if(Error_None != error) {
+               // already logged
+               return error;
             }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst1Best;
 
             if(cutFirst1LowBest < cutFirst1HighBest) {
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-                  LOG_0(
-                     TraceLevelWarning,
-                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
-                  );
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
 
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
             } else if(cutFirst1HighBest < cutFirst1LowBest) {
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-                  LOG_0(
-                     TraceLevelWarning,
-                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
-                  );
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
 
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1HighBest;
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
             } else {
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
-                  LOG_0(TraceLevelWarning, "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
-               if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
-                  LOG_0(
-                     TraceLevelWarning,
-                     "WARNING PartitionTwoDimensionalBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)"
-                  );
-                  return Error_OutOfMemory;
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
+               if(Error_None != error) {
+                  // already logged
+                  return error;
                }
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
             }

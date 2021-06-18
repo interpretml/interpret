@@ -45,60 +45,60 @@ private:
 
 public:
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators() {
+   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators() noexcept {
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators(const float data) : m_data(static_cast<Unpacked>(data)) {
+   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators(const float data) noexcept : m_data(static_cast<Unpacked>(data)) {
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators(const double data) : m_data(static_cast<Unpacked>(data)) {
+   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators(const double data) noexcept : m_data(static_cast<Unpacked>(data)) {
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators(const int data) : m_data(static_cast<Unpacked>(data)) {
+   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators(const int data) noexcept : m_data(static_cast<Unpacked>(data)) {
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator+ (const Cuda_32_Operators & other) const {
+   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator+ (const Cuda_32_Operators & other) const noexcept {
       return Cuda_32_Operators(m_data + other.m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator- (const Cuda_32_Operators & other) const {
+   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator- (const Cuda_32_Operators & other) const noexcept {
       return Cuda_32_Operators(m_data - other.m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator* (const Cuda_32_Operators & other) const {
+   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator* (const Cuda_32_Operators & other) const noexcept {
       return Cuda_32_Operators(m_data * other.m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator/ (const Cuda_32_Operators & other) const {
+   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators operator/ (const Cuda_32_Operators & other) const noexcept {
       return Cuda_32_Operators(m_data / other.m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS bool IsAnyEqual(const Cuda_32_Operators & other) const {
+   GPU_BOTH INLINE_ALWAYS bool IsAnyEqual(const Cuda_32_Operators & other) const noexcept {
       return m_data == other.m_data;
    }
 
-   GPU_BOTH INLINE_ALWAYS operator float() const {
+   GPU_BOTH INLINE_ALWAYS operator float() const noexcept {
       return m_data;
    }
 
-   GPU_BOTH INLINE_ALWAYS operator double() const {
+   GPU_BOTH INLINE_ALWAYS operator double() const noexcept {
       return m_data;
    }
 
-   GPU_BOTH INLINE_ALWAYS bool IsAnyInf() const {
+   GPU_BOTH INLINE_ALWAYS bool IsAnyInf() const noexcept {
       return isinf(m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS bool IsAnyNaN() const {
+   GPU_BOTH INLINE_ALWAYS bool IsAnyNaN() const noexcept {
       return isnan(m_data);
    }
 
-   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators Sqrt() const {
+   GPU_BOTH INLINE_ALWAYS Cuda_32_Operators Sqrt() const noexcept {
       return Cuda_32_Operators(sqrtf(m_data));
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyTraining(const Loss * const pLoss, ApplyTrainingData * const pData) noexcept {
       constexpr size_t k_cItems = 5;
 
       bool bExitError = true;
@@ -225,7 +225,7 @@ public:
    }
 
    template<template <typename, typename, ptrdiff_t, ptrdiff_t, bool> class TExecute, typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack, bool bHessian>
-   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) {
+   INLINE_RELEASE_TEMPLATED static ErrorEbmType ApplyValidation(const Loss * const pLoss, ApplyValidationData * const pData) noexcept {
       // this allows us to switch execution onto GPU, FPGA, or other local computation
 
       // TODO: use something other than <<<1, 1>>>

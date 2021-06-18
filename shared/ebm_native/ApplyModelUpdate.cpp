@@ -42,15 +42,17 @@ static ErrorEbmType ApplyModelUpdateInternal(
 ) {
    LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateInternal");
 
+   ErrorEbmType error;
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
 
-   if(pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup)) {
+   error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
+   if(Error_None != error) {
       if(nullptr != pValidationMetricReturn) {
          *pValidationMetricReturn = FloatEbmType { 0 };
       }
-      return Error_OutOfMemory;
+      return error;
    }
 
    // m_apCurrentModel can be null if there are no featureGroups (but we have an feature group index), 
@@ -112,12 +114,13 @@ static ErrorEbmType ApplyModelUpdateInternal(
          size_t iModel = 0;
          size_t iModelEnd = pBoosterCore->GetCountFeatureGroups();
          do {
-            if(pBoosterCore->GetBestModel()[iModel]->Copy(*pBoosterCore->GetCurrentModel()[iModel])) {
+            error = pBoosterCore->GetBestModel()[iModel]->Copy(*pBoosterCore->GetCurrentModel()[iModel]);
+            if(Error_None != error) {
                if(nullptr != pValidationMetricReturn) {
                   *pValidationMetricReturn = FloatEbmType { 0 };
                }
                LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateInternal with memory allocation error in copy");
-               return Error_OutOfMemory;
+               return error;
             }
             ++iModel;
          } while(iModel != iModelEnd);
@@ -394,8 +397,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    }
 
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   if(pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup)) {
-      return Error_OutOfMemory;
+   const ErrorEbmType error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
+   if(Error_None != error) {
+      return error;
    }
 
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
@@ -477,9 +481,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
    }
 
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   if(pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup)) {
+   const ErrorEbmType error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
+   if(Error_None != error) {
+      // already logged
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
-      return Error_OutOfMemory;
+      return error;
    }
 
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();

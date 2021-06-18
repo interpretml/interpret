@@ -21,7 +21,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern bool InitializeGradientsAndHessians(
+extern ErrorEbmType InitializeGradientsAndHessians(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cSamples,
    const void * const aTargetData,
@@ -29,12 +29,13 @@ extern bool InitializeGradientsAndHessians(
    FloatEbmType * pGradient
 );
 
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(
+INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    const bool bAllocateHessians,
    const size_t cSamples, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   FloatEbmType ** paGradientsAndHessiansOut
 ) {
    LOG_0(TraceLevelInfo, "Entered ConstructGradientsAndHessians");
 
@@ -47,40 +48,40 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(1 <= cVectorLength);
 
-
    const size_t cStorageItems = bAllocateHessians ? 2 : 1;
    if(IsMultiplyError(cStorageItems, cVectorLength)) {
       LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cStorageItems, cVectorLength)");
-      return nullptr;
+      return Error_OutOfMemory;
    }
    const size_t cStorageItemsPerSample = cStorageItems * cVectorLength;
 
    if(UNLIKELY(IsMultiplyError(cSamples, cStorageItemsPerSample))) {
       LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cSamples, cStorageItemsPerSample)");
-      return nullptr;
+      return Error_OutOfMemory;
    }
 
    const size_t cElements = cSamples * cStorageItemsPerSample;
    FloatEbmType * aGradientsAndHessians = EbmMalloc<FloatEbmType>(cElements);
    if(UNLIKELY(nullptr == aGradientsAndHessians)) {
       LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
-      return nullptr;
+      return Error_OutOfMemory;
    }
+   *paGradientsAndHessiansOut = aGradientsAndHessians; // transfer ownership for future deletion
 
-   if(UNLIKELY(InitializeGradientsAndHessians(
+   const ErrorEbmType error = InitializeGradientsAndHessians(
       runtimeLearningTypeOrCountTargetClasses,
       cSamples,
       aTargetData,
       aPredictorScores,
       aGradientsAndHessians
-   ))) {
+   );
+   if(UNLIKELY(Error_None != error)) {
       // error already logged
-      free(aGradientsAndHessians);
-      return nullptr;
+      return error;
    }
 
    LOG_0(TraceLevelInfo, "Exited ConstructGradientsAndHessians");
-   return aGradientsAndHessians;
+   return Error_None;
 }
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
@@ -260,12 +261,12 @@ ErrorEbmType DataSetInteraction::Initialize(
          }
       }
 
-      FloatEbmType * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
-      if(nullptr == aGradientsAndHessians) {
+      ErrorEbmType error = ConstructGradientsAndHessians(bAllocateHessians, cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses, &m_aGradientsAndHessians);
+      if(Error_None != error) {
          // we should have already logged the failure
-         return Error_OutOfMemory;
+         return error;
       }
-      m_aGradientsAndHessians = aGradientsAndHessians;
+
       if(0 != cFeatures) {
          StorageDataType ** const aaInputData = ConstructInputData(cFeatures, aFeatures, cSamples, aBinnedData);
          if(nullptr == aaInputData) {

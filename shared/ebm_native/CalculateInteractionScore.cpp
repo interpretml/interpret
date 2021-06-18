@@ -130,7 +130,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
    // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
    HistogramBucketBase * const aHistogramBuckets = pInteractionShell->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal nullptr == aHistogramBuckets");
+      // already logged
       return Error_OutOfMemory;
    }
 

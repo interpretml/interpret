@@ -55,6 +55,7 @@ public:
       // TODO: accept 0 == countSamplesRequiredForChildSplitMin as a minimum number of items so that we can always choose to allow a tensor cut (for DP)
       // TODO: move most of this code out of this function into a non-templated place
 
+      ErrorEbmType error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -137,14 +138,10 @@ public:
       }
       const size_t cBytesSlicesPlusRandom = cSlicesPlusRandomMax * sizeof(size_t);
 
-      if(UNLIKELY(
-         pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells))) 
-      {
-         LOG_0(
-            TraceLevelWarning,
-            "WARNING PartitionRandomBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells)"
-         );
-         return Error_OutOfMemory;
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells);
+      if(UNLIKELY(Error_None != error)) {
+         // already logged
+         return error;
       }
 
       // our allocated histogram is bigger since it has more elements and the elements contain a size_t
@@ -459,10 +456,11 @@ public:
       const size_t cFirstCuts = pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice;
       // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 cuts and 
       // one last item to indicate the termination point
-      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cFirstCuts))) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal SetCountDivisions(0, cFirstCuts)");
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cFirstCuts);
+      if(UNLIKELY(Error_None != error)) {
+         // already logged
          free(pBuffer);
-         return Error_OutOfMemory;
+         return error;
       }
       const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       if(LIKELY(size_t { 0 } != cFirstCuts)) {
@@ -489,10 +487,11 @@ public:
             ++pcBytesInSlice2; // we have one less cut than we have slices, so move to the next one
 
             const size_t * pcItemsInNextSliceLast = pState->m_pcItemsInNextSliceEnd - size_t { 1 };
-            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2)) {
-               LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2)");
+            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2);
+            if(Error_None != error) {
+               // already logged
                free(pBuffer);
-               return Error_OutOfMemory;
+               return error;
             }
             if(pcItemsInNextSliceLast != pcBytesInSlice2) {
                ActiveDataType * pDivision = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(iDivision);
