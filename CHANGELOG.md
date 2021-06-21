@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.2.5] - 2021-06-15
+## [v0.2.5] - 2021-06-21
 ### Added
 - Sample weight support added for EBM.
 - Joint `predict_and_contrib` added to EBM where both predictions and feature contributions are generated in one call.
