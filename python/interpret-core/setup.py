@@ -107,7 +107,7 @@ class BuildCommand(build):
         import shutil
         
         script_path = os.path.dirname(os.path.abspath(__file__))
-        root_path = os.path.join(script_path, '..', '..')
+        root_path = os.path.abspath(os.path.join(script_path, '..', '..'))
         sym_path = os.path.join(script_path, 'symbolic')
 
         # Copy files to the symbolic folder instead of using symlinks.
