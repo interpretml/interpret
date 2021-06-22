@@ -1,5 +1,5 @@
 {% set name = "interpret-core" %}
-{% set version = "0.2.4" %}
+{% set version = "0.2.5" %}
 
 package:
   name: "{{ name }}"
