@@ -11,7 +11,6 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - EBM predictions now substantially faster with categorical featured predictions.
 - Preliminary documentation for all of `interpret` now public at https://interpret.ml/docs.
 - Decision trees now work in cloud environments (InlineRenderer support).
-- Packages `interpret` and `interpret-core` now distributed via conda.
 - Packages `interpret` and `interpret-core` now distributed via sdist.
 - Published dockerfile for `interpret` at `interpretml/interpret` on docker.io
 ### Fixed
