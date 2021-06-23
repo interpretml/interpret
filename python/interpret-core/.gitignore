@@ -18,3 +18,4 @@ dev-log.txt
 geckodriver.log
 coverage.xml
 htmlcov/
+symbolic/

@@ -24,3 +24,4 @@ __pycache__
 # General
 *.bak
 *.tmp
+dist/

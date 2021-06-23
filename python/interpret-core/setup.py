@@ -4,6 +4,7 @@
 from setuptools import setup, find_packages
 from setuptools.command.sdist import sdist
 from distutils.command.build import build
+from wheel.bdist_wheel import bdist_wheel
 
 
 name = "interpret-core"
@@ -98,27 +99,20 @@ extras = {
     ],
 }
 
-class BuildCommand(build):
-    def run(self):
-        # Run native compilation as well as JavaScript build,
-        # then delegate rest of sdist to default.
-        import subprocess
-        import os
-        import shutil
-        
-        script_path = os.path.dirname(os.path.abspath(__file__))
-        root_path = os.path.abspath(os.path.join(script_path, '..', '..'))
-        sym_path = os.path.join(script_path, 'symbolic')
+def _copy_native_code_to_setup():
+    import os
+    import shutil
 
-        # Copy files to the symbolic folder instead of using symlinks.
-        # If the 'shared' folder already exists, remove it, to avoid
-        # an exception in shutil.copytree().
-        if os.path.exists(os.path.join(sym_path, 'shared')):
-            shutil.rmtree(os.path.join(sym_path, 'shared'))
-        shutil.copytree(
-            os.path.join(root_path, 'shared'),
-            os.path.join(sym_path, 'shared')
-        )
+    script_path = os.path.dirname(os.path.abspath(__file__))
+    root_path = os.path.abspath(os.path.join(script_path, '..', '..'))
+    sym_path = os.path.join(script_path, 'symbolic')
+    source_shared_path = os.path.join(root_path, 'shared')
+    target_shared_path = os.path.join(sym_path, 'shared')
+
+    if os.path.exists(source_shared_path):  # If native code exists two directories up, update setup.py's copy.
+        if os.path.exists(target_shared_path):
+            shutil.rmtree(target_shared_path)
+        shutil.copytree(source_shared_path, target_shared_path)
 
         file_names = ["build.bat", "build.sh", "LICENSE", "README.md"]
         for file_name in file_names:
@@ -126,6 +120,21 @@ class BuildCommand(build):
                 os.path.join(root_path, file_name),
                 os.path.join(sym_path, file_name)
             )
+    else:  # Otherwise, ensure that native code exists for setup.py.
+        if not os.path.exists(target_shared_path):
+            raise Exception("Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes.")
+
+class BuildCommand(build):
+    def run(self):
+        _copy_native_code_to_setup()
+
+        # Run native compilation as well as JavaScript build.
+        import subprocess
+        import os
+        import shutil
+
+        script_path = os.path.dirname(os.path.abspath(__file__))
+        sym_path = os.path.join(script_path, 'symbolic')
 
         # Native compile
         if os.name == 'nt':
@@ -164,7 +173,12 @@ class BuildCommand(build):
 
 class SDistCommand(sdist):
    def run(self):
+       _copy_native_code_to_setup()  # This needs to run pre-build to store native code in the sdist.
        sdist.run(self)
+
+class BDistWheelCommand(bdist_wheel):
+   def run(self):
+       bdist_wheel.run(self)
 
 setup(
     name=name,
@@ -178,6 +192,7 @@ setup(
     cmdclass={
         'sdist': SDistCommand,
         'build': BuildCommand,
+        'bdist_wheel': BDistWheelCommand,
     },
     packages=find_packages(),
     package_data=package_data,
