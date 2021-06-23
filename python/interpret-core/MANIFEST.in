@@ -1,4 +1,5 @@
 graft symbolic
+graft js
 prune symbolic/python
 prune symbolic/staging
 prune symbolic/tmp
