@@ -638,7 +638,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       ,
       static_cast<void *>(boosterHandle),
       indexFeatureGroup,
-      modelFeatureGroupTensorOut
+      static_cast<void *>(modelFeatureGroupTensorOut)
    );
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
@@ -729,7 +729,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       ,
       static_cast<void *>(boosterHandle),
       indexFeatureGroup,
-      modelFeatureGroupTensorOut
+      static_cast<void *>(modelFeatureGroupTensorOut)
    );
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);

@@ -174,24 +174,24 @@ ErrorEbmType BoosterCore::Create(
 
    LOG_0(TraceLevelInfo, "Entered BoosterCore::Create");
 
-   try {
-      // TODO: eliminate this code I added to test that threads are available on the majority of our systems
-      std::thread testThread(TODO_removeThisThreadTest);
-      testThread.join();
-      if(0 == g_TODO_removeThisThreadTest) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread not started");
-         return Error_UnexpectedInternal;
-      }
-   } catch(const std::bad_alloc &) {
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start out of memory");
-      return Error_OutOfMemory;
-   } catch(...) {
-      // the C++ standard doesn't really seem to say what kind of exceptions we'd get for various errors, so
-      // about the best we can do is catch ... since the exact exceptions seem to be implementation specific
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start failed");
-      return Error_ThreadStartFailed;
-   }
-   LOG_0(TraceLevelInfo, "INFO BoosterCore::Create thread started");
+   //try {
+   //   // TODO: eliminate this code I added to test that threads are available on the majority of our systems
+   //   std::thread testThread(TODO_removeThisThreadTest);
+   //   testThread.join();
+   //   if(0 == g_TODO_removeThisThreadTest) {
+   //      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread not started");
+   //      return Error_UnexpectedInternal;
+   //   }
+   //} catch(const std::bad_alloc &) {
+   //   LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start out of memory");
+   //   return Error_OutOfMemory;
+   //} catch(...) {
+   //   // the C++ standard doesn't really seem to say what kind of exceptions we'd get for various errors, so
+   //   // about the best we can do is catch(...) since the exact exceptions seem to be implementation specific
+   //   LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start failed");
+   //   return Error_ThreadStartFailed;
+   //}
+   //LOG_0(TraceLevelInfo, "INFO BoosterCore::Create thread started");
 
    BoosterCore * pBoosterCore;
    try {

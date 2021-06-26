@@ -21,6 +21,7 @@ extern "C" {
 
 typedef size_t StorageDataType;
 typedef UIntEbmType ActiveDataType;
+typedef UIntEbmType SharedStorageDataType;
 
 struct Registrable {
 };
