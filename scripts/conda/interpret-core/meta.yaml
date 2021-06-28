@@ -12,8 +12,9 @@ source:
 build:
   noarch: generic
   number: 0
-  script: "build.bat && {{ PYTHON }} python/scripts/build-js-bundles.py && cd python/interpret-core && {{ PYTHON }} -m pip install . -vv"  # [win]
-  script: "./build.sh && {{ PYTHON }} python/scripts/build-js-bundles.py && cd python/interpret-core && {{ PYTHON }} -m pip install . -vv"  # [not win]
+  script: Xcopy /E /I shared python\interpret-core\symbolic\shared  # [win]
+  script: cp -r shared python/interpret-core/symbolic/shared  # [not win]
+  script: cd python/interpret-core && {{ PYTHON }} setup.py build && {{ PYTHON }} setup.py install
 
 requirements:
   build:

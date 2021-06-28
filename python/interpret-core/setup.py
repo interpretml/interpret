@@ -4,6 +4,7 @@
 from setuptools import setup, find_packages
 from setuptools.command.sdist import sdist
 from distutils.command.build import build
+from distutils.command.install import install
 from wheel.bdist_wheel import bdist_wheel
 
 
@@ -104,7 +105,7 @@ def _copy_native_code_to_setup():
     import shutil
 
     script_path = os.path.dirname(os.path.abspath(__file__))
-    root_path = os.path.abspath(os.path.join(script_path, '..', '..'))
+    root_path = os.path.join(script_path, '..', '..')
     sym_path = os.path.join(script_path, 'symbolic')
     source_shared_path = os.path.join(root_path, 'shared')
     target_shared_path = os.path.join(sym_path, 'shared')
@@ -171,6 +172,11 @@ class BuildCommand(build):
 
         build.run(self)
 
+class InstallCommand(install):
+   def run(self):
+       _copy_native_code_to_setup()  # This needs to run pre-build to store native code in the sdist.
+       install.run(self)
+
 class SDistCommand(sdist):
    def run(self):
        _copy_native_code_to_setup()  # This needs to run pre-build to store native code in the sdist.
@@ -190,6 +196,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/interpretml/interpret",
     cmdclass={
+        'install': InstallCommand,
         'sdist': SDistCommand,
         'build': BuildCommand,
         'bdist_wheel': BDistWheelCommand,
