@@ -12,7 +12,8 @@ source:
 build:
   noarch: generic
   number: 0
-  script: cd python/interpret && {{ PYTHON }} setup.py build && {{ PYTHON }} setup.py install
+  # script: cd python/interpret && {{ PYTHON }} setup.py build && {{ PYTHON }} setup.py install
+  script: cd python/interpret && {{ PYTHON }} -m pip install . -vv
 
 requirements:
   host:
@@ -39,11 +40,6 @@ requirements:
     - dash_cytoscape >=0.1.1
     - gevent >=1.3.6
     - requests >=2.19.0
-
-
-test:
-  imports:
-    - interpret
 
 about:
   home: "https://github.com/interpretml/interpret"
