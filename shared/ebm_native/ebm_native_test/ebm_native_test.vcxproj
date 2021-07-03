@@ -237,6 +237,7 @@ EXIT /B 0
   <ItemGroup>
     <ClCompile Include="bit_packing_extremes.cpp" />
     <ClCompile Include="boosting_unusual_inputs.cpp" />
+    <ClCompile Include="data_set_shared.cpp" />
     <ClCompile Include="include_c.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>

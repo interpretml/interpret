@@ -21,6 +21,157 @@ namespace DEFINED_ZONE_NAME {
 
 // the stuff in this file is for handling a raw chunk of shared memory that our caller allocates and which we fill
 
+
+
+
+// TODO PK Implement the following for memory efficiency and speed of initialization :
+//   - NOTE: FOR RawArray ->  import multiprocessing ++ from multiprocessing import RawArray ++ RawArray(ct.c_ubyte, memory_size) ++ ct.POINTER(ct.c_ubyte)
+//   - OBSERVATION: passing in data one feature at a time is also nice since some languages (C# for instance) in some configurations don't like arrays 
+//                  larger than 32 bit memory, but that's fine if we pass in the memory one feature at a time
+//   - OBSERVATION: python has a RawArray class that allows memory to be shared cross process on a single machine, but we don't want to make a chatty 
+//                  interface where we grow/shrink such expensive memory, so we want to precompute the size, then have it allocated in python, 
+//                  then fill the memory
+//   - OBSERVATION: We want sparse feature support in our booster since we don't need to access
+//                  memory if there are long segments with just a single value
+//   - OBSERVATION: our boosting algorithm is position independent, so we can sort the data by the target feature, which
+//   -              helps us because we can move the class number into a loop count and not fetch the memory, and it allows
+//                  us to elimiante a branch when calculating statistics since all samples will have the same target within a loop
+//   - OBSERVATION: we'll be sorting on the target, so we can't sort primarily on intput features (secondary sort ok)
+//                  So, sparse input features are not typically expected to clump into ranges of non - default parameters
+//                  So, we won't use ranges in our representation, so our sparse feature representation will be
+//                  class Sparse { size_t index; size_t val; }
+//                  This representation is invariant to position, so we'll be able to pre-compute the size before sorting
+//   - OBSERVATION: We will be sorting on the target values, BUT since the sort on the target will have no discontinuities
+//                  We can represent it purely as class Target { size_t count; } and each item in the array is an increment
+//                  of the class value(for classification).
+//                  Since we know how many classes there are, we will be able to know the size of the array AFTER sorting
+//   - OBSERVATION: Our typical processing order is: cycle the mains, detect interactions, cycle the pairs
+//                  Each of those methods requires re - creating the memory representation, so we might as well go back each time
+//                  and use the original python memory to create the new datasets.  We can't even reliably go from mains to interactions
+//                  because the user might not have given us all the mains when building mains
+//                  One additional benefit of going back to the original data is that we can change the # of bins, which might be important
+//                  when doing pairs in that pairs might benefit from having bigger bin sizes
+//   - OBSERVATION: For interaction detection, we can be asked to check for interactions with up to 64 features together, and if we're compressing
+//                  feature data and /or using sparse representations, then any of those features can have any number of compressions.
+//                  One example bad situation is having 3 features: one of which is sparse, one of which has 3 items per 64 - bit number, and the
+//                  last has 7 items per number.You can't really template this many options.  Even if you had special pair
+//                  interaction detection code, which would have 16 * 16 = 256 possible combinations(15 different packs per 64 bit number PLUS sparse)
+//                  You wouldn't be able to match up the loops since the first feature would require 3 iterations, and the second 7, so you don't
+//                  really get any relief. The only way to partly handle this is to make all features use the same number of bits
+//                  (choose the worst case packing)
+//                  and then template the combination <number_of_dimensions, number_of_bits> which has 16 * 64 possible combinations, most of which are not 
+//                  used. You can get this down to maybe 16 * 4 combinations templated with loops on the others, but then you still can't easily do
+//                  sparse features, so you're stuck with dense features if you go this route.
+//   - OBSERVATION: For templates, always put the more universal template featutres at the end, incase C++ changes such that variadic template/macros
+//                  work for us someday (currently they only allow only just typenames or the same datatypes per parameter pack)
+//   - OBSERVATION: For interaction detection, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDimensions, cDataItemsPerPack>
+//                  The main reason is that we want to load data via SIMD, and we can't have branches in order to do that, so we can't bitpack each feature
+//                  differently, so they all need to use the same number of bits per pack.
+//   - OBSERVATION: For histogram creation and updating, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDataItemsPerPack>
+//   - OBSERVATION: For partitioning, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDimensions>
+//   - OBSERVATION: THIS SECTION IS WRONG -> Branch misprediction is on the order of 12-20 cycles.  When doing interactions, we can template JUST the # of features
+//                  since if we didn't then the # of features loop would branch mis-predict per loop, and that's bad
+//                  BUT we can keep the compressed 64 bit number for each feature(which can now be in a regsiter since the # of features is templated)
+//                  and then we shift them down until we're done, and then relaod the next 64-bit number.  This causes a branch mispredict each time
+//                  we need to load from memory, but that's probably less than 1/8 fetches if we have 256 bins on a continuous variable, or maybe less
+//                  for things like binary features.This 12 - 20 cycles will be a minor component of the loop cost in that context
+//                  A bonus of this method is that we only have one template parameter(and we can limit it to maybe 5 interaction features
+//                  with a loop fallback for anything up to 64 features).
+//                  A second bonus of this method is that all features can be bit packed for their natural size, which means they stay as compressed
+//                  As the mains.
+//                  Lastly, if we want to allow sparse features we can do this. If we're templating the number of features and the # of features loop
+//                  is unwound by the compiler, then each feature will have it's own code section and the if statement selecting whether a feature is
+//                  sparse or not will be predicatble.If we really really wanted to, we could conceivably 
+//                  template <count_dense_features, count_sparse_features>, which for low numbers of features is tractable
+//   - OBSERVATION: we'll be sorting our target, then secondarily features by some packability metric, 
+//   - OBSERVATION: when we make train/validation sets, the size of the sets will be indeterminate until we know the exact indexes for each split since the 
+//                  number of sparse features will determine it, BUT we can have python give us the complete memory representation and then we can calcualte 
+//                  the size, then return that to pyhton, have python allocate it, then pass us in the memory for a second pass at filling it
+//   - OBSERVATION: since sorting this data by target is so expensive (and the transpose to get it there), we'll create a special "all feature" data 
+//                  represenation that is just features without feature groups.  This representation will be compressed per feature.
+//                  and will include a reverse index to work back to the original unsorted indexes
+//                  We'll generate the main/interaction training dataset from that directly when python passes us the train/validation split indexes and 
+//                  the feature_groups.  We'll also generate train/validation duplicates of this dataset for interaction detection 
+//                  (but for interactions we don't need the reverse index lookup)
+//   - OBSERVATION: We should be able to completely preserve sparse data representations without expanding them, although we can also detect when dense 
+//                  features should be sparsified in our own dataset
+//   - OBSERVATION: The user could in theory give us transposed memory in an order that is efficient for us to process, so we should just assume that 
+//                  they did and pay the cost if they didn't.  Even if they didn't, we'll only go back to the original twice, so it's not that bad
+// 
+// STEPS :
+//   - We receive the data from the user in the cache inefficient format X[samples, features], or alternatively in a cache efficient format 
+//     X[features, samples] if we're luck
+//   - If our caller get the data from a file/database where the columns are adjacent, then it's probably better for us to process it since we only 
+//     do 2 transpose operations (efficiently) and we don't allocate more than 3% more memory.  If the user transposed the data themselves, then 
+//     they'd double the memory useage
+//   - Divide the features into M chunks of N features (set N to 1 if our memory came in a good ordering).  Let's choose M to be 32, so that we don't 
+//     increase memory usage by more than 3%
+//   - allocate a sizing object in C (potentially we don't need to allocate anything IF we can return a size per feature, and we can calculate the 
+//     target + header when passed info on those)
+//   - Loop over M:
+//     - Take N features and all the samples from the original X and transpose them into X_partial[features_N, samples]
+//     - Loop over N:
+//       - take 1 single feature's data from the correctly ordered X_partial
+//       - bin the feature, if needed.  For strings and other categoricals we use hashtables, for continuous numerics we pass to C for sorting and bin 
+//         edge determining, and then again for discritization
+//       - we now have a binned single feature array.  Pass that into C for sizing
+//   - after all features have been binned and sized, pass in the target feature.  C calculates the final memory size and returns it.  Don't free the 
+//     memory sizing object since we want to have a separate function for that in case we need to exit early, for sample if we get an out of memory error
+//   - free the sizing object in C
+//   - python allocates the exact sized RawArray
+//   - call InitializeData in C passing it whatever we need to initialize the data header of the RawArray class
+//   - NOTE: this transposes the matrix twice (once for preprocessing/sizing, and once for filling the buffer with data),
+//     but this is expected to be a small amount of time compared to training, and we care more about memory size at this point
+//   - Loop over M:
+//     - Take N features and all the samples from the original X and transpose them into X_partial[features_N, samples]
+//     - Loop over N:
+//       - take 1 single feature's data from the correctly ordered X_partial
+//       - re-discritize the feature using the bin cuts or hashstables from our previous loop above
+//       - we now have a binned single feature array.  Pass that into C for filling up the RawArray memory
+//   - after all feature have been binned and sized, pass in the target feature to finalize LOCKING the data
+//   - C will fill a temporary index array in the RawArray, sort the data by target with the indexes, and secondarily by input features.  The index array 
+//     will remain for reconstructing the original order
+//   - Now the memory is read only from now on, and shareable, and the original order can be re-constructed
+//   - DON'T use pointers inside the data structure, just 64-bit offsets (for sharing cross process)!
+//   - Start each child processes, and pass them our shared memory structure
+//     (it will be mapped into each process address space, but not copied)
+//   - each child calls a train/validation splitter provided by our C that fills a numpy array of bools
+//     We do this in C instead of using the sklearn train_test_split because sklearn would require us to first split sequential indexes,
+//     possibly sort them(if order in not guaranteed), then convert to bools in a caching inefficient way,
+//     whereas in C we can do a single pass without any memory array inputs(using just a random number generator)
+//     and we can make the outputs consistent across languages.
+//   - with the RawArray complete data PLUS the train/validation bool list we can generate either interaction datasets OR boosting dataset as needed 
+//     (boosting datasets can have just mains or interaction multiplied indexes). We can reduce our memory footprint, by never having both an interaction 
+//     AND boosting dataset in memory at the same time.
+//   - first generate the mains train/validation boosting datasets, then create the interaction sets, then create the pair boosting datasets.  We only 
+//     need these in memory one at a time
+//   - FOR BOOSTING:
+//     - pass the process shared read only RawArray, and the train/validation bools AND the feature_group definitions (we already have the feature 
+//       definitions in the RawArray)
+//     - C takes the bool list, then uses the mapping indexes in the RawArray dataset to reverse the bool index into our internal C sorted order.
+//       This way we only need to do a cache inefficient reordering once per entire dataset, and it's on a bool array (compressed to bits?)
+//     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation splits, so the
+//       train/validation can't be calculated without a first pass). We have all the data to do this!
+//     - C will allocate the memory for the boosting dataset
+//     - C will do a second pass to fill the boosting data structure and return that to python (no need for a RawArray this time since it isn't shared)
+//     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements to 
+//       select whether each sample for that feature goes into the train or validation set, and handling increments
+//   - FOR INTERACTIONS:
+//     - pass the process shared read only RawArray, and the train/validation bools (we already have all feature definitions in the RawArray)
+//     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation splits, so the 
+//       train/validation can't be calculated without a first pass). We have all the data to do this!
+//     - C will allocate the memory for the interaction detection dataset
+//     - C will do a second pass to fill the data structure and return that to python (no need for a RawArray this time since it isn't shared)
+//     - per the notes above, we will bit pack each feature by it's best fit size, and keep sparse features.  We're pretty much just copying data for 
+//       interactions into the train/validations splits
+//     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements 
+//       to select whether each sample for that feature goes into the train or validation set, and handling increments
+
+
+
+
+
+
 // header ids
 constexpr static SharedStorageDataType k_sharedDataSetId = 0x46DB; // random 15 bit number
 constexpr static SharedStorageDataType k_sharedDataSetErrorId = 0x103; // anything other than our normal id will work
@@ -419,104 +570,6 @@ return_bad:;
    return 0;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetHeader(IntEbmType countFeatures) {
-   const size_t cBytes = AppendHeader(countFeatures, 0, nullptr);
-
-   if(!IsNumberConvertable<IntEbmType>(cBytes)) {
-      LOG_0(TraceLevelError, "ERROR SizeDataSetHeader !IsNumberConvertable<IntEbmType>(cBytes)");
-      return 0;
-   }
-
-   return static_cast<IntEbmType>(cBytes);
-}
-
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDataSetHeader(
-   IntEbmType countFeatures,
-   IntEbmType countBytesAllocated,
-   void * fillMem
-) {
-   if(nullptr == fillMem) {
-      LOG_0(TraceLevelError, "ERROR FillDataSetHeader nullptr == fillMem");
-      return Error_IllegalParamValue;
-   }
-
-   if(!IsNumberConvertable<size_t>(countBytesAllocated)) {
-      LOG_0(TraceLevelError, "ERROR FillDataSetHeader countBytesAllocated is outside the range of a valid size");
-      // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
-   }
-   const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
-
-   if(cBytesAllocated < sizeof(HeaderDataSetShared)) {
-      LOG_0(TraceLevelError, "ERROR FillDataSetHeader cBytesAllocated < sizeof(HeaderDataSetShared)");
-      // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
-   }
-
-   const size_t cBytes = AppendHeader(countFeatures, cBytesAllocated, static_cast<char *>(fillMem));
-   return size_t { 0 } == cBytes ? Error_IllegalParamValue : Error_None;
-}
-
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetFeature(
-   BoolEbmType categorical,
-   IntEbmType countBins,
-   IntEbmType countSamples,
-   const IntEbmType * binnedData
-) {
-   const size_t cBytes = AppendFeatureData(
-      categorical,
-      countBins,
-      countSamples,
-      binnedData,
-      0,
-      nullptr
-   );
-
-   if(!IsNumberConvertable<IntEbmType>(cBytes)) {
-      LOG_0(TraceLevelError, "ERROR SizeDataSetFeature !IsNumberConvertable<IntEbmType>(cBytes)");
-      return 0;
-   }
-
-   return static_cast<IntEbmType>(cBytes);
-}
-
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDataSetFeature(
-   BoolEbmType categorical,
-   IntEbmType countBins,
-   IntEbmType countSamples,
-   const IntEbmType * binnedData,
-   IntEbmType countBytesAllocated,
-   void * fillMem
-) {
-   if(nullptr == fillMem) {
-      LOG_0(TraceLevelError, "ERROR FillDataSetFeature nullptr == fillMem");
-      return Error_IllegalParamValue;
-   }
-
-   if(!IsNumberConvertable<size_t>(countBytesAllocated)) {
-      LOG_0(TraceLevelError, "ERROR FillDataSetFeature countBytesAllocated is outside the range of a valid size");
-      // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
-   }
-   const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
-
-   if(cBytesAllocated < sizeof(HeaderDataSetShared)) {
-      LOG_0(TraceLevelError, "ERROR FillDataSetFeature cBytesAllocated < sizeof(HeaderDataSetShared)");
-      // don't set the header to bad if we don't have enough memory for the header itself
-      return Error_IllegalParamValue;
-   }
-
-   const size_t cBytes = AppendFeatureData(
-      categorical,
-      countBins,
-      countSamples,
-      binnedData,
-      cBytesAllocated,
-      static_cast<char *>(fillMem)
-   );
-   return size_t { 0 } == cBytes ? Error_IllegalParamValue : Error_None;
-}
-
 size_t AppendTargets(
    const bool bClassification,
    const IntEbmType countTargetClasses,
@@ -733,6 +786,104 @@ return_bad:;
    return 0;
 }
 
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetHeader(IntEbmType countFeatures) {
+   const size_t cBytes = AppendHeader(countFeatures, 0, nullptr);
+
+   if(!IsNumberConvertable<IntEbmType>(cBytes)) {
+      LOG_0(TraceLevelError, "ERROR SizeDataSetHeader !IsNumberConvertable<IntEbmType>(cBytes)");
+      return 0;
+   }
+
+   return static_cast<IntEbmType>(cBytes);
+}
+
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDataSetHeader(
+   IntEbmType countFeatures,
+   IntEbmType countBytesAllocated,
+   void * fillMem
+) {
+   if(nullptr == fillMem) {
+      LOG_0(TraceLevelError, "ERROR FillDataSetHeader nullptr == fillMem");
+      return Error_IllegalParamValue;
+   }
+
+   if(!IsNumberConvertable<size_t>(countBytesAllocated)) {
+      LOG_0(TraceLevelError, "ERROR FillDataSetHeader countBytesAllocated is outside the range of a valid size");
+      // don't set the header to bad if we don't have enough memory for the header itself
+      return Error_IllegalParamValue;
+   }
+   const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
+
+   if(cBytesAllocated < sizeof(HeaderDataSetShared)) {
+      LOG_0(TraceLevelError, "ERROR FillDataSetHeader cBytesAllocated < sizeof(HeaderDataSetShared)");
+      // don't set the header to bad if we don't have enough memory for the header itself
+      return Error_IllegalParamValue;
+   }
+
+   const size_t cBytes = AppendHeader(countFeatures, cBytesAllocated, static_cast<char *>(fillMem));
+   return size_t { 0 } == cBytes ? Error_IllegalParamValue : Error_None;
+}
+
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetFeature(
+   BoolEbmType categorical,
+   IntEbmType countBins,
+   IntEbmType countSamples,
+   const IntEbmType * binnedData
+) {
+   const size_t cBytes = AppendFeatureData(
+      categorical,
+      countBins,
+      countSamples,
+      binnedData,
+      0,
+      nullptr
+   );
+
+   if(!IsNumberConvertable<IntEbmType>(cBytes)) {
+      LOG_0(TraceLevelError, "ERROR SizeDataSetFeature !IsNumberConvertable<IntEbmType>(cBytes)");
+      return 0;
+   }
+
+   return static_cast<IntEbmType>(cBytes);
+}
+
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDataSetFeature(
+   BoolEbmType categorical,
+   IntEbmType countBins,
+   IntEbmType countSamples,
+   const IntEbmType * binnedData,
+   IntEbmType countBytesAllocated,
+   void * fillMem
+) {
+   if(nullptr == fillMem) {
+      LOG_0(TraceLevelError, "ERROR FillDataSetFeature nullptr == fillMem");
+      return Error_IllegalParamValue;
+   }
+
+   if(!IsNumberConvertable<size_t>(countBytesAllocated)) {
+      LOG_0(TraceLevelError, "ERROR FillDataSetFeature countBytesAllocated is outside the range of a valid size");
+      // don't set the header to bad if we don't have enough memory for the header itself
+      return Error_IllegalParamValue;
+   }
+   const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
+
+   if(cBytesAllocated < sizeof(HeaderDataSetShared)) {
+      LOG_0(TraceLevelError, "ERROR FillDataSetFeature cBytesAllocated < sizeof(HeaderDataSetShared)");
+      // don't set the header to bad if we don't have enough memory for the header itself
+      return Error_IllegalParamValue;
+   }
+
+   const size_t cBytes = AppendFeatureData(
+      categorical,
+      countBins,
+      countSamples,
+      binnedData,
+      cBytesAllocated,
+      static_cast<char *>(fillMem)
+   );
+   return size_t { 0 } == cBytes ? Error_IllegalParamValue : Error_None;
+}
+
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeClassificationTargets(
    IntEbmType countTargetClasses,
    IntEbmType countSamples,
@@ -846,8 +997,5 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillReg
    );
    return size_t { 0 } == cBytes ? Error_IllegalParamValue : Error_None;
 }
-
-
-
 
 } // DEFINED_ZONE_NAME

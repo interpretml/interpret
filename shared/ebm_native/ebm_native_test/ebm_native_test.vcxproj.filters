@@ -18,6 +18,7 @@
     <ClCompile Include="CutQuantile.cpp" />
     <ClCompile Include="CutUniform.cpp" />
     <ClCompile Include="CutWinsorized.cpp" />
+    <ClCompile Include="data_set_shared.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ebm_native_test.hpp">

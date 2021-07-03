@@ -313,49 +313,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetT
 //   - since we want the dominant class in the 0th index, we might as well have the python sort the target values in multiclass by the dominance
 //   - binary classification doesn't benefit/require re-ordering, but we should consider doing it there too for consistency, but that leads to some oddities
 
-// MISSING VALUES (put missing values in the 0th index)
-// - mostly because when processing the tensor we can keep 1 bit to indicate if a dimension is missing and maybe 1 more bit to indicate if it's categorical 
-//    vs having those bits PLUS the total count AND having to do subtraction to determine when to stop the ordinal values.  Missing is an unconditional 
-//    branch which chooses either 0 or 1 which are special constants that are faster).  Also, if missing is first, when we start processing a tensor, 
-//    we can have code that creates an initial split that DOESN'T need to consider if there are any other splits in the model (this is best for tensors again)
-//    - concepts:
-//       - binning float/dobule/int data in python/numpy consists of first calling np.histogram to get the cuts, then calling np.digitize to do the 
-//         actually binning
-//       - binning is done via binary search.  numpy might send the data to c++.  massive amounts of binary searching is probably better in c++, but for 
-//         most datasets, we can implement this directly in python efficiently
-//       - if you use numpy to do the binning, then it creates the bins and turns missing into NaN values.  We think the NaN values are either stored as 
-//         indexes to missing values or as a bitfield array.  After generating the binned dataset, if using numpy to do the binning you need to then 
-//         postprocess the data by turning missing values into either zero or N, and if using zero for missing you need to increment all the other values.
-//         It seems that doing your own binning would be better since it's easy and efficient to do
-//    - arguments for putting at end :
-//       - On the graph, we'd want missing to go on the right since on the left it would shift any graphs to the right or require whitespace when no 
-//         missing values are present
-//       - if when graphing we put the missing value on the right, then maybe we should store it in the model that way(in the Nth position)
-//       - for non-missing values, you need a check to know if you start from the 0th or 1st position, but that can be done in a non-branching 
-//         way(isMissing ? 1 : 0), but in any case it might be more confusing code wise since you might miss the need to start from a different index. 
-//         BUT, maybe you don't gain much since if the missing is at the end then you need to have you stopping condition (isMissing ? count - 1 : count), 
-//         which requries a bit more math and doesn't use the zero value which is more efficient in non - branching instructions
-//       - one drawback is that if you put it in the 0th position, then you need to mentally shift all the values upwards only when there is a missing value
-//    - arguments for putting at start :
-//       - when looking in debugger, it's nice to have the exceptional condition first where you can see it easily
-//       - having 0 as missing might be ok since it's always at an exact point, whereas we need to keep the index for missing otherwise
-//       - probably having 0 as missing is the best since when converting python values to indexes, we'll probably use a hashtable or a sorted list or 
-//         something, and there we can just code everything to the index without worrying about missing, BUT if we see a missing we just know to put it in 
-//         the 0th bin without keeping an extra variable indicating the index position
-//       - when binning, we don't care if any of the bins are missing (this is the slow part for mains, so for mains there probably isn't any benefit 
-//         to putting missing at the start)
-//       - we want binning to be efficient, so we won't pass in -1 values.  We'll pass in either 0 or (count - 1) values to indicate missing
-//       - when cutting mains, it might be slighly nicer to have the missing value in the 0 position since you can do any work on the missing value 
-//         before entering any loop to process the ordinal values, so you don't have to carry some state over the loop (you can do it before register 
-//         pressure increases with loop variables, etc).
-//       - when cutting N - dimensions, it becomes a lot nicer to have missing in the 0 bin since then we just need to store a single bit to indicate 
-//         if the tensor's first value is missing.  If we were to put the missing value in the (count - 1) position, we'd need to store the count, 
-//         the bit if missing, and do some math to calculate the non - missing cut point.All of this is bad
-//       - we'll probably want to have special categorical processing since each slice in a tensoor can be considered completely independently.
-//         I don't see any reason to have intermediate versions where we have 3 missing / categorical values and 4 ordinal values
-//       - if missing is in the 0th bin, we can do any cuts at the beginning of processing a range, and that means any cut in the model would be the first, 
-//         so we can initialze it by writing the cut model directly without bothering to handle inserting into the tree at the end
-
 
 // TODO: we should change our interface such that long running work items will return instantly but are working on
 //       a background thread.  The caller will get back a token to the work.  They can either start a number of
@@ -423,6 +380,54 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Disc
    const FloatEbmType * cutsLowerBoundInclusive,
    IntEbmType * discretizedOut
 );
+
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetHeader(IntEbmType countFeatures);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDataSetHeader(
+   IntEbmType countFeatures,
+   IntEbmType countBytesAllocated,
+   void * fillMem
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetFeature(
+   BoolEbmType categorical,
+   IntEbmType countBins,
+   IntEbmType countSamples,
+   const IntEbmType * binnedData
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDataSetFeature(
+   BoolEbmType categorical,
+   IntEbmType countBins,
+   IntEbmType countSamples,
+   const IntEbmType * binnedData,
+   IntEbmType countBytesAllocated,
+   void * fillMem
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeClassificationTargets(
+   IntEbmType countTargetClasses,
+   IntEbmType countSamples,
+   const IntEbmType * targets
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillClassificationTargets(
+   IntEbmType countTargetClasses,
+   IntEbmType countSamples,
+   const IntEbmType * targets,
+   IntEbmType countBytesAllocated,
+   void * fillMem
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegressionTargets(
+   IntEbmType countSamples,
+   const FloatEbmType * targets
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillRegressionTargets(
+   IntEbmType countSamples,
+   const FloatEbmType * targets,
+   IntEbmType countBytesAllocated,
+   void * fillMem
+);
+
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
    IntEbmType countTargetClasses,
@@ -574,150 +579,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calc
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
    InteractionHandle interactionHandle
 );
-
-// TODO PK Implement the following for memory efficiency and speed of initialization :
-//   - NOTE: FOR RawArray ->  import multiprocessing ++ from multiprocessing import RawArray ++ RawArray(ct.c_ubyte, memory_size) ++ ct.POINTER(ct.c_ubyte)
-//   - OBSERVATION: passing in data one feature at a time is also nice since some languages (C# for instance) in some configurations don't like arrays 
-//                  larger than 32 bit memory, but that's fine if we pass in the memory one feature at a time
-//   - OBSERVATION: python has a RawArray class that allows memory to be shared cross process on a single machine, but we don't want to make a chatty 
-//                  interface where we grow/shrink such expensive memory, so we want to precompute the size, then have it allocated in python, 
-//                  then fill the memory
-//   - OBSERVATION: We want sparse feature support in our booster since we don't need to access
-//                  memory if there are long segments with just a single value
-//   - OBSERVATION: our boosting algorithm is position independent, so we can sort the data by the target feature, which
-//   -              helps us because we can move the class number into a loop count and not fetch the memory, and it allows
-//                  us to elimiante a branch when calculating statistics since all samples will have the same target within a loop
-//   - OBSERVATION: we'll be sorting on the target, so we can't sort primarily on intput features (secondary sort ok)
-//                  So, sparse input features are not typically expected to clump into ranges of non - default parameters
-//                  So, we won't use ranges in our representation, so our sparse feature representation will be
-//                  class Sparse { size_t index; size_t val; }
-//                  This representation is invariant to position, so we'll be able to pre-compute the size before sorting
-//   - OBSERVATION: We will be sorting on the target values, BUT since the sort on the target will have no discontinuities
-//                  We can represent it purely as class Target { size_t count; } and each item in the array is an increment
-//                  of the class value(for classification).
-//                  Since we know how many classes there are, we will be able to know the size of the array AFTER sorting
-//   - OBSERVATION: Our typical processing order is: cycle the mains, detect interactions, cycle the pairs
-//                  Each of those methods requires re - creating the memory representation, so we might as well go back each time
-//                  and use the original python memory to create the new datasets.  We can't even reliably go from mains to interactions
-//                  because the user might not have given us all the mains when building mains
-//                  One additional benefit of going back to the original data is that we can change the # of bins, which might be important
-//                  when doing pairs in that pairs might benefit from having bigger bin sizes
-//   - OBSERVATION: For interaction detection, we can be asked to check for interactions with up to 64 features together, and if we're compressing
-//                  feature data and /or using sparse representations, then any of those features can have any number of compressions.
-//                  One example bad situation is having 3 features: one of which is sparse, one of which has 3 items per 64 - bit number, and the
-//                  last has 7 items per number.You can't really template this many options.  Even if you had special pair
-//                  interaction detection code, which would have 16 * 16 = 256 possible combinations(15 different packs per 64 bit number PLUS sparse)
-//                  You wouldn't be able to match up the loops since the first feature would require 3 iterations, and the second 7, so you don't
-//                  really get any relief. The only way to partly handle this is to make all features use the same number of bits
-//                  (choose the worst case packing)
-//                  and then template the combination <number_of_dimensions, number_of_bits> which has 16 * 64 possible combinations, most of which are not 
-//                  used. You can get this down to maybe 16 * 4 combinations templated with loops on the others, but then you still can't easily do
-//                  sparse features, so you're stuck with dense features if you go this route.
-//   - OBSERVATION: For templates, always put the more universal template featutres at the end, incase C++ changes such that variadic template/macros
-//                  work for us someday (currently they only allow only just typenames or the same datatypes per parameter pack)
-//   - OBSERVATION: For interaction detection, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDimensions, cDataItemsPerPack>
-//                  The main reason is that we want to load data via SIMD, and we can't have branches in order to do that, so we can't bitpack each feature
-//                  differently, so they all need to use the same number of bits per pack.
-//   - OBSERVATION: For histogram creation and updating, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDataItemsPerPack>
-//   - OBSERVATION: For partitioning, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDimensions>
-//   - OBSERVATION: THIS SECTION IS WRONG -> Branch misprediction is on the order of 12-20 cycles.  When doing interactions, we can template JUST the # of features
-//                  since if we didn't then the # of features loop would branch mis-predict per loop, and that's bad
-//                  BUT we can keep the compressed 64 bit number for each feature(which can now be in a regsiter since the # of features is templated)
-//                  and then we shift them down until we're done, and then relaod the next 64-bit number.  This causes a branch mispredict each time
-//                  we need to load from memory, but that's probably less than 1/8 fetches if we have 256 bins on a continuous variable, or maybe less
-//                  for things like binary features.This 12 - 20 cycles will be a minor component of the loop cost in that context
-//                  A bonus of this method is that we only have one template parameter(and we can limit it to maybe 5 interaction features
-//                  with a loop fallback for anything up to 64 features).
-//                  A second bonus of this method is that all features can be bit packed for their natural size, which means they stay as compressed
-//                  As the mains.
-//                  Lastly, if we want to allow sparse features we can do this. If we're templating the number of features and the # of features loop
-//                  is unwound by the compiler, then each feature will have it's own code section and the if statement selecting whether a feature is
-//                  sparse or not will be predicatble.If we really really wanted to, we could conceivably 
-//                  template <count_dense_features, count_sparse_features>, which for low numbers of features is tractable
-//   - OBSERVATION: we'll be sorting our target, then secondarily features by some packability metric, 
-//   - OBSERVATION: when we make train/validation sets, the size of the sets will be indeterminate until we know the exact indexes for each split since the 
-//                  number of sparse features will determine it, BUT we can have python give us the complete memory representation and then we can calcualte 
-//                  the size, then return that to pyhton, have python allocate it, then pass us in the memory for a second pass at filling it
-//   - OBSERVATION: since sorting this data by target is so expensive (and the transpose to get it there), we'll create a special "all feature" data 
-//                  represenation that is just features without feature groups.  This representation will be compressed per feature.
-//                  and will include a reverse index to work back to the original unsorted indexes
-//                  We'll generate the main/interaction training dataset from that directly when python passes us the train/validation split indexes and 
-//                  the feature_groups.  We'll also generate train/validation duplicates of this dataset for interaction detection 
-//                  (but for interactions we don't need the reverse index lookup)
-//   - OBSERVATION: We should be able to completely preserve sparse data representations without expanding them, although we can also detect when dense 
-//                  features should be sparsified in our own dataset
-//   - OBSERVATION: The user could in theory give us transposed memory in an order that is efficient for us to process, so we should just assume that 
-//                  they did and pay the cost if they didn't.  Even if they didn't, we'll only go back to the original twice, so it's not that bad
-// 
-// STEPS :
-//   - We receive the data from the user in the cache inefficient format X[samples, features], or alternatively in a cache efficient format 
-//     X[features, samples] if we're luck
-//   - If our caller get the data from a file/database where the columns are adjacent, then it's probably better for us to process it since we only 
-//     do 2 transpose operations (efficiently) and we don't allocate more than 3% more memory.  If the user transposed the data themselves, then 
-//     they'd double the memory useage
-//   - Divide the features into M chunks of N features (set N to 1 if our memory came in a good ordering).  Let's choose M to be 32, so that we don't 
-//     increase memory usage by more than 3%
-//   - allocate a sizing object in C (potentially we don't need to allocate anything IF we can return a size per feature, and we can calculate the 
-//     target + header when passed info on those)
-//   - Loop over M:
-//     - Take N features and all the samples from the original X and transpose them into X_partial[features_N, samples]
-//     - Loop over N:
-//       - take 1 single feature's data from the correctly ordered X_partial
-//       - bin the feature, if needed.  For strings and other categoricals we use hashtables, for continuous numerics we pass to C for sorting and bin 
-//         edge determining, and then again for discritization
-//       - we now have a binned single feature array.  Pass that into C for sizing
-//   - after all features have been binned and sized, pass in the target feature.  C calculates the final memory size and returns it.  Don't free the 
-//     memory sizing object since we want to have a separate function for that in case we need to exit early, for sample if we get an out of memory error
-//   - free the sizing object in C
-//   - python allocates the exact sized RawArray
-//   - call InitializeData in C passing it whatever we need to initialize the data header of the RawArray class
-//   - NOTE: this transposes the matrix twice (once for preprocessing/sizing, and once for filling the buffer with data),
-//     but this is expected to be a small amount of time compared to training, and we care more about memory size at this point
-//   - Loop over M:
-//     - Take N features and all the samples from the original X and transpose them into X_partial[features_N, samples]
-//     - Loop over N:
-//       - take 1 single feature's data from the correctly ordered X_partial
-//       - re-discritize the feature using the bin cuts or hashstables from our previous loop above
-//       - we now have a binned single feature array.  Pass that into C for filling up the RawArray memory
-//   - after all feature have been binned and sized, pass in the target feature to finalize LOCKING the data
-//   - C will fill a temporary index array in the RawArray, sort the data by target with the indexes, and secondarily by input features.  The index array 
-//     will remain for reconstructing the original order
-//   - Now the memory is read only from now on, and shareable, and the original order can be re-constructed
-//   - DON'T use pointers inside the data structure, just 64-bit offsets (for sharing cross process)!
-//   - Start each child processes, and pass them our shared memory structure
-//     (it will be mapped into each process address space, but not copied)
-//   - each child calls a train/validation splitter provided by our C that fills a numpy array of bools
-//     We do this in C instead of using the sklearn train_test_split because sklearn would require us to first split sequential indexes,
-//     possibly sort them(if order in not guaranteed), then convert to bools in a caching inefficient way,
-//     whereas in C we can do a single pass without any memory array inputs(using just a random number generator)
-//     and we can make the outputs consistent across languages.
-//   - with the RawArray complete data PLUS the train/validation bool list we can generate either interaction datasets OR boosting dataset as needed 
-//     (boosting datasets can have just mains or interaction multiplied indexes). We can reduce our memory footprint, by never having both an interaction 
-//     AND boosting dataset in memory at the same time.
-//   - first generate the mains train/validation boosting datasets, then create the interaction sets, then create the pair boosting datasets.  We only 
-//     need these in memory one at a time
-//   - FOR BOOSTING:
-//     - pass the process shared read only RawArray, and the train/validation bools AND the feature_group definitions (we already have the feature 
-//       definitions in the RawArray)
-//     - C takes the bool list, then uses the mapping indexes in the RawArray dataset to reverse the bool index into our internal C sorted order.
-//       This way we only need to do a cache inefficient reordering once per entire dataset, and it's on a bool array (compressed to bits?)
-//     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation splits, so the
-//       train/validation can't be calculated without a first pass). We have all the data to do this!
-//     - C will allocate the memory for the boosting dataset
-//     - C will do a second pass to fill the boosting data structure and return that to python (no need for a RawArray this time since it isn't shared)
-//     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements to 
-//       select whether each sample for that feature goes into the train or validation set, and handling increments
-//   - FOR INTERACTIONS:
-//     - pass the process shared read only RawArray, and the train/validation bools (we already have all feature definitions in the RawArray)
-//     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation splits, so the 
-//       train/validation can't be calculated without a first pass). We have all the data to do this!
-//     - C will allocate the memory for the interaction detection dataset
-//     - C will do a second pass to fill the data structure and return that to python (no need for a RawArray this time since it isn't shared)
-//     - per the notes above, we will bit pack each feature by it's best fit size, and keep sparse features.  We're pretty much just copying data for 
-//       interactions into the train/validations splits
-//     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements 
-//       to select whether each sample for that feature goes into the train or validation set, and handling increments
-
 
 #ifdef __cplusplus
 } // extern "C"
