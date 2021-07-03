@@ -5,6 +5,7 @@
 from sys import platform
 import ctypes as ct
 from numpy.ctypeslib import ndpointer
+from multiprocessing.sharedctypes import RawArray
 import numpy as np
 import os
 import struct
@@ -135,13 +136,7 @@ class Native:
     def generate_random_number(self, random_seed, stage_randomization_mix):
         return self._unsafe.GenerateRandomNumber(random_seed, stage_randomization_mix)
 
-    def cut_quantile(
-        self, 
-        col_data, 
-        min_samples_bin, 
-        is_humanized, 
-        max_cuts, 
-    ):
+    def cut_quantile(self, col_data, min_samples_bin, is_humanized, max_cuts):
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
         count_missing = ct.c_int64(0)
@@ -173,11 +168,7 @@ class Native:
 
         return cuts, count_missing, min_val, max_val
 
-    def cut_uniform(
-        self, 
-        col_data, 
-        max_cuts, 
-    ):
+    def cut_uniform(self, col_data, max_cuts):
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
         count_missing = ct.c_int64(0)
@@ -205,12 +196,7 @@ class Native:
 
         return cuts, count_missing, min_val, max_val
 
-    def suggest_graph_bounds(
-        self,
-        cuts, 
-        min_val=np.nan,
-        max_val=np.nan,
-    ):
+    def suggest_graph_bounds(self, cuts, min_val=np.nan, max_val=np.nan):
         low_graph_bound = ct.c_double(0)
         high_graph_bound = ct.c_double(0)
         return_code = self._unsafe.SuggestGraphBounds(
@@ -227,11 +213,7 @@ class Native:
 
         return low_graph_bound.value, high_graph_bound.value
 
-    def discretize(
-        self, 
-        col_data, 
-        cuts, 
-    ):
+    def discretize(self, col_data, cuts):
         discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")
         return_code = self._unsafe.Discretize(
             col_data.shape[0],
@@ -244,6 +226,58 @@ class Native:
             raise Native._get_native_exception(return_code, "Discretize")
 
         return discretized
+
+
+    def size_data_set_header(self, n_features):
+        n_bytes = self._unsafe.SizeDataSetHeader(n_features)
+        if n_bytes == 0:  # pragma: no cover
+            raise Native._get_native_exception(3, "SizeDataSetHeader")
+        return n_bytes
+
+    def fill_data_set_header(self, n_features, n_bytes, shared_data):
+        return_code = self._unsafe.FillDataSetHeader(n_features, n_bytes, shared_data)
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "FillDataSetHeader")
+
+    def size_data_set_feature(self, categorical, n_bins, binned_data):
+        n_bytes = self._unsafe.SizeDataSetFeature(categorical, n_bins, len(binned_data), binned_data)
+        if n_bytes == 0:  # pragma: no cover
+            raise Native._get_native_exception(3, "SizeDataSetFeature")
+        return n_bytes
+
+    def fill_data_set_feature(self, categorical, n_bins, binned_data, n_bytes, shared_data):
+        return_code = self._unsafe.FillDataSetFeature(
+            categorical, 
+            n_bins, 
+            len(binned_data), 
+            binned_data, 
+            n_bytes, 
+            shared_data
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "FillDataSetFeature")
+
+    def size_classification_targets(self, n_classes, targets):
+        n_bytes = self._unsafe.SizeClassificationTargets(n_classes, len(targets), targets)
+        if n_bytes == 0:  # pragma: no cover
+            raise Native._get_native_exception(3, "SizeClassificationTargets")
+        return n_bytes
+
+    def fill_classification_targets(self, n_classes, targets, n_bytes, shared_data):
+        return_code = self._unsafe.FillClassificationTargets(n_classes, len(targets), targets, n_bytes, shared_data)
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "FillClassificationTargets")
+
+    def size_regression_targets(self, targets):
+        n_bytes = self._unsafe.SizeRegressionTargets(len(targets), targets)
+        if n_bytes == 0:  # pragma: no cover
+            raise Native._get_native_exception(3, "SizeRegressionTargets")
+        return n_bytes
+
+    def fill_regression_targets(self, targets, n_bytes, shared_data):
+        return_code = self._unsafe.FillRegressionTargets(len(targets), targets, n_bytes, shared_data)
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "FillRegressionTargets")
 
 
     @staticmethod
@@ -423,6 +457,95 @@ class Native:
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.Discretize.restype = ct.c_int32
+
+
+        self._unsafe.SizeDataSetHeader.argtypes = [
+            # int64_t countFeatures
+            ct.c_int64,
+        ]
+        self._unsafe.SizeDataSetHeader.restype = ct.c_int64
+
+        self._unsafe.FillDataSetHeader.argtypes = [
+            # int64_t countFeatures
+            ct.c_int64,
+            # int64_t countBytesAllocated
+            ct.c_int64,
+            # void * fillMem
+            ct.c_void_p,
+        ]
+        self._unsafe.FillDataSetHeader.restype = ct.c_int32
+
+        self._unsafe.SizeDataSetFeature.argtypes = [
+            # int64_t categorical
+            ct.c_int64,
+            # int64_t countBins
+            ct.c_int64,
+            # int64_t countSamples
+            ct.c_int64,
+            # int64_t * binnedData
+            ndpointer(dtype=ct.c_int64, ndim=1),
+        ]
+        self._unsafe.SizeDataSetFeature.restype = ct.c_int64
+
+        self._unsafe.FillDataSetFeature.argtypes = [
+            # int64_t categorical
+            ct.c_int64,
+            # int64_t countBins
+            ct.c_int64,
+            # int64_t countSamples
+            ct.c_int64,
+            # int64_t * binnedData
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t countBytesAllocated
+            ct.c_int64,
+            # void * fillMem
+            ct.c_void_p,
+        ]
+        self._unsafe.FillDataSetFeature.restype = ct.c_int32
+
+        self._unsafe.SizeClassificationTargets.argtypes = [
+            # int64_t countTargetClasses
+            ct.c_int64,
+            # int64_t countSamples
+            ct.c_int64,
+            # int64_t * targets
+            ndpointer(dtype=ct.c_int64, ndim=1),
+        ]
+        self._unsafe.SizeClassificationTargets.restype = ct.c_int64
+
+        self._unsafe.FillClassificationTargets.argtypes = [
+            # int64_t countTargetClasses
+            ct.c_int64,
+            # int64_t countSamples
+            ct.c_int64,
+            # int64_t * targets
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t countBytesAllocated
+            ct.c_int64,
+            # void * fillMem
+            ct.c_void_p,
+        ]
+        self._unsafe.FillClassificationTargets.restype = ct.c_int32
+
+        self._unsafe.SizeRegressionTargets.argtypes = [
+            # int64_t countSamples
+            ct.c_int64,
+            # FloatEbmType * targets
+            ndpointer(dtype=ct.c_double, ndim=1),
+        ]
+        self._unsafe.SizeRegressionTargets.restype = ct.c_int64
+
+        self._unsafe.FillRegressionTargets.argtypes = [
+            # int64_t countSamples
+            ct.c_int64,
+            # FloatEbmType * targets
+            ndpointer(dtype=ct.c_double, ndim=1),
+            # int64_t countBytesAllocated
+            ct.c_int64,
+            # void * fillMem
+            ct.c_void_p,
+        ]
+        self._unsafe.FillRegressionTargets.restype = ct.c_int32
 
 
         self._unsafe.Softmax.argtypes = [

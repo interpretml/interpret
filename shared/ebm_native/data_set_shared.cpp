@@ -283,7 +283,7 @@ static_assert(std::is_trivial<ClassificationTargetDataSetShared>::value,
 
 // No RegressionTargetDataSetShared required
 
-size_t AppendHeader(const IntEbmType countFeatures, const size_t cBytesAllocated, char * const pFillMem) {
+size_t AppendHeader(const IntEbmType countFeatures, const size_t cBytesAllocated, unsigned char * const pFillMem) {
    EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem || nullptr != pFillMem);
 
    LOG_N(
@@ -355,7 +355,7 @@ size_t AppendFeatureData(
    const IntEbmType countSamples,
    const IntEbmType * aBinnedData,
    const size_t cBytesAllocated, 
-   char * const pFillMem
+   unsigned char * const pFillMem
 ) {
    EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem || nullptr != pFillMem);
 
@@ -529,7 +529,7 @@ size_t AppendFeatureData(
                ++pFillData;
                ++pBinnedData;
             } while(pBinnedDataEnd != pBinnedData);
-            EBM_ASSERT(reinterpret_cast<char *>(pFillData) == pFillMem + iByteNext);
+            EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
          }
          iByteCur = iByteNext;
       }
@@ -576,7 +576,7 @@ size_t AppendTargets(
    const IntEbmType countSamples,
    const void * aTargets,
    const size_t cBytesAllocated,
-   char * const pFillMem
+   unsigned char * const pFillMem
 ) {
    EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem || nullptr != pFillMem);
 
@@ -696,7 +696,7 @@ size_t AppendTargets(
             }
          }
 
-         char * pFillMemTemp = pFillMem + iHighestOffset;
+         unsigned char * pFillMemTemp = pFillMem + iHighestOffset;
          TargetDataSetShared * pTargetDataSetShared = reinterpret_cast<TargetDataSetShared *>(pFillMemTemp);
          pTargetDataSetShared->m_id = GetTargetId(bClassification);
 
@@ -765,7 +765,7 @@ size_t AppendTargets(
                   ++pFillData;
                   ++pTarget;
                } while(pTargetsEnd != pTarget);
-               EBM_ASSERT(reinterpret_cast<char *>(pFillData) == pFillMem + iByteNext);
+               EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
             } else {
                EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType), cSamples)); // checked above
                memcpy(pFillMem + iByteCur, aTargets, cBytesAllSamples);
@@ -820,7 +820,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDat
       return Error_IllegalParamValue;
    }
 
-   const size_t cBytes = AppendHeader(countFeatures, cBytesAllocated, static_cast<char *>(fillMem));
+   const size_t cBytes = AppendHeader(countFeatures, cBytesAllocated, static_cast<unsigned char *>(fillMem));
    return size_t { 0 } == cBytes ? Error_IllegalParamValue : Error_None;
 }
 
@@ -879,7 +879,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDat
       countSamples,
       binnedData,
       cBytesAllocated,
-      static_cast<char *>(fillMem)
+      static_cast<unsigned char *>(fillMem)
    );
    return size_t { 0 } == cBytes ? Error_IllegalParamValue : Error_None;
 }
@@ -937,7 +937,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillCla
       countSamples,
       targets,
       cBytesAllocated,
-      static_cast<char *>(fillMem)
+      static_cast<unsigned char *>(fillMem)
    );
    return size_t { 0 } == cBytes ? Error_IllegalParamValue : Error_None;
 }
@@ -993,7 +993,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillReg
       countSamples,
       targets,
       cBytesAllocated,
-      static_cast<char *>(fillMem)
+      static_cast<unsigned char *>(fillMem)
    );
    return size_t { 0 } == cBytes ? Error_IllegalParamValue : Error_None;
 }
