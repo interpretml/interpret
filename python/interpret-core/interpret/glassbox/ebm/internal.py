@@ -136,6 +136,62 @@ class Native:
     def generate_random_number(self, random_seed, stage_randomization_mix):
         return self._unsafe.GenerateRandomNumber(random_seed, stage_randomization_mix)
 
+    def sample_without_replacement(
+        self, 
+        random_seed, 
+        count_training_samples,
+        count_validation_samples
+    ):
+        count_samples = count_training_samples + count_validation_samples
+        random_seed = ct.c_int32(random_seed)
+        count_training_samples = ct.c_int64(count_training_samples)
+        count_validation_samples = ct.c_int64(count_validation_samples)
+
+        sample_counts_out = np.empty(count_samples, dtype=np.int64, order="C")
+
+        self._unsafe.SampleWithoutReplacement(
+            random_seed,
+            count_training_samples,
+            count_validation_samples,
+            sample_counts_out
+        )
+
+        return sample_counts_out
+
+    def stratified_sampling_without_replacement(
+        self, 
+        random_seed, 
+        count_target_classes,
+        count_training_samples,
+        count_validation_samples,
+        targets
+    ):
+        count_samples = count_training_samples + count_validation_samples
+
+        if len(targets) != count_samples:
+            raise ValueError("count_training_samples + count_validation_samples should be equal to len(targets)")
+
+        random_seed = ct.c_int32(random_seed)
+        count_target_classes = ct.c_int64(count_target_classes)
+        count_training_samples = ct.c_int64(count_training_samples)
+        count_validation_samples = ct.c_int64(count_validation_samples)
+
+        sample_counts_out = np.empty(count_samples, dtype=np.int64, order="C")
+
+        return_code = self._unsafe.StratifiedSamplingWithoutReplacement(
+            random_seed,
+            count_target_classes,
+            count_training_samples,
+            count_validation_samples,
+            targets,
+            sample_counts_out
+        )
+
+        if return_code != 0:  # pragma: no cover
+            raise Exception("Out of memory in SampleWithoutReplacement")
+
+        return sample_counts_out
+
     def cut_quantile(self, col_data, min_samples_bin, is_humanized, max_cuts):
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
@@ -353,6 +409,21 @@ class Native:
         ]
         self._unsafe.SampleWithoutReplacement.restype = None
 
+        self._unsafe.StratifiedSamplingWithoutReplacement.argtypes = [
+            # int32_t randomSeed
+            ct.c_int32,
+            # int64_t countTargetClasses
+            ct.c_int64,
+            # int64_t countTrainingSamples
+            ct.c_int64,
+            # int64_t countValidationSamples
+            ct.c_int64,
+            # int64_t * targets
+            ndpointer(dtype=ct.c_int64, ndim=1),
+            # int64_t * sampleCountsOut
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+        ]
+        self._unsafe.StratifiedSamplingWithoutReplacement.restype = ct.c_int32
 
         self._unsafe.CutQuantile.argtypes = [
             # int64_t countSamples
