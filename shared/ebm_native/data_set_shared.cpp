@@ -173,8 +173,9 @@ namespace DEFINED_ZONE_NAME {
 
 
 // header ids
-constexpr static SharedStorageDataType k_sharedDataSetId = 0x46DB; // random 15 bit number
+constexpr static SharedStorageDataType k_sharedDataSetWorkingId = 0x46DB; // random 15 bit number
 constexpr static SharedStorageDataType k_sharedDataSetErrorId = 0x103; // anything other than our normal id will work
+constexpr static SharedStorageDataType k_sharedDataSetDoneId = 0x61E3; // random 15 bit number
 
 // feature ids
 constexpr static SharedStorageDataType k_categoricalFeatureBit = 0x1;
@@ -327,7 +328,7 @@ size_t AppendHeader(const IntEbmType countFeatures, const size_t cBytesAllocated
 
       HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
 
-      pHeaderDataSetShared->m_id = k_sharedDataSetId;
+      pHeaderDataSetShared->m_id = k_sharedDataSetWorkingId;
       // set samples to zero in case there are no features and the caller goes directly to targets
       pHeaderDataSetShared->m_cSamples = 0;
       pHeaderDataSetShared->m_cFeatures = 0;
@@ -407,7 +408,7 @@ size_t AppendFeatureData(
          EBM_ASSERT(sizeof(HeaderDataSetShared) <= cBytesAllocated); // checked by our caller
 
          HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
-         if(k_sharedDataSetId != pHeaderDataSetShared->m_id) {
+         if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
             return 0; // don't set the header to bad since it's already set to something invalid and we don't know why
          }
 
@@ -536,7 +537,7 @@ size_t AppendFeatureData(
 
       if(nullptr != pFillMem) {
          HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
-         EBM_ASSERT(k_sharedDataSetId == pHeaderDataSetShared->m_id);
+         EBM_ASSERT(k_sharedDataSetWorkingId == pHeaderDataSetShared->m_id);
 
          // earlier we compared pHeaderDataSetShared->m_cFeatures with cFeatures calculated from the size of
          // the offset array, so we know there's at least one possible value greater than our current index value
@@ -615,7 +616,7 @@ size_t AppendTargets(
          EBM_ASSERT(sizeof(HeaderDataSetShared) <= cBytesAllocated); // checked by our caller
 
          HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
-         if(k_sharedDataSetId != pHeaderDataSetShared->m_id) {
+         if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
             return 0; // don't set the header to bad since it's already set to something invalid and we don't know why
          }
 
@@ -772,6 +773,12 @@ size_t AppendTargets(
             }
          }
          iByteCur = iByteNext;
+      }
+
+      if(nullptr != pFillMem) {
+         HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+         EBM_ASSERT(k_sharedDataSetWorkingId == pHeaderDataSetShared->m_id);
+         pHeaderDataSetShared->m_id = k_sharedDataSetDoneId; // signal that we finished construction of the data set
       }
 
       return iByteCur;
