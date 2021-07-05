@@ -187,8 +187,8 @@ class Native:
             sample_counts_out
         )
 
-        if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in SampleWithoutReplacement")
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "StratifiedSamplingWithoutReplacement")
 
         return sample_counts_out
 

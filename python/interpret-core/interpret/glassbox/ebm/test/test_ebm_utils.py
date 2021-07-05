@@ -21,7 +21,7 @@ def test_ebm_train_test_split_regression():
 
     test_size = 0.20
 
-    X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split_new(
+    X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
         X,
         y,
         w,
@@ -58,7 +58,7 @@ def test_ebm_train_test_split_classification():
 
     test_size = 0.20
 
-    X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split_new(
+    X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
         X,
         y,
         w,

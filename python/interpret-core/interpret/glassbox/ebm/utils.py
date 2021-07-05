@@ -267,57 +267,6 @@ class EBMUtils:
         # all test/train splits should be done with this function to ensure that
         # if we re-generate the train/test splits that they are generated exactly
         # the same as before
-        if test_size == 0:
-            X_train, y_train, w_train = X, y, w
-            X_val = np.empty(shape=(0, X.shape[1]), dtype=X.dtype)
-            y_val = np.empty(shape=(0,), dtype=y.dtype)
-            w_val = np.empty(shape=(0,), dtype=w.dtype)
-        elif test_size > 0:
-            # Adapt test size if too small relative to number of classes
-            if is_classification:
-                y_uniq = len(set(y))
-                n_test_samples = test_size if test_size >= 1 else len(y) * test_size
-                if n_test_samples < y_uniq:  # pragma: no cover
-                    warnings.warn(
-                        "Too few samples per class, adapting test size to guarantee 1 sample per class."
-                    )
-                    test_size = y_uniq
-
-            # PaulK NOTE: sklearn train_test_split doesn't accept negative random_states
-            # we can remove the conversion to just positive values when we transition to C++
-            X_train, X_val, y_train, y_val, w_train, w_val = train_test_split(
-                X,
-                y,
-                w,
-                test_size=test_size,
-                random_state=(random_state - (-2147483648)) if random_state < 0 else random_state,
-                stratify=y if is_classification else None,
-            )
-        else:  # pragma: no cover
-            raise Exception("test_size must be between 0 and 1.")
-
-        if not is_train:
-            X_train, y_train = None, None
-
-        # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
-        #         push the re-ordering right to our first call to fit(..) AND stripe convert
-        #         groups of rows at once and they process them in fortran order after that
-        # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
-        # AND our C code expects it in that ordering
-        if X_train is not None:
-            X_train = np.ascontiguousarray(X_train.T)
-
-        X_val = np.ascontiguousarray(X_val.T)
-
-        return X_train, X_val, y_train, y_val, w_train, w_val
-
-    @staticmethod
-    def ebm_train_test_split_new(
-        X, y, w, test_size, random_state, is_classification, is_train=True
-    ):
-        # all test/train splits should be done with this function to ensure that
-        # if we re-generate the train/test splits that they are generated exactly
-        # the same as before
 
         if (X.shape[0] != len(y) or X.shape[0] != len(w)):
             raise Exception("Data, labels and weights should have the same number of rows.")
@@ -365,7 +314,7 @@ class EBMUtils:
                 sampling_result = native.sample_without_replacement(
                     random_state,
                     n_train_samples,
-                    n_test_samples\
+                    n_test_samples
                 )
 
         else:  # pragma: no cover
