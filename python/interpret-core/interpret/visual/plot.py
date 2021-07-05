@@ -545,7 +545,7 @@ def plot_horizontal_bar(
         x_range = [-max_abs_x, max_abs_x]
     layout = dict(
         title=title,
-        yaxis=dict(automargin=True, title=ytitle),
+        yaxis=dict(automargin=True, title=ytitle, dtick=1),
         xaxis=dict(range=x_range, title=xtitle),
     )
     if multiclass:
