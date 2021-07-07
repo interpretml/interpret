@@ -682,8 +682,8 @@ SEXP CreateClassificationBooster_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(IsMultiplyError(cTrainingSamples, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cTrainingSamples, cVectorLength)");
+   if(IsMultiplyError(cVectorLength, cTrainingSamples)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cVectorLength, cTrainingSamples)");
       return R_NilValue;
    }
    if(cVectorLength * cTrainingSamples != cTrainingPredictorScores) {
@@ -721,8 +721,8 @@ SEXP CreateClassificationBooster_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(IsMultiplyError(cValidationSamples, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cValidationSamples, cVectorLength)");
+   if(IsMultiplyError(cVectorLength, cValidationSamples)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cVectorLength, cValidationSamples)");
       return R_NilValue;
    }
    if(cVectorLength * cValidationSamples != cValidationPredictorScores) {
@@ -1216,7 +1216,7 @@ SEXP GetBestModelFeatureGroup_R(
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
-         EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         EBM_ASSERT(!IsMultiplyError(cValues, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cValues *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
@@ -1281,7 +1281,7 @@ SEXP GetCurrentModelFeatureGroup_R(
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
-         EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         EBM_ASSERT(!IsMultiplyError(cValues, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cValues *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
@@ -1394,8 +1394,8 @@ SEXP CreateClassificationInteractionDetector_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(IsMultiplyError(cSamples, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cSamples, cVectorLength)");
+   if(IsMultiplyError(cVectorLength, cSamples)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cVectorLength, cSamples)");
       return R_NilValue;
    }
    if(cVectorLength * cSamples != cPredictorScores) {

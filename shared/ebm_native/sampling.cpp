@@ -89,8 +89,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
       // there's nothing for us to fill the array with
       return;
    }
-   if(UNLIKELY(IsMultiplyError(cSamplesRemaining, sizeof(*sampleCountsOut)))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsMultiplyError(cSamples, sizeof(*sampleCountsOut))");
+   if(UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining))) {
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining)");
       return;
    }
 
@@ -209,13 +209,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    }
    const size_t cTargetClasses = static_cast<size_t>(countTargetClasses);
 
-   if (UNLIKELY(IsMultiplyError(cSamples, sizeof(*sampleCountsOut)))) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsMultiplyError(cSamples, sizeof(*sampleCountsOut))");
+   if (UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamples))) {
+      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamples)");
       return Error_IllegalParamValue;
    }
 
-   if (UNLIKELY(IsMultiplyError(cTargetClasses, sizeof(TargetSamplingCounts)))) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement IsMultiplyError(cTargetClasses, sizeof(TargetSamplingCounts))");
+   if (UNLIKELY(IsMultiplyError(sizeof(TargetSamplingCounts), cTargetClasses))) {
+      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement IsMultiplyError(sizeof(TargetSamplingCounts), cTargetClasses)");
       return Error_OutOfMemory;
    }
 

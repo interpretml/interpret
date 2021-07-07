@@ -121,11 +121,11 @@ static ErrorEbmType CalculateInteractionScoreInternal(
       return Error_OutOfMemory;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
+   if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
+   const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
 
    // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
    HistogramBucketBase * const aHistogramBuckets = pInteractionShell->GetHistogramBucketBase(cBytesBuffer);

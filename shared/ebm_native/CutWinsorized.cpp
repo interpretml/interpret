@@ -271,7 +271,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                // we check that cCuts can be multiplied with sizeof(*cutsLowerBoundInclusiveOut), and since
                // there is no way an element of cutsLowerBoundInclusiveOut is as small as 1 byte, we should
                // be able to add one to cCuts
-               EBM_ASSERT(!IsAddError(cCuts, size_t { 1 }));
+               EBM_ASSERT(!IsAddError(size_t { 1 }, cCuts));
                const size_t cBins = cCuts + size_t { 1 };
                EBM_ASSERT(size_t { 1 } < cSamples);
                const size_t iOuterBound = (cSamples - size_t { 1 }) / cBins;

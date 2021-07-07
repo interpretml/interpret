@@ -217,12 +217,12 @@ static ErrorEbmType BoostSingleDimensional(
       return Error_OutOfMemory;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cHistogramBuckets, cBytesPerHistogramBucket)) {
+   if(IsMultiplyError(cBytesPerHistogramBucket, cHistogramBuckets)) {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cHistogramBuckets, cBytesPerHistogramBucket)");
+      LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cBytesPerHistogramBucket, cHistogramBuckets)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cHistogramBuckets * cBytesPerHistogramBucket;
+   const size_t cBytesBuffer = cBytesPerHistogramBucket * cHistogramBuckets;
 
    HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
@@ -356,11 +356,11 @@ static ErrorEbmType BoostMultiDimensional(
       return Error_OutOfMemory;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
+   if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
+   const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
    HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
@@ -611,11 +611,11 @@ static ErrorEbmType BoostRandom(
       return Error_OutOfMemory;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
+   if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
+   const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
    HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);

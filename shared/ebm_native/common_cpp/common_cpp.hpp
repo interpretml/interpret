@@ -120,8 +120,8 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
    static_assert(
-      std::numeric_limits<TFrom>::lowest() < std::numeric_limits<TTo>::lowest() && 
-      std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max(),
+      std::numeric_limits<TFrom>::lowest() <= std::numeric_limits<TTo>::lowest() && 
+      std::numeric_limits<TTo>::max() <= std::numeric_limits<TFrom>::max(),
       "we have a specialization for when TTo has a larger range, but if TFrom is larger then check that it's larger on both the upper and lower ends"
    );
 
@@ -280,7 +280,7 @@ static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for b
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 template<typename T>
-INLINE_ALWAYS constexpr static bool IsMultiplyError(const T num1, const T num2) noexcept {
+INLINE_ALWAYS constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, const T num2) noexcept {
    static_assert(std::is_integral<T>::value, "T must be integral");
    static_assert(std::numeric_limits<T>::is_specialized, "T must be specialized");
    static_assert(!std::is_signed<T>::value, "T must be unsigned in the current implementation");
@@ -288,22 +288,22 @@ INLINE_ALWAYS constexpr static bool IsMultiplyError(const T num1, const T num2) 
    // algebraically, we want to know if this is true: std::numeric_limits<T>::max() + 1 <= num1 * num2
    // which can be turned into: (std::numeric_limits<T>::max() + 1 - num1) / num1 + 1 <= num2
    // which can be turned into: (std::numeric_limits<T>::max() + 1 - num1) / num1 < num2
-   // which can be turned into: (std::numeric_limits<T>::max() - num1 + 1) / num1 < num2
+   // which can be turned into: (T { 0 } - num1) / num1 < num2  Since underflow is allowed and defined for unsigned
    // which works if num1 == 1, but does not work if num1 is zero, so check for zero first
 
    // it will never overflow if num1 is zero or 1.  We need to check zero to avoid division by zero
-   return T { 1 } < num1 && ((std::numeric_limits<T>::max() - num1 + 1) / num1 < num2);
+   return T { 1 } < num1PreferredConstexpr && (T { 0 } - num1PreferredConstexpr) / num1PreferredConstexpr < num2;
 }
 WARNING_POP
 
 template<typename T>
-INLINE_ALWAYS constexpr static bool IsAddError(const T num1, const T num2) noexcept {
+INLINE_ALWAYS constexpr static bool IsAddError(const T num1PreferredConstexpr, const T num2) noexcept {
    static_assert(std::is_integral<T>::value, "T must be integral");
    static_assert(std::numeric_limits<T>::is_specialized, "T must be specialized");
    static_assert(!std::is_signed<T>::value, "T must be unsigned in the current implementation");
 
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
-   return num1 + num2 < num1;
+   return num1PreferredConstexpr + num2 < num1PreferredConstexpr;
 }
 
 // we use the struct hack in a number of places in this code base for putting memory in the optimial location
@@ -336,10 +336,10 @@ INLINE_ALWAYS static T * EbmMalloc(const size_t cItems) noexcept {
       T * const a = static_cast<T *>(malloc(cBytes));
       return a;
    } else {
-      if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
+      if(UNLIKELY(IsMultiplyError(cBytesPerItem, cItems))) {
          return nullptr;
       } else {
-         const size_t cBytes = cItems * cBytesPerItem;
+         const size_t cBytes = cBytesPerItem * cItems;
          // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
          StopClangAnalysis(); // for some reason Clang-analysis thinks cBytes can be zero, despite the assert above.
          T * const a = static_cast<T *>(malloc(cBytes));
@@ -349,10 +349,10 @@ INLINE_ALWAYS static T * EbmMalloc(const size_t cItems) noexcept {
 }
 template<typename T>
 INLINE_ALWAYS static T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) noexcept {
-   if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
+   if(UNLIKELY(IsMultiplyError(cBytesPerItem, cItems))) {
       return nullptr;
    } else {
-      const size_t cBytes = cItems * cBytesPerItem;
+      const size_t cBytes = cBytesPerItem * cItems;
       // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
       T * const a = static_cast<T *>(malloc(cBytes));
       return a;

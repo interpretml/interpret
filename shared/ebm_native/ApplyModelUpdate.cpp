@@ -410,7 +410,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cBins, cValues));
+         EBM_ASSERT(!IsMultiplyError(cValues, cBins));
          cValues *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
@@ -497,7 +497,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cBins, cValues));
+         EBM_ASSERT(!IsMultiplyError(cValues, cBins));
          cValues *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);

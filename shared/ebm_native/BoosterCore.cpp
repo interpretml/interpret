@@ -379,11 +379,11 @@ ErrorEbmType BoosterCore::Create(
 
                size_t cBytesArrayEquivalentSplit;
                if(1 == cSignificantDimensions) {
-                  if(IsMultiplyError(cEquivalentSplits, cBytesPerTreeSweep)) {
-                     LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create IsMultiplyError(cEquivalentSplits, cBytesPerTreeSweep)");
+                  if(IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)) {
+                     LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)");
                      return Error_OutOfMemory;
                   }
-                  cBytesArrayEquivalentSplit = cEquivalentSplits * cBytesPerTreeSweep;
+                  cBytesArrayEquivalentSplit = cBytesPerTreeSweep * cEquivalentSplits;
                } else {
                   // TODO : someday add equal gain multidimensional randomized picking.  It's rather hard though with the existing sweep functions for 
                   // multidimensional right now
