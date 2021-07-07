@@ -97,10 +97,8 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(std::numeric_limits<TFrom>::lowest() < 0, "TFrom::lowest must be negative");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   UNUSED(number);
-
    // our TTo has either a larger range or the same range as TFrom, so there is no need to check anything
-   return true;
+   return UNUSED(number), true;
 }
 
 template<typename TTo, typename TFrom>
@@ -187,9 +185,7 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(0 == std::numeric_limits<TFrom>::lowest(), "TFrom::lowest must be zero");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   UNUSED(number);
-
-   return true;
+   return UNUSED(number), true;
 }
 
 template<typename TTo, typename TFrom>
@@ -229,9 +225,7 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(0 == std::numeric_limits<TFrom>::lowest(), "TFrom::lowest must be zero");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   UNUSED(number);
-
-   return true;
+   return UNUSED(number), true;
 }
 
 template<typename TTo, typename TFrom>
