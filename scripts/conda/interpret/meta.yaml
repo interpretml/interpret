@@ -12,7 +12,7 @@ source:
 build:
   noarch: generic
   number: 0
-  script: cd python/interpret && {{ PYTHON }} setup.py build && {{ PYTHON }} setup.py install
+  script: cd python/interpret && {{ PYTHON }} pip install . -vv
 
 requirements:
   host:
