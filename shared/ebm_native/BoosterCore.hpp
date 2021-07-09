@@ -94,6 +94,8 @@ class BoosterCore final {
       DeleteSegmentedTensors(m_cFeatureGroups, m_apBestModel);
    };
 
+   WARNING_PUSH
+   ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    INLINE_ALWAYS BoosterCore() noexcept :
       m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
       m_runtimeLearningTypeOrCountTargetClasses(0),
@@ -113,6 +115,7 @@ class BoosterCore final {
       m_trainingSet.InitializeZero();
       m_validationSet.InitializeZero();
    }
+   WARNING_POP
 
 public:
 

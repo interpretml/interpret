@@ -97,9 +97,18 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(std::numeric_limits<TFrom>::lowest() < 0, "TFrom::lowest must be negative");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   // our TTo has either a larger range or the same range as TFrom, so there is no need to check anything
-   return UNUSED(number), true;
+   static_assert(std::is_same<const TFrom, decltype(number)>::value, 
+      "this is a stupid check to access the number variable to avoid a compiler warning");
+
+   return true;
 }
+
+static_assert(IsNumberConvertable<int32_t>(int16_t { 32767 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int32_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int32_t>(int16_t { -32768 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int16_t>(int16_t { 32767 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int16_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int16_t>(int16_t { -32768 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckSSY = typename std::enable_if<
@@ -128,6 +137,14 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    return TFrom { std::numeric_limits<TTo>::lowest() } <= number && number <= TFrom { std::numeric_limits<TTo>::max() };
 }
 
+static_assert(!IsNumberConvertable<int8_t>(int16_t { -129 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int8_t>(int16_t { -128 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int8_t>(int16_t { -1 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int8_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int8_t>(int16_t { 1 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int8_t>(int16_t { 127 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<int8_t>(int16_t { 128 }), "automated test with compiler");
+
 template<typename TTo, typename TFrom>
 using InternalCheckUSN = typename std::enable_if<
    !std::is_signed<TTo>::value && std::is_signed<TFrom>::value && 
@@ -147,6 +164,13 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
 
    return TFrom { 0 } <= number;
 }
+
+static_assert(IsNumberConvertable<uint32_t>(int16_t { 32767 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint32_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<uint32_t>(int16_t { -32768 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint16_t>(int16_t { 32767 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint16_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<uint16_t>(int16_t { -32768 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckUSY = typename std::enable_if<
@@ -168,6 +192,13 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    return TFrom { 0 } <= number && number <= TFrom { std::numeric_limits<TTo>::max() };
 }
 
+static_assert(!IsNumberConvertable<uint8_t>(int16_t { -32768 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<uint8_t>(int16_t { -1 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint8_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint8_t>(int16_t { 255 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<uint8_t>(int16_t { 256 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<uint8_t>(int16_t { 32767 }), "automated test with compiler");
+
 template<typename TTo, typename TFrom>
 using InternalCheckSUN = typename std::enable_if<
    std::is_signed<TTo>::value && !std::is_signed<TFrom>::value && 
@@ -185,8 +216,15 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(0 == std::numeric_limits<TFrom>::lowest(), "TFrom::lowest must be zero");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   return UNUSED(number), true;
+   static_assert(std::is_same<const TFrom, decltype(number)>::value,
+      "this is a stupid check to access the number variable to avoid a compiler warning");
+
+   return true;
 }
+
+static_assert(IsNumberConvertable<int32_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int32_t>(uint16_t { 32767 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int32_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckSUY = typename std::enable_if<
@@ -208,6 +246,19 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    return number <= TFrom { std::numeric_limits<TTo>::max() };
 }
 
+static_assert(!IsNumberConvertable<int16_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<int16_t>(uint16_t { 32768 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int16_t>(uint16_t { 32767 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int16_t>(uint16_t { 0 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<int8_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<int8_t>(uint16_t { 32768 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<int8_t>(uint16_t { 32767 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<int8_t>(uint16_t { 256 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<int8_t>(uint16_t { 255 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<int8_t>(uint16_t { 128 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int8_t>(uint16_t { 127 }), "automated test with compiler");
+static_assert(IsNumberConvertable<int8_t>(uint16_t { 0 }), "automated test with compiler");
+
 template<typename TTo, typename TFrom>
 using InternalCheckUUN = typename std::enable_if<
    !std::is_signed<TTo>::value && !std::is_signed<TFrom>::value && 
@@ -225,8 +276,16 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(0 == std::numeric_limits<TFrom>::lowest(), "TFrom::lowest must be zero");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   return UNUSED(number), true;
+   static_assert(std::is_same<const TFrom, decltype(number)>::value,
+      "this is a stupid check to access the number variable to avoid a compiler warning");
+
+   return true;
 }
+
+static_assert(IsNumberConvertable<uint32_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint32_t>(uint16_t { 0 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint16_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint16_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckUUY = typename std::enable_if<
@@ -248,16 +307,37 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    return number <= TFrom { std::numeric_limits<TTo>::max() };
 }
 
+static_assert(!IsNumberConvertable<uint8_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(!IsNumberConvertable<uint8_t>(uint16_t { 256 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint8_t>(uint16_t { 255 }), "automated test with compiler");
+static_assert(IsNumberConvertable<uint8_t>(uint16_t { 0 }), "automated test with compiler");
+
+
+template<typename TTo1, typename TTo2, typename TFrom>
+INLINE_ALWAYS static bool IsNumberConvertableDual(const TFrom number) noexcept {
+   const bool bCompare1 = IsNumberConvertable<TTo1>(number);
+   const bool bCompare2 = IsNumberConvertable<TTo2>(number);
+   return bCompare1 && bCompare2;
+}
 
 template<typename T>
 constexpr static size_t CountBitsRequired(const T maxValue) noexcept {
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
    return T { 0 } == maxValue ? size_t { 0 } : size_t { 1 } + CountBitsRequired<T>(maxValue / T { 2 });
 }
+
 template<typename T>
 INLINE_ALWAYS constexpr static size_t CountBitsRequiredPositiveMax() noexcept {
    return CountBitsRequired(std::numeric_limits<T>::max());
 }
+static_assert(CountBitsRequiredPositiveMax<uint8_t>() == 8, "automated test with compiler");
+static_assert(CountBitsRequiredPositiveMax<uint16_t>() == 16, "automated test with compiler");
+static_assert(CountBitsRequiredPositiveMax<uint32_t>() == 32, "automated test with compiler");
+static_assert(CountBitsRequiredPositiveMax<uint64_t>() == 64, "automated test with compiler");
+static_assert(CountBitsRequiredPositiveMax<int8_t>() == 7, "automated test with compiler");
+static_assert(CountBitsRequiredPositiveMax<int16_t>() == 15, "automated test with compiler");
+static_assert(CountBitsRequiredPositiveMax<int32_t>() == 31, "automated test with compiler");
+static_assert(CountBitsRequiredPositiveMax<int64_t>() == 63, "automated test with compiler");
 
 constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 
@@ -285,16 +365,48 @@ INLINE_ALWAYS constexpr static bool IsMultiplyError(const T num1PreferredConstex
    static_assert(std::numeric_limits<T>::is_specialized, "T must be specialized");
    static_assert(!std::is_signed<T>::value, "T must be unsigned in the current implementation");
 
-   // algebraically, we want to know if this is true: std::numeric_limits<T>::max() + 1 <= num1 * num2
-   // which can be turned into: (std::numeric_limits<T>::max() + 1 - num1) / num1 + 1 <= num2
-   // which can be turned into: (std::numeric_limits<T>::max() + 1 - num1) / num1 < num2
-   // which can be turned into: (T { 0 } - num1) / num1 < num2  Since underflow is allowed and defined for unsigned
-   // which works if num1 == 1, but does not work if num1 is zero, so check for zero first
-
    // it will never overflow if num1 is zero or 1.  We need to check zero to avoid division by zero
-   return T { 1 } < num1PreferredConstexpr && (T { 0 } - num1PreferredConstexpr) / num1PreferredConstexpr < num2;
+   return T { 1 } < num1PreferredConstexpr && static_cast<T>(std::numeric_limits<T>::max() / num1PreferredConstexpr) < num2;
 }
 WARNING_POP
+
+static_assert(!IsMultiplyError(uint8_t { 0 }, uint8_t { 0 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 0 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 1 }, uint8_t { 0 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 1 }, uint8_t { 255 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 255 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 0 }, uint8_t { 2 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 2 }, uint8_t { 0 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 2 }, uint8_t { 2 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 2 }, uint8_t { 127 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 127 }, uint8_t { 2 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 15 }, uint8_t { 17 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 17 }, uint8_t { 15 }), "automated test with compiler");
+static_assert(IsMultiplyError(uint8_t { 16 }, uint8_t { 16 }), "automated test with compiler");
+static_assert(IsMultiplyError(uint8_t { 2 }, uint8_t { 128 }), "automated test with compiler");
+static_assert(IsMultiplyError(uint8_t { 128 }, uint8_t { 2 }), "automated test with compiler");
+static_assert(IsMultiplyError(uint32_t { 641 }, uint32_t { 6700417 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint32_t { 640 }, uint32_t { 6700417 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint32_t { 641 }, uint32_t { 6700416 }), "automated test with compiler");
+
+template<typename T, typename... Args>
+INLINE_ALWAYS constexpr static bool IsMultiplyError(const T num1PreferredConstexpr, const T num2, const Args...args) noexcept {
+   // we allow zeros in the parameters, but we report an error if there's an overflow before the 0 is reached
+   // since multiplication will overflow if we proceed in the order specified by IsMultiplyError
+   return IsMultiplyError(num1PreferredConstexpr, num2) || IsMultiplyError(static_cast<T>(num1PreferredConstexpr * num2), args...);
+}
+
+static_assert(!IsMultiplyError(uint8_t { 0 }, uint8_t { 0 }, uint8_t { 0 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 0 }, uint8_t { 0 }, uint8_t { 0 }, uint8_t { 0 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 1 }, uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 2 }, uint8_t { 2 }, uint8_t { 2 }, uint8_t { 2 }), "automated test with compiler");
+static_assert(!IsMultiplyError(uint8_t { 17 }, uint8_t { 15 }, uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(IsMultiplyError(uint8_t { 17 }, uint8_t { 15 }, uint8_t { 2 }, uint8_t { 1 }), "automated test with compiler");
+
+static_assert(IsMultiplyError(uint8_t { 16 }, uint8_t { 16 }, uint8_t { 0 }), "once we overflow we stay overflowed");
+static_assert(!IsMultiplyError(uint8_t { 16 }, uint8_t { 0 }, uint8_t { 16 }), "we never reach overflow with this");
+
 
 template<typename T>
 INLINE_ALWAYS constexpr static bool IsAddError(const T num1PreferredConstexpr, const T num2) noexcept {
@@ -303,8 +415,34 @@ INLINE_ALWAYS constexpr static bool IsAddError(const T num1PreferredConstexpr, c
    static_assert(!std::is_signed<T>::value, "T must be unsigned in the current implementation");
 
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
-   return num1PreferredConstexpr + num2 < num1PreferredConstexpr;
+   return static_cast<T>(num1PreferredConstexpr + num2) < num1PreferredConstexpr;
 }
+
+static_assert(!IsAddError(uint8_t { 0 }, uint8_t { 0 }), "automated test with compiler");
+static_assert(!IsAddError(uint8_t { 0 }, uint8_t { 255 }), "automated test with compiler");
+static_assert(!IsAddError(uint8_t { 255 }, uint8_t { 0 }), "automated test with compiler");
+static_assert(!IsAddError(uint8_t { 1 }, uint8_t { 254 }), "automated test with compiler");
+static_assert(!IsAddError(uint8_t { 254 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(!IsAddError(uint8_t { 127 }, uint8_t { 128 }), "automated test with compiler");
+static_assert(!IsAddError(uint8_t { 128 }, uint8_t { 127 }), "automated test with compiler");
+static_assert(IsAddError(uint8_t { 1 }, uint8_t { 255 }), "automated test with compiler");
+static_assert(IsAddError(uint8_t { 255 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(IsAddError(uint8_t { 2 }, uint8_t { 254 }), "automated test with compiler");
+static_assert(IsAddError(uint8_t { 254 }, uint8_t { 2 }), "automated test with compiler");
+static_assert(IsAddError(uint8_t { 128 }, uint8_t { 128 }), "automated test with compiler");
+static_assert(IsAddError(uint8_t { 255 }, uint8_t { 255 }), "automated test with compiler");
+
+template<typename T, typename... Args>
+INLINE_ALWAYS constexpr static bool IsAddError(const T num1PreferredConstexpr, const T num2, const Args...args) noexcept {
+   return IsAddError(num1PreferredConstexpr, num2) || IsAddError(static_cast<T>(num1PreferredConstexpr + num2), args...);
+}
+
+static_assert(!IsAddError(uint8_t { 0 }, uint8_t { 0 }, uint8_t { 0 }), "automated test with compiler");
+static_assert(!IsAddError(uint8_t { 0 }, uint8_t { 0 }, uint8_t { 0 }, uint8_t { 0 }), "automated test with compiler");
+static_assert(!IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(!IsAddError(uint8_t { 127 }, uint8_t { 126 }, uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 1 }, uint8_t { 1 }), "automated test with compiler");
+static_assert(IsAddError(uint8_t { 127 }, uint8_t { 127 }, uint8_t { 2 }, uint8_t { 0 }), "automated test with compiler");
 
 // we use the struct hack in a number of places in this code base for putting memory in the optimial location
 // the struct hack isn't valid unless a class/struct is standard layout.  standard layout objects cannot

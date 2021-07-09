@@ -38,9 +38,11 @@ private:
 
 public:
 
+   WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    INLINE_ALWAYS Sse_32_Operators() noexcept {
    }
+   WARNING_POP
 
    INLINE_ALWAYS Sse_32_Operators(const float data) noexcept : m_data(_mm_set1_ps(static_cast<Unpacked>(data))) {
    }
