@@ -4,7 +4,7 @@
     <ClCompile Include="..\special\precompiled_header_cpp.cpp">
       <Filter>special</Filter>
     </ClCompile>
-    <ClCompile Include="cuda_missing_32.cpp" />
+    <ClCompile Include="no_cuda_32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="special">
