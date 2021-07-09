@@ -13,6 +13,7 @@ from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_local_selector
 import ctypes as ct
+from multiprocessing.sharedctypes import RawArray
 
 import numpy as np
 from warnings import warn

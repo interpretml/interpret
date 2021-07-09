@@ -2688,8 +2688,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
 
          // we need to be able to index both the cutsLowerBoundInclusiveOut AND we also allocate an array
          // of pointers below of FloatEbmType * to index into aFeatureValues 
-         if(UNLIKELY(IsMultiplyError(cCutsMax, std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *))))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCutsMax, std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)))");
+         if(UNLIKELY(IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)), cCutsMax))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)), cCutsMax)");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = Error_OutOfMemory;
@@ -2723,18 +2723,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             goto exit_with_log;
          }
 
-         if(UNLIKELY(IsMultiplyError(cSamples, sizeof(NeighbourJump)))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cSamples, sizeof(NeighbourJump))");
+         if(UNLIKELY(IsMultiplyError(sizeof(NeighbourJump), cSamples))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(NeighbourJump), cSamples)");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesNeighbourJumps = cSamples * sizeof(NeighbourJump);
+         const size_t cBytesNeighbourJumps = sizeof(NeighbourJump) * cSamples;
 
          // we checked that this multiplication wouldn't overflow above
-         EBM_ASSERT(!IsMultiplyError(cCutsMax, sizeof(FloatEbmType *)));
-         const size_t cBytesValueCutPointers = cCutsMax * sizeof(FloatEbmType *);
+         EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType *), cCutsMax));
+         const size_t cBytesValueCutPointers = sizeof(FloatEbmType *) * cCutsMax;
 
          // we limit the cCutsMax to no more than cSamples - 1.  cSamples can't be anywhere close to
          // the maximum size_t though since the caller must have allocated cSamples floats in aFeatureValues, and
@@ -2743,23 +2743,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          EBM_ASSERT(cCutsMax <= std::numeric_limits<size_t>::max() - size_t { 2 });
          // include storage for the end points
          const size_t cCutsWithEndpointsMax = cCutsMax + size_t { 2 };
-         if(UNLIKELY(IsMultiplyError(cCutsWithEndpointsMax, sizeof(CutPoint)))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCutsWithEndpointsMax, sizeof(CutPoint))");
+         if(UNLIKELY(IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax)");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesCuts = cCutsWithEndpointsMax * sizeof(CutPoint);
+         const size_t cBytesCuts = sizeof(CutPoint) * cCutsWithEndpointsMax;
 
-         if(UNLIKELY(IsMultiplyError(cCuttingRanges, sizeof(CuttingRange)))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCuttingRanges, sizeof(CuttingRange))");
+         if(UNLIKELY(IsMultiplyError(sizeof(CuttingRange), cCuttingRanges))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(CuttingRange), cCuttingRanges)");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesCuttingRanges = cCuttingRanges * sizeof(CuttingRange);
+         const size_t cBytesCuttingRanges = sizeof(CuttingRange) * cCuttingRanges;
 
 
          const size_t cBytesToNeighbourJump = size_t { 0 };

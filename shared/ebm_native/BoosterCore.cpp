@@ -174,24 +174,24 @@ ErrorEbmType BoosterCore::Create(
 
    LOG_0(TraceLevelInfo, "Entered BoosterCore::Create");
 
-   try {
-      // TODO: eliminate this code I added to test that threads are available on the majority of our systems
-      std::thread testThread(TODO_removeThisThreadTest);
-      testThread.join();
-      if(0 == g_TODO_removeThisThreadTest) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread not started");
-         return Error_UnexpectedInternal;
-      }
-   } catch(const std::bad_alloc &) {
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start out of memory");
-      return Error_OutOfMemory;
-   } catch(...) {
-      // the C++ standard doesn't really seem to say what kind of exceptions we'd get for various errors, so
-      // about the best we can do is catch ... since the exact exceptions seem to be implementation specific
-      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start failed");
-      return Error_ThreadStartFailed;
-   }
-   LOG_0(TraceLevelInfo, "INFO BoosterCore::Create thread started");
+   //try {
+   //   // TODO: eliminate this code I added to test that threads are available on the majority of our systems
+   //   std::thread testThread(TODO_removeThisThreadTest);
+   //   testThread.join();
+   //   if(0 == g_TODO_removeThisThreadTest) {
+   //      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread not started");
+   //      return Error_UnexpectedInternal;
+   //   }
+   //} catch(const std::bad_alloc &) {
+   //   LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start out of memory");
+   //   return Error_OutOfMemory;
+   //} catch(...) {
+   //   // the C++ standard doesn't really seem to say what kind of exceptions we'd get for various errors, so
+   //   // about the best we can do is catch(...) since the exact exceptions seem to be implementation specific
+   //   LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create thread start failed");
+   //   return Error_ThreadStartFailed;
+   //}
+   //LOG_0(TraceLevelInfo, "INFO BoosterCore::Create thread started");
 
    BoosterCore * pBoosterCore;
    try {
@@ -379,11 +379,11 @@ ErrorEbmType BoosterCore::Create(
 
                size_t cBytesArrayEquivalentSplit;
                if(1 == cSignificantDimensions) {
-                  if(IsMultiplyError(cEquivalentSplits, cBytesPerTreeSweep)) {
-                     LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create IsMultiplyError(cEquivalentSplits, cBytesPerTreeSweep)");
+                  if(IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)) {
+                     LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)");
                      return Error_OutOfMemory;
                   }
-                  cBytesArrayEquivalentSplit = cEquivalentSplits * cBytesPerTreeSweep;
+                  cBytesArrayEquivalentSplit = cBytesPerTreeSweep * cEquivalentSplits;
                } else {
                   // TODO : someday add equal gain multidimensional randomized picking.  It's rather hard though with the existing sweep functions for 
                   // multidimensional right now

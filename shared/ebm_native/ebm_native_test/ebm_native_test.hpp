@@ -8,6 +8,7 @@
 #define UNUSED(x) (void)(x)
 
 enum class TestPriority {
+   DataSetShared,
    BoostingUnusualInputs,
    InteractionUnusualInputs,
    Rehydration,

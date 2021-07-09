@@ -132,11 +132,11 @@ public:
       // since we subtract 1 from cPossibleCutLocations, we need to check that our final slice length isn't longer
       cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesTotal);
 
-      if(IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))");
+      if(IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)) {
+         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)");
          return Error_OutOfMemory;
       }
-      const size_t cBytesSlicesPlusRandom = cSlicesPlusRandomMax * sizeof(size_t);
+      const size_t cBytesSlicesPlusRandom = sizeof(size_t) * cSlicesPlusRandomMax;
 
       error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells);
       if(UNLIKELY(Error_None != error)) {
@@ -145,11 +145,11 @@ public:
       }
 
       // our allocated histogram is bigger since it has more elements and the elements contain a size_t
-      EBM_ASSERT(!IsMultiplyError(cSlicesTotal, sizeof(size_t)));
-      const size_t cBytesSlices = cSlicesTotal * sizeof(size_t);
+      EBM_ASSERT(!IsMultiplyError(sizeof(size_t), cSlicesTotal));
+      const size_t cBytesSlices = sizeof(size_t) * cSlicesTotal;
 
       // promote to bytes
-      EBM_ASSERT(!IsMultiplyError(cCollapsedTensorCells, cBytesPerHistogramBucket)); // our allocated histogram is bigger
+      EBM_ASSERT(!IsMultiplyError(cBytesPerHistogramBucket, cCollapsedTensorCells)); // our allocated histogram is bigger
       cCollapsedTensorCells *= cBytesPerHistogramBucket;
       if(IsAddError(cBytesSlices, cCollapsedTensorCells)) {
          LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");

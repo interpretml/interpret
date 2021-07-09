@@ -26,11 +26,11 @@ SegmentedTensor * SegmentedTensor::Allocate(const size_t cDimensionsMax, const s
    EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
    EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless
 
-   if(IsMultiplyError(cVectorLength, k_initialValueCapacity)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(cVectorLength, k_initialValueCapacity)");
+   if(IsMultiplyError(k_initialValueCapacity, cVectorLength)) {
+      LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(k_initialValueCapacity, cVectorLength)");
       return nullptr;
    }
-   const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
+   const size_t cValueCapacity = k_initialValueCapacity * cVectorLength;
 
    // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
    const size_t cBytesSegmentedRegion = sizeof(SegmentedTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
@@ -304,11 +304,11 @@ ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
          // the dimension is still stripped from our view, but we should not expand
          LOG_0(TraceLevelWarning, "WARNING Expand Zero sized tensor");
       } else {
-         if(IsMultiplyError(cNewValues, m_cVectorLength)) {
-            LOG_0(TraceLevelWarning, "WARNING Expand IsMultiplyError(cNewValues, m_cVectorLength)");
+         if(IsMultiplyError(m_cVectorLength, cNewValues)) {
+            LOG_0(TraceLevelWarning, "WARNING Expand IsMultiplyError(m_cVectorLength, cNewValues)");
             return Error_OutOfMemory;
          }
-         const size_t cVectoredNewValues = cNewValues * m_cVectorLength;
+         const size_t cVectoredNewValues = m_cVectorLength * cNewValues;
          // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
          error = EnsureValueCapacity(cVectoredNewValues);
          if(UNLIKELY(Error_None != error)) {
@@ -576,12 +576,12 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
       ++pDimensionInfoStackFirst;
    } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
-   if(IsMultiplyError(cNewValues, m_cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING Add IsMultiplyError(cNewValues, m_cVectorLength)");
+   if(IsMultiplyError(m_cVectorLength, cNewValues)) {
+      LOG_0(TraceLevelWarning, "WARNING Add IsMultiplyError(m_cVectorLength, cNewValues)");
       return Error_OutOfMemory;
    }
    // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
-   error = EnsureValueCapacity(cNewValues * m_cVectorLength);
+   error = EnsureValueCapacity(m_cVectorLength * cNewValues);
    if(UNLIKELY(Error_None != error)) {
       // already logged
       return error;

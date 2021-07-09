@@ -3,6 +3,14 @@
       SetLogMessageFunction;
       SetTraceLevel;
       GetTraceLevelString;
+      SizeDataSetHeader;
+      FillDataSetHeader;
+      SizeDataSetFeature;
+      FillDataSetFeature;
+      SizeClassificationTargets;
+      FillClassificationTargets;
+      SizeRegressionTargets;
+      FillRegressionTargets;
       CreateClassificationBooster;
       CreateRegressionBooster;
       CreateBoosterView;

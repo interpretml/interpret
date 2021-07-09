@@ -65,9 +65,9 @@ void TensorTotalsSumDebugSlow(
          EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
          EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
          // aiStart[iDimensionInitialize] is less than cBins, so this should multiply
-         EBM_ASSERT(!IsMultiplyError(aiStart[iDimensionInitialize], valueMultipleInitialize));
-         iTensorBin += aiStart[iDimensionInitialize] * valueMultipleInitialize;
-         EBM_ASSERT(!IsMultiplyError(cBins, valueMultipleInitialize)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         EBM_ASSERT(!IsMultiplyError(valueMultipleInitialize, aiStart[iDimensionInitialize]));
+         iTensorBin += valueMultipleInitialize * aiStart[iDimensionInitialize];
+         EBM_ASSERT(!IsMultiplyError(valueMultipleInitialize, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          valueMultipleInitialize *= cBins;
          aiDimensions[iDimensionInitialize] = aiStart[iDimensionInitialize];
          ++iDimensionInitialize;
@@ -95,8 +95,8 @@ void TensorTotalsSumDebugSlow(
       while(aiDimensions[iDimension] == aiLast[iDimension]) {
          EBM_ASSERT(aiStart[iDimension] <= aiLast[iDimension]);
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop));
-         iTensorBin -= (aiLast[iDimension] - aiStart[iDimension]) * valueMultipleLoop;
+         EBM_ASSERT(!IsMultiplyError(valueMultipleLoop, aiLast[iDimension] - aiStart[iDimension]));
+         iTensorBin -= valueMultipleLoop * (aiLast[iDimension] - aiStart[iDimension]);
 
          size_t cBins;
          do {
@@ -107,7 +107,7 @@ void TensorTotalsSumDebugSlow(
             ++pFeatureGroupEntry;
          } while(cBins <= size_t { 1 }); // skip anything with 1 bin
 
-         EBM_ASSERT(!IsMultiplyError(cBins, valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         EBM_ASSERT(!IsMultiplyError(valueMultipleLoop, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          valueMultipleLoop *= cBins;
 
          aiDimensions[iDimension] = aiStart[iDimension];
@@ -232,11 +232,11 @@ void TensorTotalsSum(
          EBM_ASSERT(size_t { 1 } <= cBins);
          if(size_t { 1 } < cBins) {
             EBM_ASSERT(*piPointInitialize < cBins);
-            EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
             size_t addValue = multipleTotalInitialize * (*piPointInitialize);
             EBM_ASSERT(!IsAddError(startingOffset, addValue)); // we're accessing allocated memory, so this needs to add
             startingOffset += addValue;
-            EBM_ASSERT(!IsMultiplyError(cBins, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+            EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, cBins)); // we're accessing allocated memory, so this needs to multiply
             multipleTotalInitialize *= cBins;
             ++piPointInitialize;
          }
@@ -272,15 +272,15 @@ void TensorTotalsSum(
          EBM_ASSERT(size_t { 1 } <= cBins);
          if(size_t { 1 } < cBins) {
             if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
-               EBM_ASSERT(!IsMultiplyError(cBins - 1, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+               EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, cBins - 1)); // we're accessing allocated memory, so this needs to multiply
                size_t cLast = multipleTotalInitialize * (cBins - 1);
-               EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+               EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
                pTotalsDimensionEnd->m_cIncrement = multipleTotalInitialize * (*piPointInitialize);
                pTotalsDimensionEnd->m_cLast = cLast;
                multipleTotalInitialize += cLast;
                ++pTotalsDimensionEnd;
             } else {
-               EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+               EBM_ASSERT(!IsMultiplyError(multipleTotalInitialize, *piPointInitialize)); // we're accessing allocated memory, so this needs to multiply
                size_t addValue = multipleTotalInitialize * (*piPointInitialize);
                EBM_ASSERT(!IsAddError(startingOffset, addValue)); // we're accessing allocated memory, so this needs to add
                startingOffset += addValue;

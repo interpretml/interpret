@@ -30,18 +30,18 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(c
    EBM_ASSERT(1 <= cVectorLength);
 
    const size_t cStorageItems = bAllocateHessians ? 2 : 1;
-   if(IsMultiplyError(cStorageItems, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cStorageItems, cVectorLength)");
+   if(IsMultiplyError(cVectorLength, cStorageItems)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cVectorLength, cStorageItems)");
       return nullptr;
    }
-   const size_t cStorageItemsPerSample = cStorageItems * cVectorLength;
+   const size_t cStorageItemsPerSample = cVectorLength * cStorageItems;
 
-   if(IsMultiplyError(cSamples, cStorageItemsPerSample)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cSamples, cStorageItemsPerSample)");
+   if(IsMultiplyError(cStorageItemsPerSample, cSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cStorageItemsPerSample, cSamples)");
       return nullptr;
    }
 
-   const size_t cElements = cSamples * cStorageItemsPerSample;
+   const size_t cElements = cStorageItemsPerSample * cSamples;
    FloatEbmType * aGradientsAndHessians = EbmMalloc<FloatEbmType>(cElements);
 
    LOG_0(TraceLevelInfo, "Exited ConstructGradientsAndHessians");
@@ -59,12 +59,12 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    EBM_ASSERT(0 < cVectorLength);
    EBM_ASSERT(nullptr != aPredictorScoresFrom);
 
-   if(IsMultiplyError(cSamples, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores IsMultiplyError(cSamples, cVectorLength)");
+   if(IsMultiplyError(cVectorLength, cSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores IsMultiplyError(cVectorLength, cSamples)");
       return nullptr;
    }
 
-   const size_t cElements = cSamples * cVectorLength;
+   const size_t cElements = cVectorLength * cSamples;
    FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType>(cElements);
    if(nullptr == aPredictorScoresTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores nullptr == aPredictorScoresTo");
