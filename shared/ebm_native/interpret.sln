@@ -101,7 +101,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "metrics", "metrics", "{43E2
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda_ebm", "compute\cuda_ebm\cuda_ebm.vcxproj", "{26B3484D-E3DC-4DCD-95A2-B4FFFAF43A9A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda_missing_ebm", "compute\cuda_missing_ebm\cuda_missing_ebm.vcxproj", "{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "no_cuda_ebm", "compute\no_cuda_ebm\no_cuda_ebm.vcxproj", "{059D61C6-0FC9-4EA5-B4AF-5CB0D8D0980B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -399,7 +399,7 @@ EXIT /B 0
     </ProjectReference>
   </ItemGroup>
   <ItemGroup Condition="!exists('$(VCTargetsPath)\BuildCustomizations\CUDA 11.2.props')">
-    <ProjectReference Include="compute\cuda_missing_ebm\cuda_missing_ebm.vcxproj">
+    <ProjectReference Include="compute\no_cuda_ebm\no_cuda_ebm.vcxproj">
       <Project>{059d61c6-0fc9-4ea5-b4af-5cb0d8d0980b}</Project>
     </ProjectReference>
   </ItemGroup>
