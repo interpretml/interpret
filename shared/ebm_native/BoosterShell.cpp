@@ -249,30 +249,30 @@ static ErrorEbmType CreateBooster(
       LOG_0(TraceLevelError, "ERROR CreateBooster countInnerBags must be positive");
       return Error_UserParamValue;
    }
-   if(!IsNumberConvertable<size_t>(countFeatures)) {
+   if(IsConvertError<size_t>(countFeatures)) {
       // the caller should not have been able to allocate enough memory in "features" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster !IsNumberConvertable<size_t>(countFeatures)");
+      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countFeatures)");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(countFeatureGroups)) {
+   if(IsConvertError<size_t>(countFeatureGroups)) {
       // the caller should not have been able to allocate enough memory in "aFeatureGroupsDimensionCount" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster !IsNumberConvertable<size_t>(countFeatureGroups)");
+      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countFeatureGroups)");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(countTrainingSamples)) {
+   if(IsConvertError<size_t>(countTrainingSamples)) {
       // the caller should not have been able to allocate enough memory in "trainingTargets" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster !IsNumberConvertable<size_t>(countTrainingSamples)");
+      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countTrainingSamples)");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(countValidationSamples)) {
+   if(IsConvertError<size_t>(countValidationSamples)) {
       // the caller should not have been able to allocate enough memory in "validationTargets" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster !IsNumberConvertable<size_t>(countValidationSamples)");
+      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countValidationSamples)");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(countInnerBags)) {
+   if(IsConvertError<size_t>(countInnerBags)) {
       // this is just a warning since the caller doesn't pass us anything material, but if it's this high
       // then our allocation would fail since it can't even in pricipal fit into memory
-      LOG_0(TraceLevelWarning, "WARNING CreateBooster !IsNumberConvertable<size_t>(countInnerBags)");
+      LOG_0(TraceLevelWarning, "WARNING CreateBooster IsConvertError<size_t>(countInnerBags)");
       return Error_OutOfMemory;
    }
 
@@ -425,8 +425,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateC
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster countTargetClasses can't be zero unless there are no training and no validation cases");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<ptrdiff_t>(countTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateClassificationBooster !IsNumberConvertable<ptrdiff_t>(countTargetClasses)");
+   if(IsConvertError<ptrdiff_t>(countTargetClasses)) {
+      LOG_0(TraceLevelWarning, "WARNING CreateClassificationBooster IsConvertError<ptrdiff_t>(countTargetClasses)");
       // we didn't run out of memory, but we will if we accept this and it's not worth making a new error code
       return Error_OutOfMemory;
    }
@@ -651,7 +651,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup must be positive");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup is too high to index");
       return Error_IllegalParamValue;
@@ -742,7 +742,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup must be positive");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup is too high to index");
       return Error_IllegalParamValue;

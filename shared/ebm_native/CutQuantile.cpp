@@ -2556,8 +2556,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             goto exit_with_log;
          }
 
-         if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile !IsNumberConvertable<size_t>(countSamples)");
+         if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsConvertError<size_t>(countSamples)");
 
             countCutsRet = IntEbmType { 0 };
             countMissingValuesRet = IntEbmType { 0 };
@@ -2604,7 +2604,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          const size_t cMissingValues = cSamplesIncludingMissingValues - cSamples;
          // this is guaranteed to work since the number of missing values can't exceed the number of original
          // samples, and samples came to us as an IntEbmType
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cMissingValues));
+         EBM_ASSERT(!IsConvertError<IntEbmType>(cMissingValues));
          countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
          if(UNLIKELY(cSamples <= size_t { 1 })) {
@@ -2648,7 +2648,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             countSamplesPerBinMin = IntEbmType { 1 };
          }
 
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cSamples)); // since it came from an IntEbmType originally
+         EBM_ASSERT(!IsConvertError<IntEbmType>(cSamples)); // since it came from an IntEbmType originally
          if(UNLIKELY(static_cast<IntEbmType>(cSamples >> 1) < countSamplesPerBinMin)) {
             // each bin needs at least countSamplesPerBinMin samples, so we need two sets of countSamplesPerBinMin
             // in order to make any cuts.  Anything less and we should just return now.
@@ -2661,7 +2661,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          }
 
          // countSamplesPerBinMin is convertible to size_t since countSamplesPerBinMin <= (cSamples >> 1)
-         EBM_ASSERT(IsNumberConvertable<size_t>(countSamplesPerBinMin));
+         EBM_ASSERT(!IsConvertError<size_t>(countSamplesPerBinMin));
          const size_t cSamplesPerBinMin = static_cast<size_t>(countSamplesPerBinMin);
 
          // In theory, we could constrain our cBinsMaxInitial value a bit more by taking our value array
@@ -2680,7 +2680,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          // cSamples fit into an IntEbmType, and since cCutsMaxInitial is less than cSamples, 
          // we should be able to convert it back to an IntEbmType
          EBM_ASSERT(cCutsMaxInitial < cSamples);
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cCutsMaxInitial));
+         EBM_ASSERT(!IsConvertError<IntEbmType>(cCutsMaxInitial));
          const size_t cCutsMax = static_cast<IntEbmType>(cCutsMaxInitial) < countCuts ?
             cCutsMaxInitial : static_cast<size_t>(countCuts);
 

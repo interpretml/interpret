@@ -291,7 +291,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension must be positive");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(indexDimension)) {
+   if(IsConvertError<size_t>(indexDimension)) {
       *countCutsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension is too high to index");
       return Error_IllegalParamValue;
@@ -349,7 +349,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    static_assert(sizeof(*cutIndexesOut) == sizeof(*aCutIndexes), "not same type for cuts");
    memcpy(cutIndexesOut, aCutIndexes, sizeof(*aCutIndexes) * cCuts);
 
-   EBM_ASSERT(IsNumberConvertable<IntEbmType>(cCuts)); // cCuts originally came from an IntEbmType
+   EBM_ASSERT(!IsConvertError<IntEbmType>(cCuts)); // cCuts originally came from an IntEbmType
 
    *countCutsInOut = static_cast<IntEbmType>(cCuts);
    return Error_None;
@@ -460,7 +460,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
       LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup must be positive");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexFeatureGroup)) {
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup is too high to index");

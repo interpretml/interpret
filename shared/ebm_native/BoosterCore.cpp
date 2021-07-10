@@ -235,7 +235,7 @@ ErrorEbmType BoosterCore::Create(
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
             return Error_IllegalParamValue;
          }
-         if(!IsNumberConvertable<size_t>(countBins)) {
+         if(IsConvertError<size_t>(countBins)) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create countBins is too high for us to allocate enough memory");
             return Error_IllegalParamValue;
          }
@@ -295,7 +295,7 @@ ErrorEbmType BoosterCore::Create(
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countDimensions cannot be negative");
             return Error_IllegalParamValue;
          }
-         if(!IsNumberConvertable<size_t>(countDimensions)) {
+         if(IsConvertError<size_t>(countDimensions)) {
             // if countDimensions exceeds the size of size_t, then we wouldn't be able to find it
             // in the array passed to us
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countDimensions is too high to index");
@@ -331,7 +331,7 @@ ErrorEbmType BoosterCore::Create(
                   LOG_0(TraceLevelError, "ERROR BoosterCore::Create aFeatureGroupsFeatureIndexes value cannot be negative");
                   return Error_IllegalParamValue;
                }
-               if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
+               if(IsConvertError<size_t>(indexFeatureInterop)) {
                   LOG_0(TraceLevelError, "ERROR BoosterCore::Create aFeatureGroupsFeatureIndexes value too big to reference memory");
                   return Error_IllegalParamValue;
                }

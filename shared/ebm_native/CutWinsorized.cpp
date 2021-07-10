@@ -107,8 +107,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
             ret = Error_IllegalParamValue;
          }
       } else {
-         if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING CutWinsorized !IsNumberConvertable<size_t>(countSamples)");
+         if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
+            LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countSamples)");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -165,7 +165,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
          const size_t cMissingValues = cSamplesIncludingMissingValues - cSamples;
          // this is guaranteed to work since the number of missing values can't exceed the number of original
          // samples, and samples came to us as an IntEbmType
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cMissingValues));
+         EBM_ASSERT(!IsConvertError<IntEbmType>(cMissingValues));
          countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
          // we can't really split 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
@@ -184,8 +184,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                goto exit_with_log;
             }
 
-            if(UNLIKELY(!IsNumberConvertable<size_t>(countCuts))) {
-               LOG_0(TraceLevelWarning, "WARNING CutWinsorized !IsNumberConvertable<size_t>(countCuts)");
+            if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
+               LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countCuts)");
                free(aFeatureValues);
                ret = Error_IllegalParamValue;
                goto exit_with_log;

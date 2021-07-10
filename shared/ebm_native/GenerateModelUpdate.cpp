@@ -201,7 +201,7 @@ static ErrorEbmType BoostSingleDimensional(
 
    EBM_ASSERT(IntEbmType { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
    size_t cLeavesMax = static_cast<size_t>(countLeavesMax);
-   if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+   if(IsConvertError<size_t>(countLeavesMax)) {
       // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we were going to overflow because it will generate 
       // the same results as if we used the true number
       cLeavesMax = std::numeric_limits<size_t>::max();
@@ -979,7 +979,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup must be positive");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       if(LIKELY(nullptr != gainOut)) {
          *gainOut = FloatEbmType { 0 };
@@ -1020,7 +1020,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
    size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
    if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
       cSamplesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
-      if(!IsNumberConvertable<size_t>(countSamplesRequiredForChildSplitMin)) {
+      if(IsConvertError<size_t>(countSamplesRequiredForChildSplitMin)) {
          // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to overflow because it will generate 
          // the same results as if we used the true number
          cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();

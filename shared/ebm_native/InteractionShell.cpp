@@ -117,12 +117,12 @@ static ErrorEbmType CreateInteractionDetector(
       LOG_0(TraceLevelError, "ERROR CreateInteractionDetector predictorScores cannot be nullptr if 0 < countSamples");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(countFeatures)) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector !IsNumberConvertable<size_t>(countFeatures)");
+   if(IsConvertError<size_t>(countFeatures)) {
+      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector IsConvertError<size_t>(countFeatures)");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(countSamples)) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector !IsNumberConvertable<size_t>(countSamples)");
+   if(IsConvertError<size_t>(countSamples)) {
+      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector IsConvertError<size_t>(countSamples)");
       return Error_IllegalParamValue;
    }
 
@@ -213,8 +213,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateC
       LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector countTargetClasses can't be zero unless there are no samples");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<ptrdiff_t>(countTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateClassificationInteractionDetector !IsNumberConvertable<ptrdiff_t>(countTargetClasses)");
+   if(IsConvertError<ptrdiff_t>(countTargetClasses)) {
+      LOG_0(TraceLevelWarning, "WARNING CreateClassificationInteractionDetector IsConvertError<ptrdiff_t>(countTargetClasses)");
       // we didn't run out of memory, but we will if we accept this and it's not worth making a new error code
       return Error_OutOfMemory;
    }

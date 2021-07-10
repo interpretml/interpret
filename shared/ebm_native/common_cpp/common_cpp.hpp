@@ -67,7 +67,7 @@ INLINE_ALWAYS constexpr static T EbmMax(T v1, T v2) noexcept {
    return UNPREDICTABLE(v1 < v2) ? v2 : v1;
 }
 
-// use SFINAE to compile time specialize IsNumberConvertable
+// use SFINAE to compile time specialize IsConvertError
 // https://www.fluentcpp.com/2019/08/23/how-to-make-sfinae-pretty-and-robust/
 //
 // the general rules of conversion are as follows:
@@ -86,7 +86,7 @@ using InternalCheckSSN = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckSSN<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noexcept {
+INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -100,15 +100,15 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(std::is_same<const TFrom, decltype(number)>::value, 
       "this is a stupid check to access the number variable to avoid a compiler warning");
 
-   return true;
+   return false;
 }
 
-static_assert(IsNumberConvertable<int32_t>(int16_t { 32767 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int32_t>(int16_t { 0 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int32_t>(int16_t { -32768 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int16_t>(int16_t { 32767 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int16_t>(int16_t { 0 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int16_t>(int16_t { -32768 }), "automated test with compiler");
+static_assert(!IsConvertError<int32_t>(int16_t { 32767 }), "automated test with compiler");
+static_assert(!IsConvertError<int32_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(!IsConvertError<int32_t>(int16_t { -32768 }), "automated test with compiler");
+static_assert(!IsConvertError<int16_t>(int16_t { 32767 }), "automated test with compiler");
+static_assert(!IsConvertError<int16_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(!IsConvertError<int16_t>(int16_t { -32768 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckSSY = typename std::enable_if<
@@ -117,7 +117,7 @@ using InternalCheckSSY = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max())
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckSSY<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noexcept {
+INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -134,16 +134,16 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
       "we have a specialization for when TTo has a larger range, but if TFrom is larger then check that it's larger on both the upper and lower ends"
    );
 
-   return TFrom { std::numeric_limits<TTo>::lowest() } <= number && number <= TFrom { std::numeric_limits<TTo>::max() };
+   return number < TFrom { std::numeric_limits<TTo>::lowest() } || TFrom { std::numeric_limits<TTo>::max() } < number;
 }
 
-static_assert(!IsNumberConvertable<int8_t>(int16_t { -129 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int8_t>(int16_t { -128 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int8_t>(int16_t { -1 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int8_t>(int16_t { 0 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int8_t>(int16_t { 1 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int8_t>(int16_t { 127 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<int8_t>(int16_t { 128 }), "automated test with compiler");
+static_assert(IsConvertError<int8_t>(int16_t { -129 }), "automated test with compiler");
+static_assert(!IsConvertError<int8_t>(int16_t { -128 }), "automated test with compiler");
+static_assert(!IsConvertError<int8_t>(int16_t { -1 }), "automated test with compiler");
+static_assert(!IsConvertError<int8_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(!IsConvertError<int8_t>(int16_t { 1 }), "automated test with compiler");
+static_assert(!IsConvertError<int8_t>(int16_t { 127 }), "automated test with compiler");
+static_assert(IsConvertError<int8_t>(int16_t { 128 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckUSN = typename std::enable_if<
@@ -151,7 +151,7 @@ using InternalCheckUSN = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckUSN<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noexcept {
+INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -162,15 +162,15 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(std::numeric_limits<TFrom>::lowest() < 0, "TFrom::lowest must be negative");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   return TFrom { 0 } <= number;
+   return number < TFrom { 0 };
 }
 
-static_assert(IsNumberConvertable<uint32_t>(int16_t { 32767 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint32_t>(int16_t { 0 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<uint32_t>(int16_t { -32768 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint16_t>(int16_t { 32767 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint16_t>(int16_t { 0 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<uint16_t>(int16_t { -32768 }), "automated test with compiler");
+static_assert(!IsConvertError<uint32_t>(int16_t { 32767 }), "automated test with compiler");
+static_assert(!IsConvertError<uint32_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(IsConvertError<uint32_t>(int16_t { -32768 }), "automated test with compiler");
+static_assert(!IsConvertError<uint16_t>(int16_t { 32767 }), "automated test with compiler");
+static_assert(!IsConvertError<uint16_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(IsConvertError<uint16_t>(int16_t { -32768 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckUSY = typename std::enable_if<
@@ -178,7 +178,7 @@ using InternalCheckUSY = typename std::enable_if<
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckUSY<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noexcept {
+INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest(), "TTo::lowest must be zero");
@@ -189,15 +189,15 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(std::numeric_limits<TFrom>::lowest() < 0, "TFrom::lowest must be negative");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   return TFrom { 0 } <= number && number <= TFrom { std::numeric_limits<TTo>::max() };
+   return number < TFrom { 0 } || TFrom { std::numeric_limits<TTo>::max() } < number;
 }
 
-static_assert(!IsNumberConvertable<uint8_t>(int16_t { -32768 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<uint8_t>(int16_t { -1 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint8_t>(int16_t { 0 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint8_t>(int16_t { 255 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<uint8_t>(int16_t { 256 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<uint8_t>(int16_t { 32767 }), "automated test with compiler");
+static_assert(IsConvertError<uint8_t>(int16_t { -32768 }), "automated test with compiler");
+static_assert(IsConvertError<uint8_t>(int16_t { -1 }), "automated test with compiler");
+static_assert(!IsConvertError<uint8_t>(int16_t { 0 }), "automated test with compiler");
+static_assert(!IsConvertError<uint8_t>(int16_t { 255 }), "automated test with compiler");
+static_assert(IsConvertError<uint8_t>(int16_t { 256 }), "automated test with compiler");
+static_assert(IsConvertError<uint8_t>(int16_t { 32767 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckSUN = typename std::enable_if<
@@ -205,7 +205,7 @@ using InternalCheckSUN = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckSUN<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noexcept {
+INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -219,12 +219,12 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(std::is_same<const TFrom, decltype(number)>::value,
       "this is a stupid check to access the number variable to avoid a compiler warning");
 
-   return true;
+   return false;
 }
 
-static_assert(IsNumberConvertable<int32_t>(uint16_t { 65535 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int32_t>(uint16_t { 32767 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int32_t>(uint16_t { 0 }), "automated test with compiler");
+static_assert(!IsConvertError<int32_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(!IsConvertError<int32_t>(uint16_t { 32767 }), "automated test with compiler");
+static_assert(!IsConvertError<int32_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckSUY = typename std::enable_if<
@@ -232,7 +232,7 @@ using InternalCheckSUY = typename std::enable_if<
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
    , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckSUY<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noexcept {
+INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be negative");
@@ -243,21 +243,21 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(0 == std::numeric_limits<TFrom>::lowest(), "TFrom::lowest must be zero");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   return number <= TFrom { std::numeric_limits<TTo>::max() };
+   return TFrom { std::numeric_limits<TTo>::max() } < number;
 }
 
-static_assert(!IsNumberConvertable<int16_t>(uint16_t { 65535 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<int16_t>(uint16_t { 32768 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int16_t>(uint16_t { 32767 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int16_t>(uint16_t { 0 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<int8_t>(uint16_t { 65535 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<int8_t>(uint16_t { 32768 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<int8_t>(uint16_t { 32767 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<int8_t>(uint16_t { 256 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<int8_t>(uint16_t { 255 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<int8_t>(uint16_t { 128 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int8_t>(uint16_t { 127 }), "automated test with compiler");
-static_assert(IsNumberConvertable<int8_t>(uint16_t { 0 }), "automated test with compiler");
+static_assert(IsConvertError<int16_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(IsConvertError<int16_t>(uint16_t { 32768 }), "automated test with compiler");
+static_assert(!IsConvertError<int16_t>(uint16_t { 32767 }), "automated test with compiler");
+static_assert(!IsConvertError<int16_t>(uint16_t { 0 }), "automated test with compiler");
+static_assert(IsConvertError<int8_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(IsConvertError<int8_t>(uint16_t { 32768 }), "automated test with compiler");
+static_assert(IsConvertError<int8_t>(uint16_t { 32767 }), "automated test with compiler");
+static_assert(IsConvertError<int8_t>(uint16_t { 256 }), "automated test with compiler");
+static_assert(IsConvertError<int8_t>(uint16_t { 255 }), "automated test with compiler");
+static_assert(IsConvertError<int8_t>(uint16_t { 128 }), "automated test with compiler");
+static_assert(!IsConvertError<int8_t>(uint16_t { 127 }), "automated test with compiler");
+static_assert(!IsConvertError<int8_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckUUN = typename std::enable_if<
@@ -265,7 +265,7 @@ using InternalCheckUUN = typename std::enable_if<
    std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()
 , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckUUN<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noexcept {
+INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be zero");
@@ -279,13 +279,13 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(std::is_same<const TFrom, decltype(number)>::value,
       "this is a stupid check to access the number variable to avoid a compiler warning");
 
-   return true;
+   return false;
 }
 
-static_assert(IsNumberConvertable<uint32_t>(uint16_t { 65535 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint32_t>(uint16_t { 0 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint16_t>(uint16_t { 65535 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint16_t>(uint16_t { 0 }), "automated test with compiler");
+static_assert(!IsConvertError<uint32_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(!IsConvertError<uint32_t>(uint16_t { 0 }), "automated test with compiler");
+static_assert(!IsConvertError<uint16_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(!IsConvertError<uint16_t>(uint16_t { 0 }), "automated test with compiler");
 
 template<typename TTo, typename TFrom>
 using InternalCheckUUY = typename std::enable_if<
@@ -293,7 +293,7 @@ using InternalCheckUUY = typename std::enable_if<
    std::numeric_limits<TTo>::max() < std::numeric_limits<TFrom>::max()
    , bool>::type;
 template<typename TTo, typename TFrom, InternalCheckUUY<TTo, TFrom> = true>
-INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noexcept {
+INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept {
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(0 == std::numeric_limits<TTo>::lowest() < 0, "TTo::lowest must be zero");
@@ -304,21 +304,22 @@ INLINE_ALWAYS constexpr static bool IsNumberConvertable(const TFrom number) noex
    static_assert(0 == std::numeric_limits<TFrom>::lowest(), "TFrom::lowest must be zero");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   return number <= TFrom { std::numeric_limits<TTo>::max() };
+   return TFrom { std::numeric_limits<TTo>::max() } < number;
 }
 
-static_assert(!IsNumberConvertable<uint8_t>(uint16_t { 65535 }), "automated test with compiler");
-static_assert(!IsNumberConvertable<uint8_t>(uint16_t { 256 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint8_t>(uint16_t { 255 }), "automated test with compiler");
-static_assert(IsNumberConvertable<uint8_t>(uint16_t { 0 }), "automated test with compiler");
+static_assert(IsConvertError<uint8_t>(uint16_t { 65535 }), "automated test with compiler");
+static_assert(IsConvertError<uint8_t>(uint16_t { 256 }), "automated test with compiler");
+static_assert(!IsConvertError<uint8_t>(uint16_t { 255 }), "automated test with compiler");
+static_assert(!IsConvertError<uint8_t>(uint16_t { 0 }), "automated test with compiler");
 
 
 template<typename TTo1, typename TTo2, typename TFrom>
-INLINE_ALWAYS static bool IsNumberConvertableDual(const TFrom number) noexcept {
-   const bool bCompare1 = IsNumberConvertable<TTo1>(number);
-   const bool bCompare2 = IsNumberConvertable<TTo2>(number);
-   return bCompare1 && bCompare2;
+INLINE_ALWAYS static bool IsConvertErrorDual(const TFrom number) noexcept {
+   const bool bCompare1 = IsConvertError<TTo1>(number);
+   const bool bCompare2 = IsConvertError<TTo2>(number);
+   return bCompare1 || bCompare2;
 }
+
 
 template<typename T>
 constexpr static size_t CountBitsRequired(const T maxValue) noexcept {

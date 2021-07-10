@@ -93,7 +93,7 @@ public:
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
-               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+               if(IsConvertError<size_t>(countLeavesMax)) {
                   // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
                   // were going to overflow because it will generate the same results as if we used the true number
                   cLeavesMax = std::numeric_limits<size_t>::max();
@@ -182,7 +182,7 @@ public:
                cTreeSplitsMax = size_t { 0 };
             } else {
                cTreeSplitsMax = static_cast<size_t>(countLeavesMax) - size_t { 1 };
-               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+               if(IsConvertError<size_t>(countLeavesMax)) {
                   // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
                   // were going to overflow because it will generate the same results as if we used the true number
                   cTreeSplitsMax = std::numeric_limits<size_t>::max() - size_t { 1 };
@@ -247,7 +247,7 @@ public:
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
-               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+               if(IsConvertError<size_t>(countLeavesMax)) {
                   // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
                   // were going to overflow because it will generate the same results as if we used the true number
                   cLeavesMax = std::numeric_limits<size_t>::max();
@@ -304,7 +304,7 @@ public:
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
-               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+               if(IsConvertError<size_t>(countLeavesMax)) {
                   // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
                   // were going to overflow because it will generate the same results as if we used the true number
                   cLeavesMax = std::numeric_limits<size_t>::max();

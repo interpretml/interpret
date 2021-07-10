@@ -306,7 +306,7 @@ static bool IsHeaderError(
    }
 
    const IntEbmType opaqueState = *pOpaqueStateInOut;
-   if(!IsNumberConvertable<size_t>(opaqueState)) {
+   if(IsConvertError<size_t>(opaqueState)) {
       LOG_0(TraceLevelError, "ERROR IsHeaderError opaqueState invalid");
       return true;
    }
@@ -325,7 +325,7 @@ static bool IsHeaderError(
    }
 
    const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
-   if(!IsNumberConvertable<size_t>(countFeatures)) {
+   if(IsConvertError<size_t>(countFeatures)) {
       // we're being untrusting of the caller manipulating the memory improperly here
       LOG_0(TraceLevelError, "ERROR IsHeaderError countFeatures is outside the range of a valid index");
       return true;
@@ -333,7 +333,7 @@ static bool IsHeaderError(
    const size_t cFeatures = static_cast<size_t>(countFeatures);
 
    const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
-   if(!IsNumberConvertable<size_t>(countWeights)) {
+   if(IsConvertError<size_t>(countWeights)) {
       // we're being untrusting of the caller manipulating the memory improperly here
       LOG_0(TraceLevelError, "ERROR IsHeaderError countWeights is outside the range of a valid index");
       return true;
@@ -341,7 +341,7 @@ static bool IsHeaderError(
    const size_t cWeights = static_cast<size_t>(countWeights);
 
    const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
-   if(!IsNumberConvertable<size_t>(countTargets)) {
+   if(IsConvertError<size_t>(countTargets)) {
       // we're being untrusting of the caller manipulating the memory improperly here
       LOG_0(TraceLevelError, "ERROR IsHeaderError countTargets is outside the range of a valid index");
       return true;
@@ -377,7 +377,7 @@ static bool IsHeaderError(
    }
 
    const SharedStorageDataType indexByte0 = pHeaderDataSetShared->m_offsets[0];
-   if(!IsNumberConvertable<size_t>(indexByte0)) {
+   if(IsConvertError<size_t>(indexByte0)) {
       // we're being untrusting of the caller manipulating the memory improperly here
       LOG_0(TraceLevelError, "ERROR IsHeaderError indexByte0 is outside the range of a valid index");
       return true;
@@ -393,7 +393,7 @@ static bool IsHeaderError(
    if(size_t { 0 } != iOffset) {
       // if iOffset is 1, we'll just check this once again without any issues
       const SharedStorageDataType indexHighestOffsetPrev = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset - 1];
-      if(!IsNumberConvertable<size_t>(indexHighestOffsetPrev)) {
+      if(IsConvertError<size_t>(indexHighestOffsetPrev)) {
          // we're being untrusting of the caller manipulating the memory improperly here
          LOG_0(TraceLevelError, "ERROR IsHeaderError indexHighestOffsetPrev is outside the range of a valid index");
          return true;
@@ -407,7 +407,7 @@ static bool IsHeaderError(
       }
 
       const SharedStorageDataType indexHighestOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset];
-      if(!IsNumberConvertable<size_t>(indexHighestOffset)) {
+      if(IsConvertError<size_t>(indexHighestOffset)) {
          // we're being untrusting of the caller manipulating the memory improperly here
          LOG_0(TraceLevelError, "ERROR IsHeaderError indexHighestOffset is outside the range of a valid index");
          return true;
@@ -473,19 +473,19 @@ static size_t AppendHeader(
       static_cast<void *>(pOpaqueStateOut)
    );
 
-   if(!IsNumberConvertableDual<size_t, SharedStorageDataType>(countFeatures)) {
+   if(IsConvertErrorDual<size_t, SharedStorageDataType>(countFeatures)) {
       LOG_0(TraceLevelError, "ERROR AppendHeader countFeatures is outside the range of a valid index");
       return 0;
    }
    const size_t cFeatures = static_cast<size_t>(countFeatures);
 
-   if(!IsNumberConvertableDual<size_t, SharedStorageDataType>(countWeights)) {
+   if(IsConvertErrorDual<size_t, SharedStorageDataType>(countWeights)) {
       LOG_0(TraceLevelError, "ERROR AppendHeader countWeights is outside the range of a valid index");
       return 0;
    }
    const size_t cWeights = static_cast<size_t>(countWeights);
 
-   if(!IsNumberConvertableDual<size_t, SharedStorageDataType>(countTargets)) {
+   if(IsConvertErrorDual<size_t, SharedStorageDataType>(countTargets)) {
       LOG_0(TraceLevelError, "ERROR AppendHeader countTargets is outside the range of a valid index");
       return 0;
    }
@@ -509,7 +509,7 @@ static size_t AppendHeader(
    }
    const size_t cBytesHeader = k_cBytesHeaderNoOffset + cBytesOffsets;
 
-   if(!IsNumberConvertable<SharedStorageDataType>(cBytesHeader)) {
+   if(IsConvertError<SharedStorageDataType>(cBytesHeader)) {
       LOG_0(TraceLevelError, "ERROR AppendHeader cBytesHeader is outside the range of a valid size");
       return 0;
    }
@@ -611,12 +611,12 @@ static size_t AppendFeatureData(
          goto return_bad;
       }
 
-      if(!IsNumberConvertableDual<size_t, SharedStorageDataType>(countBins)) {
+      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countBins)) {
          LOG_0(TraceLevelError, "ERROR AppendFeatureData countBins is outside the range of a valid index");
          goto return_bad;
       }
 
-      if(!IsNumberConvertableDual<size_t, SharedStorageDataType>(countSamples)) {
+      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
          LOG_0(TraceLevelError, "ERROR AppendFeatureData countSamples is outside the range of a valid index");
          goto return_bad;
       }
@@ -709,8 +709,8 @@ static size_t AppendFeatureData(
                   goto return_bad;
                }
                // since countBins can be converted to these, so now can binnedData
-               EBM_ASSERT(IsNumberConvertable<size_t>(binnedData));
-               EBM_ASSERT(IsNumberConvertable<SharedStorageDataType>(binnedData));
+               EBM_ASSERT(!IsConvertError<size_t>(binnedData));
+               EBM_ASSERT(!IsConvertError<SharedStorageDataType>(binnedData));
 
                // TODO: bit compact this
                *pFillData = static_cast<SharedStorageDataType>(binnedData);
@@ -744,12 +744,12 @@ static size_t AppendFeatureData(
             LockDataSetShared(pFillMem);
             *pOpaqueStateInOut = -1;
          } else {
-            if(!IsNumberConvertable<IntEbmType>(iOffset)) {
-               LOG_0(TraceLevelError, "ERROR AppendFeatureData !IsNumberConvertable<IntEbmType>(iOffset)");
+            if(IsConvertError<IntEbmType>(iOffset)) {
+               LOG_0(TraceLevelError, "ERROR AppendFeatureData IsConvertError<IntEbmType>(iOffset)");
                goto return_bad;
             }
-            if(!IsNumberConvertable<SharedStorageDataType>(iByteCur)) {
-               LOG_0(TraceLevelError, "ERROR AppendFeatureData !IsNumberConvertable<SharedStorageDataType>(iByteCur)");
+            if(IsConvertError<SharedStorageDataType>(iByteCur)) {
+               LOG_0(TraceLevelError, "ERROR AppendFeatureData IsConvertError<SharedStorageDataType>(iByteCur)");
                goto return_bad;
             }
             ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset] = static_cast<SharedStorageDataType>(iByteCur);
@@ -802,11 +802,11 @@ static size_t AppendTargets(
    );
 
    {
-      if(!IsNumberConvertableDual<size_t, SharedStorageDataType>(countTargetClasses)) {
+      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countTargetClasses)) {
          LOG_0(TraceLevelError, "ERROR AppendTargets countTargetClasses is outside the range of a valid index");
          goto return_bad;
       }
-      if(!IsNumberConvertableDual<size_t, SharedStorageDataType>(countSamples)) {
+      if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
          LOG_0(TraceLevelError, "ERROR AppendTargets countSamples is outside the range of a valid index");
          goto return_bad;
       }
@@ -907,8 +907,8 @@ static size_t AppendTargets(
                      goto return_bad;
                   }
                   // since countTargetClasses can be converted to these, so now can target
-                  EBM_ASSERT(IsNumberConvertable<size_t>(target));
-                  EBM_ASSERT(IsNumberConvertable<SharedStorageDataType>(target));
+                  EBM_ASSERT(!IsConvertError<size_t>(target));
+                  EBM_ASSERT(!IsConvertError<SharedStorageDataType>(target));
                
                   // TODO: sort by the target and then convert the target to a count of each index
                   *pFillData = static_cast<SharedStorageDataType>(target);
@@ -946,12 +946,12 @@ static size_t AppendTargets(
             LockDataSetShared(pFillMem);
             *pOpaqueStateInOut = -1;
          } else {
-            if(!IsNumberConvertable<IntEbmType>(iOffset)) {
-               LOG_0(TraceLevelError, "ERROR AppendTargets !IsNumberConvertable<IntEbmType>(iOffset)");
+            if(IsConvertError<IntEbmType>(iOffset)) {
+               LOG_0(TraceLevelError, "ERROR AppendTargets IsConvertError<IntEbmType>(iOffset)");
                goto return_bad;
             }
-            if(!IsNumberConvertable<SharedStorageDataType>(iByteCur)) {
-               LOG_0(TraceLevelError, "ERROR AppendTargets !IsNumberConvertable<SharedStorageDataType>(iByteCur)");
+            if(IsConvertError<SharedStorageDataType>(iByteCur)) {
+               LOG_0(TraceLevelError, "ERROR AppendTargets IsConvertError<SharedStorageDataType>(iByteCur)");
                goto return_bad;
             }
             ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset] = static_cast<SharedStorageDataType>(iByteCur);
@@ -978,8 +978,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataS
 ) {
    const size_t cBytes = AppendHeader(countFeatures, countWeights, countTargets, 0, nullptr, nullptr);
 
-   if(!IsNumberConvertable<IntEbmType>(cBytes)) {
-      LOG_0(TraceLevelError, "ERROR SizeDataSetHeader !IsNumberConvertable<IntEbmType>(cBytes)");
+   if(IsConvertError<IntEbmType>(cBytes)) {
+      LOG_0(TraceLevelError, "ERROR SizeDataSetHeader IsConvertError<IntEbmType>(cBytes)");
       return 0;
    }
 
@@ -999,7 +999,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDat
       return Error_IllegalParamValue;
    }
 
-   if(!IsNumberConvertable<size_t>(countBytesAllocated)) {
+   if(IsConvertError<size_t>(countBytesAllocated)) {
       LOG_0(TraceLevelError, "ERROR FillDataSetHeader countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
@@ -1033,8 +1033,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataS
       nullptr
    );
 
-   if(!IsNumberConvertable<IntEbmType>(cBytes)) {
-      LOG_0(TraceLevelError, "ERROR SizeDataSetFeature !IsNumberConvertable<IntEbmType>(cBytes)");
+   if(IsConvertError<IntEbmType>(cBytes)) {
+      LOG_0(TraceLevelError, "ERROR SizeDataSetFeature IsConvertError<IntEbmType>(cBytes)");
       return 0;
    }
 
@@ -1055,7 +1055,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDat
       return Error_IllegalParamValue;
    }
 
-   if(!IsNumberConvertable<size_t>(countBytesAllocated)) {
+   if(IsConvertError<size_t>(countBytesAllocated)) {
       LOG_0(TraceLevelError, "ERROR FillDataSetFeature countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
@@ -1102,8 +1102,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeClass
       nullptr
    );
 
-   if(!IsNumberConvertable<IntEbmType>(cBytes)) {
-      LOG_0(TraceLevelError, "ERROR SizeClassificationTargets !IsNumberConvertable<IntEbmType>(cBytes)");
+   if(IsConvertError<IntEbmType>(cBytes)) {
+      LOG_0(TraceLevelError, "ERROR SizeClassificationTargets IsConvertError<IntEbmType>(cBytes)");
       return 0;
    }
 
@@ -1123,7 +1123,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillCla
       return Error_IllegalParamValue;
    }
 
-   if(!IsNumberConvertable<size_t>(countBytesAllocated)) {
+   if(IsConvertError<size_t>(countBytesAllocated)) {
       LOG_0(TraceLevelError, "ERROR FillClassificationTargets countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
@@ -1169,8 +1169,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegre
       nullptr
    );
 
-   if(!IsNumberConvertable<IntEbmType>(cBytes)) {
-      LOG_0(TraceLevelError, "ERROR SizeRegressionTargets !IsNumberConvertable<IntEbmType>(cBytes)");
+   if(IsConvertError<IntEbmType>(cBytes)) {
+      LOG_0(TraceLevelError, "ERROR SizeRegressionTargets IsConvertError<IntEbmType>(cBytes)");
       return 0;
    }
 
@@ -1189,7 +1189,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillReg
       return Error_IllegalParamValue;
    }
 
-   if(!IsNumberConvertable<size_t>(countBytesAllocated)) {
+   if(IsConvertError<size_t>(countBytesAllocated)) {
       LOG_0(TraceLevelError, "ERROR FillRegressionTargets countBytesAllocated is outside the range of a valid size");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;

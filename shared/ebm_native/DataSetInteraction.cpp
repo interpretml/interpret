@@ -123,11 +123,11 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData inputData value cannot be negative");
             goto free_all;
          }
-         if(!IsNumberConvertable<StorageDataType>(inputData)) {
+         if(IsConvertError<StorageDataType>(inputData)) {
             LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
-         if(!IsNumberConvertable<size_t>(inputData)) {
+         if(IsConvertError<size_t>(inputData)) {
             LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
@@ -214,11 +214,11 @@ ErrorEbmType DataSetInteraction::Initialize(
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize target value cannot be negative");
                return Error_IllegalParamValue;
             }
-            if(!IsNumberConvertable<StorageDataType>(data)) {
+            if(IsConvertError<StorageDataType>(data)) {
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize data target too big to reference memory");
                return Error_IllegalParamValue;
             }
-            if(!IsNumberConvertable<size_t>(data)) {
+            if(IsConvertError<size_t>(data)) {
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize data target too big to reference memory");
                return Error_IllegalParamValue;
             }

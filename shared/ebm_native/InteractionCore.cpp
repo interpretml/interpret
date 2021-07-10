@@ -115,7 +115,7 @@ ErrorEbmType InteractionCore::Create(
             LOG_0(TraceLevelError, "ERROR InteractionCore::Allocate countBins cannot be zero if 0 < cSamples");
             return Error_IllegalParamValue;
          }
-         if(!IsNumberConvertable<size_t>(countBins)) {
+         if(IsConvertError<size_t>(countBins)) {
             LOG_0(TraceLevelWarning, "WARNING InteractionCore::Allocate countBins is too high for us to allocate enough memory");
             return Error_IllegalParamValue;
          }

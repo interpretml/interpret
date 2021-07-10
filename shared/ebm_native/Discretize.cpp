@@ -237,7 +237,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          goto exit_with_log;
       }
    } else {
-      if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
+      if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into memory");
          ret = Error_IllegalParamValue;
@@ -301,7 +301,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
       }
 
 #ifndef NDEBUG
-      if(IsNumberConvertable<size_t>(countCuts)) {
+      if(!IsConvertError<size_t>(countCuts)) {
          const size_t cCuts = static_cast<size_t>(countCuts);
          size_t iDebug = 0;
          while(true) {
@@ -784,7 +784,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          }
       }
 
-      if(UNLIKELY(!IsNumberConvertable<size_t>(countCuts))) {
+      if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(TraceLevelError, "ERROR Discretize countCuts was too large to fit into memory");
          ret = Error_IllegalParamValue; // the cutsLowerBoundInclusive wouldn't be possible
@@ -907,7 +907,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             middle = UNPREDICTABLE(midVal <= val) ? middle + size_t { 2 } : middle + size_t { 1 };
             EBM_ASSERT(size_t { 1 } <= middle && middle <= size_t { 1 } + cCuts);
          }
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(middle));
+         EBM_ASSERT(!IsConvertError<IntEbmType>(middle));
          *pDiscretized = static_cast<IntEbmType>(middle);
          ++pDiscretized;
          ++pValue;
