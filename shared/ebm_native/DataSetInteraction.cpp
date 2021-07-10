@@ -49,18 +49,12 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    EBM_ASSERT(1 <= cVectorLength);
 
    const size_t cStorageItems = bAllocateHessians ? 2 : 1;
-   if(IsMultiplyError(cVectorLength, cStorageItems)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cVectorLength, cStorageItems)");
+   if(IsMultiplyError(cVectorLength, cStorageItems, cSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cVectorLength, cStorageItems, cSamples)");
       return Error_OutOfMemory;
    }
-   const size_t cStorageItemsPerSample = cVectorLength * cStorageItems;
+   const size_t cElements = cVectorLength * cStorageItems * cSamples;
 
-   if(UNLIKELY(IsMultiplyError(cStorageItemsPerSample, cSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cStorageItemsPerSample, cSamples)");
-      return Error_OutOfMemory;
-   }
-
-   const size_t cElements = cStorageItemsPerSample * cSamples;
    FloatEbmType * aGradientsAndHessians = EbmMalloc<FloatEbmType>(cElements);
    if(UNLIKELY(nullptr == aGradientsAndHessians)) {
       LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
