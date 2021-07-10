@@ -14,7 +14,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, regression") {
    IntEbmType part;
    ErrorEbmType error;
 
-   part = SizeDataSetHeader(0);
+   part = SizeDataSetHeader(0, 0, 1);
    CHECK(0 < part);
    sum += part;
 
@@ -25,9 +25,10 @@ TEST_CASE("data_set_shared, zero features, zero samples, regression") {
    std::vector<char> buffer(sum + 1, 77);
    buffer[sum] = 99;
 
-   error = FillDataSetHeader(0, sum, &buffer[0]);
+   IntEbmType opaqueState;
+   error = FillDataSetHeader(0, 0, 1, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillRegressionTargets(0, nullptr, sum, &buffer[0]);
+   error = FillRegressionTargets(0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
    CHECK(99 == buffer[sum]);
@@ -41,7 +42,7 @@ TEST_CASE("data_set_shared, zero features, three samples, regression") {
    FloatEbmType targets[] { 0.3, 0.2, 0.1 };
    constexpr IntEbmType k_cSamples = sizeof(targets) / sizeof(targets[0]);
 
-   part = SizeDataSetHeader(0);
+   part = SizeDataSetHeader(0, 0, 1);
    CHECK(0 < part);
    sum += part;
 
@@ -52,9 +53,10 @@ TEST_CASE("data_set_shared, zero features, three samples, regression") {
    std::vector<char> buffer(sum + 1, 77);
    buffer[sum] = 99;
 
-   error = FillDataSetHeader(0, sum, &buffer[0]);
+   IntEbmType opaqueState;
+   error = FillDataSetHeader(0, 0, 1, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillRegressionTargets(k_cSamples, targets, sum, &buffer[0]);
+   error = FillRegressionTargets(k_cSamples, targets, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
    CHECK(99 == buffer[sum]);
@@ -66,7 +68,7 @@ TEST_CASE("data_set_shared, two features, zero samples, regression") {
    IntEbmType part;
    ErrorEbmType error;
 
-   part = SizeDataSetHeader(2);
+   part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 < part);
    sum += part;
 
@@ -85,13 +87,14 @@ TEST_CASE("data_set_shared, two features, zero samples, regression") {
    std::vector<char> buffer(sum + 1, 77);
    buffer[sum] = 99;
 
-   error = FillDataSetHeader(2, sum, &buffer[0]);
+   IntEbmType opaqueState;
+   error = FillDataSetHeader(2, 0, 1, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillDataSetFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillDataSetFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillDataSetFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillDataSetFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillRegressionTargets(0, nullptr, sum, &buffer[0]);
+   error = FillRegressionTargets(0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
    CHECK(99 == buffer[sum]);
@@ -105,7 +108,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
    constexpr IntEbmType k_cSamples = sizeof(binnedData) / sizeof(binnedData[0]);
    FloatEbmType targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
-   part = SizeDataSetHeader(2);
+   part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 < part);
    sum += part;
 
@@ -124,13 +127,14 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
    std::vector<char> buffer(sum + 1, 77);
    buffer[sum] = 99;
 
-   error = FillDataSetHeader(2, sum, &buffer[0]);
+   IntEbmType opaqueState;
+   error = FillDataSetHeader(2, 0, 1, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillDataSetFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillDataSetFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillDataSetFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillDataSetFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillRegressionTargets(k_cSamples, &targets[0], sum, &buffer[0]);
+   error = FillRegressionTargets(k_cSamples, &targets[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
    CHECK(99 == buffer[sum]);
@@ -141,7 +145,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, classification") {
    IntEbmType part;
    ErrorEbmType error;
 
-   part = SizeDataSetHeader(0);
+   part = SizeDataSetHeader(0, 0, 1);
    CHECK(0 < part);
    sum += part;
 
@@ -152,9 +156,10 @@ TEST_CASE("data_set_shared, zero features, zero samples, classification") {
    std::vector<char> buffer(sum + 1, 77);
    buffer[sum] = 99;
 
-   error = FillDataSetHeader(0, sum, &buffer[0]);
+   IntEbmType opaqueState;
+   error = FillDataSetHeader(0, 0, 1, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillClassificationTargets(0, 0, nullptr, sum, &buffer[0]);
+   error = FillClassificationTargets(0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
    CHECK(99 == buffer[sum]);
@@ -168,7 +173,7 @@ TEST_CASE("data_set_shared, zero features, three samples, classification") {
    IntEbmType targets[] { 2, 1, 0 };
    constexpr IntEbmType k_cSamples = sizeof(targets) / sizeof(targets[0]);
 
-   part = SizeDataSetHeader(0);
+   part = SizeDataSetHeader(0, 0, 1);
    CHECK(0 < part);
    sum += part;
 
@@ -179,9 +184,10 @@ TEST_CASE("data_set_shared, zero features, three samples, classification") {
    std::vector<char> buffer(sum + 1, 77);
    buffer[sum] = 99;
 
-   error = FillDataSetHeader(0, sum, &buffer[0]);
+   IntEbmType opaqueState;
+   error = FillDataSetHeader(0, 0, 1, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillClassificationTargets(3, k_cSamples, targets, sum, &buffer[0]);
+   error = FillClassificationTargets(3, k_cSamples, targets, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
    CHECK(99 == buffer[sum]);
@@ -192,7 +198,7 @@ TEST_CASE("data_set_shared, two features, zero samples, classification") {
    IntEbmType part;
    ErrorEbmType error;
 
-   part = SizeDataSetHeader(2);
+   part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 < part);
    sum += part;
 
@@ -211,13 +217,14 @@ TEST_CASE("data_set_shared, two features, zero samples, classification") {
    std::vector<char> buffer(sum + 1, 77);
    buffer[sum] = 99;
 
-   error = FillDataSetHeader(2, sum, &buffer[0]);
+   IntEbmType opaqueState;
+   error = FillDataSetHeader(2, 0, 1, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillDataSetFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillDataSetFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillDataSetFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillDataSetFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillClassificationTargets(0, 0, nullptr, sum, &buffer[0]);
+   error = FillClassificationTargets(0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
    CHECK(99 == buffer[sum]);
@@ -231,7 +238,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
    constexpr IntEbmType k_cSamples = sizeof(binnedData) / sizeof(binnedData[0]);
    IntEbmType targets[k_cSamples] { 2, 1, 0 };
 
-   part = SizeDataSetHeader(2);
+   part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 < part);
    sum += part;
 
@@ -250,13 +257,14 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
    std::vector<char> buffer(sum + 1, 77);
    buffer[sum] = 99;
 
-   error = FillDataSetHeader(2, sum, &buffer[0]);
+   IntEbmType opaqueState;
+   error = FillDataSetHeader(2, 0, 1, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillDataSetFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillDataSetFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillDataSetFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillDataSetFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
-   error = FillClassificationTargets(3, k_cSamples, &targets[0], sum, &buffer[0]);
+   error = FillClassificationTargets(3, k_cSamples, &targets[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
    CHECK(99 == buffer[sum]);

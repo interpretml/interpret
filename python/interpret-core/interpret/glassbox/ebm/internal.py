@@ -284,16 +284,26 @@ class Native:
         return discretized
 
 
-    def size_data_set_header(self, n_features):
-        n_bytes = self._unsafe.SizeDataSetHeader(n_features)
+    def size_data_set_header(self, n_features, n_weights, n_targets):
+        n_bytes = self._unsafe.SizeDataSetHeader(n_features, n_weights, n_targets)
         if n_bytes == 0:  # pragma: no cover
             raise Native._get_native_exception(3, "SizeDataSetHeader")
         return n_bytes
 
-    def fill_data_set_header(self, n_features, n_bytes, shared_data):
-        return_code = self._unsafe.FillDataSetHeader(n_features, n_bytes, shared_data)
+    def fill_data_set_header(self, n_features, n_weights, n_targets, n_bytes, shared_data):
+        opaque_state = ct.c_int64(0)
+        return_code = self._unsafe.FillDataSetHeader(
+            n_features, 
+            n_weights, 
+            n_targets, 
+            n_bytes, 
+            shared_data, 
+            ct.byref(opaque_state),
+        )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
+
+        return opaque_state.value
 
     def size_data_set_feature(self, categorical, n_bins, binned_data):
         n_bytes = self._unsafe.SizeDataSetFeature(categorical, n_bins, len(binned_data), binned_data)
@@ -301,17 +311,21 @@ class Native:
             raise Native._get_native_exception(3, "SizeDataSetFeature")
         return n_bytes
 
-    def fill_data_set_feature(self, categorical, n_bins, binned_data, n_bytes, shared_data):
+    def fill_data_set_feature(self, categorical, n_bins, binned_data, n_bytes, shared_data, opaque_state):
+        opaque_state = ct.c_int64(opaque_state)
         return_code = self._unsafe.FillDataSetFeature(
             categorical, 
             n_bins, 
             len(binned_data), 
             binned_data, 
             n_bytes, 
-            shared_data
+            shared_data,
+            ct.byref(opaque_state),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetFeature")
+
+        return opaque_state.value
 
     def size_classification_targets(self, n_classes, targets):
         n_bytes = self._unsafe.SizeClassificationTargets(n_classes, len(targets), targets)
@@ -319,10 +333,20 @@ class Native:
             raise Native._get_native_exception(3, "SizeClassificationTargets")
         return n_bytes
 
-    def fill_classification_targets(self, n_classes, targets, n_bytes, shared_data):
-        return_code = self._unsafe.FillClassificationTargets(n_classes, len(targets), targets, n_bytes, shared_data)
+    def fill_classification_targets(self, n_classes, targets, n_bytes, shared_data, opaque_state):
+        opaque_state = ct.c_int64(opaque_state)
+        return_code = self._unsafe.FillClassificationTargets(
+            n_classes, 
+            len(targets), 
+            targets, 
+            n_bytes, 
+            shared_data,
+            ct.byref(opaque_state),
+        )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillClassificationTargets")
+
+        return opaque_state.value
 
     def size_regression_targets(self, targets):
         n_bytes = self._unsafe.SizeRegressionTargets(len(targets), targets)
@@ -330,10 +354,19 @@ class Native:
             raise Native._get_native_exception(3, "SizeRegressionTargets")
         return n_bytes
 
-    def fill_regression_targets(self, targets, n_bytes, shared_data):
-        return_code = self._unsafe.FillRegressionTargets(len(targets), targets, n_bytes, shared_data)
+    def fill_regression_targets(self, targets, n_bytes, shared_data, opaque_state):
+        opaque_state = ct.c_int64(opaque_state)
+        return_code = self._unsafe.FillRegressionTargets(
+            len(targets), 
+            targets, 
+            n_bytes, 
+            shared_data, 
+            ct.byref(opaque_state),
+        )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillRegressionTargets")
+
+        return opaque_state.value
 
 
     @staticmethod
@@ -533,16 +566,26 @@ class Native:
         self._unsafe.SizeDataSetHeader.argtypes = [
             # int64_t countFeatures
             ct.c_int64,
+            # int64_t countWeights
+            ct.c_int64,
+            # int64_t countTargets
+            ct.c_int64,
         ]
         self._unsafe.SizeDataSetHeader.restype = ct.c_int64
 
         self._unsafe.FillDataSetHeader.argtypes = [
             # int64_t countFeatures
             ct.c_int64,
+            # int64_t countWeights
+            ct.c_int64,
+            # int64_t countTargets
+            ct.c_int64,
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
             ct.c_void_p,
+            # int64_t * opaqueStateOut
+            ct.POINTER(ct.c_int64),
         ]
         self._unsafe.FillDataSetHeader.restype = ct.c_int32
 
@@ -571,6 +614,8 @@ class Native:
             ct.c_int64,
             # void * fillMem
             ct.c_void_p,
+            # int64_t * opaqueStateInOut
+            ct.POINTER(ct.c_int64),
         ]
         self._unsafe.FillDataSetFeature.restype = ct.c_int32
 
@@ -595,6 +640,8 @@ class Native:
             ct.c_int64,
             # void * fillMem
             ct.c_void_p,
+            # int64_t * opaqueStateInOut
+            ct.POINTER(ct.c_int64),
         ]
         self._unsafe.FillClassificationTargets.restype = ct.c_int32
 
@@ -615,6 +662,8 @@ class Native:
             ct.c_int64,
             # void * fillMem
             ct.c_void_p,
+            # int64_t * opaqueStateInOut
+            ct.POINTER(ct.c_int64),
         ]
         self._unsafe.FillRegressionTargets.restype = ct.c_int32
 

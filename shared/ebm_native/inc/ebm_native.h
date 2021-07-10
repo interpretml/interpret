@@ -382,11 +382,18 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Disc
 );
 
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetHeader(IntEbmType countFeatures);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetHeader(
+   IntEbmType countFeatures,
+   IntEbmType countWeights,
+   IntEbmType countTargets
+);
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDataSetHeader(
    IntEbmType countFeatures,
+   IntEbmType countWeights,
+   IntEbmType countTargets,
    IntEbmType countBytesAllocated,
-   void * fillMem
+   void * fillMem,
+   IntEbmType * opaqueStateOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetFeature(
@@ -401,7 +408,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
    IntEbmType countSamples,
    const IntEbmType * binnedData,
    IntEbmType countBytesAllocated,
-   void * fillMem
+   void * fillMem,
+   IntEbmType * opaqueStateInOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeClassificationTargets(
@@ -414,7 +422,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
    IntEbmType countSamples,
    const IntEbmType * targets,
    IntEbmType countBytesAllocated,
-   void * fillMem
+   void * fillMem,
+   IntEbmType * opaqueStateInOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegressionTargets(
@@ -425,7 +434,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
    IntEbmType countSamples,
    const FloatEbmType * targets,
    IntEbmType countBytesAllocated,
-   void * fillMem
+   void * fillMem,
+   IntEbmType * opaqueStateInOut
 );
 
 
