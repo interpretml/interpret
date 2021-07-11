@@ -3,6 +3,8 @@
 
 
 from typing import DefaultDict
+
+from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import DPUtils, EBMUtils
 from .internal import NativeHelper, Native
@@ -1902,6 +1904,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         delta=1e-5,
         composition='gdp',
         bin_budget_frac=0.1,
+        privacy_schema=None,
     ):
         """ Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -1926,8 +1929,10 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             random_state: Random state.
             epsilon: Total privacy budget to be spent across all rounds of training.
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
-            composition: composition,
-            bin_budget_frac: Percentage of total epsilon budget to use for binning,
+            composition: composition.
+            bin_budget_frac: Percentage of total epsilon budget to use for binning.
+            privacy_schema: Dictionary specifying known min/max values of each feature and target. 
+                If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingClassifier, self).__init__(
             # Explainer
@@ -1960,6 +1965,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
+            privacy_schema=privacy_schema,
         )
 
     # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
@@ -2043,6 +2049,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         delta=1e-5,
         composition='gdp',
         bin_budget_frac=0.1,
+        privacy_schema=None,
     ):
         """ Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
@@ -2069,6 +2076,8 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
             composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'. 
             bin_budget_frac: Percentage of total epsilon budget to use for private binning.
+            privacy_schema: Dictionary specifying known min/max values of each feature and target. 
+                If None, DP-EBM throws warning and uses data to calculate these values.
         """
         super(DPExplainableBoostingRegressor, self).__init__(
             # Explainer
@@ -2101,6 +2110,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             delta=delta,
             composition=composition,
             bin_budget_frac=bin_budget_frac,
+            privacy_schema=privacy_schema,
         )
 
     def predict(self, X):

@@ -556,7 +556,29 @@ def test_dp_ebm_synthetic_regression():
     w[-1] = 2
 
     clf = DPExplainableBoostingRegressor()
-    clf.fit(X, y), w
+    clf.fit(X, y, w)
+    clf.predict(X)
+
+    valid_ebm(clf)
+
+def test_dp_ebm_external_privacy_schema():
+    from ..ebm import DPExplainableBoostingRegressor
+
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    # synthetic regression is all sampled from N(0, 1)
+    privacy_schema = {
+        0: (-3, 3),
+        1: (-3, 3),
+        2: (-3, 3),
+        3: (-3, 3),
+        'target': (-3, 3)
+    }
+
+    clf = DPExplainableBoostingRegressor(privacy_schema=privacy_schema)
+    clf.fit(X, y)
     clf.predict(X)
 
     valid_ebm(clf)
