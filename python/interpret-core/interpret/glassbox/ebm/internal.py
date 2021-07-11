@@ -1629,6 +1629,8 @@ class NativeHelper:
         max_rounds,
         random_state,
         name,
+        noise_scale,
+        bin_counts,
         optional_temp_params=None,
     ):
         min_metric = np.inf
@@ -1670,6 +1672,30 @@ class NativeHelper:
                         max_leaves=max_leaves,
                     )
 
+                    if noise_scale: # Differentially private updates
+                        splits = native_ebm_booster.get_model_update_cuts()[0]
+
+                        model_update_tensor = native_ebm_booster.get_model_update_expanded()
+                        noisy_update_tensor = model_update_tensor.copy()
+
+                        splits_iter = [0] + list(splits + 1) + [len(model_update_tensor)] # Make splits iteration friendly
+                        # Loop through all random splits and add noise before updating
+                        for f, s in zip(splits_iter[:-1], splits_iter[1:]):
+                            if s == 1: 
+                                continue # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
+
+                            noise = np.random.normal(0.0, noise_scale)
+                            noisy_update_tensor[f:s] = model_update_tensor[f:s] + noise
+
+                            # Native code will be returning sums of residuals in split, not averages.
+                            # Compute noisy average by dividing noisy sum by noisy histogram counts
+                            instance_count = np.sum(bin_counts[feature_group_index][f:s])
+                            noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_count
+
+                        noisy_update_tensor = noisy_update_tensor * -1 # Invert gradients before updates
+                        native_ebm_booster.set_model_update_expanded(feature_group_index, noisy_update_tensor)
+
+
                     curr_metric = native_ebm_booster.apply_model_update()
 
                     min_metric = min(curr_metric, min_metric)
@@ -1701,8 +1727,9 @@ class NativeHelper:
             )
 
             # TODO: Add more ways to call alternative get_current_model
-            # Use latest model if there are no instances in the (transposed) validation set
-            if X_val.shape[1] == 0:
+            # Use latest model if there are no instances in the (transposed) validation set 
+            # or if training with privacy
+            if X_val.shape[1] == 0 or noise_scale is not None:
                 model_update = native_ebm_booster.get_current_model()
             else:
                 model_update = native_ebm_booster.get_best_model()

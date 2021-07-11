@@ -3,8 +3,10 @@
 
 
 from typing import DefaultDict
+
+from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
-from .utils import EBMUtils
+from .utils import DPUtils, EBMUtils
 from .internal import NativeHelper, Native
 from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -128,7 +130,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
     """ Transformer that preprocesses data to be ready before EBM. """
 
     def __init__(
-        self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", missing_str=str(np.nan)
+        self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", missing_str=str(np.nan), 
+        epsilon=None, delta=None, privacy_schema=None
     ):
         """ Initializes EBM preprocessor.
 
@@ -136,14 +139,20 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             feature_names: Feature names as list.
             feature_types: Feature types as list, for example "continuous" or "categorical".
             max_bins: Max number of bins to process numeric features.
-            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform". 
+            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform", or "private". 
             missing_str: By default np.nan values are missing for all datatypes. Setting this parameter changes the string representation for missing
+            epsilon: Privacy budget parameter. Only applicable when binning is "private".
+            delta: Privacy budget parameter. Only applicable when binning is "private".
+            privacy_schema: User specified min/maxes for numeric features as dictionary. Only applicable when binning is "private".
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
         self.max_bins = max_bins
         self.binning = binning
         self.missing_str = missing_str
+        self.epsilon = epsilon
+        self.delta = delta
+        self.privacy_schema = privacy_schema
 
     def fit(self, X):
         """ Fits transformer to provided samples.
@@ -175,6 +184,19 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             X, feature_names=self.feature_names, feature_types=self.feature_types
         )
 
+        noise_scale = None # only applicable for private binning
+        if "private" in self.binning:
+            DPUtils.validate_eps_delta(self.epsilon, self.delta)
+            noise_scale = DPUtils.calc_gdp_noise_multi(
+                total_queries = X.shape[1], 
+                target_epsilon = self.epsilon, 
+                delta = self.delta
+            )
+            if self.privacy_schema is None:
+                warn("Possible privacy violation: assuming min/max values per feature are public info."
+                     "Pass a privacy schema with known public ranges per feature to avoid this warning.")
+                self.privacy_schema = DPUtils.build_privacy_schema(X)
+                
         if self.max_bins < 2:
             raise ValueError("max_bins must be 2 or higher.  One bin is required for missing, and annother for non-missing values.")
 
@@ -189,51 +211,60 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             self.col_types_.append(col_info["type"])
             if col_info["type"] == "continuous":
                 col_data = col_data.astype(float)
+                count_missing = 0
 
-                min_samples_bin = 1 # TODO: Expose
-                is_humanized = 0
-
-                if self.binning == 'quantile' or self.binning == 'quantile_humanized':
-                    if self.binning == 'quantile_humanized':
-                        is_humanized = 1
-
-                    (
-                        cuts, 
-                        count_missing, 
-                        min_val, 
-                        max_val, 
-                    ) = native.cut_quantile(
-                        col_data, 
-                        min_samples_bin, 
-                        is_humanized, 
-                        self.max_bins - 2, # one bin for missing, and # of cuts is one less again
+                if self.binning == "private":
+                    min_val, max_val = self.privacy_schema[col_idx]
+                    cuts, bin_counts = DPUtils.private_numeric_binning(
+                        col_data, noise_scale, self.max_bins, min_val, max_val
                     )
-                elif self.binning == "uniform":
-                    (
-                        cuts, 
-                        count_missing, 
-                        min_val, 
-                        max_val,
-                    ) = native.cut_uniform(
-                        col_data, 
-                        self.max_bins - 2, # one bin for missing, and # of cuts is one less again
-                    )
-                else:
-                    raise ValueError(f"Unrecognized bin type: {self.binning}")
 
-                discretized = native.discretize(col_data, cuts)
+                    # Use previously calculated bins for density estimates
+                    hist_edges = np.concatenate([[min_val], cuts, [max_val]])
+                    hist_counts = bin_counts[1:]
+                else:  # Standard binning
+                    min_samples_bin = 1 # TODO: Expose
+                    is_humanized = 0
+                    if self.binning == 'quantile' or self.binning == 'quantile_humanized':
+                        if self.binning == 'quantile_humanized':
+                            is_humanized = 1
 
-                bin_counts = np.bincount(discretized, minlength=len(cuts) + 2)
+                        (
+                            cuts, 
+                            count_missing, 
+                            min_val, 
+                            max_val, 
+                        ) = native.generate_quantile_cuts(
+                            col_data, 
+                            min_samples_bin, 
+                            is_humanized, 
+                            self.max_bins - 2, # one bin for missing, and # of cuts is one less again
+                        )
+                    elif self.binning == "uniform":
+                        (
+                            cuts, 
+                            count_missing, 
+                            min_val, 
+                            max_val,
+                        ) = native.generate_uniform_cuts(
+                            col_data, 
+                            self.max_bins - 2, # one bin for missing, and # of cuts is one less again
+                        )
+                    else:
+                        raise ValueError(f"Unrecognized bin type: {self.binning}")
 
-                if count_missing != 0:
-                    col_data = col_data[~np.isnan(col_data)]
+                    discretized = native.discretize(col_data, cuts)
+                    bin_counts = np.bincount(discretized, minlength=len(cuts) + 2)
+                    if count_missing != 0:
+                        col_data = col_data[~np.isnan(col_data)]
+
+                    hist_counts, hist_edges = np.histogram(col_data, bins="doane")
+
                 
                 self.col_bin_counts_.append(bin_counts)
                 self.col_bin_edges_[col_idx] = cuts
                 self.col_min_[col_idx] = min_val
                 self.col_max_[col_idx] = max_val
-
-                hist_counts, hist_edges = np.histogram(col_data, bins="doane")
                 self.hist_edges_[col_idx] = hist_edges
                 self.hist_counts_[col_idx] = hist_counts
             elif col_info["type"] == "ordinal":
@@ -242,7 +273,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 self.col_bin_counts_.append(None) # TODO count the values in each bin
             elif col_info["type"] == "categorical":
                 col_data = col_data.astype('U')
-                uniq_vals, counts = np.unique(col_data, return_counts=True)
+
+                if self.binning == "private":
+                    uniq_vals, counts = DPUtils.private_categorical_binning(col_data, noise_scale, self.max_bins)
+                else: # Standard binning
+                    uniq_vals, counts = np.unique(col_data, return_counts=True)
 
                 missings = np.isin(uniq_vals, self.missing_str)
 
@@ -293,6 +328,13 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 X_new[:, col_idx] = vec_map(col_data)
             elif col_type == "categorical":
                 mapping = self.col_mapping_[col_idx].copy()
+
+                # Use "DPOther" bin when possible to handle unknown values during DP.
+                if "private" in self.binning:
+                    for key, val in mapping.items():
+                        if key == "DPOther": 
+                            unknown_constant = val
+                            missing_constant = val
 
                 if isinstance(self.missing_str, list):
                     for val in self.missing_str:
@@ -379,6 +421,9 @@ class BaseCoreEBM:
         max_leaves,
         # Overall
         random_state,
+        # Differential Privacy
+        noise_scale,
+        bin_counts,
     ):
 
         self.model_type = model_type
@@ -405,6 +450,10 @@ class BaseCoreEBM:
 
         # Arguments for overall
         self.random_state = random_state
+
+        # Differential Privacy
+        self.noise_scale = noise_scale
+        self.bin_counts = bin_counts
 
     def fit_parallel(self, X, y, w, X_pair, n_classes):
         self.n_classes_ = n_classes
@@ -469,6 +518,10 @@ class BaseCoreEBM:
         return self
 
     def _fit_main(self, main_feature_groups, X_train, y_train, w_train, X_val, y_val, w_val):
+        if self.noise_scale is not None: # Differentially Private Training
+            update = Native.GenerateUpdateOptions_GradientSums | Native.GenerateUpdateOptions_RandomSplits
+        else:
+            update = Native.GenerateUpdateOptions_Default
         log.info("Train main effects")
         (
             self.model_,
@@ -489,7 +542,7 @@ class BaseCoreEBM:
             w_val=w_val,
             scores_val=None,
             n_inner_bags=self.inner_bags,
-            generate_update_options=Native.GenerateUpdateOptions_Default, 
+            generate_update_options=update,
             learning_rate=self.learning_rate,
             min_samples_leaf=self.min_samples_leaf,
             max_leaves=self.max_leaves,
@@ -498,6 +551,8 @@ class BaseCoreEBM:
             max_rounds=self.max_rounds,
             random_state=self.random_state,
             name="Main",
+            noise_scale=self.noise_scale,
+            bin_counts=self.bin_counts,
         )
 
         self.feature_groups_ = main_feature_groups
@@ -579,6 +634,8 @@ class BaseCoreEBM:
             max_rounds=self.max_rounds,
             random_state=self.random_state,
             name="Pair",
+            noise_scale=self.noise_scale,
+            bin_counts=self.bin_counts,
         )
 
         self.model_.extend(model_update)
@@ -679,6 +736,12 @@ class BaseEBM(BaseEstimator):
         binning,
         max_bins,
         max_interaction_bins,
+        # Differential Privacy
+        epsilon=None,
+        delta=None,
+        composition=None,
+        bin_budget_frac=None,
+        privacy_schema=None,
     ):
         # NOTE: Per scikit-learn convention, we shouldn't attempt to sanity check these inputs here.  We just
         #       Store these values for future use.  Validate inputs in the fit or other functions.  More details in:
@@ -713,6 +776,13 @@ class BaseEBM(BaseEstimator):
         self.binning = binning
         self.max_bins = max_bins
         self.max_interaction_bins = max_interaction_bins
+
+        # Arguments for differential privacy
+        self.epsilon = epsilon
+        self.delta = delta
+        self.composition = composition
+        self.bin_budget_frac = bin_budget_frac
+        self.privacy_schema = privacy_schema
 
     def fit(self, X, y, sample_weight=None):  # noqa: C901
         """ Fits model to provided samples.
@@ -759,12 +829,54 @@ class BaseEBM(BaseEstimator):
         w = sample_weight if sample_weight is not None else np.ones_like(y, dtype=np.float64)
         w = unify_vector(w).astype(np.float64, casting="unsafe", copy=False)
 
+        # Privacy calculations
+        if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
+            DPUtils.validate_eps_delta(self.epsilon, self.delta)
+            DPUtils.validate_DP_EBM(self)
+
+            if self.privacy_schema is None:
+                warn("Possible privacy violation: assuming min/max values per feature/target are public info."
+                     "Pass a privacy schema with known public ranges to avoid this warning.")
+                self.privacy_schema = DPUtils.build_privacy_schema(X, y)
+
+            self.domain_size_ = self.privacy_schema['target'][1] - self.privacy_schema['target'][0]
+
+            # Split epsilon, delta budget for binning and learning
+            bin_eps_ = self.epsilon * self.bin_budget_frac
+            training_eps_ = self.epsilon - bin_eps_
+            bin_delta_ = self.delta / 2
+            training_delta_ = self.delta / 2
+            
+             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
+            if self.composition == 'classic':
+                self.noise_scale_ = DPUtils.calc_classic_noise_multi(
+                    total_queries = self.max_rounds * X.shape[1], 
+                    target_epsilon = training_eps_, 
+                    delta = training_delta_, 
+                    sensitivity = self.domain_size_ * self.learning_rate * np.max(w)
+                )
+            elif self.composition == 'gdp':
+                self.noise_scale_ = DPUtils.calc_gdp_noise_multi(
+                    total_queries = self.max_rounds * X.shape[1], 
+                    target_epsilon = training_eps_, 
+                    delta = training_delta_
+                )
+                self.noise_scale_ = self.noise_scale_ * self.domain_size_ * self.learning_rate * np.max(w)# Alg Line 17
+            else:
+                raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
+        else:
+            bin_eps_, bin_delta_ = None, None
+            training_eps_, training_delta_ = None, None
+
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
             feature_names=self.feature_names,
             feature_types=self.feature_types,
             max_bins=self.max_bins,
             binning=self.binning,
+            epsilon=bin_eps_, # Only defined during private training
+            delta=bin_delta_,
+            privacy_schema=getattr(self, 'privacy_schema', None)
         )
         self.preprocessor_.fit(X)
         X_orig = X
@@ -772,6 +884,9 @@ class BaseEBM(BaseEstimator):
 
         features_categorical = np.array([x == "categorical" for x in self.preprocessor_.col_types_], dtype=ct.c_int64)
         features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_], dtype=ct.c_int64)
+
+        # NOTE: [DP] Passthrough to lower level layers for noise addition
+        bin_data_counts = {i : self.preprocessor_.col_bin_counts_[i] for i in range(X.shape[1])}
 
         if self.interactions != 0:
             self.pair_preprocessor_ = EBMPreprocessor(
@@ -786,6 +901,7 @@ class BaseEBM(BaseEstimator):
             pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_], dtype=ct.c_int64)
         else:
             self.pair_preprocessor_, X_pair, pair_features_categorical, pair_features_bin_count = None, None, None, None
+
 
         estimators = []
         seed = EBMUtils.normalize_initial_random_seed(self.random_state)
@@ -824,7 +940,10 @@ class BaseEBM(BaseEstimator):
                     min_samples_leaf=self.min_samples_leaf,
                     max_leaves=self.max_leaves,
                     # Overall
-                    random_state=seed
+                    random_state=seed,
+                    # Differential Privacy
+                    noise_scale=getattr(self, 'noise_scale_', None),
+                    bin_counts=bin_data_counts,
                 )
                 estimators.append(estimator)
         else:
@@ -853,6 +972,9 @@ class BaseEBM(BaseEstimator):
                     max_leaves=self.max_leaves,
                     # Overall
                     random_state=seed,
+                    # Differential Privacy
+                    noise_scale=getattr(self, 'noise_scale_', None),
+                    bin_counts=bin_data_counts,
                 )
                 estimators.append(estimator)
 
@@ -1021,22 +1143,37 @@ class BaseEBM(BaseEstimator):
             self.feature_names.append(feature_group_name)
 
         if n_classes <= 2:
-            # Mean center graphs - only for binary classification and regression
-            scores_gen = EBMUtils.scores_by_feature_group(
-                X, X_pair, self.feature_groups_, self.additive_terms_
-            )
-            self._original_term_means_ = []
+            if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
+                # DP method of centering graphs can generalize if we log pairwise densities
+                # No additional privacy loss from this step
+                # self.additive_terms_ and self.preprocessor_.col_bin_counts_ are noisy and published publicly
+                self._original_term_means_ = []
+                for set_idx in range(len(self.feature_groups_)):
+                    score_mean = np.average(self.additive_terms_[set_idx], weights=self.preprocessor_.col_bin_counts_[set_idx])
+                    self.additive_terms_[set_idx] = (
+                        self.additive_terms_[set_idx] - score_mean
+                    )
 
-            for set_idx, _, scores in scores_gen:
-                score_mean = np.average(scores, weights=w)
-
-                self.additive_terms_[set_idx] = (
-                    self.additive_terms_[set_idx] - score_mean
+                    # Add mean center adjustment back to intercept
+                    self.intercept_ += score_mean
+                    self._original_term_means_.append(score_mean)
+            else:       
+                # Mean center graphs - only for binary classification and regression
+                scores_gen = EBMUtils.scores_by_feature_group(
+                    X, X_pair, self.feature_groups_, self.additive_terms_
                 )
+                self._original_term_means_ = []
 
-                # Add mean center adjustment back to intercept
-                self.intercept_ += score_mean
-                self._original_term_means_.append(score_mean)
+                for set_idx, _, scores in scores_gen:
+                    score_mean = np.average(scores, weights=w)
+
+                    self.additive_terms_[set_idx] = (
+                        self.additive_terms_[set_idx] - score_mean
+                    )
+
+                    # Add mean center adjustment back to intercept
+                    self.intercept_ += score_mean
+                    self._original_term_means_.append(score_mean)
         else:
             # Postprocess model graphs for multiclass
 
@@ -1061,13 +1198,19 @@ class BaseEBM(BaseEstimator):
                     self.term_standard_deviations_[feature_group_idx][tuple(zero_dimension)] = 0
 
         # Generate overall importance
-        scores_gen = EBMUtils.scores_by_feature_group(
-            X, X_pair, self.feature_groups_, self.additive_terms_
-        )
         self.feature_importances_ = []
-        for set_idx, _, scores in scores_gen:
-            mean_abs_score = np.mean(np.abs(scores))
-            self.feature_importances_.append(mean_abs_score)
+        if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
+            # DP method of generating feature importances can generalize to non-dp if preprocessors start tracking joint distributions
+            for i in range(len(self.feature_groups_)):
+                mean_abs_score = np.average(np.abs(self.additive_terms_[i]), weights=self.preprocessor_.col_bin_counts_[i])
+                self.feature_importances_.append(mean_abs_score)
+        else:
+            scores_gen = EBMUtils.scores_by_feature_group(
+                X, X_pair, self.feature_groups_, self.additive_terms_
+            )
+            for set_idx, _, scores in scores_gen:
+                mean_abs_score = np.mean(np.abs(scores))
+                self.feature_importances_.append(mean_abs_score)
 
         # Generate selector
         # TODO PK v.3 shouldn't this be self._global_selector_ ??
@@ -1729,4 +1872,265 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
 
         return EBMUtils.regressor_predict_and_contrib(
             X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
+        )
+
+class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
+    """ Differentially Private Explainable Boosting Classifier."""
+
+    available_explanations = ["global", "local"]
+    explainer_type = "model"
+
+    """ Public facing DPEBM classifier."""
+
+    def __init__(
+        self,
+        # Explainer
+        feature_names=None,
+        feature_types=None,
+        # Preprocessor
+        max_bins=32,
+        binning="private",
+        # Stages
+        mains="all",
+        # Boosting
+        learning_rate=0.01,
+        max_rounds=300,
+        # Trees
+        max_leaves=3,
+        min_samples_leaf=2,
+        # Overall
+        random_state=42,
+        # Differential Privacy
+        epsilon=1,
+        delta=1e-5,
+        composition='gdp',
+        bin_budget_frac=0.1,
+        privacy_schema=None,
+    ):
+        """ Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
+
+        Args:
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            max_bins: Max number of bins per feature for pre-processing stage.
+            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            interactions: Interactions to be trained on.
+                Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
+            outer_bags: Number of outer bags.
+            inner_bags: Number of inner bags.
+            learning_rate: Learning rate for boosting.
+            validation_size: Validation set size for boosting.
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
+            max_rounds: Number of rounds for boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
+            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
+            n_jobs: Number of jobs to run in parallel.
+            random_state: Random state.
+            epsilon: Total privacy budget to be spent across all rounds of training.
+            delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
+            composition: composition.
+            bin_budget_frac: Percentage of total epsilon budget to use for binning.
+            privacy_schema: Dictionary specifying known min/max values of each feature and target. 
+                If None, DP-EBM throws warning and uses data to calculate these values.
+        """
+        super(DPExplainableBoostingClassifier, self).__init__(
+            # Explainer
+            feature_names=feature_names,
+            feature_types=feature_types,    
+            # Preprocessor
+            max_bins=max_bins,
+            max_interaction_bins=None,
+            binning=binning,
+            # Stages
+            mains=mains,
+            interactions=0,
+            # Ensemble
+            outer_bags=1,
+            inner_bags=0,
+            # Boosting
+            learning_rate=learning_rate,
+            validation_size=0,
+            early_stopping_rounds=-1,
+            early_stopping_tolerance=-1,
+            max_rounds=max_rounds,
+            # Trees
+            max_leaves=max_leaves,
+            min_samples_leaf=min_samples_leaf,
+            # Overall
+            n_jobs=1,
+            random_state=random_state,
+            # Differential Privacy
+            epsilon=epsilon,
+            delta=delta,
+            composition=composition,
+            bin_budget_frac=bin_budget_frac,
+            privacy_schema=privacy_schema,
+        )
+
+    # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
+    def predict_proba(self, X):
+        """ Probability estimates on provided samples.
+
+        Args:
+            X: Numpy array for samples.
+
+        Returns:
+            Probability estimate of sample for each class.
+        """
+        check_is_fitted(self, "has_fitted_")
+        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X = self.preprocessor_.transform(X)
+
+        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
+
+        X = np.ascontiguousarray(X.T)
+
+        prob = EBMUtils.classifier_predict_proba(
+            X, None, self.feature_groups_, self.additive_terms_, self.intercept_
+        )
+        return prob
+
+    def predict(self, X):
+        """ Predicts on provided samples.
+
+        Args:
+            X: Numpy array for samples.
+
+        Returns:
+            Predicted class label per sample.
+        """
+        check_is_fitted(self, "has_fitted_")
+        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X = self.preprocessor_.transform(X)
+
+        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
+
+        X = np.ascontiguousarray(X.T)
+
+        return EBMUtils.classifier_predict(
+            X,
+            None,
+            self.feature_groups_,
+            self.additive_terms_,
+            self.intercept_,
+            self.classes_,
+        )
+
+class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
+    """ Differentially Private Explainable Boosting Regressor."""
+
+    # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
+    available_explanations = ["global", "local"]
+    explainer_type = "model"
+
+    """ Public facing DPEBM regressor."""
+
+    def __init__(
+        self,
+        # Explainer
+        feature_names=None,
+        feature_types=None,
+        # Preprocessor
+        max_bins=32,
+        binning="private",
+        # Stages
+        mains="all",
+        # Boosting
+        learning_rate=0.01,
+        max_rounds=300,
+        # Trees
+        max_leaves=3,
+        min_samples_leaf=2,
+        # Overall
+        random_state=42,
+        # Differential Privacy
+        epsilon=1,
+        delta=1e-5,
+        composition='gdp',
+        bin_budget_frac=0.1,
+        privacy_schema=None,
+    ):
+        """ Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
+
+        Args:
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            max_bins: Max number of bins per feature for pre-processing stage.
+            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            interactions: Interactions to be trained on.
+                Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
+            outer_bags: Number of outer bags.
+            inner_bags: Number of inner bags.
+            learning_rate: Learning rate for boosting.
+            validation_size: Validation set size for boosting.
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
+            max_rounds: Number of rounds for boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
+            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
+            n_jobs: Number of jobs to run in parallel.
+            random_state: Random state.
+            epsilon: Total privacy budget to be spent across all rounds of training.
+            delta: Additive component of differential privacy guarantee. Should be smaller than 1/n_training_samples.
+            composition: Method of tracking noise aggregation. Must be one of 'classic' or 'gdp'. 
+            bin_budget_frac: Percentage of total epsilon budget to use for private binning.
+            privacy_schema: Dictionary specifying known min/max values of each feature and target. 
+                If None, DP-EBM throws warning and uses data to calculate these values.
+        """
+        super(DPExplainableBoostingRegressor, self).__init__(
+            # Explainer
+            feature_names=feature_names,
+            feature_types=feature_types,
+            # Preprocessor
+            max_bins=max_bins,
+            max_interaction_bins=None,
+            binning=binning,
+            # Stages
+            mains=mains,
+            interactions=0,
+            # Ensemble
+            outer_bags=1,
+            inner_bags=0,
+            # Boosting
+            learning_rate=learning_rate,
+            validation_size=0,
+            early_stopping_rounds=-1,
+            early_stopping_tolerance=-1,
+            max_rounds=max_rounds,
+            # Trees
+            max_leaves=max_leaves,
+            min_samples_leaf=min_samples_leaf,
+            # Overall
+            n_jobs=1,
+            random_state=random_state,
+            # Differential Privacy
+            epsilon=epsilon,
+            delta=delta,
+            composition=composition,
+            bin_budget_frac=bin_budget_frac,
+            privacy_schema=privacy_schema,
+        )
+
+    def predict(self, X):
+        """ Predicts on provided samples.
+
+        Args:
+            X: Numpy array for samples.
+
+        Returns:
+            Predicted class label per sample.
+        """
+        check_is_fitted(self, "has_fitted_")
+        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X = self.preprocessor_.transform(X)
+
+        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
+
+        X = np.ascontiguousarray(X.T)
+
+        return EBMUtils.regressor_predict(
+            X, None, self.feature_groups_, self.additive_terms_, self.intercept_
         )
