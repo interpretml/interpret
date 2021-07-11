@@ -593,10 +593,7 @@ class DPUtils:
             raise ValueError(f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers")
 
     @staticmethod
-    def validate_DP_EBM(ebm, sample_weight):
-        if sample_weight is not None:
-            raise ValueError("Sample weights are not currently supported for differentially private training.")
-
+    def validate_DP_EBM(ebm):
         fixed_params = dict(
             max_interaction_bins=None,
             interactions=0,

@@ -517,6 +517,8 @@ def test_dp_ebm_adult():
     y_tr = data["train"]["y"]
     X_te = data["test"]["X"]
     y_te = data["test"]["y"]
+    w_tr = np.ones_like(y_tr)
+    w_tr[-1] = 2
 
     clf = DPExplainableBoostingClassifier(binning='quantile', epsilon=1)
     n_splits = 3
@@ -526,7 +528,7 @@ def test_dp_ebm_adult():
     )
 
     clf = DPExplainableBoostingClassifier(binning='private', epsilon=1)
-    clf.fit(X_tr, y_tr)
+    clf.fit(X_tr, y_tr, w_tr)
 
     prob_scores = clf.predict_proba(X_te)
 
@@ -550,9 +552,11 @@ def test_dp_ebm_synthetic_regression():
     data = synthetic_regression()
     X = data["full"]["X"]
     y = data["full"]["y"]
+    w = np.ones_like(y)
+    w[-1] = 2
 
     clf = DPExplainableBoostingRegressor()
-    clf.fit(X, y)
+    clf.fit(X, y), w
     clf.predict(X)
 
     valid_ebm(clf)

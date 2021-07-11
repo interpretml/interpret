@@ -829,7 +829,7 @@ class BaseEBM(BaseEstimator):
         # Privacy calculations
         if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
-            DPUtils.validate_DP_EBM(self, sample_weight)
+            DPUtils.validate_DP_EBM(self)
 
             if self.privacy_schema is None:
                 warn("Possible privacy violation: assuming min/max values per feature/target are public info."
@@ -850,7 +850,7 @@ class BaseEBM(BaseEstimator):
                     total_queries = self.max_rounds * X.shape[1], 
                     target_epsilon = training_eps_, 
                     delta = training_delta_, 
-                    sensitivity = self.domain_size_ * self.learning_rate
+                    sensitivity = self.domain_size_ * self.learning_rate * np.max(w)
                 )
             elif self.composition == 'gdp':
                 self.noise_scale_ = DPUtils.calc_gdp_noise_multi(
@@ -858,7 +858,7 @@ class BaseEBM(BaseEstimator):
                     target_epsilon = training_eps_, 
                     delta = training_delta_
                 )
-                self.noise_scale_ = self.noise_scale_ * self.domain_size_ * self.learning_rate # Alg Line 17
+                self.noise_scale_ = self.noise_scale_ * self.domain_size_ * self.learning_rate * np.max(w)# Alg Line 17
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
         else:
