@@ -367,7 +367,7 @@ INLINE_ALWAYS constexpr static bool IsMultiplyError(const T num1PreferredConstex
    static_assert(!std::is_signed<T>::value, "T must be unsigned in the current implementation");
 
    // it will never overflow if num1 is zero or 1.  We need to check zero to avoid division by zero
-   return T { 1 } < num1PreferredConstexpr && static_cast<T>(std::numeric_limits<T>::max() / num1PreferredConstexpr) < num2;
+   return T { 0 } != num1PreferredConstexpr && static_cast<T>(std::numeric_limits<T>::max() / num1PreferredConstexpr) < num2;
 }
 WARNING_POP
 

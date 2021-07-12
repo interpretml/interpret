@@ -396,13 +396,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
    IntEbmType * opaqueStateOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetFeature(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeFeature(
    BoolEbmType categorical,
    IntEbmType countBins,
    IntEbmType countSamples,
    const IntEbmType * binnedData
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDataSetFeature(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillFeature(
    BoolEbmType categorical,
    IntEbmType countBins,
    IntEbmType countSamples,
@@ -412,12 +412,24 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
    IntEbmType * opaqueStateInOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeClassificationTargets(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeWeight(
+   IntEbmType countSamples,
+   const FloatEbmType * weights
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillWeight(
+   IntEbmType countSamples,
+   const FloatEbmType * weights,
+   IntEbmType countBytesAllocated,
+   void * fillMem,
+   IntEbmType * opaqueStateInOut
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeClassificationTarget(
    IntEbmType countTargetClasses,
    IntEbmType countSamples,
    const IntEbmType * targets
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillClassificationTargets(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillClassificationTarget(
    IntEbmType countTargetClasses,
    IntEbmType countSamples,
    const IntEbmType * targets,
@@ -426,11 +438,11 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
    IntEbmType * opaqueStateInOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegressionTargets(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegressionTarget(
    IntEbmType countSamples,
    const FloatEbmType * targets
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillRegressionTargets(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillRegressionTarget(
    IntEbmType countSamples,
    const FloatEbmType * targets,
    IntEbmType countBytesAllocated,

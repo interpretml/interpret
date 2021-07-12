@@ -6,12 +6,14 @@ EXPORTS
   GetTraceLevelString
   SizeDataSetHeader
   FillDataSetHeader
-  SizeDataSetFeature
-  FillDataSetFeature
-  SizeClassificationTargets
-  FillClassificationTargets
-  SizeRegressionTargets
-  FillRegressionTargets
+  SizeFeature
+  FillFeature
+  SizeWeight
+  FillWeight
+  SizeClassificationTarget
+  FillClassificationTarget
+  SizeRegressionTarget
+  FillRegressionTarget
   CreateClassificationBooster
   CreateRegressionBooster
   CreateBoosterView

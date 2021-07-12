@@ -157,6 +157,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Softmax
 static int g_cLogEnterDiscretizeParametersMessages = 25;
 static int g_cLogExitDiscretizeParametersMessages = 25;
 
+// TODO: build a single-value version of Discretize which is meant to be as fast as possible for predicting
+//       a single sample.  Speed on a single sample is expected to be important and we can eliminate all the 
+//       logging and all the checking for arrays and all safety checks, and even one parameter (countSamples) and
+//       also remove one pointer which could be costly in whatever language we're called from.
+
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
