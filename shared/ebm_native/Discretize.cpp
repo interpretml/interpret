@@ -153,14 +153,97 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Softmax
 //       transpose_8192 = 6.26907
 //       transpose_16384 = 7.73406
 
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION DiscretizeOne(
+   const FloatEbmType featureValue,
+   IntEbmType countCuts,
+   const FloatEbmType * cutsLowerBoundInclusive
+) {
+   // unlike all of our other public interfaces we don't check our inputs for validity.  The caller is expected
+   // to get these right otherwise there will be a segfault.  We do this because we want lightening fast prediction
+   // speed.  We can still use EBM_ASSERT though to catch input errors on debug builds, so do that.
+
+   EBM_ASSERT(nullptr != cutsLowerBoundInclusive);
+
+   EBM_ASSERT(IntEbmType { 0 } <= countCuts);
+   // We have 1 more bin than we have cuts (ex: 1 cut means 2 bins) AND we need to leave room for 3 special bins.
+   // Even if we're not being called for histograms here, we'll eventually want histograms, so preserve room for these:
+   // 0 = missing
+   // 1 = -inf (for histograms).
+   // max_IntEbmType = +inf (for histograms)
+   // Eg: if we had 256 bin indexes, 3 reserved leaves 253 for non-special, and 252 cuts, so we can have 255-3=252 cuts.
+   EBM_ASSERT(countCuts <= std::numeric_limits<IntEbmType>::max() - IntEbmType { 3 });
+   // cutsLowerBoundInclusive needs to hold all the cuts, so we should be able to at least convert countCuts to size_t
+   EBM_ASSERT(!IsConvertError<size_t>(countCuts));
+   // cutsLowerBoundInclusive needs to hold all the cuts, so all the bytes need to be addressable
+   EBM_ASSERT(!IsMultiplyError(sizeof(*cutsLowerBoundInclusive), static_cast<size_t>(countCuts)));
+
+   // extra restrictions we take on from our binary search code
+
+   // we use ptrdiff_t as our indexes in the binary search code since it's slightly faster
+   EBM_ASSERT(!IsConvertError<ptrdiff_t>(countCuts));
+   // we add 1 to static_cast<size_t>(countCuts) as our missing value, so this addition must succeed
+   EBM_ASSERT(static_cast<size_t>(countCuts) < std::numeric_limits<size_t>::max());
+   // the low value can increase until it's equal to cCuts, so cCuts must be expressable as a ptrdiff_t
+   // we need to keep low as a ptrdiff_t since we compare it right after with high, which can be -1
+   EBM_ASSERT(static_cast<size_t>(countCuts) <= size_t { std::numeric_limits<ptrdiff_t>::max() });
+   // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't 
+   // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
+   EBM_ASSERT(static_cast<size_t>(countCuts) <= std::numeric_limits<size_t>::max() / size_t { 2 } + size_t { 1 });
+
+   if(PREDICTABLE(std::isnan(featureValue))) {
+      return IntEbmType { 0 };
+   }
+   if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
+      return IntEbmType { 1 };
+   }
+
+   size_t middle;
+   const ptrdiff_t highStart = static_cast<ptrdiff_t>(countCuts) - ptrdiff_t { 1 };
+   ptrdiff_t high = highStart;
+   ptrdiff_t low = ptrdiff_t { 0 };
+   FloatEbmType midVal;
+   do {
+      EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) < static_cast<size_t>(countCuts));
+      EBM_ASSERT(ptrdiff_t { 0 } <= high && static_cast<size_t>(high) < static_cast<size_t>(countCuts));
+      EBM_ASSERT(low <= high);
+      // low is equal or lower than high, so summing them can't exceed 2 * high, and after division it
+      // can't be higher than high, so middle can't overflow ptrdiff_t after the division since high
+      // is already a ptrdiff_t.  Generally the maximum positive value of a ptrdiff_t can be doubled 
+      // when converted to a size_t, although that isn't guaranteed.  A more correct statement is that
+      // the following must be false (which we check above):
+      // "std::numeric_limits<size_t>::max() / 2 < static_cast<size_t>(countCuts) - 1"
+      EBM_ASSERT(!IsAddError(static_cast<size_t>(low), static_cast<size_t>(high)));
+      middle = (static_cast<size_t>(low) + static_cast<size_t>(high)) >> 1;
+      EBM_ASSERT(middle <= static_cast<size_t>(high));
+      EBM_ASSERT(middle < static_cast<size_t>(countCuts));
+      midVal = cutsLowerBoundInclusive[middle];
+      EBM_ASSERT(middle < size_t { std::numeric_limits<ptrdiff_t>::max() });
+      low = UNPREDICTABLE(midVal <= featureValue) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t { 1 } : low;
+      EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) <= static_cast<size_t>(countCuts));
+      high = UNPREDICTABLE(midVal <= featureValue) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t { 1 };
+      EBM_ASSERT(ptrdiff_t { -1 } <= high && high <= highStart);
+
+      // high can become -1 in some cases, so it needs to be ptrdiff_t.  It's tempting to try and change
+      // this code and use the Hermann Bottenbruch version that checks for low != high in the loop comparison
+      // since then we wouldn't have negative values and we could use size_t, but unfortunately that version
+      // has a check at the end where we'd need to fetch cutsLowerBoundInclusive[low] after exiting the 
+      // loop, so this version we have here is faster given that we only need to compare to a value that
+      // we've already fetched from memory.  Also, this version makes slightly faster progress since
+      // it does middle + 1 AND middle - 1 instead of just middle - 1, so it often eliminates one loop
+      // iteration.  In practice this version will always work since no floating point type is less than 4
+      // bytes, so we shouldn't have difficulty expressing any indexes with ptrdiff_t, and our indexes
+      // for accessing memory are always size_t, so those should always work.
+   } while(LIKELY(low <= high));
+   EBM_ASSERT(size_t { 0 } <= middle && middle < static_cast<size_t>(countCuts));
+   middle = UNPREDICTABLE(midVal <= featureValue) ? middle + size_t { 2 } : middle + size_t { 1 };
+   EBM_ASSERT(size_t { 1 } <= middle && middle <= size_t { 1 } + static_cast<size_t>(countCuts));
+   EBM_ASSERT(!IsConvertError<IntEbmType>(middle));
+   return static_cast<IntEbmType>(middle);
+}
+
 // don't bother using a lock here.  We don't care if an extra log message is written out due to thread parallism
 static int g_cLogEnterDiscretizeParametersMessages = 25;
 static int g_cLogExitDiscretizeParametersMessages = 25;
-
-// TODO: build a single-value version of Discretize which is meant to be as fast as possible for predicting
-//       a single sample.  Speed on a single sample is expected to be important and we can eliminate all the 
-//       logging and all the checking for arrays and all safety checks, and even one parameter (countSamples) and
-//       also remove one pointer which could be costly in whatever language we're called from.
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
@@ -176,7 +259,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
    // we'll always know how to skip the missing slice if desired.  None of these things are as easy if the missing
    // bin is in the Nth item because we then need to know what N is and use multiplication and badly ordered memory
    // accesses to reach it if we want to use the missing bin during cutting.  Lastly, in higher level languages, it's
-   // easier to detect missing values in the discretized data, since it's always just a zero.
+   // easier to detect missing values in the discretized data, since it's always just in index zero.
+   // Finally, the way we compute our tensor sums allows us to calculate a slice of the tensor at the 0th index
+   // with just a single check, so having the missing value at the 0th index allows fast lookup of the missing values
+   // so we can do things like try putting the missing values into the left and right statistics of any cuts easily
    //
    // this function has exactly the same behavior as numpy.digitize, including the lower bound inclusive semantics
    
@@ -291,6 +377,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             const FloatEbmType val = *pValue;
             IntEbmType result;
             result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : IntEbmType { 1 };
+            EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
             *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
@@ -334,6 +421,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
             result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : result;
 
+            EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+
             *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
@@ -352,6 +441,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 2 } : IntEbmType { 1 };
             result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 3 } : result;
             result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : result;
+
+            EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
             *pDiscretized = result;
             ++pDiscretized;
@@ -373,6 +464,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 3 } : result;
             result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 4 } : result;
             result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : result;
+
+            EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
             *pDiscretized = result;
             ++pDiscretized;
@@ -396,6 +489,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 4 } : result;
             result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 5 } : result;
             result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : result;
+
+            EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
             *pDiscretized = result;
             ++pDiscretized;
@@ -421,6 +516,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 5 } : result;
             result = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 6 } : result;
             result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : result;
+
+            EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
             *pDiscretized = result;
             ++pDiscretized;
@@ -449,6 +546,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             result = UNPREDICTABLE(cut5 <= val) ? IntEbmType { 7 } : result;
             result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 0 } : result;
 
+            EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+
             *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
@@ -473,7 +572,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
 
             memcpy(
                size_t { 1 } + cutsLowerBoundInclusiveCopy,
-               cutsLowerBoundInclusive, 
+               cutsLowerBoundInclusive,
                sizeof(*cutsLowerBoundInclusive) * cCuts
             );
 
@@ -500,6 +599,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
                const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+
+               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -544,6 +645,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
                const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+
+               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -590,6 +693,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
 
                const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
+               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
                ++pValue;
@@ -635,6 +740,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
                const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+
+               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -683,6 +790,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
 
                const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
+               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
                ++pValue;
@@ -730,6 +839,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
                const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+
+               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -780,6 +891,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
 
                const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
+               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
                ++pValue;
@@ -803,13 +916,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          goto exit_with_log;
       }
 
-      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() == countCuts)) {
+      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() - IntEbmType { 3 } < countCuts)) {
+         // We have 1 more bin than we have cuts (ex: 1 cut means 2 bins) AND we need to leave room for 3 special bins.
+         // Even if we're not being called for histograms here, we'll eventually want histograms, so preserve room for these:
+         // 0 = missing
+         // 1 = -inf (for histograms).
+         // max_IntEbmType = +inf (for histograms)
+         // Eg: if we had 256 bin indexes, 3 reserved leaves 253 for non-special, and 252 cuts, so we can have 255-3=252 cuts.
+
          // we convert back to IntEbmType when we return, and if countCuts is at the limit, then we don't
          // have any value to indicate missing
          // 1 cut means 3 bins (missing, and the left discretization, and the right discretization)
          // max cuts means max + 2 bins.  Since bins are zero indexed, we need 1 + max as an index which is illegal
          LOG_0(TraceLevelError,
-            "ERROR Discretize countCuts was too large to allow for a missing value placeholder");
+            "ERROR Discretize countCuts was too large to allow for a missing value placeholder and -+inf bins");
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
          // tried to allocate it since it doesn't seem worth creating a new error class for it
@@ -831,6 +951,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
 
       if(UNLIKELY(size_t { std::numeric_limits<ptrdiff_t>::max() } < cCuts)) {
          // the low value can increase until it's equal to cCuts, so cCuts must be expressable as a ptrdiff_t
+         // we need to keep low as a ptrdiff_t since we compare it right after with high, which can be -1
          LOG_0(TraceLevelError,
             "ERROR Discretize countCuts was too large to allow for the binary search comparison");
 
@@ -856,8 +977,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
 
       EBM_ASSERT(cCuts < std::numeric_limits<size_t>::max());
       EBM_ASSERT(size_t { 1 } <= cCuts);
-      EBM_ASSERT(cCuts - size_t { 1 } <= size_t { std::numeric_limits<ptrdiff_t>::max() });
-      const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCuts - size_t { 1 });
+      EBM_ASSERT(cCuts <= size_t { std::numeric_limits<ptrdiff_t>::max() });
+      const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCuts) - ptrdiff_t { 1 };
 
       // if we're going to runroll our first loop, then we need to ensure that there's a next loop after the first
       // unrolled loop, otherwise we would need to check if we were done before the first real loop iteration.
@@ -913,7 +1034,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             EBM_ASSERT(size_t { 1 } <= middle && middle <= size_t { 1 } + cCuts);
          }
          EBM_ASSERT(!IsConvertError<IntEbmType>(middle));
-         *pDiscretized = static_cast<IntEbmType>(middle);
+         const IntEbmType result = static_cast<IntEbmType>(middle);
+
+         EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+
+         *pDiscretized = result;
          ++pDiscretized;
          ++pValue;
       } while(LIKELY(pValueEnd != pValue));
@@ -923,9 +1048,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
 exit_with_log:;
 
    LOG_COUNTED_N(
-      &g_cLogExitDiscretizeParametersMessages, 
-      TraceLevelInfo, 
-      TraceLevelVerbose, 
+      &g_cLogExitDiscretizeParametersMessages,
+      TraceLevelInfo,
+      TraceLevelVerbose,
       "Exited Discretize: "
       "return=%" ErrorEbmTypePrintf
       ,
@@ -934,5 +1059,76 @@ exit_with_log:;
 
    return ret;
 }
+
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION DiscretizeHistogram(
+   IntEbmType countSamples,
+   const FloatEbmType * featureValues,
+   IntEbmType countCuts,
+   const FloatEbmType * cutsLowerBoundInclusive,
+   IntEbmType * discretizedOut
+) {
+   // For binning we don't care what the min or max values are since our first bin stretches from -inf to the 
+   // first cut (not the min value in the data) and the last bin goes from the last cut (not the max value in the data)
+   // until +inf.  We do show histograms though in our UI and those have unique challenges.  First off, let's say 
+   // there is a +-inf value in the data.  Should the UI start from an infinity.  That's kind of impossible, 
+   // so the best we can do is span the graph from the min non-infinity to the max non-infinity.  But what about 
+   // the infinity values then in terms of counting samples.  We use counts of samples within each bin to compute 
+   // density.  Should the +-inf value counts go into the outer bins, or should we just drop the count for +-inf values.  
+   // 
+   // My semi-solution is to store the min and max values outside of the cut points.  We can/will still start the
+   // graph from the min to the max and we can calculate density from counts that DO NOT include the infinity values
+   // but at some point we might want to show the existance of the +-inf values or just leave them for future or 
+   // alternate UI to show, or this information might be helpful when model merging and the bin cut points don't align.
+   //
+   // We can't just store a count of +-inf values since we'll want to know or be able to elimiminate pair
+   // cells with infinity values.  Let's say we have a bin between 1-2 on one feature and the second one is -inf.
+   // We want to know the count of -inf values within the range of the other paired feature, so our 2D matrix looks 
+   // something like this for one numeric parameter and one categorical (string) parameter:
+   //
+   //           missing | -inf | min_float -> 0 | 0 -> 100 | 100 -> max_float | +inf
+   // missing      8    |  11  |       22       |    99    |         13       | 0
+   // "abc"        18   |  81  |       22       |    77    |         0        | 0
+   // "def"        28   |  71  |       22       |    55    |         1        | 1000
+   // "ghi"        38   |  61  |       22       |    33    |         2        | 0
+
+   // So, to make it possible to separate the -inf values for our histogram graphing we need to have a discretize
+   // function that separates these special values from all non-inf values.  This function is identical to the 
+   // non-histogram generating code, except that it creates new bins for -inf and +inf values.
+
+
+   // DiscretizeHistogram is only called during boosting when we're not as concerned about speed, so we choose
+   // to optimize here for minimizing extra code.  Our non-histogram Discretize function detects all the same errors
+   // that we care about and it also reserves 3 special bin values in the IntEbmType space, so we can just use it
+   const ErrorEbmType ret = Discretize(countSamples, featureValues, countCuts, cutsLowerBoundInclusive, discretizedOut);
+   if(Error_None == ret) {
+      // now let's correct the return values to handle +-inf values
+
+      const FloatEbmType * pValue = featureValues;
+      const FloatEbmType * const pValueEnd = featureValues + static_cast<size_t>(countSamples);
+      IntEbmType * pDiscretized = discretizedOut;
+      // if we had 1 cut then:
+      // 0 = missing
+      // 1 = -inf
+      // 2 = lower
+      // 3 = higher
+      // 4 = +inf
+      // So, we add 3 to get our +inf bin index
+      const IntEbmType positiveInfValue = countCuts + IntEbmType { 3 };
+      while(pValueEnd != pValue) {
+         const FloatEbmType val = *pValue;
+         IntEbmType discretizedVal = *pDiscretized;
+         EBM_ASSERT(std::isnan(val) && IntEbmType { 0 } == discretizedVal || !std::isnan(val) && IntEbmType { 0 } != discretizedVal);
+         discretizedVal = UNPREDICTABLE(IntEbmType { 0 } == discretizedVal) ? IntEbmType { 0 } : IntEbmType { 1 } + discretizedVal;
+         // if val is NaN then in IEEE 754 these two comparisons fail and thus discretizedVal stays with it's previous value of 0
+         discretizedVal = UNPREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val) ? IntEbmType { 1 } : discretizedVal;
+         discretizedVal = UNPREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val) ? positiveInfValue : discretizedVal;
+
+         ++pDiscretized;
+         ++pValue;
+      }
+   }
+   return ret;
+}
+
 
 } // DEFINED_ZONE_NAME
