@@ -444,7 +444,7 @@ TEST_CASE("CutQuantile, positive and lowest") {
    );
 }
 
-TEST_CASE("CutQuantile, splitable") {
+TEST_CASE("CutQuantile, cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -463,7 +463,7 @@ TEST_CASE("CutQuantile, splitable") {
    );
 }
 
-TEST_CASE("CutQuantile, splitable (first interior check not splitable)") {
+TEST_CASE("CutQuantile, cuttable (first interior check not cuttable)") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -482,7 +482,7 @@ TEST_CASE("CutQuantile, splitable (first interior check not splitable)") {
    );
 }
 
-TEST_CASE("CutQuantile, splitable except middle isn't available") {
+TEST_CASE("CutQuantile, cuttable except middle isn't available") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -501,7 +501,7 @@ TEST_CASE("CutQuantile, splitable except middle isn't available") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable") {
+TEST_CASE("CutQuantile, uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -520,7 +520,7 @@ TEST_CASE("CutQuantile, unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, left+unsplitable") {
+TEST_CASE("CutQuantile, left+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -539,7 +539,7 @@ TEST_CASE("CutQuantile, left+unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable+right") {
+TEST_CASE("CutQuantile, uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -558,7 +558,7 @@ TEST_CASE("CutQuantile, unsplitable+right") {
    );
 }
 
-TEST_CASE("CutQuantile, left+unsplitable+right") {
+TEST_CASE("CutQuantile, left+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -577,7 +577,7 @@ TEST_CASE("CutQuantile, left+unsplitable+right") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable+unsplitable") {
+TEST_CASE("CutQuantile, uncuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -596,7 +596,7 @@ TEST_CASE("CutQuantile, unsplitable+unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, left+unsplitable+unsplitable") {
+TEST_CASE("CutQuantile, left+uncuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -615,7 +615,7 @@ TEST_CASE("CutQuantile, left+unsplitable+unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable+unsplitable+right") {
+TEST_CASE("CutQuantile, uncuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -634,7 +634,7 @@ TEST_CASE("CutQuantile, unsplitable+unsplitable+right") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable+mid+unsplitable") {
+TEST_CASE("CutQuantile, uncuttable+mid+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -653,7 +653,7 @@ TEST_CASE("CutQuantile, unsplitable+mid+unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, left+unsplitable+mid+unsplitable") {
+TEST_CASE("CutQuantile, left+uncuttable+mid+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -672,7 +672,7 @@ TEST_CASE("CutQuantile, left+unsplitable+mid+unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable+mid+unsplitable+right") {
+TEST_CASE("CutQuantile, uncuttable+mid+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -691,7 +691,7 @@ TEST_CASE("CutQuantile, unsplitable+mid+unsplitable+right") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable+splitable") {
+TEST_CASE("CutQuantile, uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -710,7 +710,7 @@ TEST_CASE("CutQuantile, unsplitable+splitable") {
    );
 }
 
-TEST_CASE("CutQuantile, left+unsplitable+splitable") {
+TEST_CASE("CutQuantile, left+uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -729,7 +729,7 @@ TEST_CASE("CutQuantile, left+unsplitable+splitable") {
    );
 }
 
-TEST_CASE("CutQuantile, splitable+unsplitable") {
+TEST_CASE("CutQuantile, cuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -748,7 +748,7 @@ TEST_CASE("CutQuantile, splitable+unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, cuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -767,7 +767,7 @@ TEST_CASE("CutQuantile, splitable+unsplitable+right") {
    );
 }
 
-TEST_CASE("CutQuantile, splitable+unsplitable+splitable") {
+TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -786,7 +786,7 @@ TEST_CASE("CutQuantile, splitable+unsplitable+splitable") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable+splitable+unsplitable") {
+TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -805,7 +805,7 @@ TEST_CASE("CutQuantile, unsplitable+splitable+unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable") {
+TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -824,7 +824,7 @@ TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable+splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -843,7 +843,7 @@ TEST_CASE("CutQuantile, unsplitable+splitable+unsplitable+right") {
    );
 }
 
-TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -862,7 +862,7 @@ TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable+right") {
    );
 }
 
-TEST_CASE("CutQuantile, unsplitable+splitable+unsplitable+splitable") {
+TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -881,7 +881,7 @@ TEST_CASE("CutQuantile, unsplitable+splitable+unsplitable+splitable") {
    );
 }
 
-TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable+splitable") {
+TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -900,7 +900,7 @@ TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable+splitable") {
    );
 }
 
-TEST_CASE("CutQuantile, splitable+unsplitable+splitable+unsplitable") {
+TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -919,7 +919,7 @@ TEST_CASE("CutQuantile, splitable+unsplitable+splitable+unsplitable") {
    );
 }
 
-TEST_CASE("CutQuantile, splitable+unsplitable+splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -938,7 +938,7 @@ TEST_CASE("CutQuantile, splitable+unsplitable+splitable+unsplitable+right") {
    );
 }
 
-TEST_CASE("CutQuantile, left+unsplitable+splitable+unsplitable+splitable+unsplitable+splitable+unsplitable+right") {
+TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable+uncuttable+cuttable+uncuttable+right") {
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
@@ -987,14 +987,14 @@ TEST_CASE("CutQuantile, infinities") {
    );
 }
 
-TEST_CASE("CutQuantile, average division sizes that requires the ceiling instead of rounding") {
-   // our algorithm makes an internal assumption that we can give each cut point a split.  This is guaranteed if we 
+TEST_CASE("CutQuantile, average segment sizes that requires the ceiling instead of rounding") {
+   // our algorithm makes an internal assumption that we can give each cut point a location.  This is guaranteed if we 
    // make the average length of the equal value long ranges the ceiling of the average samples per bin.  
-   // This test stresses that average calculation by having an average bin lenght of 2.2222222222 but if you use 
+   // This test stresses that average calculation by having an average bin length of 2.2222222222 but if you use 
    // a bin width of 2, then there are 3 cut points that can't get any cuts.  3 cut points means that even if you 
-   // don't give the first and last SplittingRanges an actual cut point, which can be reasonalbe since the 
-   // first and last SplittingRanges are special in that they may have no long ranges on the tail ends, 
-   // you still end up with one or more SplittingRanges that can't have a cut if you don't take the ceiling.
+   // don't give the first and last CuttingRanges an actual cut point, which can be reasonable since the 
+   // first and last CuttingRanges are special in that they may have no long ranges on the tail ends, 
+   // you still end up with one or more CuttingRanges that can't have a cut if you don't take the ceiling.
 
    constexpr bool bTestReverse = true;
    constexpr bool bSmart = true;
@@ -1226,7 +1226,7 @@ TEST_CASE("CutQuantile, maximum non-overflow interpretable ends") {
    );
 }
 
-TEST_CASE("CutQuantile, stress test the guarantee of one split per SplittingRange, by 2") {
+TEST_CASE("CutQuantile, stress test the guarantee of one cut per CuttingRange, by 2") {
    constexpr IntEbmType countSamplesPerBinMin = 1;
    constexpr size_t cItemsPerRange = 10;
    constexpr size_t cInteriorRanges = 3;

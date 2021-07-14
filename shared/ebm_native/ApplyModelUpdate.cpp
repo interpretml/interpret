@@ -109,7 +109,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
          pBoosterCore->SetBestModelMetric(modelMetric);
 
-         // TODO : in the future don't copy over all SegmentedTensors.  We only need to copy the ones that changed, which we can detect if we 
+         // TODO : in the future don't copy over all SliceableTensors.  We only need to copy the ones that changed, which we can detect if we 
          // use a linked list and array lookup for the same data structure
          size_t iModel = 0;
          size_t iModelEnd = pBoosterCore->GetCountFeatureGroups();
@@ -238,46 +238,46 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogGetModelUpdateCutsParametersMessages = 10;
+static int g_cLogGetModelUpdateSplitsParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateCuts(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateSplits(
    BoosterHandle boosterHandle,
    IntEbmType indexDimension,
-   IntEbmType * countCutsInOut,
-   IntEbmType * cutIndexesOut
+   IntEbmType * countSplitsInOut,
+   IntEbmType * splitIndexesOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogGetModelUpdateCutsParametersMessages,
+      &g_cLogGetModelUpdateSplitsParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "GetModelUpdateCuts: "
+      "GetModelUpdateSplits: "
       "boosterHandle=%p, "
       "indexDimension=%" IntEbmTypePrintf ", "
-      "countCutsInOut=%p"
-      "cutIndexesOut=%p"
+      "countSplitsInOut=%p"
+      "splitIndexesOut=%p"
       ,
       static_cast<void *>(boosterHandle),
       indexDimension, 
-      static_cast<void *>(countCutsInOut),
-      static_cast<void *>(cutIndexesOut)
+      static_cast<void *>(countSplitsInOut),
+      static_cast<void *>(splitIndexesOut)
    );
 
-   if(nullptr == countCutsInOut) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts countCutsInOut cannot be nullptr");
+   if(nullptr == countSplitsInOut) {
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits countSplitsInOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
-      *countCutsInOut = IntEbmType { 0 };
+      *countSplitsInOut = IntEbmType { 0 };
       // already logged
       return Error_IllegalParamValue;
    }
 
    const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
    if(BoosterShell::k_illegalFeatureGroupIndex == iFeatureGroup) {
-      *countCutsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts bad internal state.  No FeatureGroupIndex set");
+      *countSplitsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits bad internal state.  No FeatureGroupIndex set");
       return Error_IllegalParamValue;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -287,39 +287,39 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
 
    if(indexDimension < 0) {
-      *countCutsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension must be positive");
+      *countSplitsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits indexDimension must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexDimension)) {
-      *countCutsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension is too high to index");
+      *countSplitsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits indexDimension is too high to index");
       return Error_IllegalParamValue;
    }
    const size_t iAllDimension = static_cast<size_t>(indexDimension);
    if(pFeatureGroup->GetCountDimensions() <= iAllDimension) {
-      *countCutsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts indexDimension above the number of dimensions that we have");
+      *countSplitsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits indexDimension above the number of dimensions that we have");
       return Error_IllegalParamValue;
    }
 
    const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iAllDimension].m_pFeature->GetCountBins();
    if(cBins <= size_t { 1 }) {
-      // we have 1 bin, or 0, so this dimension will be stripped from the SegmentedTensor.  Let's return the empty result now
-      *countCutsInOut = IntEbmType { 0 };
+      // we have 1 bin, or 0, so this dimension will be stripped from the SliceableTensor.  Let's return the empty result now
+      *countSplitsInOut = IntEbmType { 0 };
       return Error_None;
    }
 
-   if(nullptr == cutIndexesOut) {
-      *countCutsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts cutIndexesOut cannot be nullptr");
+   if(nullptr == splitIndexesOut) {
+      *countSplitsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits splitIndexesOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
    // cBins started from IntEbmType, so we should be able to convert back safely
-   if(*countCutsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
-      *countCutsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateCuts bad cut array length");
+   if(*countSplitsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
+      *countSplitsInOut = IntEbmType { 0 };
+      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits bad split array length");
       return Error_IllegalParamValue;
    }
 
@@ -329,7 +329,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       // realistically be more than 2-3, and tensors with 64 dimensions consume all memory on a 64 bit machine, so
       // even under unrealistic conditions this loop should be fine.  Only if we get a tensor with dimensions having
       // 1 bin each and thousands of dimensions could this become an issue, but that would need to be an adversarial
-      // dataset, and adversaries can consume CPU in other ways like asking for 32 dimension tensor cutting, so 
+      // dataset, and adversaries can consume CPU in other ways like asking for 32 dimension tensor splitting, so 
       // the caller will need to filter out unreasonable dimension requests if necessary.  We don't need to handle it.
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[iAllDimension];
@@ -341,17 +341,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
 
-   const size_t cCuts = pBoosterShell->GetAccumulatedModelUpdate()->GetCountDivisions(iSignficantDimension);
-   EBM_ASSERT(cCuts < cBins);
-   const ActiveDataType * const aCutIndexes = pBoosterShell->GetAccumulatedModelUpdate()->GetDivisionPointer(iSignficantDimension);
+   const size_t cSplits = pBoosterShell->GetAccumulatedModelUpdate()->GetCountSplits(iSignficantDimension);
+   EBM_ASSERT(cSplits < cBins);
+   const ActiveDataType * const aSplitIndexes = pBoosterShell->GetAccumulatedModelUpdate()->GetSplitPointer(iSignficantDimension);
 
    // TODO: handle this better where we handle mismatches in index types
-   static_assert(sizeof(*cutIndexesOut) == sizeof(*aCutIndexes), "not same type for cuts");
-   memcpy(cutIndexesOut, aCutIndexes, sizeof(*aCutIndexes) * cCuts);
+   static_assert(sizeof(*splitIndexesOut) == sizeof(*aSplitIndexes), "not same type for splits");
+   memcpy(splitIndexesOut, aSplitIndexes, sizeof(*aSplitIndexes) * cSplits);
 
-   EBM_ASSERT(!IsConvertError<IntEbmType>(cCuts)); // cCuts originally came from an IntEbmType
+   EBM_ASSERT(!IsConvertError<IntEbmType>(cSplits)); // cSplits originally came from an IntEbmType
 
-   *countCutsInOut = static_cast<IntEbmType>(cCuts);
+   *countSplitsInOut = static_cast<IntEbmType>(cSplits);
    return Error_None;
 }
 

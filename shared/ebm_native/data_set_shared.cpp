@@ -84,13 +84,13 @@ namespace DEFINED_ZONE_NAME {
 //                  sparse or not will be predicatble.If we really really wanted to, we could conceivably 
 //                  template <count_dense_features, count_sparse_features>, which for low numbers of features is tractable
 //   - OBSERVATION: we'll be sorting our target, then secondarily features by some packability metric, 
-//   - OBSERVATION: when we make train/validation sets, the size of the sets will be indeterminate until we know the exact indexes for each split since the 
+//   - OBSERVATION: when we make train/validation sets, the size of the sets will be indeterminate until we know the exact indexes for each set since the 
 //                  number of sparse features will determine it, BUT we can have python give us the complete memory representation and then we can calcualte 
 //                  the size, then return that to pyhton, have python allocate it, then pass us in the memory for a second pass at filling it
 //   - OBSERVATION: since sorting this data by target is so expensive (and the transpose to get it there), we'll create a special "all feature" data 
 //                  represenation that is just features without feature groups.  This representation will be compressed per feature.
 //                  and will include a reverse index to work back to the original unsorted indexes
-//                  We'll generate the main/interaction training dataset from that directly when python passes us the train/validation split indexes and 
+//                  We'll generate the main/interaction training dataset from that directly when python passes us the train/validation set indexes and 
 //                  the feature_groups.  We'll also generate train/validation duplicates of this dataset for interaction detection 
 //                  (but for interactions we don't need the reverse index lookup)
 //   - OBSERVATION: We should be able to completely preserve sparse data representations without expanding them, although we can also detect when dense 
@@ -135,8 +135,8 @@ namespace DEFINED_ZONE_NAME {
 //   - DON'T use pointers inside the data structure, just 64-bit offsets (for sharing cross process)!
 //   - Start each child processes, and pass them our shared memory structure
 //     (it will be mapped into each process address space, but not copied)
-//   - each child calls a train/validation splitter provided by our C that fills a numpy array of bools
-//     We do this in C instead of using the sklearn train_test_split because sklearn would require us to first split sequential indexes,
+//   - each child calls a train/validation separator provided by our C that fills a numpy array of bools
+//     We do this in C instead of using the sklearn train_test_split because sklearn would require us to first separate sequential indexes,
 //     possibly sort them(if order in not guaranteed), then convert to bools in a caching inefficient way,
 //     whereas in C we can do a single pass without any memory array inputs(using just a random number generator)
 //     and we can make the outputs consistent across languages.
@@ -150,7 +150,7 @@ namespace DEFINED_ZONE_NAME {
 //       definitions in the RawArray)
 //     - C takes the bool list, then uses the mapping indexes in the RawArray dataset to reverse the bool index into our internal C sorted order.
 //       This way we only need to do a cache inefficient reordering once per entire dataset, and it's on a bool array (compressed to bits?)
-//     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation splits, so the
+//     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation set, so the
 //       train/validation can't be calculated without a first pass). We have all the data to do this!
 //     - C will allocate the memory for the boosting dataset
 //     - C will do a second pass to fill the boosting data structure and return that to python (no need for a RawArray this time since it isn't shared)
@@ -158,12 +158,12 @@ namespace DEFINED_ZONE_NAME {
 //       select whether each sample for that feature goes into the train or validation set, and handling increments
 //   - FOR INTERACTIONS:
 //     - pass the process shared read only RawArray, and the train/validation bools (we already have all feature definitions in the RawArray)
-//     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation splits, so the 
+//     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation set, so the 
 //       train/validation can't be calculated without a first pass). We have all the data to do this!
 //     - C will allocate the memory for the interaction detection dataset
 //     - C will do a second pass to fill the data structure and return that to python (no need for a RawArray this time since it isn't shared)
 //     - per the notes above, we will bit pack each feature by it's best fit size, and keep sparse features.  We're pretty much just copying data for 
-//       interactions into the train/validations splits
+//       interactions into the train/validations sets
 //     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements 
 //       to select whether each sample for that feature goes into the train or validation set, and handling increments
 

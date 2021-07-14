@@ -598,9 +598,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
-               const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+               const size_t result = 
+                  (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
-               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbmType>(result) == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -644,9 +645,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
-               const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+               const size_t result = 
+                  (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
-               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbmType>(result) == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -691,9 +693,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
-               const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+               const size_t result = 
+                  (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
-               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbmType>(result) == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -739,9 +742,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
-               const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+               const size_t result = 
+                  (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
-               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbmType>(result) == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -788,9 +792,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
-               const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+               const size_t result = 
+                  (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
-               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbmType>(result) == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -838,9 +843,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
-               const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+               const size_t result = 
+                  (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
-               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbmType>(result) == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -889,9 +895,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
                pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
 
-               const size_t result = (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
+               const size_t result = 
+                  (pResult - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(FloatEbmType);
 
-               EBM_ASSERT(result == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
+               EBM_ASSERT(static_cast<IntEbmType>(result) == DiscretizeOne(val, countCuts, cutsLowerBoundInclusive));
 
                *pDiscretized = static_cast<IntEbmType>(result);
                ++pDiscretized;
@@ -1067,6 +1074,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
    const FloatEbmType * cutsLowerBoundInclusive,
    IntEbmType * discretizedOut
 ) {
+   // TODO: are we going to use this..  If not, then we can remove the additional -inf and +inf bin requirements
+   //       inside Discretize and DiscretizeOne where we check: 
+   //       std::numeric_limits<IntEbmType>::max() - IntEbmType { 3 } < countCuts
+
    // For binning we don't care what the min or max values are since our first bin stretches from -inf to the 
    // first cut (not the min value in the data) and the last bin goes from the last cut (not the max value in the data)
    // until +inf.  We do show histograms though in our UI and those have unique challenges.  First off, let's say 

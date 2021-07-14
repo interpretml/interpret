@@ -834,17 +834,17 @@ class Native:
         ]
         self._unsafe.GenerateModelUpdate.restype = ct.c_int32
 
-        self._unsafe.GetModelUpdateCuts.argtypes = [
+        self._unsafe.GetModelUpdateSplits.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexDimension
             ct.c_int64,
-            # int64_t * countCutsInOut
+            # int64_t * countSplitsInOut
             ct.POINTER(ct.c_int64),
-            # int64_t * cutIndexesOut
+            # int64_t * splitIndexesOut
             ndpointer(dtype=ct.c_int64, ndim=1),
         ]
-        self._unsafe.GetModelUpdateCuts.restype = ct.c_int32
+        self._unsafe.GetModelUpdateSplits.restype = ct.c_int32
 
         self._unsafe.GetModelUpdateExpanded.argtypes = [
             # void * boosterHandle
@@ -1346,17 +1346,17 @@ class Booster(AbstractContextManager):
 
         return model
 
-    def get_model_update_cuts(self):
+    def get_model_update_splits(self):
         if self._feature_group_index < 0:  # pragma: no cover
             raise RuntimeError("invalid internal self._feature_group_index")
 
-        cuts = []
+        splits = []
         feature_indexes = self.feature_groups[self._feature_group_index]
         for dimension_idx, _ in enumerate(feature_indexes):
-            cuts_dimension = self._get_model_update_cuts_dimension(dimension_idx)
-            cuts.append(cuts_dimension)
+            splits_dimension = self._get_model_update_splits_dimension(dimension_idx)
+            splits.append(splits_dimension)
 
-        return cuts
+        return splits
 
     def _get_feature_group_shape(self, feature_group_index):
         # TODO PK do this once during construction so that we don't have to do it again
@@ -1451,27 +1451,27 @@ class Booster(AbstractContextManager):
 
         return model_feature_group
 
-    def _get_model_update_cuts_dimension(self, dimension_index):
+    def _get_model_update_splits_dimension(self, dimension_index):
         native = Native.get_native_singleton()
 
         feature_index = self.feature_groups[self._feature_group_index][dimension_index]
         n_bins = self.features_bin_count[feature_index]
 
-        count_cuts = n_bins - 1
-        cuts = np.empty(count_cuts, dtype=np.int64, order="C")
-        count_cuts = ct.c_int64(count_cuts)
+        count_splits = n_bins - 1
+        splits = np.empty(count_splits, dtype=np.int64, order="C")
+        count_splits = ct.c_int64(count_splits)
 
-        return_code = native._unsafe.GetModelUpdateCuts(
+        return_code = native._unsafe.GetModelUpdateSplits(
             self._booster_handle, 
             dimension_index, 
-            ct.byref(count_cuts), 
-            cuts
+            ct.byref(count_splits), 
+            splits
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetModelUpdateCuts")
+            raise Native._get_native_exception(return_code, "GetModelUpdateSplits")
 
-        cuts = cuts[:count_cuts.value]
-        return cuts
+        splits = splits[:count_splits.value]
+        return splits
 
     def get_model_update_expanded(self):
         if self._feature_group_index < 0:  # pragma: no cover
@@ -1785,7 +1785,7 @@ class NativeHelper:
                     )
 
                     if noise_scale: # Differentially private updates
-                        splits = booster.get_model_update_cuts()[0]
+                        splits = booster.get_model_update_splits()[0]
 
                         model_update_tensor = booster.get_model_update_expanded()
                         noisy_update_tensor = model_update_tensor.copy()
@@ -1799,7 +1799,7 @@ class NativeHelper:
                             noise = np.random.normal(0.0, noise_scale)
                             noisy_update_tensor[f:s] = model_update_tensor[f:s] + noise
 
-                            # Native code will be returning sums of residuals in split, not averages.
+                            # Native code will be returning sums of residuals in slices, not averages.
                             # Compute noisy average by dividing noisy sum by noisy histogram counts
                             instance_count = np.sum(bin_counts[feature_group_index][f:s])
                             noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_count

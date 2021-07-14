@@ -18,7 +18,7 @@ EXPORTS
   CreateRegressionBooster
   CreateBoosterView
   GenerateModelUpdate
-  GetModelUpdateCuts
+  GetModelUpdateSplits
   GetModelUpdateExpanded
   SetModelUpdateExpanded
   ApplyModelUpdate

@@ -172,7 +172,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
       countPositiveInfinityRet = IntEbmType { 0 };
    } else {
       if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
-         // if there's 1 sample, then we can't split it, but we'd still want to determine the min, max, etc
+         // if there's 1 sample, then we can't cut it, but we'd still want to determine the min, max, etc
          // so continue processing
 
          countMissingValuesRet = IntEbmType { 0 };
@@ -295,7 +295,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
 
                      // if you have 2 internal bins it would be close to an overflow on the subtraction 
                      // of the divided values.  With 3 bins it isn't obvious to me how you'd get an
-                     // overflow after dividing it up into separate divisions.  So, let's assume
+                     // overflow after dividing it up into separate segments.  So, let's assume
                      // that 2 == cBins, so we can just take the average and report one cut
                      const FloatEbmType avg = ArithmeticMean(minValue, maxValue);
                      *cutsLowerBoundInclusiveOut = avg;

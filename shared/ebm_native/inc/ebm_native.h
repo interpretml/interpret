@@ -532,11 +532,11 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Gene
    const IntEbmType * leavesMax, 
    FloatEbmType * gainOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateCuts(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateSplits(
    BoosterHandle boosterHandle,
    IntEbmType indexDimension,
-   IntEbmType * countCutsInOut,
-   IntEbmType * cutIndexesOut
+   IntEbmType * countSplitsInOut,
+   IntEbmType * splitIndexesOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
    BoosterHandle boosterHandle,

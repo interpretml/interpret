@@ -123,7 +123,7 @@ static ErrorEbmType BoostZeroDimensional(
       pTrainingSet
    );
 
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet = 
+   SliceableTensor * const pSmallChangeToModelOverwriteSingleSamplingSet = 
       pBoosterShell->GetOverwritableModelUpdate();
    FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(bClassification) {
@@ -297,7 +297,7 @@ static ErrorEbmType BoostSingleDimensional(
 }
 
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the hessian isn't required (yet) in order to make decisions about
-//   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the gradients and then 
+//   where to split.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the gradients and then 
 //    go back to our original tensor after splits to determine the hessian
 static ErrorEbmType BoostMultiDimensional(
    BoosterShell * const pBoosterShell,
@@ -583,7 +583,7 @@ static ErrorEbmType BoostRandom(
    const IntEbmType * const aLeavesMax,
    FloatEbmType * const pTotalGain
 ) {
-   // THIS RANDOM CUT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
+   // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
    LOG_0(TraceLevelVerbose, "Entered BoostRandom");
 
@@ -760,7 +760,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                   "WARNING GenerateModelUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"
                );
             }
-            // THIS RANDOM CUT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
+            // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
             const ErrorEbmType error = BoostRandom(
                pBoosterShell,
@@ -908,17 +908,17 @@ static int g_cLogGenerateModelUpdateParametersMessages = 10;
 
 // TODO : change this so that our caller allocates the memory that contains the update, but this is complicated in various ways
 //        we don't want to just copy the internal tensor into the memory region that our caller provides, and we want to work with
-//        compressed representations of the SegmentedTensor object while we're building it, so we'll work within the memory the caller
+//        compressed representations of the SliceableTensor object while we're building it, so we'll work within the memory the caller
 //        provides, but that means we'll potentially need more memory than the full tensor, and we'll need to put some header info
 //        at the start, so the caller can't treat this memory as a pure tensor.
 //        So:
 //          1) provide a function that returns the maximum memory needed.  A smart caller will call this once on each feature_group, 
 //             choose the max and allocate it once
-//          2) return a compressed complete SegmentedTensor to the caller inside an opaque memory region 
+//          2) return a compressed complete SliceableTensor to the caller inside an opaque memory region 
 //             (return the exact size that we require to the caller for copying)
 //          3) if caller wants a simplified tensor, then they call a separate function that expands the tensor 
 //             and returns a pointer to the memory inside the opaque object
-//          4) ApplyModelUpdate will take an opaque SegmentedTensor, and expand it if needed
+//          4) ApplyModelUpdate will take an opaque SliceableTensor, and expand it if needed
 //        The benefit of returning a compressed object is that we don't have to do the work of expanding it if the caller decides not to use it 
 //        (which might happen in greedy algorithms)
 //        The other benefit of returning a compressed object is that our caller can store/copy it faster

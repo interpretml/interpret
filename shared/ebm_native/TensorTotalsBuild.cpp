@@ -28,21 +28,21 @@ namespace DEFINED_ZONE_NAME {
 
 // TODO: Implement a far more efficient boosting algorithm for higher dimensional interactions.  The algorithm works as follows:
 //   - instead of first calculating the sums at each point for the hyper-dimensional region from the origin to each point, and then later
-//     looking for cuts, we can do both at the same time.  We know the total sums for the entire hyper-dimensional region, and as we're doing our summing
+//     looking for splits, we can do both at the same time.  We know the total sums for the entire hyper-dimensional region, and as we're doing our summing
 //     up, we can calcualte the gain at that point.  The catch is that we can only calculate the gain of the split between the hyper-dimensional region from
-//     our current point to the origin, and the rest of the hyper-dimensional area.  We're using boosting though, so as long as we find some cut that makes 
+//     our current point to the origin, and the rest of the hyper-dimensional area.  We're using boosting though, so as long as we find some split that makes 
 //     things a bit better, we can continue to improve the overall model, subject of course to overfitting.
-//   - After we find the best single cut from the origin to every point (and we've selected the best one), we can then go backwards from the point inside the
+//   - After we find the best single split from the origin to every point (and we've selected the best one), we can then go backwards from the point inside the
 //     hyper-dimensional volume back towards the origin to select the best interior region vs the entire remaining hyper-dimensional volume.  Potentially we 
-//     could at this point then also calculate the sub regions that would be created if we had made planar cuts along both sides of each dimension.  
-//   - Example: if we're cutting a cube, we find the best gain from the (0,0,0) to (5,5,5) gives the highest gain, then we go backwards and find that 
+//     could at this point then also calculate the sub regions that would be created if we had made planar splits along both sides of each dimension.  
+//   - Example: if we're splitting a cube, we find the best gain from the (0,0,0) to (5,5,5) gives the highest gain, then we go backwards and find that 
 //     (5,5,5) -> (1,2,3) gives the best overall cube. We can then either take the cube as one region and the larger entire volume minus the cube as the 
 //     other region, or we can separate the entire space into 27 cubes (9 cubes on each plane)
-//   - We then need to generalize this algorithm because we don't only want cuts from a single origin, we need to start from each origin.
+//   - We then need to generalize this algorithm because we don't only want splits from a single origin, we need to start from each origin.
 //   - So, for an N dimensional region, we have 2^N ways to pick which dimensions we traverse in various orders.  So for 3 dimensions, there are 8 corners
 //   - So for a 4 dimensional space, we would need to compute the gains for 2^4 times, and for a 16x16x16x16 volume, we would need to check 1,048,576 cells.
 //     That seems doable for a 1GHz machine and if each cell consists of 16 bytes then it would be about 16 MB, which is cache fittable.  
-//     Probably anything larger than 4 dimensions would dilute the data too far to make reasonable cuts. We can go deeper if some of the features are 
+//     Probably anything larger than 4 dimensions would dilute the data too far to make reasonable splits. We can go deeper if some of the features are 
 //     near binary, but in any case we'll probably always be on the edge of cache sufficiency.  As the # of dimensions the CPU cost goes by by factors of 2, 
 //     so we'd tend to be able to process smaller tensors for the same amount of time.
 //   - For each cell, when computing the totals we need to check N memory locations, so for the example above we would 
@@ -62,25 +62,25 @@ namespace DEFINED_ZONE_NAME {
 //     a "tube" computations in N-1 dimensional space
 //   - to check these properties out, we probably want to first make a special version of our existing hyper-dimensional totals functions that can start 
 //     from any given origin instead of just (0,0,0)
-//   - it might be the case that for pairs, we can get better results by using a traditional tree cutting algorithm (the existing one).  I should 
+//   - it might be the case that for pairs, we can get better results by using a traditional tree splitting algorithm (the existing one).  I should 
 //     implement this algorithm above though regardless as it grows at less complexity than other algorithms, so it would be useful in any case.  
 //     After it's implemented, we can compare the results against the existing pair computation code
 //   - this pair splitting code should be templated for the numbrer of dimensions.  Nobody is really going to use it above 4-5 dimensions, 
 //     but it's nice to have the option, but we don't want to implement 2,3,4,5 dimensional versions
 //   - consider writing a pair specific version of this algorithm, also because pairs have different algorithms that could be the same
-//   - once we have found our initial cut, we should start from the cut point and work backwards to the origin and find if there are any cubic cuts 
+//   - once we have found our initial split, we should start from the split point and work backwards to the origin and find if there are any cubic splits 
 //     that maximize gain
-//   - we could in theory try and redo the first cut (lookback) like we'll do in the mains
+//   - we could in theory try and redo the first split (lookback) like we'll do in the mains
 //   - each time we re-examine a sub region like this, or use lookback, we essentially need to re-do the algorithm, but we're only increasing the time 
 //     by a small constant factor
-//   - if we find it's benefitial to make full hyper-plane cuts along all the dimensions that we find eg: if our cut points are (1,2,3) -> (5, 6,7) then 
-//     we would have 27 smaller cut cubes (9 per 2-D plane) then we just need to do a single full-ish sweep of the space to calcualte the totals for 
+//   - if we find it's benefitial to make full hyper-plane splits along all the dimensions that we find eg: if our split points are (1,2,3) -> (5, 6,7) then 
+//     we would have 27 smaller cubes (9 per 2-D plane) then we just need to do a single full-ish sweep of the space to calcualte the totals for 
 //     each of the volumes we have under consideration, but that too isn't too costly
 // EXISTING ALGORITHM:
 //   - our existing algorithm first determins the totals.  It benefits in that we can do this in a cache efficient way where we process the main tensor 
 //     in order, although we do use side
-//   - total N-1 planes that we also access per cut.  This first step can be ignored since it costs much less than the next part
-//   - after getting the totals, we do some kind of search for places to cut, but we need to calculate the total weights while we do so.  
+//   - total N-1 planes that we also access per split.  This first step can be ignored since it costs much less than the next part
+//   - after getting the totals, we do some kind of search for places to splits, but we need to calculate the total weights while we do so.  
 //     Determining the weights is the most expensive operation
 //   - the cost for determining volume totals is variable, but it's worst at the ends, where it takes 2^N checks per test point 
 //     (and they are not very cache efficient lookups)
@@ -91,41 +91,41 @@ namespace DEFINED_ZONE_NAME {
 //   - Probably the best solution is to just generate 2 sum total matricies one from origin (0,0,..,0,0) and the other at (1,1,..,1,1).  
 //     For a 6 dimensional space, that still only requires 8 operations instead of 64.
 //
-//   - we could in theory re-implement the above more restricted algorithm that looks for volume cuts from each dimension, but we'd then need 
+//   - we could in theory re-implement the above more restricted algorithm that looks for volume splits from each dimension, but we'd then need 
 //     either 2^N times more memory, or twice the memory and 2^(N/2), and during the search we'd be using cache inefficient memory access anyways, 
 //     so it seems like there would be not benefit to doing a volume from each origin search vs the method above
-//   - the other thing to note is that when training pairs after mains, any main cut in the pair is suposed to have limited gain 
-//     (and the limited gain is overfitting too), so we really need to look for groups of cuts for gain if we use the algorithm of picking a cut 
-//     in one dimension, then picking a cut in a different dimension, until all the dimension have been fulfilled, that's the simplest possible 
-//     set of cuts that divides the region in a way that cuts all dimensions (without which we could reduce the interaction by at least 1 dimension)
+//   - the other thing to note is that when training pairs after mains, any main split in the pair is suposed to have limited gain 
+//     (and the limited gain is overfitting too), so we really need to look for groups of splits for gain if we use the algorithm of picking a split 
+//     in one dimension, then picking a split in a different dimension, until all the dimension have been fulfilled, that's the simplest possible 
+//     set of splits that divides the region in a way that splits all dimensions (without which we could reduce the interaction by at least 1 dimension)
 //
 //   - there are really 2 algorithms that I know of that we can do otherwise.  
-//     1) The first one is a simple cross bar, where we choose a cut point inside, then divide the area up into volumes from that point to 
+//     1) The first one is a simple cross bar, where we choose a split point inside, then divide the area up into volumes from that point to 
 //        each origin, which is the algorithm that we use for interaction detection.  At each point you need to calculate 2^N volumes, and each one of 
 //        those takes 2^(N/2) operations
-//   - 2) The algorithm we use for interaction cuts.  We choose one dimension to cut, but we don't calculate gain, we choose the next, ect, and then 
-//        sweep each dimension.  We get 1 cut along the main dimension, 2 cuts on the second dimension, 4 cuts on the third, etc.  The problem is 
-//        that to be fair, we probably want to permute the order of our dimension cuts, which means N! sweep variations
+//   - 2) The algorithm we use for interaction splits.  We choose one dimension to split, but we don't calculate gain, we choose the next, ect, and then 
+//        sweep each dimension.  We get 1 split along the main dimension, 2 splits on the second dimension, 4 splits on the third, etc.  The problem is 
+//        that to be fair, we probably want to permute the order of our dimension splits, which means N! sweep variations
 //        Possilby we could randomize the sweep directions and just do 1 each time, but that seems like it would be problematic, or maybe we 
 //        choose a sweep direction per inner bag, and then we at least get variability. After we know our sweep direction, we need to visit each point.  
 //        Since all dimensions are fixed and we just sweep one at a time, we have 2^N sweep tubes, and each step requires computing at least one side, 
 //        so we pay 2^(N/2) operations
 //    
-//   - the cross bar sweep seems a little too close to our regional cut while building appraoch, and it takes more work.  The 2^N operations 
+//   - the cross bar sweep seems a little too close to our regional split while building appraoch, and it takes more work.  The 2^N operations 
 //     and # of cells are common between that one and the add while sweep version, but the cross bar has an additional 2^(N/2) term vs N for 
 //     the sum while working.  Sum while working would be much better for large numbers of dimensions
 //   - the permuted solution has the same number of points to examine as the cross bar, and it has 2^N tubes to sweep vs 2^N volumes on each
 //     side of the cross bar to examine, and calculating each costs region costs 2^(N/2), so the permuted solutoin takes N! times 
 //     more time than the cross bar solution
-//   - so the sweep while gain calculation takes less time to examine cuts from each corner than the cross bar, all solutions have bad pipeline 
+//   - so the sweep while gain calculation takes less time to examine splits from each corner than the cross bar, all solutions have bad pipeline 
 //     prediction fetch caracteristics and cache characteristics.
 //   - the gain calculate while add has the benefit in that it requires no more memory other than the side planes that are needed for addition 
 //     calculation anyways, so it's more memory efficient than either of the other two algorithms
 //   
 //   - SO, regardless as to whether the other algorithms are better, we'll probably want some form of the corner volume while adding to explore
-//     higher dimensional spaces.  We can also give options for sweep cuts for lower dimensions. 2-3 dimensional regions seem reasonable.  
-//     Beyond that I'd say just do volume addition cuts
-//   - we should examine changing the interaction detection code to use our corner cut solution since we exectute that algorithm 
+//     higher dimensional spaces.  We can also give options for sweep splits for lower dimensions. 2-3 dimensional regions seem reasonable.  
+//     Beyond that I'd say just do volume addition splits
+//   - we should examine changing the interaction detection code to use our corner split solution since we exectute that algorithm 
 //     on a lot of potential pairs/interactions
 
 
@@ -145,7 +145,7 @@ namespace DEFINED_ZONE_NAME {
 //- implement a function that calcualtes the total of any volume using just the(0, 0, ..., 0, 0) totals ..as a debugging function.We might use this for trying out more complicated splits where we allow 2 splits on some axies
 // TODO: build a pair and triple specific version of this function.  For pairs we can get ride of the pPrevious and just use the actual cell at (-1,-1) from our current cell, and we can use two loops with everything in memory [look at code above from before we incoporated the previous totals].  Triples would also benefit from pulling things out since we have low iterations of the inner loop and we can access indicies directly without additional add/subtract/bit operations.  Beyond triples, the combinatorial choices start to explode, so we should probably use this general N-dimensional code.
 // TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler cCompilerDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
-// TODO: sort our N-dimensional groups at initialization so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!  After we determine the cuts, we can undo the re-ordering for cutting the tensor, which has just a few cells, so will be efficient
+// TODO: sort our N-dimensional groups at initialization so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!  After we determine the splits, we can undo the re-ordering for splitting the tensor, which has just a few cells, so will be efficient
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
 class TensorTotalsBuildInternal final {
 public:
@@ -181,7 +181,7 @@ public:
          aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
       // TODO: we can get rid of the cCompilerDimensions aspect here by making the 1 or 2 inner loops register/pointer
-      //       based and then having a stack based pointer system like the RandomCutState class in PartitionRandomBoostingInternal
+      //       based and then having a stack based pointer system like the RandomSplitState class in PartitionRandomBoostingInternal
       //       to handle any dimensions at the 3rd level and above.  We'll never need to make any additional checks 
       //       on main memory until we reach the 3rd dimension which should be enough for any performance geek
       const size_t cSignificantDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountSignificantDimensions());
@@ -1008,14 +1008,14 @@ extern void TensorTotalsBuild(
 //
 //      FloatEbmType bestSplittingScore = FloatEbmType { -std::numeric_limits<FloatEbmType>::infinity() };
 //
-//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 1)) {
 //         free(aDynamicHistogramBuckets);
 //#ifndef NDEBUG
 //         free(aHistogramBucketsDebugCopy);
 //#endif // NDEBUG
 //         return true;
 //      }
-//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 1)) {
 //         free(aDynamicHistogramBuckets);
 //#ifndef NDEBUG
 //         free(aHistogramBucketsDebugCopy);
@@ -1080,8 +1080,8 @@ extern void TensorTotalsBuild(
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FloatEbmType predictionTarget;
@@ -1123,8 +1123,8 @@ extern void TensorTotalsBuild(
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FloatEbmType predictionTarget;
@@ -1166,8 +1166,8 @@ extern void TensorTotalsBuild(
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FloatEbmType predictionTarget;
@@ -1208,8 +1208,8 @@ extern void TensorTotalsBuild(
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FloatEbmType predictionTarget;

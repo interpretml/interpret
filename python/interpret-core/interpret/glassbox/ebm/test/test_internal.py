@@ -35,9 +35,9 @@ def test_booster_internals():
         )
         assert gain == 0
 
-        cuts = booster.get_model_update_cuts()
-        assert len(cuts) == 1
-        assert len(cuts[0]) == 0
+        splits = booster.get_model_update_splits()
+        assert len(splits) == 1
+        assert len(splits[0]) == 0
 
         model_update = booster.get_model_update_expanded()
         assert len(model_update.shape) == 1
@@ -84,9 +84,9 @@ def test_one_class():
         )
         assert gain == 0
 
-        cuts = booster.get_model_update_cuts()
-        assert len(cuts) == 1
-        assert len(cuts[0]) == 0
+        splits = booster.get_model_update_splits()
+        assert len(splits) == 1
+        assert len(splits[0]) == 0
 
         model_update = booster.get_model_update_expanded()
         assert model_update is None

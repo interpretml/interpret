@@ -22,7 +22,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-SegmentedTensor * SegmentedTensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
+SliceableTensor * SliceableTensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
    EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
    EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless
 
@@ -33,26 +33,26 @@ SegmentedTensor * SegmentedTensor::Allocate(const size_t cDimensionsMax, const s
    const size_t cValueCapacity = k_initialValueCapacity * cVectorLength;
 
    // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
-   const size_t cBytesSegmentedRegion = sizeof(SegmentedTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
-   SegmentedTensor * const pSegmentedRegion = EbmMalloc<SegmentedTensor>(1, cBytesSegmentedRegion);
-   if(UNLIKELY(nullptr == pSegmentedRegion)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
+   const size_t cBytesSliceableTensor = sizeof(SliceableTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
+   SliceableTensor * const pSliceableTensor = EbmMalloc<SliceableTensor>(1, cBytesSliceableTensor);
+   if(UNLIKELY(nullptr == pSliceableTensor)) {
+      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pSliceableTensor");
       return nullptr;
    }
 
-   pSegmentedRegion->m_cVectorLength = cVectorLength;
-   pSegmentedRegion->m_cDimensionsMax = cDimensionsMax;
-   pSegmentedRegion->m_cDimensions = cDimensionsMax;
-   pSegmentedRegion->m_cValueCapacity = cValueCapacity;
-   pSegmentedRegion->m_bExpanded = false;
+   pSliceableTensor->m_cVectorLength = cVectorLength;
+   pSliceableTensor->m_cDimensionsMax = cDimensionsMax;
+   pSliceableTensor->m_cDimensions = cDimensionsMax;
+   pSliceableTensor->m_cValueCapacity = cValueCapacity;
+   pSliceableTensor->m_bExpanded = false;
 
    FloatEbmType * const aValues = EbmMalloc<FloatEbmType>(cValueCapacity);
    if(UNLIKELY(nullptr == aValues)) {
       LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
-      free(pSegmentedRegion); // don't need to call the full Free(*) yet
+      free(pSliceableTensor); // don't need to call the full Free(*) yet
       return nullptr;
    }
-   pSegmentedRegion->m_aValues = aValues;
+   pSliceableTensor->m_aValues = aValues;
    // we only need to set the base case to zero, not our entire initial allocation
    // we checked for cVectorLength * k_initialValueCapacity * sizeof(FloatEbmType), and 1 <= k_initialValueCapacity, 
    // so sizeof(FloatEbmType) * cVectorLength can't overflow
@@ -61,52 +61,52 @@ SegmentedTensor * SegmentedTensor::Allocate(const size_t cDimensionsMax, const s
    }
 
    if(0 != cDimensionsMax) {
-      DimensionInfo * pDimension = pSegmentedRegion->GetDimensions();
+      DimensionInfo * pDimension = pSliceableTensor->GetDimensions();
       size_t iDimension = 0;
       do {
-         pDimension->m_cDivisions = 0;
-         pDimension->m_cDivisionCapacity = k_initialDivisionCapacity;
-         pDimension->m_aDivisions = nullptr;
+         pDimension->m_cSplits = 0;
+         pDimension->m_cSplitCapacity = k_initialSplitCapacity;
+         pDimension->m_aSplits = nullptr;
          ++pDimension;
          ++iDimension;
       } while(iDimension < cDimensionsMax);
 
-      pDimension = pSegmentedRegion->GetDimensions();
+      pDimension = pSliceableTensor->GetDimensions();
       iDimension = 0;
       do {
-         ActiveDataType * const aDivisions = EbmMalloc<ActiveDataType>(k_initialDivisionCapacity);
-         if(UNLIKELY(nullptr == aDivisions)) {
-            LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
-            Free(pSegmentedRegion); // free everything!
+         ActiveDataType * const aSplits = EbmMalloc<ActiveDataType>(k_initialSplitCapacity);
+         if(UNLIKELY(nullptr == aSplits)) {
+            LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aSplits");
+            Free(pSliceableTensor); // free everything!
             return nullptr;
          }
-         pDimension->m_aDivisions = aDivisions;
+         pDimension->m_aSplits = aSplits;
          ++pDimension;
          ++iDimension;
       } while(iDimension < cDimensionsMax);
    }
-   return pSegmentedRegion;
+   return pSliceableTensor;
 }
 
-void SegmentedTensor::Free(SegmentedTensor * const pSegmentedRegion) {
-   if(LIKELY(nullptr != pSegmentedRegion)) {
-      free(pSegmentedRegion->m_aValues);
-      if(LIKELY(0 != pSegmentedRegion->m_cDimensionsMax)) {
-         const DimensionInfo * pDimensionInfo = pSegmentedRegion->GetDimensions();
-         const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pSegmentedRegion->m_cDimensionsMax];
+void SliceableTensor::Free(SliceableTensor * const pSliceableTensor) {
+   if(LIKELY(nullptr != pSliceableTensor)) {
+      free(pSliceableTensor->m_aValues);
+      if(LIKELY(0 != pSliceableTensor->m_cDimensionsMax)) {
+         const DimensionInfo * pDimensionInfo = pSliceableTensor->GetDimensions();
+         const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pSliceableTensor->m_cDimensionsMax];
          do {
-            free(pDimensionInfo->m_aDivisions);
+            free(pDimensionInfo->m_aSplits);
             ++pDimensionInfo;
          } while(pDimensionInfoEnd != pDimensionInfo);
       }
-      free(pSegmentedRegion);
+      free(pSliceableTensor);
    }
 }
 
-void SegmentedTensor::Reset() {
+void SliceableTensor::Reset() {
    DimensionInfo * pDimensionInfo = GetDimensions();
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-      pDimensionInfo[iDimension].m_cDivisions = 0;
+      pDimensionInfo[iDimension].m_cSplits = 0;
    }
    // we only need to set the base case to zero
    // this can't overflow since we previously allocated this memory
@@ -116,43 +116,43 @@ void SegmentedTensor::Reset() {
    m_bExpanded = false;
 }
 
-ErrorEbmType SegmentedTensor::SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
+ErrorEbmType SliceableTensor::SetCountSplits(const size_t iDimension, const size_t cSplits) {
    EBM_ASSERT(iDimension < m_cDimensions);
    DimensionInfo * const pDimension = &GetDimensions()[iDimension];
    // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
-   EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->m_cDivisions);
-   if(UNLIKELY(pDimension->m_cDivisionCapacity < cDivisions)) {
+   EBM_ASSERT(!m_bExpanded || cSplits <= pDimension->m_cSplits);
+   if(UNLIKELY(pDimension->m_cSplitCapacity < cSplits)) {
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
-      if(IsAddError(cDivisions, cDivisions >> 1)) {
-         LOG_0(TraceLevelWarning, "WARNING SetCountDivisions IsAddError(cDivisions, cDivisions >> 1)");
+      if(IsAddError(cSplits, cSplits >> 1)) {
+         LOG_0(TraceLevelWarning, "WARNING SetCountSplits IsAddError(cSplits, cSplits >> 1)");
          return Error_OutOfMemory;
       }
-      // just increase it by 50% since we don't expect to grow our divisions often after an initial period, 
+      // just increase it by 50% since we don't expect to grow our splits often after an initial period, 
       // and realloc takes some of the cost of growing away
-      size_t cNewDivisionCapacity = cDivisions + (cDivisions >> 1);
-      LOG_N(TraceLevelInfo, "SetCountDivisions Growing to size %zu", cNewDivisionCapacity);
+      size_t cNewSplitCapacity = cSplits + (cSplits >> 1);
+      LOG_N(TraceLevelInfo, "SetCountSplits Growing to size %zu", cNewSplitCapacity);
 
-      if(IsMultiplyError(sizeof(ActiveDataType), cNewDivisionCapacity)) {
-         LOG_0(TraceLevelWarning, "WARNING SetCountDivisions IsMultiplyError(sizeof(ActiveDataType), cNewDivisionCapacity)");
+      if(IsMultiplyError(sizeof(ActiveDataType), cNewSplitCapacity)) {
+         LOG_0(TraceLevelWarning, "WARNING SetCountSplits IsMultiplyError(sizeof(ActiveDataType), cNewSplitCapacity)");
          return Error_OutOfMemory;
       }
-      size_t cBytes = sizeof(ActiveDataType) * cNewDivisionCapacity;
-      ActiveDataType * const aNewDivisions = static_cast<ActiveDataType *>(realloc(pDimension->m_aDivisions, cBytes));
-      if(UNLIKELY(nullptr == aNewDivisions)) {
+      size_t cBytes = sizeof(ActiveDataType) * cNewSplitCapacity;
+      ActiveDataType * const aNewSplits = static_cast<ActiveDataType *>(realloc(pDimension->m_aSplits, cBytes));
+      if(UNLIKELY(nullptr == aNewSplits)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
-         LOG_0(TraceLevelWarning, "WARNING SetCountDivisions nullptr == aNewDivisions");
+         LOG_0(TraceLevelWarning, "WARNING SetCountSplits nullptr == aNewSplits");
          return Error_OutOfMemory;
       }
-      pDimension->m_aDivisions = aNewDivisions;
-      pDimension->m_cDivisionCapacity = cNewDivisionCapacity;
+      pDimension->m_aSplits = aNewSplits;
+      pDimension->m_cSplitCapacity = cNewSplitCapacity;
    } // never shrink our array unless the user chooses to Trim()
-   pDimension->m_cDivisions = cDivisions;
+   pDimension->m_cSplits = cSplits;
    return Error_None;
 }
 
-ErrorEbmType SegmentedTensor::EnsureValueCapacity(const size_t cValues) {
+ErrorEbmType SliceableTensor::EnsureValueCapacity(const size_t cValues) {
    if(UNLIKELY(m_cValueCapacity < cValues)) {
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
@@ -182,7 +182,7 @@ ErrorEbmType SegmentedTensor::EnsureValueCapacity(const size_t cValues) {
    return Error_None;
 }
 
-ErrorEbmType SegmentedTensor::Copy(const SegmentedTensor & rhs) {
+ErrorEbmType SliceableTensor::Copy(const SliceableTensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
@@ -191,16 +191,16 @@ ErrorEbmType SegmentedTensor::Copy(const SegmentedTensor & rhs) {
    size_t cValues = m_cVectorLength;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       const DimensionInfo * const pDimension = &pRhsDimensionInfo[iDimension];
-      size_t cDivisions = pDimension->m_cDivisions;
-      EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're copying this memory, so multiplication can't overflow
-      cValues *= (cDivisions + 1);
-      const ErrorEbmType error = SetCountDivisions(iDimension, cDivisions);
+      size_t cSplits = pDimension->m_cSplits;
+      EBM_ASSERT(!IsMultiplyError(cValues, cSplits + 1)); // we're copying this memory, so multiplication can't overflow
+      cValues *= (cSplits + 1);
+      const ErrorEbmType error = SetCountSplits(iDimension, cSplits);
       if(UNLIKELY(Error_None != error)) {
-         LOG_0(TraceLevelWarning, "WARNING Copy SetCountDivisions(iDimension, cDivisions)");
+         LOG_0(TraceLevelWarning, "WARNING Copy SetCountSplits(iDimension, cSplits)");
          return error;
       }
-      EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cDivisions)); // we're copying this memory, so multiplication can't overflow
-      memcpy(pThisDimensionInfo[iDimension].m_aDivisions, pDimension->m_aDivisions, sizeof(ActiveDataType) * cDivisions);
+      EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cSplits)); // we're copying this memory, so multiplication can't overflow
+      memcpy(pThisDimensionInfo[iDimension].m_aSplits, pDimension->m_aSplits, sizeof(ActiveDataType) * cSplits);
    }
    const ErrorEbmType error = EnsureValueCapacity(cValues);
    if(UNLIKELY(Error_None != error)) {
@@ -213,21 +213,21 @@ ErrorEbmType SegmentedTensor::Copy(const SegmentedTensor & rhs) {
    return Error_None;
 }
 
-bool SegmentedTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
+bool SliceableTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
 
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
 
    size_t cValues = 1;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       // we're accessing existing memory, so it can't overflow
-      EBM_ASSERT(!IsMultiplyError(cValues, pThisDimensionInfo[iDimension].m_cDivisions + 1));
-      cValues *= pThisDimensionInfo[iDimension].m_cDivisions + 1;
+      EBM_ASSERT(!IsMultiplyError(cValues, pThisDimensionInfo[iDimension].m_cSplits + 1));
+      cValues *= pThisDimensionInfo[iDimension].m_cSplits + 1;
    }
 
    FloatEbmType * pCur = &m_aValues[0];
    FloatEbmType * pEnd = &m_aValues[cValues * m_cVectorLength];
    int bBad = 0;
-   // we always have 1 value, even if we have zero divisions
+   // we always have 1 value, even if we have zero splits
    do {
       const FloatEbmType val = *pCur * v;
       // TODO: these can be done with bitwise operators, which would be good for SIMD.  Check to see what assembly this turns into.
@@ -241,7 +241,7 @@ bool SegmentedTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
    return !!bBad;
 }
 
-ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
+ErrorEbmType SliceableTensor::Expand(const FeatureGroup * const pFeatureGroup) {
    // checking the max isn't really the best here, but doing this right seems pretty complicated
    static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<ActiveDataType>::max() &&
       0 == std::numeric_limits<ActiveDataType>::min(), "bad AcitveDataType size");
@@ -267,7 +267,7 @@ ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
       size_t cValues1 = 1;
       size_t cNewValues = 1;
 
-      // first, get basic counts of how many divisions and values we'll have in our final result
+      // first, get basic counts of how many splits and values we'll have in our final result
       do {
          const size_t cBins = pFeatureGroupEntry1->m_pFeature->GetCountBins();
 
@@ -280,16 +280,16 @@ ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
             // strip any dimensions which have 1 bin since the tensor shape doesn't change and we 
             // have limited stack memory to store dimension information
 
-            const size_t cDivisions1 = pDimensionFirst1->m_cDivisions;
+            const size_t cSplits1 = pDimensionFirst1->m_cSplits;
 
-            EBM_ASSERT(!IsMultiplyError(cValues1, cDivisions1 + 1)); // this is accessing existing memory, so it can't overflow
-            cValues1 *= cDivisions1 + 1;
+            EBM_ASSERT(!IsMultiplyError(cValues1, cSplits1 + 1)); // this is accessing existing memory, so it can't overflow
+            cValues1 *= cSplits1 + 1;
 
-            pDimensionInfoStackFirst->m_pDivision1 = &pDimensionFirst1->m_aDivisions[cDivisions1];
+            pDimensionInfoStackFirst->m_pSplit1 = &pDimensionFirst1->m_aSplits[cSplits1];
 
-            const size_t cCuts = cBins - size_t { 1 };
-            pDimensionInfoStackFirst->m_iDivision2 = cCuts;
-            pDimensionInfoStackFirst->m_cNewDivisions = cCuts;
+            const size_t cSplits = cBins - size_t { 1 };
+            pDimensionInfoStackFirst->m_iSplit2 = cSplits;
+            pDimensionInfoStackFirst->m_cNewSplits = cSplits;
 
             ++pDimensionFirst1;
             ++pDimensionInfoStackFirst;
@@ -325,7 +325,7 @@ ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
          FloatEbmType * pValueTop = &aValues[cVectoredNewValues];
 
          // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
-         // existing values which we still need to copy first do the values because we need to refer to the old divisions when making decisions about 
+         // existing values which we still need to copy first do the values because we need to refer to the old splits when making decisions about 
          // where to move next
          while(true) {
             const FloatEbmType * pValue1Move = pValue1;
@@ -338,11 +338,11 @@ ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
                *pValueTop = *pValue1Move;
             } while(pValueTopEnd != pValueTop);
 
-            // For a single dimensional SegmentedRegion checking here is best.  
+            // For a single dimensional SliceableTensor checking here is best.  
             // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
             // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
             // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
-            // multi-dimensioncal SegmentedTensors
+            // multi-dimensioncal SliceableTensors
             if(UNLIKELY(aValues == pValueTop)) {
                // we've written our final tensor cell, so we're done
                break;
@@ -354,44 +354,44 @@ ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
             size_t multiplication1 = m_cVectorLength;
 
             while(true) {
-               const ActiveDataType * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
-               size_t iDivision2 = pDimensionInfoStackSecond->m_iDivision2;
+               const ActiveDataType * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
+               size_t iSplit2 = pDimensionInfoStackSecond->m_iSplit2;
 
-               ActiveDataType * const aDivisions1 = pDimensionSecond1->m_aDivisions;
+               ActiveDataType * const aSplits1 = pDimensionSecond1->m_aSplits;
 
-               if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
-                  EBM_ASSERT(0 < iDivision2);
+               if(UNPREDICTABLE(aSplits1 < pSplit1)) {
+                  EBM_ASSERT(0 < iSplit2);
 
-                  const ActiveDataType * const pDivision1MinusOne = pDivision1 - 1;
+                  const ActiveDataType * const pSplit1MinusOne = pSplit1 - 1;
 
-                  const size_t d1 = static_cast<size_t>(*pDivision1MinusOne);
+                  const size_t d1 = static_cast<size_t>(*pSplit1MinusOne);
 
-                  --iDivision2;
+                  --iSplit2;
 
-                  const bool bMove = UNPREDICTABLE(iDivision2 <= d1);
-                  pDimensionInfoStackSecond->m_pDivision1 = bMove ? pDivision1MinusOne : pDivision1;
+                  const bool bMove = UNPREDICTABLE(iSplit2 <= d1);
+                  pDimensionInfoStackSecond->m_pSplit1 = bMove ? pSplit1MinusOne : pSplit1;
                   pValue1 = bMove ? pValue1 - multiplication1 : pValue1;
 
-                  pDimensionInfoStackSecond->m_iDivision2 = iDivision2;
+                  pDimensionInfoStackSecond->m_iSplit2 = iSplit2;
                   break;
                } else {
-                  if(UNPREDICTABLE(0 < iDivision2)) {
-                     pDimensionInfoStackSecond->m_iDivision2 = iDivision2 - 1;
+                  if(UNPREDICTABLE(0 < iSplit2)) {
+                     pDimensionInfoStackSecond->m_iSplit2 = iSplit2 - 1;
                      break;
                   } else {
                      pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
 
-                     const size_t cDivisions1 = pDimensionSecond1->m_cDivisions;
+                     const size_t cSplits1 = pDimensionSecond1->m_cSplits;
 
                      // we're already allocated values, so this is accessing what we've already allocated, so it must not overflow
-                     EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1));
-                     multiplication1 *= 1 + cDivisions1;
+                     EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cSplits1));
+                     multiplication1 *= 1 + cSplits1;
 
                      // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
                      pValue1 += multiplication1;
 
-                     pDimensionInfoStackSecond->m_pDivision1 = &aDivisions1[cDivisions1];
-                     pDimensionInfoStackSecond->m_iDivision2 = pDimensionInfoStackSecond->m_cNewDivisions;
+                     pDimensionInfoStackSecond->m_pSplit1 = &aSplits1[cSplits1];
+                     pDimensionInfoStackSecond->m_iSplit2 = pDimensionInfoStackSecond->m_cNewSplits;
 
                      ++pDimensionSecond1;
                      ++pDimensionInfoStackSecond;
@@ -409,25 +409,25 @@ ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
          do {
             const size_t cBins = pFeatureGroupEntry2->m_pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
-            const size_t cDivisions = cBins - size_t { 1 };
-            if(size_t { 0 } < cDivisions) {
+            const size_t cSplits = cBins - size_t { 1 };
+            if(size_t { 0 } < cSplits) {
                // strip any dimensions which have 1 bin since the tensor shape doesn't change and we 
                // have limited stack memory to store dimension information
 
                const DimensionInfo * const pDimension = &aDimension1[iDimension];
-               if(cDivisions != pDimension->m_cDivisions) {
-                  error = SetCountDivisions(iDimension, cDivisions);
+               if(cSplits != pDimension->m_cSplits) {
+                  error = SetCountSplits(iDimension, cSplits);
                   if(UNLIKELY(Error_None != error)) {
                      // already logged
                      return error;
                   }
 
-                  ActiveDataType * const aDivision = pDimension->m_aDivisions;
-                  size_t iDivision = 0;
+                  ActiveDataType * const aSplit = pDimension->m_aSplits;
+                  size_t iSplit = 0;
                   do {
-                     aDivision[iDivision] = iDivision;
-                     ++iDivision;
-                  } while(cDivisions != iDivision);
+                     aSplit[iSplit] = iSplit;
+                     ++iSplit;
+                  } while(cSplits != iSplit);
                }
                ++iDimension;
             }
@@ -441,7 +441,7 @@ ErrorEbmType SegmentedTensor::Expand(const FeatureGroup * const pFeatureGroup) {
    return Error_None;
 }
 
-void SegmentedTensor::AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues) {
+void SliceableTensor::AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues) {
    EBM_ASSERT(m_bExpanded);
    size_t cItems = m_cVectorLength;
 
@@ -449,7 +449,7 @@ void SegmentedTensor::AddExpandedWithBadValueProtection(const FloatEbmType * con
 
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       // this can't overflow since we've already allocated them!
-      cItems *= aDimension[iDimension].m_cDivisions + 1;
+      cItems *= aDimension[iDimension].m_cSplits + 1;
    }
 
    const FloatEbmType * pFromValue = aFromValues;
@@ -482,7 +482,7 @@ void SegmentedTensor::AddExpandedWithBadValueProtection(const FloatEbmType * con
 
 // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops 
 //   without needing to super-optimize it
-ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
+ErrorEbmType SliceableTensor::Add(const SliceableTensor & rhs) {
    DimensionInfoStack dimensionStack[k_cDimensionsMax];
 
    ErrorEbmType error;
@@ -524,39 +524,39 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
    size_t cNewValues = 1;
 
    EBM_ASSERT(0 < m_cDimensions);
-   // first, get basic counts of how many divisions and values we'll have in our final result
+   // first, get basic counts of how many splits and values we'll have in our final result
    do {
-      const size_t cDivisions1 = pDimensionFirst1->m_cDivisions;
-      ActiveDataType * p1Cur = pDimensionFirst1->m_aDivisions;
-      const size_t cDivisions2 = pDimensionFirst2->m_cDivisions;
-      ActiveDataType * p2Cur = pDimensionFirst2->m_aDivisions;
+      const size_t cSplits1 = pDimensionFirst1->m_cSplits;
+      ActiveDataType * p1Cur = pDimensionFirst1->m_aSplits;
+      const size_t cSplits2 = pDimensionFirst2->m_cSplits;
+      ActiveDataType * p2Cur = pDimensionFirst2->m_aSplits;
 
-      cValues1 *= cDivisions1 + 1; // this can't overflow since we're counting existing allocated memory
-      cValues2 *= cDivisions2 + 1; // this can't overflow since we're counting existing allocated memory
+      cValues1 *= cSplits1 + 1; // this can't overflow since we're counting existing allocated memory
+      cValues2 *= cSplits2 + 1; // this can't overflow since we're counting existing allocated memory
 
-      ActiveDataType * const p1End = &p1Cur[cDivisions1];
-      ActiveDataType * const p2End = &p2Cur[cDivisions2];
+      ActiveDataType * const p1End = &p1Cur[cSplits1];
+      ActiveDataType * const p2End = &p2Cur[cSplits2];
 
-      pDimensionInfoStackFirst->m_pDivision1 = p1End;
-      pDimensionInfoStackFirst->m_pDivision2 = p2End;
+      pDimensionInfoStackFirst->m_pSplit1 = p1End;
+      pDimensionInfoStackFirst->m_pSplit2 = p2End;
 
-      size_t cNewSingleDimensionDivisions = 0;
+      size_t cNewSingleDimensionSplits = 0;
 
-      // processing forwards here is slightly faster in terms of cache fetch efficiency.  We'll then be guaranteed to have the divisions at least
+      // processing forwards here is slightly faster in terms of cache fetch efficiency.  We'll then be guaranteed to have the splits at least
       // in the cache, which will be benefitial when traversing backwards later below
       while(true) {
          if(UNLIKELY(p2End == p2Cur)) {
             // check the other array first.  Most of the time the other array will be shorter since we'll be adding
-            // a sequence of Segmented lines and our main line will be in *this, and there will be more segments in general for
+            // a sequence of sliced lines and our main line will be in *this, and there will be more slices in general for
             // a line that is added to a lot
-            cNewSingleDimensionDivisions += static_cast<size_t>(p1End - p1Cur);
+            cNewSingleDimensionSplits += static_cast<size_t>(p1End - p1Cur);
             break;
          }
          if(UNLIKELY(p1End == p1Cur)) {
-            cNewSingleDimensionDivisions += static_cast<size_t>(p2End - p2Cur);
+            cNewSingleDimensionSplits += static_cast<size_t>(p2End - p2Cur);
             break;
          }
-         ++cNewSingleDimensionDivisions; // if we move one or both pointers, we just added annother unique one
+         ++cNewSingleDimensionSplits; // if we move one or both pointers, we just added annother unique one
 
          const ActiveDataType d1 = *p1Cur;
          const ActiveDataType d2 = *p2Cur;
@@ -564,11 +564,11 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
          p1Cur = UNPREDICTABLE(d1 <= d2) ? p1Cur + 1 : p1Cur;
          p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
       }
-      pDimensionInfoStackFirst->m_cNewDivisions = cNewSingleDimensionDivisions;
+      pDimensionInfoStackFirst->m_cNewSplits = cNewSingleDimensionSplits;
       // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes and in 
       // CalculateInteractionScore for interactions
-      EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1));
-      cNewValues *= cNewSingleDimensionDivisions + 1;
+      EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionSplits + 1));
+      cNewValues *= cNewSingleDimensionSplits + 1;
 
       ++pDimensionFirst1;
       ++pDimensionFirst2;
@@ -597,7 +597,7 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
    FloatEbmType * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
 
    // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our
-   // existing values which we still need to copy first do the values because we need to refer to the old divisions when making decisions about where 
+   // existing values which we still need to copy first do the values because we need to refer to the old splits when making decisions about where 
    // to move next
    while(true) {
       const FloatEbmType * pValue1Move = pValue1;
@@ -610,11 +610,11 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
          *pValueTop = *pValue1Move + *pValue2Move;
       } while(pValueTopEnd != pValueTop);
 
-      // For a single dimensional SegmentedRegion checking here is best.  
+      // For a single dimensional SliceableTensor checking here is best.  
       // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack,
       // thus eliminating the check on most loops.  We'll spend most of our time working on single features though, so we optimize for that case, 
       // but if we special cased the single dimensional case, then we would want to move this check into the loop below in the case 
-      // of multi-dimensioncal SegmentedTensors
+      // of multi-dimensioncal SliceableTensors
       if(UNLIKELY(aValues == pValueTop)) {
          // we've written our final tensor cell, so we're done
          break;
@@ -628,57 +628,57 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
       size_t multiplication2 = m_cVectorLength;
 
       while(true) {
-         const ActiveDataType * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
-         const ActiveDataType * const pDivision2 = pDimensionInfoStackSecond->m_pDivision2;
+         const ActiveDataType * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
+         const ActiveDataType * const pSplit2 = pDimensionInfoStackSecond->m_pSplit2;
 
-         ActiveDataType * const aDivisions1 = pDimensionSecond1->m_aDivisions;
-         ActiveDataType * const aDivisions2 = pDimensionSecond2->m_aDivisions;
+         ActiveDataType * const aSplits1 = pDimensionSecond1->m_aSplits;
+         ActiveDataType * const aSplits2 = pDimensionSecond2->m_aSplits;
 
-         if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
-            if(UNPREDICTABLE(aDivisions2 < pDivision2)) {
-               const ActiveDataType * const pDivision1MinusOne = pDivision1 - 1;
-               const ActiveDataType * const pDivision2MinusOne = pDivision2 - 1;
+         if(UNPREDICTABLE(aSplits1 < pSplit1)) {
+            if(UNPREDICTABLE(aSplits2 < pSplit2)) {
+               const ActiveDataType * const pSplit1MinusOne = pSplit1 - 1;
+               const ActiveDataType * const pSplit2MinusOne = pSplit2 - 1;
 
-               const ActiveDataType d1 = *pDivision1MinusOne;
-               const ActiveDataType d2 = *pDivision2MinusOne;
+               const ActiveDataType d1 = *pSplit1MinusOne;
+               const ActiveDataType d2 = *pSplit2MinusOne;
 
                const bool bMove1 = UNPREDICTABLE(d2 <= d1);
-               pDimensionInfoStackSecond->m_pDivision1 = bMove1 ? pDivision1MinusOne : pDivision1;
+               pDimensionInfoStackSecond->m_pSplit1 = bMove1 ? pSplit1MinusOne : pSplit1;
                pValue1 = bMove1 ? pValue1 - multiplication1 : pValue1;
 
                const bool bMove2 = UNPREDICTABLE(d1 <= d2);
-               pDimensionInfoStackSecond->m_pDivision2 = bMove2 ? pDivision2MinusOne : pDivision2;
+               pDimensionInfoStackSecond->m_pSplit2 = bMove2 ? pSplit2MinusOne : pSplit2;
                pValue2 = bMove2 ? pValue2 - multiplication2 : pValue2;
                break;
             } else {
                pValue1 -= multiplication1;
-               pDimensionInfoStackSecond->m_pDivision1 = pDivision1 - 1;
+               pDimensionInfoStackSecond->m_pSplit1 = pSplit1 - 1;
                break;
             }
          } else {
-            if(UNPREDICTABLE(aDivisions2 < pDivision2)) {
+            if(UNPREDICTABLE(aSplits2 < pSplit2)) {
                pValue2 -= multiplication2;
-               pDimensionInfoStackSecond->m_pDivision2 = pDivision2 - 1;
+               pDimensionInfoStackSecond->m_pSplit2 = pSplit2 - 1;
                break;
             } else {
                pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
                pValue2 -= multiplication2; // put us before the beginning.  We'll add the full row first
 
-               const size_t cDivisions1 = pDimensionSecond1->m_cDivisions;
-               const size_t cDivisions2 = pDimensionSecond2->m_cDivisions;
+               const size_t cSplits1 = pDimensionSecond1->m_cSplits;
+               const size_t cSplits2 = pDimensionSecond2->m_cSplits;
 
-               EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1)); // we're accessing allocated memory, so it can't overflow
-               multiplication1 *= 1 + cDivisions1;
-               EBM_ASSERT(!IsMultiplyError(multiplication2, 1 + cDivisions2)); // we're accessing allocated memory, so it can't overflow
-               multiplication2 *= 1 + cDivisions2;
+               EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cSplits1)); // we're accessing allocated memory, so it can't overflow
+               multiplication1 *= 1 + cSplits1;
+               EBM_ASSERT(!IsMultiplyError(multiplication2, 1 + cSplits2)); // we're accessing allocated memory, so it can't overflow
+               multiplication2 *= 1 + cSplits2;
 
                // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
                pValue1 += multiplication1;
                // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
                pValue2 += multiplication2;
 
-               pDimensionInfoStackSecond->m_pDivision1 = &aDivisions1[cDivisions1];
-               pDimensionInfoStackSecond->m_pDivision2 = &aDivisions2[cDivisions2];
+               pDimensionInfoStackSecond->m_pSplit1 = &aSplits1[cSplits1];
+               pDimensionInfoStackSecond->m_pSplit2 = &aSplits2[cSplits2];
                ++pDimensionSecond1;
                ++pDimensionSecond2;
                ++pDimensionInfoStackSecond;
@@ -692,52 +692,52 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
    EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength);
    EBM_ASSERT(pValue2 == rhs.m_aValues + m_cVectorLength);
 
-   // now finally do the divisions
+   // now finally do the splits
 
    const DimensionInfoStack * pDimensionInfoStackCur = dimensionStack;
    const DimensionInfo * pDimension1Cur = aDimension1;
    const DimensionInfo * pDimension2Cur = aDimension2;
    size_t iDimension = 0;
    do {
-      const size_t cNewDivisions = pDimensionInfoStackCur->m_cNewDivisions;
-      const size_t cOriginalDivisionsBeforeSetting = pDimension1Cur->m_cDivisions;
+      const size_t cNewSplits = pDimensionInfoStackCur->m_cNewSplits;
+      const size_t cOriginalSplitsBeforeSetting = pDimension1Cur->m_cSplits;
 
-      // this will increase our capacity, if required.  It will also change m_cDivisions, so we get that before calling it.  
-      // SetCountDivisions might change m_aValuesAndDivisions, so we need to actually keep it here after getting m_cDivisions but 
+      // this will increase our capacity, if required.  It will also change m_cSplits, so we get that before calling it.  
+      // SetCountSplits might change m_aValuesAndSplits, so we need to actually keep it here after getting m_cSplits but 
       // before set set all our pointers
-      error = SetCountDivisions(iDimension, cNewDivisions);
+      error = SetCountSplits(iDimension, cNewSplits);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
       }
 
-      const ActiveDataType * p1Cur = &pDimension1Cur->m_aDivisions[cOriginalDivisionsBeforeSetting];
-      const ActiveDataType * p2Cur = &pDimension2Cur->m_aDivisions[pDimension2Cur->m_cDivisions];
-      ActiveDataType * pTopCur = &pDimension1Cur->m_aDivisions[cNewDivisions];
+      const ActiveDataType * p1Cur = &pDimension1Cur->m_aSplits[cOriginalSplitsBeforeSetting];
+      const ActiveDataType * p2Cur = &pDimension2Cur->m_aSplits[pDimension2Cur->m_cSplits];
+      ActiveDataType * pTopCur = &pDimension1Cur->m_aSplits[cNewSplits];
 
       // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values
       // which we still need to copy
       while(true) {
-         EBM_ASSERT(pDimension1Cur->m_aDivisions <= pTopCur);
-         EBM_ASSERT(pDimension1Cur->m_aDivisions <= p1Cur);
-         EBM_ASSERT(pDimension2Cur->m_aDivisions <= p2Cur);
+         EBM_ASSERT(pDimension1Cur->m_aSplits <= pTopCur);
+         EBM_ASSERT(pDimension1Cur->m_aSplits <= p1Cur);
+         EBM_ASSERT(pDimension2Cur->m_aSplits <= p2Cur);
          EBM_ASSERT(p1Cur <= pTopCur);
-         EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->m_aDivisions) <= static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions));
+         EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->m_aSplits) <= static_cast<size_t>(pTopCur - pDimension1Cur->m_aSplits));
 
          if(UNLIKELY(pTopCur == p1Cur)) {
-            // since we've finished the rhs divisions, our SegmentedRegion already has the right divisions in place, so all we need is to add the value
+            // since we've finished the rhs splits, our SliceableTensor already has the right splits in place, so all we need is to add the value
             // of the last region in rhs to our remaining values
             break;
          }
-         // pTopCur is an index above pDimension1Cur->m_aDivisions.  p2Cur is an index above pDimension2Cur->m_aDivisions.  We want to decide if they
+         // pTopCur is an index above pDimension1Cur->m_aSplits.  p2Cur is an index above pDimension2Cur->m_aSplits.  We want to decide if they
          // are at the same index above their respective arrays
-         if(UNLIKELY(static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions) == static_cast<size_t>(p2Cur - pDimension2Cur->m_aDivisions))) {
-            EBM_ASSERT(pDimension1Cur->m_aDivisions < pTopCur);
-            // direct copy the remaining divisions.  There should be at least one
+         if(UNLIKELY(static_cast<size_t>(pTopCur - pDimension1Cur->m_aSplits) == static_cast<size_t>(p2Cur - pDimension2Cur->m_aSplits))) {
+            EBM_ASSERT(pDimension1Cur->m_aSplits < pTopCur);
+            // direct copy the remaining splits.  There should be at least one
             memcpy(
-               pDimension1Cur->m_aDivisions,
-               pDimension2Cur->m_aDivisions,
-               static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions) * sizeof(ActiveDataType)
+               pDimension1Cur->m_aSplits,
+               pDimension2Cur->m_aSplits,
+               static_cast<size_t>(pTopCur - pDimension1Cur->m_aSplits) * sizeof(ActiveDataType)
             );
             break;
          }
@@ -765,7 +765,7 @@ ErrorEbmType SegmentedTensor::Add(const SegmentedTensor & rhs) {
 }
 
 #ifndef NDEBUG
-bool SegmentedTensor::IsEqual(const SegmentedTensor & rhs) const {
+bool SliceableTensor::IsEqual(const SliceableTensor & rhs) const {
    if(m_cDimensions != rhs.m_cDimensions) {
       return false;
    }
@@ -778,18 +778,18 @@ bool SegmentedTensor::IsEqual(const SegmentedTensor & rhs) const {
       const DimensionInfo * const pDimension1 = &pThisDimensionInfo[iDimension];
       const DimensionInfo * const pDimension2 = &pRhsDimensionInfo[iDimension];
 
-      size_t cDivisions = pDimension1->m_cDivisions;
-      if(cDivisions != pDimension2->m_cDivisions) {
+      size_t cSplits = pDimension1->m_cSplits;
+      if(cSplits != pDimension2->m_cSplits) {
          return false;
       }
 
-      if(0 != cDivisions) {
-         EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're accessing allocated memory, so it can't overflow
-         cValues *= cDivisions + 1;
+      if(0 != cSplits) {
+         EBM_ASSERT(!IsMultiplyError(cValues, cSplits + 1)); // we're accessing allocated memory, so it can't overflow
+         cValues *= cSplits + 1;
 
-         const ActiveDataType * pD1Cur = pDimension1->m_aDivisions;
-         const ActiveDataType * pD2Cur = pDimension2->m_aDivisions;
-         const ActiveDataType * const pD1End = pD1Cur + cDivisions;
+         const ActiveDataType * pD1Cur = pDimension1->m_aSplits;
+         const ActiveDataType * pD2Cur = pDimension2->m_aSplits;
+         const ActiveDataType * const pD1End = pD1Cur + cSplits;
          do {
             if(UNLIKELY(*pD1Cur != *pD2Cur)) {
                return false;

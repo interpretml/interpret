@@ -32,8 +32,8 @@ class BoosterShell final {
    BoosterCore * m_pBoosterCore;
    size_t m_iFeatureGroup;
 
-   SegmentedTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
-   SegmentedTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   SliceableTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   SliceableTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
 
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
@@ -123,11 +123,11 @@ public:
       m_iFeatureGroup = val;
    }
 
-   INLINE_ALWAYS SegmentedTensor * GetAccumulatedModelUpdate() {
+   INLINE_ALWAYS SliceableTensor * GetAccumulatedModelUpdate() {
       return m_pSmallChangeToModelAccumulatedFromSamplingSets;
    }
 
-   INLINE_ALWAYS SegmentedTensor * GetOverwritableModelUpdate() {
+   INLINE_ALWAYS SliceableTensor * GetOverwritableModelUpdate() {
       return m_pSmallChangeToModelOverwriteSingleSamplingSet;
    }
 
