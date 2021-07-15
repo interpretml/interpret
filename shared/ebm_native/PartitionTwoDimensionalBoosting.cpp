@@ -42,7 +42,7 @@ static FloatEbmType SweepMultiDimensional(
    const size_t cSamplesRequiredForChildSplitMin,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp,
-   size_t * const piBestCut
+   size_t * const piBestSplit
 #ifndef NDEBUG
    , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy
    , const unsigned char * const aHistogramBucketsEndDebug
@@ -65,7 +65,7 @@ static FloatEbmType SweepMultiDimensional(
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   EBM_ASSERT(!IsMultiplyError(2, cBytesPerHistogramBucket)); // we're accessing allocated memory
+   EBM_ASSERT(!IsMultiplyError(size_t { 2 }, cBytesPerHistogramBucket)); // we're accessing allocated memory
    const size_t cBytesPerTwoHistogramBuckets = cBytesPerHistogramBucket << 1;
 
    size_t * const piBin = &aiPoint[iDimensionSweep];
@@ -74,7 +74,7 @@ static FloatEbmType SweepMultiDimensional(
 
    EBM_ASSERT(2 <= cSweepBins);
 
-   size_t iBestCut = 0;
+   size_t iBestSplit = 0;
 
    HistogramBucket<bClassification> * const pTotalsLow =
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 2);
@@ -153,7 +153,7 @@ static FloatEbmType SweepMultiDimensional(
             // no big deal.  NaN values will get us soon and shut down boosting.
             if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(splittingScore <= bestSplit))) {
                bestSplit = splittingScore;
-               iBestCut = iBin;
+               iBestSplit = iBin;
 
                ASSERT_BINNED_BUCKET_OK(
                   cBytesPerHistogramBucket,
@@ -173,7 +173,7 @@ static FloatEbmType SweepMultiDimensional(
       }
       ++iBin;
    } while(iBin < cSweepBins - 1);
-   *piBestCut = iBestCut;
+   *piBestSplit = iBestSplit;
 
    EBM_ASSERT(std::isnan(bestSplit) || bestSplit == k_illegalGain || FloatEbmType { 0 } <= bestSplit); // sumation of positive numbers should be positive
    return bestSplit;
@@ -205,7 +205,7 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
-      SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
+      SliceableTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
          pBoosterShell->GetOverwritableModelUpdate();
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -253,9 +253,9 @@ public:
 
       FloatEbmType bestSplittingScore = k_illegalGain;
 
-      size_t cutFirst1Best;
-      size_t cutFirst1LowBest;
-      size_t cutFirst1HighBest;
+      size_t splitFirst1Best;
+      size_t splitFirst1LowBest;
+      size_t splitFirst1HighBest;
 
       HistogramBucket<bClassification> * pTotals1LowLowBest =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
@@ -298,7 +298,7 @@ public:
 
          splittingScore = FloatEbmType { 0 };
 
-         size_t cutSecond1LowBest;
+         size_t splitSecond1LowBest;
          HistogramBucket<bClassification> * pTotals2LowLowBest =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
          HistogramBucket<bClassification> * pTotals2LowHighBest =
@@ -313,7 +313,7 @@ public:
             cSamplesRequiredForChildSplitMin,
             runtimeLearningTypeOrCountTargetClasses,
             pTotals2LowLowBest,
-            &cutSecond1LowBest
+            &splitSecond1LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy
             , pBoosterShell->GetHistogramBucketsEndDebug()
@@ -327,7 +327,7 @@ public:
             EBM_ASSERT(std::isnan(splittingScoreNew1) || FloatEbmType { 0 } <= splittingScoreNew1);
             splittingScore += splittingScoreNew1;
 
-            size_t cutSecond1HighBest;
+            size_t splitSecond1HighBest;
             HistogramBucket<bClassification> * pTotals2HighLowBest =
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
             HistogramBucket<bClassification> * pTotals2HighHighBest =
@@ -342,7 +342,7 @@ public:
                cSamplesRequiredForChildSplitMin,
                runtimeLearningTypeOrCountTargetClasses,
                pTotals2HighLowBest,
-               &cutSecond1HighBest
+               &splitSecond1HighBest
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy
                , pBoosterShell->GetHistogramBucketsEndDebug()
@@ -362,9 +362,9 @@ public:
                if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/
                   !(splittingScore <= bestSplittingScore))) {
                   bestSplittingScore = splittingScore;
-                  cutFirst1Best = iBin1;
-                  cutFirst1LowBest = cutSecond1LowBest;
-                  cutFirst1HighBest = cutSecond1HighBest;
+                  splitFirst1Best = iBin1;
+                  splitFirst1LowBest = splitSecond1LowBest;
+                  splitFirst1HighBest = splitSecond1HighBest;
 
                   pTotals1LowLowBest->Copy(*pTotals2LowLowBest, cVectorLength);
                   pTotals1LowHighBest->Copy(*pTotals2LowHighBest, cVectorLength);
@@ -384,11 +384,11 @@ public:
          ++iBin1;
       } while(iBin1 < cBinsDimension1 - 1);
 
-      bool bCutFirst2 = false;
+      bool bSplitFirst2 = false;
 
-      size_t cutFirst2Best;
-      size_t cutFirst2LowBest;
-      size_t cutFirst2HighBest;
+      size_t splitFirst2Best;
+      size_t splitFirst2LowBest;
+      size_t splitFirst2HighBest;
 
       HistogramBucket<bClassification> * pTotals2LowLowBest =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 12);
@@ -406,7 +406,7 @@ public:
 
          splittingScore = FloatEbmType { 0 };
 
-         size_t cutSecond2LowBest;
+         size_t splitSecond2LowBest;
          HistogramBucket<bClassification> * pTotals1LowLowBestInner =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
          HistogramBucket<bClassification> * pTotals1LowHighBestInner =
@@ -421,7 +421,7 @@ public:
             cSamplesRequiredForChildSplitMin,
             runtimeLearningTypeOrCountTargetClasses,
             pTotals1LowLowBestInner,
-            &cutSecond2LowBest
+            &splitSecond2LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy
             , pBoosterShell->GetHistogramBucketsEndDebug()
@@ -435,7 +435,7 @@ public:
             EBM_ASSERT(std::isnan(splittingScoreNew1) || FloatEbmType { 0 } <= splittingScoreNew1);
             splittingScore += splittingScoreNew1;
 
-            size_t cutSecond2HighBest;
+            size_t splitSecond2HighBest;
             HistogramBucket<bClassification> * pTotals1HighLowBestInner =
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
             HistogramBucket<bClassification> * pTotals1HighHighBestInner =
@@ -450,7 +450,7 @@ public:
                cSamplesRequiredForChildSplitMin,
                runtimeLearningTypeOrCountTargetClasses,
                pTotals1HighLowBestInner,
-               &cutSecond2HighBest
+               &splitSecond2HighBest
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy
                , pBoosterShell->GetHistogramBucketsEndDebug()
@@ -469,16 +469,16 @@ public:
                if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/
                   !(splittingScore <= bestSplittingScore))) {
                   bestSplittingScore = splittingScore;
-                  cutFirst2Best = iBin2;
-                  cutFirst2LowBest = cutSecond2LowBest;
-                  cutFirst2HighBest = cutSecond2HighBest;
+                  splitFirst2Best = iBin2;
+                  splitFirst2LowBest = splitSecond2LowBest;
+                  splitFirst2HighBest = splitSecond2HighBest;
 
                   pTotals2LowLowBest->Copy(*pTotals1LowLowBestInner, cVectorLength);
                   pTotals2LowHighBest->Copy(*pTotals1LowHighBestInner, cVectorLength);
                   pTotals2HighLowBest->Copy(*pTotals1HighLowBestInner, cVectorLength);
                   pTotals2HighHighBest->Copy(*pTotals1HighHighBestInner, cVectorLength);
 
-                  bCutFirst2 = true;
+                  bSplitFirst2 = true;
                } else {
                   EBM_ASSERT(!std::isnan(splittingScore));
                }
@@ -499,19 +499,19 @@ public:
       // for NaN values say that non equality comparisons are all false so, let's flip this comparison such that it should be true for NaN values.  
       // If the compiler violates NaN comparions rules, no big deal.  NaN values will get us soon and shut down boosting.
       if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain != bestSplittingScore))) {
-         // there were no good cuts found, or we hit a NaN value
+         // there were no good splits found, or we hit a NaN value
 #ifndef NDEBUG
          const ErrorEbmType errorDebug1 =
 #endif // NDEBUG
-         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0);
-         // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
+         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 0);
+         // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
          EBM_ASSERT(Error_None == errorDebug1);
 
 #ifndef NDEBUG
          const ErrorEbmType errorDebug2 =
 #endif // NDEBUG
-         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 0);
-         // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
+         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 0);
+         // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
          EBM_ASSERT(Error_None == errorDebug2);
 
          // we don't need to call pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity, 
@@ -552,43 +552,43 @@ public:
       } else {
          EBM_ASSERT(!std::isnan(bestSplittingScore));
          EBM_ASSERT(k_illegalGain != bestSplittingScore);
-         if(bCutFirst2) {
-            // if bCutFirst2 is true, then there definetly was a cut, so we don't have to check for zero cuts
-            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1);
+         if(bSplitFirst2) {
+            // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero splits
+            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 1);
             if(Error_None != error) {
                // already logged
                return error;
             }
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst2Best;
+            pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = splitFirst2Best;
 
-            if(cutFirst2LowBest < cutFirst2HighBest) {
+            if(splitFirst2LowBest < splitFirst2HighBest) {
                error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 2);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2HighBest;
-            } else if(cutFirst2HighBest < cutFirst2LowBest) {
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = splitFirst2LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[1] = splitFirst2HighBest;
+            } else if(splitFirst2HighBest < splitFirst2LowBest) {
                error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 2);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2HighBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = splitFirst2HighBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[1] = splitFirst2LowBest;
             } else {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 1);
                if(Error_None != error) {
                   // already logged
                   return error;
@@ -599,7 +599,7 @@ public:
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = splitFirst2LowBest;
             }
 
             HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowLowBest =
@@ -677,14 +677,14 @@ public:
                   );
                }
 
-               if(cutFirst2LowBest < cutFirst2HighBest) {
+               if(splitFirst2LowBest < splitFirst2HighBest) {
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowHigh;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionHighLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
-               } else if(cutFirst2HighBest < cutFirst2LowBest) {
+               } else if(splitFirst2HighBest < splitFirst2LowBest) {
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
@@ -699,43 +699,43 @@ public:
                }
             }
          } else {
-            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1);
+            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 1);
             if(Error_None != error) {
                // already logged
                return error;
             }
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst1Best;
+            pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = splitFirst1Best;
 
-            if(cutFirst1LowBest < cutFirst1HighBest) {
+            if(splitFirst1LowBest < splitFirst1HighBest) {
                error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
 
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 2);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
-            } else if(cutFirst1HighBest < cutFirst1LowBest) {
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = splitFirst1LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[1] = splitFirst1HighBest;
+            } else if(splitFirst1HighBest < splitFirst1LowBest) {
                error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
 
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 2);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1HighBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = splitFirst1HighBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[1] = splitFirst1LowBest;
             } else {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 1);
                if(Error_None != error) {
                   // already logged
                   return error;
@@ -745,7 +745,7 @@ public:
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = splitFirst1LowBest;
             }
 
             HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowLowBest =
@@ -822,14 +822,14 @@ public:
                      pTotals1HighHighBest->GetWeightInBucket()
                   );
                }
-               if(cutFirst1LowBest < cutFirst1HighBest) {
+               if(splitFirst1LowBest < splitFirst1HighBest) {
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
-               } else if(cutFirst1HighBest < cutFirst1LowBest) {
+               } else if(splitFirst1HighBest < splitFirst1LowBest) {
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowLow;

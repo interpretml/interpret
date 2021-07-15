@@ -18,7 +18,7 @@ struct CrossEntropyMulticlassMultitaskLoss : public MulticlassMultitaskLoss {
    // can be visualized and predicted separately.  The two targets could be separated entirely.  The only reason
    // to combine them here is to use a single loss function between them in case they have correlations between them.
    // allowing for more information to be extracted when calculating the gradients and hessians and therefore when
-   // cutting and during updating.
+   // splitting and during updating.
    // Internally here though, we want to mush the scores together from the separate targets and classes.  We
    // need all targets and all class scores to calculate the gradients and hessians and gains and updates, so
    // co-locating them in memory is advantageous.  In C++ we can stack them as an array of 3 + 4 = 7 scores together

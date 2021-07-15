@@ -34,9 +34,11 @@ private:
 
 public:
 
+   WARNING_PUSH
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    INLINE_ALWAYS Cpu_64_Operators() noexcept {
    }
+   WARNING_POP
 
    INLINE_ALWAYS Cpu_64_Operators(const float data) noexcept : m_data(static_cast<Unpacked>(data)) {
    }

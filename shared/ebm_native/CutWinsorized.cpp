@@ -93,7 +93,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
       ret = Error_IllegalParamValue;
    } else {
       if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
-         // if there's 1 sample, then we can't split it, but we'd still want to determine the min, max, etc
+         // if there's 1 sample, then we can't cut it, but we'd still want to determine the min, max, etc
          // so continue processing
 
          countMissingValuesRet = IntEbmType { 0 };
@@ -107,8 +107,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
             ret = Error_IllegalParamValue;
          }
       } else {
-         if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING CutWinsorized !IsNumberConvertable<size_t>(countSamples)");
+         if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
+            LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countSamples)");
 
             countMissingValuesRet = IntEbmType { 0 };
             minNonInfinityValueRet = FloatEbmType { 0 };
@@ -165,10 +165,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
          const size_t cMissingValues = cSamplesIncludingMissingValues - cSamples;
          // this is guaranteed to work since the number of missing values can't exceed the number of original
          // samples, and samples came to us as an IntEbmType
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cMissingValues));
+         EBM_ASSERT(!IsConvertError<IntEbmType>(cMissingValues));
          countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
-         // we can't really split 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
+         // we can't really cut 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
          // or if there was only 1 non-missing value
          if(LIKELY(size_t { 1 } < cSamples)) {
             EBM_ASSERT(nullptr != countCutsInOut);
@@ -184,8 +184,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                goto exit_with_log;
             }
 
-            if(UNLIKELY(!IsNumberConvertable<size_t>(countCuts))) {
-               LOG_0(TraceLevelWarning, "WARNING CutWinsorized !IsNumberConvertable<size_t>(countCuts)");
+            if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
+               LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countCuts)");
                free(aFeatureValues);
                ret = Error_IllegalParamValue;
                goto exit_with_log;
@@ -271,7 +271,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                // we check that cCuts can be multiplied with sizeof(*cutsLowerBoundInclusiveOut), and since
                // there is no way an element of cutsLowerBoundInclusiveOut is as small as 1 byte, we should
                // be able to add one to cCuts
-               EBM_ASSERT(!IsAddError(cCuts, size_t { 1 }));
+               EBM_ASSERT(!IsAddError(size_t { 1 }, cCuts));
                const size_t cBins = cCuts + size_t { 1 };
                EBM_ASSERT(size_t { 1 } < cSamples);
                const size_t iOuterBound = (cSamples - size_t { 1 }) / cBins;
@@ -432,7 +432,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
 
                                     // if you have 2 internal bins it would be close to an overflow on the subtraction 
                                     // of the divided values.  With 3 bins it isn't obvious to me how you'd get an
-                                    // overflow after dividing it up in to separate divisions.  So, let's assume
+                                    // overflow after dividing it up in to separate segments.  So, let's assume
                                     // that 2 == cBins, so we can just take the average and report one cut
                                     const FloatEbmType cut = ArithmeticMean(lowInnerVal, highInnerVal);
                                     // we always write out a cut at highInnerVal below, and we wouldn't want to do that

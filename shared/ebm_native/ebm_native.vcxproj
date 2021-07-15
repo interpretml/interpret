@@ -73,25 +73,25 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>lib_ebm_native_win_x86_debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>lib_ebm_native_win_x64_debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>lib_ebm_native_win_x86</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <IntDir>$(ProjectDir)..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>lib_ebm_native_win_x64</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -399,7 +399,7 @@ EXIT /B 0
     </ProjectReference>
   </ItemGroup>
   <ItemGroup Condition="!exists('$(VCTargetsPath)\BuildCustomizations\CUDA 11.2.props')">
-    <ProjectReference Include="compute\cuda_missing_ebm\cuda_missing_ebm.vcxproj">
+    <ProjectReference Include="compute\no_cuda_ebm\no_cuda_ebm.vcxproj">
       <Project>{059d61c6-0fc9-4ea5-b4af-5cb0d8d0980b}</Project>
     </ProjectReference>
   </ItemGroup>

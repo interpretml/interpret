@@ -39,7 +39,7 @@ namespace DEFINED_ZONE_NAME {
 template<bool bClassification>
 static void Flatten(
    const TreeNode<bClassification> * const pTreeNode,
-   ActiveDataType ** const ppDivisions, 
+   ActiveDataType ** const ppSplits, 
    FloatEbmType ** const ppValues, 
    const size_t cVectorLength
 ) {
@@ -49,12 +49,12 @@ static void Flatten(
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
       const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
-      Flatten<bClassification>(pLeftChild, ppDivisions, ppValues, cVectorLength);
-      **ppDivisions = pTreeNode->AFTER_GetDivisionValue();
-      ++(*ppDivisions);
+      Flatten<bClassification>(pLeftChild, ppSplits, ppValues, cVectorLength);
+      **ppSplits = pTreeNode->AFTER_GetSplitValue();
+      ++(*ppSplits);
       const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
-      Flatten<bClassification>(pRightChild, ppDivisions, ppValues, cVectorLength);
+      Flatten<bClassification>(pRightChild, ppSplits, ppValues, cVectorLength);
    } else {
       FloatEbmType * pValuesCur = *ppValues;
       FloatEbmType * const pValuesNext = pValuesCur + cVectorLength;
@@ -94,9 +94,9 @@ static void Flatten(
    }
 }
 
-// TODO: it would be easy for us to implement a -1 lookback where we make the first cut, find the second cut, elimnate the first cut and try 
-//   again on that side, then re-examine the second cut again.  For mains this would be very quick we have found that 2-3 cuts are optimimum.  
-//   Probably 1 cut isn't very good since with 2 cuts we can localize a region of high gain in the center somewhere
+// TODO: it would be easy for us to implement a -1 lookback where we make the first split, find the second split, elimnate the first split and try 
+//   again on that side, then re-examine the second split again.  For mains this would be very quick we have found that 2-3 splits are optimimum.  
+//   Probably 1 split isn't very good since with 2 splits we can localize a region of high gain in the center somewhere
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
@@ -418,13 +418,13 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    EBM_ASSERT(reinterpret_cast<const char *>(aHistogramBucket) <= reinterpret_cast<const char *>(BEST_pHistogramBucketEntry));
    EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) % cBytesPerHistogramBucket);
-   pTreeNode->AFTER_SetDivisionValue((reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - 
+   pTreeNode->AFTER_SetSplitValue((reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - 
       reinterpret_cast<const char *>(aHistogramBucket)) / cBytesPerHistogramBucket);
 
    LOG_N(
       TraceLevelVerbose,
-      "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: divisionValue=%zu, nodeSplittingScore=%" FloatEbmTypePrintf,
-      static_cast<size_t>(pTreeNode->AFTER_GetDivisionValue()),
+      "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitValue=%zu, nodeSplittingScore=%" FloatEbmTypePrintf,
+      static_cast<size_t>(pTreeNode->AFTER_GetSplitValue()),
       pTreeNode->AFTER_GetSplitGain()
    );
 
@@ -540,7 +540,7 @@ public:
          cVectorLength * sizeof(*aSumHistogramTargetEntry)
       );
 
-      SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
+      SliceableTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
          pBoosterShell->GetOverwritableModelUpdate();
 
       size_t cLeaves;
@@ -551,7 +551,7 @@ public:
          cSamplesRequiredForChildSplitMin
       )) {
          // there will be no splits at all
-         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0);
+         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 0);
          if(UNLIKELY(Error_None != error)) {
             // already logged
             return error;
@@ -605,14 +605,14 @@ public:
                )->IsSplittable()
          );
 
-         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1);
+         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 1);
          if(UNLIKELY(Error_None != error)) {
             // already logged
             return error;
          }
 
-         ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
-         pDivisions[0] = pRootTreeNode->AFTER_GetDivisionValue();
+         ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0);
+         pSplits[0] = pRootTreeNode->AFTER_GetSplitValue();
 
          // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
 
@@ -723,9 +723,9 @@ public:
             // can have zero instnaces in bins, in which case it occurs, but those equivalent situations have been cleansed by
             // the time we reach this code, so the only realistic scenario where we might get equivalent gains is if we had an almost
             // symetric distribution samples bin distributions AND two tail ends that happen to have the same statistics AND
-            // either this is our first cut, or we've only made a single cut in the center in the case where there is symetry in the center
-            // Even if all of these things are true, after one non-symetric cut, we won't see that scenario anymore since the gradients won't be
-            // symetric anymore.  This is so rare, and limited to one cut, so we shouldn't bother to handle it since the complexity of doing so
+            // either this is our first split, or we've only made a single split in the center in the case where there is symetry in the center
+            // Even if all of these things are true, after one non-symetric split, we won't see that scenario anymore since the gradients won't be
+            // symetric anymore.  This is so rare, and limited to one split, so we shouldn't bother to handle it since the complexity of doing so
             // outweights the benefits.
             bestTreeNodeToSplit.pop();
 
@@ -852,7 +852,7 @@ public:
          return Error_UnexpectedInternal;
       }
 
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cLeaves - size_t { 1 });
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, cLeaves - size_t { 1 });
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
@@ -866,15 +866,15 @@ public:
          // already logged
          return error;
       }
-      ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
+      ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0);
       FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
 
       LOG_0(TraceLevelVerbose, "Entered Flatten");
-      Flatten<bClassification>(pRootTreeNode, &pDivisions, &pValues, cVectorLength);
+      Flatten<bClassification>(pRootTreeNode, &pSplits, &pValues, cVectorLength);
       LOG_0(TraceLevelVerbose, "Exited Flatten");
 
-      EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0) <= pDivisions);
-      EBM_ASSERT(static_cast<size_t>(pDivisions - pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)) == cLeaves - 1);
+      EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0) <= pSplits);
+      EBM_ASSERT(static_cast<size_t>(pSplits - pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)) == cLeaves - 1);
       EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer() < pValues);
       EBM_ASSERT(static_cast<size_t>(pValues - pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()) == cVectorLength * cLeaves);
 

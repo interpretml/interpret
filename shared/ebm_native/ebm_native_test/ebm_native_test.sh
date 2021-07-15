@@ -55,13 +55,13 @@ if [ "$os_type" = "Darwin" ]; then
    ########################## macOS debug|x64
 
    echo "Compiling $bin_file with $clang_pp_bin for macOS debug|x64"
-   intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native_test"
+   obj_path="$root_path/tmp/clang/obj/debug/mac/x64/ebm_native_test"
    bin_path="$root_path/tmp/clang/bin/debug/mac/x64/ebm_native_test"
    lib_file_body="_ebm_native_mac_x64_debug"
-   log_file="$intermediate_path/ebm_native_test_debug_mac_x64_build_log.txt"
+   log_file="$obj_path/ebm_native_test_debug_mac_x64_build_log.txt"
    compile_command="$clang_pp_bin $compile_mac -m64 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
 
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+   [ -d "$obj_path" ] || mkdir -p "$obj_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -92,13 +92,13 @@ if [ "$os_type" = "Darwin" ]; then
    ########################## macOS release|x64
 
    echo "Compiling $bin_file with $clang_pp_bin for macOS release|x64"
-   intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native_test"
+   obj_path="$root_path/tmp/clang/obj/release/mac/x64/ebm_native_test"
    bin_path="$root_path/tmp/clang/bin/release/mac/x64/ebm_native_test"
    lib_file_body="_ebm_native_mac_x64"
-   log_file="$intermediate_path/ebm_native_test_release_mac_x64_build_log.txt"
+   log_file="$obj_path/ebm_native_test_release_mac_x64_build_log.txt"
    compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
 
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+   [ -d "$obj_path" ] || mkdir -p "$obj_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -136,13 +136,13 @@ elif [ "$os_type" = "Linux" ]; then
    ########################## Linux debug|x64
 
    echo "Compiling $bin_file with $g_pp_bin for Linux debug|x64"
-   intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native_test"
+   obj_path="$root_path/tmp/gcc/obj/debug/linux/x64/ebm_native_test"
    bin_path="$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native_test"
    lib_file_body="_ebm_native_linux_x64_debug"
-   log_file="$intermediate_path/ebm_native_test_debug_linux_x64_build_log.txt"
+   log_file="$obj_path/ebm_native_test_debug_linux_x64_build_log.txt"
    compile_command="$g_pp_bin $compile_linux -m64 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
 
-   if [ ! -d "$intermediate_path" ]; then
+   if [ ! -d "$obj_path" ]; then
       printf "%s\n" "Doing first time installation of Linux debug|x64"
 
       # this is the first time we're being compiled x64 on this machine, so install other required items
@@ -162,7 +162,7 @@ elif [ "$os_type" = "Linux" ]; then
          exit $ret_code
       fi
 
-      mkdir -p "$intermediate_path"
+      mkdir -p "$obj_path"
    fi
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
@@ -194,13 +194,13 @@ elif [ "$os_type" = "Linux" ]; then
    ########################## Linux release|x64
 
    echo "Compiling $bin_file with $g_pp_bin for Linux release|x64"
-   intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native_test"
+   obj_path="$root_path/tmp/gcc/obj/release/linux/x64/ebm_native_test"
    bin_path="$root_path/tmp/gcc/bin/release/linux/x64/ebm_native_test"
    lib_file_body="_ebm_native_linux_x64"
-   log_file="$intermediate_path/ebm_native_test_release_linux_x64_build_log.txt"
+   log_file="$obj_path/ebm_native_test_release_linux_x64_build_log.txt"
    compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
 
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+   [ -d "$obj_path" ] || mkdir -p "$obj_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -245,13 +245,13 @@ elif [ "$os_type" = "Linux" ]; then
    ########################## Linux debug|x86
 
    echo "Compiling $bin_file with $g_pp_bin for Linux debug|x86"
-   intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native_test"
+   obj_path="$root_path/tmp/gcc/obj/debug/linux/x86/ebm_native_test"
    bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test"
    lib_file_body="_ebm_native_linux_x86_debug"
-   log_file="$intermediate_path/ebm_native_test_debug_linux_x86_build_log.txt"
+   log_file="$obj_path/ebm_native_test_debug_linux_x86_build_log.txt"
    compile_command="$g_pp_bin $compile_linux -m32 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
 
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+   [ -d "$obj_path" ] || mkdir -p "$obj_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -282,13 +282,13 @@ elif [ "$os_type" = "Linux" ]; then
    ########################## Linux release|x86
 
    echo "Compiling $bin_file with $g_pp_bin for Linux release|x86"
-   intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x86/ebm_native_test"
+   obj_path="$root_path/tmp/gcc/obj/release/linux/x86/ebm_native_test"
    bin_path="$root_path/tmp/gcc/bin/release/linux/x86/ebm_native_test"
    lib_file_body="_ebm_native_linux_x86"
-   log_file="$intermediate_path/ebm_native_test_release_linux_x86_build_log.txt"
+   log_file="$obj_path/ebm_native_test_release_linux_x86_build_log.txt"
    compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
 
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+   [ -d "$obj_path" ] || mkdir -p "$obj_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code

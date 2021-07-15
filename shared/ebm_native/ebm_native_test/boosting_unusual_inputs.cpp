@@ -941,16 +941,16 @@ TEST_CASE("classification with 0 possible target states, boosting") {
    CHECK(Error_None == retGenerate);
    CHECK(0 == gain);
 
-   IntEbmType countCuts = 0;
-   IntEbmType cutIndexes[1];
-   const ErrorEbmType retCuts = GetModelUpdateCuts(
+   IntEbmType countSplits = 0;
+   IntEbmType splitIndexes[1];
+   const ErrorEbmType retGetSplits = GetModelUpdateSplits(
       boosterHandle,
       0,
-      &countCuts,
-      cutIndexes
+      &countSplits,
+      splitIndexes
    );
-   CHECK(Error_IllegalParamValue == retCuts); // we have no dimensions, so 0 is invalid
-   CHECK(0 == countCuts);
+   CHECK(Error_IllegalParamValue == retGetSplits); // we have no dimensions, so 0 is invalid
+   CHECK(0 == countSplits);
    
    ErrorEbmType retGetModel = GetModelUpdateExpanded(boosterHandle, nullptr);
    CHECK(Error_None == retGetModel);
@@ -1033,16 +1033,16 @@ TEST_CASE("classification with 1 possible target, boosting") {
    BoosterHandle boosterHandle2;
    CreateBoosterView(boosterHandle, &boosterHandle2);
 
-   IntEbmType countCuts = 1;
-   IntEbmType cutIndexes[1];
-   const ErrorEbmType retCuts = GetModelUpdateCuts(
+   IntEbmType countSplits = 1;
+   IntEbmType splitIndexes[1];
+   const ErrorEbmType retGetSplits = GetModelUpdateSplits(
       boosterHandle,
       0,
-      &countCuts,
-      cutIndexes
+      &countSplits,
+      splitIndexes
    );
-   CHECK(Error_None == retCuts);
-   CHECK(0 == countCuts);
+   CHECK(Error_None == retGetSplits);
+   CHECK(0 == countSplits);
 
    BoosterHandle boosterHandle3;
    CreateBoosterView(boosterHandle2, &boosterHandle3);
@@ -1807,7 +1807,7 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
       }
    }
 
-   // it can't really benefit from cutting since we only allow the boosting rounds to have 1 leaf
+   // it can't really benefit from splitting since we only allow the boosting rounds to have 1 leaf
    CHECK(validationMetric <= 0.73616339235889672f * 1.1);
    CHECK(0.73616339235889672f / 1.1 <= validationMetric);
 
@@ -1832,7 +1832,7 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
    }
 }
 
-TEST_CASE("Random splitting, no cuts, binary, sums") {
+TEST_CASE("Random splitting, no splits, binary, sums") {
    static const std::vector<IntEbmType> k_leavesMax = {
       IntEbmType { 3 }
    };

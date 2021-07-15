@@ -64,7 +64,7 @@ struct TreeNodeData<true> {
       // put this at the top so that our priority queue can access it directly without adding anything to the pointer 
       // (this is slightly more efficient on intel systems at least)
       FloatEbmType m_splitGain;
-      ActiveDataType m_divisionValue;
+      ActiveDataType m_splitValue;
    };
    static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -159,13 +159,13 @@ struct TreeNodeData<true> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
    }
 
-   INLINE_ALWAYS ActiveDataType AFTER_GetDivisionValue() const {
+   INLINE_ALWAYS ActiveDataType AFTER_GetSplitValue() const {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
-      return m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue;
+      return m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue;
    }
-   INLINE_ALWAYS void AFTER_SetDivisionValue(const ActiveDataType divisionValue) {
+   INLINE_ALWAYS void AFTER_SetSplitValue(const ActiveDataType splitValue) {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
-      m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = divisionValue;
+      m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue = splitValue;
    }
 
    INLINE_ALWAYS const HistogramTargetEntry<true> * GetHistogramTargetEntry() const {
@@ -247,7 +247,7 @@ struct TreeNodeData<false> {
       // put this at the top so that our priority queue can access it directly without adding anything to the pointer 
       // (this is slightly more efficient on intel systems at least)
       FloatEbmType m_splitGain;
-      ActiveDataType m_divisionValue;
+      ActiveDataType m_splitValue;
    };
    static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -340,13 +340,13 @@ struct TreeNodeData<false> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
    }
 
-   INLINE_ALWAYS ActiveDataType AFTER_GetDivisionValue() const {
+   INLINE_ALWAYS ActiveDataType AFTER_GetSplitValue() const {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
-      return m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue;
+      return m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue;
    }
-   INLINE_ALWAYS void AFTER_SetDivisionValue(const ActiveDataType divisionValue) {
+   INLINE_ALWAYS void AFTER_SetSplitValue(const ActiveDataType splitValue) {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
-      m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = divisionValue;
+      m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue = splitValue;
    }
 
    INLINE_ALWAYS const HistogramTargetEntry<false> * GetHistogramTargetEntry() const {

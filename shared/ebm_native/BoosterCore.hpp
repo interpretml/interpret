@@ -56,8 +56,8 @@ class BoosterCore final {
    FloatEbmType m_validationWeightTotal;
    FloatEbmType * m_aValidationWeights;
 
-   SegmentedTensor ** m_apCurrentModel;
-   SegmentedTensor ** m_apBestModel;
+   SliceableTensor ** m_apCurrentModel;
+   SliceableTensor ** m_apBestModel;
 
    FloatEbmType m_bestModelMetric;
 
@@ -68,13 +68,13 @@ class BoosterCore final {
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
 
-   static void DeleteSegmentedTensors(const size_t cFeatureGroups, SegmentedTensor ** const apSegmentedTensors);
+   static void DeleteSliceableTensors(const size_t cFeatureGroups, SliceableTensor ** const apSliceableTensors);
 
-   static ErrorEbmType InitializeSegmentedTensors(
+   static ErrorEbmType InitializeSliceableTensors(
       const size_t cFeatureGroups,
       const FeatureGroup * const * const apFeatureGroups,
       const size_t cVectorLength,
-      SegmentedTensor *** papSegmentedTensorsOut
+      SliceableTensor *** papSliceableTensorsOut
    );
 
    INLINE_ALWAYS ~BoosterCore() {
@@ -90,10 +90,12 @@ class BoosterCore final {
 
       free(m_aFeatures);
 
-      DeleteSegmentedTensors(m_cFeatureGroups, m_apCurrentModel);
-      DeleteSegmentedTensors(m_cFeatureGroups, m_apBestModel);
+      DeleteSliceableTensors(m_cFeatureGroups, m_apCurrentModel);
+      DeleteSliceableTensors(m_cFeatureGroups, m_apBestModel);
    };
 
+   WARNING_PUSH
+   ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    INLINE_ALWAYS BoosterCore() noexcept :
       m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
       m_runtimeLearningTypeOrCountTargetClasses(0),
@@ -113,6 +115,7 @@ class BoosterCore final {
       m_trainingSet.InitializeZero();
       m_validationSet.InitializeZero();
    }
+   WARNING_POP
 
 public:
 
@@ -163,11 +166,11 @@ public:
       return m_aValidationWeights;
    }
 
-   INLINE_ALWAYS SegmentedTensor * const * GetCurrentModel() const {
+   INLINE_ALWAYS SliceableTensor * const * GetCurrentModel() const {
       return m_apCurrentModel;
    }
 
-   INLINE_ALWAYS SegmentedTensor * const * GetBestModel() const {
+   INLINE_ALWAYS SliceableTensor * const * GetBestModel() const {
       return m_apBestModel;
    }
 

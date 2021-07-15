@@ -73,25 +73,25 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>ebm_native_test</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>ebm_native_test</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>ebm_native_test</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <IntDir>$(ProjectDir)..\..\..\tmp\vs\obj\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>ebm_native_test</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

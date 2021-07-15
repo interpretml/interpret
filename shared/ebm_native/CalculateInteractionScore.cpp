@@ -121,11 +121,11 @@ static ErrorEbmType CalculateInteractionScoreInternal(
       return Error_OutOfMemory;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
+   if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
+   const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
 
    // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
    HistogramBucketBase * const aHistogramBuckets = pInteractionShell->GetHistogramBucketBase(cBytesBuffer);
@@ -294,7 +294,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes cannot be nullptr if 0 < countDimensions");
       return Error_IllegalParamValue;
    }
-   if(!IsNumberConvertable<size_t>(countDimensions)) {
+   if(IsConvertError<size_t>(countDimensions)) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
@@ -325,7 +325,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
    size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
    if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
       cSamplesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
-      if(!IsNumberConvertable<size_t>(countSamplesRequiredForChildSplitMin)) {
+      if(IsConvertError<size_t>(countSamplesRequiredForChildSplitMin)) {
          // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to overflow because it will generate 
          // the same results as if we used the true number
          cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
@@ -347,7 +347,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value cannot be negative");
          return Error_IllegalParamValue;
       }
-      if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
+      if(IsConvertError<size_t>(indexFeatureInterop)) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
@@ -399,7 +399,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
 
       const IntEbmType indexFeatureInterop = *pFeatureIndexes;
       EBM_ASSERT(0 <= indexFeatureInterop);
-      EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureInterop)); // we already checked indexFeatureInterop was good above
+      EBM_ASSERT(!IsConvertError<size_t>(indexFeatureInterop)); // we already checked indexFeatureInterop was good above
       size_t iFeature = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeature < pInteractionCore->GetCountFeatures());
       const Feature * const pFeature = &aFeatures[iFeature];

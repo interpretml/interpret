@@ -49,18 +49,12 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    EBM_ASSERT(1 <= cVectorLength);
 
    const size_t cStorageItems = bAllocateHessians ? 2 : 1;
-   if(IsMultiplyError(cStorageItems, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cStorageItems, cVectorLength)");
+   if(IsMultiplyError(cVectorLength, cStorageItems, cSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cVectorLength, cStorageItems, cSamples)");
       return Error_OutOfMemory;
    }
-   const size_t cStorageItemsPerSample = cStorageItems * cVectorLength;
+   const size_t cElements = cVectorLength * cStorageItems * cSamples;
 
-   if(UNLIKELY(IsMultiplyError(cSamples, cStorageItemsPerSample))) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cSamples, cStorageItemsPerSample)");
-      return Error_OutOfMemory;
-   }
-
-   const size_t cElements = cSamples * cStorageItemsPerSample;
    FloatEbmType * aGradientsAndHessians = EbmMalloc<FloatEbmType>(cElements);
    if(UNLIKELY(nullptr == aGradientsAndHessians)) {
       LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
@@ -123,11 +117,11 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData inputData value cannot be negative");
             goto free_all;
          }
-         if(!IsNumberConvertable<StorageDataType>(inputData)) {
+         if(IsConvertError<StorageDataType>(inputData)) {
             LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
-         if(!IsNumberConvertable<size_t>(inputData)) {
+         if(IsConvertError<size_t>(inputData)) {
             LOG_0(TraceLevelError, "ERROR DataSetInteraction::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
@@ -214,11 +208,11 @@ ErrorEbmType DataSetInteraction::Initialize(
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize target value cannot be negative");
                return Error_IllegalParamValue;
             }
-            if(!IsNumberConvertable<StorageDataType>(data)) {
+            if(IsConvertError<StorageDataType>(data)) {
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize data target too big to reference memory");
                return Error_IllegalParamValue;
             }
-            if(!IsNumberConvertable<size_t>(data)) {
+            if(IsConvertError<size_t>(data)) {
                LOG_0(TraceLevelError, "ERROR DataSetInteraction::Initialize data target too big to reference memory");
                return Error_IllegalParamValue;
             }

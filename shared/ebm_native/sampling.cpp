@@ -64,8 +64,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
       LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countTrainingSamples < IntEbmType { 0 }");
       return;
    }
-   if(UNLIKELY(!IsNumberConvertable<size_t>(countTrainingSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement !IsNumberConvertable<size_t>(countTrainingSamples)");
+   if(UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsConvertError<size_t>(countTrainingSamples)");
       return;
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
@@ -74,8 +74,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
       LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countValidationSamples < IntEbmType { 0 }");
       return;
    }
-   if(UNLIKELY(!IsNumberConvertable<size_t>(countValidationSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement !IsNumberConvertable<size_t>(countValidationSamples)");
+   if(UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsConvertError<size_t>(countValidationSamples)");
       return;
    }
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
@@ -89,8 +89,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
       // there's nothing for us to fill the array with
       return;
    }
-   if(UNLIKELY(IsMultiplyError(cSamplesRemaining, sizeof(*sampleCountsOut)))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsMultiplyError(cSamples, sizeof(*sampleCountsOut))");
+   if(UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining))) {
+      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining)");
       return;
    }
 
@@ -172,8 +172,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
       LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement countTrainingSamples < IntEbmType{ 0 }");
       return Error_IllegalParamValue;
    }
-   if (UNLIKELY(!IsNumberConvertable<size_t>(countTrainingSamples))) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement !IsNumberConvertable<size_t>(countTrainingSamples)");
+   if (UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
+      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsConvertError<size_t>(countTrainingSamples)");
       return Error_IllegalParamValue;
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
@@ -182,8 +182,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
       LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement countValidationSamples < IntEbmType{ 0 }");
       return Error_IllegalParamValue;
    }
-   if (UNLIKELY(!IsNumberConvertable<size_t>(countValidationSamples))) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement !IsNumberConvertable<size_t>(countValidationSamples)");
+   if (UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
+      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsConvertError<size_t>(countValidationSamples)");
       return Error_IllegalParamValue;
    }
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
@@ -203,19 +203,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
       LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement countTargetClasses can't be negative or zero");
       return Error_IllegalParamValue;
    }
-   if (!IsNumberConvertable<size_t>(countTargetClasses)) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement !IsNumberConvertable<size_t>(countTargetClasses)");
+   if (IsConvertError<size_t>(countTargetClasses)) {
+      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsConvertError<size_t>(countTargetClasses)");
       return Error_IllegalParamValue;
    }
    const size_t cTargetClasses = static_cast<size_t>(countTargetClasses);
 
-   if (UNLIKELY(IsMultiplyError(cSamples, sizeof(*sampleCountsOut)))) {
-      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsMultiplyError(cSamples, sizeof(*sampleCountsOut))");
+   if (UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamples))) {
+      LOG_0(TraceLevelError, "ERROR StratifiedSamplingWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamples)");
       return Error_IllegalParamValue;
    }
 
-   if (UNLIKELY(IsMultiplyError(cTargetClasses, sizeof(TargetSamplingCounts)))) {
-      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement IsMultiplyError(cTargetClasses, sizeof(TargetSamplingCounts))");
+   if (UNLIKELY(IsMultiplyError(sizeof(TargetSamplingCounts), cTargetClasses))) {
+      LOG_0(TraceLevelWarning, "WARNING StratifiedSamplingWithoutReplacement IsMultiplyError(sizeof(TargetSamplingCounts), cTargetClasses)");
       return Error_OutOfMemory;
    }
 

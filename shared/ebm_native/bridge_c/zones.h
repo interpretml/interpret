@@ -17,8 +17,8 @@ extern "C" {
 #define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_AVX512
 #elif defined(ZONE_cuda)
 #define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_CUDA
-#elif defined(ZONE_cuda_missing)
-#define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_CUDA_MISSING
+#elif defined(ZONE_no_cuda)
+#define DEFINED_ZONE_NAME      NAMESPACE_COMPUTE_NO_CUDA
 #elif defined(ZONE_R)
 #define DEFINED_ZONE_NAME      NAMESPACE_R
 #else

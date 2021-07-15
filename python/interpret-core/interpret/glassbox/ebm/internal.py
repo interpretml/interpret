@@ -10,7 +10,7 @@ import numpy as np
 import os
 import struct
 import logging
-from contextlib import closing
+from contextlib import AbstractContextManager
 
 log = logging.getLogger(__name__)
 
@@ -39,14 +39,11 @@ class Native:
 
     @staticmethod
     def get_native_singleton(is_debug=False):
-        log.debug("Check if EBM lib is loaded")
         if Native._native is None:
             log.info("EBM lib loading.")
             native = Native()
             native._initialize(is_debug=is_debug)
             Native._native = native
-        else:
-            log.debug("EBM lib already loaded")
         return Native._native
 
     @staticmethod
@@ -284,56 +281,109 @@ class Native:
         return discretized
 
 
-    def size_data_set_header(self, n_features):
-        n_bytes = self._unsafe.SizeDataSetHeader(n_features)
-        if n_bytes == 0:  # pragma: no cover
+    def size_data_set_header(self, n_features, n_weights, n_targets):
+        n_bytes = self._unsafe.SizeDataSetHeader(n_features, n_weights, n_targets)
+        if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(3, "SizeDataSetHeader")
         return n_bytes
 
-    def fill_data_set_header(self, n_features, n_bytes, shared_data):
-        return_code = self._unsafe.FillDataSetHeader(n_features, n_bytes, shared_data)
+    def fill_data_set_header(self, n_features, n_weights, n_targets, n_bytes, shared_data):
+        opaque_state = ct.c_int64(0)
+        return_code = self._unsafe.FillDataSetHeader(
+            n_features, 
+            n_weights, 
+            n_targets, 
+            n_bytes, 
+            shared_data, 
+            ct.byref(opaque_state),
+        )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
-    def size_data_set_feature(self, categorical, n_bins, binned_data):
-        n_bytes = self._unsafe.SizeDataSetFeature(categorical, n_bins, len(binned_data), binned_data)
-        if n_bytes == 0:  # pragma: no cover
-            raise Native._get_native_exception(3, "SizeDataSetFeature")
+        return opaque_state.value
+
+    def size_feature(self, categorical, n_bins, binned_data):
+        n_bytes = self._unsafe.SizeFeature(categorical, n_bins, len(binned_data), binned_data)
+        if n_bytes < 0:  # pragma: no cover
+            raise Native._get_native_exception(3, "SizeFeature")
         return n_bytes
 
-    def fill_data_set_feature(self, categorical, n_bins, binned_data, n_bytes, shared_data):
-        return_code = self._unsafe.FillDataSetFeature(
+    def fill_feature(self, categorical, n_bins, binned_data, n_bytes, shared_data, opaque_state):
+        opaque_state = ct.c_int64(opaque_state)
+        return_code = self._unsafe.FillFeature(
             categorical, 
             n_bins, 
             len(binned_data), 
             binned_data, 
             n_bytes, 
-            shared_data
+            shared_data,
+            ct.byref(opaque_state),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "FillDataSetFeature")
+            raise Native._get_native_exception(return_code, "FillFeature")
 
-    def size_classification_targets(self, n_classes, targets):
-        n_bytes = self._unsafe.SizeClassificationTargets(n_classes, len(targets), targets)
-        if n_bytes == 0:  # pragma: no cover
-            raise Native._get_native_exception(3, "SizeClassificationTargets")
+        return opaque_state.value
+
+    def size_weight(self, weights):
+        n_bytes = self._unsafe.SizeWeight(len(weights), weights)
+        if n_bytes < 0:  # pragma: no cover
+            raise Native._get_native_exception(3, "SizeWeight")
         return n_bytes
 
-    def fill_classification_targets(self, n_classes, targets, n_bytes, shared_data):
-        return_code = self._unsafe.FillClassificationTargets(n_classes, len(targets), targets, n_bytes, shared_data)
+    def fill_weight(self, weights, n_bytes, shared_data, opaque_state):
+        opaque_state = ct.c_int64(opaque_state)
+        return_code = self._unsafe.FillWeight(
+            len(weights), 
+            weights, 
+            n_bytes, 
+            shared_data, 
+            ct.byref(opaque_state),
+        )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "FillClassificationTargets")
+            raise Native._get_native_exception(return_code, "FillWeight")
 
-    def size_regression_targets(self, targets):
-        n_bytes = self._unsafe.SizeRegressionTargets(len(targets), targets)
-        if n_bytes == 0:  # pragma: no cover
-            raise Native._get_native_exception(3, "SizeRegressionTargets")
+        return opaque_state.value
+
+    def size_classification_target(self, n_classes, targets):
+        n_bytes = self._unsafe.SizeClassificationTarget(n_classes, len(targets), targets)
+        if n_bytes < 0:  # pragma: no cover
+            raise Native._get_native_exception(3, "SizeClassificationTarget")
         return n_bytes
 
-    def fill_regression_targets(self, targets, n_bytes, shared_data):
-        return_code = self._unsafe.FillRegressionTargets(len(targets), targets, n_bytes, shared_data)
+    def fill_classification_target(self, n_classes, targets, n_bytes, shared_data, opaque_state):
+        opaque_state = ct.c_int64(opaque_state)
+        return_code = self._unsafe.FillClassificationTarget(
+            n_classes, 
+            len(targets), 
+            targets, 
+            n_bytes, 
+            shared_data,
+            ct.byref(opaque_state),
+        )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "FillRegressionTargets")
+            raise Native._get_native_exception(return_code, "FillClassificationTarget")
+
+        return opaque_state.value
+
+    def size_regression_target(self, targets):
+        n_bytes = self._unsafe.SizeRegressionTarget(len(targets), targets)
+        if n_bytes < 0:  # pragma: no cover
+            raise Native._get_native_exception(3, "SizeRegressionTarget")
+        return n_bytes
+
+    def fill_regression_target(self, targets, n_bytes, shared_data, opaque_state):
+        opaque_state = ct.c_int64(opaque_state)
+        return_code = self._unsafe.FillRegressionTarget(
+            len(targets), 
+            targets, 
+            n_bytes, 
+            shared_data, 
+            ct.byref(opaque_state),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "FillRegressionTarget")
+
+        return opaque_state.value
 
 
     @staticmethod
@@ -533,20 +583,30 @@ class Native:
         self._unsafe.SizeDataSetHeader.argtypes = [
             # int64_t countFeatures
             ct.c_int64,
+            # int64_t countWeights
+            ct.c_int64,
+            # int64_t countTargets
+            ct.c_int64,
         ]
         self._unsafe.SizeDataSetHeader.restype = ct.c_int64
 
         self._unsafe.FillDataSetHeader.argtypes = [
             # int64_t countFeatures
             ct.c_int64,
+            # int64_t countWeights
+            ct.c_int64,
+            # int64_t countTargets
+            ct.c_int64,
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
             ct.c_void_p,
+            # int64_t * opaqueStateOut
+            ct.POINTER(ct.c_int64),
         ]
         self._unsafe.FillDataSetHeader.restype = ct.c_int32
 
-        self._unsafe.SizeDataSetFeature.argtypes = [
+        self._unsafe.SizeFeature.argtypes = [
             # int64_t categorical
             ct.c_int64,
             # int64_t countBins
@@ -556,9 +616,9 @@ class Native:
             # int64_t * binnedData
             ndpointer(dtype=ct.c_int64, ndim=1),
         ]
-        self._unsafe.SizeDataSetFeature.restype = ct.c_int64
+        self._unsafe.SizeFeature.restype = ct.c_int64
 
-        self._unsafe.FillDataSetFeature.argtypes = [
+        self._unsafe.FillFeature.argtypes = [
             # int64_t categorical
             ct.c_int64,
             # int64_t countBins
@@ -571,10 +631,34 @@ class Native:
             ct.c_int64,
             # void * fillMem
             ct.c_void_p,
+            # int64_t * opaqueStateInOut
+            ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.FillDataSetFeature.restype = ct.c_int32
+        self._unsafe.FillFeature.restype = ct.c_int32
 
-        self._unsafe.SizeClassificationTargets.argtypes = [
+        self._unsafe.SizeWeight.argtypes = [
+            # int64_t countSamples
+            ct.c_int64,
+            # FloatEbmType * weights
+            ndpointer(dtype=ct.c_double, ndim=1),
+        ]
+        self._unsafe.SizeWeight.restype = ct.c_int64
+
+        self._unsafe.FillWeight.argtypes = [
+            # int64_t countSamples
+            ct.c_int64,
+            # FloatEbmType * weights
+            ndpointer(dtype=ct.c_double, ndim=1),
+            # int64_t countBytesAllocated
+            ct.c_int64,
+            # void * fillMem
+            ct.c_void_p,
+            # int64_t * opaqueStateInOut
+            ct.POINTER(ct.c_int64),
+        ]
+        self._unsafe.FillWeight.restype = ct.c_int32
+
+        self._unsafe.SizeClassificationTarget.argtypes = [
             # int64_t countTargetClasses
             ct.c_int64,
             # int64_t countSamples
@@ -582,9 +666,9 @@ class Native:
             # int64_t * targets
             ndpointer(dtype=ct.c_int64, ndim=1),
         ]
-        self._unsafe.SizeClassificationTargets.restype = ct.c_int64
+        self._unsafe.SizeClassificationTarget.restype = ct.c_int64
 
-        self._unsafe.FillClassificationTargets.argtypes = [
+        self._unsafe.FillClassificationTarget.argtypes = [
             # int64_t countTargetClasses
             ct.c_int64,
             # int64_t countSamples
@@ -595,18 +679,20 @@ class Native:
             ct.c_int64,
             # void * fillMem
             ct.c_void_p,
+            # int64_t * opaqueStateInOut
+            ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.FillClassificationTargets.restype = ct.c_int32
+        self._unsafe.FillClassificationTarget.restype = ct.c_int32
 
-        self._unsafe.SizeRegressionTargets.argtypes = [
+        self._unsafe.SizeRegressionTarget.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * targets
             ndpointer(dtype=ct.c_double, ndim=1),
         ]
-        self._unsafe.SizeRegressionTargets.restype = ct.c_int64
+        self._unsafe.SizeRegressionTarget.restype = ct.c_int64
 
-        self._unsafe.FillRegressionTargets.argtypes = [
+        self._unsafe.FillRegressionTarget.argtypes = [
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * targets
@@ -615,8 +701,10 @@ class Native:
             ct.c_int64,
             # void * fillMem
             ct.c_void_p,
+            # int64_t * opaqueStateInOut
+            ct.POINTER(ct.c_int64),
         ]
-        self._unsafe.FillRegressionTargets.restype = ct.c_int32
+        self._unsafe.FillRegressionTarget.restype = ct.c_int32
 
 
         self._unsafe.Softmax.argtypes = [
@@ -746,17 +834,17 @@ class Native:
         ]
         self._unsafe.GenerateModelUpdate.restype = ct.c_int32
 
-        self._unsafe.GetModelUpdateCuts.argtypes = [
+        self._unsafe.GetModelUpdateSplits.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexDimension
             ct.c_int64,
-            # int64_t * countCutsInOut
+            # int64_t * countSplitsInOut
             ct.POINTER(ct.c_int64),
-            # int64_t * cutIndexesOut
+            # int64_t * splitIndexesOut
             ndpointer(dtype=ct.c_int64, ndim=1),
         ]
-        self._unsafe.GetModelUpdateCuts.restype = ct.c_int32
+        self._unsafe.GetModelUpdateSplits.restype = ct.c_int32
 
         self._unsafe.GetModelUpdateExpanded.argtypes = [
             # void * boosterHandle
@@ -900,7 +988,7 @@ class Native:
         return feature_groups_feature_count, feature_groups_feature_indexes
 
 
-class NativeEBMBooster:
+class Booster(AbstractContextManager):
     """Lightweight wrapper for EBM C boosting code.
     """
 
@@ -950,81 +1038,93 @@ class NativeEBMBooster:
             random_state: Random seed as integer.
         """
 
-        # first set the one thing that we will close on
-        self._booster_handle = None
+        self.model_type = model_type
+        self.n_classes = n_classes
+        self.features_categorical = features_categorical
+        self.features_bin_count = features_bin_count
+        self.feature_groups = feature_groups
+        self.X_train = X_train
+        self.y_train = y_train
+        self.w_train = w_train
+        self.scores_train = scores_train
+        self.X_val = X_val
+        self.y_val = y_val
+        self.w_val = w_val
+        self.scores_val = scores_val
+        self.n_inner_bags = n_inner_bags
+        self.random_state = random_state
+        self.optional_temp_params = optional_temp_params
+
+        # start off with an invalid _feature_group_index
         self._feature_group_index = -1
 
+    def __enter__(self):
+
         # check inputs for important inputs or things that would segfault in C
-        if not isinstance(features_categorical, np.ndarray):  # pragma: no cover
+        if not isinstance(self.features_categorical, np.ndarray):  # pragma: no cover
             raise ValueError("features_categorical should be an np.ndarray")
 
-        if not isinstance(features_bin_count, np.ndarray):  # pragma: no cover
+        if not isinstance(self.features_bin_count, np.ndarray):  # pragma: no cover
             raise ValueError("features_bin_count should be an np.ndarray")
 
-        if not isinstance(feature_groups, list):  # pragma: no cover
+        if not isinstance(self.feature_groups, list):  # pragma: no cover
             raise ValueError("feature_groups should be a list")
 
-        if X_train.ndim != 2:  # pragma: no cover
+        if self.X_train.ndim != 2:  # pragma: no cover
             raise ValueError("X_train should have exactly 2 dimensions")
 
-        if y_train.ndim != 1:  # pragma: no cover
+        if self.y_train.ndim != 1:  # pragma: no cover
             raise ValueError("y_train should have exactly 1 dimension")
 
-        if X_train.shape[0] != len(features_categorical):  # pragma: no cover
+        if self.X_train.shape[0] != len(self.features_categorical):  # pragma: no cover
             raise ValueError(
                 "X_train does not have the same number of items as the features_categorical array"
             )
 
-        if X_train.shape[0] != len(features_bin_count):  # pragma: no cover
+        if self.X_train.shape[0] != len(self.features_bin_count):  # pragma: no cover
             raise ValueError(
                 "X_train does not have the same number of items as the features_bin_count array"
             )
 
-        if X_train.shape[1] != len(y_train):  # pragma: no cover
+        if self.X_train.shape[1] != len(self.y_train):  # pragma: no cover
             raise ValueError(
                 "X_train does not have the same number of samples as y_train"
             )
 
-        if X_val.ndim != 2:  # pragma: no cover
+        if self.X_val.ndim != 2:  # pragma: no cover
             raise ValueError("X_val should have exactly 2 dimensions")
 
-        if y_val.ndim != 1:  # pragma: no cover
+        if self.y_val.ndim != 1:  # pragma: no cover
             raise ValueError("y_val should have exactly 1 dimension")
 
-        if X_val.shape[0] != X_train.shape[0]:  # pragma: no cover
+        if self.X_val.shape[0] != self.X_train.shape[0]:  # pragma: no cover
             raise ValueError(
                 "X_val does not have the same number of features as the X_train array"
             )
 
-        if X_val.shape[1] != len(y_val):  # pragma: no cover
+        if self.X_val.shape[1] != len(self.y_val):  # pragma: no cover
             raise ValueError(
                 "X_val does not have the same number of samples as y_val"
             )
 
-        if w_train.shape != y_train.shape or w_val.shape != y_val.shape:
+        if self.w_train.shape != self.y_train.shape or self.w_val.shape != self.y_val.shape:
             raise ValueError("Sample weight shape must be equal to training label shape.")
 
-        self._native = Native.get_native_singleton()
+        native = Native.get_native_singleton()
 
         log.info("Allocation training start")
 
-        # Store args
-        self._model_type = model_type
-        self._n_classes = n_classes
-
-        self._features_bin_count = features_bin_count
-
-        self._feature_groups = feature_groups
         (
             feature_groups_feature_count,
             feature_groups_feature_indexes,
-        ) = Native._convert_feature_groups_to_c(feature_groups)
+        ) = Native._convert_feature_groups_to_c(self.feature_groups)
 
-        n_scores = Native.get_count_scores_c(n_classes)
+        n_scores = Native.get_count_scores_c(self.n_classes)
+        scores_train = self.scores_train
         if scores_train is None:
-            scores_train = np.zeros(len(y_train) * n_scores, dtype=ct.c_double, order="C")
+            scores_train = np.zeros(len(self.y_train) * n_scores, dtype=ct.c_double, order="C")
         else:
-            if scores_train.shape[0] != len(y_train):  # pragma: no cover
+            if scores_train.shape[0] != len(self.y_train):  # pragma: no cover
                 raise ValueError(
                     "scores_train does not have the same number of samples as y_train"
                 )
@@ -1043,10 +1143,11 @@ class NativeEBMBooster:
                         "scores_train does not have the same number of logit scores as n_scores"
                     )
 
+        scores_val = self.scores_val
         if scores_val is None:
-            scores_val = np.zeros(len(y_val) * n_scores, dtype=ct.c_double, order="C")
+            scores_val = np.zeros(len(self.y_val) * n_scores, dtype=ct.c_double, order="C")
         else:
-            if scores_val.shape[0] != len(y_val):  # pragma: no cover
+            if scores_val.shape[0] != len(self.y_val):  # pragma: no cover
                 raise ValueError(
                     "scores_val does not have the same number of samples as y_val"
                 )
@@ -1065,6 +1166,7 @@ class NativeEBMBooster:
                         "scores_val does not have the same number of logit scores as n_scores"
                     )
 
+        optional_temp_params = self.optional_temp_params
         if optional_temp_params is not None:  # pragma: no cover
             optional_temp_params = (ct.c_double * len(optional_temp_params))(
                 *optional_temp_params
@@ -1072,52 +1174,52 @@ class NativeEBMBooster:
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
-        if model_type == "classification":
-            return_code = self._native._unsafe.CreateClassificationBooster(
-                random_state,
-                n_classes,
-                len(features_bin_count),
-                features_categorical, 
-                features_bin_count,
+        if self.model_type == "classification":
+            return_code = native._unsafe.CreateClassificationBooster(
+                self.random_state,
+                self.n_classes,
+                len(self.features_bin_count),
+                self.features_categorical, 
+                self.features_bin_count,
                 len(feature_groups_feature_count),
                 feature_groups_feature_count,
                 feature_groups_feature_indexes,
-                len(y_train),
-                X_train,
-                y_train,
-                w_train,
+                len(self.y_train),
+                self.X_train,
+                self.y_train,
+                self.w_train,
                 scores_train,
-                len(y_val),
-                X_val,
-                y_val,
-                w_val,
+                len(self.y_val),
+                self.X_val,
+                self.y_val,
+                self.w_val,
                 scores_val,
-                n_inner_bags,
+                self.n_inner_bags,
                 optional_temp_params,
                 ct.byref(booster_handle),
             )
             if return_code:  # pragma: no cover
                 raise Native._get_native_exception(return_code, "CreateClassificationBooster")
-        elif model_type == "regression":
-            return_code = self._native._unsafe.CreateRegressionBooster(
-                random_state,
-                len(features_bin_count),
-                features_categorical, 
-                features_bin_count,
+        elif self.model_type == "regression":
+            return_code = native._unsafe.CreateRegressionBooster(
+                self.random_state,
+                len(self.features_bin_count),
+                self.features_categorical, 
+                self.features_bin_count,
                 len(feature_groups_feature_count),
                 feature_groups_feature_count,
                 feature_groups_feature_indexes,
-                len(y_train),
-                X_train,
-                y_train,
-                w_train,
+                len(self.y_train),
+                self.X_train,
+                self.y_train,
+                self.w_train,
                 scores_train,
-                len(y_val),
-                X_val,
-                y_val,
-                w_val,
+                len(self.y_val),
+                self.X_val,
+                self.y_val,
+                self.w_val,
                 scores_val,
-                n_inner_bags,
+                self.n_inner_bags,
                 optional_temp_params,
                 ct.byref(booster_handle),
             )
@@ -1129,11 +1231,24 @@ class NativeEBMBooster:
         self._booster_handle = booster_handle.value
 
         log.info("Allocation boosting end")
+        return self
+
+    def __exit__(self, *args):
+
+        self.close()
 
     def close(self):
+
         """ Deallocates C objects used to boost EBM. """
         log.info("Deallocation boosting start")
-        self._native._unsafe.FreeBooster(self._booster_handle)
+
+        boster_handle = getattr(self, "_boster_handle", None)
+
+        if boster_handle:
+            native = Native.get_native_singleton()
+            self._booster_handle = None
+            native._unsafe.FreeBooster(booster_handle)
+
         log.info("Deallocation boosting end")
 
     def generate_model_update(
@@ -1162,11 +1277,14 @@ class NativeEBMBooster:
         # log.debug("Boosting step start")
 
         self._feature_group_index = -1
+
+        native = Native.get_native_singleton()
+
         gain = ct.c_double(0.0)
-        n_features = len(self._feature_groups[feature_group_index])
+        n_features = len(self.feature_groups[feature_group_index])
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
-        return_code = self._native._unsafe.GenerateModelUpdate(
+        return_code = native._unsafe.GenerateModelUpdate(
             self._booster_handle, 
             feature_group_index,
             generate_update_options,
@@ -1196,8 +1314,10 @@ class NativeEBMBooster:
 
         self._feature_group_index = -1
 
+        native = Native.get_native_singleton()
+
         metric_output = ct.c_double(0.0)
-        return_code = self._native._unsafe.ApplyModelUpdate(
+        return_code = native._unsafe.ApplyModelUpdate(
             self._booster_handle, 
             ct.byref(metric_output),
         )
@@ -1209,7 +1329,7 @@ class NativeEBMBooster:
 
     def get_best_model(self):
         model = []
-        for index in range(len(self._feature_groups)):
+        for index in range(len(self.feature_groups)):
             model_feature_group = self._get_best_model_feature_group(index)
             model.append(model_feature_group)
 
@@ -1218,7 +1338,7 @@ class NativeEBMBooster:
     # TODO: Needs test.
     def get_current_model(self):
         model = []
-        for index in range(len(self._feature_groups)):
+        for index in range(len(self.feature_groups)):
             model_feature_group = self._get_current_model_feature_group(
                 index
             )
@@ -1226,33 +1346,33 @@ class NativeEBMBooster:
 
         return model
 
-    def get_model_update_cuts(self):
+    def get_model_update_splits(self):
         if self._feature_group_index < 0:  # pragma: no cover
             raise RuntimeError("invalid internal self._feature_group_index")
 
-        cuts = []
-        feature_indexes = self._feature_groups[self._feature_group_index]
+        splits = []
+        feature_indexes = self.feature_groups[self._feature_group_index]
         for dimension_idx, _ in enumerate(feature_indexes):
-            cuts_dimension = self._get_model_update_cuts_dimension(dimension_idx)
-            cuts.append(cuts_dimension)
+            splits_dimension = self._get_model_update_splits_dimension(dimension_idx)
+            splits.append(splits_dimension)
 
-        return cuts
+        return splits
 
     def _get_feature_group_shape(self, feature_group_index):
         # TODO PK do this once during construction so that we don't have to do it again
-        #         and so that we don't have to store self._features & self._feature_groups
+        #         and so that we don't have to store self._features & self.feature_groups
 
         # Retrieve dimensions of log odds tensor
         dimensions = []
-        feature_indexes = self._feature_groups[feature_group_index]
+        feature_indexes = self.feature_groups[feature_group_index]
         for _, feature_idx in enumerate(feature_indexes):
-            n_bins = self._features_bin_count[feature_idx]
+            n_bins = self.features_bin_count[feature_idx]
             dimensions.append(n_bins)
 
         dimensions = list(reversed(dimensions))
 
         # Array returned for multiclass is one higher dimension
-        n_scores = Native.get_count_scores_c(self._n_classes)
+        n_scores = Native.get_count_scores_c(self.n_classes)
         if n_scores > 1:
             dimensions.append(n_scores)
 
@@ -1270,23 +1390,25 @@ class NativeEBMBooster:
             An ndarray that represents the model.
         """
 
-        if self._model_type == "classification" and self._n_classes <= 1:  # pragma: no cover
+        if self.model_type == "classification" and self.n_classes <= 1:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
             return None
 
+        native = Native.get_native_singleton()
+
         shape = self._get_feature_group_shape(feature_group_index)
         model_feature_group = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = self._native._unsafe.GetBestModelFeatureGroup(
+        return_code = native._unsafe.GetBestModelFeatureGroup(
             self._booster_handle, feature_group_index, model_feature_group
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetBestModelFeatureGroup")
 
-        if len(self._feature_groups[feature_group_index]) == 2:
-            if 2 < self._n_classes:
+        if len(self.feature_groups[feature_group_index]) == 2:
+            if 2 < self.n_classes:
                 model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0, 2)))
             else:
                 model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0)))
@@ -1304,68 +1426,74 @@ class NativeEBMBooster:
             An ndarray that represents the model.
         """
 
-        if self._model_type == "classification" and self._n_classes <= 1:  # pragma: no cover
+        if self.model_type == "classification" and self.n_classes <= 1:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
             return None
 
+        native = Native.get_native_singleton()
+
         shape = self._get_feature_group_shape(feature_group_index)
         model_feature_group = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = self._native._unsafe.GetCurrentModelFeatureGroup(
+        return_code = native._unsafe.GetCurrentModelFeatureGroup(
             self._booster_handle, feature_group_index, model_feature_group
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetCurrentModelFeatureGroup")
 
-        if len(self._feature_groups[feature_group_index]) == 2:
-            if 2 < self._n_classes:
+        if len(self.feature_groups[feature_group_index]) == 2:
+            if 2 < self.n_classes:
                 model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0, 2)))
             else:
                 model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0)))
 
         return model_feature_group
 
-    def _get_model_update_cuts_dimension(self, dimension_index):
-        feature_index = self._feature_groups[self._feature_group_index][dimension_index]
-        n_bins = self._features_bin_count[feature_index]
+    def _get_model_update_splits_dimension(self, dimension_index):
+        native = Native.get_native_singleton()
 
-        count_cuts = n_bins - 1
-        cuts = np.empty(count_cuts, dtype=np.int64, order="C")
-        count_cuts = ct.c_int64(count_cuts)
+        feature_index = self.feature_groups[self._feature_group_index][dimension_index]
+        n_bins = self.features_bin_count[feature_index]
 
-        return_code = self._native._unsafe.GetModelUpdateCuts(
+        count_splits = n_bins - 1
+        splits = np.empty(count_splits, dtype=np.int64, order="C")
+        count_splits = ct.c_int64(count_splits)
+
+        return_code = native._unsafe.GetModelUpdateSplits(
             self._booster_handle, 
             dimension_index, 
-            ct.byref(count_cuts), 
-            cuts
+            ct.byref(count_splits), 
+            splits
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetModelUpdateCuts")
+            raise Native._get_native_exception(return_code, "GetModelUpdateSplits")
 
-        cuts = cuts[:count_cuts.value]
-        return cuts
+        splits = splits[:count_splits.value]
+        return splits
 
     def get_model_update_expanded(self):
         if self._feature_group_index < 0:  # pragma: no cover
             raise RuntimeError("invalid internal self._feature_group_index")
 
-        if self._model_type == "classification" and self._n_classes <= 1:  # pragma: no cover
+        if self.model_type == "classification" and self.n_classes <= 1:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
             return None
 
+        native = Native.get_native_singleton()
+
         shape = self._get_feature_group_shape(self._feature_group_index)
         model_update = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = self._native._unsafe.GetModelUpdateExpanded(self._booster_handle, model_update)
+        return_code = native._unsafe.GetModelUpdateExpanded(self._booster_handle, model_update)
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetModelUpdateExpanded")
 
-        if len(self._feature_groups[self._feature_group_index]) == 2:
-            if 2 < self._n_classes:
+        if len(self.feature_groups[self._feature_group_index]) == 2:
+            if 2 < self.n_classes:
                 model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0, 2)))
             else:
                 model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0)))
@@ -1375,14 +1503,14 @@ class NativeEBMBooster:
     def set_model_update_expanded(self, feature_group_index, model_update):
         self._feature_group_index = -1
 
-        if self._model_type == "classification" and self._n_classes <= 1:  # pragma: no cover
+        if self.model_type == "classification" and self.n_classes <= 1:  # pragma: no cover
             if model_update is None:  # pragma: no cover
                 self._feature_group_index = feature_group_index
                 return
             raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
 
-        if len(self._feature_groups[feature_group_index]) == 2:
-            if 2 < self._n_classes:
+        if len(self.feature_groups[feature_group_index]) == 2:
+            if 2 < self.n_classes:
                 model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0, 2)))
             else:
                 model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0)))
@@ -1392,7 +1520,8 @@ class NativeEBMBooster:
         if shape != model_update.shape:  # pragma: no cover
             raise ValueError("incorrect tensor shape in call to set_model_update_expanded")
 
-        return_code = self._native._unsafe.SetModelUpdateExpanded(
+        native = Native.get_native_singleton()
+        return_code = native._unsafe.SetModelUpdateExpanded(
             self._booster_handle, feature_group_index, model_update
         )
         if return_code:  # pragma: no cover
@@ -1403,12 +1532,21 @@ class NativeEBMBooster:
         return
 
 
-class NativeEBMInteraction:
+class InteractionDetector(AbstractContextManager):
     """Lightweight wrapper for EBM C interaction code.
     """
 
     def __init__(
-        self, model_type, n_classes, features_categorical, features_bin_count, X, y, w, scores, optional_temp_params
+        self, 
+        model_type, 
+        n_classes, 
+        features_categorical, 
+        features_bin_count, 
+        X, 
+        y, 
+        w, 
+        scores, 
+        optional_temp_params
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -1428,45 +1566,54 @@ class NativeEBMInteraction:
 
         """
 
-        # first set the one thing that we will close on
-        self._interaction_handle = None
+        self.model_type = model_type
+        self.n_classes = n_classes
+        self.features_categorical = features_categorical
+        self.features_bin_count = features_bin_count
+        self.X = X
+        self.y = y
+        self.w = w
+        self.scores = scores
+        self.optional_temp_params = optional_temp_params
 
+    def __enter__(self):
         # check inputs for important inputs or things that would segfault in C
-        if not isinstance(features_categorical, np.ndarray):  # pragma: no cover
+        if not isinstance(self.features_categorical, np.ndarray):  # pragma: no cover
             raise ValueError("features_categorical should be an np.ndarray")
 
-        if not isinstance(features_bin_count, np.ndarray):  # pragma: no cover
+        if not isinstance(self.features_bin_count, np.ndarray):  # pragma: no cover
             raise ValueError("features_bin_count should be an np.ndarray")
 
-        if X.ndim != 2:  # pragma: no cover
+        if self.X.ndim != 2:  # pragma: no cover
             raise ValueError("X should have exactly 2 dimensions")
 
-        if y.ndim != 1:  # pragma: no cover
+        if self.y.ndim != 1:  # pragma: no cover
             raise ValueError("y should have exactly 1 dimension")
 
 
-        if X.shape[0] != len(features_categorical):  # pragma: no cover
+        if self.X.shape[0] != len(self.features_categorical):  # pragma: no cover
             raise ValueError(
                 "X does not have the same number of items as the features_categorical array"
             )
 
-        if X.shape[0] != len(features_bin_count):  # pragma: no cover
+        if self.X.shape[0] != len(self.features_bin_count):  # pragma: no cover
             raise ValueError(
                 "X does not have the same number of items as the features_bin_count array"
             )
 
-        if X.shape[1] != len(y):  # pragma: no cover
+        if self.X.shape[1] != len(self.y):  # pragma: no cover
             raise ValueError("X does not have the same number of samples as y")
 
-        self._native = Native.get_native_singleton()
+        native = Native.get_native_singleton()
 
         log.info("Allocation interaction start")
 
-        n_scores = Native.get_count_scores_c(n_classes)
+        n_scores = Native.get_count_scores_c(self.n_classes)
+        scores = self.scores
         if scores is None:  # pragma: no cover
-            scores = np.zeros(len(y) * n_scores, dtype=ct.c_double, order="C")
+            scores = np.zeros(len(self.y) * n_scores, dtype=ct.c_double, order="C")
         else:
-            if scores.shape[0] != len(y):  # pragma: no cover
+            if scores.shape[0] != len(self.y):  # pragma: no cover
                 raise ValueError(
                     "scores does not have the same number of samples as y"
                 )
@@ -1485,6 +1632,7 @@ class NativeEBMInteraction:
                         "scores does not have the same number of logit scores as n_scores"
                     )
 
+        optional_temp_params = self.optional_temp_params
         if optional_temp_params is not None:  # pragma: no cover
             optional_temp_params = (ct.c_double * len(optional_temp_params))(
                 *optional_temp_params
@@ -1492,31 +1640,31 @@ class NativeEBMInteraction:
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
-        if model_type == "classification":
-            return_code = self._native._unsafe.CreateClassificationInteractionDetector(
-                n_classes,
-                len(features_bin_count),
-                features_categorical, 
-                features_bin_count,
-                len(y),
-                X,
-                y,
-                w,
+        if self.model_type == "classification":
+            return_code = native._unsafe.CreateClassificationInteractionDetector(
+                self.n_classes,
+                len(self.features_bin_count),
+                self.features_categorical, 
+                self.features_bin_count,
+                len(self.y),
+                self.X,
+                self.y,
+                self.w,
                 scores,
                 optional_temp_params,
                 ct.byref(interaction_handle),
             )
             if return_code:  # pragma: no cover
                 raise Native._get_native_exception(return_code, "CreateClassificationInteractionDetector")
-        elif model_type == "regression":
-            return_code = self._native._unsafe.CreateRegressionInteractionDetector(
-                len(features_bin_count),
-                features_categorical, 
-                features_bin_count,
-                len(y),
-                X,
-                y,
-                w,
+        elif self.model_type == "regression":
+            return_code = native._unsafe.CreateRegressionInteractionDetector(
+                len(self.features_bin_count),
+                self.features_categorical, 
+                self.features_bin_count,
+                len(self.y),
+                self.X,
+                self.y,
+                self.w,
                 scores,
                 optional_temp_params,
                 ct.byref(interaction_handle),
@@ -1529,18 +1677,33 @@ class NativeEBMInteraction:
         self._interaction_handle = interaction_handle.value
 
         log.info("Allocation interaction end")
+        return self
+
+    def __exit__(self, *args):
+
+        self.close()
 
     def close(self):
+
         """ Deallocates C objects used to determine interactions in EBM. """
         log.info("Deallocation interaction start")
-        self._native._unsafe.FreeInteractionDetector(self._interaction_handle)
+
+        interaction_handle = getattr(self, "_interaction_handle", None)
+        if interaction_handle:
+            native = Native.get_native_singleton()
+            self._interaction_handle = None
+            native._unsafe.FreeInteractionDetector(interaction_handle)
+        
         log.info("Deallocation interaction end")
 
     def get_interaction_score(self, feature_index_tuple, min_samples_leaf):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
+
+        native = Native.get_native_singleton()
+
         score = ct.c_double(0.0)
-        return_code = self._native._unsafe.CalculateInteractionScore(
+        return_code = native._unsafe.CalculateInteractionScore(
             self._interaction_handle,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=ct.c_int64),
@@ -1580,30 +1743,30 @@ class NativeHelper:
         max_rounds,
         random_state,
         name,
+        noise_scale,
+        bin_counts,
         optional_temp_params=None,
     ):
         min_metric = np.inf
         episode_index = 0
-        with closing(
-            NativeEBMBooster(
-                model_type,
-                n_classes,
-                features_categorical, 
-                features_bin_count,
-                feature_groups,
-                X_train,
-                y_train,
-                w_train,
-                scores_train,
-                X_val,
-                y_val,
-                w_val,
-                scores_val,
-                n_inner_bags,
-                random_state,
-                optional_temp_params,
-            )
-        ) as native_ebm_booster:
+        with Booster(
+            model_type,
+            n_classes,
+            features_categorical, 
+            features_bin_count,
+            feature_groups,
+            X_train,
+            y_train,
+            w_train,
+            scores_train,
+            X_val,
+            y_val,
+            w_val,
+            scores_val,
+            n_inner_bags,
+            random_state,
+            optional_temp_params,
+        ) as booster:
             no_change_run_length = 0
             bp_metric = np.inf
             log.info("Start boosting {0}".format(name))
@@ -1613,7 +1776,7 @@ class NativeHelper:
                     log.debug("Metric: {0}".format(min_metric))
 
                 for feature_group_index in range(len(feature_groups)):
-                    gain = native_ebm_booster.generate_model_update(
+                    gain = booster.generate_model_update(
                         feature_group_index=feature_group_index,
                         generate_update_options=generate_update_options,
                         learning_rate=learning_rate,
@@ -1621,7 +1784,31 @@ class NativeHelper:
                         max_leaves=max_leaves,
                     )
 
-                    curr_metric = native_ebm_booster.apply_model_update()
+                    if noise_scale: # Differentially private updates
+                        splits = booster.get_model_update_splits()[0]
+
+                        model_update_tensor = booster.get_model_update_expanded()
+                        noisy_update_tensor = model_update_tensor.copy()
+
+                        splits_iter = [0] + list(splits + 1) + [len(model_update_tensor)] # Make splits iteration friendly
+                        # Loop through all random splits and add noise before updating
+                        for f, s in zip(splits_iter[:-1], splits_iter[1:]):
+                            if s == 1: 
+                                continue # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
+
+                            noise = np.random.normal(0.0, noise_scale)
+                            noisy_update_tensor[f:s] = model_update_tensor[f:s] + noise
+
+                            # Native code will be returning sums of residuals in slices, not averages.
+                            # Compute noisy average by dividing noisy sum by noisy histogram counts
+                            instance_count = np.sum(bin_counts[feature_group_index][f:s])
+                            noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_count
+
+                        noisy_update_tensor = noisy_update_tensor * -1 # Invert gradients before updates
+                        booster.set_model_update_expanded(feature_group_index, noisy_update_tensor)
+
+
+                    curr_metric = booster.apply_model_update()
 
                     min_metric = min(curr_metric, min_metric)
 
@@ -1652,11 +1839,12 @@ class NativeHelper:
             )
 
             # TODO: Add more ways to call alternative get_current_model
-            # Use latest model if there are no instances in the (transposed) validation set
-            if X_val.shape[1] == 0:
-                model_update = native_ebm_booster.get_current_model()
+            # Use latest model if there are no instances in the (transposed) validation set 
+            # or if training with privacy
+            if X_val.shape[1] == 0 or noise_scale is not None:
+                model_update = booster.get_current_model()
             else:
-                model_update = native_ebm_booster.get_best_model()
+                model_update = booster.get_best_model()
 
         return model_update, min_metric, episode_index
 
@@ -1676,13 +1864,11 @@ class NativeHelper:
         optional_temp_params=None,
     ):
         interaction_scores = []
-        with closing(
-            NativeEBMInteraction(
-                model_type, n_classes, features_categorical, features_bin_count, X, y, w, scores, optional_temp_params
-            )
-        ) as native_ebm_interactions:
+        with InteractionDetector(
+            model_type, n_classes, features_categorical, features_bin_count, X, y, w, scores, optional_temp_params
+        ) as interaction_detector:
             for feature_group in iter_feature_groups:
-                score = native_ebm_interactions.get_interaction_score(
+                score = interaction_detector.get_interaction_score(
                     feature_group, min_samples_leaf,
                 )
                 interaction_scores.append((feature_group, score))

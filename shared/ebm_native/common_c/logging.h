@@ -66,7 +66,8 @@ extern void LogAssertFailure(
 // using a do loop below gives us a nice look to the macro where the caller needs to use a semi-colon to call it,
 // and it can be used after a single if statement without curly braces
 //
-// the "(void)0, 0" part supresses the conditional expression is constant compiler warning
+// the "while( (void)0, 0)" part supresses the conditional expression is constant compiler warning.  The unusual 
+// space between the opening braces "( (" is actually important to have to avoid warnings!!
 // 
 // we only use each input parameter once, which avoids pre and post decrement issues with macros
 //

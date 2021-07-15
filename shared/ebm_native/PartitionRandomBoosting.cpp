@@ -43,16 +43,16 @@ public:
       const IntEbmType * const aLeavesMax,
       FloatEbmType * const pTotalGain
    ) {
-      // THIS RANDOM CUT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
+      // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      // TODO: add a new random_rety option that will retry random cutting for N times and select the one with the best gain
-      // TODO: accept the minimum number of items in a cut and then refuse to allow the cut if we violate it, or
+      // TODO: add a new random_rety option that will retry random splitting for N times and select the one with the best gain
+      // TODO: accept the minimum number of items in a split and then refuse to allow the split if we violate it, or
       //       provide a soft trigger that generates 10 random ones and selects the one that violates the least
-      //       maybe provide a flag to indicate if we want a hard or soft allowance.  We won't be cutting if we
+      //       maybe provide a flag to indicate if we want a hard or soft allowance.  We won't be splitting if we
       //       require a soft allowance and a lot of regions have zeros.
-      // TODO: accept 0 == countSamplesRequiredForChildSplitMin as a minimum number of items so that we can always choose to allow a tensor cut (for DP)
+      // TODO: accept 0 == countSamplesRequiredForChildSplitMin as a minimum number of items so that we can always choose to allow a tensor split (for DP)
       // TODO: move most of this code out of this function into a non-templated place
 
       ErrorEbmType error;
@@ -73,7 +73,7 @@ public:
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
 
-      SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
+      SliceableTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
          pBoosterShell->GetOverwritableModelUpdate();
 
       const IntEbmType * pLeavesMax1 = aLeavesMax;
@@ -93,7 +93,7 @@ public:
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
-               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+               if(IsConvertError<size_t>(countLeavesMax)) {
                   // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
                   // were going to overflow because it will generate the same results as if we used the true number
                   cLeavesMax = std::numeric_limits<size_t>::max();
@@ -105,15 +105,15 @@ public:
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
-         const size_t cPossibleCutLocations = cBins - size_t { 1 };
-         if(size_t { 0 } < cPossibleCutLocations) {
+         const size_t cPossibleSplitLocations = cBins - size_t { 1 };
+         if(size_t { 0 } < cPossibleSplitLocations) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
-            if(IsAddError(cSlicesTotal, cPossibleCutLocations)) {
-               LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cSlicesTotal, cPossibleCutLocations)");
+            if(IsAddError(cSlicesTotal, cPossibleSplitLocations)) {
+               LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cSlicesTotal, cPossibleSplitLocations)");
                return Error_OutOfMemory;
             }
-            const size_t cSlicesPlusRandom = cSlicesTotal + cPossibleCutLocations;
+            const size_t cSlicesPlusRandom = cSlicesTotal + cPossibleSplitLocations;
             cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesPlusRandom);
 
             // our histogram is a tensor where we multiply the number of cells on each pass.  Addition of those 
@@ -129,14 +129,14 @@ public:
          ++pFeatureGroupEntry1;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry1);
 
-      // since we subtract 1 from cPossibleCutLocations, we need to check that our final slice length isn't longer
+      // since we subtract 1 from cPossibleSplitLocations, we need to check that our final slice length isn't longer
       cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesTotal);
 
-      if(IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsMultiplyError(cSlicesPlusRandomMax, sizeof(size_t))");
+      if(IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)) {
+         LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)");
          return Error_OutOfMemory;
       }
-      const size_t cBytesSlicesPlusRandom = cSlicesPlusRandomMax * sizeof(size_t);
+      const size_t cBytesSlicesPlusRandom = sizeof(size_t) * cSlicesPlusRandomMax;
 
       error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells);
       if(UNLIKELY(Error_None != error)) {
@@ -145,11 +145,11 @@ public:
       }
 
       // our allocated histogram is bigger since it has more elements and the elements contain a size_t
-      EBM_ASSERT(!IsMultiplyError(cSlicesTotal, sizeof(size_t)));
-      const size_t cBytesSlices = cSlicesTotal * sizeof(size_t);
+      EBM_ASSERT(!IsMultiplyError(sizeof(size_t), cSlicesTotal));
+      const size_t cBytesSlices = sizeof(size_t) * cSlicesTotal;
 
       // promote to bytes
-      EBM_ASSERT(!IsMultiplyError(cCollapsedTensorCells, cBytesPerHistogramBucket)); // our allocated histogram is bigger
+      EBM_ASSERT(!IsMultiplyError(cBytesPerHistogramBucket, cCollapsedTensorCells)); // our allocated histogram is bigger
       cCollapsedTensorCells *= cBytesPerHistogramBucket;
       if(IsAddError(cBytesSlices, cCollapsedTensorCells)) {
          LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
@@ -182,7 +182,7 @@ public:
                cTreeSplitsMax = size_t { 0 };
             } else {
                cTreeSplitsMax = static_cast<size_t>(countLeavesMax) - size_t { 1 };
-               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+               if(IsConvertError<size_t>(countLeavesMax)) {
                   // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
                   // were going to overflow because it will generate the same results as if we used the true number
                   cTreeSplitsMax = std::numeric_limits<size_t>::max() - size_t { 1 };
@@ -193,31 +193,31 @@ public:
          const Feature * const pFeature = pFeatureGroupEntry2->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
-         size_t cPossibleCutLocations = cBins - size_t { 1 };
-         if(size_t { 0 } < cPossibleCutLocations) {
+         size_t cPossibleSplitLocations = cBins - size_t { 1 };
+         if(size_t { 0 } < cPossibleSplitLocations) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
             if(size_t { 0 } != cTreeSplitsMax) {
                size_t * pFillIndexes = pcItemsInNextSliceOrBytesInCurrentSlice2;
-               size_t iPossibleCutLocation = cPossibleCutLocations; // 1 means cut between bin 0 and bin 1
+               size_t iPossibleSplitLocations = cPossibleSplitLocations; // 1 means split between bin 0 and bin 1
                do {
-                  *pFillIndexes = iPossibleCutLocation;
+                  *pFillIndexes = iPossibleSplitLocations;
                   ++pFillIndexes;
-                  --iPossibleCutLocation;
-               } while(size_t { 0 } != iPossibleCutLocation);
+                  --iPossibleSplitLocations;
+               } while(size_t { 0 } != iPossibleSplitLocations);
 
                size_t * pOriginal = pcItemsInNextSliceOrBytesInCurrentSlice2;
 
-               const size_t cCuts = EbmMin(cTreeSplitsMax, cPossibleCutLocations);
-               EBM_ASSERT(1 <= cCuts);
-               const size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cCuts;
+               const size_t cSplits = EbmMin(cTreeSplitsMax, cPossibleSplitLocations);
+               EBM_ASSERT(1 <= cSplits);
+               const size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cSplits;
                do {
-                  const size_t iRandom = pRandomStream->Next(cPossibleCutLocations);
+                  const size_t iRandom = pRandomStream->Next(cPossibleSplitLocations);
                   size_t * const pRandomSwap = pcItemsInNextSliceOrBytesInCurrentSlice2 + iRandom;
                   const size_t temp = *pRandomSwap;
                   *pRandomSwap = *pcItemsInNextSliceOrBytesInCurrentSlice2;
                   *pcItemsInNextSliceOrBytesInCurrentSlice2 = temp;
-                  --cPossibleCutLocations;
+                  --cPossibleSplitLocations;
                   ++pcItemsInNextSliceOrBytesInCurrentSlice2;
                } while(pcItemsInNextSliceOrBytesInCurrentSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice2);
 
@@ -247,7 +247,7 @@ public:
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
-               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+               if(IsConvertError<size_t>(countLeavesMax)) {
                   // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
                   // were going to overflow because it will generate the same results as if we used the true number
                   cLeavesMax = std::numeric_limits<size_t>::max();
@@ -283,15 +283,15 @@ public:
          }
       }
 
-      struct RandomCutState {
+      struct RandomSplitState {
          size_t         m_cItemsInSliceRemaining;
          size_t         m_cBytesSubtractResetCollapsedHistogramBucket;
 
          const size_t * m_pcItemsInNextSlice;
          const size_t * m_pcItemsInNextSliceEnd;
       };
-      RandomCutState randomCutState[k_cDimensionsMax - size_t { 1 }]; // the first dimension is special cased
-      RandomCutState * pStateInit = &randomCutState[0];
+      RandomSplitState randomSplitState[k_cDimensionsMax - size_t { 1 }]; // the first dimension is special cased
+      RandomSplitState * pStateInit = &randomSplitState[0];
 
       for(; pFeatureGroupEntryEnd != pFeatureGroupEntry3; ++pFeatureGroupEntry3) {
          size_t cLeavesMax;
@@ -304,7 +304,7 @@ public:
                cLeavesMax = size_t { 1 };
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
-               if(!IsNumberConvertable<size_t>(countLeavesMax)) {
+               if(IsConvertError<size_t>(countLeavesMax)) {
                   // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
                   // were going to overflow because it will generate the same results as if we used the true number
                   cLeavesMax = std::numeric_limits<size_t>::max();
@@ -368,7 +368,7 @@ public:
             cBytesCollapsedTensor3);
 
       // we special case the first dimension, so drop it by subtracting
-      EBM_ASSERT(&randomCutState[pFeatureGroup->GetCountSignificantDimensions() - size_t { 1 }] == pStateInit);
+      EBM_ASSERT(&randomSplitState[pFeatureGroup->GetCountSignificantDimensions() - size_t { 1 }] == pStateInit);
 
       const HistogramBucket<bClassification> * pHistogramBucket = aHistogramBuckets;
       HistogramBucket<bClassification> * pCollapsedHistogramBucket1 = aCollapsedHistogramBuckets;
@@ -404,7 +404,7 @@ public:
             ++pcItemsInNextSliceOrBytesInCurrentSlice;
          } while(PREDICTABLE(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice));
 
-         for(RandomCutState * pState = randomCutState; PREDICTABLE(pStateInit != pState); ++pState) {
+         for(RandomSplitState * pState = randomSplitState; PREDICTABLE(pStateInit != pState); ++pState) {
             EBM_ASSERT(size_t { 1 } <= pState->m_cItemsInSliceRemaining);
             const size_t cItemsInSliceRemaining = pState->m_cItemsInSliceRemaining - size_t { 1 };
             if(LIKELY(size_t { 0 } != cItemsInSliceRemaining)) {
@@ -453,18 +453,18 @@ public:
 
       const size_t * const pcBytesInSliceLast = pcBytesInSliceEnd - size_t { 1 };
       EBM_ASSERT(acItemsInNextSliceOrBytesInCurrentSlice <= pcBytesInSliceLast);
-      const size_t cFirstCuts = pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice;
-      // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 cuts and 
+      const size_t cFirstSplits = pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice;
+      // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 splits and 
       // one last item to indicate the termination point
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cFirstCuts);
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, cFirstSplits);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          free(pBuffer);
          return error;
       }
       const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
-      if(LIKELY(size_t { 0 } != cFirstCuts)) {
-         ActiveDataType * pDivisionFirst = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
+      if(LIKELY(size_t { 0 } != cFirstSplits)) {
+         ActiveDataType * pSplitFirst = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0);
          // converting negative to positive number is defined behavior in C++ and uses twos compliment
          size_t iSplitFirst = static_cast<size_t>(ptrdiff_t { -1 });
          do {
@@ -472,36 +472,36 @@ public:
             EBM_ASSERT(0 != *pcBytesInSlice2);
             EBM_ASSERT(0 == *pcBytesInSlice2 % cBytesPerHistogramBucket);
             iSplitFirst += *pcBytesInSlice2 / cBytesPerHistogramBucket;
-            *pDivisionFirst = iSplitFirst;
-            ++pDivisionFirst;
+            *pSplitFirst = iSplitFirst;
+            ++pSplitFirst;
             ++pcBytesInSlice2;
             // the last one is the distance to the end, which we don't include in the update
          } while(LIKELY(pcBytesInSliceLast != pcBytesInSlice2));
       }
 
-      RandomCutState * pState = randomCutState;
+      RandomSplitState * pState = randomSplitState;
       if(PREDICTABLE(pStateInit != pState)) {
-         size_t iDivision = 0;
+         size_t iSplit1 = 0;
          do {
-            ++iDivision;
-            ++pcBytesInSlice2; // we have one less cut than we have slices, so move to the next one
+            ++iSplit1;
+            ++pcBytesInSlice2; // we have one less split than we have slices, so move to the next one
 
             const size_t * pcItemsInNextSliceLast = pState->m_pcItemsInNextSliceEnd - size_t { 1 };
-            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(iDivision, pcItemsInNextSliceLast - pcBytesInSlice2);
+            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iSplit1, pcItemsInNextSliceLast - pcBytesInSlice2);
             if(Error_None != error) {
                // already logged
                free(pBuffer);
                return error;
             }
             if(pcItemsInNextSliceLast != pcBytesInSlice2) {
-               ActiveDataType * pDivision = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(iDivision);
-               size_t iSplit = *pcItemsInNextSliceLast - size_t { 1 };
-               *pDivision = iSplit;
+               ActiveDataType * pSplit = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iSplit1);
+               size_t iSplit2 = *pcItemsInNextSliceLast - size_t { 1 };
+               *pSplit = iSplit2;
                --pcItemsInNextSliceLast;
                while(pcItemsInNextSliceLast != pcBytesInSlice2) {
-                  iSplit += *pcBytesInSlice2;
-                  ++pDivision;
-                  *pDivision = iSplit;
+                  iSplit2 += *pcBytesInSlice2;
+                  ++pSplit;
+                  *pSplit = iSplit2;
                   ++pcBytesInSlice2;
                }
                // increment it once more because our indexes are shifted such that the first one was the last item
@@ -540,8 +540,8 @@ public:
                // for zero in the denominator, but I'm leaving it here to see how the removal of the 
                // GetCountSamplesInBucket property works in the future in combination with the check on hessians
 
-               // normally, we'd eliminate regions where the number of items was zero before putting down a cut
-               // but for random cuts we can't know beforehand if there will be zero cuts, so we need to check
+               // normally, we'd eliminate regions where the number of items was zero before putting down a split
+               // but for random splits we can't know beforehand if there will be zero splits, so we need to check
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                   FloatEbmType update = FloatEbmType { 0 };
 

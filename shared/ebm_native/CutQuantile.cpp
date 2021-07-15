@@ -332,7 +332,7 @@ static FloatEbmType CalculatePriority(
    if(LIKELY(k_valNotLegal != pCutCur->m_iVal)) {
       // TODO: This calculation doesn't take into account that we can trade our cut points with neighbours
       // with m_cPredeterminedMovementOnCut.  For an example, see test:
-      // CutQuantile, left+unsplitable+splitable+unsplitable+splitable
+      // CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable
       // I'm not sure if this is bad or not.  In general, if we're swapping cut points, we're probably moving
       // pretty far, but I think if we're swaping cut points then we probably do in fact want to add priority
       // to those potential cut points since they are shuffling cut points around and we want to ensure that this
@@ -503,7 +503,7 @@ static void BuildNeighbourhoodPlan(
    //         go from our endpoint.  This might work in a lot of cases.  This method only requres 5 choices (or twice
    //         if we start from either end.  This might work in many cases
    //       - we could take an alternate approach here and look at N lower and N higher points based on our ideal 
-   //         division width, and get the square distance between the ideal cut points and their nearest real 
+   //         width, and get the square distance between the ideal cut points and their nearest real 
    //         cuttable points.  This doesn't build an exact plan, but it's probably easier (I think we should probably
    //         try the other ideas above out first).
    //
@@ -1520,7 +1520,7 @@ static ErrorEbmType TreeSearchCutSegment(
       EBM_ASSERT(nullptr != pBestCuts);
       EBM_ASSERT(pBestCuts->empty());
 
-      EBM_ASSERT(2 <= cSamples); // we need at least 2 to split, otherwise we'd have exited before calling here
+      EBM_ASSERT(2 <= cSamples); // we need at least 2 to cut, otherwise we'd have exited before calling here
       EBM_ASSERT(1 <= cSamplesPerBinMin);
 
       EBM_ASSERT(nullptr != aNeighbourJumps);
@@ -2069,7 +2069,7 @@ static void FillTiebreakers(
    // Then we use a repeatable random number generator which will order our tiebreakers in a consistent way 
    // relative from the side we've chosen as our starting point based on the detected symmetry.
    
-   // We add some consistent/repeatable noise to our priority for splitting to combat floating point inexactnes issues.
+   // We add some consistent/repeatable noise to our priority for cutting to combat floating point inexactnes issues.
    // We therefore want our tiebreakers to roughly also follow a priority order.  Since in general, all things being 
    // equal, we prefer our initial cuts to be at the ends, we want the biggest numbers at the ends and smaller 
    // values at the center.  This will only have a practical effect when the number of samples is huge, but when
@@ -2528,7 +2528,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
       ret = Error_IllegalParamValue;
    } else {
       if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
-         // if there's 1 sample, then we can't split it, but we'd still want to determine the min, max, etc
+         // if there's 1 sample, then we can't cut it, but we'd still want to determine the min, max, etc
          // so continue processing
 
          countCutsRet = IntEbmType { 0 };
@@ -2556,8 +2556,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             goto exit_with_log;
          }
 
-         if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile !IsNumberConvertable<size_t>(countSamples)");
+         if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsConvertError<size_t>(countSamples)");
 
             countCutsRet = IntEbmType { 0 };
             countMissingValuesRet = IntEbmType { 0 };
@@ -2604,12 +2604,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          const size_t cMissingValues = cSamplesIncludingMissingValues - cSamples;
          // this is guaranteed to work since the number of missing values can't exceed the number of original
          // samples, and samples came to us as an IntEbmType
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cMissingValues));
+         EBM_ASSERT(!IsConvertError<IntEbmType>(cMissingValues));
          countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
          if(UNLIKELY(cSamples <= size_t { 1 })) {
             free(aFeatureValues);
-            // we can't really split 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
+            // we can't really cut 0 or 1 samples.  Now that we know our min, max, etc values, we can exit
             // or if there was only 1 non-missing value
             countCutsRet = IntEbmType { 0 };
             ret = Error_None;
@@ -2648,7 +2648,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             countSamplesPerBinMin = IntEbmType { 1 };
          }
 
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cSamples)); // since it came from an IntEbmType originally
+         EBM_ASSERT(!IsConvertError<IntEbmType>(cSamples)); // since it came from an IntEbmType originally
          if(UNLIKELY(static_cast<IntEbmType>(cSamples >> 1) < countSamplesPerBinMin)) {
             // each bin needs at least countSamplesPerBinMin samples, so we need two sets of countSamplesPerBinMin
             // in order to make any cuts.  Anything less and we should just return now.
@@ -2661,7 +2661,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          }
 
          // countSamplesPerBinMin is convertible to size_t since countSamplesPerBinMin <= (cSamples >> 1)
-         EBM_ASSERT(IsNumberConvertable<size_t>(countSamplesPerBinMin));
+         EBM_ASSERT(!IsConvertError<size_t>(countSamplesPerBinMin));
          const size_t cSamplesPerBinMin = static_cast<size_t>(countSamplesPerBinMin);
 
          // In theory, we could constrain our cBinsMaxInitial value a bit more by taking our value array
@@ -2680,7 +2680,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          // cSamples fit into an IntEbmType, and since cCutsMaxInitial is less than cSamples, 
          // we should be able to convert it back to an IntEbmType
          EBM_ASSERT(cCutsMaxInitial < cSamples);
-         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cCutsMaxInitial));
+         EBM_ASSERT(!IsConvertError<IntEbmType>(cCutsMaxInitial));
          const size_t cCutsMax = static_cast<IntEbmType>(cCutsMaxInitial) < countCuts ?
             cCutsMaxInitial : static_cast<size_t>(countCuts);
 
@@ -2688,8 +2688,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
 
          // we need to be able to index both the cutsLowerBoundInclusiveOut AND we also allocate an array
          // of pointers below of FloatEbmType * to index into aFeatureValues 
-         if(UNLIKELY(IsMultiplyError(cCutsMax, std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *))))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCutsMax, std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)))");
+         if(UNLIKELY(IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)), cCutsMax))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)), cCutsMax)");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = Error_OutOfMemory;
@@ -2723,18 +2723,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             goto exit_with_log;
          }
 
-         if(UNLIKELY(IsMultiplyError(cSamples, sizeof(NeighbourJump)))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cSamples, sizeof(NeighbourJump))");
+         if(UNLIKELY(IsMultiplyError(sizeof(NeighbourJump), cSamples))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(NeighbourJump), cSamples)");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesNeighbourJumps = cSamples * sizeof(NeighbourJump);
+         const size_t cBytesNeighbourJumps = sizeof(NeighbourJump) * cSamples;
 
          // we checked that this multiplication wouldn't overflow above
-         EBM_ASSERT(!IsMultiplyError(cCutsMax, sizeof(FloatEbmType *)));
-         const size_t cBytesValueCutPointers = cCutsMax * sizeof(FloatEbmType *);
+         EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType *), cCutsMax));
+         const size_t cBytesValueCutPointers = sizeof(FloatEbmType *) * cCutsMax;
 
          // we limit the cCutsMax to no more than cSamples - 1.  cSamples can't be anywhere close to
          // the maximum size_t though since the caller must have allocated cSamples floats in aFeatureValues, and
@@ -2743,23 +2743,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          EBM_ASSERT(cCutsMax <= std::numeric_limits<size_t>::max() - size_t { 2 });
          // include storage for the end points
          const size_t cCutsWithEndpointsMax = cCutsMax + size_t { 2 };
-         if(UNLIKELY(IsMultiplyError(cCutsWithEndpointsMax, sizeof(CutPoint)))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCutsWithEndpointsMax, sizeof(CutPoint))");
+         if(UNLIKELY(IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(CutPoint), cCutsWithEndpointsMax)");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesCuts = cCutsWithEndpointsMax * sizeof(CutPoint);
+         const size_t cBytesCuts = sizeof(CutPoint) * cCutsWithEndpointsMax;
 
-         if(UNLIKELY(IsMultiplyError(cCuttingRanges, sizeof(CuttingRange)))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(cCuttingRanges, sizeof(CuttingRange))");
+         if(UNLIKELY(IsMultiplyError(sizeof(CuttingRange), cCuttingRanges))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(sizeof(CuttingRange), cCuttingRanges)");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             ret = Error_OutOfMemory;
             goto exit_with_log;
          }
-         const size_t cBytesCuttingRanges = cCuttingRanges * sizeof(CuttingRange);
+         const size_t cBytesCuttingRanges = sizeof(CuttingRange) * cCuttingRanges;
 
 
          const size_t cBytesToNeighbourJump = size_t { 0 };
@@ -2855,7 +2855,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
 #endif // LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
 
                if(PREDICTABLE(size_t { 1 } < cRanges)) {
-                  // we have cuts on our ends, either explicit or implicit at the tail ends that don't have unsplitable
+                  // we have cuts on our ends, either explicit or implicit at the tail ends that don't have uncuttable
                   // ranges on the tails, and at least one cut in our center, so we have to make decisions
                   std::set<CutPoint *, CompareCutPoint> bestCuts;
 
@@ -3016,7 +3016,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                      EBM_ASSERT(ptrdiff_t { 0 } <= cDistanceLow1);
                      EBM_ASSERT(cDistanceLow1 <= static_cast<ptrdiff_t>(cCuttableItems >> 1));
                      // cDistanceHigh1 can be negative if cCuttableItems is zero since then iStartNext
-                     // will reflect the boundary of the point after the unsplittable range above
+                     // will reflect the boundary of the point after the uncuttable range above
                      // our cut point, but since our cDistanceLow1 will be zero, it'll work out without
                      // a special check
                      const ptrdiff_t cDistanceHigh1 = static_cast<ptrdiff_t>(iRangeFirst + cCuttableItems) 
@@ -3043,7 +3043,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                            iResult = UNPREDICTABLE(cDistanceHigh3 < cDistanceLow3) ? iStartCur : iStartNext;
                            if(UNLIKELY(cDistanceHigh3 == cDistanceLow3)) {
                               // wow, we're at the center of the entire array AND the center of the outer
-                              // unsplittable ranges, AND the center of the splitable ranges.  Our final fallback
+                              // uncuttable ranges, AND the center of the cutable ranges.  Our final fallback
                               // is to resort to our symmetric determination (PLUS randomness)
 
                               bool bLocalSymmetryReversal = randomStream.Next() != bSymmetryReversal;

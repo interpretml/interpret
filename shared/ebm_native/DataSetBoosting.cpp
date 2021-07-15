@@ -30,18 +30,12 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(c
    EBM_ASSERT(1 <= cVectorLength);
 
    const size_t cStorageItems = bAllocateHessians ? 2 : 1;
-   if(IsMultiplyError(cStorageItems, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cStorageItems, cVectorLength)");
+   if(IsMultiplyError(cVectorLength, cStorageItems, cSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cVectorLength, cStorageItems, cSamples)");
       return nullptr;
    }
-   const size_t cStorageItemsPerSample = cStorageItems * cVectorLength;
+   const size_t cElements = cVectorLength * cStorageItems * cSamples;
 
-   if(IsMultiplyError(cSamples, cStorageItemsPerSample)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cSamples, cStorageItemsPerSample)");
-      return nullptr;
-   }
-
-   const size_t cElements = cSamples * cStorageItemsPerSample;
    FloatEbmType * aGradientsAndHessians = EbmMalloc<FloatEbmType>(cElements);
 
    LOG_0(TraceLevelInfo, "Exited ConstructGradientsAndHessians");
@@ -59,12 +53,12 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    EBM_ASSERT(0 < cVectorLength);
    EBM_ASSERT(nullptr != aPredictorScoresFrom);
 
-   if(IsMultiplyError(cSamples, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores IsMultiplyError(cSamples, cVectorLength)");
+   if(IsMultiplyError(cVectorLength, cSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores IsMultiplyError(cVectorLength, cSamples)");
       return nullptr;
    }
 
-   const size_t cElements = cSamples * cVectorLength;
+   const size_t cElements = cVectorLength * cSamples;
    FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType>(cElements);
    if(nullptr == aPredictorScoresTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores nullptr == aPredictorScoresTo");
@@ -124,14 +118,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
          free(aTargetData);
          return nullptr;
       }
-      if(!IsNumberConvertable<StorageDataType>(data)) {
+      if(IsConvertError<StorageDataType>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
          LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
          free(aTargetData);
          return nullptr;
       }
-      if(!IsNumberConvertable<size_t>(data)) {
+      if(IsConvertError<size_t>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
          LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
@@ -270,7 +264,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                      LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData inputData value cannot be negative");
                      goto free_all;
                   }
-                  if(!IsNumberConvertable<size_t>(inputData)) {
+                  if(IsConvertError<size_t>(inputData)) {
                      LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData inputData value too big to reference memory");
                      goto free_all;
                   }
@@ -297,7 +291,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                bits |= tensorIndex << shift;
                shift += cBitsPerItemMax;
             } while(shiftEnd != shift);
-            EBM_ASSERT(IsNumberConvertable<StorageDataType>(bits));
+            EBM_ASSERT(!IsConvertError<StorageDataType>(bits));
             *pInputDataTo = static_cast<StorageDataType>(bits);
             ++pInputDataTo;
          }

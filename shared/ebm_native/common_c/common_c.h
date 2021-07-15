@@ -29,7 +29,6 @@ extern "C" {
 #define WARNING_PUSH _Pragma("clang diagnostic push")
 #define WARNING_POP _Pragma("clang diagnostic pop")
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("clang diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
@@ -45,7 +44,6 @@ extern "C" {
 #define WARNING_PUSH _Pragma("GCC diagnostic push")
 #define WARNING_POP _Pragma("GCC diagnostic pop")
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
-#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("GCC diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
@@ -63,7 +61,6 @@ extern "C" {
 #define WARNING_PUSH
 #define WARNING_POP
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
@@ -75,7 +72,6 @@ extern "C" {
 #define WARNING_PUSH __pragma(warning(push))
 #define WARNING_POP __pragma(warning(pop))
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE __pragma(warning(disable: 4701))
-#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH __pragma(warning(disable: 4018))
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
 #define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY __pragma(warning(disable: 6001))
 #define ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER [[gsl::suppress(type.6)]]

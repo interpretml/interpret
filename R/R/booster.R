@@ -221,23 +221,23 @@ free_boosting <- function(booster_handle) {
    return(NULL)
 }
 
-get_best_model <- function(native_ebm_booster) {
+get_best_model <- function(booster) {
    model <- lapply(
-      seq_along(native_ebm_booster$feature_groups), 
-      function(i) { get_best_model_feature_group(native_ebm_booster$booster_handle, i - 1) }
+      seq_along(booster$feature_groups), 
+      function(i) { get_best_model_feature_group(booster$booster_handle, i - 1) }
    )
    return(model)
 }
 
-get_current_model <- function(native_ebm_booster) {
+get_current_model <- function(booster) {
    model <- lapply(
-      seq_along(native_ebm_booster$feature_groups), 
-      function(i) { get_current_model_feature_group(native_ebm_booster$booster_handle, i - 1) }
+      seq_along(booster$feature_groups), 
+      function(i) { get_current_model_feature_group(booster$booster_handle, i - 1) }
    )
    return(model)
 }
 
-native_ebm_booster <- function(
+booster <- function(
    model_type,
    n_classes,
    features_categorical,
@@ -300,7 +300,7 @@ native_ebm_booster <- function(
       n_classes = n_classes, 
       feature_groups = feature_groups, 
       booster_handle = booster_handle
-   ), class = "native_ebm_booster")
+   ), class = "booster")
    return(self)
 }
 
@@ -330,7 +330,7 @@ cyclic_gradient_boost <- function(
    min_metric <- Inf
    episode_index <- 0
 
-   ebm_booster <- native_ebm_booster(
+   ebm_booster <- booster(
       model_type,
       n_classes,
       features_categorical,

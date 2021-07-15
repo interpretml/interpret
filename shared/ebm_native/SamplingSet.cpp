@@ -169,7 +169,6 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
 }
 
 void SamplingSet::Free() {
-   EBM_ASSERT(nullptr != this);
    free(m_aCountOccurrences);
    free(m_aWeights);
    free(this);

@@ -52,67 +52,67 @@ INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
    return k_cBitsForStorageType / cBits;
 }
 
-void BoosterCore::DeleteSegmentedTensors(const size_t cFeatureGroups, SegmentedTensor ** const apSegmentedTensors) {
-   LOG_0(TraceLevelInfo, "Entered DeleteSegmentedTensors");
+void BoosterCore::DeleteSliceableTensors(const size_t cFeatureGroups, SliceableTensor ** const apSliceableTensors) {
+   LOG_0(TraceLevelInfo, "Entered DeleteSliceableTensors");
 
-   if(UNLIKELY(nullptr != apSegmentedTensors)) {
+   if(UNLIKELY(nullptr != apSliceableTensors)) {
       EBM_ASSERT(0 < cFeatureGroups);
-      SegmentedTensor ** ppSegmentedTensors = apSegmentedTensors;
-      const SegmentedTensor * const * const ppSegmentedTensorsEnd = &apSegmentedTensors[cFeatureGroups];
+      SliceableTensor ** ppSliceableTensors = apSliceableTensors;
+      const SliceableTensor * const * const ppSliceableTensorsEnd = &apSliceableTensors[cFeatureGroups];
       do {
-         SegmentedTensor::Free(*ppSegmentedTensors);
-         ++ppSegmentedTensors;
-      } while(ppSegmentedTensorsEnd != ppSegmentedTensors);
-      free(apSegmentedTensors);
+         SliceableTensor::Free(*ppSliceableTensors);
+         ++ppSliceableTensors;
+      } while(ppSliceableTensorsEnd != ppSliceableTensors);
+      free(apSliceableTensors);
    }
-   LOG_0(TraceLevelInfo, "Exited DeleteSegmentedTensors");
+   LOG_0(TraceLevelInfo, "Exited DeleteSliceableTensors");
 }
 
-ErrorEbmType BoosterCore::InitializeSegmentedTensors(
+ErrorEbmType BoosterCore::InitializeSliceableTensors(
    const size_t cFeatureGroups, 
    const FeatureGroup * const * const apFeatureGroups, 
    const size_t cVectorLength,
-   SegmentedTensor *** papSegmentedTensorsOut)
+   SliceableTensor *** papSliceableTensorsOut)
 {
-   LOG_0(TraceLevelInfo, "Entered InitializeSegmentedTensors");
+   LOG_0(TraceLevelInfo, "Entered InitializeSliceableTensors");
 
    EBM_ASSERT(0 < cFeatureGroups);
    EBM_ASSERT(nullptr != apFeatureGroups);
    EBM_ASSERT(1 <= cVectorLength);
-   EBM_ASSERT(nullptr != papSegmentedTensorsOut);
-   EBM_ASSERT(nullptr == *papSegmentedTensorsOut);
+   EBM_ASSERT(nullptr != papSliceableTensorsOut);
+   EBM_ASSERT(nullptr == *papSliceableTensorsOut);
 
-   SegmentedTensor ** const apSegmentedTensors = EbmMalloc<SegmentedTensor *>(cFeatureGroups);
-   if(UNLIKELY(nullptr == apSegmentedTensors)) {
-      LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == apSegmentedTensors");
+   SliceableTensor ** const apSliceableTensors = EbmMalloc<SliceableTensor *>(cFeatureGroups);
+   if(UNLIKELY(nullptr == apSliceableTensors)) {
+      LOG_0(TraceLevelWarning, "WARNING InitializeSliceableTensors nullptr == apSliceableTensors");
       return Error_OutOfMemory;
    }
    for(size_t i = 0; i < cFeatureGroups; ++i) {
-      apSegmentedTensors[i] = nullptr;
+      apSliceableTensors[i] = nullptr;
    }
-   *papSegmentedTensorsOut = apSegmentedTensors; // transfer ownership for future deletion
+   *papSliceableTensorsOut = apSliceableTensors; // transfer ownership for future deletion
 
-   SegmentedTensor ** ppSegmentedTensors = apSegmentedTensors;
+   SliceableTensor ** ppSliceableTensors = apSliceableTensors;
    for(size_t iFeatureGroup = 0; iFeatureGroup < cFeatureGroups; ++iFeatureGroup) {
       const FeatureGroup * const pFeatureGroup = apFeatureGroups[iFeatureGroup];
-      SegmentedTensor * const pSegmentedTensors = 
-         SegmentedTensor::Allocate(pFeatureGroup->GetCountSignificantDimensions(), cVectorLength);
-      if(UNLIKELY(nullptr == pSegmentedTensors)) {
-         LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedTensors");
+      SliceableTensor * const pSliceableTensors = 
+         SliceableTensor::Allocate(pFeatureGroup->GetCountSignificantDimensions(), cVectorLength);
+      if(UNLIKELY(nullptr == pSliceableTensors)) {
+         LOG_0(TraceLevelWarning, "WARNING InitializeSliceableTensors nullptr == pSliceableTensors");
          return Error_OutOfMemory;
       }
-      *ppSegmentedTensors = pSegmentedTensors; // transfer ownership for future deletion
+      *ppSliceableTensors = pSliceableTensors; // transfer ownership for future deletion
 
-      const ErrorEbmType error = pSegmentedTensors->Expand(pFeatureGroup);
+      const ErrorEbmType error = pSliceableTensors->Expand(pFeatureGroup);
       if(Error_None != error) {
          // already logged
          return error;
       }
 
-      ++ppSegmentedTensors;
+      ++ppSliceableTensors;
    }
 
-   LOG_0(TraceLevelInfo, "Exited InitializeSegmentedTensors");
+   LOG_0(TraceLevelInfo, "Exited InitializeSliceableTensors");
    return Error_None;
 }
 
@@ -235,7 +235,7 @@ ErrorEbmType BoosterCore::Create(
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
             return Error_IllegalParamValue;
          }
-         if(!IsNumberConvertable<size_t>(countBins)) {
+         if(IsConvertError<size_t>(countBins)) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create countBins is too high for us to allocate enough memory");
             return Error_IllegalParamValue;
          }
@@ -295,7 +295,7 @@ ErrorEbmType BoosterCore::Create(
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countDimensions cannot be negative");
             return Error_IllegalParamValue;
          }
-         if(!IsNumberConvertable<size_t>(countDimensions)) {
+         if(IsConvertError<size_t>(countDimensions)) {
             // if countDimensions exceeds the size of size_t, then we wouldn't be able to find it
             // in the array passed to us
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countDimensions is too high to index");
@@ -331,7 +331,7 @@ ErrorEbmType BoosterCore::Create(
                   LOG_0(TraceLevelError, "ERROR BoosterCore::Create aFeatureGroupsFeatureIndexes value cannot be negative");
                   return Error_IllegalParamValue;
                }
-               if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
+               if(IsConvertError<size_t>(indexFeatureInterop)) {
                   LOG_0(TraceLevelError, "ERROR BoosterCore::Create aFeatureGroupsFeatureIndexes value too big to reference memory");
                   return Error_IllegalParamValue;
                }
@@ -379,11 +379,11 @@ ErrorEbmType BoosterCore::Create(
 
                size_t cBytesArrayEquivalentSplit;
                if(1 == cSignificantDimensions) {
-                  if(IsMultiplyError(cEquivalentSplits, cBytesPerTreeSweep)) {
-                     LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create IsMultiplyError(cEquivalentSplits, cBytesPerTreeSweep)");
+                  if(IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)) {
+                     LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerTreeSweep, cEquivalentSplits)");
                      return Error_OutOfMemory;
                   }
-                  cBytesArrayEquivalentSplit = cEquivalentSplits * cBytesPerTreeSweep;
+                  cBytesArrayEquivalentSplit = cBytesPerTreeSweep * cEquivalentSplits;
                } else {
                   // TODO : someday add equal gain multidimensional randomized picking.  It's rather hard though with the existing sweep functions for 
                   // multidimensional right now
@@ -405,12 +405,12 @@ ErrorEbmType BoosterCore::Create(
       } while(iFeatureGroup < cFeatureGroups);
 
       if(!bClassification || ptrdiff_t { 2 } <= runtimeLearningTypeOrCountTargetClasses) {
-         ErrorEbmType error = InitializeSegmentedTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apCurrentModel);
+         ErrorEbmType error = InitializeSliceableTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apCurrentModel);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentModel");
             return error;
          }
-         error = InitializeSegmentedTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apBestModel);
+         error = InitializeSliceableTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apBestModel);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apBestModel");
             return error;

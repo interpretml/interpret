@@ -395,10 +395,10 @@ public:
       // when we use this hessian term retuned inside ComputeSinglePartitionUpdate, if there was only
       //   a single hessian term, or multiple similar ones, at the limit we'd get the following for the following inputs:
       //   boosting is working propertly and we're close to zero error:
-      //     - segment_model_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => 
+      //     - slice_model_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => 
       //       gradient / [gradient * (1)] => +-1  but we multiply this by the learningRate of 0.01 (default), to get +-0.01               
       //   when boosting is making a mistake, but is certain about it's prediction:
-      //     - segment_model_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => +-1 / [1 * (0)] => 
+      //     - slice_model_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => +-1 / [1 * (0)] => 
       //       +-infinity
       //       but this shouldn't really happen inside the training set, because as the error gets bigger our boosting algorithm will correct corse by
       //       updating in the opposite direction.  Divergence to infinity is a possibility in the validation set, but the training set pushes it's error to 
