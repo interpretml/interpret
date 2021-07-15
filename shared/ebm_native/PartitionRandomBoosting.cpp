@@ -73,7 +73,7 @@ public:
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
 
-      SliceableTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
+      CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
          pBoosterShell->GetOverwritableModelUpdate();
 
       const IntEbmType * pLeavesMax1 = aLeavesMax;

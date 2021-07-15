@@ -205,7 +205,7 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
-      SliceableTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
+      CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
          pBoosterShell->GetOverwritableModelUpdate();
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();

@@ -22,7 +22,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-SliceableTensor * SliceableTensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
+CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
    EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
    EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless
 
@@ -33,26 +33,26 @@ SliceableTensor * SliceableTensor::Allocate(const size_t cDimensionsMax, const s
    const size_t cValueCapacity = k_initialValueCapacity * cVectorLength;
 
    // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
-   const size_t cBytesSliceableTensor = sizeof(SliceableTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
-   SliceableTensor * const pSliceableTensor = EbmMalloc<SliceableTensor>(1, cBytesSliceableTensor);
-   if(UNLIKELY(nullptr == pSliceableTensor)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pSliceableTensor");
+   const size_t cBytesCompressibleTensor = sizeof(CompressibleTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
+   CompressibleTensor * const pCompressibleTensor = EbmMalloc<CompressibleTensor>(1, cBytesCompressibleTensor);
+   if(UNLIKELY(nullptr == pCompressibleTensor)) {
+      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pCompressibleTensor");
       return nullptr;
    }
 
-   pSliceableTensor->m_cVectorLength = cVectorLength;
-   pSliceableTensor->m_cDimensionsMax = cDimensionsMax;
-   pSliceableTensor->m_cDimensions = cDimensionsMax;
-   pSliceableTensor->m_cValueCapacity = cValueCapacity;
-   pSliceableTensor->m_bExpanded = false;
+   pCompressibleTensor->m_cVectorLength = cVectorLength;
+   pCompressibleTensor->m_cDimensionsMax = cDimensionsMax;
+   pCompressibleTensor->m_cDimensions = cDimensionsMax;
+   pCompressibleTensor->m_cValueCapacity = cValueCapacity;
+   pCompressibleTensor->m_bExpanded = false;
 
    FloatEbmType * const aValues = EbmMalloc<FloatEbmType>(cValueCapacity);
    if(UNLIKELY(nullptr == aValues)) {
       LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
-      free(pSliceableTensor); // don't need to call the full Free(*) yet
+      free(pCompressibleTensor); // don't need to call the full Free(*) yet
       return nullptr;
    }
-   pSliceableTensor->m_aValues = aValues;
+   pCompressibleTensor->m_aValues = aValues;
    // we only need to set the base case to zero, not our entire initial allocation
    // we checked for cVectorLength * k_initialValueCapacity * sizeof(FloatEbmType), and 1 <= k_initialValueCapacity, 
    // so sizeof(FloatEbmType) * cVectorLength can't overflow
@@ -61,7 +61,7 @@ SliceableTensor * SliceableTensor::Allocate(const size_t cDimensionsMax, const s
    }
 
    if(0 != cDimensionsMax) {
-      DimensionInfo * pDimension = pSliceableTensor->GetDimensions();
+      DimensionInfo * pDimension = pCompressibleTensor->GetDimensions();
       size_t iDimension = 0;
       do {
          pDimension->m_cSplits = 0;
@@ -71,13 +71,13 @@ SliceableTensor * SliceableTensor::Allocate(const size_t cDimensionsMax, const s
          ++iDimension;
       } while(iDimension < cDimensionsMax);
 
-      pDimension = pSliceableTensor->GetDimensions();
+      pDimension = pCompressibleTensor->GetDimensions();
       iDimension = 0;
       do {
          ActiveDataType * const aSplits = EbmMalloc<ActiveDataType>(k_initialSplitCapacity);
          if(UNLIKELY(nullptr == aSplits)) {
             LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aSplits");
-            Free(pSliceableTensor); // free everything!
+            Free(pCompressibleTensor); // free everything!
             return nullptr;
          }
          pDimension->m_aSplits = aSplits;
@@ -85,25 +85,25 @@ SliceableTensor * SliceableTensor::Allocate(const size_t cDimensionsMax, const s
          ++iDimension;
       } while(iDimension < cDimensionsMax);
    }
-   return pSliceableTensor;
+   return pCompressibleTensor;
 }
 
-void SliceableTensor::Free(SliceableTensor * const pSliceableTensor) {
-   if(LIKELY(nullptr != pSliceableTensor)) {
-      free(pSliceableTensor->m_aValues);
-      if(LIKELY(0 != pSliceableTensor->m_cDimensionsMax)) {
-         const DimensionInfo * pDimensionInfo = pSliceableTensor->GetDimensions();
-         const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pSliceableTensor->m_cDimensionsMax];
+void CompressibleTensor::Free(CompressibleTensor * const pCompressibleTensor) {
+   if(LIKELY(nullptr != pCompressibleTensor)) {
+      free(pCompressibleTensor->m_aValues);
+      if(LIKELY(0 != pCompressibleTensor->m_cDimensionsMax)) {
+         const DimensionInfo * pDimensionInfo = pCompressibleTensor->GetDimensions();
+         const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pCompressibleTensor->m_cDimensionsMax];
          do {
             free(pDimensionInfo->m_aSplits);
             ++pDimensionInfo;
          } while(pDimensionInfoEnd != pDimensionInfo);
       }
-      free(pSliceableTensor);
+      free(pCompressibleTensor);
    }
 }
 
-void SliceableTensor::Reset() {
+void CompressibleTensor::Reset() {
    DimensionInfo * pDimensionInfo = GetDimensions();
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       pDimensionInfo[iDimension].m_cSplits = 0;
@@ -116,7 +116,7 @@ void SliceableTensor::Reset() {
    m_bExpanded = false;
 }
 
-ErrorEbmType SliceableTensor::SetCountSplits(const size_t iDimension, const size_t cSplits) {
+ErrorEbmType CompressibleTensor::SetCountSplits(const size_t iDimension, const size_t cSplits) {
    EBM_ASSERT(iDimension < m_cDimensions);
    DimensionInfo * const pDimension = &GetDimensions()[iDimension];
    // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
@@ -152,7 +152,7 @@ ErrorEbmType SliceableTensor::SetCountSplits(const size_t iDimension, const size
    return Error_None;
 }
 
-ErrorEbmType SliceableTensor::EnsureValueCapacity(const size_t cValues) {
+ErrorEbmType CompressibleTensor::EnsureValueCapacity(const size_t cValues) {
    if(UNLIKELY(m_cValueCapacity < cValues)) {
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
@@ -182,7 +182,7 @@ ErrorEbmType SliceableTensor::EnsureValueCapacity(const size_t cValues) {
    return Error_None;
 }
 
-ErrorEbmType SliceableTensor::Copy(const SliceableTensor & rhs) {
+ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
@@ -213,7 +213,7 @@ ErrorEbmType SliceableTensor::Copy(const SliceableTensor & rhs) {
    return Error_None;
 }
 
-bool SliceableTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
+bool CompressibleTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
 
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
 
@@ -241,7 +241,7 @@ bool SliceableTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
    return !!bBad;
 }
 
-ErrorEbmType SliceableTensor::Expand(const FeatureGroup * const pFeatureGroup) {
+ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup) {
    // checking the max isn't really the best here, but doing this right seems pretty complicated
    static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<ActiveDataType>::max() &&
       0 == std::numeric_limits<ActiveDataType>::min(), "bad AcitveDataType size");
@@ -338,11 +338,11 @@ ErrorEbmType SliceableTensor::Expand(const FeatureGroup * const pFeatureGroup) {
                *pValueTop = *pValue1Move;
             } while(pValueTopEnd != pValueTop);
 
-            // For a single dimensional SliceableTensor checking here is best.  
+            // For a single dimensional CompressibleTensor checking here is best.  
             // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
             // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
             // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
-            // multi-dimensioncal SliceableTensors
+            // multi-dimensioncal CompressibleTensors
             if(UNLIKELY(aValues == pValueTop)) {
                // we've written our final tensor cell, so we're done
                break;
@@ -441,7 +441,7 @@ ErrorEbmType SliceableTensor::Expand(const FeatureGroup * const pFeatureGroup) {
    return Error_None;
 }
 
-void SliceableTensor::AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues) {
+void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues) {
    EBM_ASSERT(m_bExpanded);
    size_t cItems = m_cVectorLength;
 
@@ -482,7 +482,7 @@ void SliceableTensor::AddExpandedWithBadValueProtection(const FloatEbmType * con
 
 // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops 
 //   without needing to super-optimize it
-ErrorEbmType SliceableTensor::Add(const SliceableTensor & rhs) {
+ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
    DimensionInfoStack dimensionStack[k_cDimensionsMax];
 
    ErrorEbmType error;
@@ -610,11 +610,11 @@ ErrorEbmType SliceableTensor::Add(const SliceableTensor & rhs) {
          *pValueTop = *pValue1Move + *pValue2Move;
       } while(pValueTopEnd != pValueTop);
 
-      // For a single dimensional SliceableTensor checking here is best.  
+      // For a single dimensional CompressibleTensor checking here is best.  
       // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack,
       // thus eliminating the check on most loops.  We'll spend most of our time working on single features though, so we optimize for that case, 
       // but if we special cased the single dimensional case, then we would want to move this check into the loop below in the case 
-      // of multi-dimensioncal SliceableTensors
+      // of multi-dimensioncal CompressibleTensors
       if(UNLIKELY(aValues == pValueTop)) {
          // we've written our final tensor cell, so we're done
          break;
@@ -725,7 +725,7 @@ ErrorEbmType SliceableTensor::Add(const SliceableTensor & rhs) {
          EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->m_aSplits) <= static_cast<size_t>(pTopCur - pDimension1Cur->m_aSplits));
 
          if(UNLIKELY(pTopCur == p1Cur)) {
-            // since we've finished the rhs splits, our SliceableTensor already has the right splits in place, so all we need is to add the value
+            // since we've finished the rhs splits, our CompressibleTensor already has the right splits in place, so all we need is to add the value
             // of the last region in rhs to our remaining values
             break;
          }
@@ -765,7 +765,7 @@ ErrorEbmType SliceableTensor::Add(const SliceableTensor & rhs) {
 }
 
 #ifndef NDEBUG
-bool SliceableTensor::IsEqual(const SliceableTensor & rhs) const {
+bool CompressibleTensor::IsEqual(const CompressibleTensor & rhs) const {
    if(m_cDimensions != rhs.m_cDimensions) {
       return false;
    }

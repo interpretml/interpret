@@ -29,8 +29,8 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    LOG_0(TraceLevelInfo, "Entered BoosterShell::Free");
 
    if(nullptr != pBoosterShell) {
-      SliceableTensor::Free(pBoosterShell->m_pSmallChangeToModelAccumulatedFromSamplingSets);
-      SliceableTensor::Free(pBoosterShell->m_pSmallChangeToModelOverwriteSingleSamplingSet);
+      CompressibleTensor::Free(pBoosterShell->m_pSmallChangeToModelAccumulatedFromSamplingSets);
+      CompressibleTensor::Free(pBoosterShell->m_pSmallChangeToModelOverwriteSingleSamplingSet);
       free(pBoosterShell->m_aThreadByteBuffer1);
       free(pBoosterShell->m_aThreadByteBuffer2);
       free(pBoosterShell->m_aSumHistogramTargetEntry);
@@ -72,12 +72,12 @@ ErrorEbmType BoosterShell::FillAllocations() {
    const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
       sizeof(HistogramTargetEntry<true>) : sizeof(HistogramTargetEntry<false>);
 
-   m_pSmallChangeToModelAccumulatedFromSamplingSets = SliceableTensor::Allocate(k_cDimensionsMax, cVectorLength);
+   m_pSmallChangeToModelAccumulatedFromSamplingSets = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
    if(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets) {
       goto failed_allocation;
    }
 
-   m_pSmallChangeToModelOverwriteSingleSamplingSet = SliceableTensor::Allocate(k_cDimensionsMax, cVectorLength);
+   m_pSmallChangeToModelOverwriteSingleSamplingSet = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
    if(nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet) {
       goto failed_allocation;
    }
@@ -702,7 +702,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
    //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
-   SliceableTensor * const pBestModel = pBoosterCore->GetBestModel()[iFeatureGroup];
+   CompressibleTensor * const pBestModel = pBoosterCore->GetBestModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pBestModel);
    EBM_ASSERT(pBestModel->GetExpanded()); // the model should have been expanded at startup
    FloatEbmType * const pValues = pBestModel->GetValuePointer();
@@ -793,7 +793,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
    //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
 
-   SliceableTensor * const pCurrentModel = pBoosterCore->GetCurrentModel()[iFeatureGroup];
+   CompressibleTensor * const pCurrentModel = pBoosterCore->GetCurrentModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pCurrentModel);
    EBM_ASSERT(pCurrentModel->GetExpanded()); // the model should have been expanded at startup
    FloatEbmType * const pValues = pCurrentModel->GetValuePointer();

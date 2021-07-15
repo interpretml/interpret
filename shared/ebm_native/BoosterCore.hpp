@@ -56,8 +56,8 @@ class BoosterCore final {
    FloatEbmType m_validationWeightTotal;
    FloatEbmType * m_aValidationWeights;
 
-   SliceableTensor ** m_apCurrentModel;
-   SliceableTensor ** m_apBestModel;
+   CompressibleTensor ** m_apCurrentModel;
+   CompressibleTensor ** m_apBestModel;
 
    FloatEbmType m_bestModelMetric;
 
@@ -68,13 +68,13 @@ class BoosterCore final {
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
 
-   static void DeleteSliceableTensors(const size_t cFeatureGroups, SliceableTensor ** const apSliceableTensors);
+   static void DeleteCompressibleTensors(const size_t cFeatureGroups, CompressibleTensor ** const apCompressibleTensors);
 
-   static ErrorEbmType InitializeSliceableTensors(
+   static ErrorEbmType InitializeCompressibleTensors(
       const size_t cFeatureGroups,
       const FeatureGroup * const * const apFeatureGroups,
       const size_t cVectorLength,
-      SliceableTensor *** papSliceableTensorsOut
+      CompressibleTensor *** papCompressibleTensorsOut
    );
 
    INLINE_ALWAYS ~BoosterCore() {
@@ -90,8 +90,8 @@ class BoosterCore final {
 
       free(m_aFeatures);
 
-      DeleteSliceableTensors(m_cFeatureGroups, m_apCurrentModel);
-      DeleteSliceableTensors(m_cFeatureGroups, m_apBestModel);
+      DeleteCompressibleTensors(m_cFeatureGroups, m_apCurrentModel);
+      DeleteCompressibleTensors(m_cFeatureGroups, m_apBestModel);
    };
 
    WARNING_PUSH
@@ -166,11 +166,11 @@ public:
       return m_aValidationWeights;
    }
 
-   INLINE_ALWAYS SliceableTensor * const * GetCurrentModel() const {
+   INLINE_ALWAYS CompressibleTensor * const * GetCurrentModel() const {
       return m_apCurrentModel;
    }
 
-   INLINE_ALWAYS SliceableTensor * const * GetBestModel() const {
+   INLINE_ALWAYS CompressibleTensor * const * GetBestModel() const {
       return m_apBestModel;
    }
 

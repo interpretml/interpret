@@ -109,7 +109,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
          pBoosterCore->SetBestModelMetric(modelMetric);
 
-         // TODO : in the future don't copy over all SliceableTensors.  We only need to copy the ones that changed, which we can detect if we 
+         // TODO : in the future don't copy over all CompressibleTensors.  We only need to copy the ones that changed, which we can detect if we 
          // use a linked list and array lookup for the same data structure
          size_t iModel = 0;
          size_t iModelEnd = pBoosterCore->GetCountFeatureGroups();
@@ -305,7 +305,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
 
    const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iAllDimension].m_pFeature->GetCountBins();
    if(cBins <= size_t { 1 }) {
-      // we have 1 bin, or 0, so this dimension will be stripped from the SliceableTensor.  Let's return the empty result now
+      // we have 1 bin, or 0, so this dimension will be stripped from the CompressibleTensor.  Let's return the empty result now
       *countSplitsInOut = IntEbmType { 0 };
       return Error_None;
    }

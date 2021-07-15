@@ -52,67 +52,67 @@ INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
    return k_cBitsForStorageType / cBits;
 }
 
-void BoosterCore::DeleteSliceableTensors(const size_t cFeatureGroups, SliceableTensor ** const apSliceableTensors) {
-   LOG_0(TraceLevelInfo, "Entered DeleteSliceableTensors");
+void BoosterCore::DeleteCompressibleTensors(const size_t cFeatureGroups, CompressibleTensor ** const apCompressibleTensors) {
+   LOG_0(TraceLevelInfo, "Entered DeleteCompressibleTensors");
 
-   if(UNLIKELY(nullptr != apSliceableTensors)) {
+   if(UNLIKELY(nullptr != apCompressibleTensors)) {
       EBM_ASSERT(0 < cFeatureGroups);
-      SliceableTensor ** ppSliceableTensors = apSliceableTensors;
-      const SliceableTensor * const * const ppSliceableTensorsEnd = &apSliceableTensors[cFeatureGroups];
+      CompressibleTensor ** ppCompressibleTensors = apCompressibleTensors;
+      const CompressibleTensor * const * const ppCompressibleTensorsEnd = &apCompressibleTensors[cFeatureGroups];
       do {
-         SliceableTensor::Free(*ppSliceableTensors);
-         ++ppSliceableTensors;
-      } while(ppSliceableTensorsEnd != ppSliceableTensors);
-      free(apSliceableTensors);
+         CompressibleTensor::Free(*ppCompressibleTensors);
+         ++ppCompressibleTensors;
+      } while(ppCompressibleTensorsEnd != ppCompressibleTensors);
+      free(apCompressibleTensors);
    }
-   LOG_0(TraceLevelInfo, "Exited DeleteSliceableTensors");
+   LOG_0(TraceLevelInfo, "Exited DeleteCompressibleTensors");
 }
 
-ErrorEbmType BoosterCore::InitializeSliceableTensors(
+ErrorEbmType BoosterCore::InitializeCompressibleTensors(
    const size_t cFeatureGroups, 
    const FeatureGroup * const * const apFeatureGroups, 
    const size_t cVectorLength,
-   SliceableTensor *** papSliceableTensorsOut)
+   CompressibleTensor *** papCompressibleTensorsOut)
 {
-   LOG_0(TraceLevelInfo, "Entered InitializeSliceableTensors");
+   LOG_0(TraceLevelInfo, "Entered InitializeCompressibleTensors");
 
    EBM_ASSERT(0 < cFeatureGroups);
    EBM_ASSERT(nullptr != apFeatureGroups);
    EBM_ASSERT(1 <= cVectorLength);
-   EBM_ASSERT(nullptr != papSliceableTensorsOut);
-   EBM_ASSERT(nullptr == *papSliceableTensorsOut);
+   EBM_ASSERT(nullptr != papCompressibleTensorsOut);
+   EBM_ASSERT(nullptr == *papCompressibleTensorsOut);
 
-   SliceableTensor ** const apSliceableTensors = EbmMalloc<SliceableTensor *>(cFeatureGroups);
-   if(UNLIKELY(nullptr == apSliceableTensors)) {
-      LOG_0(TraceLevelWarning, "WARNING InitializeSliceableTensors nullptr == apSliceableTensors");
+   CompressibleTensor ** const apCompressibleTensors = EbmMalloc<CompressibleTensor *>(cFeatureGroups);
+   if(UNLIKELY(nullptr == apCompressibleTensors)) {
+      LOG_0(TraceLevelWarning, "WARNING InitializeCompressibleTensors nullptr == apCompressibleTensors");
       return Error_OutOfMemory;
    }
    for(size_t i = 0; i < cFeatureGroups; ++i) {
-      apSliceableTensors[i] = nullptr;
+      apCompressibleTensors[i] = nullptr;
    }
-   *papSliceableTensorsOut = apSliceableTensors; // transfer ownership for future deletion
+   *papCompressibleTensorsOut = apCompressibleTensors; // transfer ownership for future deletion
 
-   SliceableTensor ** ppSliceableTensors = apSliceableTensors;
+   CompressibleTensor ** ppCompressibleTensors = apCompressibleTensors;
    for(size_t iFeatureGroup = 0; iFeatureGroup < cFeatureGroups; ++iFeatureGroup) {
       const FeatureGroup * const pFeatureGroup = apFeatureGroups[iFeatureGroup];
-      SliceableTensor * const pSliceableTensors = 
-         SliceableTensor::Allocate(pFeatureGroup->GetCountSignificantDimensions(), cVectorLength);
-      if(UNLIKELY(nullptr == pSliceableTensors)) {
-         LOG_0(TraceLevelWarning, "WARNING InitializeSliceableTensors nullptr == pSliceableTensors");
+      CompressibleTensor * const pCompressibleTensors = 
+         CompressibleTensor::Allocate(pFeatureGroup->GetCountSignificantDimensions(), cVectorLength);
+      if(UNLIKELY(nullptr == pCompressibleTensors)) {
+         LOG_0(TraceLevelWarning, "WARNING InitializeCompressibleTensors nullptr == pCompressibleTensors");
          return Error_OutOfMemory;
       }
-      *ppSliceableTensors = pSliceableTensors; // transfer ownership for future deletion
+      *ppCompressibleTensors = pCompressibleTensors; // transfer ownership for future deletion
 
-      const ErrorEbmType error = pSliceableTensors->Expand(pFeatureGroup);
+      const ErrorEbmType error = pCompressibleTensors->Expand(pFeatureGroup);
       if(Error_None != error) {
          // already logged
          return error;
       }
 
-      ++ppSliceableTensors;
+      ++ppCompressibleTensors;
    }
 
-   LOG_0(TraceLevelInfo, "Exited InitializeSliceableTensors");
+   LOG_0(TraceLevelInfo, "Exited InitializeCompressibleTensors");
    return Error_None;
 }
 
@@ -405,12 +405,12 @@ ErrorEbmType BoosterCore::Create(
       } while(iFeatureGroup < cFeatureGroups);
 
       if(!bClassification || ptrdiff_t { 2 } <= runtimeLearningTypeOrCountTargetClasses) {
-         ErrorEbmType error = InitializeSliceableTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apCurrentModel);
+         ErrorEbmType error = InitializeCompressibleTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apCurrentModel);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentModel");
             return error;
          }
-         error = InitializeSliceableTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apBestModel);
+         error = InitializeCompressibleTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apBestModel);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apBestModel");
             return error;

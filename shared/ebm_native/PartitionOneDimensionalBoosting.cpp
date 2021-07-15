@@ -540,7 +540,7 @@ public:
          cVectorLength * sizeof(*aSumHistogramTargetEntry)
       );
 
-      SliceableTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
+      CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
          pBoosterShell->GetOverwritableModelUpdate();
 
       size_t cLeaves;
