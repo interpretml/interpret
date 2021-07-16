@@ -23,7 +23,7 @@
     <ClCompile Include="InitializeGradientsAndHessians.cpp" />
     <ClCompile Include="interpretable_numerics.cpp" />
     <ClCompile Include="sampling.cpp" />
-    <ClCompile Include="SegmentedTensor.cpp" />
+    <ClCompile Include="CompressibleTensor.cpp" />
     <ClCompile Include="SumHistogramBuckets.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
@@ -66,7 +66,7 @@
     <ClInclude Include="HistogramTargetEntry.hpp" />
     <ClInclude Include="RandomStream.hpp" />
     <ClInclude Include="SamplingSet.hpp" />
-    <ClInclude Include="SegmentedTensor.hpp" />
+    <ClInclude Include="CompressibleTensor.hpp" />
     <ClInclude Include="TensorTotalsSum.hpp" />
     <ClInclude Include="TreeNode.hpp" />
     <ClInclude Include="TreeSweep.hpp" />
