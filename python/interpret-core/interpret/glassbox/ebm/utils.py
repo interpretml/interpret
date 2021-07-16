@@ -4,7 +4,7 @@
 # TODO: Test EBMUtils
 
 from math import ceil
-from .internal import Native
+from .internal import Native, Booster, InteractionDetector
 
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax
