@@ -4,7 +4,7 @@
 # TODO: Test EBMUtils
 
 from math import ceil
-from .internal import NativeHelper, Native
+from .internal import Native
 
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax
@@ -508,6 +508,171 @@ class EBMUtils:
             # TODO PK we should consider changing the feature type to the same " x " separator
             # style as gen_feature_name, for human understanability
             return "interaction"
+
+    @staticmethod
+    def cyclic_gradient_boost(
+        model_type,
+        n_classes,
+        features_categorical, 
+        features_bin_count,
+        feature_groups,
+        X_train,
+        y_train,
+        w_train,
+        scores_train,
+        X_val,
+        y_val,
+        w_val,
+        scores_val,
+        n_inner_bags,
+        generate_update_options,
+        learning_rate,
+        min_samples_leaf,
+        max_leaves,
+        early_stopping_rounds,
+        early_stopping_tolerance,
+        max_rounds,
+        random_state,
+        name,
+        noise_scale,
+        bin_counts,
+        optional_temp_params=None,
+    ):
+        min_metric = np.inf
+        episode_index = 0
+        with Booster(
+            model_type,
+            n_classes,
+            features_categorical, 
+            features_bin_count,
+            feature_groups,
+            X_train,
+            y_train,
+            w_train,
+            scores_train,
+            X_val,
+            y_val,
+            w_val,
+            scores_val,
+            n_inner_bags,
+            random_state,
+            optional_temp_params,
+        ) as booster:
+            no_change_run_length = 0
+            bp_metric = np.inf
+            log.info("Start boosting {0}".format(name))
+            for episode_index in range(max_rounds):
+                if episode_index % 10 == 0:
+                    log.debug("Sweep Index for {0}: {1}".format(name, episode_index))
+                    log.debug("Metric: {0}".format(min_metric))
+
+                for feature_group_index in range(len(feature_groups)):
+                    gain = booster.generate_model_update(
+                        feature_group_index=feature_group_index,
+                        generate_update_options=generate_update_options,
+                        learning_rate=learning_rate,
+                        min_samples_leaf=min_samples_leaf,
+                        max_leaves=max_leaves,
+                    )
+
+                    if noise_scale: # Differentially private updates
+                        splits = booster.get_model_update_splits()[0]
+
+                        model_update_tensor = booster.get_model_update_expanded()
+                        noisy_update_tensor = model_update_tensor.copy()
+
+                        splits_iter = [0] + list(splits + 1) + [len(model_update_tensor)] # Make splits iteration friendly
+                        # Loop through all random splits and add noise before updating
+                        for f, s in zip(splits_iter[:-1], splits_iter[1:]):
+                            if s == 1: 
+                                continue # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
+
+                            noise = np.random.normal(0.0, noise_scale)
+                            noisy_update_tensor[f:s] = model_update_tensor[f:s] + noise
+
+                            # Native code will be returning sums of residuals in slices, not averages.
+                            # Compute noisy average by dividing noisy sum by noisy histogram counts
+                            instance_count = np.sum(bin_counts[feature_group_index][f:s])
+                            noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_count
+
+                        noisy_update_tensor = noisy_update_tensor * -1 # Invert gradients before updates
+                        booster.set_model_update_expanded(feature_group_index, noisy_update_tensor)
+
+
+                    curr_metric = booster.apply_model_update()
+
+                    min_metric = min(curr_metric, min_metric)
+
+                # TODO PK this early_stopping_tolerance is a little inconsistent
+                #      since it triggers intermittently and only re-triggers if the
+                #      threshold is re-passed, but not based on a smooth windowed set
+                #      of checks.  We can do better by keeping a list of the last
+                #      number of measurements to have a consistent window of values.
+                #      If we only cared about the metric at the start and end of the epoch
+                #      window a circular buffer would be best choice with O(1).
+                if no_change_run_length == 0:
+                    bp_metric = min_metric
+                if min_metric + early_stopping_tolerance < bp_metric:
+                    no_change_run_length = 0
+                else:
+                    no_change_run_length += 1
+
+                if (
+                    early_stopping_rounds >= 0
+                    and no_change_run_length >= early_stopping_rounds
+                ):
+                    break
+
+            log.info(
+                "End boosting {0}, Best Metric: {1}, Num Rounds: {2}".format(
+                    name, min_metric, episode_index
+                )
+            )
+
+            # TODO: Add more ways to call alternative get_current_model
+            # Use latest model if there are no instances in the (transposed) validation set 
+            # or if training with privacy
+            if X_val.shape[1] == 0 or noise_scale is not None:
+                model_update = booster.get_current_model()
+            else:
+                model_update = booster.get_best_model()
+
+        return model_update, min_metric, episode_index
+
+    @staticmethod
+    def get_interactions(
+        n_interactions,
+        iter_feature_groups,
+        model_type,
+        n_classes,
+        features_categorical, 
+        features_bin_count,
+        X,
+        y,
+        w,
+        scores,
+        min_samples_leaf,
+        optional_temp_params=None,
+    ):
+        interaction_scores = []
+        with InteractionDetector(
+            model_type, n_classes, features_categorical, features_bin_count, X, y, w, scores, optional_temp_params
+        ) as interaction_detector:
+            for feature_group in iter_feature_groups:
+                score = interaction_detector.get_interaction_score(
+                    feature_group, min_samples_leaf,
+                )
+                interaction_scores.append((feature_group, score))
+
+        ranked_scores = list(
+            sorted(interaction_scores, key=lambda x: x[1], reverse=True)
+        )
+        final_ranked_scores = ranked_scores
+
+        final_indices = [x[0] for x in final_ranked_scores]
+        final_scores = [x[1] for x in final_ranked_scores]
+
+        return final_indices, final_scores
 
 
 class DPUtils:

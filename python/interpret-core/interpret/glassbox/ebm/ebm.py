@@ -7,7 +7,7 @@ from typing import DefaultDict
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import DPUtils, EBMUtils
-from .internal import NativeHelper, Native
+from .internal import Native
 from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema, unify_vector
 from ...api.base import ExplainerMixin
@@ -527,7 +527,7 @@ class BaseCoreEBM:
             self.model_,
             self.current_metric_,
             self.main_episode_idx_,
-        ) = NativeHelper.cyclic_gradient_boost(
+        ) = EBMUtils.cyclic_gradient_boost(
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features_categorical = self.features_categorical, 
@@ -569,7 +569,7 @@ class BaseCoreEBM:
 
             iter_feature_groups = combinations(range(X_pair.shape[0]), 2)
 
-            final_indices, final_scores = NativeHelper.get_interactions(
+            final_indices, final_scores = EBMUtils.get_interactions(
                 n_interactions=self.interactions,
                 iter_feature_groups=iter_feature_groups,
                 model_type=self.model_type,
@@ -610,7 +610,7 @@ class BaseCoreEBM:
             model_update,
             self.current_metric_,
             self.inter_episode_idx_,
-        ) = NativeHelper.cyclic_gradient_boost(
+        ) = EBMUtils.cyclic_gradient_boost(
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features_categorical = self.pair_features_categorical, 
