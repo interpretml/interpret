@@ -673,6 +673,20 @@ class BaseCoreEBM:
         return self
 
 
+def remote_train_model(estimator, X, y, w, X_pair, n_classes):
+    return estimator.fit_parallel(X, y, w, X_pair, n_classes)
+
+def remote_staged_fit_fn1(estimator, X, y, w, X_pair, inter_indices=[]):
+    return estimator.staged_fit_interactions_parallel(
+        X, y, w, X_pair, inter_indices
+    )
+
+def remote_staged_fit_fn2(estimator, X, y, w, X_pair, inter_indices=[]):
+    return estimator.staged_fit_interactions_parallel(
+        X, y, w, X_pair, inter_indices
+    )
+
+
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
@@ -991,14 +1005,11 @@ class BaseEBM(BaseEstimator):
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
-        def train_model(estimator, X, y, w, X_pair, n_classes):
-            return estimator.fit_parallel(X, y, w, X_pair, n_classes)
-
         train_model_args_iter = (
             (estimators[i], X, y, w, X_pair, n_classes) for i in range(self.outer_bags)
         )
 
-        estimators = provider.parallel(train_model, train_model_args_iter)
+        estimators = provider.parallel(remote_train_model, train_model_args_iter)
 
         def select_pairs_from_fast(estimators, n_interactions):
             # Average rank from estimators
@@ -1038,16 +1049,12 @@ class BaseEBM(BaseEstimator):
 
             if len(pair_indices) != 0:
                 # Retrain interactions for base models
-                def staged_fit_fn(estimator, X, y, w, X_pair, inter_indices=[]):
-                    return estimator.staged_fit_interactions_parallel(
-                        X, y, w, X_pair, inter_indices
-                    )
 
                 staged_fit_args_iter = (
                     (estimators[i], X, y, w, X_pair, pair_indices) for i in range(self.outer_bags)
                 )
 
-                estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
+                estimators = provider.parallel(remote_staged_fit_fn1, staged_fit_args_iter)
         elif isinstance(self.interactions, int) and self.interactions == 0:
             pair_indices = []
         elif isinstance(self.interactions, list):
@@ -1070,16 +1077,11 @@ class BaseEBM(BaseEstimator):
                     self.interactions = pair_indices
 
                 # Retrain interactions for base models
-                def staged_fit_fn(estimator, X, y, w, X_pair, inter_indices=[]):
-                    return estimator.staged_fit_interactions_parallel(
-                        X, y, w, X_pair, inter_indices
-                    )
-
                 staged_fit_args_iter = (
                     (estimators[i], X, y, w, X_pair, pair_indices) for i in range(self.outer_bags)
                 )
 
-                estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
+                estimators = provider.parallel(remote_staged_fit_fn2, staged_fit_args_iter)
         else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
