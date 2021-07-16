@@ -15,7 +15,7 @@
 
 #include "ebm_internal.hpp"
 
-#include "SegmentedTensor.hpp"
+#include "CompressibleTensor.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

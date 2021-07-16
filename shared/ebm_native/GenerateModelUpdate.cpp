@@ -14,7 +14,7 @@
 
 #include "ebm_internal.hpp"
 
-#include "SegmentedTensor.hpp"
+#include "CompressibleTensor.hpp"
 #include "ebm_stats.hpp"
 // feature includes
 #include "Feature.hpp"

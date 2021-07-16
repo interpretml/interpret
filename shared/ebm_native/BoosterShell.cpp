@@ -13,7 +13,7 @@
 
 #include "ebm_internal.hpp"
 
-#include "SegmentedTensor.hpp"
+#include "CompressibleTensor.hpp"
 
 #include "HistogramTargetEntry.hpp"
 

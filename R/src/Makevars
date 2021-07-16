@@ -39,7 +39,7 @@ OBJECTS = \
    $(NATIVEDIR)/RandomStream.o \
    $(NATIVEDIR)/sampling.o \
    $(NATIVEDIR)/SamplingSet.o \
-   $(NATIVEDIR)/SegmentedTensor.o \
+   $(NATIVEDIR)/CompressibleTensor.o \
    $(NATIVEDIR)/SumHistogramBuckets.o \
    $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/common_c/common_c.o \

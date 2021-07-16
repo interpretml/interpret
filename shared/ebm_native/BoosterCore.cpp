@@ -19,7 +19,7 @@
 #include "compute_accessors.hpp"
 
 #include "RandomStream.hpp"
-#include "SegmentedTensor.hpp"
+#include "CompressibleTensor.hpp"
 #include "ebm_stats.hpp"
 // feature includes
 #include "Feature.hpp"

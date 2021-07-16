@@ -17,7 +17,7 @@
 #include "ebm_internal.hpp"
 
 #include "RandomStream.hpp"
-#include "SegmentedTensor.hpp"
+#include "CompressibleTensor.hpp"
 // feature includes
 #include "Feature.hpp"
 // FeatureGroup.h depends on FeatureInternal.h

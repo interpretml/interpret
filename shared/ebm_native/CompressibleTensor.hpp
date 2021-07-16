@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef SLICEABLE_TENSOR_HPP
-#define SLICEABLE_TENSOR_HPP
+#ifndef COMPRESSIBLE_TENSOR_HPP
+#define COMPRESSIBLE_TENSOR_HPP
 
 #include <type_traits> // std::is_standard_layout
 #include <stdlib.h> // malloc, realloc, free
@@ -237,4 +237,4 @@ static_assert(std::is_pod<CompressibleTensor>::value,
 
 } // DEFINED_ZONE_NAME
 
-#endif // SLICEABLE_TENSOR_HPP
+#endif // COMPRESSIBLE_TENSOR_HPP
