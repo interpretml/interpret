@@ -672,21 +672,6 @@ class BaseCoreEBM:
         self._staged_fit_interactions(X_train, y_train, w_train, X_val, y_val, w_val, X_pair_train, X_pair_val, inter_indices)
         return self
 
-
-def remote_train_model(estimator, X, y, w, X_pair, n_classes):
-    return estimator.fit_parallel(X, y, w, X_pair, n_classes)
-
-def remote_staged_fit_fn1(estimator, X, y, w, X_pair, inter_indices=[]):
-    return estimator.staged_fit_interactions_parallel(
-        X, y, w, X_pair, inter_indices
-    )
-
-def remote_staged_fit_fn2(estimator, X, y, w, X_pair, inter_indices=[]):
-    return estimator.staged_fit_interactions_parallel(
-        X, y, w, X_pair, inter_indices
-    )
-
-
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
@@ -1009,7 +994,7 @@ class BaseEBM(BaseEstimator):
             (estimators[i], X, y, w, X_pair, n_classes) for i in range(self.outer_bags)
         )
 
-        estimators = provider.parallel(remote_train_model, train_model_args_iter)
+        estimators = provider.parallel(BaseCoreEBM.fit_parallel, train_model_args_iter)
 
         def select_pairs_from_fast(estimators, n_interactions):
             # Average rank from estimators
@@ -1054,7 +1039,7 @@ class BaseEBM(BaseEstimator):
                     (estimators[i], X, y, w, X_pair, pair_indices) for i in range(self.outer_bags)
                 )
 
-                estimators = provider.parallel(remote_staged_fit_fn1, staged_fit_args_iter)
+                estimators = provider.parallel(BaseCoreEBM.staged_fit_interactions_parallel, staged_fit_args_iter)
         elif isinstance(self.interactions, int) and self.interactions == 0:
             pair_indices = []
         elif isinstance(self.interactions, list):
@@ -1081,7 +1066,7 @@ class BaseEBM(BaseEstimator):
                     (estimators[i], X, y, w, X_pair, pair_indices) for i in range(self.outer_bags)
                 )
 
-                estimators = provider.parallel(remote_staged_fit_fn2, staged_fit_args_iter)
+                estimators = provider.parallel(BaseCoreEBM.staged_fit_interactions_parallel, staged_fit_args_iter)
         else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
