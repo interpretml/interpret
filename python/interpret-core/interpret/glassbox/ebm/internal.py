@@ -1242,9 +1242,9 @@ class Booster(AbstractContextManager):
         """ Deallocates C objects used to boost EBM. """
         log.info("Deallocation boosting start")
 
-        boster_handle = getattr(self, "_boster_handle", None)
+        booster_handle = getattr(self, "_booster_handle", None)
 
-        if boster_handle:
+        if booster_handle:
             native = Native.get_native_singleton()
             self._booster_handle = None
             native._unsafe.FreeBooster(booster_handle)
