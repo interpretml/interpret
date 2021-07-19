@@ -799,12 +799,9 @@ class DPUtils:
         fixed_params = dict(
             max_interaction_bins=None,
             interactions=0,
-            outer_bags=1,
             inner_bags=0,
-            validation_size=0,
             early_stopping_rounds=-1,
             early_stopping_tolerance=-1,
-            n_jobs=1,
         )
 
         error_params = []

@@ -849,18 +849,18 @@ class BaseEBM(BaseEstimator):
              # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             if self.composition == 'classic':
                 self.noise_scale_ = DPUtils.calc_classic_noise_multi(
-                    total_queries = self.max_rounds * X.shape[1], 
+                    total_queries = self.max_rounds * X.shape[1] * self.outer_bags, 
                     target_epsilon = training_eps_, 
                     delta = training_delta_, 
                     sensitivity = self.domain_size_ * self.learning_rate * np.max(w)
                 )
             elif self.composition == 'gdp':
                 self.noise_scale_ = DPUtils.calc_gdp_noise_multi(
-                    total_queries = self.max_rounds * X.shape[1], 
+                    total_queries = self.max_rounds * X.shape[1] * self.outer_bags, 
                     target_epsilon = training_eps_, 
                     delta = training_delta_
                 )
-                self.noise_scale_ = self.noise_scale_ * self.domain_size_ * self.learning_rate * np.max(w)# Alg Line 17
+                self.noise_scale_ = self.noise_scale_ * self.domain_size_ * self.learning_rate * np.max(w) # Alg Line 17
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
         else:
@@ -1879,13 +1879,17 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         binning="private",
         # Stages
         mains="all",
+        # Ensemble
+        outer_bags=1,
         # Boosting
         learning_rate=0.01,
+        validation_size=0,
         max_rounds=300,
         # Trees
         max_leaves=3,
         min_samples_leaf=2,
         # Overall
+        n_jobs=-2,
         random_state=42,
         # Differential Privacy
         epsilon=1,
@@ -1902,14 +1906,9 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             max_bins: Max number of bins per feature for pre-processing stage.
             binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
-            interactions: Interactions to be trained on.
-                Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
             outer_bags: Number of outer bags.
-            inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
-            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
-            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             max_rounds: Number of rounds for boosting.
             max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
@@ -1934,11 +1933,11 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             mains=mains,
             interactions=0,
             # Ensemble
-            outer_bags=1,
+            outer_bags=outer_bags,
             inner_bags=0,
             # Boosting
             learning_rate=learning_rate,
-            validation_size=0,
+            validation_size=validation_size,
             early_stopping_rounds=-1,
             early_stopping_tolerance=-1,
             max_rounds=max_rounds,
@@ -1946,7 +1945,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             max_leaves=max_leaves,
             min_samples_leaf=min_samples_leaf,
             # Overall
-            n_jobs=1,
+            n_jobs=n_jobs,
             random_state=random_state,
             # Differential Privacy
             epsilon=epsilon,
@@ -2024,13 +2023,17 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         binning="private",
         # Stages
         mains="all",
+        # Ensemble
+        outer_bags=1,
         # Boosting
         learning_rate=0.01,
+        validation_size=0,
         max_rounds=300,
         # Trees
         max_leaves=3,
         min_samples_leaf=2,
         # Overall
+        n_jobs=-2,
         random_state=42,
         # Differential Privacy
         epsilon=1,
@@ -2039,7 +2042,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         bin_budget_frac=0.1,
         privacy_schema=None,
     ):
-        """ Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
+        """ Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
 
         Args:
             feature_names: List of feature names.
@@ -2047,14 +2050,9 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             max_bins: Max number of bins per feature for pre-processing stage.
             binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
-            interactions: Interactions to be trained on.
-                Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
             outer_bags: Number of outer bags.
-            inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
             validation_size: Validation set size for boosting.
-            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
-            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             max_rounds: Number of rounds for boosting.
             max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
@@ -2079,11 +2077,11 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             mains=mains,
             interactions=0,
             # Ensemble
-            outer_bags=1,
+            outer_bags=outer_bags,
             inner_bags=0,
             # Boosting
             learning_rate=learning_rate,
-            validation_size=0,
+            validation_size=validation_size,
             early_stopping_rounds=-1,
             early_stopping_tolerance=-1,
             max_rounds=max_rounds,
@@ -2091,7 +2089,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             max_leaves=max_leaves,
             min_samples_leaf=min_samples_leaf,
             # Overall
-            n_jobs=1,
+            n_jobs=n_jobs,
             random_state=random_state,
             # Differential Privacy
             epsilon=epsilon,
