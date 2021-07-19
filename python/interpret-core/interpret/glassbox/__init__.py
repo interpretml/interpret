@@ -6,5 +6,5 @@ from .linear import LogisticRegression, LinearRegression  # noqa: F401
 from .skoperules import DecisionListClassifier  # noqa: F401
 from .ebm.ebm import ExplainableBoostingClassifier  # noqa: F401
 from .ebm.ebm import ExplainableBoostingRegressor  # noqa: F401
-from .ebm.ebm import DPExplainableBoostingClassifier # noqa: F401
-from .ebm.ebm import DPExplainableBoostingRegressor # noqa: F401
+from .ebm.ebm import DPExplainableBoostingClassifier  # noqa: F401
+from .ebm.ebm import DPExplainableBoostingRegressor  # noqa: F401

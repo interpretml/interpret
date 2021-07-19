@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [v0.2.6] - TBD
+### Added
+- Differential-privacy augmented EBMs now available as TODO: figure out namespace.
+- Packages `interpret` and `interpret-core` now distributed via conda and docker.
+### Changed
+- Sampling code including stratification within EBM now performed in native code.
+### Fixed
+- Computer provider with `joblib` can now support multiple engines with serialization support.
+- Labels are now all shown for inline rendering of horizontal bar charts.
+- Rendering support for Azure Synapse notebooks.
+- JS dependencies updated.
+
 ## [v0.2.5] - 2021-06-21
 ### Added
 - Sample weight support added for EBM.
@@ -396,6 +409,7 @@ Expect similar or slightly slower training times due to interactions.
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.2.6]: https://github.com/microsoft/interpret/releases/tag/v0.2.5
 [v0.2.5]: https://github.com/microsoft/interpret/releases/tag/v0.2.5
 [v0.2.4]: https://github.com/microsoft/interpret/releases/tag/v0.2.4
 [v0.2.3]: https://github.com/microsoft/interpret/releases/tag/v0.2.3
