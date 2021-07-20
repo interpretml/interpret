@@ -7,13 +7,12 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 ## [v0.2.6] - 2021-07-20
 ### Added
 - Differential-privacy augmented EBMs now available as `interpret.privacy.{DPExplainableBoostingClassifier,DPExplainableBoostingRegressor}`.
-- Packages `interpret` and `interpret-core` now distributed via conda and docker.
+- Packages `interpret` and `interpret-core` now distributed via docker.
 ### Changed
 - Sampling code including stratification within EBM now performed in native code.
 ### Fixed
 - Computer provider with `joblib` can now support multiple engines with serialization support.
 - Labels are now all shown for inline rendering of horizontal bar charts.
-- Rendering support for Azure Synapse notebooks.
 - JS dependencies updated.
 
 ## [v0.2.5] - 2021-06-21
