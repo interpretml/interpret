@@ -221,7 +221,7 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
 
     if "databricks" in detected_envs:
         _render_databricks(init_js + body_js)
-    elif "colab" in detected_envs or "azureml" in detected_envs:
+    elif "colab" in detected_envs or "azureml" in detected_envs or "azuresynapse" in detected_envs:
         display(HTML(init_js + body_js))
     else:  # Fallthrough assumes we are in an IPython environment at a minimum.
         if not this.jupyter_initialized:
