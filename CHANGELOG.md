@@ -4,10 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
-## [v0.2.6] - TBD
+## [v0.2.6] - 2021-07-20
 ### Added
-- Differential-privacy augmented EBMs now available as TODO: figure out namespace.
+- Differential-privacy augmented EBMs now available as `interpret.privacy.{DPExplainableBoostingClassifier,DPExplainableBoostingRegressor}`.
 - Packages `interpret` and `interpret-core` now distributed via conda and docker.
 ### Changed
 - Sampling code including stratification within EBM now performed in native code.
