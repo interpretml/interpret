@@ -407,7 +407,7 @@ Expect similar or slightly slower training times due to interactions.
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
-[v0.2.6]: https://github.com/microsoft/interpret/releases/tag/v0.2.5
+[v0.2.6]: https://github.com/microsoft/interpret/releases/tag/v0.2.6
 [v0.2.5]: https://github.com/microsoft/interpret/releases/tag/v0.2.5
 [v0.2.4]: https://github.com/microsoft/interpret/releases/tag/v0.2.4
 [v0.2.3]: https://github.com/microsoft/interpret/releases/tag/v0.2.3
