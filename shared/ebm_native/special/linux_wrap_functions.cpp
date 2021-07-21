@@ -17,7 +17,10 @@
 // so we need to write our own memcpy.  The easiest thing to do is to call memmove which has the same functionality
 // but is safer.  Pretty much all of the places that we call memcpy ourselves, we'd probably benefit by re-writing
 // into loops that don't call library functions since we know the exact amount of memory at compile time (thanks to templates)
-// so we could straight copy the memory without a loop
+// so we could straight copy the memory without a loop.
+// 
+// It's possible to get a list of function versions available to link to with the following command:
+// objdump -T /lib/x86_64-linux-gnu/libc.so.6    OR   objdump -T /lib/x86_64-linux-gnu/libm.so.6
 //
 // we also need to add the following flags to the g++ command (in addition to including this cpp file) : -Wl,--wrap=memcpy
 // 
@@ -27,9 +30,32 @@
 //
 
 #include <string.h>
+#include <math.h>
+
+#if defined(__x86_64__)
+// 64 bit x64
+
+__asm__(".symver memcpy, memcpy@GLIBC_2.2.5");
+__asm__(".symver exp, exp@GLIBC_2.2.5");
+__asm__(".symver log, log@GLIBC_2.2.5");
+
+#elif defined(__i386__)
+// 32 bit x86
+
+// no GLIBC substitutions
+
+#else
+#error unrecognized GCC architecture
+#endif
 
 extern "C" {
    void * __wrap_memcpy(void * dest, const void * src, size_t n) {
-      return memmove(dest, src, n);
+      return memcpy(dest, src, n);
+   }
+   double __wrap_exp(double x) {
+      return exp(x);
+   }
+   double __wrap_log(double x) {
+      return log(x);
    }
 }
