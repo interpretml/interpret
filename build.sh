@@ -385,7 +385,7 @@ elif [ "$os_type" = "Linux" ]; then
 
    # try moving some of these g++ specific warnings into both_args if clang eventually supports them
    both_args="$both_args -Wlogical-op -Wl,--version-script=$src_path_sanitized/ebm_native_exports.txt -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now"
-   both_args="$both_args -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -static-libgcc -static-libstdc++ -shared"
+   both_args="$both_args -static-libgcc -static-libstdc++ -shared"
 
    printf "%s\n" "Creating initial directories"
    [ -d "$staging_path_unsanitized" ] || mkdir -p "$staging_path_unsanitized"
@@ -407,7 +407,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/release/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64.so"
       log_file_unsanitized="$obj_path_unsanitized/ebm_native_release_linux_x64_build_log.txt"
-      both_args_extra="-m64 -DNDEBUG -O3"
+      both_args_extra="-m64 -DNDEBUG -O3 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       link_args_specific="$cpp_args_specific"
@@ -432,7 +432,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$root_path_unsanitized/tmp/gcc/bin/debug/linux/x64/ebm_native"
       bin_file="lib_ebm_native_linux_x64_debug.so"
       log_file_unsanitized="$obj_path_unsanitized/ebm_native_debug_linux_x64_build_log.txt"
-      both_args_extra="-m64 -O1"
+      both_args_extra="-m64 -O1 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       link_args_specific="$cpp_args_specific"

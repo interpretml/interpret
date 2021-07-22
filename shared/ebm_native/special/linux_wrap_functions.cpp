@@ -39,15 +39,6 @@ __asm__(".symver memcpy, memcpy@GLIBC_2.2.5");
 __asm__(".symver exp, exp@GLIBC_2.2.5");
 __asm__(".symver log, log@GLIBC_2.2.5");
 
-#elif defined(__i386__)
-// 32 bit x86
-
-// no GLIBC substitutions
-
-#else
-#error unrecognized GCC architecture
-#endif
-
 extern "C" {
    void * __wrap_memcpy(void * dest, const void * src, size_t n) {
       return memcpy(dest, src, n);
@@ -59,3 +50,13 @@ extern "C" {
       return log(x);
    }
 }
+
+#elif defined(__i386__)
+// 32 bit x86
+
+// no GLIBC substitutions
+
+#else
+#error unrecognized GCC architecture
+#endif
+
