@@ -99,7 +99,7 @@ def _is_docker_development_mode():
     return os.environ.get("INTERPRET_DOCKER_MODE", None) == "dev"
 
 def _detect_azure_synapse():
-    return os.environ.get("MMLSPARK_PLATFORM_INFO", None) == "synapse"
+    return os.environ.get("AZURE_SERVICE", None) == "Microsoft.ProjectArcadia"
 
 def is_cloud_env(detected):
     cloud_env = [
