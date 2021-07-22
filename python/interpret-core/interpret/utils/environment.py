@@ -98,6 +98,8 @@ def _detect_databricks():
 def _is_docker_development_mode():
     return os.environ.get("INTERPRET_DOCKER_MODE", None) == "dev"
 
+def _detect_azure_synapse():
+    return os.environ.get("MMLSPARK_PLATFORM_INFO", None) == "synapse"
 
 def is_cloud_env(detected):
     cloud_env = [
@@ -108,6 +110,7 @@ def is_cloud_env(detected):
         "sagemaker",
         "binder",
         "colab",
+        "azuresynapse"
     ]
     if len(set(cloud_env).intersection(detected)) != 0:
         return True
@@ -129,6 +132,7 @@ class EnvironmentDetector:
             "colab": _detect_colab,
             "ipython-zmq": _detect_ipython_zmq,
             "ipython": _detect_ipython,
+            "azuresynapse": _detect_azure_synapse,
         }
 
     def detect(self):
