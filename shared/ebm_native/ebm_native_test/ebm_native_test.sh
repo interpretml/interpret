@@ -244,6 +244,7 @@ elif [ "$os_type" = "Linux" ]; then
 
    ########################## Linux debug|x86
 
+   # x86 builds don't work on some systems like WSL, so disable by default.  
    echo "Compiling $bin_file with $g_pp_bin for Linux debug|x86"
    obj_path="$root_path/tmp/gcc/obj/debug/linux/x86/ebm_native_test"
    bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test"
@@ -281,6 +282,7 @@ elif [ "$os_type" = "Linux" ]; then
 
    ########################## Linux release|x86
 
+   # x86 builds don't work on some systems like WSL, so disable by default.  
    echo "Compiling $bin_file with $g_pp_bin for Linux release|x86"
    obj_path="$root_path/tmp/gcc/obj/release/linux/x86/ebm_native_test"
    bin_path="$root_path/tmp/gcc/bin/release/linux/x86/ebm_native_test"
