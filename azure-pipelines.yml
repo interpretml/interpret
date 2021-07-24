@@ -109,11 +109,11 @@ jobs:
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'Testing ebm_native code (Windows)'
   - script: |
-      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
+      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -debug_32 -release_32 -existing_debug_64 -existing_release_64
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'Testing ebm_native code (Linux)'
   - script: |
-      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -pipeline
+      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -existing_debug_64 -existing_release_64
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Testing ebm_native code (Mac)'
   - task: ComponentGovernanceComponentDetection@0

@@ -331,6 +331,7 @@ public:
    void AddTrainingSamples(const std::vector<TestSample> samples);
    void AddValidationSamples(const std::vector<TestSample> samples);
    void InitializeBoosting(const IntEbmType countInnerBags = k_countInnerBagsDefault);
+   
    FloatEbmType Boost(
       const IntEbmType indexFeatureGroup,
       const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
@@ -338,20 +339,27 @@ public:
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault,
       const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
    );
+
    FloatEbmType GetBestModelPredictorScore(
       const size_t iFeatureGroup, 
       const std::vector<size_t> indexes, 
       const size_t iScore
    ) const;
-   const void GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
+   
+   void GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
+
    FloatEbmType GetCurrentModelPredictorScore(
       const size_t iFeatureGroup,
       const std::vector<size_t> indexes,
       const size_t iScore
    ) const;
-   const void GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
+
+   void GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
+
    void AddInteractionSamples(const std::vector<TestSample> samples);
+
    void InitializeInteraction();
+
    FloatEbmType InteractionScore(
       const std::vector<IntEbmType> featuresInGroup, 
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault

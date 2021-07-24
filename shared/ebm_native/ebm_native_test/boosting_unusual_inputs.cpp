@@ -1629,7 +1629,7 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
       }
    }
 
-   CHECK(validationMetric <= 0.00017711094447544644f * 1.1);
+   CHECK(validationMetric <= 0.00017711094447544644 * 1.1);
 
    for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
       for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
@@ -1686,7 +1686,7 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
          validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 1, k_leavesMax);
       }
    }
-   CHECK(validationMetric <= 0.0091562298922079986f * 1.4);
+   CHECK(validationMetric <= 0.0091562298922079986 * 1.4);
 
    for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
       for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
@@ -1808,8 +1808,8 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
    }
 
    // it can't really benefit from splitting since we only allow the boosting rounds to have 1 leaf
-   CHECK(validationMetric <= 0.73616339235889672f * 1.1);
-   CHECK(0.73616339235889672f / 1.1 <= validationMetric);
+   CHECK(validationMetric <= 0.73616339235889672 * 1.1);
+   CHECK(0.73616339235889672 / 1.1 <= validationMetric);
 
    for(IntEbmType i0 = 0; i0 < k_cStates; ++i0) {
       for(IntEbmType i1 = 0; i1 < k_cStates; ++i1) {
@@ -1855,19 +1855,19 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
       for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
          validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax);
          if(0 == iEpoch) {
-            CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529f, double { 1e-1 });
+            CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
 
             // we set our update to zero since we're getting the sum
 
             FloatEbmType modelValue0 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 0);
-            CHECK_APPROX(modelValue0, 0.0f);
+            CHECK_APPROX(modelValue0, 0.0);
 
             FloatEbmType modelValue1 = test.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 1);
-            CHECK_APPROX(modelValue1, 0.0f);
+            CHECK_APPROX(modelValue1, 0.0);
          }
       }
    }
 
    // we're generating updates from gradient sums, which isn't good, so we expect a bad result
-   CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529f, double { 1e-1 });
+   CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
 }
