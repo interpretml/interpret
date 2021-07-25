@@ -246,6 +246,9 @@ existing_release_64=0
 existing_debug_32=0
 existing_release_32=0
 
+use_valgrind=1
+use_asan=1
+
 for arg in "$@"; do
    if [ "$arg" = "-no_debug_64" ]; then
       debug_64=0
@@ -271,6 +274,13 @@ for arg in "$@"; do
    fi
    if [ "$arg" = "-existing_release_32" ]; then
       existing_release_32=1
+   fi
+
+   if [ "$arg" = "-no_valgrind" ]; then
+      use_valgrind=0
+   fi
+   if [ "$arg" = "-no_asan" ]; then
+      use_asan=0
    fi
 done
 
@@ -320,6 +330,8 @@ cpp_args="-std=c++11"
 cpp_args="$cpp_args -Wold-style-cast"
 cpp_args="$cpp_args -fvisibility-inlines-hidden"
 
+link_args=""
+
 os_type=`uname`
 
 if [ "$os_type" = "Linux" ]; then
@@ -332,13 +344,14 @@ if [ "$os_type" = "Linux" ]; then
    # try moving some of these g++ specific warnings into both_args if clang eventually supports them
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    both_args="$both_args -Wlogical-op"
-   both_args="$both_args -L$staging_path_sanitized"
-   both_args="$both_args -Wl,-rpath-link,$staging_path_sanitized"
-   both_args="$both_args -Wl,-rpath,'\$ORIGIN/'"
-   both_args="$both_args -Wl,--exclude-libs,ALL"
-   both_args="$both_args -Wl,-z,relro,-z,now"
-   both_args="$both_args -static-libgcc"
-   both_args="$both_args -static-libstdc++"
+
+   link_args="$link_args -L$staging_path_sanitized"
+   link_args="$link_args -Wl,-rpath-link,$staging_path_sanitized"
+   link_args="$link_args -Wl,-rpath,'\$ORIGIN/'"
+   link_args="$link_args -Wl,--exclude-libs,ALL"
+   link_args="$link_args -Wl,-z,relro,-z,now"
+   link_args="$link_args -static-libgcc"
+   link_args="$link_args -static-libstdc++"
 
    if [ $debug_64 -eq 1 ]; then
       ########################## Linux debug|x64
@@ -361,13 +374,15 @@ if [ "$os_type" = "Linux" ]; then
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $cpp_args_specific"
+      link_args_specific="-l$lib_file_body $link_args $cpp_args_specific"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      check_install "$tmp_path_unsanitized" "valgrind"
+      if [ $use_valgrind -ne 0 ]; then 
+         check_install "$tmp_path_unsanitized" "valgrind"
+      fi
       compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
@@ -379,7 +394,11 @@ if [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      valgrind --error-exitcode=99 --leak-check=yes "$bin_path_unsanitized/$bin_file"
+      if [ $use_valgrind -eq 0 ]; then 
+         "$bin_path_unsanitized/$bin_file"
+      else
+         valgrind --error-exitcode=99 --leak-check=yes "$bin_path_unsanitized/$bin_file"
+      fi
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -407,13 +426,15 @@ if [ "$os_type" = "Linux" ]; then
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $cpp_args_specific"
+      link_args_specific="-l$lib_file_body $link_args $cpp_args_specific"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      check_install "$tmp_path_unsanitized" "valgrind"
+      if [ $use_valgrind -ne 0 ]; then 
+         check_install "$tmp_path_unsanitized" "valgrind"
+      fi
       compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
@@ -425,7 +446,11 @@ if [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      valgrind --error-exitcode=99 --leak-check=yes "$bin_path_unsanitized/$bin_file"
+      if [ $use_valgrind -eq 0 ]; then 
+         "$bin_path_unsanitized/$bin_file"
+      else
+         valgrind --error-exitcode=99 --leak-check=yes "$bin_path_unsanitized/$bin_file"
+      fi
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -453,7 +478,7 @@ if [ "$os_type" = "Linux" ]; then
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $cpp_args_specific"
+      link_args_specific="-l$lib_file_body $link_args $cpp_args_specific"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
@@ -498,7 +523,7 @@ if [ "$os_type" = "Linux" ]; then
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $cpp_args_specific"
+      link_args_specific="-l$lib_file_body $link_args $cpp_args_specific"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
@@ -532,10 +557,15 @@ elif [ "$os_type" = "Darwin" ]; then
    # try moving some of these clang specific warnings into both_args if g++ eventually supports them
    both_args="$both_args -Wnull-dereference"
    both_args="$both_args -Wgnu-zero-variadic-macro-arguments"
-   both_args="$both_args -L$staging_path_sanitized"
-   both_args="$both_args -Wl,-rpath,@loader_path"
 
-   ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:alloc_dealloc_mismatch=1:strict_init_order=1:strict_string_checks=1:detect_invalid_pointer_pairs=2
+   link_args="$link_args -L$staging_path_sanitized"
+   link_args="$link_args -Wl,-rpath,@loader_path"
+
+   if [ $use_asan -eq 0 ]; then 
+      ASAN_OPTIONS=detect_leaks=0:detect_stack_use_after_return=0:check_initialization_order=0:alloc_dealloc_mismatch=0:strict_init_order=0:strict_string_checks=0:detect_invalid_pointer_pairs=0
+   else 
+      ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:alloc_dealloc_mismatch=1:strict_init_order=1:strict_string_checks=1:detect_invalid_pointer_pairs=2
+   fi
 
    if [ $debug_64 -eq 1 ]; then
       ########################## macOS debug|x64
@@ -558,7 +588,7 @@ elif [ "$os_type" = "Darwin" ]; then
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $cpp_args_specific"
+      link_args_specific="-l$lib_file_body $link_args $cpp_args_specific"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
@@ -603,7 +633,7 @@ elif [ "$os_type" = "Darwin" ]; then
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-      link_args_specific="-l$lib_file_body $cpp_args_specific"
+      link_args_specific="-l$lib_file_body $link_args $cpp_args_specific"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
