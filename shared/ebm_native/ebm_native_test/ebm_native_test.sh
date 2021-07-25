@@ -303,7 +303,7 @@ fi
 
 root_path_unsanitized="$script_path_unsanitized/../../.."
 tmp_path_unsanitized="$root_path_unsanitized/tmp"
-staging_path_unsanitized="$root_path_unsanitized/staging"
+staging_path_unsanitized="$root_path_unsanitized/tmp/staging"
 staging_path_sanitized=`sanitize "$staging_path_unsanitized"`
 src_path_unsanitized="$script_path_unsanitized"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`

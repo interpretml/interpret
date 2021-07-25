@@ -131,7 +131,7 @@ ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\tmp\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -177,7 +177,7 @@ ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\tmp\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -228,7 +228,7 @@ ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\tmp\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -279,7 +279,7 @@ ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\tmp\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%

@@ -214,7 +214,7 @@ fi
 root_path_unsanitized="$script_path_unsanitized"
 tmp_path_unsanitized="$root_path_unsanitized/tmp"
 python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/lib"
-staging_path_unsanitized="$root_path_unsanitized/staging"
+staging_path_unsanitized="$root_path_unsanitized/tmp/staging"
 src_path_unsanitized="$root_path_unsanitized/shared/ebm_native"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
 

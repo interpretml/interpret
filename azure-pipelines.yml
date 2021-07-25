@@ -54,7 +54,7 @@ jobs:
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
-      sourceFolder: staging
+      sourceFolder: tmp/staging
       contents: '*'
       targetFolder: '$(Build.ArtifactStagingDirectory)'
     displayName: 'Move binary to staging'
@@ -91,7 +91,7 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebm_native_*'
-      targetFolder: 'staging'
+      targetFolder: 'tmp/staging'
       flattenFolders: true
     displayName: 'Move binary to staging directory'
   - task: PythonScript@0
@@ -139,8 +139,8 @@ jobs:
 #    condition: startsWith(variables['image.name'], 'windows')
 #    inputs:
 #      InputType: Basic
-#      AnalyzeTarget: 'staging\*.dll'
-#      AnalyzeSymPath: 'staging'
+#      AnalyzeTarget: 'tmp\staging\*.dll'
+#      AnalyzeSymPath: 'tmp\staging'
 #      AnalyzeVerbose: true
 #  - task: AntiMalware@3
 #    displayName: 'AntiMalware scan'
@@ -238,18 +238,18 @@ jobs:
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move interpret-inline.js to Python layer'
-  - script: python setup.py bdist_wheel -d ../../staging
+  - script: python setup.py bdist_wheel -d ../../tmp/staging
     condition: succeeded()
     workingDirectory: 'python/interpret-core'
     displayName: 'Build wheel (interpret-core)'
-  - script: python setup.py bdist_wheel -d ../../staging
+  - script: python setup.py bdist_wheel -d ../../tmp/staging
     condition: succeeded()
     workingDirectory: 'python/interpret'
     displayName: 'Build wheel (interpret)'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
-      sourceFolder: staging
+      sourceFolder: tmp/staging
       contents: '*.whl'
       targetFolder: '$(Build.ArtifactStagingDirectory)/wheel'
     displayName: 'Move wheel for Build Artifact'
