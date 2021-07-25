@@ -4,15 +4,19 @@ SETLOCAL
 SET root_path=%~dp0..\..\..\
 
 SET build_pipeline=0
+SET "extra_analysis= "
 for %%x in (%*) do (
    IF "%%x"=="-pipeline" (
       SET build_pipeline=1
+   )
+   IF "%%x"=="-analysis" (
+      SET extra_analysis=-analysis
    )
 )
 
 IF %build_pipeline% EQU 0 (
    ECHO Building ebm_native library...
-   CALL "%root_path%build.bat" -32bit -analysis
+   CALL "%root_path%build.bat" -32bit %extra_analysis%
    IF %ERRORLEVEL% NEQ 0 (
       REM build.bat should already have written out an error message
       EXIT /B %ERRORLEVEL%
@@ -43,7 +47,7 @@ IF %ERRORLEVEL% NEQ 0 (
 
 IF %build_pipeline% EQU 1 (
    ECHO Building ebm_native library for 32 bit and static analysis...
-   CALL "%root_path%build.bat" -32bit -analysis
+   CALL "%root_path%build.bat" -32bit %extra_analysis%
    IF %ERRORLEVEL% NEQ 0 (
       REM build.bat should already have written out an error message
       EXIT /B %ERRORLEVEL%
