@@ -1,4 +1,5 @@
 # compile script output directories
+/staging/
 /tmp/
 
 # Visual Studio

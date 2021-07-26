@@ -20,10 +20,10 @@ IF %ERRORLEVEL% GEQ 8 (
    EXIT /B %ERRORLEVEL%
 )
 
-del "%root_path%..\tmp\staging\interpret_*.tar.gz"
-mkdir "%root_path%..\tmp\staging"
-pushd "%root_path%..\tmp\staging"
+del "%root_path%..\staging\interpret_*.tar.gz"
+mkdir "%root_path%..\staging"
+pushd "%root_path%..\staging"
 Rcmd build "%root_path%..\tmp\R"
 popd
 
-R CMD check -o "%root_path%..\tmp\R" --as-cran "%root_path%..\tmp\staging\interpret_*.tar.gz"
+R CMD check -o "%root_path%..\tmp\R" --as-cran "%root_path%..\staging\interpret_*.tar.gz"

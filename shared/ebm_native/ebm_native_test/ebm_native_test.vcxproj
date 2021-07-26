@@ -110,15 +110,15 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\tmp\staging\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
       <AdditionalDependencies>lib_ebm_native_win_x64_debug.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x64_debug.dll</Outputs>
-      <Inputs>$(ProjectDir)..\..\..\tmp\staging\lib_ebm_native_win_x64_debug.dll</Inputs>
+      <Inputs>$(ProjectDir)..\..\..\staging\lib_ebm_native_win_x64_debug.dll</Inputs>
       <Message>Copying ebm_native DLL to ebm_native_test</Message>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x64_debug.dll lib_ebm_native_win_x64_debug.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x64_debug.dll lib_ebm_native_win_x64_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -143,15 +143,15 @@ EXIT /B 0
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\tmp\staging\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
       <AdditionalDependencies>lib_ebm_native_win_x86_debug.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x86_debug.dll</Outputs>
-      <Inputs>$(ProjectDir)..\..\..\tmp\staging\lib_ebm_native_win_x86_debug.dll</Inputs>
+      <Inputs>$(ProjectDir)..\..\..\staging\lib_ebm_native_win_x86_debug.dll</Inputs>
       <Message>Copying ebm_native DLL to ebm_native_test</Message>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x86_debug.dll lib_ebm_native_win_x86_debug.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x86_debug.dll lib_ebm_native_win_x86_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -180,15 +180,15 @@ EXIT /B 0
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\tmp\staging\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
       <AdditionalDependencies>lib_ebm_native_win_x86.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x86.dll</Outputs>
-      <Inputs>$(ProjectDir)..\..\..\tmp\staging\lib_ebm_native_win_x86.dll</Inputs>
+      <Inputs>$(ProjectDir)..\..\..\staging\lib_ebm_native_win_x86.dll</Inputs>
       <Message>Copying ebm_native DLL to ebm_native_test</Message>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x86.dll lib_ebm_native_win_x86.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x86.dll lib_ebm_native_win_x86.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -217,15 +217,15 @@ EXIT /B 0
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\tmp\staging\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
       <AdditionalDependencies>lib_ebm_native_win_x64.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x64.dll</Outputs>
-      <Inputs>$(ProjectDir)..\..\..\tmp\staging\lib_ebm_native_win_x64.dll</Inputs>
+      <Inputs>$(ProjectDir)..\..\..\staging\lib_ebm_native_win_x64.dll</Inputs>
       <Message>Copying ebm_native DLL to ebm_native_test</Message>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x64.dll lib_ebm_native_win_x64.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x64.dll lib_ebm_native_win_x64.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%

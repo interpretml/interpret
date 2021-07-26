@@ -168,21 +168,21 @@ copy_bin_files() {
 
 copy_asm_files() {
    l9_obj_path_unsanitized="$1"
-   l9_staging_path_unsanitized="$2"
-   l9_bin_file="$3" 
+   l9_tmp_path_unsanitized="$2"
+   l9_bin_file_unsanitized="$3" 
    l9_staging_tag="$4"
    l9_asm="$5"
 
    if [ $l9_asm -ne 0 ]; then 
-      l9_staging_path_tagged_unsanitized="$l9_staging_path_unsanitized/$l9_staging_tag"
+      l9_tagged_path_unsanitized="$l9_tmp_path_unsanitized/staging_$l9_staging_tag"
 
-      [ -d "$l9_staging_path_tagged_unsanitized" ] || mkdir -p "$l9_staging_path_tagged_unsanitized"
+      [ -d "$l9_tagged_path_unsanitized" ] || mkdir -p "$l9_tagged_path_unsanitized"
       l1_ret_code=$?
       if [ $l1_ret_code -ne 0 ]; then 
          exit $l1_ret_code
       fi
 
-      cp "$l9_obj_path_unsanitized"/*.s "$l9_staging_path_tagged_unsanitized/"
+      cp "$l9_obj_path_unsanitized"/*.s "$l9_tagged_path_unsanitized/"
       l9_ret_code=$?
       if [ $l9_ret_code -ne 0 ]; then 
          exit $l9_ret_code
@@ -191,14 +191,14 @@ copy_asm_files() {
       #also generate a disassembly from the final output that we can compare the individual files against
       
       # remove the .so or .dylib ending
-      l9_bin_file_body=`get_file_body "$l9_bin_file"`
+      l9_bin_file_body_unsanitized=`get_file_body "$l9_bin_file_unsanitized"`
 
       os_type=`uname`
       if [ "$os_type" = "Linux" ]; then
-         objdump -dRwCS "$l9_staging_path_unsanitized/$l9_bin_file" > "$l9_staging_path_tagged_unsanitized/$l9_bin_file_body.s"
+         objdump -dRwCS "$l9_bin_file_unsanitized" > "$l9_tagged_path_unsanitized/$l9_bin_file_body_unsanitized.s"
       elif [ "$os_type" = "Darwin" ]; then
          # objdump on mac might actually be llvm-objdump ??
-         objdump -d "$l9_staging_path_unsanitized/$l9_bin_file" > "$l9_staging_path_tagged_unsanitized/$l9_bin_file_body.s"
+         objdump -d "$l9_bin_file_unsanitized" > "$l9_tagged_path_unsanitized/$l9_bin_file_body_unsanitized.s"
       else
          exit 1
       fi
@@ -290,7 +290,7 @@ fi
 root_path_unsanitized="$script_path_unsanitized"
 tmp_path_unsanitized="$root_path_unsanitized/tmp"
 python_lib_unsanitized="$root_path_unsanitized/python/interpret-core/interpret/lib"
-staging_path_unsanitized="$root_path_unsanitized/tmp/staging"
+staging_path_unsanitized="$root_path_unsanitized/staging"
 src_path_unsanitized="$root_path_unsanitized/shared/ebm_native"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
 
@@ -394,7 +394,7 @@ if [ "$os_type" = "Linux" ]; then
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
-      copy_asm_files "$obj_path_unsanitized" "$staging_path_unsanitized" "$bin_file" "asm_release_64" "$is_asm"
+      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_64" "$is_asm"
    fi
 
    if [ $debug_64 -eq 1 ]; then
@@ -533,7 +533,7 @@ elif [ "$os_type" = "Darwin" ]; then
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
-      copy_asm_files "$obj_path_unsanitized" "$staging_path_unsanitized" "$bin_file" "asm_release_64" "$is_asm"
+      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_64" "$is_asm"
    fi
 
    if [ $debug_64 -eq 1 ]; then

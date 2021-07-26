@@ -54,14 +54,14 @@ jobs:
   - task: PublishBuildArtifacts@1
     condition: succeeded()
     inputs:
-      pathtoPublish: tmp/staging
+      pathtoPublish: staging
       artifactName: ebm_native-$(image.name)
     displayName: 'Publish ebm_native library'
   - task: PublishBuildArtifacts@1
     condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
     continueOnError: true
     inputs:
-      pathtoPublish: tmp/staging/asm_release_64
+      pathtoPublish: tmp/staging_asm_release_64
       artifactName: asm-$(image.name)
     displayName: 'Publish assembly'
 
@@ -91,7 +91,7 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebm_native_*'
-      targetFolder: 'tmp/staging'
+      targetFolder: 'staging'
       flattenFolders: true
     displayName: 'Move binary to staging directory'
   - task: PythonScript@0
@@ -139,8 +139,8 @@ jobs:
 #    condition: startsWith(variables['image.name'], 'windows')
 #    inputs:
 #      InputType: Basic
-#      AnalyzeTarget: 'tmp\staging\*.dll'
-#      AnalyzeSymPath: 'tmp\staging'
+#      AnalyzeTarget: 'staging\*.dll'
+#      AnalyzeSymPath: 'staging'
 #      AnalyzeVerbose: true
 #  - task: AntiMalware@3
 #    displayName: 'AntiMalware scan'
@@ -238,18 +238,18 @@ jobs:
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move interpret-inline.js to Python layer'
-  - script: python setup.py bdist_wheel -d ../../tmp/staging
+  - script: python setup.py bdist_wheel -d ../../staging
     condition: succeeded()
     workingDirectory: 'python/interpret-core'
     displayName: 'Build wheel (interpret-core)'
-  - script: python setup.py bdist_wheel -d ../../tmp/staging
+  - script: python setup.py bdist_wheel -d ../../staging
     condition: succeeded()
     workingDirectory: 'python/interpret'
     displayName: 'Build wheel (interpret)'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
-      sourceFolder: tmp/staging
+      sourceFolder: staging
       contents: '*.whl'
       targetFolder: '$(Build.ArtifactStagingDirectory)/wheel'
     displayName: 'Move wheel for Build Artifact'

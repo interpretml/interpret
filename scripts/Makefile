@@ -4,7 +4,7 @@ DOCKER ?= docker
 DOCKER_IMG_NAME ?= interpretml/quickbuild:latest
 DOCKER_VOL_NAME ?= interpretml-quickbuild
 DOCKER_MNT_PATH ?= /mnt/interpret
-DOCKER_CWD ?= /usr/tmp/staging/interpret
+DOCKER_CWD ?= /usr/staging/interpret
 
 PYTHON ?= python
 PIP ?= pip
@@ -55,7 +55,7 @@ prepare-docker:
 		--entrypoint /bin/bash $(DOCKER_IMG_NAME) $(DOCKER_MNT_PATH)/scripts/mirror-repo-docker.sh $(DOCKER_CWD)
 
 clean:
-	-$(RMDIR) "$(ROOTDIR)/tmp/staging"
+	-$(RMDIR) "$(ROOTDIR)/staging"
 	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/interpret/lib"
 	-$(RMDIR) "$(ROOTDIR)/python/interpret-core/js/dist"
 	-$(DOCKER) volume rm $(DOCKER_VOL_NAME)
@@ -74,12 +74,12 @@ install-core: build
 
 build: build-wheel
 build-wheel: build-javascript build-native
-	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/tmp/staging
-	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/tmp/staging
+	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
+	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
 
 build-python:
-	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/tmp/staging
-	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/tmp/staging
+	cd $(ROOTDIR)/python/interpret-core && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
+	cd $(ROOTDIR)/python/interpret && $(PYTHON) setup.py bdist_wheel -d $(ROOTDIR)/staging
 
 build-javascript:
 	cd $(ROOTDIR)/python/interpret-core/js && $(NPM) install
