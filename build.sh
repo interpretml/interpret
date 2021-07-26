@@ -10,6 +10,11 @@ sanitize() {
    printf "%s" "$1" | sed "s/'/'\\\\''/g; 1s/^/'/; \$s/\$/'/"
 }
 
+get_file_body() {
+   # https://www.oncrashreboot.com/use-sed-to-split-path-into-filename-extension-and-directory
+   printf "%s" "$1" | sed 's/\(.*\)\/\(.*\)\.\(.*\)$/\2/'
+}
+
 make_initial_paths_simple() {
    l1_obj_path_unsanitized="$1"
    l1_bin_path_unsanitized="$2"
@@ -31,25 +36,39 @@ compile_file() {
    l2_compiler_args_sanitized="$2"
    l2_file_unsanitized="$3"
    l2_obj_path_unsanitized="$4"
-   l2_zone="$5"
+   l2_asm="$5"
+   l2_zone="$6"
 
-   # glob expansion returns *.cpp or *.c when there are no matches, so we need to check for the existance of the file
-   if [ -f "$l2_file_unsanitized" ] ; then
-      l2_file_sanitized=`sanitize "$l2_file_unsanitized"`
-      # https://www.oncrashreboot.com/use-sed-to-split-path-into-filename-extension-and-directory
-      l2_file_body_unsanitized=`printf "%s" "$l2_file_unsanitized" | sed 's/\\(.*\\)\\/\\(.*\\)\\.\\(.*\\)$/\\2/'`
-      l2_object_full_file_unsanitized="$l2_obj_path_unsanitized/${l2_file_body_unsanitized}_$l2_zone.o"
-      l2_object_full_file_sanitized=`sanitize "$l2_object_full_file_unsanitized"`
-      g_all_object_files_sanitized="$g_all_object_files_sanitized $l2_object_full_file_sanitized"
-      l2_compile_specific="$l2_compiler $l2_compiler_args_sanitized -c $l2_file_sanitized -o $l2_object_full_file_sanitized 2>&1"
-      l2_compile_out=`eval "$l2_compile_specific"`
-      l2_ret_code=$?
-      g_compile_out_full="$g_compile_out_full$l2_compile_out"
-      if [ $l2_ret_code -ne 0 ]; then 
-         printf "%s\n" "$g_compile_out_full"
-         printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-         exit $l2_ret_code
-      fi
+   l2_file_sanitized=`sanitize "$l2_file_unsanitized"`
+   l2_file_body_unsanitized=`get_file_body "$l2_file_unsanitized"`
+   l2_object_full_file_unsanitized="$l2_obj_path_unsanitized/${l2_file_body_unsanitized}_$l2_zone.o"
+   l2_object_full_file_sanitized=`sanitize "$l2_object_full_file_unsanitized"`
+   g_all_object_files_sanitized="$g_all_object_files_sanitized $l2_object_full_file_sanitized"
+   l2_compile_specific="$l2_compiler $l2_compiler_args_sanitized -c $l2_file_sanitized -o $l2_object_full_file_sanitized 2>&1"
+   l2_compile_out=`eval "$l2_compile_specific"`
+   l2_ret_code=$?
+   g_compile_out_full="$g_compile_out_full$l2_compile_out"
+   if [ $l2_ret_code -ne 0 ]; then 
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      exit $l2_ret_code
+   fi
+
+   if [ $l2_asm -ne 0 ]; then
+      # references: 
+      # - https://panthema.net/2013/0124-GCC-Output-Assembler-Code/
+      # - https://stackoverflow.com/questions/1289881/using-gcc-to-produce-readable-assembly
+      # - https://stackoverflow.com/questions/137038/how-do-you-get-assembler-output-from-c-c-source-in-gcc
+      # - I'd rather do our real compile with no special parameters because I'm not confident the compiler would
+      #   produce the same output and it's better to stick with the normal program flow.  This rules out:
+      #   --save-temps=obj and -Wa,-adhln=myoutput.s . We'll also write out objdump disassembly from the library output 
+      #   itself which should allow us to check that this annotated assembly is the same as what gets finally generated
+
+      # also write out the equivalent assembly.  If this fails then ignore the error and we'll just be missing this file.
+      l2_asm_full_file_unsanitized="$l2_obj_path_unsanitized/${l2_file_body_unsanitized}_$l2_zone.s"
+      l2_asm_full_file_sanitized=`sanitize "$l2_asm_full_file_unsanitized"`
+      l2_compile_specific_asm="$l2_compiler $l2_compiler_args_sanitized -fverbose-asm -S $l2_file_sanitized -o $l2_asm_full_file_sanitized 2>&1"
+      l2_compile_out_asm=`eval "$l2_compile_specific_asm"`
    fi
 }
 
@@ -58,7 +77,8 @@ compile_directory_c() {
    l3_compiler_args_sanitized="$2"
    l3_src_path_unsanitized="$3"
    l3_obj_path_unsanitized="$4"
-   l3_zone="$5"
+   l3_asm="$5"
+   l3_zone="$6"
 
    # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
    find "$l3_src_path_unsanitized" -maxdepth 1 -type f -name '*.c' 2>/dev/null | grep -q .
@@ -66,7 +86,10 @@ compile_directory_c() {
    if [ $l3_ret_code -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
       for l3_file_unsanitized in "$l3_src_path_unsanitized"/*.c ; do
-         compile_file "$l3_compiler" "$l3_compiler_args_sanitized" "$l3_file_unsanitized" "$l3_obj_path_unsanitized" "$l3_zone"
+         # glob expansion returns *.c when there are no matches, so we need to check for the existance of the file
+         if [ -f "$l3_file_unsanitized" ] ; then
+            compile_file "$l3_compiler" "$l3_compiler_args_sanitized" "$l3_file_unsanitized" "$l3_obj_path_unsanitized" "$l3_asm" "$l3_zone"
+         fi
       done
    fi
 }
@@ -76,7 +99,8 @@ compile_directory_cpp() {
    l4_compiler_args_sanitized="$2"
    l4_src_path_unsanitized="$3"
    l4_obj_path_unsanitized="$4"
-   l4_zone="$5"
+   l4_asm="$5"
+   l4_zone="$6"
 
    # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
    find "$l4_src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
@@ -84,7 +108,10 @@ compile_directory_cpp() {
    if [ $l4_ret_code -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
       for l4_file_unsanitized in "$l4_src_path_unsanitized"/*.cpp ; do
-         compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_zone"
+         # glob expansion returns *.cpp when there are no matches, so we need to check for the existance of the file
+         if [ -f "$l4_file_unsanitized" ] ; then
+            compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_asm" "$l4_zone"
+         fi
       done
    fi
 }
@@ -95,10 +122,11 @@ compile_compute() {
    l5_src_path_sanitized="$3"
    l5_src_path_unsanitized="$4"
    l5_obj_path_unsanitized="$5"
-   l5_zone="$6"
+   l5_asm="$6"
+   l5_zone="$7"
 
-   compile_directory_cpp "$l5_compiler" "$l5_compiler_args_sanitized -DZONE_$l5_zone" "$l5_src_path_unsanitized/compute" "$l5_obj_path_unsanitized" "$l5_zone"
-   compile_directory_cpp "$l5_compiler" "$l5_compiler_args_sanitized -I$l5_src_path_sanitized/compute/${l5_zone}_ebm -DZONE_$l5_zone" "$l5_src_path_unsanitized/compute/${l5_zone}_ebm" "$l5_obj_path_unsanitized" "$l5_zone"
+   compile_directory_cpp "$l5_compiler" "$l5_compiler_args_sanitized -DZONE_$l5_zone" "$l5_src_path_unsanitized/compute" "$l5_obj_path_unsanitized" "$l5_asm" "$l5_zone"
+   compile_directory_cpp "$l5_compiler" "$l5_compiler_args_sanitized -I$l5_src_path_sanitized/compute/${l5_zone}_ebm -DZONE_$l5_zone" "$l5_src_path_unsanitized/compute/${l5_zone}_ebm" "$l5_obj_path_unsanitized" "$l5_asm" "$l5_zone"
 }
 
 link_file() {
@@ -138,6 +166,45 @@ copy_bin_files() {
    fi
 }
 
+copy_asm_files() {
+   l9_obj_path_unsanitized="$1"
+   l9_staging_path_unsanitized="$2"
+   l9_bin_file="$3" 
+   l9_staging_tag="$4"
+   l9_asm="$5"
+
+   if [ $l9_asm -ne 0 ]; then 
+      l9_staging_path_tagged_unsanitized="$l9_staging_path_unsanitized/$l9_staging_tag"
+
+      [ -d "$l9_staging_path_tagged_unsanitized" ] || mkdir -p "$l9_staging_path_tagged_unsanitized"
+      l1_ret_code=$?
+      if [ $l1_ret_code -ne 0 ]; then 
+         exit $l1_ret_code
+      fi
+
+      cp "$l9_obj_path_unsanitized"/*.s "$l9_staging_path_tagged_unsanitized/"
+      l9_ret_code=$?
+      if [ $l9_ret_code -ne 0 ]; then 
+         exit $l9_ret_code
+      fi
+
+      #also generate a disassembly from the final output that we can compare the individual files against
+      
+      # remove the .so or .dylib ending
+      l9_bin_file_body=`get_file_body "$l9_bin_file"`
+
+      os_type=`uname`
+      if [ "$os_type" = "Linux" ]; then
+         objdump -dRwCS "$l9_staging_path_unsanitized/$l9_bin_file" > "$l9_staging_path_tagged_unsanitized/$l9_bin_file_body.s"
+      elif [ "$os_type" = "Darwin" ]; then
+         # objdump on mac might actually be llvm-objdump ??
+         objdump -d "$l9_staging_path_unsanitized/$l9_bin_file" > "$l9_staging_path_tagged_unsanitized/$l9_bin_file_body.s"
+      else
+         exit 1
+      fi
+   fi
+}
+
 check_install() {
    l8_tmp_path_unsanitized="$1"
    l8_package="$2"
@@ -161,7 +228,7 @@ check_install() {
       if [ $l8_ret_code -ne 0 ]; then 
          exit $l8_ret_code
       fi
-
+         
       # write out an empty file to signal that this has been installed
       printf "" > "$l8_tmp_path_unsanitized/$l8_package.chk"
       l8_ret_code=$?
@@ -179,6 +246,9 @@ debug_64=1
 release_32=0
 debug_32=0
 
+is_asm=0
+is_extra_debugging=0
+
 for arg in "$@"; do
    if [ "$arg" = "-no_release_64" ]; then
       release_64=0
@@ -191,6 +261,12 @@ for arg in "$@"; do
    fi
    if [ "$arg" = "-debug_32" ]; then
       debug_32=1
+   fi
+   if [ "$arg" = "-asm" ]; then
+      is_asm=1
+   fi
+   if [ "$arg" = "-extra_debugging" ]; then
+      is_extra_debugging=1
    fi
 done
 
@@ -233,6 +309,10 @@ both_args="$both_args -march=core2"
 both_args="$both_args -fpic"
 both_args="$both_args -pthread"
 both_args="$both_args -DEBM_NATIVE_EXPORTS"
+if [ $is_extra_debugging -ne 0 ]; then 
+   both_args="$both_args -g"
+fi
+
 
 c_args="-std=c99"
 
@@ -304,16 +384,17 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "C"
-      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "C"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "main"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "avx512"
-      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "NONE"
+      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "main"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm" "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_asm_files "$obj_path_unsanitized" "$staging_path_unsanitized" "$bin_file" "asm_release_64" "$is_asm"
    fi
 
    if [ $debug_64 -eq 1 ]; then
@@ -333,12 +414,12 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "C"
-      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "C"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "main"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "avx512"
-      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "NONE"
+      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "main"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm" "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -363,12 +444,12 @@ if [ "$os_type" = "Linux" ]; then
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
-      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "C"
-      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "C"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "main"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "avx512"
-      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "NONE"
+      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "main"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm" "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -393,12 +474,12 @@ if [ "$os_type" = "Linux" ]; then
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
-      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "C"
-      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "C"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "main"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "avx512"
-      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "NONE"
+      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "main"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
+      compile_file "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm" "NONE"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -443,15 +524,16 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "C"
-      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "C"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "main"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "avx512"
+      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "main"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_asm_files "$obj_path_unsanitized" "$staging_path_unsanitized" "$bin_file" "asm_release_64" "$is_asm"
    fi
 
    if [ $debug_64 -eq 1 ]; then
@@ -471,11 +553,11 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "C"
-      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "C"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "main"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "cpu"
-      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "avx512"
+      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "main"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"

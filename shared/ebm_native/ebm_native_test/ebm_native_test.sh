@@ -102,6 +102,11 @@ sanitize() {
    printf "%s" "$1" | sed "s/'/'\\\\''/g; 1s/^/'/; \$s/\$/'/"
 }
 
+get_file_body() {
+   # https://www.oncrashreboot.com/use-sed-to-split-path-into-filename-extension-and-directory
+   printf "%s" "$1" | sed 's/\(.*\)\/\(.*\)\.\(.*\)$/\2/'
+}
+
 make_initial_paths_simple() {
    l1_obj_path_unsanitized="$1"
    l1_bin_path_unsanitized="$2"
@@ -125,23 +130,20 @@ compile_file() {
    l2_obj_path_unsanitized="$4"
    l2_zone="$5"
 
-   # glob expansion returns *.cpp or *.c when there are no matches, so we need to check for the existance of the file
-   if [ -f "$l2_file_unsanitized" ] ; then
-      l2_file_sanitized=`sanitize "$l2_file_unsanitized"`
-      # https://www.oncrashreboot.com/use-sed-to-split-path-into-filename-extension-and-directory
-      l2_file_body_unsanitized=`printf "%s" "$l2_file_unsanitized" | sed 's/\\(.*\\)\\/\\(.*\\)\\.\\(.*\\)$/\\2/'`
-      l2_object_full_file_unsanitized="$l2_obj_path_unsanitized/${l2_file_body_unsanitized}_$l2_zone.o"
-      l2_object_full_file_sanitized=`sanitize "$l2_object_full_file_unsanitized"`
-      g_all_object_files_sanitized="$g_all_object_files_sanitized $l2_object_full_file_sanitized"
-      l2_compile_specific="$l2_compiler $l2_compiler_args_sanitized -c $l2_file_sanitized -o $l2_object_full_file_sanitized 2>&1"
-      l2_compile_out=`eval "$l2_compile_specific"`
-      l2_ret_code=$?
-      g_compile_out_full="$g_compile_out_full$l2_compile_out"
-      if [ $l2_ret_code -ne 0 ]; then 
-         printf "%s\n" "$g_compile_out_full"
-         printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-         exit $l2_ret_code
-      fi
+   l2_file_sanitized=`sanitize "$l2_file_unsanitized"`
+   # https://www.oncrashreboot.com/use-sed-to-split-path-into-filename-extension-and-directory
+   l2_file_body_unsanitized=`get_file_body "$l2_file_unsanitized"`
+   l2_object_full_file_unsanitized="$l2_obj_path_unsanitized/${l2_file_body_unsanitized}_$l2_zone.o"
+   l2_object_full_file_sanitized=`sanitize "$l2_object_full_file_unsanitized"`
+   g_all_object_files_sanitized="$g_all_object_files_sanitized $l2_object_full_file_sanitized"
+   l2_compile_specific="$l2_compiler $l2_compiler_args_sanitized -c $l2_file_sanitized -o $l2_object_full_file_sanitized 2>&1"
+   l2_compile_out=`eval "$l2_compile_specific"`
+   l2_ret_code=$?
+   g_compile_out_full="$g_compile_out_full$l2_compile_out"
+   if [ $l2_ret_code -ne 0 ]; then 
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      exit $l2_ret_code
    fi
 }
 
@@ -158,7 +160,10 @@ compile_directory_c() {
    if [ $l3_ret_code -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
       for l3_file_unsanitized in "$l3_src_path_unsanitized"/*.c ; do
-         compile_file "$l3_compiler" "$l3_compiler_args_sanitized" "$l3_file_unsanitized" "$l3_obj_path_unsanitized" "$l3_zone"
+         # glob expansion returns *.c when there are no matches, so we need to check for the existance of the file
+         if [ -f "$l3_file_unsanitized" ] ; then
+            compile_file "$l3_compiler" "$l3_compiler_args_sanitized" "$l3_file_unsanitized" "$l3_obj_path_unsanitized" "$l3_zone"
+         fi
       done
    fi
 }
@@ -176,7 +181,10 @@ compile_directory_cpp() {
    if [ $l4_ret_code -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
       for l4_file_unsanitized in "$l4_src_path_unsanitized"/*.cpp ; do
-         compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_zone"
+         # glob expansion returns *.cpp or when there are no matches, so we need to check for the existance of the file
+         if [ -f "$l4_file_unsanitized" ] ; then
+            compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_zone"
+         fi
       done
    fi
 }
