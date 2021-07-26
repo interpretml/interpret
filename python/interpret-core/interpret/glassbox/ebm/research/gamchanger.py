@@ -51,9 +51,25 @@ def get_model_data(ebm):
             cur_feature['binLabel1'] = ebm.pair_preprocessor_._get_bin_labels(cur_id[0])
             cur_feature['binLabel2'] = ebm.pair_preprocessor_._get_bin_labels(cur_id[1])
 
+            # Encode categorical levels as integers
+            if cur_feature['type1'] == 'categorical':
+                level_str_to_int = ebm.pair_preprocessor_.col_mapping_[
+                    cur_id[0]]
+                cur_feature['binLabel1'] = list(map(lambda x: level_str_to_int[x],
+                                                    cur_feature['binLabel1']))
+
+            if cur_feature['type2'] == 'categorical':
+                level_str_to_int = ebm.pair_preprocessor_.col_mapping_[
+                    cur_id[1]]
+                cur_feature['binLabel2'] = list(map(lambda x: level_str_to_int[x],
+                                                    cur_feature['binLabel2']))
+
             # Get density info
-            if ebm.preprocessor_._get_hist_edges(cur_id[0])[0].dtype.type is np.str_:
+            if cur_feature['type1'] == 'categorical':
+                level_str_to_int = ebm.pair_preprocessor_.col_mapping_[cur_id[0]]
                 cur_feature['histEdge1'] = ebm.preprocessor_._get_hist_edges(cur_id[0])
+                cur_feature['histEdge1'] = list(map(lambda x: level_str_to_int[x],
+                                                    cur_feature['histEdge1']))
             else:
                 cur_feature['histEdge1'] = np.round(
                     ebm.preprocessor_._get_hist_edges(cur_id[0]), 4
@@ -62,15 +78,18 @@ def get_model_data(ebm):
                 ebm.preprocessor_._get_hist_counts(cur_id[0]), 4
             ).tolist()
 
-            if ebm.preprocessor_._get_hist_edges(cur_id[1])[0].dtype.type is np.str_:
+            if cur_feature['type2'] == 'categorical':
+                level_str_to_int = ebm.pair_preprocessor_.col_mapping_[cur_id[1]]
                 cur_feature['histEdge2'] = ebm.preprocessor_._get_hist_edges(cur_id[1])
+                cur_feature['histEdge2'] = list(map(lambda x: level_str_to_int[x],
+                                                    cur_feature['histEdge2']))
             else:
                 cur_feature['histEdge2'] = np.round(
                     ebm.preprocessor_._get_hist_edges(cur_id[1]), 4
                 ).tolist()
             cur_feature['histCount2'] = np.round(
                 ebm.preprocessor_._get_hist_counts(cur_id[1]), 4
-            ).tolist()        
+            ).tolist()
 
         else:
             # Skip the first item (reserved for missing value)
@@ -181,7 +200,7 @@ def get_sample_data(ebm, x_test, y_test):
                 else:
                     # Current sample has an unseen level, we label it as max
                     # level + 1
-                    return max(level_str_to_int.values())
+                    return max(level_str_to_int.values()) + 1
 
             x_test_copy[:, i] = list(
                 map(lambda x: get_level_int(x), x_test_copy[:, i]))
@@ -270,13 +289,14 @@ def overwrite_bin_definition(ebm, index_id, new_bins, new_scores):
 
 
 
-def get_edited_model(ebm, history_filepath):
+def get_edited_model(ebm, gamchanger_export):
     """
     Return a copy of ebm that is modified based on the edits from GAM Changer.
 
     Args:
         ebm: EBM object
-        history_filepath: Filepath to GAM Changer's export file
+        gamchanger_export: Python dictionary: loaded from the GAM Changer
+            export (*.gamchanger)
 
     Returns:
         An edited deep copy of ebm object.
@@ -284,8 +304,7 @@ def get_edited_model(ebm, history_filepath):
 
     ebm_copy = deepcopy(ebm)
 
-    edit_data = load(open(history_filepath, 'r'))
-    history = edit_data['historyList']
+    history = gamchanger_export['historyList']
 
     # Mapping from feature name to feature type
     feature_name_to_type = dict(zip(ebm_copy.feature_names, ebm_copy.feature_types))
@@ -300,7 +319,6 @@ def get_edited_model(ebm, history_filepath):
 
     for i in range(len(history) - 1, -1, -1):
         cur_history = history[i]
-        print(cur_history['type'], cur_history['featureName'])
 
         # Original edit does not change the graph
         if cur_history['type'] == 'original':
@@ -343,3 +361,5 @@ def get_edited_model(ebm, history_filepath):
             pass
         else:
             raise ValueError('Encounter unknown feature type {}'.format(feature_name_to_type[cur_name]))
+
+    return ebm_copy

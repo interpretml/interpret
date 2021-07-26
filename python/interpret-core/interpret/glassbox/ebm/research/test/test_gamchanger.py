@@ -1,12 +1,14 @@
 import numpy as np
 import pandas as pd
+import urllib
 from interpret.glassbox import (ExplainableBoostingRegressor,
                                 ExplainableBoostingClassifier)
 from sklearn.model_selection import train_test_split
+from sklearn import metrics
 from copy import deepcopy
-from json import load, dump
+from json import load, loads, dump
 
-from .. import get_model_data, get_sample_data
+from .. import get_model_data, get_sample_data, get_edited_model
 
 SEED = 5122021
 
@@ -83,7 +85,12 @@ def train_ebm_classifier():
     x_all = df_house.iloc[:, 1:-1].to_numpy()
     y_all = df_house.iloc[:, -1].to_numpy()
 
-    x_train, x_test, y_train, y_test = train_test_split(x_all, y_all, test_size=0.3)
+    x_train, x_test, y_train, y_test = train_test_split(
+        x_all,
+        y_all,
+        test_size=0.3,
+        random_state=SEED
+    )
 
 
     # Train an EBM model
@@ -122,3 +129,26 @@ def test_generate_sample_data():
     assert(len(data['featureNames']) == 79)
     assert(len(data['featureTypes']) == 79)
 
+
+def test_get_edited_model():
+    ebm, _, x_test, _, y_test = train_ebm_classifier()
+
+    y_pred = ebm.predict(x_test)
+    org_accuracy = metrics.accuracy_score(y_test, y_pred)
+
+    file_path = 'https://gist.githubusercontent.com/xiaohk/7931349b05c8d724371155e3477661d7/raw/b55761b0dec609897b0b2d2929c84513fddc0a8f/edit-7-26-2021.gamchanger'
+
+    with urllib.request.urlopen(file_path) as url:
+        gamchanger_export = loads(url.read().decode())
+        gc_org_accuracy = gamchanger_export['historyList'][0]['metrics']['barData']['accuracy'][2]
+
+        # The initial accuracy should match
+        assert(np.abs(org_accuracy - gc_org_accuracy) <= 0.01)
+
+        edited_model = get_edited_model(ebm, gamchanger_export)
+
+        # The accuracy after model editing should match
+        y_pred = edited_model.predict(x_test)
+        new_accuracy = metrics.accuracy_score(y_test, y_pred)
+        gc_new_accuracy = gamchanger_export['historyList'][-1]['metrics']['barData']['accuracy'][2]
+        assert(np.abs(new_accuracy - gc_new_accuracy) <= 0.01)
