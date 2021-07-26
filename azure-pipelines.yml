@@ -44,11 +44,11 @@ jobs:
   - script: |
       sudo apt -y install nvidia-cuda-toolkit
       nvcc --version
-      /bin/sh ./build.sh
+      /bin/sh ./build.sh -asm
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Building ebm_native code (Linux)'
   - script: |
-      /bin/sh ./build.sh
+      /bin/sh ./build.sh -asm
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Building ebm_native code (Mac)'
   - task: PublishBuildArtifacts@1

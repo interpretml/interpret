@@ -169,8 +169,9 @@ copy_bin_files() {
 copy_asm_files() {
    l9_obj_path_unsanitized="$1"
    l9_staging_path_unsanitized="$2"
-   l9_staging_tag="$3"
-   l9_asm="$4"
+   l9_bin_file="$3" 
+   l9_staging_tag="$4"
+   l9_asm="$5"
 
    if [ $l9_asm -ne 0 ]; then 
       l9_staging_path_tagged_unsanitized="$l9_staging_path_unsanitized/$l9_staging_tag"
@@ -185,6 +186,21 @@ copy_asm_files() {
       l9_ret_code=$?
       if [ $l9_ret_code -ne 0 ]; then 
          exit $l9_ret_code
+      fi
+
+      #also generate a disassembly from the final output that we can compare the individual files against
+      
+      # remove the .so or .dylib ending
+      l9_bin_file_body=`get_file_body "$l9_bin_file"`
+
+      os_type=`uname`
+      if [ "$os_type" = "Linux" ]; then
+         objdump -dRwCS "$l9_staging_path_unsanitized/$l9_bin_file" > "$l9_staging_path_tagged_unsanitized/$l9_bin_file_body.s"
+      elif [ "$os_type" = "Darwin" ]; then
+         # objdump on mac might actually be llvm-objdump ??
+         objdump -d "$l9_staging_path_unsanitized/$l9_bin_file" > "$l9_staging_path_tagged_unsanitized/$l9_bin_file_body.s"
+      else
+         exit 1
       fi
    fi
 }
@@ -212,7 +228,7 @@ check_install() {
       if [ $l8_ret_code -ne 0 ]; then 
          exit $l8_ret_code
       fi
-
+         
       # write out an empty file to signal that this has been installed
       printf "" > "$l8_tmp_path_unsanitized/$l8_package.chk"
       l8_ret_code=$?
@@ -231,6 +247,7 @@ release_32=0
 debug_32=0
 
 is_asm=0
+is_extra_debugging=0
 
 for arg in "$@"; do
    if [ "$arg" = "-no_release_64" ]; then
@@ -247,6 +264,9 @@ for arg in "$@"; do
    fi
    if [ "$arg" = "-asm" ]; then
       is_asm=1
+   fi
+   if [ "$arg" = "-extra_debugging" ]; then
+      is_extra_debugging=1
    fi
 done
 
@@ -289,6 +309,10 @@ both_args="$both_args -march=core2"
 both_args="$both_args -fpic"
 both_args="$both_args -pthread"
 both_args="$both_args -DEBM_NATIVE_EXPORTS"
+if [ $is_extra_debugging -ne 0 ]; then 
+   both_args="$both_args -g"
+fi
+
 
 c_args="-std=c99"
 
@@ -370,7 +394,7 @@ if [ "$os_type" = "Linux" ]; then
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
-      copy_asm_files "$obj_path_unsanitized" "$staging_path_unsanitized" "asm_release_64" "$is_asm"
+      copy_asm_files "$obj_path_unsanitized" "$staging_path_unsanitized" "$bin_file" "asm_release_64" "$is_asm"
    fi
 
    if [ $debug_64 -eq 1 ]; then
@@ -509,7 +533,7 @@ elif [ "$os_type" = "Darwin" ]; then
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
-      copy_asm_files "$obj_path_unsanitized" "$staging_path_unsanitized" "asm_release_64" "$is_asm"
+      copy_asm_files "$obj_path_unsanitized" "$staging_path_unsanitized" "$bin_file" "asm_release_64" "$is_asm"
    fi
 
    if [ $debug_64 -eq 1 ]; then
