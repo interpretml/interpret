@@ -107,6 +107,39 @@ get_file_body() {
    printf "%s" "$1" | sed 's/\(.*\)\/\(.*\)\.\(.*\)$/\2/'
 }
 
+check_install() {
+   l8_tmp_path_unsanitized="$1"
+   l8_package="$2"
+   
+   if [ ! -f "$l8_tmp_path_unsanitized/$l8_package.chk" ]; then
+      printf "%s\n" "Installing $l8_package"
+
+      if [ "$g_is_updated" -eq 0 ]; then 
+
+         sudo apt-get -y update
+         l8_ret_code=$?
+         if [ $l8_ret_code -ne 0 ]; then 
+            exit $l8_ret_code
+         fi
+
+         g_is_updated=1
+      fi
+
+      sudo apt-get -y install "$l8_package"
+      l8_ret_code=$?
+      if [ $l8_ret_code -ne 0 ]; then 
+         exit $l8_ret_code
+      fi
+
+      # write out an empty file to signal that this has been installed
+      printf "" > "$l8_tmp_path_unsanitized/$l8_package.chk"
+      l8_ret_code=$?
+      if [ $l8_ret_code -ne 0 ]; then 
+         exit $l8_ret_code
+      fi
+   fi
+}
+
 make_initial_paths_simple() {
    l1_obj_path_unsanitized="$1"
    l1_bin_path_unsanitized="$2"
@@ -205,39 +238,6 @@ link_file() {
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       exit $l6_ret_code
-   fi
-}
-
-check_install() {
-   l8_tmp_path_unsanitized="$1"
-   l8_package="$2"
-   
-   if [ ! -f "$l8_tmp_path_unsanitized/$l8_package.chk" ]; then
-      printf "%s\n" "Installing $l8_package"
-
-      if [ "$g_is_updated" -eq 0 ]; then 
-
-         sudo apt-get -y update
-         l8_ret_code=$?
-         if [ $l8_ret_code -ne 0 ]; then 
-            exit $l8_ret_code
-         fi
-
-         g_is_updated=1
-      fi
-
-      sudo apt-get -y install "$l8_package"
-      l8_ret_code=$?
-      if [ $l8_ret_code -ne 0 ]; then 
-         exit $l8_ret_code
-      fi
-
-      # write out an empty file to signal that this has been installed
-      printf "" > "$l8_tmp_path_unsanitized/$l8_package.chk"
-      l8_ret_code=$?
-      if [ $l8_ret_code -ne 0 ]; then 
-         exit $l8_ret_code
-      fi
    fi
 }
 

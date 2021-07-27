@@ -15,6 +15,39 @@ get_file_body() {
    printf "%s" "$1" | sed 's/\(.*\)\/\(.*\)\.\(.*\)$/\2/'
 }
 
+check_install() {
+   l8_tmp_path_unsanitized="$1"
+   l8_package="$2"
+   
+   if [ ! -f "$l8_tmp_path_unsanitized/$l8_package.chk" ]; then
+      printf "%s\n" "Installing $l8_package"
+
+      if [ "$g_is_updated" -eq 0 ]; then 
+
+         sudo apt-get -y update
+         l8_ret_code=$?
+         if [ $l8_ret_code -ne 0 ]; then 
+            exit $l8_ret_code
+         fi
+
+         g_is_updated=1
+      fi
+
+      sudo apt-get -y install "$l8_package"
+      l8_ret_code=$?
+      if [ $l8_ret_code -ne 0 ]; then 
+         exit $l8_ret_code
+      fi
+         
+      # write out an empty file to signal that this has been installed
+      printf "" > "$l8_tmp_path_unsanitized/$l8_package.chk"
+      l8_ret_code=$?
+      if [ $l8_ret_code -ne 0 ]; then 
+         exit $l8_ret_code
+      fi
+   fi
+}
+
 make_initial_paths_simple() {
    l1_obj_path_unsanitized="$1"
    l1_bin_path_unsanitized="$2"
@@ -55,16 +88,18 @@ compile_file() {
    fi
 
    if [ $l2_asm -ne 0 ]; then
-      # references: 
+      # - I'd rather do our real compile above with no special parameters because I'm not confident the compiler would
+      #   produce the same output if we included extra debugger info disassembly commands.  It's better to stick with 
+      #   the normal program flow for our shared library output.  This rules out: --save-temps=obj
+      #   -Wa,-adhln=myoutput.s can be used in-stream, but we've ruled this out per above.  We can also use it
+      #   to generate the .s file below, but I found that this didn't have much benefit over -S and -fverbose-asm
+      #   We also write out objdump disassembly from the final library output itself which should allow us to 
+      #   check that this annotated assembly is the same as what gets finally generated
       # - https://panthema.net/2013/0124-GCC-Output-Assembler-Code/
-      # - https://stackoverflow.com/questions/1289881/using-gcc-to-produce-readable-assembly
       # - https://stackoverflow.com/questions/137038/how-do-you-get-assembler-output-from-c-c-source-in-gcc
-      # - I'd rather do our real compile with no special parameters because I'm not confident the compiler would
-      #   produce the same output and it's better to stick with the normal program flow.  This rules out:
-      #   --save-temps=obj and -Wa,-adhln=myoutput.s . We'll also write out objdump disassembly from the library output 
-      #   itself which should allow us to check that this annotated assembly is the same as what gets finally generated
+      # - https://linux.die.net/man/1/as
 
-      # also write out the equivalent assembly.  If this fails then ignore the error and we'll just be missing this file.
+      # If this fails then ignore the error and we'll just be missing this file.
       l2_asm_full_file_unsanitized="$l2_obj_path_unsanitized/${l2_file_body_unsanitized}_$l2_zone.s"
       l2_asm_full_file_sanitized=`sanitize "$l2_asm_full_file_unsanitized"`
       l2_compile_specific_asm="$l2_compiler $l2_compiler_args_sanitized -fverbose-asm -S $l2_file_sanitized -o $l2_asm_full_file_sanitized 2>&1"
@@ -189,51 +224,20 @@ copy_asm_files() {
       fi
 
       #also generate a disassembly from the final output that we can compare the individual files against
-      
-      # remove the .so or .dylib ending
       l9_bin_file_body_unsanitized=`get_file_body "$l9_bin_file_unsanitized"`
-
       os_type=`uname`
       if [ "$os_type" = "Linux" ]; then
-         objdump -dRwCS "$l9_bin_file_unsanitized" > "$l9_tagged_path_unsanitized/$l9_bin_file_body_unsanitized.s"
+         # - https://stackoverflow.com/questions/1289881/using-gcc-to-produce-readable-assembly
+         # GNU objdump https://linux.die.net/man/1/objdump
+         objdump --disassemble --private-headers --reloc --dynamic-reloc --section-headers --syms --line-numbers --no-show-raw-insn --source "$l9_bin_file_unsanitized" > "$l9_tagged_path_unsanitized/$l9_bin_file_body_unsanitized.s"
       elif [ "$os_type" = "Darwin" ]; then
-         # objdump on mac might actually be llvm-objdump ??
-         objdump -d "$l9_bin_file_unsanitized" > "$l9_tagged_path_unsanitized/$l9_bin_file_body_unsanitized.s"
+         # objdump on mac is actually llvm-objdump
+         # https://llvm.org/docs/CommandGuide/llvm-objdump.html
+         # otool might be a better choice on mac, but this does what we need in combination with the individual 
+         # module assembly, so keep it consistent with linux unless we need something more in the future
+         objdump --disassemble --private-headers --reloc --dynamic-reloc --section-headers --syms --line-numbers --no-show-raw-insn --source --print-imm-hex "$l9_bin_file_unsanitized" > "$l9_tagged_path_unsanitized/$l9_bin_file_body_unsanitized.s"
       else
          exit 1
-      fi
-   fi
-}
-
-check_install() {
-   l8_tmp_path_unsanitized="$1"
-   l8_package="$2"
-   
-   if [ ! -f "$l8_tmp_path_unsanitized/$l8_package.chk" ]; then
-      printf "%s\n" "Installing $l8_package"
-
-      if [ "$g_is_updated" -eq 0 ]; then 
-
-         sudo apt-get -y update
-         l8_ret_code=$?
-         if [ $l8_ret_code -ne 0 ]; then 
-            exit $l8_ret_code
-         fi
-
-         g_is_updated=1
-      fi
-
-      sudo apt-get -y install "$l8_package"
-      l8_ret_code=$?
-      if [ $l8_ret_code -ne 0 ]; then 
-         exit $l8_ret_code
-      fi
-         
-      # write out an empty file to signal that this has been installed
-      printf "" > "$l8_tmp_path_unsanitized/$l8_package.chk"
-      l8_ret_code=$?
-      if [ $l8_ret_code -ne 0 ]; then 
-         exit $l8_ret_code
       fi
    fi
 }
@@ -295,6 +299,8 @@ src_path_unsanitized="$root_path_unsanitized/shared/ebm_native"
 src_path_sanitized=`sanitize "$src_path_unsanitized"`
 
 
+# a good referenece on writing shared libraries is at: https://akkadia.org/drepper/dsohowto.pdf
+
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
 both_args=""
 both_args="$both_args -Wall -Wextra"
@@ -306,6 +312,7 @@ both_args="$both_args -Wformat=2"
 both_args="$both_args -fvisibility=hidden"
 both_args="$both_args -fno-math-errno -fno-trapping-math"
 both_args="$both_args -march=core2"
+# TODO: once we have highly efficient tightly looped code, try no -fpic and see if that makes better code.  The compiler can save a register in this case. See https://akkadia.org/drepper/dsohowto.pdf
 both_args="$both_args -fpic"
 both_args="$both_args -pthread"
 both_args="$both_args -DEBM_NATIVE_EXPORTS"
