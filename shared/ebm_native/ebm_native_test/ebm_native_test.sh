@@ -108,136 +108,157 @@ get_file_body() {
 }
 
 check_install() {
-   l8_tmp_path_unsanitized="$1"
-   l8_package="$2"
+   l1_tmp_path_unsanitized="$1"
+   l1_package="$2"
    
-   if [ ! -f "$l8_tmp_path_unsanitized/$l8_package.chk" ]; then
-      printf "%s\n" "Installing $l8_package"
+   if [ ! -f "$l1_tmp_path_unsanitized/$l1_package.chk" ]; then
+      printf "%s\n" "Installing $l1_package"
 
       if [ "$g_is_updated" -eq 0 ]; then 
 
          sudo apt-get -y update
-         l8_ret_code=$?
-         if [ $l8_ret_code -ne 0 ]; then 
-            exit $l8_ret_code
+         l1_ret_code=$?
+         if [ $l1_ret_code -ne 0 ]; then 
+            exit $l1_ret_code
          fi
 
          g_is_updated=1
       fi
 
-      sudo apt-get -y install "$l8_package"
-      l8_ret_code=$?
-      if [ $l8_ret_code -ne 0 ]; then 
-         exit $l8_ret_code
+      sudo apt-get -y install "$l1_package"
+      l1_ret_code=$?
+      if [ $l1_ret_code -ne 0 ]; then 
+         exit $l1_ret_code
       fi
-
+         
       # write out an empty file to signal that this has been installed
-      printf "" > "$l8_tmp_path_unsanitized/$l8_package.chk"
-      l8_ret_code=$?
-      if [ $l8_ret_code -ne 0 ]; then 
-         exit $l8_ret_code
+      printf "" > "$l1_tmp_path_unsanitized/$l1_package.chk"
+      l1_ret_code=$?
+      if [ $l1_ret_code -ne 0 ]; then 
+         exit $l1_ret_code
       fi
    fi
 }
 
 make_initial_paths_simple() {
-   l1_obj_path_unsanitized="$1"
-   l1_bin_path_unsanitized="$2"
+   l2_obj_path_unsanitized="$1"
+   l2_bin_path_unsanitized="$2"
 
-   [ -d "$l1_obj_path_unsanitized" ] || mkdir -p "$l1_obj_path_unsanitized"
-   l1_ret_code=$?
-   if [ $l1_ret_code -ne 0 ]; then 
-      exit $l1_ret_code
-   fi
-   [ -d "$l1_bin_path_unsanitized" ] || mkdir -p "$l1_bin_path_unsanitized"
-   l1_ret_code=$?
-   if [ $l1_ret_code -ne 0 ]; then 
-      exit $l1_ret_code
-   fi
-}
-
-compile_file() {
-   l2_compiler="$1"
-   l2_compiler_args_sanitized="$2"
-   l2_file_unsanitized="$3"
-   l2_obj_path_unsanitized="$4"
-   l2_zone="$5"
-
-   l2_file_sanitized=`sanitize "$l2_file_unsanitized"`
-   # https://www.oncrashreboot.com/use-sed-to-split-path-into-filename-extension-and-directory
-   l2_file_body_unsanitized=`get_file_body "$l2_file_unsanitized"`
-   l2_object_full_file_unsanitized="$l2_obj_path_unsanitized/${l2_file_body_unsanitized}_$l2_zone.o"
-   l2_object_full_file_sanitized=`sanitize "$l2_object_full_file_unsanitized"`
-   g_all_object_files_sanitized="$g_all_object_files_sanitized $l2_object_full_file_sanitized"
-   l2_compile_specific="$l2_compiler $l2_compiler_args_sanitized -c $l2_file_sanitized -o $l2_object_full_file_sanitized 2>&1"
-   l2_compile_out=`eval "$l2_compile_specific"`
+   [ -d "$l2_obj_path_unsanitized" ] || mkdir -p "$l2_obj_path_unsanitized"
    l2_ret_code=$?
-   g_compile_out_full="$g_compile_out_full$l2_compile_out"
    if [ $l2_ret_code -ne 0 ]; then 
-      printf "%s\n" "$g_compile_out_full"
-      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      exit $l2_ret_code
+   fi
+   [ -d "$l2_bin_path_unsanitized" ] || mkdir -p "$l2_bin_path_unsanitized"
+   l2_ret_code=$?
+   if [ $l2_ret_code -ne 0 ]; then 
       exit $l2_ret_code
    fi
 }
 
-compile_directory_c() {
+compile_file() {
    l3_compiler="$1"
    l3_compiler_args_sanitized="$2"
-   l3_src_path_unsanitized="$3"
+   l3_file_unsanitized="$3"
    l3_obj_path_unsanitized="$4"
-   l3_zone="$5"
+   l3_asm="$5"
+   l3_zone="$6"
+
+   l3_file_sanitized=`sanitize "$l3_file_unsanitized"`
+   l3_file_body_unsanitized=`get_file_body "$l3_file_unsanitized"`
+   l3_object_full_file_unsanitized="$l3_obj_path_unsanitized/${l3_file_body_unsanitized}_$l3_zone.o"
+   l3_object_full_file_sanitized=`sanitize "$l3_object_full_file_unsanitized"`
+   g_all_object_files_sanitized="$g_all_object_files_sanitized $l3_object_full_file_sanitized"
+   l3_compile_specific="$l3_compiler $l3_compiler_args_sanitized -c $l3_file_sanitized -o $l3_object_full_file_sanitized 2>&1"
+   l3_compile_out=`eval "$l3_compile_specific"`
+   l3_ret_code=$?
+   g_compile_out_full="$g_compile_out_full$l3_compile_out"
+   if [ $l3_ret_code -ne 0 ]; then 
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      exit $l3_ret_code
+   fi
+
+   if [ $l3_asm -ne 0 ]; then
+      # - I'd rather do our real compile above with no special parameters because I'm not confident the compiler would
+      #   produce the same output if we included extra debugger info disassembly commands.  It's better to stick with 
+      #   the normal program flow for our shared library output.  This rules out: --save-temps=obj
+      #   -Wa,-adhln=myoutput.s can be used in-stream, but we've ruled this out per above.  We can also use it
+      #   to generate the .s file below, but I found that this didn't have much benefit over -S and -fverbose-asm
+      #   We also write out objdump disassembly from the final library output itself which should allow us to 
+      #   check that this annotated assembly is the same as what gets finally generated
+      # - https://panthema.net/2013/0124-GCC-Output-Assembler-Code/
+      # - https://stackoverflow.com/questions/137038/how-do-you-get-assembler-output-from-c-c-source-in-gcc
+      # - https://linux.die.net/man/1/as
+
+      # If this fails then ignore the error and we'll just be missing this file.
+      l3_asm_full_file_unsanitized="$l3_obj_path_unsanitized/${l3_file_body_unsanitized}_$l3_zone.s"
+      l3_asm_full_file_sanitized=`sanitize "$l3_asm_full_file_unsanitized"`
+      l3_compile_specific_asm="$l3_compiler $l3_compiler_args_sanitized -fverbose-asm -S $l3_file_sanitized -o $l3_asm_full_file_sanitized 2>&1"
+      l3_compile_out_asm=`eval "$l3_compile_specific_asm"`
+   fi
+}
+
+compile_directory_c() {
+   l4_compiler="$1"
+   l4_compiler_args_sanitized="$2"
+   l4_src_path_unsanitized="$3"
+   l4_obj_path_unsanitized="$4"
+   l4_asm="$5"
+   l4_zone="$6"
 
    # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
-   find "$l3_src_path_unsanitized" -maxdepth 1 -type f -name '*.c' 2>/dev/null | grep -q .
-   l3_ret_code=$?
-   if [ $l3_ret_code -eq 0 ]; then 
+   find "$l4_src_path_unsanitized" -maxdepth 1 -type f -name '*.c' 2>/dev/null | grep -q .
+   l4_ret_code=$?
+   if [ $l4_ret_code -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for l3_file_unsanitized in "$l3_src_path_unsanitized"/*.c ; do
+      for l4_file_unsanitized in "$l4_src_path_unsanitized"/*.c ; do
          # glob expansion returns *.c when there are no matches, so we need to check for the existance of the file
-         if [ -f "$l3_file_unsanitized" ] ; then
-            compile_file "$l3_compiler" "$l3_compiler_args_sanitized" "$l3_file_unsanitized" "$l3_obj_path_unsanitized" "$l3_zone"
+         if [ -f "$l4_file_unsanitized" ] ; then
+            compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_asm" "$l4_zone"
          fi
       done
    fi
 }
 
 compile_directory_cpp() {
-   l4_compiler="$1"
-   l4_compiler_args_sanitized="$2"
-   l4_src_path_unsanitized="$3"
-   l4_obj_path_unsanitized="$4"
-   l4_zone="$5"
+   l5_compiler="$1"
+   l5_compiler_args_sanitized="$2"
+   l5_src_path_unsanitized="$3"
+   l5_obj_path_unsanitized="$4"
+   l5_asm="$5"
+   l5_zone="$6"
 
    # zsh (default shell in macs) terminates if you try to glob expand zero results, so check first
-   find "$l4_src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
-   l4_ret_code=$?
-   if [ $l4_ret_code -eq 0 ]; then 
+   find "$l5_src_path_unsanitized" -maxdepth 1 -type f -name '*.cpp' 2>/dev/null | grep -q .
+   l5_ret_code=$?
+   if [ $l5_ret_code -eq 0 ]; then 
       # use globs with preceeding directory per: https://dwheeler.com/essays/filenames-in-shell.html
-      for l4_file_unsanitized in "$l4_src_path_unsanitized"/*.cpp ; do
-         # glob expansion returns *.cpp or when there are no matches, so we need to check for the existance of the file
-         if [ -f "$l4_file_unsanitized" ] ; then
-            compile_file "$l4_compiler" "$l4_compiler_args_sanitized" "$l4_file_unsanitized" "$l4_obj_path_unsanitized" "$l4_zone"
+      for l5_file_unsanitized in "$l5_src_path_unsanitized"/*.cpp ; do
+         # glob expansion returns *.cpp when there are no matches, so we need to check for the existance of the file
+         if [ -f "$l5_file_unsanitized" ] ; then
+            compile_file "$l5_compiler" "$l5_compiler_args_sanitized" "$l5_file_unsanitized" "$l5_obj_path_unsanitized" "$l5_asm" "$l5_zone"
          fi
       done
    fi
 }
 
 link_file() {
-   l6_linker="$1"
-   l6_linker_args_sanitized="$2"
-   l6_bin_path_unsanitized="$3"
-   l6_bin_file="$4"
+   l7_linker="$1"
+   l7_linker_args_sanitized="$2"
+   l7_bin_path_unsanitized="$3"
+   l7_bin_file="$4"
 
-   l6_bin_path_sanitized=`sanitize "$l6_bin_path_unsanitized"`
+   l7_bin_path_sanitized=`sanitize "$l7_bin_path_unsanitized"`
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
-   l6_compile_specific="$l6_linker $g_all_object_files_sanitized $l6_linker_args_sanitized -o $l6_bin_path_sanitized/$l6_bin_file 2>&1"
-   l6_compile_out=`eval "$l6_compile_specific"`
-   l6_ret_code=$?
-   g_compile_out_full="$g_compile_out_full$l6_compile_out"
-   if [ $l6_ret_code -ne 0 ]; then 
+   l7_compile_specific="$l7_linker $g_all_object_files_sanitized $l7_linker_args_sanitized -o $l7_bin_path_sanitized/$l7_bin_file 2>&1"
+   l7_compile_out=`eval "$l7_compile_specific"`
+   l7_ret_code=$?
+   g_compile_out_full="$g_compile_out_full$l7_compile_out"
+   if [ $l7_ret_code -ne 0 ]; then 
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
-      exit $l6_ret_code
+      exit $l7_ret_code
    fi
 }
 
@@ -291,6 +312,9 @@ for arg in "$@"; do
       use_asan=0
    fi
 done
+
+# this isn't needed in the test script, but we include them to make this script more similar to build.sh
+is_asm=0
 
 # TODO: this could be improved upon.  There is no perfect solution AFAIK for getting the script directory, and I'm not too sure how the CDPATH thing works
 # Look at BASH_SOURCE[0] as well and possibly select either it or $0
@@ -350,9 +374,9 @@ if [ "$os_type" = "Linux" ]; then
    cpp_compiler=g++
 
    # try moving some of these g++ specific warnings into both_args if clang eventually supports them
-   # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    both_args="$both_args -Wlogical-op"
 
+   # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    link_args="$link_args -L$staging_path_sanitized"
    link_args="$link_args -Wl,-rpath-link,$staging_path_sanitized"
    link_args="$link_args -Wl,-rpath,'\$ORIGIN/'"
@@ -391,8 +415,8 @@ if [ "$os_type" = "Linux" ]; then
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -443,8 +467,8 @@ if [ "$os_type" = "Linux" ]; then
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -492,8 +516,8 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -537,8 +561,8 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -566,6 +590,7 @@ elif [ "$os_type" = "Darwin" ]; then
    both_args="$both_args -Wnull-dereference"
    both_args="$both_args -Wgnu-zero-variadic-macro-arguments"
 
+   # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    link_args="$link_args -L$staging_path_sanitized"
    link_args="$link_args -Wl,-rpath,@loader_path"
 
@@ -602,8 +627,8 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
@@ -647,8 +672,8 @@ elif [ "$os_type" = "Darwin" ]; then
       g_compile_out_full=""
 
       make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
-      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "test"
+      compile_directory_c "$c_compiler" "$c_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "test"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
