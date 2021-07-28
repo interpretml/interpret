@@ -1227,7 +1227,6 @@ TEST_CASE("CutQuantile, maximum non-overflow interpretable ends") {
 }
 
 TEST_CASE("CutQuantile, stress test the guarantee of one cut per CuttingRange, by 2") {
-   constexpr IntEbmType countSamplesPerBinMin = 1;
    constexpr size_t cItemsPerRange = 10;
    constexpr size_t cInteriorRanges = 3;
    constexpr size_t cRemoveCuts = 1;

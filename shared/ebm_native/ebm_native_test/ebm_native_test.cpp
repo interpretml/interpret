@@ -241,8 +241,8 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
    m_learningTypeOrCountTargetClasses(learningTypeOrCountTargetClasses),
    m_iZeroClassificationLogit(iZeroClassificationLogit),
    m_bNullTrainingWeights(true),
-   m_bNullValidationWeights(true),
    m_bNullTrainingPredictionScores(true),
+   m_bNullValidationWeights(true),
    m_bNullValidationPredictionScores(true),
    m_boosterHandle(nullptr),
    m_bNullInteractionWeights(true),
@@ -785,7 +785,7 @@ FloatEbmType TestApi::GetBestModelPredictorScore(
    return predictorScore;
 }
 
-const void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
+void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
@@ -830,7 +830,7 @@ FloatEbmType TestApi::GetCurrentModelPredictorScore(
    return predictorScore;
 }
 
-const void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
+void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }

@@ -22,8 +22,8 @@ TEST_CASE("data_set_shared, zero features, zero samples, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(0, 0, 1, sum, &buffer[0], &opaqueState);
@@ -31,7 +31,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, regression") {
    error = FillRegressionTarget(0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, zero features, three samples, regression") {
@@ -50,8 +50,8 @@ TEST_CASE("data_set_shared, zero features, three samples, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(0, 0, 1, sum, &buffer[0], &opaqueState);
@@ -59,7 +59,7 @@ TEST_CASE("data_set_shared, zero features, three samples, regression") {
    error = FillRegressionTarget(k_cSamples, targets, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 
@@ -84,8 +84,8 @@ TEST_CASE("data_set_shared, two features, zero samples, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0], &opaqueState);
@@ -97,7 +97,7 @@ TEST_CASE("data_set_shared, two features, zero samples, regression") {
    error = FillRegressionTarget(0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, two features, 3 samples, regression") {
@@ -124,8 +124,8 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0], &opaqueState);
@@ -137,7 +137,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
    error = FillRegressionTarget(k_cSamples, &targets[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, zero features, zero samples, classification") {
@@ -153,8 +153,8 @@ TEST_CASE("data_set_shared, zero features, zero samples, classification") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(0, 0, 1, sum, &buffer[0], &opaqueState);
@@ -162,7 +162,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, classification") {
    error = FillClassificationTarget(0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, zero features, three samples, classification") {
@@ -181,8 +181,8 @@ TEST_CASE("data_set_shared, zero features, three samples, classification") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(0, 0, 1, sum, &buffer[0], &opaqueState);
@@ -190,7 +190,7 @@ TEST_CASE("data_set_shared, zero features, three samples, classification") {
    error = FillClassificationTarget(3, k_cSamples, targets, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, two features, zero samples, classification") {
@@ -214,8 +214,8 @@ TEST_CASE("data_set_shared, two features, zero samples, classification") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0], &opaqueState);
@@ -227,7 +227,7 @@ TEST_CASE("data_set_shared, two features, zero samples, classification") {
    error = FillClassificationTarget(0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, two features, 3 samples, classification") {
@@ -254,8 +254,8 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0], &opaqueState);
@@ -267,7 +267,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
    error = FillClassificationTarget(3, k_cSamples, &targets[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 
@@ -290,8 +290,8 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(0, 1, 1, sum, &buffer[0], &opaqueState);
@@ -301,7 +301,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, regression") {
    error = FillRegressionTarget(0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, zero features, three samples, weights, regression") {
@@ -325,8 +325,8 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, regression") 
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(0, 1, 1, sum, &buffer[0], &opaqueState);
@@ -336,7 +336,7 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, regression") 
    error = FillRegressionTarget(k_cSamples, targets, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 
@@ -365,8 +365,8 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0], &opaqueState);
@@ -380,7 +380,7 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, regression") {
    error = FillRegressionTarget(0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
@@ -412,8 +412,8 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0], &opaqueState);
@@ -427,7 +427,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
    error = FillRegressionTarget(k_cSamples, &targets[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, zero features, zero samples, weights, classification") {
@@ -447,8 +447,8 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, classification
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(0, 1, 1, sum, &buffer[0], &opaqueState);
@@ -458,7 +458,7 @@ TEST_CASE("data_set_shared, zero features, zero samples, weights, classification
    error = FillClassificationTarget(0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, zero features, three samples, weights, classification") {
@@ -482,8 +482,8 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, classificatio
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(0, 1, 1, sum, &buffer[0], &opaqueState);
@@ -493,7 +493,7 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, classificatio
    error = FillClassificationTarget(3, k_cSamples, targets, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, two features, zero samples, weights, classification") {
@@ -521,8 +521,8 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, classification"
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0], &opaqueState);
@@ -536,7 +536,7 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, classification"
    error = FillClassificationTarget(0, 0, nullptr, sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
 TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
@@ -568,8 +568,8 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
    CHECK(0 <= part);
    sum += part;
 
-   std::vector<char> buffer(sum + 1, 77);
-   buffer[sum] = 99;
+   std::vector<char> buffer(static_cast<size_t>(sum) + 1, 77);
+   buffer[static_cast<size_t>(sum)] = 99;
 
    IntEbmType opaqueState;
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0], &opaqueState);
@@ -583,5 +583,5 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
    error = FillClassificationTarget(3, k_cSamples, &targets[0], sum, &buffer[0], &opaqueState);
    CHECK(Error_None == error);
 
-   CHECK(99 == buffer[sum]);
+   CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }

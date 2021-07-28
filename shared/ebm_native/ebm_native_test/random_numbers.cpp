@@ -134,8 +134,8 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
 
          const double actualTrainSplit = trainingCount[iClass] / static_cast<double>(classCount[iClass]);
 
-         cHigher = (idealTrainSplit <= actualTrainSplit) ? ++cHigher : cHigher;
-         cLower = (idealTrainSplit >= actualTrainSplit) ? ++cLower : cLower;
+         cHigher = (idealTrainSplit <= actualTrainSplit) ? cHigher + 1 : cHigher;
+         cLower = (idealTrainSplit >= actualTrainSplit) ? cLower + 1 : cLower;
          
          if (cClassSize < cTrainingSamples) {
             // Test (2)
