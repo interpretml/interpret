@@ -8,6 +8,7 @@
 #define UNUSED(x) (void)(x)
 
 enum class TestPriority {
+   Discretize,
    DataSetShared,
    BoostingUnusualInputs,
    InteractionUnusualInputs,
@@ -15,7 +16,6 @@ enum class TestPriority {
    BitPackingExtremes,
    RandomNumbers,
    SuggestGraphBounds,
-   Discretize,
    CutUniform,
    CutWinsorized,
    CutQuantile

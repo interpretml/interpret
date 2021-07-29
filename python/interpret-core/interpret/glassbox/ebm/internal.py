@@ -5,7 +5,6 @@
 from sys import platform
 import ctypes as ct
 from numpy.ctypeslib import ndpointer
-from multiprocessing.sharedctypes import RawArray
 import numpy as np
 import os
 import struct
@@ -31,6 +30,7 @@ class Native:
     _TraceLevelVerbose = 4
 
     _native = None
+    # if we supported win32 32-bit functions then this would need to be WINFUNCTYPE
     _LogFuncType = ct.CFUNCTYPE(None, ct.c_int32, ct.c_char_p)
 
     def __init__(self):
@@ -189,6 +189,14 @@ class Native:
 
         return sample_counts_out
 
+    def get_histogram_cut_count(self, col_data, strategy=None):
+        n_cuts = self._unsafe.GetHistogramCutCount(
+            col_data.shape[0],
+            col_data, 
+            0
+        )
+        return n_cuts
+
     def cut_quantile(self, col_data, min_samples_bin, is_humanized, max_cuts):
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
@@ -249,6 +257,36 @@ class Native:
 
         return cuts, count_missing, min_val, max_val
 
+    def cut_winsorized(self, col_data, max_cuts):
+        cuts = np.empty(max_cuts, dtype=np.float64, order="C")
+        count_cuts = ct.c_int64(max_cuts)
+        count_missing = ct.c_int64(0)
+        min_val = ct.c_double(0)
+        count_neg_inf = ct.c_int64(0)
+        max_val = ct.c_double(0)
+        count_inf = ct.c_int64(0)
+
+        return_code = self._unsafe.CutWinsorized(
+            col_data.shape[0],
+            col_data, 
+            ct.byref(count_cuts),
+            cuts,
+            ct.byref(count_missing),
+            ct.byref(min_val),
+            ct.byref(count_neg_inf),
+            ct.byref(max_val),
+            ct.byref(count_inf)
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "CutWinsorized")
+
+        cuts = cuts[:count_cuts.value]
+        count_missing = count_missing.value
+        min_val = min_val.value
+        max_val = max_val.value
+
+        return cuts, count_missing, min_val, max_val
+
     def suggest_graph_bounds(self, cuts, min_val=np.nan, max_val=np.nan):
         low_graph_bound = ct.c_double(0)
         high_graph_bound = ct.c_double(0)
@@ -277,6 +315,20 @@ class Native:
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "Discretize")
+
+        return discretized
+
+    def discretize_histogram(self, col_data, cuts):
+        discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")
+        return_code = self._unsafe.DiscretizeHistogram(
+            col_data.shape[0],
+            col_data,
+            cuts.shape[0],
+            cuts,
+            discretized
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "DiscretizeHistogram")
 
         return discretized
 
@@ -475,6 +527,16 @@ class Native:
         ]
         self._unsafe.StratifiedSamplingWithoutReplacement.restype = ct.c_int32
 
+        self._unsafe.GetHistogramCutCount.argtypes = [
+            # int64_t countSamples
+            ct.c_int64,
+            # double * featureValues
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t strategy
+            ct.c_int64,
+        ]
+        self._unsafe.GetHistogramCutCount.restype = ct.c_int64
+
         self._unsafe.CutQuantile.argtypes = [
             # int64_t countSamples
             ct.c_int64,
@@ -578,6 +640,20 @@ class Native:
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.Discretize.restype = ct.c_int32
+
+        self._unsafe.DiscretizeHistogram.argtypes = [
+            # int64_t countSamples
+            ct.c_int64,
+            # double * featureValues
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t countCuts
+            ct.c_int64,
+            # double * cutsLowerBoundInclusive
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t * discretizedOut
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+        ]
+        self._unsafe.DiscretizeHistogram.restype = ct.c_int32
 
 
         self._unsafe.SizeDataSetHeader.argtypes = [
