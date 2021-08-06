@@ -1,0 +1,116 @@
+.explain-panel {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-radius: 5px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px;
+  border-bottom: 1px solid $gray-border;
+  background: white;
+  border-top-left-radius: 5px;
+
+  .header__info {
+    display: flex;
+    align-items: center;
+  }
+
+  .header__name {
+    margin-right: 10px;
+  }
+
+  .header__importance {
+    color: $gray-light;
+  }
+
+  .header__control-panel {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.toggle-switch-wrapper {
+  width: 180px;
+}
+
+.context-menu-container {
+  position: absolute;
+  z-index: 5;
+
+  &.hidden {
+    visibility: hidden;
+  }
+}
+
+:global(.explain-panel .y-axis-text) {
+  font-size: 14px;
+  text-anchor: middle;
+  dominant-baseline: text-bottom;
+}
+
+:global(.explain-panel .hidden) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+:global(.explain-panel .grid-line-x, .explain-panel .grid-line-y) {
+  stroke-width: 1;
+  stroke: black;
+  stroke-opacity: 0.08;
+}
+
+:global(.explain-panel .grid-line-y-0) {
+  stroke-width: 3;
+  stroke: black;
+  stroke-opacity: 0.1;
+  stroke-dasharray: 15 10;
+}
+
+:global(.explain-panel .grid-line-y-0-solid) {
+  stroke-width: 3;
+  stroke: black;
+  stroke-opacity: 0.1;
+}
+
+:global(.explain-panel .legend-title) {
+  font-size: 12px;
+  dominant-baseline: hanging;
+}
+
+:global(.explain-panel .legend-value) {
+  font-size: 12px;
+  dominant-baseline: middle;
+}
+
+:global(.explain-panel .x-axis-text) {
+  dominant-baseline: hanging;
+  font-size: 14px;
+}
+
+:global(.explain-panel rect.original) {
+  fill: $gray-300;
+}
+
+:global(.explain-panel rect.last) {
+  fill: $pastel1-orange;
+}
+
+:global(.explain-panel rect.current) {
+  fill: $pastel1-blue;
+}
+
+:global(.explain-panel svg text) {
+  cursor: default;
+}
+
+:global(.explain-panel .line-legend-title) {
+  dominant-baseline: hanging;
+  text-anchor: start;
+  font-size: 12px;
+  font-weight: 300;
+  fill: $indigo-dark;
+}

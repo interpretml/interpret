@@ -1,0 +1,12 @@
+/node_modules/
+/public/build/
+package-lock.json
+.DS_Store
+*.swp
+
+.vercel
+deploy-gh-page.sh
+dist
+/public/data/medical*
+
+mimic*

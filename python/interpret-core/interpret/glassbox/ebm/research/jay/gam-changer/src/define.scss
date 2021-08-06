@@ -1,0 +1,56 @@
+// Colors
+$brown-dark: hsl(27, 47%, 13%);
+$brown-reg: hsl(27, 47%, 26%);
+$brown-icon: hsl(24, 28%, 52%);
+$brown-light: hsl(26, 5%, 65%);
+
+$green-reg: hsl(176, 47%, 26%);
+$green-dark: hsl(176, 47%, 17%);
+
+$blue-reg: hsl(222, 81%, 61%);
+$blue-dark: hsl(224, 50%, 30%);
+$blue-icon: hsl(213, 100%, 53%);
+$blue-50: hsl(210, 20%, 90%);
+$blue-300: hsl(213, 100%, 80%);
+$blue-400: hsl(204, 70%, 53%);
+$blue-500: hsl(224, 61%, 50%);
+$blue-600: hsl(224, 51%, 40%);
+$blue-700: hsl(210, 29%, 29%);
+
+$red-400: hsl(348, 98%, 58%);
+
+$gray-light: hsl(26, 10%, 65%);
+$gray-background: hsl(210, 25%, 98%);
+$gray-border: hsla(0, 0%, 0%, 0.2);
+$gray-900: hsl(210, 12%, 16%);
+$gray-700: hsl(213, 5%, 43%);
+$gray-sep: hsla(0, 0%, 0%, 0.06);
+$gray-100: hsla(0, 0%, 97%);
+$gray-200: hsla(0, 0%, 95%);
+$gray-300: hsla(0, 0%, 92%);
+
+$orange-100: hsl(35, 100%, 80%);
+$orange-200: hsl(35, 100%, 70%);
+$orange-300: hsl(35, 100%, 60%);
+$orange-400: hsl(35, 100%, 50%);
+
+$brown-50: hsl(20, 16%, 99%);
+
+$yellow-400: hsl(48, 99%, 50%);
+
+$indigo-dark: hsl(230, 100%, 11%);
+
+$pastel2-blue: hsl(219, 39%, 85%);
+$pastel2-orange: hsl(24, 95%, 83%);
+$pastel2-gray: hsl(0, 0%, 80%);
+
+$pastel1-blue: hsl(207, 46%, 80%);
+$pastel1-orange: hsl(35, 98%, 82%);
+$pastel1-gray: hsl(0, 0%, 95%);
+$pastel1-red: hsl(329, 90%, 92%);
+
+// Lengths
+$explanation-header-height: 1.5em;
+$svg-height: 500px;
+$svg-width: $svg-height * 600 / 400;
+$my-border-radius: 10px;

@@ -1,0 +1,35 @@
+{
+  "name": "ebm",
+  "version": "0.2.0",
+  "description": "Explanable Boosting Machine",
+  "main": "dist/cjs/index.js",
+  "module": "dist/mjs/index.js",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/mjs/index.js"
+    }
+  },
+  "scripts": {
+    "test": "rollup -c && npm run asbuild:untouched && node tests/cjs",
+    "asbuild:untouched": "asc assembly/ebm.ts --target debug",
+    "asbuild:optimized": "asc assembly/ebm.ts --target release",
+    "asbuild": "npm run asbuild:untouched && npm run asbuild:optimized",
+    "build": "rollup -c && npm run asbuild"
+  },
+  "author": "Jay Wang",
+  "license": "MIT",
+  "dependencies": {
+    "@assemblyscript/loader": "^0.19.1",
+    "as-console": "^5.0.3",
+    "cross-fetch": "^3.1.4"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@rollup/plugin-wasm": "^5.1.2",
+    "@shopify/eslint-plugin": "^40.2.3",
+    "assemblyscript": "^0.19.1",
+    "eslint": "^7.28.0",
+    "rollup-plugin-base64": "^1.0.1"
+  }
+}

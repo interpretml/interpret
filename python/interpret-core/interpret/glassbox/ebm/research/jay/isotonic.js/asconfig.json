@@ -1,0 +1,21 @@
+{
+  "targets": {
+    "debug": {
+      "binaryFile": "build/untouched.wasm",
+      "textFile": "build/untouched.wat",
+      "sourceMap": true,
+      "debug": true,
+      "exportRuntime": true
+    },
+    "release": {
+      "binaryFile": "build/optimized.wasm",
+      "textFile": "build/optimized.wat",
+      "optimizeLevel": 3,
+      "shrinkLevel": 1,
+      "converge": false,
+      "noAssert": false,
+      "exportRuntime": true
+    }
+  },
+  "options": {}
+}

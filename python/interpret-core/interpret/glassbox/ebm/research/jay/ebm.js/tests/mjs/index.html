@@ -1,0 +1,35 @@
+
+<head>
+
+<script type="module">
+
+  import { initEBM } from './index.js';
+
+  const sampleUR = 'https://gist.githubusercontent.com/xiaohk/8ac92378284da1553780ccf650ff10cc/raw/1d34ee1d764154bcf860426544f7bbae48257cff/iow-house-sample-binary.json';
+  const featureURL = 'https://gist.githubusercontent.com/xiaohk/ffd09a565a33705239b54e84a364c7d3/raw/099558fbb04ecd63c949d5ab53c680532bf79b3a/iow-house-ebm-binary.json';
+
+  let result = await fetch(sampleUR);
+  let sampleData = await result.json();
+
+  result = await fetch(featureURL);
+  let featureData = await result.json();
+
+  let ebm = await initEBM(featureData, sampleData, 'LotFrontage', true);
+
+  let metrics = ebm.getMetrics();
+
+  document.querySelector('#output').innerHTML = `
+    confusion matrix: ${metrics.confusionMatrix}
+    accuracy: ${metrics.accuracy}
+    roc auc: ${metrics.rocAuc}
+    average precision: ${metrics.averagePrecision}
+  `
+
+</script>
+
+</head>
+
+<body>
+  <textarea id="output" style="width: 800px; height: 500px" readonly></textarea>
+</body>
+

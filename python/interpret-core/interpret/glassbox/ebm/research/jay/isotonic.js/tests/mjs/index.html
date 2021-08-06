@@ -1,0 +1,21 @@
+
+<head>
+
+<script type="module">
+  import { initIsotonicRegression } from '../../dist/mjs/index.js';
+
+  let model = await initIsotonicRegression();
+
+  model.fit([1, 2, 3, 4, 5], [10, 20, 0, 40, 50]);
+  console.log(model.predict([1, 2, 3, 4, 5]));
+
+  console.log(model);
+
+</script>
+
+</head>
+
+<body>
+  <textarea id="output" style="width: 800px; height: 500px" readonly></textarea>
+</body>
+
