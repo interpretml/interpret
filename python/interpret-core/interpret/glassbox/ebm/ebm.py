@@ -307,7 +307,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         unknown_constant = -1
 
         native = Native.get_native_singleton()
+
         X_new = np.copy(X)
+        if issubclass(X.dtype.type, np.unsignedinteger):
+            X_new = X_new.astype(np.int64)
+
         for col_idx in range(X.shape[1]):
             col_type = self.col_types_[col_idx]
             col_data = X[:, col_idx]
@@ -317,7 +321,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 cuts = self.col_bin_edges_[col_idx]
 
                 discretized = native.discretize(col_data, cuts)
-                
                 X_new[:, col_idx] = discretized
 
             elif col_type == "ordinal":
@@ -346,7 +349,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 X_new[:, col_idx] = np.fromiter(
                     (mapping.get(x, unknown_constant) for x in col_data), dtype=np.int64, count=X.shape[0]
                 )
-                
 
         return X_new.astype(np.int64)
 
