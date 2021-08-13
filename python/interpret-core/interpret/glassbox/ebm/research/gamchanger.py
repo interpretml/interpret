@@ -143,7 +143,7 @@ def get_model_data(ebm):
     score_range = list(map(lambda x: round(x, 4), score_range))
 
     data = {
-        'intercept': ebm.intercept_[0],
+        'intercept': ebm.intercept_[0] if hasattr(ebm, 'classes_') else ebm.intercept_,
         'isClassifier': hasattr(ebm, 'classes_'),
         'features': features,
         'labelEncoder': labelEncoder,
