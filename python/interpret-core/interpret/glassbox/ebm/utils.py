@@ -16,7 +16,7 @@ import warnings
 import copy
 
 from scipy.stats import norm
-from scipy.optimize import minimize_scalar, root_scalar
+from scipy.optimize import root_scalar, brentq
 
 import logging
 
@@ -684,19 +684,14 @@ class DPUtils:
 
     @staticmethod
     def calc_gdp_noise_multi(total_queries, target_epsilon, delta):
-        ''' Loose GDP analysis following Algorithm 2. 
+        ''' GDP analysis following Algorithm 2 in: https://arxiv.org/abs/2106.09680. 
         '''
-        err_noise = 50_000 # Absurdly large value for error cases
-        def f(x):
-            mu = np.sqrt(total_queries) / x
-            eps = DPUtils.eps_from_mu(mu, delta)
-            return x if eps < target_epsilon else err_noise
+        def f(mu, eps, delta):
+            return DPUtils.delta_eps_mu(eps, mu) - delta
 
-        noise_multi = minimize_scalar(f, bounds=(0, err_noise), method='bounded')
-        if noise_multi == err_noise:
-            raise Exception("Cannot find reasonable solution for specified combination of eps, delta.")
-
-        return noise_multi.x
+        final_mu = brentq(lambda x: f(x, target_epsilon, delta), 1e-5, 1000)
+        sigma = np.sqrt(total_queries) / final_mu
+        return sigma
 
     # General calculations, largely borrowed from tensorflow/privacy and presented in https://arxiv.org/abs/1911.11607
     @staticmethod
