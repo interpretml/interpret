@@ -17,7 +17,7 @@ class JobLibProvider(ComputeProvider):
         self.n_jobs = n_jobs
 
     def parallel(self, compute_fn, compute_args_iter):
-        results = Parallel(n_jobs=self.n_jobs, backend='multiprocessing')(
+        results = Parallel(n_jobs=self.n_jobs)(
             delayed(compute_fn)(*args) for args in compute_args_iter
         )
         # NOTE: Force gc, as Python does not free native memory easy.
