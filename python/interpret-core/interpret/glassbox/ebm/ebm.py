@@ -338,6 +338,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         if key == "DPOther": 
                             unknown_constant = val
                             missing_constant = val
+                            break
+                    else: # If DPOther keyword doesn't exist, revert to standard encoding scheme
+                        missing_constant = 0
+                        unknown_constant = -1
 
                 if isinstance(self.missing_str, list):
                     for val in self.missing_str:

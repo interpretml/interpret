@@ -520,7 +520,7 @@ def test_dp_ebm_adult():
     w_tr = np.ones_like(y_tr)
     w_tr[-1] = 2
 
-    clf = DPExplainableBoostingClassifier(binning='quantile', epsilon=1)
+    clf = DPExplainableBoostingClassifier(binning='private-quantile', epsilon=1)
     n_splits = 3
     ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
     res = cross_validate(
