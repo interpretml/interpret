@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.7] - 2021-09-24
+### Added
+- Synapse cloud support for visualizations.
+### Fixed
+- Joblib preference was previously being overriden. This has been reverted to honor the user's preference.
+- Bug in categorical binning for differentially privatized EBMs has been fixed.
+
 ## [v0.2.6] - 2021-07-20
 ### Added
 - Differential-privacy augmented EBMs now available as `interpret.privacy.{DPExplainableBoostingClassifier,DPExplainableBoostingRegressor}`.
@@ -407,6 +414,7 @@ Expect similar or slightly slower training times due to interactions.
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.2.7]: https://github.com/microsoft/interpret/releases/tag/v0.2.7
 [v0.2.6]: https://github.com/microsoft/interpret/releases/tag/v0.2.6
 [v0.2.5]: https://github.com/microsoft/interpret/releases/tag/v0.2.5
 [v0.2.4]: https://github.com/microsoft/interpret/releases/tag/v0.2.4
