@@ -10,7 +10,7 @@ from wheel.bdist_wheel import bdist_wheel
 
 name = "interpret-core"
 # NOTE: Version is replaced by a regex script.
-version = "0.2.6"
+version = "0.2.7"
 long_description = """
 Core system for **the** interpret package.
 
