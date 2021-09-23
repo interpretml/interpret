@@ -8,6 +8,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 ### Added
 - Synapse cloud support for visualizations.
 ### Fixed
+- All category names in bar charts now visible for inline rendering (used in cloud environments).
 - Joblib preference was previously being overriden. This has been reverted to honor the user's preference.
 - Bug in categorical binning for differentially privatized EBMs has been fixed.
 
