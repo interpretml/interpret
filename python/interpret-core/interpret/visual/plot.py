@@ -490,23 +490,27 @@ def plot_horizontal_bar(
 
         if (
             "meta" in data_dict and "label_names" in data_dict["meta"]
-        ):  # Upgraded classification
+        ):  # Classification titles   
             label_names = data_dict["meta"]["label_names"]
             predicted = label_names[predicted]
-            title_items.append(
-                "Predicted ({}): {:.3f}".format(predicted, predicted_score)
-            )
 
+            title_str = f"Predicted Class: {predicted}"
             if not np.isnan(actual):
-                actual = label_names[actual]
-                title_items.append("Actual ({}): {:.3f}".format(actual, actual_score))
-        else:  # Regression or old form of classification
+                actual_class = label_names[actual]
+                title_str += f" | Actual Class: {actual_class}"
+
+            title_str += f"<br />Pr(y = {predicted}): {predicted_score:.3f}"
+
+            if not np.isnan(actual) and len(set([predicted, actual])) == 2:
+                title_str += f" | Pr(y = {actual}): {actual_score:.3f}"
+            title_items.append(title_str)
+        else:  # Regression titles
             predicted_score = _pretty_number(predicted_score)
-            title_items.append("Predicted ({})".format(predicted_score))
+            title_items.append("Predicted: {}".format(predicted_score))
 
             if not np.isnan(actual):
                 actual_score = _pretty_number(actual_score)
-                title_items.append("Actual ({})".format(actual_score))
+                title_items.append("Actual: {}".format(actual_score))
 
         title = " | ".join(title_items)
     if not multiclass:
