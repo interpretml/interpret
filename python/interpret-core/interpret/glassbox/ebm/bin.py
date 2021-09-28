@@ -94,6 +94,8 @@ def _densify_object_ndarray(X_col):
     for one_type in types:
         if one_type is str:
             pass # str objects have __iter__, so special case this to allow
+        elif one_type is int:
+            pass # int objects use the default __str__ function, so special case this to allow
         elif one_type is float:
             is_float_conversion = True # force to np.float64 to guarantee consistent string formatting
         elif issubclass(one_type, np.generic):

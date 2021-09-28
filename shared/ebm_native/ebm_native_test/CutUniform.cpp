@@ -175,7 +175,7 @@ TEST_CASE("CutUniform, one cut, -infinity and +infinity") {
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { -std::numeric_limits<FloatEbmType>::infinity(), std::numeric_limits<FloatEbmType>::infinity() };
-   const std::vector<FloatEbmType> expectedCuts { 0 };
+   const std::vector<FloatEbmType> expectedCuts { };
 
    IntEbmType countMissingValues;
    FloatEbmType minNonInfinityValue;
