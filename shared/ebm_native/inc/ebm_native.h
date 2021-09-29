@@ -131,6 +131,16 @@ typedef struct _InteractionHandle {
 // std::numeric_limits<FloatEbmType>::quiet_NaN()
 #define FLOAT_EBM_NAN            (STATIC_CAST(FloatEbmType, (NAN)))
 
+// Smaller integers can safely roundtrip to double values and back, but this breaks down at
+// exactly 2^53.  2^53 will convert from an integer to a correct double, but 2^53 + 1 will round
+// down to 2^53 in IEEE-754 where banker's rounding is used.  So, if we see an integer with 
+// 9007199254740992 we would be safe to convert to to a double, BUT if we see a double of
+// 9007199254740992.0 we don't know if that was originally 9007199254740992 or 9007199254740993, so
+// 9007199254740992 is unsafe if checking as a double.
+// https://stackoverflow.com/questions/1848700/biggest-integer-that-can-be-stored-in-a-double
+// R has a lower maximum index of 4503599627370496 (R_XLEN_T_MAX) probably to store a bit somewhere.
+#define SAFE_DOUBLE_AS_INT_MAX   9007199254740991
+
 typedef double FloatEbmType;
 // this needs to be in "le" format, since we internally use that format to generate "interpretable" 
 // floating point numbers in text format.   See Discretization.cpp for details.
@@ -325,6 +335,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetT
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistogramCutCount(
+   IntEbmType countSamples,
+   const FloatEbmType * featureValues,
+   IntEbmType strategy
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuantile(

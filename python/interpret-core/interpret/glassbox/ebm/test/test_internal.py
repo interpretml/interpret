@@ -100,6 +100,21 @@ def test_one_class():
         assert len(model) == 1
         assert model[0] is None
 
+def test_cut_winsorized():
+    np.random.seed(0)
+    X_col = np.arange(-10, 90)
+    X_col = np.concatenate(([np.nan], [-np.inf], [-np.inf], X_col, [np.inf], [np.inf], [np.inf]))
+    
+    native = Native.get_native_singleton()
+
+    (cuts, count_missing, min_val, max_val) = native.cut_winsorized(X_col, 10)
+    discretized = native.discretize(X_col, cuts)
+    bin_counts = np.bincount(discretized, minlength=len(cuts) + 2)
+
+    assert len(cuts) == 10
+    assert(np.sum(bin_counts) == 106)
+    assert bin_counts[0] == 1
+
 def test_suggest_graph_bound():
     native = Native.get_native_singleton()
     cuts=[25, 50, 75]

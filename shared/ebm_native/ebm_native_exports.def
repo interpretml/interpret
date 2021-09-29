@@ -29,10 +29,12 @@ EXPORTS
   CreateRegressionInteractionDetector
   CalculateInteractionScore
   FreeInteractionDetector
+  GetHistogramCutCount
   CutQuantile
   CutWinsorized
   CutUniform
   Discretize
+  DiscretizeHistogram
   Softmax
   SuggestGraphBounds
   GenerateRandomNumber

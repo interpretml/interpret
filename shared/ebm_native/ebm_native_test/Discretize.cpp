@@ -9,6 +9,24 @@
 
 static const TestPriority k_filePriority = TestPriority::Discretize;
 
+TEST_CASE("GetHistogramCutCount, normals") {
+   UNUSED(testCaseHidden);
+   const FloatEbmType test[] { 1, 2, 3, 5 };
+   constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
+
+   IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test, 0);
+   CHECK(3 == result);
+}
+
+TEST_CASE("GetHistogramCutCount, out of bound inputs") {
+   UNUSED(testCaseHidden);
+   const FloatEbmType test[] { std::numeric_limits<FloatEbmType>::infinity(), 1, 2, std::numeric_limits<FloatEbmType>::quiet_NaN(), 3, 5, -std::numeric_limits<FloatEbmType>::infinity() };
+   constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
+
+   IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test, 0);
+   CHECK(3 == result);
+}
+
 TEST_CASE("Discretize, zero samples") {
    UNUSED(testCaseHidden);
    const FloatEbmType cutsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };

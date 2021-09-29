@@ -61,9 +61,11 @@
     <Compile Include="interpret\ext\test\__init__.py" />
     <Compile Include="interpret\ext\__init__.py" />
     <Compile Include="interpret\glassbox\decisiontree.py" />
+    <Compile Include="interpret\glassbox\ebm\bin.py" />
     <Compile Include="interpret\glassbox\ebm\ebm.py" />
     <Compile Include="interpret\glassbox\ebm\internal.py" />
     <Compile Include="interpret\glassbox\ebm\postprocessing.py" />
+    <Compile Include="interpret\glassbox\ebm\test\test_bin.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_ebm.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_internal.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_postprocessing.py" />

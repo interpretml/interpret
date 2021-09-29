@@ -923,13 +923,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          goto exit_with_log;
       }
 
-      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() - IntEbmType { 3 } < countCuts)) {
+      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() - IntEbmType { 4 } < countCuts)) {
          // We have 1 more bin than we have cuts (ex: 1 cut means 2 bins) AND we need to leave room for 3 special bins.
          // Even if we're not being called for histograms here, we'll eventually want histograms, so preserve room for these:
          // 0 = missing
          // 1 = -inf (for histograms).
          // max_IntEbmType = +inf (for histograms)
-         // Eg: if we had 256 bin indexes, 3 reserved leaves 253 for non-special, and 252 cuts, so we can have 255-3=252 cuts.
+         //
+         // finally, reserve 1 for the caller who will need to have a count of bins, so even if 256 bins can be represented
+         // with 0-255, the caller will want to store 256 somewhere which would overflow an unsigned byte count
+         // We want to make sure they won't overflow an IntEbmType inadvertently
+         //
+         // Eg: if we had 256 bin indexes, 4 reserved leaves 252 for non-special, and 251 cuts, so we can have 255-4=251 cuts.
 
          // we convert back to IntEbmType when we return, and if countCuts is at the limit, then we don't
          // have any value to indicate missing
@@ -1133,6 +1138,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          // if val is NaN then in IEEE 754 these two comparisons fail and thus discretizedVal stays with it's previous value of 0
          discretizedVal = UNPREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val) ? IntEbmType { 1 } : discretizedVal;
          discretizedVal = UNPREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val) ? positiveInfValue : discretizedVal;
+
+         *pDiscretized = discretizedVal;
 
          ++pDiscretized;
          ++pValue;
