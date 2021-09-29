@@ -1219,7 +1219,7 @@ def bin_native(is_classification, feature_idxs, X, y, w, feature_names, feature_
         # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
         # in two separate runs, which would flip the ordering of the classes within our score tensors.
         uniques_text.sort()
-        classes = dict(zip(uniques_text, count(0)))
+        classes = dict(zip(uniques_text, count()))
 
         indexes_remap = np.fromiter((classes[val] for val in uniques_text_orginal), dtype=np.int64, count=len(uniques_text_orginal))
         y = indexes_remap[indexes]
@@ -1451,3 +1451,7 @@ def deduplicate_bins(terms):
                 uniques[key] = feature_bins
             else:
                 term_bins[idx] = feature_bins
+
+def unify_data2(X, y=None, feature_names=None, feature_types=None, missing_data_allowed=False):
+    pass # TODO: do
+

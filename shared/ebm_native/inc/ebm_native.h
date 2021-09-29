@@ -139,8 +139,21 @@ typedef struct _InteractionHandle {
 // 9007199254740992 is unsafe if checking as a double.
 // https://stackoverflow.com/questions/1848700/biggest-integer-that-can-be-stored-in-a-double
 // R has a lower maximum index of 4503599627370496 (R_XLEN_T_MAX) probably to store a bit somewhere.
-#define SAFE_DOUBLE_AS_INT_MAX   9007199254740991
+#define SAFE_FLOAT64_AS_INT_MAX   9007199254740991
+// the maximum signed int64 value is 9223372036854775807, BUT numbers above 9223372036854775295 round in IEEE-754
+// to a number above that, so if we're converting from float64 to int64, the maximum safe number is 9223372036854775295
+// But when we convert 9223372036854775295 to float64 we loose precision and if we output with 17 decimal digits
+// which is the universal round trip format for float64 in IEEE-754, then we get 9.2233720368547748e+18
+// when you accurately round that biggest representable float64, you get the following integer 9223372036854774784
+// which having 19 digits is legal as an IEEE-754 exact number since it's within the 17-20 digits that is required
+// to accurately round to idenical floats
+#define FLOAT64_TO_INT_MAX   9223372036854774784
 
+// TODO: look through our code for places where SAFE_FLOAT64_AS_INT_MAX or FLOAT64_TO_INT_MAX would be useful
+
+// TODO: we can eliminate FloatEbmType and make our interface entirely doubles.  JSON only supports doubles, and it's
+// the most cross-language and highest precision type commonly available.  We can move FloatEbmType into our
+// internal interface and use it to switch our score representation which is the only place we'd benefit from float32
 typedef double FloatEbmType;
 // this needs to be in "le" format, since we internally use that format to generate "interpretable" 
 // floating point numbers in text format.   See Discretization.cpp for details.
@@ -339,7 +352,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION Gener
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistogramCutCount(
    IntEbmType countSamples,
-   const FloatEbmType * featureValues,
+   const double * featureValues,
    IntEbmType strategy
 );
 
@@ -396,7 +409,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Disc
    const FloatEbmType * cutsLowerBoundInclusive,
    IntEbmType * discretizedOut
 );
-
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION DiscretizeHistogram(
+   IntEbmType countSamples,
+   const FloatEbmType * featureValues,
+   IntEbmType countCuts,
+   const FloatEbmType * cutsLowerBoundInclusive,
+   IntEbmType * discretizedOut
+);
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetHeader(
    IntEbmType countFeatures,

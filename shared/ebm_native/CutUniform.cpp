@@ -239,12 +239,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
          EBM_ASSERT(!IsConvertError<IntEbmType>(cMissingValues));
          countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
-         const FloatEbmType minValue = minNonInfinityValueRet;
-         const FloatEbmType maxValue = maxNonInfinityValueRet;
-
-         // our minValue and maxValue calculations below depend on there being at least 1 sample
-         if(PREDICTABLE(minValue != maxValue)) {
-            EBM_ASSERT(1 <= cSamples); // otherwise 0 == minValue == maxValue
+         if(PREDICTABLE(minNonInfinityValueRet != maxNonInfinityValueRet)) {
+            EBM_ASSERT(1 <= cSamples); // otherwise 0 == minNonInfinityValueRet == maxNonInfinityValueRet
+            EBM_ASSERT(minNonInfinityValueRet < maxNonInfinityValueRet);
             EBM_ASSERT(nullptr != countCutsInOut);
             const IntEbmType countCuts = *countCutsInOut;
 
@@ -279,9 +276,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
             const size_t cBins = cCuts + size_t { 1 };
 
             const FloatEbmType cBinsFloat = static_cast<FloatEbmType>(cBins);
-            FloatEbmType stepValue = (maxValue - minValue) / cBinsFloat;
+            FloatEbmType stepValue = (maxNonInfinityValueRet - minNonInfinityValueRet) / cBinsFloat;
             if(std::isinf(stepValue)) {
-               stepValue = maxValue / cBinsFloat - minValue / cBinsFloat;
+               stepValue = maxNonInfinityValueRet / cBinsFloat - minNonInfinityValueRet / cBinsFloat;
                if(std::isinf(stepValue)) {
                   // this is probably impossible if correct rounding is guarnateed, but floats have bad guarantees
 
@@ -289,30 +286,30 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
                   // of the divided values.  With 3 bins it isn't obvious to me how you'd get an
                   // overflow after dividing it up into separate segments.  So, let's assume
                   // that 2 == cBins, so we can just take the average and report one cut
-                  const FloatEbmType avg = ArithmeticMean(minValue, maxValue);
+                  const FloatEbmType avg = ArithmeticMean(minNonInfinityValueRet, maxNonInfinityValueRet);
                   *cutsLowerBoundInclusiveOut = avg;
                   countCutsRet = IntEbmType { 1 };
                   goto exit_with_log;
                }
             }
             if(stepValue <= FloatEbmType { 0 }) {
-               // if stepValue underflows, we can still put a cut between the minValue and maxValue
+               // if stepValue underflows, we can still put a cut between the minNonInfinityValueRet and maxNonInfinityValueRet
                // we can also pickup a free check against odd floating point behavior that returns a negative here
 
-               const FloatEbmType avg = ArithmeticMean(minValue, maxValue);
+               const FloatEbmType avg = ArithmeticMean(minNonInfinityValueRet, maxNonInfinityValueRet);
                *cutsLowerBoundInclusiveOut = avg;
                countCutsRet = IntEbmType { 1 };
             } else {
                EBM_ASSERT(FloatEbmType { 0 } < stepValue);
-               // we don't want a first cut that's the minValue anyways, since then we'd have zero items in the
+               // we don't want a first cut that's the minNonInfinityValueRet anyways, since then we'd have zero items in the
                // lowest bin given that we use lower bound inclusive semantics here
-               FloatEbmType cutPrev = minValue;
+               FloatEbmType cutPrev = minNonInfinityValueRet;
                FloatEbmType * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
                size_t iCut = size_t { 1 };
                do {
-                  const FloatEbmType cut = minValue + stepValue * static_cast<FloatEbmType>(iCut);
+                  const FloatEbmType cut = minNonInfinityValueRet + stepValue * static_cast<FloatEbmType>(iCut);
                   // just in case we have floating point inexactness that puts us above the highValue we need to stop
-                  if(UNLIKELY(maxValue < cut)) {
+                  if(UNLIKELY(maxNonInfinityValueRet < cut)) {
                      // this could only happen due to numeric instability
                      break;
                   }

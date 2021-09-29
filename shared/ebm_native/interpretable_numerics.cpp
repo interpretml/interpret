@@ -263,13 +263,18 @@ static bool FloatToFullString(const FloatEbmType val, char * const str) noexcept
 
 #if 0
 
+// TODO: this entire section below!
+
 // We have a problem in that converting from a float to a string has many possible legal outputs.
 // IEEE-754 requires that if we output 17 to 20 digits for a double that the result can be converted from the
 // string back to the original double, but no guarantees are made that 16 digits or 21 digits will work,
 // and some language implementations output shorter strings like 0.25 which have exact representations in IEEE-754
 // or strings like 0.1 when 0.1 converts back to the original float representation in their representation
 // There are odd corner cases that rely on the type of rounding (IEEE-754 requires bankers' rounding for strings
-// I believe).  We desire cross-language identical results, so when we have cut points or categorical strings
+// I believe).  There are legals and illegal ways to format IEEE-754 in text specifically:
+// ISO 6093:1985 -> https://www.titanwolf.org/Network/q/4d680399-6711-4742-9900-74a42ad9f5d7/y
+// 
+// We desire cross-language identical results, so when we have cut points or categorical strings
 // of floats we want these to be identical between languages for both converting to strings and when strings
 // are converted back to floats.  This also applies to serialization to JSON and other text.  To support this
 // we implement our own converters that are guararanteed to be identical between languages.  
@@ -277,8 +282,8 @@ static bool FloatToFullString(const FloatEbmType val, char * const str) noexcept
 // The gold standard for float/string conversion is this: http://www.netlib.org/fp/dtoa.c
 // It is used in python: https://github.com/python/cpython/blob/main/Python/dtoa.c
 // Microsoft Edge for Android uses it: https://www.microsoft.com/en-us/legal/products/notices/msedgeandroid
-// Java uses a port of this made to the Jave language
-// Other languages also use this code, but not any C++ implementations yet.
+// Java uses a port of this made to the Java language
+// Other languages also use this code, but not any C++ built-in libraries yet.
 // Some languages don't round trip properly with less than 17 digits.
 // Some languages are buggy and don't correctly round when outputting 17 digits.
 //
@@ -292,61 +297,44 @@ static bool FloatToFullString(const FloatEbmType val, char * const str) noexcept
 // policy with regards to the 16th digit.  For the 15th digit we can always chop since there are no numbers
 // where moving the 15th digit up yields the same number. One example is:
 // 2e-44 which is 5.684341886080801486968994140625e-14.  Rounded to 15 digits (5.68434188608080e-14) doesn't work.
-// Rounded to 16 digits down doesn't work (5.684341886080801e-14), but rounding up to (5.684341886080802e-14) does work.
+// Rounding down to 16 digits down doesn't work (5.684341886080801e-14), but rounding up to (5.684341886080802e-14) does work.
 // as described in: https://www.exploringbinary.com/the-shortest-decimal-string-that-round-trips-may-not-be-the-nearest/
 
-extern IntEbmType GetStringBytesPerFloat64() {
-   // TODO: use float64 for cut points.  For humanized cut points we choose values that are nice like 0.1
-   // but if our cut points are doubles then we need to have more precision to express 0.1 than a float32
-   // so always storing 64 bit doubles allows us to be more precise for inputs from our callers that could
-   // either be double or float
-   // cut points are inputs so we want to accpet whatever the user gives us
+// for cut points we should always use float64 values since that gives us the best resolution, and our caller
+// could have float64 values or float32 values and cuts points that are float64 can work on both of them
+// Also, float64 is the most cross-language compatible format, and in JSON it's the only option.
 
-   // TODO: implement this:
-   //
+// for scores we should always use float64 values.  Unlike cut points, we'll be using float32 internally within
+// the booster, BUT we only need to turn scores into text for serialization to JSON, and JSON only supports
+// float64 values, so we need to output that.  We should get 100% reproducibility by turning float32 scores
+// into float64, then text, then back to float64, then back to float32, so this is fine.  The only thing
+// we loose is a bit of simplicity since our JSON scores will have more digits, but we don't have the equivalent
+// of humanized cuts anyways, so the scores will have as many decimals as we get via boosting anywyas
+
+// lastly, since there are no integers in JSON (everything is a double), we should eliminate the difference
+// between float64 and integers when numbers can be represented as unique integers.  WE should convert the float
+// 4.0 therefore to "4" for any number that meets the criteria: "floor(x) == x && abs(x) <= SAFE_FLOAT64_AS_INT_MAX"
+
+extern IntEbmType GetCountCharactersPerFloat() {
    // for calling FloatsToStrings the caller needs to allocate this many bytes per float in the string buffer
    // after every float is either a space separator or a null-terminator
    return k_cCharsFloatPrint;
 }
 
-extern IntEbmType GetStringBytesPerFloat32() {
-   // TODO: use float32 for our scores.  This makes computation a lot faster and works on GPUs better
-   // scores are output so we want the caller to be able to chop the less significant 64 bit digits off and
-   // just use 32 bit floats if they want
-
-   // TODO: implement this:
-   //
-   // for calling FloatsToStrings the caller needs to allocate this many bytes per float in the string buffer
-   // after every float is either a space separator or a null-terminator
-   return ???;
-}
-
-extern bool Float64ToString(IntEbmType * count, const double * values, char * str) {
+extern ErrorEbmType FloatsToString(IntEbmType count, const double * values, char * str) {
    // TODO: implement this:
    // 
    // This code takes an array of floats and converts them to a single string separated by spaces and a null-terminator
    // at the end
 }
 
-extern bool Float32ToString(IntEbmType * count, const float * values, char * str) {
-   // TODO: implement this:
-   // 
-   // This code takes an array of floats and converts them to a single string separated by spaces and a null-terminator
-   // at the end
-}
-
-extern bool StringToFloat64(const char * str, double * values) {
+extern ErrorEbmType StringToFloats(const char * str, double * values) {
    // TODO: implement this:
    //
    // This code takes a single string with the floats separated by spaces and a null-terminator at the end
-   // and converts these into an array of floats.  The caller had better be carefull in allocating
-}
-
-extern bool StringToFloat32(const char * str, float * values) {
-   // TODO: implement this:
-   //
-   // This code takes a single string with the floats separated by spaces and a null-terminator at the end
-   // and converts these into an array of floats.  The caller had better be carefull in allocating
+   // and converts these into an array of floats.  The caller had better be carefull in allocating, but they
+   // should know how many float values they put into the string so they should know how many values they'll
+   // get back and therefore how big to make the buffer
 }
 
 #endif
@@ -1383,15 +1371,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Suggest
    return Error_None;
 }
 
-static size_t CountNormal(const size_t cSamples, const FloatEbmType * const aFeatureValues) {
+static size_t CountNormal(const size_t cSamples, const double * const aFeatureValues) {
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aFeatureValues);
 
    size_t cNormal = 0;
-   const FloatEbmType * pFeatureValue = aFeatureValues;
-   const FloatEbmType * const featureValuesEnd = aFeatureValues + cSamples;
+   const double * pFeatureValue = aFeatureValues;
+   const double * const featureValuesEnd = aFeatureValues + cSamples;
    do {
-      double val = static_cast<double>(*pFeatureValue);
+      const double val = *pFeatureValue;
       if(!std::isnan(val) && !std::isinf(val)) {
          ++cNormal;
       }
@@ -1400,7 +1388,7 @@ static size_t CountNormal(const size_t cSamples, const FloatEbmType * const aFea
    return cNormal;
 }
 
-static double Stddev(const size_t cSamples, const FloatEbmType * const aFeatureValues, const size_t cNormal) {
+static double Stddev(const size_t cSamples, const double * const aFeatureValues, const size_t cNormal) {
    EBM_ASSERT(2 <= cSamples);
    EBM_ASSERT(2 <= cNormal);
    EBM_ASSERT(nullptr != aFeatureValues);
@@ -1412,16 +1400,16 @@ static double Stddev(const size_t cSamples, const FloatEbmType * const aFeatureV
    double m = 0;
    double s = 0;
    size_t k = 0;
-   double multFactor = double { 1 } / static_cast<double>(cNormal);
-   const FloatEbmType * pFeatureValue = aFeatureValues;
-   const FloatEbmType * const featureValuesEnd = aFeatureValues + cSamples;
+   const double multFactor = double { 1 } / static_cast<double>(cNormal);
+   const double * pFeatureValue = aFeatureValues;
+   const double * const featureValuesEnd = aFeatureValues + cSamples;
    do {
-      double val = static_cast<double>(*pFeatureValue);
+      const double val = *pFeatureValue;
       if(!std::isnan(val) && !std::isinf(val)) {
          ++k;
-         double tmp = m;
-         m += (val - tmp) / static_cast<double>(k);
-         s += multFactor * (val - tmp) * (val - m);
+         const double numerator = val - m;
+         m += numerator / static_cast<double>(k);
+         s += multFactor * numerator * (val - m);
       }
       ++pFeatureValue;
    } while(featureValuesEnd != pFeatureValue);
@@ -1430,16 +1418,16 @@ static double Stddev(const size_t cSamples, const FloatEbmType * const aFeatureV
    return s;
 }
 
-static double Mean(const size_t cSamples, const FloatEbmType * const aFeatureValues, const size_t cNormal) {
+static double Mean(const size_t cSamples, const double * const aFeatureValues, const size_t cNormal) {
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(1 <= cNormal);
    EBM_ASSERT(nullptr != aFeatureValues);
 
    double sum = 0;
-   const FloatEbmType * pFeatureValue = aFeatureValues;
-   const FloatEbmType * const featureValuesEnd = aFeatureValues + cSamples;
+   const double * pFeatureValue = aFeatureValues;
+   const double * const featureValuesEnd = aFeatureValues + cSamples;
    do {
-      double val = static_cast<double>(*pFeatureValue);
+      const double val = *pFeatureValue;
       if(!std::isnan(val) && !std::isinf(val)) {
          sum += val;
       }
@@ -1458,7 +1446,7 @@ static double Mean(const size_t cSamples, const FloatEbmType * const aFeatureVal
    double mean = 0;
    pFeatureValue = aFeatureValues;
    do {
-      double val = static_cast<double>(*pFeatureValue);
+      const double val = *pFeatureValue;
       if(!std::isnan(val) && !std::isinf(val)) {
          mean += val * cNormalDoubleInv;
       }
@@ -1473,7 +1461,7 @@ static int g_cLogExitGetHistogramCutCountParametersMessages = 25;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistogramCutCount(
    IntEbmType countSamples,
-   const FloatEbmType * featureValues,
+   const double * featureValues,
    IntEbmType strategy
 ) {
    UNUSED(strategy);
@@ -1485,13 +1473,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistog
       "Entered GetHistogramCutCount: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
-      "strategy=%" IntEbmTypePrintf ", "
+      "strategy=%" IntEbmTypePrintf
       ,
       countSamples,
       static_cast<const void *>(featureValues),
       strategy
    );
 
+   if(UNLIKELY(countSamples <= 0)) {
+      if(UNLIKELY(countSamples < 0)) {
+         LOG_0(TraceLevelWarning, "WARNING GetHistogramCutCount countSamples < 0");
+      }
+      return 0;
+   }
    if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
       LOG_0(TraceLevelWarning, "WARNING GetHistogramCutCount IsConvertError<size_t>(countSamples)");
       return 0;
@@ -1501,35 +1495,35 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistog
 
    IntEbmType ret = 0;
    if(size_t { 3 } <= cNormal) {
-      double stddev = Stddev(cSamples, featureValues, cNormal);
+      const double stddev = Stddev(cSamples, featureValues, cNormal);
       if(double { 0 } < stddev) {
-         double mean = Mean(cSamples, featureValues, cNormal);
-         double cNormalDouble = static_cast<double>(cNormal);
-         double cNormalCubicRootDouble = std::cbrt(cNormalDouble);
-         double multFactor = double { 1 } / cNormalCubicRootDouble / stddev;
+         const double mean = Mean(cSamples, featureValues, cNormal);
+         const double cNormalDouble = static_cast<double>(cNormal);
+         const double cNormalCubicRootDouble = std::cbrt(cNormalDouble);
+         const double multFactor = double { 1 } / cNormalCubicRootDouble / stddev;
 
          double g1 = 0;
-         const FloatEbmType * pFeatureValue = featureValues;
-         const FloatEbmType * const featureValuesEnd = featureValues + cSamples;
+         const double * pFeatureValue = featureValues;
+         const double * const featureValuesEnd = featureValues + cSamples;
          do {
-            double val = static_cast<double>(*pFeatureValue);
+            const double val = *pFeatureValue;
             if(!std::isnan(val) && !std::isinf(val)) {
-               double interior = (val - mean) * multFactor;
+               const double interior = (val - mean) * multFactor;
                g1 += interior * interior * interior;
             }
             ++pFeatureValue;
          } while(featureValuesEnd != pFeatureValue);
          g1 = std::abs(g1);
 
-         double denom = std::sqrt(double { 6 } * (cNormalDouble - double { 2 }) / ((cNormalDouble + double { 1 }) * (cNormalDouble + double { 3 })));
+         const double denom = std::sqrt(double { 6 } * (cNormalDouble - double { 2 }) / ((cNormalDouble + double { 1 }) * (cNormalDouble + double { 3 })));
          const double countSturgesBins = double { 1 } + std::log2(cNormalDouble);
          double countBins = countSturgesBins + std::log2(double { 1 } + g1 / denom);
          countBins = std::ceil(countBins);
-         if(std::isnan(countBins) || std::isinf(countBins) || double { std::numeric_limits<FloatEbmType>::max() } <= countBins) {
-            // use Sturges' formula if we have a numeracy issue with our data.  This pretty much can't fail.
+         if(std::isnan(countBins) || std::isinf(countBins)) {
+            // use Sturges' formula if we have a numeracy issue with our data. countSturgesBins pretty much can't fail
             countBins = std::ceil(countSturgesBins);
          }
-         ret = static_cast<IntEbmType>(countBins);
+         ret = double { FLOAT64_TO_INT_MAX } < countBins ? IntEbmType { FLOAT64_TO_INT_MAX } : static_cast<IntEbmType>(countBins);
          EBM_ASSERT(1 <= ret); // since our formula started from 1 and added
          --ret; // # of cuts is one less than the number of bins
       }
@@ -1540,7 +1534,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistog
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited GetHistogramCutCount: "
-      "ret=%" IntEbmTypePrintf ", "
+      "ret=%" IntEbmTypePrintf
       ,
       ret
    );

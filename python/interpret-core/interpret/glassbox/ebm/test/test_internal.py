@@ -100,6 +100,30 @@ def test_one_class():
         assert len(model) == 1
         assert model[0] is None
 
+def test_hist():
+    np.random.seed(0)
+    X_col = np.random.random_sample((1000,))
+    counts, values = np.histogram(X_col, bins="doane")
+
+    X_col = np.concatenate(([np.nan], [-np.inf], [-np.inf], X_col, [np.inf], [np.inf], [np.inf]))
+    
+    native = Native.get_native_singleton()
+    n_cuts = native.get_histogram_cut_count(X_col)
+
+    (cuts, count_missing, min_val, max_val) = native.cut_uniform(X_col, n_cuts)
+    discretized = native.discretize_histogram(X_col, cuts)
+    bin_counts = np.bincount(discretized, minlength=len(cuts) + 4)
+    edges = np.concatenate(([min_val], cuts, [max_val]))
+
+    assert bin_counts[0] == 1
+    assert bin_counts[1] == 2
+    assert bin_counts[-1] == 3
+    assert(np.sum(bin_counts) == 1000 + 6)
+    bin_counts = bin_counts[2:-1]
+
+    assert np.array_equal(counts, bin_counts)
+    assert np.allclose(values, edges)
+
 def test_cut_winsorized():
     np.random.seed(0)
     X_col = np.arange(-10, 90)

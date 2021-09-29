@@ -211,6 +211,46 @@ TEST_CASE("CutUniform, one cut, -infinity and +infinity") {
    }
 }
 
+TEST_CASE("CutUniform, one cut, -infinity, mid-val, +infinity") {
+   IntEbmType countCuts = 1;
+
+   std::vector<FloatEbmType> featureValues { -std::numeric_limits<FloatEbmType>::infinity(), 7, std::numeric_limits<FloatEbmType>::infinity() };
+   const std::vector<FloatEbmType> expectedCuts {};
+
+   IntEbmType countMissingValues;
+   FloatEbmType minNonInfinityValue;
+   IntEbmType countNegativeInfinity;
+   FloatEbmType maxNonInfinityValue;
+   IntEbmType countPositiveInfinity;
+   std::vector<FloatEbmType> cutsLowerBoundInclusive(
+      0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
+
+   CutUniform(
+      featureValues.size(),
+      0 == featureValues.size() ? nullptr : &featureValues[0],
+      &countCuts,
+      &cutsLowerBoundInclusive[0],
+      &countMissingValues,
+      &minNonInfinityValue,
+      &countNegativeInfinity,
+      &maxNonInfinityValue,
+      &countPositiveInfinity
+   );
+   CHECK(0 == countMissingValues);
+   CHECK(7 == minNonInfinityValue);
+   CHECK(1 == countNegativeInfinity);
+   CHECK(7 == maxNonInfinityValue);
+   CHECK(1 == countPositiveInfinity);
+
+   size_t cCuts = static_cast<size_t>(countCuts);
+   CHECK(expectedCuts.size() == cCuts);
+   if(expectedCuts.size() == cCuts) {
+      for(size_t i = 0; i < cCuts; ++i) {
+         CHECK_APPROX(expectedCuts[i], cutsLowerBoundInclusive[i]);
+      }
+   }
+}
+
 TEST_CASE("CutUniform, one item") {
    IntEbmType countCuts = 3;
 
