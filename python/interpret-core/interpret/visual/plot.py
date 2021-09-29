@@ -230,8 +230,6 @@ def _pretty_number(x):
 #     )
 #     figure = _two_plot(main_fig, secondary_fig, title=title, share_xaxis=share_xaxis)
 #     return figure
-
-
 def plot_density(
     data_dict,
     title="",
@@ -243,26 +241,29 @@ def plot_density(
 ):
     counts = data_dict["scores"]
     edges = data_dict["names"]
-
+    data = []
     if not is_categorical:
-        new_x = []
+        x_text = []
         for indx in range(len(edges) - 1):
             new_val = "{0} - {1}".format(
                 _pretty_number(edges[indx]), _pretty_number(edges[indx + 1])
             )
-            new_x.append(new_val)
+            x_text.append(new_val)
+        x_vals = [np.mean([i, j]) for i, j in zip(edges, edges[1:])]
     else:
-        new_x = edges
+        x_vals = edges
+        x_text = edges
 
-    data = [
+    data.append(
         go.Bar(
-            x=new_x,
+            x=x_vals,
             y=counts,
-            width=None if is_categorical else 1,
+            hovertemplate='(%{hovertext}): %{y}',
+            hovertext=x_text,
             name=name,
             marker=dict(color=color),
         )
-    ]
+    )
     layout = go.Layout(
         title=title,
         showlegend=False,
@@ -270,9 +271,15 @@ def plot_density(
         yaxis=dict(title=ytitle),
         hovermode="closest",
     )
+    if not is_categorical:
+        layout['xaxis']=dict(
+            title=xtitle,
+            tickmode = 'array',
+            tickvals = x_vals,
+            ticktext = x_text,
+        )
     bar_fig = go.Figure(data, layout)
     return bar_fig
-
 
 def _plot_with_density(
     data_dict,
@@ -285,17 +292,18 @@ def _plot_with_density(
     density_name="Distribution",
     showlegend=False,
 ):
-
     bar_fig = plot_density(
         data_dict, name=density_name, is_categorical=is_categorical, color=COLORS[1]
     )
     figure = _two_plot(main_fig, bar_fig, title=title, share_xaxis=is_categorical, showlegend=showlegend)
     figure["layout"]["yaxis1"].update(title="Score")
     figure["layout"]["yaxis2"].update(title="Density")
-
+    if not is_categorical:
+        figure["layout"]["bargap"] = 0
+        figure["layout"]["xaxis2"].update(bar_fig.layout.xaxis)
+        figure.update_xaxes(matches='x')
     if yrange is not None:
         figure["layout"]["yaxis1"].update(range=yrange)
-
     return figure
 
 
