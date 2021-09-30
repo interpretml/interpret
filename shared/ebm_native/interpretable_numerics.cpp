@@ -817,20 +817,9 @@ extern FloatEbmType GetInterpretableEndpoint(
    return ret;
 }
 
-extern size_t RemoveMissingValuesAndReplaceInfinities(
-   size_t cSamples,
-   FloatEbmType * const aValues,
-   FloatEbmType * const pMinNonInfinityValueOut,
-   IntEbmType * const pCountNegativeInfinityOut,
-   FloatEbmType * const pMaxNonInfinityValueOut,
-   IntEbmType * const pCountPositiveInfinityOut
-) noexcept {
+extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, FloatEbmType * const aValues) noexcept {
    EBM_ASSERT(size_t { 1 } <= cSamples);
    EBM_ASSERT(nullptr != aValues);
-   EBM_ASSERT(nullptr != pMinNonInfinityValueOut);
-   EBM_ASSERT(nullptr != pCountNegativeInfinityOut);
-   EBM_ASSERT(nullptr != pMaxNonInfinityValueOut);
-   EBM_ASSERT(nullptr != pCountPositiveInfinityOut);
 
    // In most cases we believe that for graphing the caller should only need the bin cuts that we'll eventually
    // return, and they'll want to position the graph to include the first and last cuts, and have a little bit of 
@@ -868,70 +857,24 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(
    // +-infinity values in either the cut points, or the min/max values, which is good since serialization of
    // +-infinity isn't very standardized accross languages.  It's a problem in JSON especially.
 
-   FloatEbmType minNonInfinityValue = std::numeric_limits<FloatEbmType>::max();
-   size_t cNegativeInfinity = size_t { 0 };
-   FloatEbmType maxNonInfinityValue = std::numeric_limits<FloatEbmType>::lowest();
-   size_t cPositiveInfinity = size_t { 0 };
-
    FloatEbmType * pCopyFrom = aValues;
+   FloatEbmType * pCopyTo = aValues;
    const FloatEbmType * const pValuesEnd = aValues + cSamples;
    do {
       FloatEbmType val = *pCopyFrom;
-      if(UNLIKELY(std::isnan(val))) {
-         FloatEbmType * pCopyTo = pCopyFrom;
-         goto skip_val;
-         do {
-            val = *pCopyFrom;
-            if(PREDICTABLE(!std::isnan(val))) {
-               if(PREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val)) {
-                  val = std::numeric_limits<FloatEbmType>::max();
-                  ++cPositiveInfinity;
-               } else if(PREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val)) {
-                  val = std::numeric_limits<FloatEbmType>::lowest();
-                  ++cNegativeInfinity;
-               } else {
-                  maxNonInfinityValue = UNPREDICTABLE(maxNonInfinityValue < val) ? val : maxNonInfinityValue;
-                  minNonInfinityValue = UNPREDICTABLE(val < minNonInfinityValue) ? val : minNonInfinityValue;
-               }
-               *pCopyTo = val;
-               ++pCopyTo;
-            }
-         skip_val:
-            ++pCopyFrom;
-         } while(LIKELY(pValuesEnd != pCopyFrom));
-         const size_t cSamplesWithoutMissing = pCopyTo - aValues;
-         EBM_ASSERT(cSamplesWithoutMissing < cSamples);
-
-         cSamples = cSamplesWithoutMissing;
-         break;
-      }
-      if(PREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val)) {
-         *pCopyFrom = std::numeric_limits<FloatEbmType>::max();
-         ++cPositiveInfinity;
-      } else if(PREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val)) {
-         *pCopyFrom = std::numeric_limits<FloatEbmType>::lowest();
-         ++cNegativeInfinity;
-      } else {
-         maxNonInfinityValue = UNPREDICTABLE(maxNonInfinityValue < val) ? val : maxNonInfinityValue;
-         minNonInfinityValue = UNPREDICTABLE(val < minNonInfinityValue) ? val : minNonInfinityValue;
+      if(PREDICTABLE(!std::isnan(val))) {
+         val = UNPREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val) ? 
+            std::numeric_limits<FloatEbmType>::max() : val;
+         val = UNPREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val) ? 
+            std::numeric_limits<FloatEbmType>::lowest() : val;
+         *pCopyTo = val;
+         ++pCopyTo;
       }
       ++pCopyFrom;
    } while(LIKELY(pValuesEnd != pCopyFrom));
-
-   if(UNLIKELY(cNegativeInfinity + cPositiveInfinity == cSamples)) {
-      // all values were special values (missing, +infinity, -infinity), so make our min/max both zero
-      maxNonInfinityValue = FloatEbmType { 0 };
-      minNonInfinityValue = FloatEbmType { 0 };
-   }
-
-   *pMinNonInfinityValueOut = minNonInfinityValue;
-   // this can't overflow since we got our cSamples from an IntEbmType, and we can't have more infinities than that
-   *pCountNegativeInfinityOut = static_cast<IntEbmType>(cNegativeInfinity);
-   *pMaxNonInfinityValueOut = maxNonInfinityValue;
-   // this can't overflow since we got our cSamples from an IntEbmType, and we can't have more infinities than that
-   *pCountPositiveInfinityOut = static_cast<IntEbmType>(cPositiveInfinity);
-
-   return cSamples;
+   const size_t cSamplesWithoutMissing = pCopyTo - aValues;
+   EBM_ASSERT(cSamplesWithoutMissing <= cSamples);
+   return cSamplesWithoutMissing;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(

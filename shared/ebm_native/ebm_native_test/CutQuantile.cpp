@@ -26,41 +26,6 @@ public:
    }
 };
 
-void GetExpectedStats(
-   const IntEbmType countSamples,
-   const FloatEbmType * const aFeatureValues,
-   IntEbmType & countMissingValues,
-   FloatEbmType & minNonInfinityValue,
-   IntEbmType & countNegativeInfinity,
-   FloatEbmType & maxNonInfinityValue,
-   IntEbmType & countPositiveInfinity
-) {
-   countMissingValues = 0;
-   minNonInfinityValue = std::numeric_limits<FloatEbmType>::max();
-   countNegativeInfinity = 0;
-   maxNonInfinityValue = std::numeric_limits<FloatEbmType>::lowest();
-   countPositiveInfinity = 0;
-
-   for(IntEbmType i = 0; i < countSamples; ++i) {
-      const FloatEbmType val = aFeatureValues[i];
-      if(std::isnan(val)) {
-         ++countMissingValues;
-      } else if(-std::numeric_limits<FloatEbmType>::infinity() == val) {
-         ++countNegativeInfinity;
-      } else if(std::numeric_limits<FloatEbmType>::infinity() == val) {
-         ++countPositiveInfinity;
-      } else {
-         minNonInfinityValue = std::min(val, minNonInfinityValue);
-         maxNonInfinityValue = std::max(val, maxNonInfinityValue);
-      }
-   }
-   if(countMissingValues + countNegativeInfinity + countPositiveInfinity == countSamples) {
-      // if everything was a special value, then make the min/max zero
-      minNonInfinityValue = 0;
-      maxNonInfinityValue = 0;
-   }
-}
-
 void TestQuantileBinning(
    TestCaseHidden & testCaseHidden,
    const bool bTestReverse,
@@ -81,28 +46,6 @@ void TestQuantileBinning(
    std::transform(featureValues2.begin(), featureValues2.end(), featureValues2.begin(), 
       [](FloatEbmType & val) { return -val; });
 
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling CutQuantile, since CutQuantile modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      featureValues.size(),
-      0 == featureValues.size() ? nullptr : &featureValues[0],
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
-   );
-
    IntEbmType countCuts = countCutsMax;
    ErrorEbmType ret = CutQuantile(
       featureValues1.size(),
@@ -110,12 +53,7 @@ void TestQuantileBinning(
       countSamplesPerBinMin,
       bSmart ? EBM_TRUE : EBM_FALSE,
       &countCuts,
-      &cutsLowerBoundInclusive[1],
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
+      &cutsLowerBoundInclusive[1]
    );
    CHECK(Error_None == ret);
 
@@ -123,12 +61,6 @@ void TestQuantileBinning(
    for(size_t iCheck = static_cast<size_t>(countCuts) + 1; iCheck < cCutsMax + 2; ++iCheck) {
       CHECK(illegalVal == cutsLowerBoundInclusive[iCheck]);
    }
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -148,12 +80,7 @@ void TestQuantileBinning(
          countSamplesPerBinMin,
          bSmart ? EBM_TRUE : EBM_FALSE,
          &countCuts,
-         &cutsLowerBoundInclusive[1],
-         &countMissingValues,
-         &minNonInfinityValue,
-         &countNegativeInfinity,
-         &maxNonInfinityValue,
-         &countPositiveInfinity
+         &cutsLowerBoundInclusive[1]
       );
       CHECK(Error_None == ret);
 
@@ -161,12 +88,6 @@ void TestQuantileBinning(
       for(size_t iCheck = static_cast<size_t>(countCuts) + 1; iCheck < cCutsMax + 2; ++iCheck) {
          CHECK(illegalVal == cutsLowerBoundInclusive[iCheck]);
       }
-
-      CHECK(countMissingValuesExpected == countMissingValues);
-      CHECK(-maxNonInfinityValueExpected == minNonInfinityValue);
-      CHECK(countPositiveInfinityExpected == countNegativeInfinity);
-      CHECK(-minNonInfinityValueExpected == maxNonInfinityValue);
-      CHECK(countNegativeInfinityExpected == countPositiveInfinity);
 
       cCuts = static_cast<size_t>(countCuts);
       CHECK(expectedCuts.size() == cCuts);
@@ -1308,27 +1229,14 @@ TEST_CASE("CutQuantile, randomized fairness check") {
             featureValues[iSample] = bMissing ? std::numeric_limits<FloatEbmType>::quiet_NaN() : static_cast<FloatEbmType>(iRandom);
          }
 
-         IntEbmType countMissingValues;
-         FloatEbmType minNonInfinityValue;
-         IntEbmType countNegativeInfinity;
-         FloatEbmType maxNonInfinityValue;
-         IntEbmType countPositiveInfinity;
-
-         // do this before calling CutQuantile, since CutQuantile modifies featureValues
-         IntEbmType countMissingValuesExpected;
-         FloatEbmType minNonInfinityValueExpected;
-         IntEbmType countNegativeInfinityExpected;
-         FloatEbmType maxNonInfinityValueExpected;
-         IntEbmType countPositiveInfinityExpected;
-         GetExpectedStats(
-            countSamples,
-            featureValues,
-            countMissingValuesExpected,
-            minNonInfinityValueExpected,
-            countNegativeInfinityExpected,
-            maxNonInfinityValueExpected,
-            countPositiveInfinityExpected
-         );
+         size_t countMissingValuesExpected = 0;
+         const FloatEbmType * pFeatureValue = featureValues;
+         while(pFeatureValue != featureValues + countSamples) {
+            if(std::isnan(*pFeatureValue)) {
+               ++countMissingValuesExpected;
+            }
+            ++pFeatureValue;
+         }
 
          memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * countSamples);
 
@@ -1339,20 +1247,9 @@ TEST_CASE("CutQuantile, randomized fairness check") {
             countSamplesPerBinMin,
             bSmart ? EBM_TRUE : EBM_FALSE,
             &countCutsForward,
-            cutsLowerBoundInclusiveForward,
-            &countMissingValues,
-            &minNonInfinityValue,
-            &countNegativeInfinity,
-            &maxNonInfinityValue,
-            &countPositiveInfinity
+            cutsLowerBoundInclusiveForward
          );
          CHECK(Error_None == ret);
-
-         CHECK(countMissingValuesExpected == countMissingValues);
-         CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-         CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-         CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-         CHECK(countPositiveInfinityExpected == countPositiveInfinity);
 
          //DisplayCuts(
          //   countSamples,
@@ -1376,20 +1273,9 @@ TEST_CASE("CutQuantile, randomized fairness check") {
             countSamplesPerBinMin,
             bSmart ? EBM_TRUE : EBM_FALSE,
             &countCutsReversed,
-            cutsLowerBoundInclusiveReversed,
-            &countMissingValues,
-            &minNonInfinityValue,
-            &countNegativeInfinity,
-            &maxNonInfinityValue,
-            &countPositiveInfinity
+            cutsLowerBoundInclusiveReversed
          );
          CHECK(Error_None == ret);
-
-         CHECK(countMissingValuesExpected == countMissingValues);
-         CHECK(-maxNonInfinityValueExpected == minNonInfinityValue);
-         CHECK(countPositiveInfinityExpected == countNegativeInfinity);
-         CHECK(-minNonInfinityValueExpected == maxNonInfinityValue);
-         CHECK(countNegativeInfinityExpected == countPositiveInfinity);
 
          CHECK(countCutsForward == countCutsReversed);
 
@@ -1501,29 +1387,16 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          }
       }
 
+      size_t countMissingValuesExpected = 0;
+      const FloatEbmType * pFeatureValue = featureValues;
+      while(pFeatureValue != featureValues + cSamples) {
+         if(std::isnan(*pFeatureValue)) {
+            ++countMissingValuesExpected;
+         }
+         ++pFeatureValue;
+      }
+
       const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
-
-      IntEbmType countMissingValues;
-      FloatEbmType minNonInfinityValue;
-      IntEbmType countNegativeInfinity;
-      FloatEbmType maxNonInfinityValue;
-      IntEbmType countPositiveInfinity;
-
-      // do this before calling CutQuantile, since CutQuantile modifies featureValues
-      IntEbmType countMissingValuesExpected;
-      FloatEbmType minNonInfinityValueExpected;
-      IntEbmType countNegativeInfinityExpected;
-      FloatEbmType maxNonInfinityValueExpected;
-      IntEbmType countPositiveInfinityExpected;
-      GetExpectedStats(
-         countSamples,
-         featureValues,
-         countMissingValuesExpected,
-         minNonInfinityValueExpected,
-         countNegativeInfinityExpected,
-         maxNonInfinityValueExpected,
-         countPositiveInfinityExpected
-      );
 
       memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * cSamples);
 
@@ -1534,20 +1407,9 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          countSamplesPerBinMin,
          bSmart ? EBM_TRUE : EBM_FALSE,
          &countCutsForward,
-         cutsLowerBoundInclusiveForward,
-         &countMissingValues,
-         &minNonInfinityValue,
-         &countNegativeInfinity,
-         &maxNonInfinityValue,
-         &countPositiveInfinity
+         cutsLowerBoundInclusiveForward
       );
       CHECK(Error_None == ret);
-
-      CHECK(countMissingValuesExpected == countMissingValues);
-      CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-      CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-      CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-      CHECK(countPositiveInfinityExpected == countPositiveInfinity);
 
       std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
          [](FloatEbmType & val) { return -val; });
@@ -1559,20 +1421,9 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          countSamplesPerBinMin,
          bSmart ? EBM_TRUE : EBM_FALSE,
          &countCutsReversed,
-         cutsLowerBoundInclusiveReversed,
-         &countMissingValues,
-         &minNonInfinityValue,
-         &countNegativeInfinity,
-         &maxNonInfinityValue,
-         &countPositiveInfinity
+         cutsLowerBoundInclusiveReversed
       );
       CHECK(Error_None == ret);
-
-      CHECK(countMissingValuesExpected == countMissingValues);
-      CHECK(-maxNonInfinityValueExpected == minNonInfinityValue);
-      CHECK(countPositiveInfinityExpected == countNegativeInfinity);
-      CHECK(-minNonInfinityValueExpected == maxNonInfinityValue);
-      CHECK(countNegativeInfinityExpected == countPositiveInfinity);
 
       CHECK(countCutsForward == countCutsReversed);
       if(countCutsForward == countCutsReversed) {

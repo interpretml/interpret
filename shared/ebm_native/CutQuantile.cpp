@@ -61,14 +61,7 @@ extern FloatEbmType GetInterpretableEndpoint(
    const FloatEbmType movementFromEnds
 ) noexcept;
 
-extern size_t RemoveMissingValuesAndReplaceInfinities(
-   size_t cSamples,
-   FloatEbmType * const aValues,
-   FloatEbmType * const pMinNonInfinityValueOut,
-   IntEbmType * const pCountNegativeInfinityOut,
-   FloatEbmType * const pMaxNonInfinityValueOut,
-   IntEbmType * const pCountPositiveInfinityOut
-) noexcept;
+extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, FloatEbmType * const aValues) noexcept;
 
 INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultiplePositive(const size_t iTweak) noexcept {
    return FloatEbmType { 1 } + tweakIncrement * static_cast<FloatEbmType>(iTweak);
@@ -2466,12 +2459,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
    IntEbmType countSamplesPerBinMin,
    BoolEbmType isHumanized,
    IntEbmType * countCutsInOut,
-   FloatEbmType * cutsLowerBoundInclusiveOut,
-   IntEbmType * countMissingValuesOut,
-   FloatEbmType * minNonInfinityValueOut,
-   IntEbmType * countNegativeInfinityOut,
-   FloatEbmType * maxNonInfinityValueOut,
-   IntEbmType * countPositiveInfinityOut
+   FloatEbmType * cutsLowerBoundInclusiveOut
 ) {
    // don't expose this random seed.  It's used to settle tiebreakers and will only make 
    // marginal changes to where the cuts are placed.  Exposing it just means we need to 
@@ -2489,54 +2477,27 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
       "isHumanized=%s, "
       "countCutsInOut=%p, "
-      "cutsLowerBoundInclusiveOut=%p, "
-      "countMissingValuesOut=%p, "
-      "minNonInfinityValueOut=%p, "
-      "countNegativeInfinityOut=%p, "
-      "maxNonInfinityValueOut=%p, "
-      "countPositiveInfinityOut=%p"
+      "cutsLowerBoundInclusiveOut=%p"
       ,
       countSamples,
       static_cast<const void *>(featureValues),
       countSamplesPerBinMin,
       ObtainTruth(isHumanized),
       static_cast<void *>(countCutsInOut),
-      static_cast<void *>(cutsLowerBoundInclusiveOut),
-      static_cast<void *>(countMissingValuesOut),
-      static_cast<void *>(minNonInfinityValueOut),
-      static_cast<void *>(countNegativeInfinityOut),
-      static_cast<void *>(maxNonInfinityValueOut),
-      static_cast<void *>(countPositiveInfinityOut)
+      static_cast<void *>(cutsLowerBoundInclusiveOut)
    );
 
    IntEbmType countCutsRet;
-   IntEbmType countMissingValuesRet;
-   FloatEbmType minNonInfinityValueRet;
-   IntEbmType countNegativeInfinityRet;
-   FloatEbmType maxNonInfinityValueRet;
-   IntEbmType countPositiveInfinityRet;
    ErrorEbmType ret;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
       LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == countCutsInOut");
       countCutsRet = IntEbmType { 0 };
-      countMissingValuesRet = IntEbmType { 0 };
-      minNonInfinityValueRet = FloatEbmType { 0 };
-      countNegativeInfinityRet = IntEbmType { 0 };
-      maxNonInfinityValueRet = FloatEbmType { 0 };
-      countPositiveInfinityRet = IntEbmType { 0 };
       ret = Error_IllegalParamValue;
    } else {
-      if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
-         // if there's 1 sample, then we can't cut it, but we'd still want to determine the min, max, etc
-         // so continue processing
-
+      if(UNLIKELY(countSamples <= IntEbmType { 1 })) {
+         // can't cut 1 sample
          countCutsRet = IntEbmType { 0 };
-         countMissingValuesRet = IntEbmType { 0 };
-         minNonInfinityValueRet = FloatEbmType { 0 };
-         countNegativeInfinityRet = IntEbmType { 0 };
-         maxNonInfinityValueRet = FloatEbmType { 0 };
-         countPositiveInfinityRet = IntEbmType { 0 };
          ret = Error_None;
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
             LOG_0(TraceLevelError, "ERROR CutQuantile countSamples < IntEbmType { 0 }");
@@ -2547,11 +2508,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == featureValues");
 
             countCutsRet = IntEbmType { 0 };
-            countMissingValuesRet = IntEbmType { 0 };
-            minNonInfinityValueRet = FloatEbmType { 0 };
-            countNegativeInfinityRet = IntEbmType { 0 };
-            maxNonInfinityValueRet = FloatEbmType { 0 };
-            countPositiveInfinityRet = IntEbmType { 0 };
             ret = Error_IllegalParamValue;
             goto exit_with_log;
          }
@@ -2560,11 +2516,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             LOG_0(TraceLevelWarning, "WARNING CutQuantile IsConvertError<size_t>(countSamples)");
 
             countCutsRet = IntEbmType { 0 };
-            countMissingValuesRet = IntEbmType { 0 };
-            minNonInfinityValueRet = FloatEbmType { 0 };
-            countNegativeInfinityRet = IntEbmType { 0 };
-            maxNonInfinityValueRet = FloatEbmType { 0 };
-            countPositiveInfinityRet = IntEbmType { 0 };
             ret = Error_IllegalParamValue;
             goto exit_with_log;
          }
@@ -2576,11 +2527,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == aFeatureValues");
 
             countCutsRet = IntEbmType { 0 };
-            countMissingValuesRet = IntEbmType { 0 };
-            minNonInfinityValueRet = FloatEbmType { 0 };
-            countNegativeInfinityRet = IntEbmType { 0 };
-            maxNonInfinityValueRet = FloatEbmType { 0 };
-            countPositiveInfinityRet = IntEbmType { 0 };
             ret = Error_OutOfMemory;
             goto exit_with_log;
          }
@@ -2591,21 +2537,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          // from max_float values without having a cut at infinity since we use lower bound inclusivity
          // so we disallow +infinity values by turning them into max_float.  For symmetry we do the same on
          // the -infinity side turning those into lowest_float.  
-         const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(
-            cSamplesIncludingMissingValues, 
-            aFeatureValues,
-            &minNonInfinityValueRet,
-            &countNegativeInfinityRet,
-            &maxNonInfinityValueRet,
-            &countPositiveInfinityRet
-         );
+         const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(cSamplesIncludingMissingValues, aFeatureValues);
 
          EBM_ASSERT(cSamples <= cSamplesIncludingMissingValues);
-         const size_t cMissingValues = cSamplesIncludingMissingValues - cSamples;
-         // this is guaranteed to work since the number of missing values can't exceed the number of original
-         // samples, and samples came to us as an IntEbmType
-         EBM_ASSERT(!IsConvertError<IntEbmType>(cMissingValues));
-         countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
          if(UNLIKELY(cSamples <= size_t { 1 })) {
             free(aFeatureValues);
@@ -3296,41 +3230,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
       *countCutsInOut = countCutsRet;
    }
 
-   if(LIKELY(nullptr != countMissingValuesOut)) {
-      *countMissingValuesOut = countMissingValuesRet;
-   }
-   if(LIKELY(nullptr != minNonInfinityValueOut)) {
-      *minNonInfinityValueOut = minNonInfinityValueRet;
-   }
-   if(LIKELY(nullptr != countNegativeInfinityOut)) {
-      *countNegativeInfinityOut = countNegativeInfinityRet;
-   }
-   if(LIKELY(nullptr != maxNonInfinityValueOut)) {
-      *maxNonInfinityValueOut = maxNonInfinityValueRet;
-   }
-   if(LIKELY(nullptr != countPositiveInfinityOut)) {
-      *countPositiveInfinityOut = countPositiveInfinityRet;
-   }
-
    LOG_COUNTED_N(
       &g_cLogExitCutQuantileParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited CutQuantile: "
       "countCuts=%" IntEbmTypePrintf ", "
-      "countMissingValues=%" IntEbmTypePrintf ", "
-      "minNonInfinityValue=%" FloatEbmTypePrintf ", "
-      "countNegativeInfinity=%" IntEbmTypePrintf ", "
-      "maxNonInfinityValue=%" FloatEbmTypePrintf ", "
-      "countPositiveInfinity=%" IntEbmTypePrintf ", "
       "return=%" ErrorEbmTypePrintf
       ,
       countCutsRet,
-      countMissingValuesRet,
-      minNonInfinityValueRet,
-      countNegativeInfinityRet,
-      maxNonInfinityValueRet,
-      countPositiveInfinityRet,
       ret
    );
 

@@ -142,10 +142,10 @@ typedef struct _InteractionHandle {
 #define SAFE_FLOAT64_AS_INT_MAX   9007199254740991
 // the maximum signed int64 value is 9223372036854775807, BUT numbers above 9223372036854775295 round in IEEE-754
 // to a number above that, so if we're converting from float64 to int64, the maximum safe number is 9223372036854775295
-// But when we convert 9223372036854775295 to float64 we loose precision and if we output with 17 decimal digits
+// But when we convert 9223372036854775295 to float64 we loose precision and if we output it with 17 decimal digits
 // which is the universal round trip format for float64 in IEEE-754, then we get 9.2233720368547748e+18
-// when you accurately round that biggest representable float64, you get the following integer 9223372036854774784
-// which having 19 digits is legal as an IEEE-754 exact number since it's within the 17-20 digits that is required
+// When you accurately round that biggest representable float64 to the closest integer, you get 9223372036854774784,
+// which having 19 digits is legal as an exact IEEE-754 number since it's within the 17-20 digits that is required
 // to accurately round to idenical floats
 #define FLOAT64_TO_INT_MAX   9223372036854774784
 
@@ -179,25 +179,24 @@ typedef uint64_t UGenerateUpdateOptionsType;
 #define EBM_TRUE           (EBM_BOOL_CAST(1))
 
 #define Error_None                                 (EBM_ERROR_CAST(0))
-// reserve the return code 1 as illegal, since 1 is often "TRUE"
-#define Error_OutOfMemory                          (EBM_ERROR_CAST(2))
+#define Error_OutOfMemory                          (EBM_ERROR_CAST(-1))
 // errors occuring entirely within the C/C++ code
-#define Error_UnexpectedInternal                   (EBM_ERROR_CAST(3))
+#define Error_UnexpectedInternal                   (EBM_ERROR_CAST(-2))
 // input parameters received that are clearly due to bugs in the higher level caller
-#define Error_IllegalParamValue                    (EBM_ERROR_CAST(4))
+#define Error_IllegalParamValue                    (EBM_ERROR_CAST(-3))
 // input parameters received from the end user that are illegal.  These should have been filtered by our caller
-#define Error_UserParamValue                       (EBM_ERROR_CAST(5))
-#define Error_ThreadStartFailed                    (EBM_ERROR_CAST(6))
+#define Error_UserParamValue                       (EBM_ERROR_CAST(-4))
+#define Error_ThreadStartFailed                    (EBM_ERROR_CAST(-5))
 
-#define Error_LossConstructorException             (EBM_ERROR_CAST(10))
-#define Error_LossParamUnknown                     (EBM_ERROR_CAST(11))
-#define Error_LossParamValueMalformed              (EBM_ERROR_CAST(12))
-#define Error_LossParamValueOutOfRange             (EBM_ERROR_CAST(13))
-#define Error_LossParamMismatchWithConfig          (EBM_ERROR_CAST(14))
-#define Error_LossUnknown                          (EBM_ERROR_CAST(15))
-#define Error_LossIllegalRegistrationName          (EBM_ERROR_CAST(16))
-#define Error_LossIllegalParamName                 (EBM_ERROR_CAST(17))
-#define Error_LossDuplicateParamName               (EBM_ERROR_CAST(18))
+#define Error_LossConstructorException             (EBM_ERROR_CAST(-10))
+#define Error_LossParamUnknown                     (EBM_ERROR_CAST(-11))
+#define Error_LossParamValueMalformed              (EBM_ERROR_CAST(-12))
+#define Error_LossParamValueOutOfRange             (EBM_ERROR_CAST(-13))
+#define Error_LossParamMismatchWithConfig          (EBM_ERROR_CAST(-14))
+#define Error_LossUnknown                          (EBM_ERROR_CAST(-15))
+#define Error_LossIllegalRegistrationName          (EBM_ERROR_CAST(-16))
+#define Error_LossIllegalParamName                 (EBM_ERROR_CAST(-17))
+#define Error_LossDuplicateParamName               (EBM_ERROR_CAST(-18))
 
 #define GenerateUpdateOptions_Default              (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000000))
 #define GenerateUpdateOptions_DisableNewtonGain    (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000001))
@@ -362,34 +361,19 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQ
    IntEbmType countSamplesPerBinMin,
    BoolEbmType isHumanized,
    IntEbmType * countCutsInOut,
-   FloatEbmType * cutsLowerBoundInclusiveOut,
-   IntEbmType * countMissingValuesOut,
-   FloatEbmType * minNonInfinityValueOut,
-   IntEbmType * countNegativeInfinityOut,
-   FloatEbmType * maxNonInfinityValueOut,
-   IntEbmType * countPositiveInfinityOut
+   FloatEbmType * cutsLowerBoundInclusiveOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION CutUniform(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType * countCutsInOut,
-   FloatEbmType * cutsLowerBoundInclusiveOut,
-   IntEbmType * countMissingValuesOut,
-   FloatEbmType * minNonInfinityValueOut,
-   IntEbmType * countNegativeInfinityOut,
-   FloatEbmType * maxNonInfinityValueOut,
-   IntEbmType * countPositiveInfinityOut
+   FloatEbmType * cutsLowerBoundInclusiveOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsorized(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType * countCutsInOut,
-   FloatEbmType * cutsLowerBoundInclusiveOut,
-   IntEbmType * countMissingValuesOut,
-   FloatEbmType * minNonInfinityValueOut,
-   IntEbmType * countNegativeInfinityOut,
-   FloatEbmType * maxNonInfinityValueOut,
-   IntEbmType * countPositiveInfinityOut
+   FloatEbmType * cutsLowerBoundInclusiveOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
@@ -403,13 +387,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Sugg
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
-   IntEbmType countSamples,
-   const FloatEbmType * featureValues,
-   IntEbmType countCuts,
-   const FloatEbmType * cutsLowerBoundInclusive,
-   IntEbmType * discretizedOut
-);
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION DiscretizeHistogram(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countCuts,

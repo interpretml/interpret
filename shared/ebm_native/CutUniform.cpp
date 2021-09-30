@@ -24,19 +24,15 @@ extern FloatEbmType ArithmeticMean(
 ) noexcept;
 
 INLINE_RELEASE_UNTEMPLATED static size_t DetermineBounds(
-   size_t cSamples,
+   const size_t cSamples,
    const FloatEbmType * const aValues,
-   FloatEbmType * const pMinNonInfinityValueOut,
-   IntEbmType * const pCountNegativeInfinityOut,
-   FloatEbmType * const pMaxNonInfinityValueOut,
-   IntEbmType * const pCountPositiveInfinityOut
+   FloatEbmType * const pMinValueOut,
+   FloatEbmType * const pMaxValueOut
 ) noexcept {
    EBM_ASSERT(size_t { 1 } <= cSamples);
    EBM_ASSERT(nullptr != aValues);
-   EBM_ASSERT(nullptr != pMinNonInfinityValueOut);
-   EBM_ASSERT(nullptr != pCountNegativeInfinityOut);
-   EBM_ASSERT(nullptr != pMaxNonInfinityValueOut);
-   EBM_ASSERT(nullptr != pCountPositiveInfinityOut);
+   EBM_ASSERT(nullptr != pMinValueOut);
+   EBM_ASSERT(nullptr != pMaxValueOut);
 
    // In most cases we believe that for graphing the caller should only need the bin cuts that we'll eventually
    // return, and they'll want to position the graph to include the first and last cuts, and have a little bit of 
@@ -74,43 +70,23 @@ INLINE_RELEASE_UNTEMPLATED static size_t DetermineBounds(
    // +-infinity values in either the cut points, or the min/max values, which is good since serialization of
    // +-infinity isn't very standardized accross languages.  It's a problem in JSON especially.
 
-   FloatEbmType minNonInfinityValue = std::numeric_limits<FloatEbmType>::max();
-   size_t cNegativeInfinity = size_t { 0 };
-   FloatEbmType maxNonInfinityValue = std::numeric_limits<FloatEbmType>::lowest();
-   size_t cPositiveInfinity = size_t { 0 };
-
+   FloatEbmType minValue = std::numeric_limits<FloatEbmType>::infinity();
+   FloatEbmType maxValue = -std::numeric_limits<FloatEbmType>::infinity();
+   
    size_t cSamplesWithoutMissing = cSamples;
    const FloatEbmType * pValue = aValues;
    const FloatEbmType * const pValuesEnd = aValues + cSamples;
    do {
-      FloatEbmType val = *pValue;
-      if(UNLIKELY(std::isnan(val))) {
-         EBM_ASSERT(0 < cSamplesWithoutMissing);
-         --cSamplesWithoutMissing;
-      } else if(PREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val)) {
-         ++cPositiveInfinity;
-      } else if(PREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val)) {
-         ++cNegativeInfinity;
-      } else {
-         maxNonInfinityValue = UNPREDICTABLE(maxNonInfinityValue < val) ? val : maxNonInfinityValue;
-         minNonInfinityValue = UNPREDICTABLE(val < minNonInfinityValue) ? val : minNonInfinityValue;
-      }
+      const FloatEbmType val = *pValue;
+      cSamplesWithoutMissing = UNPREDICTABLE(std::isnan(val)) ? cSamplesWithoutMissing - 1 : cSamplesWithoutMissing;
+      maxValue = UNPREDICTABLE(maxValue < val) ? val : maxValue; // this works for NaN values which eval to false
+      minValue = UNPREDICTABLE(val < minValue) ? val : minValue; // this works for NaN values which eval to false
       ++pValue;
    } while(LIKELY(pValuesEnd != pValue));
    EBM_ASSERT(cSamplesWithoutMissing <= cSamples);
 
-   if(UNLIKELY(cNegativeInfinity + cPositiveInfinity == cSamplesWithoutMissing)) {
-      // all values were special values (missing, +infinity, -infinity), so make our min/max both zero
-      maxNonInfinityValue = FloatEbmType { 0 };
-      minNonInfinityValue = FloatEbmType { 0 };
-   }
-
-   *pMinNonInfinityValueOut = minNonInfinityValue;
-   // this can't overflow since we got our cSamples from an IntEbmType, and we can't have more infinities than that
-   *pCountNegativeInfinityOut = static_cast<IntEbmType>(cNegativeInfinity);
-   *pMaxNonInfinityValueOut = maxNonInfinityValue;
-   // this can't overflow since we got our cSamples from an IntEbmType, and we can't have more infinities than that
-   *pCountPositiveInfinityOut = static_cast<IntEbmType>(cPositiveInfinity);
+   *pMinValueOut = minValue;
+   *pMaxValueOut = maxValue;
 
    return cSamplesWithoutMissing;
 }
@@ -123,12 +99,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType * countCutsInOut,
-   FloatEbmType * cutsLowerBoundInclusiveOut,
-   IntEbmType * countMissingValuesOut,
-   FloatEbmType * minNonInfinityValueOut,
-   IntEbmType * countNegativeInfinityOut,
-   FloatEbmType * maxNonInfinityValueOut,
-   IntEbmType * countPositiveInfinityOut
+   FloatEbmType * cutsLowerBoundInclusiveOut
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterCutUniformParametersMessages,
@@ -138,71 +109,32 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countCutsInOut=%p, "
-      "cutsLowerBoundInclusiveOut=%p, "
-      "countMissingValuesOut=%p, "
-      "minNonInfinityValueOut=%p, "
-      "countNegativeInfinityOut=%p, "
-      "maxNonInfinityValueOut=%p, "
-      "countPositiveInfinityOut=%p"
+      "cutsLowerBoundInclusiveOut=%p"
       ,
       countSamples,
       static_cast<const void *>(featureValues),
       static_cast<void *>(countCutsInOut),
-      static_cast<void *>(cutsLowerBoundInclusiveOut),
-      static_cast<void *>(countMissingValuesOut),
-      static_cast<void *>(minNonInfinityValueOut),
-      static_cast<void *>(countNegativeInfinityOut),
-      static_cast<void *>(maxNonInfinityValueOut),
-      static_cast<void *>(countPositiveInfinityOut)
+      static_cast<void *>(cutsLowerBoundInclusiveOut)
    );
 
    IntEbmType countCutsRet = IntEbmType { 0 };
-   IntEbmType countMissingValuesRet;
-   FloatEbmType minNonInfinityValueRet;
-   IntEbmType countNegativeInfinityRet;
-   FloatEbmType maxNonInfinityValueRet;
-   IntEbmType countPositiveInfinityRet;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
       LOG_0(TraceLevelError, "ERROR CutUniform nullptr == countCutsInOut");
-      countMissingValuesRet = IntEbmType { 0 };
-      minNonInfinityValueRet = FloatEbmType { 0 };
-      countNegativeInfinityRet = IntEbmType { 0 };
-      maxNonInfinityValueRet = FloatEbmType { 0 };
-      countPositiveInfinityRet = IntEbmType { 0 };
    } else {
-      if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
-         // if there's 1 sample, then we can't cut it, but we'd still want to determine the min, max, etc
-         // so continue processing
-
-         countMissingValuesRet = IntEbmType { 0 };
-         minNonInfinityValueRet = FloatEbmType { 0 };
-         countNegativeInfinityRet = IntEbmType { 0 };
-         maxNonInfinityValueRet = FloatEbmType { 0 };
-         countPositiveInfinityRet = IntEbmType { 0 };
+      if(UNLIKELY(countSamples <= IntEbmType { 1 })) {
+         // can't cut 1 sample by itself
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
             LOG_0(TraceLevelError, "ERROR CutUniform countSamples < IntEbmType { 0 }");
          }
       } else {
          if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
             LOG_0(TraceLevelWarning, "WARNING CutUniform IsConvertError<size_t>(countSamples)");
-
-            countMissingValuesRet = IntEbmType { 0 };
-            minNonInfinityValueRet = FloatEbmType { 0 };
-            countNegativeInfinityRet = IntEbmType { 0 };
-            maxNonInfinityValueRet = FloatEbmType { 0 };
-            countPositiveInfinityRet = IntEbmType { 0 };
             goto exit_with_log;
          }
 
          if(UNLIKELY(nullptr == featureValues)) {
             LOG_0(TraceLevelError, "ERROR CutUniform nullptr == featureValues");
-
-            countMissingValuesRet = IntEbmType { 0 };
-            minNonInfinityValueRet = FloatEbmType { 0 };
-            countNegativeInfinityRet = IntEbmType { 0 };
-            maxNonInfinityValueRet = FloatEbmType { 0 };
-            countPositiveInfinityRet = IntEbmType { 0 };
             goto exit_with_log;
          }
 
@@ -210,12 +142,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
 
          if(UNLIKELY(IsMultiplyError(sizeof(*featureValues), cSamplesIncludingMissingValues))) {
             LOG_0(TraceLevelError, "ERROR CutUniform countSamples was too large to fit into featureValues");
-
-            countMissingValuesRet = IntEbmType { 0 };
-            minNonInfinityValueRet = FloatEbmType { 0 };
-            countNegativeInfinityRet = IntEbmType { 0 };
-            maxNonInfinityValueRet = FloatEbmType { 0 };
-            countPositiveInfinityRet = IntEbmType { 0 };
             goto exit_with_log;
          }
 
@@ -223,115 +149,125 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
          // from max_float values without having a cut at infinity since we use lower bound inclusivity
          // so we disallow +infinity values by turning them into max_float.  For symmetry we do the same on
          // the -infinity side turning those into lowest_float.  
+         FloatEbmType minValue;
+         FloatEbmType maxValue;
          const size_t cSamples = DetermineBounds(
             cSamplesIncludingMissingValues,
             featureValues,
-            &minNonInfinityValueRet,
-            &countNegativeInfinityRet,
-            &maxNonInfinityValueRet,
-            &countPositiveInfinityRet
+            &minValue,
+            &maxValue
          );
-
          EBM_ASSERT(cSamples <= cSamplesIncludingMissingValues);
-         const size_t cMissingValues = cSamplesIncludingMissingValues - cSamples;
-         // this is guaranteed to work since the number of missing values can't exceed the number of original
-         // samples, and samples came to us as an IntEbmType
-         EBM_ASSERT(!IsConvertError<IntEbmType>(cMissingValues));
-         countMissingValuesRet = static_cast<IntEbmType>(cMissingValues);
 
-         if(PREDICTABLE(minNonInfinityValueRet != maxNonInfinityValueRet)) {
-            EBM_ASSERT(1 <= cSamples); // otherwise 0 == minNonInfinityValueRet == maxNonInfinityValueRet
-            EBM_ASSERT(minNonInfinityValueRet < maxNonInfinityValueRet);
-            EBM_ASSERT(nullptr != countCutsInOut);
-            const IntEbmType countCuts = *countCutsInOut;
-
-            if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
-               if(UNLIKELY(countCuts < IntEbmType { 0 })) {
-                  LOG_0(TraceLevelError, "ERROR CutUniform countCuts can't be negative.");
-               }
-               goto exit_with_log;
+         // can't cut 0 or 1 samples
+         if(PREDICTABLE(1 < cSamples)) {
+            if(minValue == -std::numeric_limits<FloatEbmType>::infinity()) {
+               minValue = std::numeric_limits<FloatEbmType>::lowest();
+            } else if(minValue == std::numeric_limits<FloatEbmType>::infinity()) {
+               // this can only happen if the only data is +infinity
+               minValue = std::numeric_limits<FloatEbmType>::max();
             }
 
-            if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
-               LOG_0(TraceLevelWarning, "WARNING CutUniform IsConvertError<size_t>(countCuts)");
-               goto exit_with_log;
-            }
-            const size_t cCuts = static_cast<size_t>(countCuts);
-
-            if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
-               LOG_0(TraceLevelError, "ERROR CutUniform countCuts was too large to fit into cutsLowerBoundInclusiveOut");
-               goto exit_with_log;
+            if(maxValue == std::numeric_limits<FloatEbmType>::infinity()) {
+               maxValue = std::numeric_limits<FloatEbmType>::max();
+            } else if(maxValue == -std::numeric_limits<FloatEbmType>::infinity()) {
+               // this can only happen if the only data is -infinity
+               maxValue = std::numeric_limits<FloatEbmType>::lowest();
             }
 
-            if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
-               // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
-               LOG_0(TraceLevelError, "ERROR CutUniform nullptr == cutsLowerBoundInclusiveOut");
-               goto exit_with_log;
-            }
+            if(PREDICTABLE(minValue != maxValue)) {
+               EBM_ASSERT(minValue < maxValue);
+               EBM_ASSERT(nullptr != countCutsInOut);
+               const IntEbmType countCuts = *countCutsInOut;
 
-            // we check that cCuts can be multiplied with sizeof(*cutsLowerBoundInclusiveOut), and since
-            // there is no way an element of cutsLowerBoundInclusiveOut is as small as 1 byte, we should
-            // be able to add one to cCuts
-            EBM_ASSERT(!IsAddError(size_t { 1 }, cCuts));
-            const size_t cBins = cCuts + size_t { 1 };
-
-            const FloatEbmType cBinsFloat = static_cast<FloatEbmType>(cBins);
-            FloatEbmType stepValue = (maxNonInfinityValueRet - minNonInfinityValueRet) / cBinsFloat;
-            if(std::isinf(stepValue)) {
-               stepValue = maxNonInfinityValueRet / cBinsFloat - minNonInfinityValueRet / cBinsFloat;
-               if(std::isinf(stepValue)) {
-                  // this is probably impossible if correct rounding is guarnateed, but floats have bad guarantees
-
-                  // if you have 2 internal bins it would be close to an overflow on the subtraction 
-                  // of the divided values.  With 3 bins it isn't obvious to me how you'd get an
-                  // overflow after dividing it up into separate segments.  So, let's assume
-                  // that 2 == cBins, so we can just take the average and report one cut
-                  const FloatEbmType avg = ArithmeticMean(minNonInfinityValueRet, maxNonInfinityValueRet);
-                  *cutsLowerBoundInclusiveOut = avg;
-                  countCutsRet = IntEbmType { 1 };
+               if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
+                  if(UNLIKELY(countCuts < IntEbmType { 0 })) {
+                     LOG_0(TraceLevelError, "ERROR CutUniform countCuts can't be negative.");
+                  }
                   goto exit_with_log;
                }
-            }
-            if(stepValue <= FloatEbmType { 0 }) {
-               // if stepValue underflows, we can still put a cut between the minNonInfinityValueRet and maxNonInfinityValueRet
-               // we can also pickup a free check against odd floating point behavior that returns a negative here
 
-               const FloatEbmType avg = ArithmeticMean(minNonInfinityValueRet, maxNonInfinityValueRet);
-               *cutsLowerBoundInclusiveOut = avg;
-               countCutsRet = IntEbmType { 1 };
-            } else {
-               EBM_ASSERT(FloatEbmType { 0 } < stepValue);
-               // we don't want a first cut that's the minNonInfinityValueRet anyways, since then we'd have zero items in the
-               // lowest bin given that we use lower bound inclusive semantics here
-               FloatEbmType cutPrev = minNonInfinityValueRet;
-               FloatEbmType * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
-               size_t iCut = size_t { 1 };
-               do {
-                  const FloatEbmType cut = minNonInfinityValueRet + stepValue * static_cast<FloatEbmType>(iCut);
-                  // just in case we have floating point inexactness that puts us above the highValue we need to stop
-                  if(UNLIKELY(maxNonInfinityValueRet < cut)) {
-                     // this could only happen due to numeric instability
-                     break;
+               if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
+                  LOG_0(TraceLevelWarning, "WARNING CutUniform IsConvertError<size_t>(countCuts)");
+                  goto exit_with_log;
+               }
+               const size_t cCuts = static_cast<size_t>(countCuts);
+
+               if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
+                  LOG_0(TraceLevelError, "ERROR CutUniform countCuts was too large to fit into cutsLowerBoundInclusiveOut");
+                  goto exit_with_log;
+               }
+
+               if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
+                  // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
+                  LOG_0(TraceLevelError, "ERROR CutUniform nullptr == cutsLowerBoundInclusiveOut");
+                  goto exit_with_log;
+               }
+
+               // we check that cCuts can be multiplied with sizeof(*cutsLowerBoundInclusiveOut), and since
+               // there is no way an element of cutsLowerBoundInclusiveOut is as small as 1 byte, we should
+               // be able to add one to cCuts
+               EBM_ASSERT(!IsAddError(size_t { 1 }, cCuts));
+               const size_t cBins = cCuts + size_t { 1 };
+
+               const FloatEbmType cBinsFloat = static_cast<FloatEbmType>(cBins);
+               FloatEbmType stepValue = (maxValue - minValue) / cBinsFloat;
+               if(std::isinf(stepValue)) {
+                  stepValue = maxValue / cBinsFloat - minValue / cBinsFloat;
+                  if(std::isinf(stepValue)) {
+                     // this is probably impossible if correct rounding is guarnateed, but floats have bad guarantees
+
+                     // if you have 2 internal bins it would be close to an overflow on the subtraction 
+                     // of the divided values.  With 3 bins it isn't obvious to me how you'd get an
+                     // overflow after dividing it up into separate segments.  So, let's assume
+                     // that 2 == cBins, so we can just take the average and report one cut
+                     const FloatEbmType avg = ArithmeticMean(minValue, maxValue);
+                     *cutsLowerBoundInclusiveOut = avg;
+                     countCutsRet = IntEbmType { 1 };
+                     goto exit_with_log;
                   }
-                  if(LIKELY(cutPrev != cut)) {
-                     EBM_ASSERT(cutPrev < cut);
-                     EBM_ASSERT(cutsLowerBoundInclusiveOut <= pCutsLowerBoundInclusive &&
-                        pCutsLowerBoundInclusive < cutsLowerBoundInclusiveOut + cCuts);
+               }
+               if(stepValue <= FloatEbmType { 0 }) {
+                  // if stepValue underflows, we can still put a cut between the minValue and maxValue
+                  // we can also pickup a free check against odd floating point behavior that returns a negative here
 
-                     *pCutsLowerBoundInclusive = cut;
-                     ++pCutsLowerBoundInclusive;
-                     cutPrev = cut;
-                  }
-                  ++iCut;
-               } while(cBins != iCut);
+                  const FloatEbmType avg = ArithmeticMean(minValue, maxValue);
+                  *cutsLowerBoundInclusiveOut = avg;
+                  countCutsRet = IntEbmType { 1 };
+               } else {
+                  EBM_ASSERT(FloatEbmType { 0 } < stepValue);
+                  // we don't want a first cut that's the minValue anyways, since then we'd have zero items in the
+                  // lowest bin given that we use lower bound inclusive semantics here
+                  FloatEbmType cutPrev = minValue;
+                  FloatEbmType * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
+                  size_t iCut = size_t { 1 };
+                  do {
+                     const FloatEbmType cut = minValue + stepValue * static_cast<FloatEbmType>(iCut);
+                     // just in case we have floating point inexactness that puts us above the highValue we need to stop
+                     if(UNLIKELY(maxValue < cut)) {
+                        // this could only happen due to numeric instability
+                        break;
+                     }
+                     if(LIKELY(cutPrev != cut)) {
+                        EBM_ASSERT(cutPrev < cut);
+                        EBM_ASSERT(cutsLowerBoundInclusiveOut <= pCutsLowerBoundInclusive &&
+                           pCutsLowerBoundInclusive < cutsLowerBoundInclusiveOut + cCuts);
 
-               const size_t cCutsRet = pCutsLowerBoundInclusive - cutsLowerBoundInclusiveOut;
+                        *pCutsLowerBoundInclusive = cut;
+                        ++pCutsLowerBoundInclusive;
+                        cutPrev = cut;
+                     }
+                     ++iCut;
+                  } while(cBins != iCut);
 
-               // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
-               // specified, and that value came to us as an IntEbmType
-               countCutsRet = static_cast<IntEbmType>(cCutsRet);
+                  const size_t cCutsRet = pCutsLowerBoundInclusive - cutsLowerBoundInclusiveOut;
+
+                  // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
+                  // specified, and that value came to us as an IntEbmType
+                  countCutsRet = static_cast<IntEbmType>(cCutsRet);
+               }
+               EBM_ASSERT(countCutsRet <= countCuts);
             }
-            EBM_ASSERT(countCutsRet <= countCuts);
          }
       }
 
@@ -341,40 +277,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
       *countCutsInOut = countCutsRet;
    }
 
-   if(LIKELY(nullptr != countMissingValuesOut)) {
-      *countMissingValuesOut = countMissingValuesRet;
-   }
-   if(LIKELY(nullptr != minNonInfinityValueOut)) {
-      *minNonInfinityValueOut = minNonInfinityValueRet;
-   }
-   if(LIKELY(nullptr != countNegativeInfinityOut)) {
-      *countNegativeInfinityOut = countNegativeInfinityRet;
-   }
-   if(LIKELY(nullptr != maxNonInfinityValueOut)) {
-      *maxNonInfinityValueOut = maxNonInfinityValueRet;
-   }
-   if(LIKELY(nullptr != countPositiveInfinityOut)) {
-      *countPositiveInfinityOut = countPositiveInfinityRet;
-   }
-
    LOG_COUNTED_N(
       &g_cLogExitCutUniformParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited CutUniform: "
-      "countCuts=%" IntEbmTypePrintf ", "
-      "countMissingValues=%" IntEbmTypePrintf ", "
-      "minNonInfinityValue=%" FloatEbmTypePrintf ", "
-      "countNegativeInfinity=%" IntEbmTypePrintf ", "
-      "maxNonInfinityValue=%" FloatEbmTypePrintf ", "
-      "countPositiveInfinity=%" IntEbmTypePrintf
+      "countCuts=%" IntEbmTypePrintf
       ,
-      countCutsRet,
-      countMissingValuesRet,
-      minNonInfinityValueRet,
-      countNegativeInfinityRet,
-      maxNonInfinityValueRet,
-      countPositiveInfinityRet
+      countCutsRet
    );
 }
 

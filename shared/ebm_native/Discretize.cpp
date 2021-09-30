@@ -165,16 +165,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
    EBM_ASSERT(nullptr != cutsLowerBoundInclusive);
 
    EBM_ASSERT(IntEbmType { 0 } <= countCuts);
-   // We have 1 more bin than we have cuts (ex: 1 cut means 2 bins) AND we need to leave room for 3 special bins.
-   // Even if we're not being called for histograms here, we'll eventually want histograms, so preserve room for these:
-   // 0 = missing
-   // 1 = -inf (for histograms).
-   // max_IntEbmType = +inf (for histograms)
-   // Eg: if we had 256 bin indexes, 4 reserved leaves 252 for non-special, and 251 cuts, so we can have 255-4=251 cuts.
-   // finally, reserve 1 for the caller who will need to have a count of bins, so even if 256 bins can be represented
-   // with 0-255, the caller will want to store 256 somewhere which would overflow an unsigned byte count
-   // We want to make sure they won't overflow an IntEbmType inadvertently
-   EBM_ASSERT(countCuts <= std::numeric_limits<IntEbmType>::max() - IntEbmType { 4 });
+   // IntEbmType::max should be the maximum number of bins that we allow.  This prevents our caller from accidentally
+   // overflowing when using either the count (eg: 255) or the index (eg: 0-254).  The 0th bin is the special missing
+   // bin, so we have max-1 normal bins.  We have 1 less cuts than we have bins (1 cut means 2 bins), so we can
+   // have a maximum of max - 2 cuts.
+   EBM_ASSERT(countCuts <= std::numeric_limits<IntEbmType>::max() - IntEbmType { 2 });
    // cutsLowerBoundInclusive needs to hold all the cuts, so we should be able to at least convert countCuts to size_t
    EBM_ASSERT(!IsConvertError<size_t>(countCuts));
    // cutsLowerBoundInclusive needs to hold all the cuts, so all the bytes need to be addressable
@@ -926,23 +921,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          goto exit_with_log;
       }
 
-      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() - IntEbmType { 4 } < countCuts)) {
-         // We have 1 more bin than we have cuts (ex: 1 cut means 2 bins) AND we need to leave room for 3 special bins.
-         // Even if we're not being called for histograms here, we'll eventually want histograms, so preserve room for these:
-         // 0 = missing
-         // 1 = -inf (for histograms).
-         // max_IntEbmType = +inf (for histograms)
-         //
-         // finally, reserve 1 for the caller who will need to have a count of bins, so even if 256 bins can be represented
-         // with 0-255, the caller will want to store 256 somewhere which would overflow an unsigned byte count
-         // We want to make sure they won't overflow an IntEbmType inadvertently
-         //
-         // Eg: if we had 256 bin indexes, 4 reserved leaves 252 for non-special, and 251 cuts, so we can have 255-4=251 cuts.
+      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() - IntEbmType { 2 } < countCuts)) {
+         // IntEbmType::max should be the maximum number of bins that we allow.  This prevents our caller from accidentally
+         // overflowing when using either the count (eg: 255) or the index (eg: 0-254).  The 0th bin is the special missing
+         // bin, so we have max - 1 normal bins.  We have 1 less cuts than we have bins (1 cut means 2 bins), so we can
+         // have a maximum of max - 2 cuts.
 
-         // we convert back to IntEbmType when we return, and if countCuts is at the limit, then we don't
-         // have any value to indicate missing
-         // 1 cut means 3 bins (missing, and the left discretization, and the right discretization)
-         // max cuts means max + 2 bins.  Since bins are zero indexed, we need 1 + max as an index which is illegal
          LOG_0(TraceLevelError,
             "ERROR Discretize countCuts was too large to allow for a missing value placeholder and -+inf bins");
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
@@ -1074,87 +1058,5 @@ exit_with_log:;
 
    return ret;
 }
-
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION DiscretizeHistogram(
-   IntEbmType countSamples,
-   const FloatEbmType * featureValues,
-   IntEbmType countCuts,
-   const FloatEbmType * cutsLowerBoundInclusive,
-   IntEbmType * discretizedOut
-) {
-   // TODO: are we going to use this..  If not, then we can remove the additional -inf and +inf bin requirements
-   //       inside Discretize and DiscretizeOne where we check: 
-   //       std::numeric_limits<IntEbmType>::max() - IntEbmType { 4 } < countCuts
-
-   // For binning we don't care what the min or max values are since our first bin stretches from -inf to the 
-   // first cut (not the min value in the data) and the last bin goes from the last cut (not the max value in the data)
-   // until +inf.  We do show histograms though in our UI and those have unique challenges.  First off, let's say 
-   // there is a +-inf value in the data.  Should the UI start from an infinity.  That's kind of impossible, 
-   // so the best we can do is span the graph from the min non-infinity to the max non-infinity.  But what about 
-   // the infinity values then in terms of counting samples.  We use counts of samples within each bin to compute 
-   // density.  Should the +-inf value counts go into the outer bins, or should we just drop the count for +-inf values.  
-   // 
-   // My semi-solution is to store the min and max values outside of the cut points.  We can/will still start the
-   // graph from the min to the max and we can calculate density from counts that DO NOT include the infinity values
-   // but at some point we might want to show the existance of the +-inf values or just leave them for future or 
-   // alternate UI to show, or this information might be helpful when model merging and the bin cut points don't align.
-   // 
-   // Now we can use the same cut point definitions for both histograms and discretization binning
-   // and for counts, we can use the same count generation code DiscretizeHistogram for both histogram and
-   // discretization binning.  We store extra +inf/-inf counts too now, but this just gives us more information
-   // that we can later collapse away if we want.  The only weirdness is that we use Discretize to get bins
-   // for fit/predict, but we use DiscretizeHistogram when we want to store information about the bin counts
-   //
-   // We can't just store a count of +-inf values since we'll want to know or be able to elimiminate pair
-   // cells with infinity values.  Let's say we have a bin between 1-2 on one feature and the second one is -inf.
-   // We want to know the count of -inf values within the range of the other paired feature, so our 2D matrix looks 
-   // something like this for one numeric parameter and one categorical (string) parameter:
-   //
-   //           missing | -inf | min_float -> 0 | 0 -> 100 | 100 -> max_float | +inf
-   // missing      8    |  11  |       22       |    99    |         13       | 0
-   // "abc"        18   |  81  |       22       |    77    |         0        | 0
-   // "def"        28   |  71  |       22       |    55    |         1        | 1000
-   // "ghi"        38   |  61  |       22       |    33    |         2        | 0
-
-   // So, to make it possible to separate the -inf values for our histogram graphing we need to have a discretize
-   // function that separates these special values from all non-inf values.  This function is identical to the 
-   // non-histogram generating code, except that it creates new bins for -inf and +inf values.
-
-   // DiscretizeHistogram is only called during boosting when we're not as concerned about speed, so we choose
-   // to optimize here for minimizing extra code.  Our non-histogram Discretize function detects all the same errors
-   // that we care about and it also reserves 3 special bin values in the IntEbmType space, so we can just use it
-   const ErrorEbmType ret = Discretize(countSamples, featureValues, countCuts, cutsLowerBoundInclusive, discretizedOut);
-   if(Error_None == ret) {
-      // now let's correct the return values to handle +-inf values
-
-      const FloatEbmType * pValue = featureValues;
-      const FloatEbmType * const pValueEnd = featureValues + static_cast<size_t>(countSamples);
-      IntEbmType * pDiscretized = discretizedOut;
-      // if we had 1 cut then:
-      // 0 = missing
-      // 1 = -inf
-      // 2 = lower
-      // 3 = higher
-      // 4 = +inf
-      // So, we add 3 to get our +inf bin index
-      const IntEbmType positiveInfValue = countCuts + IntEbmType { 3 };
-      while(pValueEnd != pValue) {
-         const FloatEbmType val = *pValue;
-         IntEbmType discretizedVal = *pDiscretized;
-         EBM_ASSERT(std::isnan(val) && IntEbmType { 0 } == discretizedVal || !std::isnan(val) && IntEbmType { 0 } != discretizedVal);
-         discretizedVal = UNPREDICTABLE(IntEbmType { 0 } == discretizedVal) ? IntEbmType { 0 } : IntEbmType { 1 } + discretizedVal;
-         // if val is NaN then in IEEE 754 these two comparisons fail and thus discretizedVal stays with it's previous value of 0
-         discretizedVal = UNPREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == val) ? IntEbmType { 1 } : discretizedVal;
-         discretizedVal = UNPREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == val) ? positiveInfValue : discretizedVal;
-
-         *pDiscretized = discretizedVal;
-
-         ++pDiscretized;
-         ++pValue;
-      }
-   }
-   return ret;
-}
-
 
 } // DEFINED_ZONE_NAME

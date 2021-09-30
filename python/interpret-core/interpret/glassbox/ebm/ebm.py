@@ -211,8 +211,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             self.col_types_.append(col_info["type"])
             if col_info["type"] == "continuous":
                 col_data = col_data.astype(float)
-                count_missing = 0
-
                 if self.binning == "private":
                     min_val, max_val = self.privacy_schema[col_idx]
                     cuts, bin_counts = DPUtils.private_numeric_binning(
@@ -229,34 +227,20 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         if self.binning == 'quantile_humanized':
                             is_humanized = 1
 
-                        (
-                            cuts, 
-                            count_missing, 
-                            min_val, 
-                            max_val, 
-                        ) = native.cut_quantile(
-                            col_data, 
-                            min_samples_bin, 
-                            is_humanized, 
-                            self.max_bins - 2, # one bin for missing, and # of cuts is one less again
-                        )
+                        # one bin for missing, and # of cuts is one less again
+                        cuts = native.cut_quantile(col_data, min_samples_bin, is_humanized, self.max_bins - 2)
                     elif self.binning == "uniform":
-                        (
-                            cuts, 
-                            count_missing, 
-                            min_val, 
-                            max_val,
-                        ) = native.cut_uniform(
-                            col_data, 
-                            self.max_bins - 2, # one bin for missing, and # of cuts is one less again
-                        )
+                        # one bin for missing, and # of cuts is one less again
+                        cuts = native.cut_uniform(col_data, self.max_bins - 2)
                     else:
                         raise ValueError(f"Unrecognized bin type: {self.binning}")
 
+                    min_val = np.nanmin(col_data)
+                    max_val = np.nanmax(col_data)
+
                     discretized = native.discretize(col_data, cuts)
                     bin_counts = np.bincount(discretized, minlength=len(cuts) + 2)
-                    if count_missing != 0:
-                        col_data = col_data[~np.isnan(col_data)]
+                    col_data = col_data[~np.isnan(col_data)]
 
                     hist_counts, hist_edges = np.histogram(col_data, bins="doane")
 

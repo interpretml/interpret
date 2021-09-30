@@ -1122,49 +1122,17 @@ def _cut_continuous(native, X_col, processing, binning, bins, min_samples_bin):
         processing = binning
 
     if processing == 'quantile':
-        (
-            cuts, 
-            count_missing, 
-            min_val, 
-            max_val, 
-        ) = native.cut_quantile(
-            X_col, 
-            min_samples_bin, 
-            0, 
-            bins - 2, # one bin for missing, and # of cuts is one less again
-        )
+        # one bin for missing, and # of cuts is one less again
+        cuts = native.cut_quantile(X_col, min_samples_bin, 0, bins - 2)
     elif processing == 'quantile_humanized':
-        (
-            cuts, 
-            count_missing, 
-            min_val, 
-            max_val, 
-        ) = native.cut_quantile(
-            X_col, 
-            min_samples_bin, 
-            1, 
-            bins - 2, # one bin for missing, and # of cuts is one less again
-        )
+        # one bin for missing, and # of cuts is one less again
+        cuts = native.cut_quantile(X_col, min_samples_bin, 1, bins - 2)
     elif processing == 'uniform':
-        (
-            cuts, 
-            count_missing, 
-            min_val, 
-            max_val,
-        ) = native.cut_uniform(
-            X_col, 
-            bins - 2, # one bin for missing, and # of cuts is one less again
-        )
+        # one bin for missing, and # of cuts is one less again
+        cuts = native.cut_uniform(X_col, bins - 2)
     elif processing == 'winsorized':
-        (
-            cuts, 
-            count_missing, 
-            min_val, 
-            max_val,
-        ) = native.cut_winsorized(
-            X_col, 
-            bins - 2, # one bin for missing, and # of cuts is one less again
-        )
+        # one bin for missing, and # of cuts is one less again
+        cuts = native.cut_winsorized(X_col, bins - 2)
     elif isinstance(processing, np.ndarray):
         cuts = processing.astype(dtype=np.float64, copy=False)
     elif isinstance(processing, list):

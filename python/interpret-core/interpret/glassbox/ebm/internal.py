@@ -48,33 +48,33 @@ class Native:
 
     @staticmethod
     def _get_native_exception(error_code, native_function):  # pragma: no cover
-        if error_code == 2:
+        if error_code == -1:
             return Exception(f'Out of memory in {native_function}')
-        elif error_code == 3:
+        elif error_code == -2:
             return Exception(f'Unexpected internal error in {native_function}')
-        elif error_code == 4:
+        elif error_code == -3:
             return Exception(f'Illegal native parameter value in {native_function}')
-        elif error_code == 5:
+        elif error_code == -4:
             return Exception(f'User native parameter value error in {native_function}')
-        elif error_code == 6:
+        elif error_code == -5:
             return Exception(f'Thread start failed in {native_function}')
-        elif error_code == 10:
+        elif error_code == -10:
             return Exception(f'Loss constructor native exception in {native_function}')
-        elif error_code == 11:
+        elif error_code == -11:
             return Exception(f'Loss parameter unknown')
-        elif error_code == 12:
+        elif error_code == -12:
             return Exception(f'Loss parameter value malformed')
-        elif error_code == 13:
+        elif error_code == -13:
             return Exception(f'Loss parameter value out of range')
-        elif error_code == 14:
+        elif error_code == -14:
             return Exception(f'Loss parameter mismatch')
-        elif error_code == 15:
+        elif error_code == -15:
             return Exception(f'Unrecognized loss type')
-        elif error_code == 16:
+        elif error_code == -16:
             return Exception(f'Illegal loss registration name')
-        elif error_code == 17:
+        elif error_code == -17:
             return Exception(f'Illegal loss parameter name')
-        elif error_code == 18:
+        elif error_code == -18:
             return Exception(f'Duplicate loss parameter name')
         else:
             return Exception(f'Unrecognized native return code {error_code} in {native_function}')
@@ -200,92 +200,43 @@ class Native:
     def cut_quantile(self, col_data, min_samples_bin, is_humanized, max_cuts):
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
-        count_missing = ct.c_int64(0)
-        min_val = ct.c_double(0)
-        count_neg_inf = ct.c_int64(0)
-        max_val = ct.c_double(0)
-        count_inf = ct.c_int64(0)
-
         return_code = self._unsafe.CutQuantile(
             col_data.shape[0],
             col_data, 
             min_samples_bin,
             is_humanized,
             ct.byref(count_cuts),
-            cuts,
-            ct.byref(count_missing),
-            ct.byref(min_val),
-            ct.byref(count_neg_inf),
-            ct.byref(max_val),
-            ct.byref(count_inf)
+            cuts
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "CutQuantile")
 
-        cuts = cuts[:count_cuts.value]
-        count_missing = count_missing.value
-        min_val = min_val.value
-        max_val = max_val.value
-
-        return cuts, count_missing, min_val, max_val
+        return cuts[:count_cuts.value]
 
     def cut_uniform(self, col_data, max_cuts):
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
-        count_missing = ct.c_int64(0)
-        min_val = ct.c_double(0)
-        count_neg_inf = ct.c_int64(0)
-        max_val = ct.c_double(0)
-        count_inf = ct.c_int64(0)
-
         self._unsafe.CutUniform(
             col_data.shape[0],
             col_data, 
             ct.byref(count_cuts),
-            cuts,
-            ct.byref(count_missing),
-            ct.byref(min_val),
-            ct.byref(count_neg_inf),
-            ct.byref(max_val),
-            ct.byref(count_inf)
+            cuts
         )
-
-        cuts = cuts[:count_cuts.value]
-        count_missing = count_missing.value
-        min_val = min_val.value
-        max_val = max_val.value
-
-        return cuts, count_missing, min_val, max_val
+        return cuts[:count_cuts.value]
 
     def cut_winsorized(self, col_data, max_cuts):
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
-        count_missing = ct.c_int64(0)
-        min_val = ct.c_double(0)
-        count_neg_inf = ct.c_int64(0)
-        max_val = ct.c_double(0)
-        count_inf = ct.c_int64(0)
-
         return_code = self._unsafe.CutWinsorized(
             col_data.shape[0],
             col_data, 
             ct.byref(count_cuts),
-            cuts,
-            ct.byref(count_missing),
-            ct.byref(min_val),
-            ct.byref(count_neg_inf),
-            ct.byref(max_val),
-            ct.byref(count_inf)
+            cuts
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "CutWinsorized")
 
-        cuts = cuts[:count_cuts.value]
-        count_missing = count_missing.value
-        min_val = min_val.value
-        max_val = max_val.value
-
-        return cuts, count_missing, min_val, max_val
+        return cuts[:count_cuts.value]
 
     def suggest_graph_bounds(self, cuts, min_val=np.nan, max_val=np.nan):
         low_graph_bound = ct.c_double(0)
@@ -315,20 +266,6 @@ class Native:
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "Discretize")
-
-        return discretized
-
-    def discretize_histogram(self, col_data, cuts):
-        discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")
-        return_code = self._unsafe.DiscretizeHistogram(
-            col_data.shape[0],
-            col_data,
-            cuts.shape[0],
-            cuts,
-            discretized
-        )
-        if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "DiscretizeHistogram")
 
         return discretized
 
@@ -550,16 +487,6 @@ class Native:
             ct.POINTER(ct.c_int64),
             # double * cutsLowerBoundInclusiveOut
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * countMissingValuesOut
-            ct.POINTER(ct.c_int64),
-            # double * minNonInfinityValueOut
-            ct.POINTER(ct.c_double),
-            # int64_t * countNegativeInfinityOut
-            ct.POINTER(ct.c_int64),
-            # double * maxNonInfinityValueOut
-            ct.POINTER(ct.c_double),
-            # int64_t * countPositiveInfinityOut
-            ct.POINTER(ct.c_int64),
         ]
         self._unsafe.CutQuantile.restype = ct.c_int32
 
@@ -572,16 +499,6 @@ class Native:
             ct.POINTER(ct.c_int64),
             # double * cutsLowerBoundInclusiveOut
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * countMissingValuesOut
-            ct.POINTER(ct.c_int64),
-            # double * minNonInfinityValueOut
-            ct.POINTER(ct.c_double),
-            # int64_t * countNegativeInfinityOut
-            ct.POINTER(ct.c_int64),
-            # double * maxNonInfinityValueOut
-            ct.POINTER(ct.c_double),
-            # int64_t * countPositiveInfinityOut
-            ct.POINTER(ct.c_int64),
         ]
         self._unsafe.CutUniform.restype = None
 
@@ -594,16 +511,6 @@ class Native:
             ct.POINTER(ct.c_int64),
             # double * cutsLowerBoundInclusiveOut
             ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * countMissingValuesOut
-            ct.POINTER(ct.c_int64),
-            # double * minNonInfinityValueOut
-            ct.POINTER(ct.c_double),
-            # int64_t * countNegativeInfinityOut
-            ct.POINTER(ct.c_int64),
-            # double * maxNonInfinityValueOut
-            ct.POINTER(ct.c_double),
-            # int64_t * countPositiveInfinityOut
-            ct.POINTER(ct.c_int64),
         ]
         self._unsafe.CutWinsorized.restype = ct.c_int32
 
@@ -640,20 +547,6 @@ class Native:
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.Discretize.restype = ct.c_int32
-
-        self._unsafe.DiscretizeHistogram.argtypes = [
-            # int64_t countSamples
-            ct.c_int64,
-            # double * featureValues
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countCuts
-            ct.c_int64,
-            # double * cutsLowerBoundInclusive
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * discretizedOut
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-        ]
-        self._unsafe.DiscretizeHistogram.restype = ct.c_int32
 
 
         self._unsafe.SizeDataSetHeader.argtypes = [

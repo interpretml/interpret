@@ -34,7 +34,6 @@ EXPORTS
   CutWinsorized
   CutUniform
   Discretize
-  DiscretizeHistogram
   Softmax
   SuggestGraphBounds
   GenerateRandomNumber
