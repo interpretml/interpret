@@ -2317,11 +2317,11 @@ def test_bin_native():
     y = np.array(["a", 99, 99, "b"])
     w = np.array([0.5, 1.1, 0.1, 0.5])
     feature_idxs = range(len(feature_names)) if feature_types is None else [feature_idx for feature_idx, feature_type in zip(count(), feature_types) if feature_type != 'ignore']
-    shared_dataset, feature_names_out, feature_types_out, feature_bins, classes = bin_native(True, feature_idxs, X, y, w, feature_names, feature_types, 256)
+    shared_dataset, feature_names_out, feature_types_out, bins_out, classes = bin_native(True, feature_idxs, repeat(256), X, y, w, feature_names, feature_types)
     assert(shared_dataset is not None)
     assert(feature_names_out is not None)
     assert(feature_types_out is not None)
-    assert(feature_bins is not None)
+    assert(bins_out is not None)
 
 def test_score_terms():
     X = np.array([["a", 1, np.nan], ["b", 2, 8], ["a", 2, 9], [None, 3, "BAD_CONTINUOUS"]], dtype=np.object_)

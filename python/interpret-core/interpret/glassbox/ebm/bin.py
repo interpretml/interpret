@@ -267,8 +267,7 @@ def _encode_categorical_existing(X_col, nonmissings, categories):
             encoded = encoded_tmp
         else:
             bad = np.full(len(encoded), None, dtype=np.object_)
-            unknowns = encoded < 0
-            np.place(bad, unknowns, uniques[indexes[unknowns]])
+            np.place(bad, unknowns, uniques[indexes[encoded < 0]])
     else:
         bad = None
         if nonmissings is not None:
@@ -751,6 +750,9 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
         n_cols = len(names_original)
         if len(names_dict) != n_cols:
             # this can happen if for instance one column is "0" and annother is int(0)
+            # Pandas also allows duplicate labels by default:
+            # https://pandas.pydata.org/docs/user_guide/duplicates.html#duplicates-disallow
+            # we can tollerate duplicate labels here, provided none of them are being used by our model
             for name, n_count in Counter(map(str, names_original)).items():
                 if n_count != 1:
                     names_dict.remove(name)
@@ -775,8 +777,10 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
                     _log.error(msg)
                     raise ValueError(msg)
 
-        # TODO: sometimes Pandas uses a dense 2D ndarray instead of per column 1D ndarrays.  We should
-        # detect if we have a 2D numpy C ordered array internally, and if so transpose it if "go_fast" is True
+        # Pandas also sometimes uses a dense 2D ndarray instead of per column 1D ndarrays, which would benefit from 
+        # transposing, but accessing the BlockManager is currently unsupported behavior. They are also planning to eliminate
+        # the BlockManager in Pandas2, so not much benefit in special casing this while they move in that direction
+        # https://uwekorn.com/2020/05/24/the-one-pandas-internal.html
 
         for feature_idx, categories in requests:
             col_idx = names_dict[feature_names_out[feature_idx]]
@@ -1144,13 +1148,10 @@ def _cut_continuous(native, X_col, processing, binning, bins, min_samples_bin):
 
     return cuts
 
-def bin_native(is_classification, feature_idxs, X, y, w, feature_names, feature_types, bins, binning='quantile', min_unique_continuous=4, min_samples_bin=1):
+def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names, feature_types, binning='quantile', min_unique_continuous=4, min_samples_bin=1):
     # called under: fit
 
     _log.info("Creating native dataset")
-
-    if bins < 2:
-        raise ValueError(f"bins was {bins}, but must be 2 or higher. One bin for missing, and at least one more for the non-missing values.")
 
     X, n_samples = clean_X(X)
     if n_samples <= 0:
@@ -1172,6 +1173,7 @@ def bin_native(is_classification, feature_idxs, X, y, w, feature_names, feature_
             raise ValueError(msg)
         w = w.astype(np.float64, copy=False)
     else:
+        # TODO: eliminate this eventually
         w = np.ones_like(y, dtype=np.float64)
 
     if is_classification:
@@ -1201,13 +1203,16 @@ def bin_native(is_classification, feature_idxs, X, y, w, feature_names, feature_
     n_bytes = native.size_data_set_header(len(feature_idxs), 1, 1)
 
     feature_types_out = _none_list * len(feature_names_out)
-    feature_bins = _none_list * len(feature_names_out)
+    bins_out = []
 
-    for feature_idx, feature_type_out, X_col, categories, bad in unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types, min_unique_continuous, False):
+    for bins, (feature_idx, feature_type_out, X_col, categories, bad) in zip(bins_in, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types, min_unique_continuous, False)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
             raise ValueError(msg)
+
+        if bins < 2:
+            raise ValueError(f"bins was {bins}, but must be 2 or higher. One bin for missing, and at least one more for the non-missing values.")
 
         feature_types_out[feature_idx] = feature_type_out
         feature_type = None if feature_types is None else feature_types[feature_idx]
@@ -1221,11 +1226,11 @@ def bin_native(is_classification, feature_idxs, X, y, w, feature_names, feature_
 
             cuts = _cut_continuous(native, X_col, feature_type, binning, bins, min_samples_bin)
             X_col = native.discretize(X_col, cuts)
-            feature_bins[feature_idx] = cuts
+            bins_out.append(cuts)
             n_bins = len(cuts) + 2
         else:
             # categorical feature
-            feature_bins[feature_idx] = categories
+            bins_out.append(categories)
             n_bins = len(categories) + 1
             if bad is not None:
                 msg = f"Feature {feature_names_out[feature_idx]} has unrecognized ordinal values"
@@ -1242,9 +1247,9 @@ def bin_native(is_classification, feature_idxs, X, y, w, feature_names, feature_
 
     shared_dataset = RawArray('B', n_bytes)
 
-    opaque_state = native.fill_data_set_header(len(feature_idxs), 1, 1, n_bytes, shared_dataset)
+    native.fill_data_set_header(len(feature_idxs), 1, 1, n_bytes, shared_dataset)
 
-    for feature_idx, feature_type_out, X_col, categories, bad in unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types, min_unique_continuous, False):
+    for bins, (feature_idx, feature_type_out, X_col, categories, _) in zip(bins_out, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types, min_unique_continuous, False)):
         if n_samples != len(X_col):
             # re-check that that number of samples is identical since iterators can be used up by looking at them
             # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
@@ -1256,8 +1261,7 @@ def bin_native(is_classification, feature_idxs, X, y, w, feature_names, feature_
         feature_type = None if feature_types is None else feature_types[feature_idx]
         if categories is None:
             # continuous feature
-            cuts = feature_bins[feature_idx]
-            X_col = native.discretize(X_col, cuts)
+            X_col = native.discretize(X_col, bins)
             n_bins = len(cuts) + 2
         else:
             # categorical feature
@@ -1270,15 +1274,15 @@ def bin_native(is_classification, feature_idxs, X, y, w, feature_names, feature_
         # We're writing our feature data out in any random order that we get it.  This is fine in terms of performance
         # since the booster has a chance to re-order them again when it constructs the boosting specific dataframe.  
         # For interactions we'll be examining many combinations so the order in our C++ dataframe won't really matter.
-        opaque_state = native.fill_feature(feature_type_out == 'nominal', n_bins, X_col, n_bytes, shared_dataset, opaque_state)
+        native.fill_feature(feature_type_out == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
 
-    opaque_state = native.fill_weight(w, n_bytes, shared_dataset, opaque_state)
+    native.fill_weight(w, n_bytes, shared_dataset)
     if is_classification:
-        opaque_state = native.fill_classification_target(len(classes), y, n_bytes, shared_dataset, opaque_state)
+        native.fill_classification_target(len(classes), y, n_bytes, shared_dataset)
     else:
-        opaque_state = native.fill_regression_target(y, n_bytes, shared_dataset, opaque_state)
+        native.fill_regression_target(y, n_bytes, shared_dataset)
 
-    return shared_dataset, feature_names_out, feature_types_out, feature_bins, classes
+    return shared_dataset, feature_names_out, feature_types_out, bins_out, classes
 
 def score_terms(X, feature_names_out, feature_types_out, terms):
     # called under: predict
