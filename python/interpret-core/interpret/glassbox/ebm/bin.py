@@ -24,6 +24,277 @@ try:
 except ImportError:
     _scipy_installed = False
 
+
+# BIG TODO LIST:
+#- review all my other changes in other files (or afterwards)
+#- review the entire bin.py file
+#- test: clean_vector with ma.masked_array... and other stuff in there
+#- test: clean_X with pd.Series with missing values and maybe a categorical -> gets converted as N features and 1 sample
+#- test: clean_X with list that CONTAINS a ma.masked_array sample entry with missing data and without missing data
+#- publish
+#- unify_data2 -> convert to the old style
+#- TEST that I can swap unify_data2 for unify_data on some problem
+#- add better processing for ignored columsn where we return the existing data if we can, and we return all None
+#  values if not which our caller can detect.  Then unify_data2 can convert that to int(0) values which should work for
+#  all feature types
+#- disable 'ignore' columns temporarily.  We need to update C++ to make a distinction because you can have 3 real columns and 5 referencable columsn and our datastructures need to be updated to handle this in C++ first
+#- after publishing BUT before integration with python, we should add re-ordering feature ids to C++ and make sure
+#  that we can use the higher level layer's understanding of features.  To do this, write a re-mapper inside
+#  the shared dataframe.  We might as well use shared memory to have the remapper since it'll otherwise be in all processes
+#- start work on integrating into python
+#- handle the thorny questions of converting float to int for categorical strings
+#  - in the object converter, convert all int64/uint64 and all floats objects to float64, then use the floor check
+#    and compare with +-9007199254740991 to decide if they should be expressed as integers or floats
+#  - after np.unique for categoricals, convert int64 and uint64 types to float64 and then re-run np.unique on those
+#    values to figure out if there are collisions in the float64 space for integers.  We actually have more
+#    work to do in this case since we'll also get bad reverse indexes with more categories than we have unique values
+#    Perhaps we can just detect this scenario in the integer space by checking for 9007199254740991 < abs(x) with
+#    integers and if it's true then convert to float64 before calling np.unique again?  It'll be infrequent to have
+#    such large integers, and we only need to check with int64 and np.uint64 since they are the only ones that can make non-unique floats
+#  - leave bools as "False"/"True", BUT we have a corner case in _densify_object_ndarray if we have mixed types
+#    we convert to unicode, and bools become "False"/"True" and then subequently fail the test of being able to 
+#    be converted to floats, so we need to record the bool types and convert them to 0/1 for the conversion to float
+#    test.  First, we can detect if there are any bools via "types = set(map(type, X_col))", then we can 
+#    find all the bools with np.logical_or(X_col == np.array(False), X_col == np.array(True)) or something like that
+#  - strip leading and trailing spaces when attempting to convert to float BUT NOT FOR STRING CATEGORICALS!
+#  - def convert_float_category_str(vals):
+#        vals = vals.astype(np.float64, copy=False)
+#        integerizable = np.logical_and(vals == np.floor(vals), vals.abs() <= THE_MAX_FLOAT)
+#        integers = vals[integerizable]
+#        floats = vals[~integerizable]
+#        integers = integers.astype(np.int64).astype(np.unicode_)
+#        floats = integers.astype(np.unicode_) # or perhaps shuttle it to C++
+#        objs = np.empty(len(vals), dtype=np.object)
+#        np.place(objs, integerizable, integers)
+#        np.place(objs, ~integerizable, floats)
+#        vals = objs.astype(np.unicode_)
+#        return vals
+# - add support for a "ordinal_fast" and "nominal_fast".  We would accept these in feature_types as
+#   a dict of (int/float -> string) for 'ordinal_fast', and (string -> int/float) for 'nominal_fast'
+#   the we'd write our feature_types_out values as "ordinal_fast" and "nominal_fast" and we'd exepct
+#   integers in whatever evaluation format we got.  This would allow us to accept a float64 numpy array
+#   and have inside that nominal/ordinal/continuous/missing values that would be highly compressed.  Both of these
+#   would have restriction in that the numbers would have to be contiguous (maybe allowing for compression??) and
+#   would start from 1, with 0 as reserved for missing values.  A big issues is that with this encoding, the 
+#   system on which we do predict needs to also encode them as integers and they have no flexibility to change
+#   that, except perhaps they could edit the model to change from 'nominal_fast' to 'nominal'
+#   { "Canada" : 1, "Japan" : 2, "Seychelles" : 3} => string to int mapping -> nominals
+#   { 1: "low", 2: "medium", 3: "high" } => int to object(string) mapping -> ordinals
+#   We still record these as ["low", "medium", "high"] and ["Canada", "Japan", "Seychelles"] and we use the
+#   feature type value to know that these are "ordinal_fast" and "nominal_fast"
+
+
+# FUTURE TODOS in our callers and in JSON:
+# - look into ISO 6093:1985 -> https://www.titanwolf.org/Network/q/4d680399-6711-4742-9900-74a42ad9f5d7/y
+# - support "category compression" where we take a number like 10 and compress any categories together that
+#   have less than that number of samples.  Internally, this works well for the prior_categories parameter since
+#   we can have multiple strings map to identical numbers, so "low" and "medium" can be groups and separate from high
+#   with {"low": 1, "medium": 1, "high":2} and in JSON we can record these as [["low", "medium"], "high"]
+#   We support different category compressions for pairs or even individual features since we allow
+#   separate category definitios per pair axis.  Our unify_columns generator can support these by extracting the
+#   raw data once and then applying different category dictionaries to the raw data and then yielding those
+#   the caller to the generator can quickly determine which categories we're responding to using the pointer id(..)
+#   comparisons without examining all the internal dictionary definitions, and we can minimize
+#   work done by having a single object with a single id(..) pointer that is shared between prior_categories objects
+#   if they are identical at model load time.
+# - if we recieve an unknown float64 value in a 'nominal' or 'ordinal', then check if all the categorical
+#   value strings are convertible to float64.  If that's the case then find the mid-point between the categories
+#   after they are converted to strings and create a pseudo-continuous value of the feature and figure out where
+#   the previously unseen float64 should go.  WE do need to sort the category strings by float64, but we don't
+#   to to compute the split points because we can just do a binary search against the categories after they are
+#   converted to floats and then look at the distance between the upper and lower category and choose the one
+#   that is closest, and choose the upper one if the distance is equal since then the cut would be on the value
+#   and we use lower bound semantics (where the value gets into the upper bin if it's exactly the cut value)
+# - eventually, we'll want to have an EBMData data frame that'll store just
+#   floats and integers and convert strings to integers on the fly as data is added
+#   AND more importantly, you could create this EBMData with a reference to a model
+#   and then you could populate it with the correct integer mapping, so "low", "medium", "high"
+#   get populated internally as 1, 2, 3 IDENTICALLY to the model from which the
+#   EBMData frame was created from.  If we get a dataframe from anywhere else then
+#   we can't be confident the mapping is identical, and we need to use a dictionary
+#   of some kind, either from string to integer or integer to integer to do the mapping
+#   so having our own dataframe makes it possible to have faster prediction scenarios
+#   Unfortunately, taking a Pandas dataframe as input doesn't allow us to escape the hashtable
+#   step, so whehter we get strings or integers is kind of similar in terms of processing speed
+#   although hashing strings is slower.
+# - the EBMData frame should be constructable by itself without a model reference if it's going to 
+#   be used to train a model, so we sort of have 2 states:
+#   - 1: no model reference, convert strings to integers using hashes on the fly
+#   - 2: model reference.  Use the model's dictionary mapping initially, but allow new strings or integers
+#     to be added as necessary, but anything below what the model knows about we map diretly to the right integers
+# - we should create post-model modification routines so someone could construct an integer based
+#   ordinal/categorical and build their model and evaluate it efficiently, BUT when they want
+#   to view the model they can replace the "1", "2", "3" values with "low", "medium", "high" for graphing
+
+
+
+
+# NOTES:
+# - IMPORTANT INFO FOR BELOW: All newer hardware (including all Intel processors) use the IEEE-754 floating point
+#   standard when encoding floating point numbers.  In IEEE-754, smaller whole integers have perfect representations 
+#   in float64 representation.  Float64 looses the ability to distinquish between integers though above the number 
+#   9007199254740991. 9007199254740992 and 9007199254740993 both become 9007199254740992 when converted to float64 
+#   and back to ints.  All int32 and uint32 values have perfect float64 representation, but there are collisions
+#   for int64 and uint64 values above these high numbers.
+# - a desirable property for EBM models is that we can serialize them and evaluate them in different 
+#   programming languages like C++, R, JavaScript, etc
+# - ideally, we'd have just 1 serialization format, and JSON is a good choice as that format since we can then
+#   load models into JavaScript easily, and it's also well supported accross other languages as well.
+# - JSON also has the benefit that it's human readable, which is important for an intelligible model.
+# - JSON and JavaScript have fairly limited support for data types.  Only strings and float64 numbers are recognized.
+#   There are no integer datatypes in JavaScript or JSON.  This works for us though since we can use strings to 
+#   encode nominals/ordinals, and float64 values to define 'continuous' cut points.
+# - 'continuous' features should always be converted to float64 before discretization because:
+#   - float64 is more universal accross programming languages.  Python's float type is a float64.  R only supports
+#     float64.  JavaScript is only float64, etc.  GPUs are the excpetion where only float32 are sometimes supported
+#     but we only do discretization at the injestion point before any GPUs get used, so that isn't a concern.
+#   - our model definition in JSON is exclusively float64, and we don't to add complexity to indicate if a number
+#     is a float64 or float32, and even then what would we do with a float32 in JavaScript?
+#   - float64 continuous values gives us perfect separation and conversion of float32 values, which isn't true 
+#     for the inverse
+#   - The long double (float80) equivalent is pretty much dead and new hardware doesn't support it.  In the off
+#     chance someone has data with this type then we loose some precision and some values which might have been
+#     separable will be lumped together, but for continuous values the cut points are somewhat arbitary anyways, so
+#     this is acceptable.
+#   - Some big int64 or uint64 values collide when converting to float64 for numbers above 9007199254740991, 
+#     so we loose the ability to distinquish them, but like for float80 values 
+#     this loss in precision is acceptable since continuous features by nature group similar values together.  
+#     The problem is worse for float32, so float64 is better in this regard.
+# - 'nominal' and 'ordinal' features are pretty compatible between languages when presented to us as strings
+#   but the caller can specify that integer/boolean/float values should be treated as 'nominal'/'ordinal' and 
+#   then things become tricky for a number of reasons:
+#   - it's pretty easy in python and in other languages to silently convert integers to floats.  Let's say 
+#     we have a categorical where the possible values are 1, 2, 3, and 4.1, but 4.1 is very unlikely and might
+#     occur zero times in any particular dataset.  If during training our unique values are np.array([1, 2, 3]), 
+#     but during predict time let's say we observe np.array([1, 2, 3, 4.1]).  Python will silently convert these to 
+#     floats resulting in np.array([1.0, 2.0, 3.0, 4.1]), and then when we convert to strings we get 
+#     ["1.0", "2.0", "3.0", "4.1"] instead of our original categories of ["1", "2", "3"], so now none of our 
+#     categories match.  This would be a very easy mistake to make and would result in a hard to diagnose bug.
+#     A solution to this problem of silently converting integers to floats would be to change our text conversion
+#     such that floats which are whole numbers are converted to integers in text.  So then we'd get
+#     ["1", "2", "3", "4.1"] as our categories.  We can do this efficiently in python and in many other languages
+#     by checking if floor(x) == x for float64 values.  I think it's also nicer visually in graphs of categoricals
+#     that any numbers are shown as integers when possible
+#   - another benefit of making whole number floats as integers is that integer to string conversions are relatively
+#     easy to do cross-language, but floats are almost never converted to identical strings the same way across 
+#     languages since there are many legal conversions. 
+#     "33.3", "33.299999999999997", "3.3e1", "3.3e+01" are all legal text representations for the float value of 33.3
+#   - we have an issue in that all numbers above 9007199254740991 (and in fact some numbers below that) will 
+#     be equal to their floor, so will appear to be whole numbers.  We don't want 1.0e300 to be converted 
+#     to an integer, so we need some kind of maximum value above which we change to floating point representation
+#     Since integers don't exist in JavaScript, we can't really represent all numbers above 9007199254740991
+#     with unique categoricals, so we can't have truely cross-platform integers above that value, so it makes
+#     sense for us to make all whole numbers equal to or less than 9007199254740991 integers, and any number
+#     above that point as a floating point.  This has the disadvantage that some integers above 9007199254740991
+#     will have the same categorical strings and be non-separable, but having some collisions in extreme values
+#     is probably better than the alternative of getting different categorical strings in different programming
+#     languages where integers do not exist.  By making all numbers larger than 9007199254740991 as floating
+#     point values, the caller will at least see that we're using exponential float representations instead of
+#     integers, so although they may not understand why we switch to float representation above 9007199254740991
+#     it will at least be apparent what is happening so they can correct the issues by converting to strings themselves.
+#   - The only way we could guarantee that identical float64 values in different programming languages generate
+#     the same text would be if we implemented a float to text converter in C++ (the standard library provides no
+#     cross platform guarantees), and if we sent our floating point values into C++ for conversion.  This is possible
+#     to do because we only care about performance during predict time for this converstion to strings, and at predict
+#     time we already know if a feature is nominal/ordinal/continuous, and presumably there aren't too many
+#     categories because otherwise the feature wouldn't be very useful, so we can pass the relatively few floating
+#     point values into C++ and get back a single string separated by spaces of the text conversions.
+#   - if we're presented with an array of np.object_, we can't give a guarantee that unique inputs will generate unique
+#     categories since the caller could present us with int(0) and "0", or some object type who's __str__ function
+#     generates a "0".  We can't obviously support generalized object types when we serialize to JSON, or any
+#     other cross-language model serialization format.
+#   - here's an interesting conundrum.  np.float64(np.float32("1.1")) != np.float64("1.1").  Also,
+#     np.float64(np.float32(1.1)) gives "1.100000023841858".  The problem here is that the float32 converter finds 
+#     the float32 value that is closest to 1.1.  That value is a float though so if you convert that to a float64
+#     value all the lower mantissa bits are zeros in the float64 value.  If you take the string "1.1" and convert
+#     it to float64 though the converter will find the closest float64 value where the text after the 1.1... isn't
+#     required for roundtripping.  That float64 will have non-zero bits in the lower mantissa where the float32
+#     value for "1.1" does not, so they are not equal.  This is a problem because if we build an EBM model in one
+#     language with a float32 and in annother language with a float64 that is the same value we expect them to have
+#     the same nominal or ordinal string, but they don't.  In the language with the float32 value we get "1.1"
+#     and in the language with the float64 we get "1.100000023841858" and they don't match.  The solution is to 
+#     convert all float32 values to float64 in all languages so that we get "1.100000023841858" in both.  This feels
+#     odd since str(my_float32) might give "1.1" so it'll be confusing to the caller, but at least we'll get
+#     consistent results.  I think we need to make the assumption that the caller has the same binary float
+#     represetation in both langauges.  If that's true then any errors are caused by the caller really since
+#     they are presenting slightly different data in both languages.  They should be able to resolve it by using
+#     float64 everywhere which should be available in all mainstream languages, unlike float32.
+#   - other double to text and text to double:
+#     https://github.com/google/double-conversion/blob/master/LICENSE -> BSD-3
+#     https://stackoverflow.com/questions/28494758/how-does-javascript-print-0-1-with-such-accuracy -> https://www.cs.tufts.edu/~nr/cs257/archive/florian-loitsch/printf.pdf
+#     https://github.com/juj/MathGeoLib/blob/master/src/Math/grisu3.c -> ?
+#     https://github.com/dvidelabs/flatcc/blob/master/external/grisu3/grisu3_print.h -> Apache 2.0
+#     https://github.com/dvidelabs/flatcc/tree/master/external/grisu3
+#     https://www.ryanjuckett.com/printing-floating-point-numbers/
+#     https://github.com/catboost/catboost/blob/ff34a3aadeb2e31e573519b4371a252ff5e5f209/contrib/python/numpy/py3/numpy/core/src/multiarray/dragon4.h
+#     Apparently Numpy has a copy of Ryan Juckett's code liceded in MIT instead of Zlib license
+#     YES!  ->   float to string in MIT license: 
+#     https://github.com/numpy/numpy/blob/3de252be1215c0f9bc0a2f5c3aebdd7ffc86e410/numpy/core/src/multiarray/dragon4.h
+#     https://github.com/numpy/numpy/blob/3de252be1215c0f9bc0a2f5c3aebdd7ffc86e410/numpy/core/src/multiarray/dragon4.c
+#   - Python uses the gold standard for float/string conversion: http://www.netlib.org/fp/dtoa.c
+#     https://github.com/python/cpython/blob/main/Python/dtoa.c
+#     This code outputs the shortest possible string that uses IEEE 754 "exact rounding" using bankers' rounding 
+#     which also guarantees rountrips precicely.  This is great for interpretability.  Unfortunatetly this means
+#     that we'll need code in the other languages that generates the same strings and for converting back to floats.
+#     Fortunately the python C++ code is available and we can use that to get the exact same conversions and make
+#     that available in other languages to call into the C++ to harmonize floating point formats.
+#     Python is our premier language and has poor performance if you try to do operations in loops, so we'll
+#     force all the other platforms to conform to python specifications.
+#   - when we recieve bool values in python we can probably keep the python string representations of "False" and "True".
+#     Unlike float64 values, there are just 2 possible bool values and we express them in strings, so a JavaScript
+#     implementation can express them as strings, and with just 2 possible values there are no issues with different
+#     hard to standardize string formats.  I like giving the user a little more context of the underlying value in
+#     the graphs, and "True", "False" are a bit nicer than "false" and "true" or "FALSE" and "TRUE"
+#   - None -> array.astype converts this to 'None', but we filter out missing values so these should go away
+#   - np.nan -> array.astype converts this to 'nan', but we filter out missing values so these should go away
+#   - If our caller gives us strings [" a ", "a"] we will consider those to be two separate categories since the caller 
+#     could have some requirement to keep these as separate categories.  Eliminating the whitespace makes it impossible
+#     for our caller to differentiate these.  If the caller wants these to be the same string then they can preprocess this
+#     aspect themselves.
+# - np.unique has some issues.  It doesn't like None values.  It considers int(4) and float(4.0) to be identical
+#   it sucks in performance with np.object_ arrays since it uses python comparers.  It doesn't call
+#   __str__ on objects, so we get collisions if the object later converts to a string that is already a category.
+#   If there are many np.nan values, then the uniques array has many np.nan entries!  We've fixed all of these 
+#   by filtering out None and np.nan values, and we've converted objects to a strong types
+# - If we aren't given a feature type and we get data that is just [0, 1], should we treat this as
+#   'nominal' or a 'continuous' value with a split at 0.5?  We'd rather our graphs be bar graphs showing 
+#   a bar for 0 and annother bar for 1, which implies nominal, but this has a problem if the
+#   feature can rarely be something like 1.1.  Maybe we just never saw a 1.1 in our data even though
+#   it can occur.  If this happens then a string label of 1.1 doesn't match '1' and we fail.  If
+#   we treated data this way then it wouldn't really be legal for production systems to not
+#   specify one of the feature types since an unlikely occurence could produce a nominal type
+#   from a continuous type and then fail at predict time.  Our solution is if we see new categories at predict time
+#   to check if the new categories are convertible to float64 and if that's true and if all the other prior categories
+#   that we saw during fit time are also convertible to float64, then we are allowed to switch to treating them as continuous
+#   during predict time.  This way we get to have nice bar graphs of '0' and '1', but we won't generate an error
+#   if we see 1.1 at predict time since it gets put into the [0.5 +inf) bin.  We treat
+#   [0, 1, 2] and [0, 1, 9] and [1.1, 2.2] the same way and have a threshold of categories below which we treat these
+#   as cateogoricals during training.
+# - If we recieve pure floats from the caller we'll either generate a continuous feature_type and any differences
+#   in the floating point cut points should be fairly minor.  Alternatively, we'll get a 'nominal' which is 
+#   also ok since our floating point strings won't match the ones at fit time and then they'll be converted to 
+#   continuous values and very likely end up in the same bin as the original floats as they'll be very close in value
+#   since we soft-convert nominals with all float64 values into continuous values when necessary/possible
+# - Let's say we get the strings ['0', '00', '0.0', '0.0e10'].  If the caller forced this as a nominal we'd have
+#   4 values, but if we decided that this should be a 'continuous_auto' value then we'd be converting this to only 
+#   one floating point value, which makes it useless.  What this is highlighting is that our unique cutoff point
+#   where we choose whether a feature should be 'nominal_auto' or 'continuous_auto' should be decided by the number
+#   of unique float64 values that the strings convert into.  Hopefully different platforms get the same floating point
+#   values based on string inputs, which is annother reason why we should have a consistent C++ implementation.
+# - we use the terms ordinal and nominal to indicate different types of categoricals 
+#   (https://en.wikipedia.org/wiki/Ordinal_data).  A lot of ML pacakges use categorical instead of the more 
+#   specific term nominal since they don't support ordinals (requiring ordinal data to be handled as 
+#   continuous/numerical).  We however, being an interpretable package, want to have a built in oridinal 
+#   feature type so that we can display "low", "medium", "high" instead of 1, 2, 3 on graphs, so
+#   it makes sense for us to make the distinction of having nominal and ordinal features which are both categoricals
+#   This also aligns nicely with the pandas.CategoricalDtype which is used to specify both ordinals and nominals.
+
+
+
+
+
+
+
 _disallowed_types = frozenset([complex, list, tuple, range, bytes, bytearray, memoryview, set, frozenset, dict, Ellipsis, np.csingle, np.complex_, np.clongfloat, np.void])
 _none_list = [None]
 _none_ndarray = np.array(None)
@@ -240,6 +511,7 @@ def _encode_categorical_existing(X_col, nonmissings, categories):
     # called under: predict
 
     # TODO: add special case handling if there is only 1 sample to make that faster
+    # if we have just 1 sample, we can avoid making the mapping below
 
     if issubclass(X_col.dtype.type, np.floating):
         missings = np.isnan(X_col)
@@ -348,6 +620,7 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
     # called under: predict
 
     # TODO: add special case handling if there is only 1 sample to make that faster
+    # if we have just 1 sample, we can avoid making the mapping below
 
     mapping = np.fromiter((categories.get(val, -1) for val in pd_categories), dtype=np.int64, count=len(pd_categories))
 
@@ -381,8 +654,6 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
 
 def _process_continuous(X_col, nonmissings):
     # called under: fit or predict
-
-    # TODO: add special case handling if there is only 1 sample to make that faster
 
     if issubclass(X_col.dtype.type, np.floating):
         X_col = X_col.astype(dtype=np.float64, copy=False)
@@ -723,6 +994,13 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
             col_map = np.empty(len(feature_types), dtype=np.int64)
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
+        # TODO: I'm not sure that simply checking X.flags.c_contiguous handles all the situations that we'd want
+        # to know about some data.  If we recieved a transposed array that was C ordered how would that look?
+        # so read up on this more
+        # https://numpy.org/doc/stable/reference/arrays.ndarray.html#internal-memory-layout-of-an-ndarray
+        # https://numpy.org/doc/stable/reference/arrays.interface.html
+        # memoryview 
+
         # TODO: create a C++ transposer that takes the stride length between items, so we can pass in 1 for bytes
         # 2 for int16, 4 for int32, 8 for int64 and special case those sizes to be fast.  We can then also transpose
         # np.object_ and np.unicode by passing in whatever lengths those are, which we can get from numpy reliably
@@ -821,7 +1099,7 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
         _log.error(msg)
         raise ValueError(msg)
 
-def unify_feature_names(X, feature_names=None, feature_types=None):
+def unify_feature_names(X, feature_names_in=None, feature_types_in=None):
     # called under: fit
 
     if isinstance(X, np.ndarray): # this includes ma.masked_array
@@ -844,31 +1122,31 @@ def unify_feature_names(X, feature_names=None, feature_types=None):
         _log.error(msg)
         raise ValueError(msg)
 
-    n_ignored = 0 if feature_types is None else feature_types.count('ignore')
+    n_ignored = 0 if feature_types_in is None else feature_types_in.count('ignore')
 
-    if feature_names is None:
-        if feature_types is not None:
-            if len(feature_types) != n_cols and len(feature_types) != n_cols + n_ignored:
-                msg = f"There are {len(feature_types)} feature_types, but X has {n_cols} columns"
+    if feature_names_in is None:
+        if feature_types_in is not None:
+            if len(feature_types_in) != n_cols and len(feature_types_in) != n_cols + n_ignored:
+                msg = f"There are {len(feature_types_in)} feature_types, but X has {n_cols} columns"
                 _log.error(msg)
                 raise ValueError(msg)
-            n_cols = len(feature_types)
+            n_cols = len(feature_types_in)
 
         feature_names_out = X_names
         if X_names is None:
             feature_names_out = []
             # this isn't used other than to indicate new names need to be created
-            feature_types = ['ignore'] * n_cols 
+            feature_types_in = ['ignore'] * n_cols 
     else:
-        n_final = len(feature_names)
-        if feature_types is not None:
-            n_final = len(feature_types)
-            if n_final != len(feature_names) and n_final != len(feature_names) + n_ignored:
-                msg = f"There are {n_final} feature_types and {len(feature_names)} feature_names which is a mismatch"
+        n_final = len(feature_names_in)
+        if feature_types_in is not None:
+            n_final = len(feature_types_in)
+            if n_final != len(feature_names_in) and n_final != len(feature_names_in) + n_ignored:
+                msg = f"There are {n_final} feature_types and {len(feature_names_in)} feature_names which is a mismatch"
                 _log.error(msg)
                 raise ValueError(msg)
 
-        feature_names_out = list(map(str, feature_names))
+        feature_names_out = list(map(str, feature_names_in))
 
         if X_names is None:
             # ok, need to use position indexing
@@ -879,8 +1157,8 @@ def unify_feature_names(X, feature_names=None, feature_types=None):
         else:
             # we might be indexing by name
             names_used = feature_names_out
-            if feature_types is not None and len(feature_names_out) == len(feature_types):
-                names_used = [feature_name_out for feature_name_out, feature_type in zip(feature_names_out, feature_types) if feature_type != 'ignore']
+            if feature_types_in is not None and len(feature_names_out) == len(feature_types_in):
+                names_used = [feature_name_out for feature_name_out, feature_type_in in zip(feature_names_out, feature_types_in) if feature_type_in != 'ignore']
 
             X_names_unique = set(name for name, n_count in Counter(X_names).items() if n_count == 1)
             if any(name not in X_names_unique for name in names_used):
@@ -890,9 +1168,9 @@ def unify_feature_names(X, feature_names=None, feature_types=None):
                     _log.error(msg)
                     raise ValueError(msg)
 
-    if feature_types is not None:
-        if len(feature_types) == len(feature_names_out):
-            if len(feature_names_out) - n_ignored != len(set(feature_name_out for feature_name_out, feature_type in zip(feature_names_out, feature_types) if feature_type != 'ignore')):
+    if feature_types_in is not None:
+        if len(feature_types_in) == len(feature_names_out):
+            if len(feature_names_out) - n_ignored != len(set(feature_name_out for feature_name_out, feature_type_in in zip(feature_names_out, feature_types_in) if feature_type_in != 'ignore')):
                 msg = "cannot have duplicate feature names"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -904,8 +1182,8 @@ def unify_feature_names(X, feature_names=None, feature_types=None):
         names = []
         names_idx = 0
         feature_idx = 0
-        for feature_type in feature_types:
-            if feature_type == 'ignore':
+        for feature_type_in in feature_types_in:
+            if feature_type_in == 'ignore':
                 while True:
                     # non-devs looking at our models will like 1 indexing better than 0 indexing
                     # give 4 digits to the number so that anything below 9999 gets sorted in the right order in string format
@@ -1148,7 +1426,7 @@ def _cut_continuous(native, X_col, processing, binning, bins, min_samples_bin):
 
     return cuts
 
-def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names, feature_types, binning='quantile', min_unique_continuous=4, min_samples_bin=1):
+def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_in, feature_types_in, binning='quantile', min_unique_continuous=4, min_samples_bin=1):
     # called under: fit
 
     _log.info("Creating native dataset")
@@ -1197,7 +1475,7 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names,
         classes = None
         y = y.astype(np.float64, copy=False)
 
-    feature_names_out = unify_feature_names(X, feature_names, feature_types)
+    feature_names_out = unify_feature_names(X, feature_names_in, feature_types_in)
 
     native = Native.get_native_singleton()
     n_bytes = native.size_data_set_header(len(feature_idxs), 1, 1)
@@ -1205,7 +1483,7 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names,
     feature_types_out = _none_list * len(feature_names_out)
     bins_out = []
 
-    for bins, (feature_idx, feature_type_out, X_col, categories, bad) in zip(bins_in, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types, min_unique_continuous, False)):
+    for bins, (feature_idx, feature_type_out, X_col, categories, bad) in zip(bins_in, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
@@ -1215,8 +1493,6 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names,
             raise ValueError(f"bins was {bins}, but must be 2 or higher. One bin for missing, and at least one more for the non-missing values.")
 
         feature_types_out[feature_idx] = feature_type_out
-        feature_type = None if feature_types is None else feature_types[feature_idx]
-
         if categories is None:
             # continuous feature
             if bad is not None:
@@ -1224,7 +1500,8 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names,
                 _log.error(msg)
                 raise ValueError(msg)
 
-            cuts = _cut_continuous(native, X_col, feature_type, binning, bins, min_samples_bin)
+            feature_type_in = None if feature_types_in is None else feature_types_in[feature_idx]
+            cuts = _cut_continuous(native, X_col, feature_type_in, binning, bins, min_samples_bin)
             X_col = native.discretize(X_col, cuts)
             bins_out.append(cuts)
             n_bins = len(cuts) + 2
@@ -1249,7 +1526,7 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names,
 
     native.fill_data_set_header(len(feature_idxs), 1, 1, n_bytes, shared_dataset)
 
-    for bins, (feature_idx, feature_type_out, X_col, categories, _) in zip(bins_out, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types, min_unique_continuous, False)):
+    for bins, (feature_idx, feature_type_out, X_col, categories, _) in zip(bins_out, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
         if n_samples != len(X_col):
             # re-check that that number of samples is identical since iterators can be used up by looking at them
             # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
@@ -1258,7 +1535,6 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names,
             _log.error(msg)
             raise ValueError(msg)
 
-        feature_type = None if feature_types is None else feature_types[feature_idx]
         if categories is None:
             # continuous feature
             X_col = native.discretize(X_col, bins)
@@ -1267,13 +1543,6 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names,
             # categorical feature
             n_bins = len(categories) + 1
 
-        # TODO: we're writing these out currently in any order.  We need to include an integer indicating which
-        # feature_idx we think a feature is in our higher language and we should use those when referring to features
-        # accross the C++ interface
-
-        # We're writing our feature data out in any random order that we get it.  This is fine in terms of performance
-        # since the booster has a chance to re-order them again when it constructs the boosting specific dataframe.  
-        # For interactions we'll be examining many combinations so the order in our C++ dataframe won't really matter.
         native.fill_feature(feature_type_out == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
 
     native.fill_weight(w, n_bytes, shared_dataset)
