@@ -7,6 +7,7 @@ import numpy.ma as ma
 import pandas as pd
 import scipy as sp
 
+from collections import namedtuple
 from itertools import repeat
 
 from ..bin import *
@@ -2328,66 +2329,91 @@ def test_score_terms():
     feature_names_out = ["f1", "99", "f3"]
     feature_types_out = ['nominal', 'nominal', 'continuous']
 
-    shared_categores = {"a": 1}
+    shared_categores = {"a": 1} # "b" is unknown category
     shared_cuts = np.array([8.5], dtype=np.float64)
+
+    TestPreprocessor = namedtuple('TestPreprocessor', 'bins_')
+
+    preprocessor = TestPreprocessor([{"a": 1, "b": 2}, {"1": 1, "2": 2, "3": 3}, shared_cuts])
+    # "b" is unknown category
+    # we combine "2" and "3" into one category!
+    pair_preprocessor = TestPreprocessor([shared_categores, {"1": 1, "2": 2, "3": 2}, shared_cuts])
+    # collapse all our categories to keep the tensor small for testing
+    higher_preprocessor = TestPreprocessor([shared_categores, {"1": 1, "2": 1, "3": 1}, np.array([], dtype=np.float64)])
 
     term0 = {}
     term0['features'] = [0]
-    term0['bins'] = [{"a": 1, "b": 2}]
     term0['scores'] = np.array([0.1, 0.2, 0.3], dtype=np.float64)
 
     term1 = {}
-    term1['features'] = [0]
-    term1['bins'] = [shared_categores] # "b" is unknown category
-    term1['scores'] = np.array([0.1, 0.2, 0.3], dtype=np.float64)
+    term1['features'] = [1]
+    term1['scores'] = np.array([0.01, 0.02, 0.03, 0.04], dtype=np.float64)
 
     term2 = {}
-    term2['features'] = [1]
-    term2['bins'] = [{"1": 1, "2": 2, "3": 3}]
-    term2['scores'] = np.array([0.01, 0.02, 0.03, 0.4], dtype=np.float64)
+    term2['features'] = [2]
+    term2['scores'] = np.array([0.01, 0.02, 0.03], dtype=np.float64)
 
     term3 = {}
-    term3['features'] = [1]
-    term3['bins'] = [{"1": 1, "2": 2, "3": 2}] # we combine "2" and "3" into one category!
-    term3['scores'] = np.array([0.01, 0.02, 0.03], dtype=np.float64)
+    term3['features'] = [0, 1]
+    term3['scores'] = np.array([[0.001, 0.002, 0.003], [0.004, 0.005, 0.006]], dtype=np.float64)
 
     term4 = {}
-    term4['features'] = [2]
-    term4['bins'] = [shared_cuts]
-    term4['scores'] = np.array([0.01, 0.02, 0.03], dtype=np.float64)
+    term4['features'] = [0, 2]
+    term4['scores'] = np.array([[0.001, 0.002, 0.003], [0.004, 0.005, 0.006]], dtype=np.float64)
 
     term5 = {}
-    term5['features'] = [0, 2]
-    term5['bins'] = [{"a": 1, "b": 2}, shared_cuts]
-    term5['scores'] = np.array([[0.001, 0.002, 0.003], [0.004, 0.005, 0.006], [0.007, 0.008, 0.009]], dtype=np.float64)
+    term5['features'] = [0, 1, 2]
+    term5['scores'] = np.array([[[0.001, 0.002], [0.003, 0.004]], [[0.005, 0.006], [0.007, 0.008]]], dtype=np.float64)
 
-    term6 = {}
-    term6['features'] = [0, 1, 2]
-    # collapse all our categories to keep the tensor small for testing
-    term6['bins'] = [shared_categores, {"1": 1, "2": 1, "3": 1}, np.array([], dtype=np.float64)] # "b" will be unknown
-    term6['scores'] = np.array([[[0.001, 0.002], [0.003, 0.004]], [[0.005, 0.006], [0.007, 0.008]]], dtype=np.float64)
+    terms = [term0, term1, term2, term3, term4, term5]
 
-    terms = [term0, term1, term2, term3, term4, term5, term6]
+    result = list(score_terms(X, feature_names_out, feature_types_out, terms, preprocessor, pair_preprocessor, higher_preprocessor))
 
-    result = list(score_terms(X, feature_names_out, feature_types_out, terms))
-    assert(result[1][1][0] != 0)
-    assert(result[1][1][1] == 0) # "b" is unknown
-    assert(result[1][1][2] != 0)
-    assert(result[1][1][3] != 0)
+    assert(result[0][1][0] == 0.2)
+    assert(result[0][1][1] == 0.3)
+    assert(result[0][1][2] == 0.2)
+    assert(result[0][1][3] == 0.1)
 
-    assert(result[6][1][0] != 0)
-    assert(result[6][1][1] == 0) # "b" is unknown
-    assert(result[6][1][2] != 0)
-    assert(result[6][1][3] == 0) # "BAD_CONTINUOUS" is unknown
+    assert(result[1][1][0] == 0.02)
+    assert(result[1][1][1] == 0.03)
+    assert(result[1][1][2] == 0.03)
+    assert(result[1][1][3] == 0.04)
 
-def deduplicate_bins(terms):
-    term0 = {'bins': [{"a": 1, "b": 2}, np.array([1, 2, 3], dtype=np.float64)]}
-    term1 = {'bins': [{"a": 2, "b": 1}, np.array([1, 3, 2], dtype=np.float64)]}
-    term2 = {'bins': [np.array([1, 2, 3], dtype=np.float64), {"b": 2, "a": 1}]}
-    terms = [term0, term1, term2]
-    deduplicate_bins(terms)
-    assert(id(term0['bins'][0]) != id(term1['bins'][0]))
-    assert(id(term0['bins'][1]) != id(term1['bins'][1]))
-    assert(id(term0['bins'][0]) == id(term2['bins'][1]))
-    assert(id(term0['bins'][1]) == id(term2['bins'][0]))
+    assert(result[2][1][0] == 0.01)
+    assert(result[2][1][1] == 0.02)
+    assert(result[2][1][2] == 0.03)
+    assert(result[2][1][3] == 0)
 
+    # term4 finishes before term3 since shared_cuts allows the 3rd feature to be completed first
+    assert(result[4][1][0] == 0.005)
+    assert(result[4][1][1] == 0)
+    assert(result[4][1][2] == 0.006)
+    assert(result[4][1][3] == 0.003)
+
+    # term4 finishes before term3 since shared_cuts allows the 3rd feature to be completed first
+    assert(result[3][1][0] == 0.004)
+    assert(result[3][1][1] == 0)
+    assert(result[3][1][2] == 0.006)
+    assert(result[3][1][3] == 0)
+
+    assert(result[5][1][0] == 0.007)
+    assert(result[5][1][1] == 0)
+    assert(result[5][1][2] == 0.008)
+    assert(result[5][1][3] == 0)
+
+def test_deduplicate_bins():
+    TestPreprocessor = namedtuple('TestPreprocessor', 'bins_')
+
+    preprocessor =        TestPreprocessor([{"a": 1, "b": 2}, np.array([1, 2, 3], dtype=np.float64)])
+    pair_preprocessor =   TestPreprocessor([{"a": 2, "b": 1}, np.array([1, 3, 2], dtype=np.float64)])
+    higher_preprocessor = TestPreprocessor([{"b": 2, "a": 1}, np.array([1, 2, 3], dtype=np.float64)])
+
+    deduplicate_bins(preprocessor, pair_preprocessor, higher_preprocessor)
+
+    assert(id(preprocessor.bins_[0]) != id(pair_preprocessor.bins_[0]))
+    assert(id(preprocessor.bins_[0]) == id(higher_preprocessor.bins_[0]))
+    assert(id(pair_preprocessor.bins_[0]) != id(higher_preprocessor.bins_[0]))
+
+    assert(id(preprocessor.bins_[1]) != id(pair_preprocessor.bins_[1]))
+    assert(id(preprocessor.bins_[1]) == id(higher_preprocessor.bins_[1]))
+    assert(id(pair_preprocessor.bins_[1]) != id(higher_preprocessor.bins_[1]))

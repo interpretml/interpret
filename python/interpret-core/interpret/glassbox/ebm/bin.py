@@ -1553,7 +1553,9 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_
 
     return shared_dataset, feature_names_out, feature_types_out, bins_out, classes
 
-def score_terms(X, feature_names_out, feature_types_out, terms):
+def score_terms(X, feature_names_out, feature_types_out, terms, *argv):
+    # *argv contains: preprocessor, pair_preprocessor, higher_preprocessor, etc..
+
     # called under: predict
 
     # prior to calling this function, call deduplicate_bins which will eliminate extra work in this function
@@ -1572,12 +1574,15 @@ def score_terms(X, feature_names_out, feature_types_out, terms):
     waiting = dict()
     for term in terms:
         features = term['features']
+        preprocessor = argv[-1] if len(argv) < len(features) else argv[len(features) - 1]
+
         # the last position holds the term object
         # the first len(features) items hold the binned data that we get back as it arrives
         # the middle len(features) items hold either "True" or None indicating if there are unknown categories we need to zero
         requirements = _none_list * (1 + 2 * len(features))
         requirements[-1] = term
-        for feature_idx, feature_bins in zip(features, term['bins']):
+        for feature_idx in features:
+            feature_bins = preprocessor.bins_[feature_idx]
             if isinstance(feature_bins, dict):
                 # categorical feature
                 request = (feature_idx, feature_bins)
@@ -1585,7 +1590,7 @@ def score_terms(X, feature_names_out, feature_types_out, terms):
             else:
                 # continuous feature
                 request = (feature_idx, None)
-                key = request
+                key = feature_idx
             waiting_list = waiting.get(key, None)
             if waiting_list is None:
                 requests.append(request)
@@ -1609,12 +1614,14 @@ def score_terms(X, feature_names_out, feature_types_out, terms):
                 bad = bad != _none_ndarray
 
             cuts_completed = dict()
-            for requirements in waiting[(column_feature_idx, None)]:
+            for requirements in waiting[column_feature_idx]:
                 term = requirements[-1]
                 if term is not None:
                     features = term['features']
+                    preprocessor = argv[-1] if len(argv) < len(features) else argv[len(features) - 1]
+                    cuts = preprocessor.bins_[column_feature_idx]
                     is_done = True
-                    for dimension_idx, term_feature_idx, cuts in zip(count(), features, term['bins']):
+                    for dimension_idx, term_feature_idx in enumerate(features):
                         if term_feature_idx == column_feature_idx:
                             discretized = cuts_completed.get(id(cuts), None)
                             if discretized is None:
@@ -1652,8 +1659,11 @@ def score_terms(X, feature_names_out, feature_types_out, terms):
                 if term is not None:
                     features = term['features']
                     is_done = True
-                    for dimension_idx, term_feature_idx, term_categories in zip(count(), features, term['bins']):
-                        if term_feature_idx == column_feature_idx and term_categories is column_categories:
+                    for dimension_idx, term_feature_idx in enumerate(features):
+                        if term_feature_idx == column_feature_idx:
+                            # "term_categories is column_categories" since any term in the waiting_list must have
+                            # one of it's elements match this (feature_idx, categories) index, and all items in this
+                            # term need to have the same categories since they came from the same preprocessor
                             requirements[dimension_idx] = X_col
                             if bad is not None:
                                 # indicate that we need to check for unknowns
@@ -1672,7 +1682,9 @@ def score_terms(X, feature_names_out, feature_types_out, terms):
                         requirements[:] = _none_list # clear references so that the garbage collector can free them
                         yield term, scores
 
-def deduplicate_bins(terms):
+def deduplicate_bins(*argv):
+    # *argv contains: preprocessor, pair_preprocessor, higher_preprocessor, etc..
+
     # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
     # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
     # use the id of the bins to identify feature data that was previously binned
@@ -1680,9 +1692,8 @@ def deduplicate_bins(terms):
     # TODO: use this function!
 
     uniques = dict()
-    for term in terms:
-        term_bins = term['bins']
-        for idx, feature_bins in enumerate(term_bins):
+    for preprocessor in argv:
+        for bins_idx, feature_bins in enumerate(preprocessor.bins_):
             if isinstance(feature_bins, dict):
                 key = frozenset(feature_bins.items())
             else:
@@ -1691,8 +1702,7 @@ def deduplicate_bins(terms):
             if existing is None:
                 uniques[key] = feature_bins
             else:
-                term_bins[idx] = feature_bins
+                preprocessor.bins_[bins_idx] = existing
 
 def unify_data2(X, y=None, feature_names=None, feature_types=None, missing_data_allowed=False):
     pass # TODO: do
-
