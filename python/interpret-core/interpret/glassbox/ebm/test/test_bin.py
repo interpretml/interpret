@@ -2367,7 +2367,7 @@ def test_score_terms():
 
     terms = [term0, term1, term2, term3, term4, term5]
 
-    result = list(score_terms(X, feature_names_out, feature_types_out, terms, preprocessor, pair_preprocessor, higher_preprocessor))
+    result = list(score_terms(X, feature_names_out, feature_types_out, terms, [preprocessor, pair_preprocessor, higher_preprocessor]))
 
     assert(result[0][1][0] == 0.2)
     assert(result[0][1][1] == 0.3)
@@ -2408,7 +2408,7 @@ def test_deduplicate_bins():
     pair_preprocessor =   TestPreprocessor([{"a": 2, "b": 1}, np.array([1, 3, 2], dtype=np.float64)])
     higher_preprocessor = TestPreprocessor([{"b": 2, "a": 1}, np.array([1, 2, 3], dtype=np.float64)])
 
-    deduplicate_bins(preprocessor, pair_preprocessor, higher_preprocessor)
+    deduplicate_bins([preprocessor, pair_preprocessor, higher_preprocessor])
 
     assert(id(preprocessor.bins_[0]) != id(pair_preprocessor.bins_[0]))
     assert(id(preprocessor.bins_[0]) == id(higher_preprocessor.bins_[0]))

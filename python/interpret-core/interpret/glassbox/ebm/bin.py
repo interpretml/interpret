@@ -8,6 +8,10 @@ import numpy as np
 import numpy.ma as ma
 
 from .internal import Native
+from sklearn.base import (
+    BaseEstimator,
+    TransformerMixin,
+)
 
 import logging
 _log = logging.getLogger(__name__)
@@ -955,7 +959,7 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
     X_col = _reshape_1D_if_possible(X_col)
     return _process_numpy_column(X_col, categories, feature_type, min_unique_continuous)
 
-def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique_continuous=4, go_fast=False):
+def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique_continuous=3, go_fast=False):
     # If the requests paramter contains a categories dictionary, then that same categories object is guaranteed to
     # be yielded back to the caller.  This guarantee can be used to rapidly identify which request is being 
     # yielded by using the id(categories) along with the feature_idx
@@ -1122,7 +1126,9 @@ def unify_feature_names(X, feature_names_in=None, feature_types_in=None):
         _log.error(msg)
         raise ValueError(msg)
 
-    n_ignored = 0 if feature_types_in is None else feature_types_in.count('ignore')
+    n_ignored = 0
+    if feature_types_in is not None:
+       n_ignored = sum(1 for feature_type_in in feature_types_in if feature_type_in == 'ignore')
 
     if feature_names_in is None:
         if feature_types_in is not None:
@@ -1205,7 +1211,7 @@ def unify_feature_names(X, feature_names_in=None, feature_types_in=None):
 
     return feature_names_out
 
-def clean_vector(vec, param_name):
+def clean_vector(vec, dtype, param_name):
     # called under: fit
 
     if isinstance(vec, ma.masked_array):
@@ -1225,7 +1231,7 @@ def clean_vector(vec, param_name):
             msg = f"{param_name} cannot contain missing values"
             _log.error(msg)
             raise ValueError(msg)
-        vec = vec.values.astype(dtype=vec.dtype.type, copy=False)
+        vec = vec.values.astype(dtype=dtype, copy=False)
     elif _pandas_installed and isinstance(vec, pd.DataFrame):
         if vec.shape[1] == 1:
             vec = vec.iloc[:, 0]
@@ -1234,21 +1240,23 @@ def clean_vector(vec, param_name):
                 msg = f"{param_name} cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
-            vec = vec.values.astype(dtype=vec.dtype.type, copy=False)
+            vec = vec.values.astype(dtype=dtype, copy=False)
         elif vec.shape[0] == 1:
-            vec = vec.astype(np.object_, copy=False).values.reshape(-1)
+            # transition to np.object_ first to detect any missing values
+            vec = vec.astype(np.object_, copy=False).values
         else:
             msg = f"{param_name} cannot be a multidimensional pandas.DataFrame"
             _log.error(msg)
             raise ValueError(msg)
     elif _scipy_installed and isinstance(vec, sp.sparse.spmatrix):
         if vec.shape[0] == 1 or vec.shape[1] == 1:
-            vec = vec.toarray().reshape(-1)
+            vec = vec.toarray()
         else:
             msg = f"{param_name} cannot be a multidimensional scipy.sparse.spmatrix"
             _log.error(msg)
             raise ValueError(msg)
     elif isinstance(vec, list) or isinstance(vec, tuple):
+        # transition to np.object_ first to detect any missing values
         vec = np.array(vec, dtype=np.object_)
     elif isinstance(vec, str):
         msg = f"{param_name} cannot be a single object"
@@ -1257,11 +1265,12 @@ def clean_vector(vec, param_name):
     else:
         try:
             vec = list(vec)
-            vec = np.array(vec, dtype=np.object_)
         except TypeError:
             msg = f"{param_name} cannot be a single object"
             _log.error(msg)
             raise ValueError(msg)
+        # transition to np.object_ first to detect any missing values
+        vec = np.array(vec, dtype=np.object_)
 
     vec = _reshape_1D_if_possible(vec)
 
@@ -1284,12 +1293,8 @@ def clean_vector(vec, param_name):
             msg = f"{param_name} cannot contain missing values"
             _log.error(msg)
             raise ValueError(msg)
-    elif issubclass(vec.dtype.type, np.void):
-        msg = f"{param_name} cannot be dtype=numpy.void"
-        _log.error(msg)
-        raise ValueError(msg)
 
-    return vec
+    return vec.astype(dtype, copy=False)
 
 def clean_X(X):
     # called under: fit or predict
@@ -1426,7 +1431,7 @@ def _cut_continuous(native, X_col, processing, binning, bins, min_samples_bin):
 
     return cuts
 
-def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_in, feature_types_in, binning='quantile', min_unique_continuous=4, min_samples_bin=1):
+def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_in, feature_types_in, binning='quantile', min_samples_bin=1, min_unique_continuous=3):
     # called under: fit
 
     _log.info("Creating native dataset")
@@ -1437,43 +1442,30 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_
         _log.error(msg)
         raise ValueError(msg)
 
-    y = clean_vector(y, "y")
+    if is_classification:
+        y = clean_vector(y, np.unicode_, "y")
+        # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
+        # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
+        # in two separate runs, which would flip the ordering of the classes within our score tensors.
+        classes, y = np.unique(y, return_inverse=True)
+    else:
+        y = clean_vector(y, np.float64, "y")
+        classes = None
+
     if n_samples != len(y):
         msg = f"X has {n_samples} samples and y has {len(y)} samples"
         _log.error(msg)
         raise ValueError(msg)
 
     if w is not None:
-        w = clean_vector(w, "sample_weight")
+        w = clean_vector(w, np.float64, "sample_weight")
         if n_samples != len(w):
             msg = f"X has {n_samples} samples and sample_weight has {len(w)} samples"
             _log.error(msg)
             raise ValueError(msg)
-        w = w.astype(np.float64, copy=False)
     else:
         # TODO: eliminate this eventually
         w = np.ones_like(y, dtype=np.float64)
-
-    if is_classification:
-        if y.dtype == np.object_:
-            y = y.astype(np.unicode_)
-
-        uniques, indexes = np.unique(y, return_inverse=True)
-        # we're assuming here that all homogenious numpy types generate unique strings
-        uniques_text_orginal = uniques.astype(np.unicode_, copy=False)
-        uniques_text = uniques_text_orginal.copy()
-
-        # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
-        # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
-        # in two separate runs, which would flip the ordering of the classes within our score tensors.
-        uniques_text.sort()
-        classes = dict(zip(uniques_text, count()))
-
-        indexes_remap = np.fromiter((classes[val] for val in uniques_text_orginal), dtype=np.int64, count=len(uniques_text_orginal))
-        y = indexes_remap[indexes]
-    else:
-        classes = None
-        y = y.astype(np.float64, copy=False)
 
     feature_names_out = unify_feature_names(X, feature_names_in, feature_types_in)
 
@@ -1507,12 +1499,13 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_
             n_bins = len(cuts) + 2
         else:
             # categorical feature
-            bins_out.append(categories)
-            n_bins = len(categories) + 1
             if bad is not None:
                 msg = f"Feature {feature_names_out[feature_idx]} has unrecognized ordinal values"
                 _log.error(msg)
                 raise ValueError(msg)
+
+            bins_out.append(categories)
+            n_bins = len(categories) + 1
 
         n_bytes += native.size_feature(feature_type_out == 'nominal', n_bins, X_col)
 
@@ -1553,8 +1546,8 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_
 
     return shared_dataset, feature_names_out, feature_types_out, bins_out, classes
 
-def score_terms(X, feature_names_out, feature_types_out, terms, *argv):
-    # *argv contains: preprocessor, pair_preprocessor, higher_preprocessor, etc..
+def score_terms(X, feature_names_out, feature_types_out, terms, preprocessors):
+    # *preprocessors contains: preprocessor, pair_preprocessor, higher_preprocessor, etc..
 
     # called under: predict
 
@@ -1574,7 +1567,7 @@ def score_terms(X, feature_names_out, feature_types_out, terms, *argv):
     waiting = dict()
     for term in terms:
         features = term['features']
-        preprocessor = argv[-1] if len(argv) < len(features) else argv[len(features) - 1]
+        preprocessor = preprocessors[-1] if len(preprocessors) < len(features) else preprocessors[len(features) - 1]
 
         # the last position holds the term object
         # the first len(features) items hold the binned data that we get back as it arrives
@@ -1618,7 +1611,7 @@ def score_terms(X, feature_names_out, feature_types_out, terms, *argv):
                 term = requirements[-1]
                 if term is not None:
                     features = term['features']
-                    preprocessor = argv[-1] if len(argv) < len(features) else argv[len(features) - 1]
+                    preprocessor = preprocessors[-1] if len(preprocessors) < len(features) else preprocessors[len(features) - 1]
                     cuts = preprocessor.bins_[column_feature_idx]
                     is_done = True
                     for dimension_idx, term_feature_idx in enumerate(features):
@@ -1644,6 +1637,7 @@ def score_terms(X, feature_names_out, feature_types_out, terms, *argv):
                         scores = term['scores'][binned_data]
                         for data, unknown_indicator in zip(binned_data, requirements[len(features):-1]):
                             if unknown_indicator:
+                                #raise ValueError("TODO: we need to add an unknown bin at -1. Then we no longer need to do this, or keep the unknown_indicator")
                                 scores[data < 0] = 0
                         requirements[:] = _none_list # clear references so that the garbage collector can free them
                         yield term, scores
@@ -1678,12 +1672,13 @@ def score_terms(X, feature_names_out, feature_types_out, terms, *argv):
                         scores = term['scores'][binned_data]
                         for data, unknown_indicator in zip(binned_data, requirements[len(features):-1]):
                             if unknown_indicator:
+                                #raise ValueError("TODO: we need to add an unknown bin at -1. Then we no longer need to do this, or keep the unknown_indicator")
                                 scores[data < 0] = 0
                         requirements[:] = _none_list # clear references so that the garbage collector can free them
                         yield term, scores
 
-def deduplicate_bins(*argv):
-    # *argv contains: preprocessor, pair_preprocessor, higher_preprocessor, etc..
+def deduplicate_bins(preprocessors):
+    # preprocessors contains: preprocessor, pair_preprocessor, higher_preprocessor, etc..
 
     # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
     # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
@@ -1692,7 +1687,7 @@ def deduplicate_bins(*argv):
     # TODO: use this function!
 
     uniques = dict()
-    for preprocessor in argv:
+    for preprocessor in preprocessors:
         for bins_idx, feature_bins in enumerate(preprocessor.bins_):
             if isinstance(feature_bins, dict):
                 key = frozenset(feature_bins.items())
@@ -1704,5 +1699,231 @@ def deduplicate_bins(*argv):
             else:
                 preprocessor.bins_[bins_idx] = existing
 
-def unify_data2(X, y=None, feature_names=None, feature_types=None, missing_data_allowed=False):
-    pass # TODO: do
+def unify_data2(is_classification, X, y=None, w=None, feature_names=None, feature_types=None, missing_data_allowed=False, min_unique_continuous=3):
+    _log.info("Unifying data")
+
+    X, n_samples = clean_X(X)
+    if n_samples <= 0:
+        msg = "X has no samples"
+        _log.error(msg)
+        raise ValueError(msg)
+
+    if y is not None:
+        if is_classification:
+            y = clean_vector(y, np.unicode_, "y")
+            # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
+            # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
+            # in two separate runs, which would flip the ordering of the classes within our score tensors.
+            classes, y = np.unique(y, return_inverse=True)
+        else:
+            y = clean_vector(y, np.float64, "y")
+            classes = None
+
+        if n_samples != len(y):
+            msg = f"X has {n_samples} samples and y has {len(y)} samples"
+            _log.error(msg)
+            raise ValueError(msg)
+
+    if w is not None:
+        w = clean_vector(w, np.float64, "sample_weight")
+        if n_samples != len(w):
+            msg = f"X has {n_samples} samples and sample_weight has {len(w)} samples"
+            _log.error(msg)
+            raise ValueError(msg)
+
+    feature_names_out = unify_feature_names(X, feature_names, feature_types)
+    feature_types_out = _none_list * len(feature_names_out)
+
+    # TODO: this could be made more efficient by storing continuous and categorical values in separate numpy arrays
+    # and merging afterwards.  Categoricals are going to share the same objects, but we don't want object
+    # fragmentation for continuous values which generates a lot of garbage to collect later
+    X_unified = np.empty((n_samples, len(feature_names_out)), dtype=np.object_, order='F')
+
+    for feature_idx, feature_type_out, X_col, categories, bad in unify_columns(X, zip(range(len(feature_names_out)), repeat(None)), feature_names_out, feature_types, min_unique_continuous, False):
+        if n_samples != len(X_col):
+            msg = "The columns of X are mismatched in the number of of samples"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        feature_types_out[feature_idx] = feature_type_out
+        if categories is None:
+            # continuous feature
+            if bad is not None:
+                msg = f"Feature {feature_names_out[feature_idx]} is indicated as continuous, but has non-numeric data"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            if not missing_data_allowed and np.isnan(X_col).any():
+                msg = f"X cannot contain missing values"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            X_unified[:,feature_idx] = X_col
+        else:
+            # categorical feature
+            if bad is not None:
+                msg = f"Feature {feature_names_out[feature_idx]} has unrecognized ordinal values"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            if not missing_data_allowed and (X_col == 0).any():
+                msg = f"X cannot contain missing values"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            mapping = np.empty(len(categories) + 1, dtype=np.object_)
+            mapping.itemset(0, np.nan)
+            for category, idx in categories.items():
+                mapping.itemset(idx, category)
+            X_unified[:,feature_idx] = mapping[X_col]
+
+    return X_unified, y, w, feature_names_out, feature_types_out
+
+
+class EBMPreprocessor2(BaseEstimator, TransformerMixin):
+    """ Transformer that preprocesses data to be ready before EBM. """
+
+    def __init__(
+        self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", min_samples_bin=1, 
+        min_unique_continuous=3, epsilon=None, delta=None, privacy_mins=None, privacy_maxes=None
+    ):
+        """ Initializes EBM preprocessor.
+
+        Args:
+            feature_names: Feature names as list.
+            feature_types: Feature types as list, for example "continuous" or "categorical".
+            max_bins: Max number of bins to process numeric features.
+            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform", or "private". 
+            min_samples_bin: minimum number of samples to put into a quantile or quantile_humanized bin
+            min_unique_continuous: number of unique numbers required before a feature is considered continuous
+            epsilon: Privacy budget parameter. Only applicable when binning is "private".
+            delta: Privacy budget parameter. Only applicable when binning is "private".
+            privacy_mins: User specified feature minimums. Only applicable when binning is "private".
+            privacy_maxes: User specified feature maximums. Only applicable when binning is "private".
+        """
+        self.feature_names = feature_names
+        self.feature_types = feature_types
+        self.max_bins = max_bins
+        self.binning = binning
+        self.min_samples_bin = min_samples_bin
+        self.min_unique_continuous = min_unique_continuous
+        self.epsilon = epsilon
+        self.delta = delta
+        self.privacy_mins = privacy_mins
+        self.privacy_maxes = privacy_maxes
+
+    def fit(self, X):
+        """ Fits transformer to provided samples.
+
+        Args:
+            X: Numpy array for training samples.
+
+        Returns:
+            Itself.
+        """
+
+        X, n_samples = clean_X(X)
+        if n_samples <= 0:
+            msg = "X has no samples"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        feature_names_out = unify_feature_names(X, self.feature_names, self.feature_types)
+        n_features = len(feature_names_out)
+        feature_types_out = _none_list * n_features
+        bins_out = _none_list * n_features
+
+        noise_scale = None # only applicable for private binning
+        if 'private' in self.binning:
+            DPUtils.validate_eps_delta(self.epsilon, self.delta)
+            noise_scale = DPUtils.calc_gdp_noise_multi(
+                total_queries = n_features, 
+                target_epsilon = self.epsilon, 
+                delta = self.delta
+            )
+
+        for feature_idx, feature_type_out, X_col, categories, bad in unify_columns(X, zip(range(n_features), repeat(None)), feature_names_out, self.feature_types, self.min_unique_continuous, False):
+            if n_samples != len(X_col):
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            bins = self.max_bins # TODO: in the future allow this to be per-feature
+            if bins < 2:
+                raise ValueError(f"bins was {bins}, but must be 2 or higher. One bin for missing, and at least one more for the non-missing values.")
+
+            feature_types_out[feature_idx] = feature_type_out
+            if categories is None:
+                # continuous feature
+                if bad is not None:
+                    msg = f"Feature {feature_names_out[feature_idx]} is indicated as continuous, but has non-numeric data"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                if self.binning == 'private':
+                    if np.isnan(X_col).any():
+                        # TODO: re-examine if we need to disable missing values for private binning
+                        msg = f"X cannot contain missing values for private binning"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                    min_val = self.privacy_mins[feature_idx]
+                    max_val = self.privacy_maxes[feature_idx]
+                    cuts, _ = DPUtils.private_numeric_binning(X_col, noise_scale, self.max_bins, min_val, max_val)
+                else:
+                    feature_type_in = None if self.feature_types is None else self.feature_types[feature_idx]
+                    cuts = _cut_continuous(native, X_col, feature_type_in, self.binning, self.bins, self.min_samples_bin)
+                bins_out[feature_idx] = cuts
+            else:
+                # categorical feature
+                if bad is not None:
+                    msg = f"Feature {feature_names_out[feature_idx]} has unrecognized ordinal values"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                if self.binning == 'private':
+                    if (X_col == 0).any():
+                        # TODO: re-examine if we need to disable missing values for private binning
+                        msg = f"X cannot contain missing values for private binning"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                    # TODO: clean up this hack.. make an "unknown" bin after fitting
+                    keep_bins, _ = DPUtils.private_categorical_binning(X_col, noise_scale, self.max_bins)
+                    keep_bins = keep_bins[keep_bins != 'DPOther']
+                    keep_bins = keep_bins.astype(np.int64)
+                    keep_bins = keep_bins[keep_bins != 0] # for the future if we support missing values
+                    keep_bins = set(keep_bins)
+                    new_categories = {}
+                    new_idx = 1
+                    categories = list(categories.items())
+                    categories.sort(key = lambda x: x[1])
+                    for category, idx in categories:
+                        if idx in keep_bins:
+                            new_categories[category] = new_idx
+                            new_idx += 1
+                    categories = new_categories
+
+                bins_out[feature_idx] = categories
+
+        self.feature_names_out_ = feature_names_out
+        self.feature_types_out_ = feature_types_out
+        self.bins_ = bins_out
+        self.has_fitted_ = True
+        return self
+
+    def transform(self, X):
+        """ Transform on provided samples.
+
+        Args:
+            X: Numpy array for samples.
+
+        Returns:
+            Transformed numpy array.
+        """
+        check_is_fitted(self, "has_fitted_")
+
+        X_new = TODO
+
+        return X_new.astype(np.int64)
+
