@@ -28,6 +28,7 @@ try:
 except ImportError:
     _scipy_installed = False
 
+from .utils import DPUtils
 
 # BIG TODO LIST:
 #- review all my other changes in other files (or afterwards)
@@ -1398,7 +1399,7 @@ def clean_X(X):
     X = np.array(X, dtype=np.object_)
     return X, 1 if X.ndim == 1 else X.shape[0]
 
-def _cut_continuous(native, X_col, processing, binning, bins, min_samples_bin):
+def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bin):
     # called under: fit
       
     if processing != 'quantile' and processing != 'quantile_humanized' and processing != 'uniform' and processing != 'winsorized' and not isinstance(processing, list) and not isinstance(processing, np.ndarray):
@@ -1410,16 +1411,16 @@ def _cut_continuous(native, X_col, processing, binning, bins, min_samples_bin):
 
     if processing == 'quantile':
         # one bin for missing, and # of cuts is one less again
-        cuts = native.cut_quantile(X_col, min_samples_bin, 0, bins - 2)
+        cuts = native.cut_quantile(X_col, min_samples_bin, 0, max_bins - 2)
     elif processing == 'quantile_humanized':
         # one bin for missing, and # of cuts is one less again
-        cuts = native.cut_quantile(X_col, min_samples_bin, 1, bins - 2)
+        cuts = native.cut_quantile(X_col, min_samples_bin, 1, max_bins - 2)
     elif processing == 'uniform':
         # one bin for missing, and # of cuts is one less again
-        cuts = native.cut_uniform(X_col, bins - 2)
+        cuts = native.cut_uniform(X_col, max_bins - 2)
     elif processing == 'winsorized':
         # one bin for missing, and # of cuts is one less again
-        cuts = native.cut_winsorized(X_col, bins - 2)
+        cuts = native.cut_winsorized(X_col, max_bins - 2)
     elif isinstance(processing, np.ndarray):
         cuts = processing.astype(dtype=np.float64, copy=False)
     elif isinstance(processing, list):
@@ -1431,7 +1432,7 @@ def _cut_continuous(native, X_col, processing, binning, bins, min_samples_bin):
 
     return cuts
 
-def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_in, feature_types_in, binning='quantile', min_samples_bin=1, min_unique_continuous=3):
+def bin_native(is_classification, feature_idxs, max_bins_iter, X, y, w, feature_names_in, feature_types_in, binning='quantile', min_samples_bin=1, min_unique_continuous=3):
     # called under: fit
 
     _log.info("Creating native dataset")
@@ -1475,14 +1476,14 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_
     feature_types_out = _none_list * len(feature_names_out)
     bins_out = []
 
-    for bins, (feature_idx, feature_type_out, X_col, categories, bad) in zip(bins_in, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
+    for max_bins, (feature_idx, feature_type_out, X_col, categories, bad) in zip(max_bins_iter, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
             raise ValueError(msg)
 
-        if bins < 2:
-            raise ValueError(f"bins was {bins}, but must be 2 or higher. One bin for missing, and at least one more for the non-missing values.")
+        if max_bins < 2:
+            raise ValueError(f"max_bins was {max_bins}, but must be 2 or higher. One bin for missing, and at least one more for the non-missing values.")
 
         feature_types_out[feature_idx] = feature_type_out
         if categories is None:
@@ -1493,7 +1494,7 @@ def bin_native(is_classification, feature_idxs, bins_in, X, y, w, feature_names_
                 raise ValueError(msg)
 
             feature_type_in = None if feature_types_in is None else feature_types_in[feature_idx]
-            cuts = _cut_continuous(native, X_col, feature_type_in, binning, bins, min_samples_bin)
+            cuts = _cut_continuous(native, X_col, feature_type_in, binning, max_bins, min_samples_bin)
             X_col = native.discretize(X_col, cuts)
             bins_out.append(cuts)
             n_bins = len(cuts) + 2
@@ -1842,15 +1843,17 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                 delta = self.delta
             )
 
+        native = Native.get_native_singleton()
+
         for feature_idx, feature_type_out, X_col, categories, bad in unify_columns(X, zip(range(n_features), repeat(None)), feature_names_out, self.feature_types, self.min_unique_continuous, False):
             if n_samples != len(X_col):
                 msg = "The columns of X are mismatched in the number of of samples"
                 _log.error(msg)
                 raise ValueError(msg)
 
-            bins = self.max_bins # TODO: in the future allow this to be per-feature
-            if bins < 2:
-                raise ValueError(f"bins was {bins}, but must be 2 or higher. One bin for missing, and at least one more for the non-missing values.")
+            max_bins = self.max_bins # TODO: in the future allow this to be per-feature
+            if max_bins < 2:
+                raise ValueError(f"max_bins was {max_bins}, but must be 2 or higher. One bin for missing, and at least one more for the non-missing values.")
 
             feature_types_out[feature_idx] = feature_type_out
             if categories is None:
@@ -1872,7 +1875,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                     cuts, _ = DPUtils.private_numeric_binning(X_col, noise_scale, self.max_bins, min_val, max_val)
                 else:
                     feature_type_in = None if self.feature_types is None else self.feature_types[feature_idx]
-                    cuts = _cut_continuous(native, X_col, feature_type_in, self.binning, self.bins, self.min_samples_bin)
+                    cuts = _cut_continuous(native, X_col, feature_type_in, self.binning, self.max_bins, self.min_samples_bin)
                 bins_out[feature_idx] = cuts
             else:
                 # categorical feature
