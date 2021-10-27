@@ -1786,7 +1786,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
 
     def __init__(
         self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", min_samples_bin=1, 
-        min_unique_continuous=3, epsilon=None, delta=None, privacy_mins=None, privacy_maxes=None
+        min_unique_continuous=3, epsilon=None, delta=None, privacy_schema=None
     ):
         """ Initializes EBM preprocessor.
 
@@ -1799,8 +1799,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
             min_unique_continuous: number of unique numbers required before a feature is considered continuous
             epsilon: Privacy budget parameter. Only applicable when binning is "private".
             delta: Privacy budget parameter. Only applicable when binning is "private".
-            privacy_mins: User specified feature minimums. Only applicable when binning is "private".
-            privacy_maxes: User specified feature maximums. Only applicable when binning is "private".
+            privacy_schema: User specified min/maxes for numeric features as dictionary. Only applicable when binning is "private".
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -1810,8 +1809,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
         self.min_unique_continuous = min_unique_continuous
         self.epsilon = epsilon
         self.delta = delta
-        self.privacy_mins = privacy_mins
-        self.privacy_maxes = privacy_maxes
+        self.privacy_schema = privacy_schema
 
     def fit(self, X):
         """ Fits transformer to provided samples.
@@ -1845,6 +1843,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
 
         native = Native.get_native_singleton()
 
+        is_privacy_warning = False
         for feature_idx, feature_type_out, X_col, categories, bad in unify_columns(X, zip(range(n_features), repeat(None)), feature_names_out, self.feature_types, self.min_unique_continuous, False):
             if n_samples != len(X_col):
                 msg = "The columns of X are mismatched in the number of of samples"
@@ -1870,8 +1869,14 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                         _log.error(msg)
                         raise ValueError(msg)
 
-                    min_val = self.privacy_mins[feature_idx]
-                    max_val = self.privacy_maxes[feature_idx]
+                    minmax = self.privacy_schema.get(feature_idx, None)
+                    if minmax is None:
+                        is_privacy_warning = True
+                        min_val = np.nanmin(X_col)
+                        max_val = np.nanmax(X_col)
+                    else:
+                        min_val = minmax[0]
+                        max_val = minmax[1]
                     cuts, _ = DPUtils.private_numeric_binning(X_col, noise_scale, self.max_bins, min_val, max_val)
                 else:
                     feature_type_in = None if self.feature_types is None else self.feature_types[feature_idx]
@@ -1908,6 +1913,10 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                     categories = new_categories
 
                 bins_out[feature_idx] = categories
+
+        if is_privacy_warning:
+            warn("Possible privacy violation: assuming min/max values per feature are public info. "
+                    "Pass a privacy schema with known public ranges per feature to avoid this warning.")
 
         self.feature_names_out_ = feature_names_out
         self.feature_types_out_ = feature_types_out
