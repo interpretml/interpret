@@ -454,6 +454,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
 
             return floats, None
 
+    # TODO: add a callback function option here that allows the caller to sort, remove, combine
     if processing == 'nominal_prevalence':
         if floats is None:
             categories = [(-item[0], item[1]) for item in zip(counts, uniques)]
@@ -461,43 +462,11 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
             categories = [(-item[0], item[1], item[2]) for item in zip(counts, floats, uniques)]
         categories.sort()
         categories = [x[-1] for x in categories]
-    elif processing == 'nominal_prevalence_reversed':
-        if floats is None:
-            categories = [(-item[0], item[1]) for item in zip(counts, uniques)]
-        else:
-            categories = [(-item[0], item[1], item[2]) for item in zip(counts, floats, uniques)]
-        categories.sort(reverse=True)
-        categories = [x[-1] for x in categories]
-    elif processing == 'nominal_alphabetical':
-        categories = uniques.tolist()
-        categories.sort()
-    elif processing == 'nominal_alphabetical_reversed':
-        categories = uniques.tolist()
-        categories.sort(reverse=True)
-    elif processing == 'nominal_numerical_strict':
-        if floats is None:
-            msg = f"could not sort nominal_numerical_strict type by numeric value"
-            _log.error(msg)
-            raise ValueError(msg)
+    elif processing != 'nominal_alphabetical' and floats is not None:
         categories = [(item[0], item[1]) for item in zip(floats, uniques)]
         categories.sort()
-        categories = [x[1] for x in categories]
-    elif processing == 'nominal_numerical_strict_reversed':
-        if floats is None:
-            msg = f"could not sort nominal_numerical_strict_reversed type by numeric value"
-            _log.error(msg)
-            raise ValueError(msg)
-        categories = [(item[0], item[1]) for item in zip(floats, uniques)]
-        categories.sort(reverse=True)
-        categories = [x[1] for x in categories]
-    elif floats is not None:
-        # 'nominal_numerical_permissive' or 'nominal_numerical_permissive_reversed'
-        categories = [(item[0], item[1]) for item in zip(floats, uniques)]
-        is_reversed = processing == 'nominal_numerical_permissive_reversed'
-        categories.sort(reverse=is_reversed)
         categories = [x[1] for x in categories]
     else:
-        # default to same as 'nominal_alphabetical'
         categories = uniques.tolist()
         categories.sort()
 
@@ -569,7 +538,7 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
             raise ValueError(msg)
     elif processing is None or processing == 'auto':
         pass
-    elif processing == 'nominal_prevalence' or processing == 'nominal_prevalence_reversed' or processing == 'nominal_alphabetical' or processing == 'nominal_alphabetical_reversed' or processing == 'nominal_numerical_strict' or processing == 'nominal_numerical_strict_reversed' or processing == 'nominal_numerical_permissive' or processing == 'nominal_numerical_permissive_reversed':
+    elif processing == 'nominal_prevalence' or processing == 'nominal_alphabetical':
         # TODO: we could instead handle this by re-ordering the pandas pd_categories.  Someone might want to construct it quickly but then override the pd_categories
         msg = f"{processing} type invalid for pandas.CategoricalDtype"
         _log.error(msg)
@@ -746,7 +715,7 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
         # called under: fit
         X_col, categories = _process_column_initial(X_col, nonmissings, None, min_unique_continuous)
         return 'continuous' if categories is None else 'nominal', X_col, categories, None
-    elif processing == 'nominal_prevalence' or processing == 'nominal_prevalence_reversed' or processing == 'nominal_alphabetical' or processing == 'nominal_alphabetical_reversed' or processing == 'nominal_numerical_strict' or processing == 'nominal_numerical_strict_reversed' or processing == 'nominal_numerical_permissive' or processing == 'nominal_numerical_permissive_reversed':
+    elif processing == 'nominal_prevalence' or processing == 'nominal_alphabetical':
         # called under: fit
         X_col, categories = _process_column_initial(X_col, nonmissings, processing, None)
         return 'nominal', X_col, categories, None
@@ -1026,7 +995,7 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
             X_col = X[:, col_idx]
             feature_type = None if feature_types is None else feature_types[feature_idx]
             feature_type_out, X_col, categories, bad = _process_numpy_column(X_col, categories, feature_type, min_unique_continuous)
-            yield feature_idx, feature_type_out, X_col, categories, bad
+            yield feature_type_out, X_col, categories, bad
     elif _pandas_installed and isinstance(X, pd.DataFrame):
         names_original = X.columns
         names_dict = dict(zip(map(str, names_original), count()))
@@ -1070,7 +1039,7 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
             X_col = X.iloc[:, col_idx]
             feature_type = None if feature_types is None else feature_types[feature_idx]
             feature_type_out, X_col, categories, bad = _process_pandas_column(X_col, categories, feature_type, min_unique_continuous)
-            yield feature_idx, feature_type_out, X_col, categories, bad
+            yield feature_type_out, X_col, categories, bad
     elif _scipy_installed and isinstance(X, sp.sparse.spmatrix):
         n_cols = X.shape[1]
 
@@ -1092,13 +1061,13 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
             X_col = X.getcol(col_idx)
             feature_type = None if feature_types is None else feature_types[feature_idx]
             feature_type_out, X_col, categories, bad = _process_scipy_column(X_col, categories, feature_type, min_unique_continuous)
-            yield feature_idx, feature_type_out, X_col, categories, bad
+            yield feature_type_out, X_col, categories, bad
     elif isinstance(X, dict):
         for feature_idx, categories in requests:
             X_col = X[feature_names_out[feature_idx]]
             feature_type = None if feature_types is None else feature_types[feature_idx]
             feature_type_out, X_col, categories, bad = _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
-            yield feature_idx, feature_type_out, X_col, categories, bad
+            yield feature_type_out, X_col, categories, bad
     else:
         msg = "internal error"
         _log.error(msg)
@@ -1476,7 +1445,7 @@ def bin_native(is_classification, feature_idxs, max_bins_iter, X, y, w, feature_
     feature_types_out = _none_list * len(feature_names_out)
     bins_out = []
 
-    for max_bins, (feature_idx, feature_type_out, X_col, categories, bad) in zip(max_bins_iter, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
+    for feature_idx, max_bins, (feature_type_out, X_col, categories, bad) in zip(feature_idxs, max_bins_iter, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
@@ -1520,7 +1489,7 @@ def bin_native(is_classification, feature_idxs, max_bins_iter, X, y, w, feature_
 
     native.fill_data_set_header(len(feature_idxs), 1, 1, n_bytes, shared_dataset)
 
-    for bins, (feature_idx, feature_type_out, X_col, categories, _) in zip(bins_out, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
+    for feature_idx, bins, (feature_type_out, X_col, categories, _) in zip(feature_idxs, bins_out, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
         if n_samples != len(X_col):
             # re-check that that number of samples is identical since iterators can be used up by looking at them
             # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
@@ -1547,8 +1516,8 @@ def bin_native(is_classification, feature_idxs, max_bins_iter, X, y, w, feature_
 
     return shared_dataset, feature_names_out, feature_types_out, bins_out, classes
 
-def score_terms(X, feature_names_out, feature_types_out, terms, preprocessors):
-    # *preprocessors contains: preprocessor, pair_preprocessor, higher_preprocessor, etc..
+def score_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
+    # bin_levels contains: bins (mains), pair_bins (pairs), higher_bins (3 way and above), etc..
 
     # called under: predict
 
@@ -1568,7 +1537,7 @@ def score_terms(X, feature_names_out, feature_types_out, terms, preprocessors):
     waiting = dict()
     for term in terms:
         features = term['features']
-        preprocessor = preprocessors[-1] if len(preprocessors) < len(features) else preprocessors[len(features) - 1]
+        bin_level = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
 
         # the last position holds the term object
         # the first len(features) items hold the binned data that we get back as it arrives
@@ -1576,7 +1545,7 @@ def score_terms(X, feature_names_out, feature_types_out, terms, preprocessors):
         requirements = _none_list * (1 + 2 * len(features))
         requirements[-1] = term
         for feature_idx in features:
-            feature_bins = preprocessor.bins_[feature_idx]
+            feature_bins = bin_level[feature_idx]
             if isinstance(feature_bins, dict):
                 # categorical feature
                 request = (feature_idx, feature_bins)
@@ -1594,7 +1563,7 @@ def score_terms(X, feature_names_out, feature_types_out, terms, preprocessors):
 
     native = Native.get_native_singleton()
 
-    for column_feature_idx, _, X_col, column_categories, bad in unify_columns(X, requests, feature_names_out, feature_types_out, None, True):
+    for (column_feature_idx, _), (_, X_col, column_categories, bad) in zip(requests, unify_columns(X, requests, feature_names_out, feature_types_out, None, True)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
@@ -1612,8 +1581,8 @@ def score_terms(X, feature_names_out, feature_types_out, terms, preprocessors):
                 term = requirements[-1]
                 if term is not None:
                     features = term['features']
-                    preprocessor = preprocessors[-1] if len(preprocessors) < len(features) else preprocessors[len(features) - 1]
-                    cuts = preprocessor.bins_[column_feature_idx]
+                    bin_level = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
+                    cuts = bin_level[column_feature_idx]
                     is_done = True
                     for dimension_idx, term_feature_idx in enumerate(features):
                         if term_feature_idx == column_feature_idx:
@@ -1658,7 +1627,7 @@ def score_terms(X, feature_names_out, feature_types_out, terms, preprocessors):
                         if term_feature_idx == column_feature_idx:
                             # "term_categories is column_categories" since any term in the waiting_list must have
                             # one of it's elements match this (feature_idx, categories) index, and all items in this
-                            # term need to have the same categories since they came from the same preprocessor
+                            # term need to have the same categories since they came from the same bin_level
                             requirements[dimension_idx] = X_col
                             if bad is not None:
                                 # indicate that we need to check for unknowns
@@ -1678,8 +1647,8 @@ def score_terms(X, feature_names_out, feature_types_out, terms, preprocessors):
                         requirements[:] = _none_list # clear references so that the garbage collector can free them
                         yield term, scores
 
-def deduplicate_bins(preprocessors):
-    # preprocessors contains: preprocessor, pair_preprocessor, higher_preprocessor, etc..
+def deduplicate_bins(bin_levels):
+    # bin_levels contains: bins (mains), pair_bins (pairs), higher_bins (3 way and above), etc..
 
     # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
     # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
@@ -1688,8 +1657,9 @@ def deduplicate_bins(preprocessors):
     # TODO: use this function!
 
     uniques = dict()
-    for preprocessor in preprocessors:
-        for bins_idx, feature_bins in enumerate(preprocessor.bins_):
+    for bin_level in bin_levels:
+        for feature_idx in range(len(bin_level)):
+            feature_bins = bin_level[feature_idx]
             if isinstance(feature_bins, dict):
                 key = frozenset(feature_bins.items())
             else:
@@ -1698,7 +1668,7 @@ def deduplicate_bins(preprocessors):
             if existing is None:
                 uniques[key] = feature_bins
             else:
-                preprocessor.bins_[bins_idx] = existing
+                bin_level[feature_idx] = existing
 
 def unify_data2(is_classification, X, y=None, w=None, feature_names=None, feature_types=None, missing_data_allowed=False, min_unique_continuous=3):
     _log.info("Unifying data")
@@ -1740,7 +1710,7 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
     # fragmentation for continuous values which generates a lot of garbage to collect later
     X_unified = np.empty((n_samples, len(feature_names_out)), dtype=np.object_, order='F')
 
-    for feature_idx, feature_type_out, X_col, categories, bad in unify_columns(X, zip(range(len(feature_names_out)), repeat(None)), feature_names_out, feature_types, min_unique_continuous, False):
+    for feature_idx, (feature_type_out, X_col, categories, bad) in zip(count(), unify_columns(X, zip(range(len(feature_names_out)), repeat(None)), feature_names_out, feature_types, min_unique_continuous, False)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
@@ -1844,7 +1814,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
         native = Native.get_native_singleton()
 
         is_privacy_warning = False
-        for feature_idx, feature_type_out, X_col, categories, bad in unify_columns(X, zip(range(n_features), repeat(None)), feature_names_out, self.feature_types, self.min_unique_continuous, False):
+        for feature_idx, (feature_type_out, X_col, categories, bad) in zip(count(), unify_columns(X, zip(range(n_features), repeat(None)), feature_names_out, self.feature_types, self.min_unique_continuous, False)):
             if n_samples != len(X_col):
                 msg = "The columns of X are mismatched in the number of of samples"
                 _log.error(msg)

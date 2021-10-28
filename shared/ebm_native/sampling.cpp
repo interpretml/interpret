@@ -17,6 +17,22 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+// TODO: for DP-EBMs we cryptographically secure random number generators that we can use cross platform
+// that generate uniform distributions and then normal distributions.  
+// To generate the normal distribution we can use the Box-Muller method for which the code seems pretty simple:
+// https://stackoverflow.com/questions/34903356/c11-random-number-distributions-are-not-consistent-across-platforms-what-al
+// To generate uniform distributions, the C++ std seems to first generate a random number between 0 and 1 then scale it
+// Generating a random number between 0 and 1 can be done by taking 0.5 and either choosing it or not based on a
+// random bit, then multiplying it by 0.5 to get 0.25 where we again add it or not based on a random bit.  At the end
+// we should have a perfectly random number between (0, 1].
+// Next we need a way to pass random numbers between C++ and python/R.  We can change our random number generator
+// to take any string which we can encrypt using AES256-CTR
+// https://en.wikipedia.org/wiki/Cryptographically-secure_pseudorandom_number_generator
+// we can pass the state back using hexidecimal strings with 256/16 = 16 characters
+// Idea: if we have the caller pad their initial string with spaces to 16 characters, maybe we can avoid having
+// an init function and just use a single function that modifies the 16 character string?
+// We need to also provide utilities to generate normal distributions using the random number
+
 EBM_NATIVE_IMPORT_EXPORT_BODY SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix
