@@ -821,7 +821,19 @@ def _process_numpy_column(X_col, categories, feature_type, min_unique_continuous
     return _process_ndarray(X_col, nonmissings, categories, feature_type, min_unique_continuous)
 
 def _process_pandas_column(X_col, categories, feature_type, min_unique_continuous):
-    if isinstance(X_col.dtype, pd.CategoricalDtype):
+    if isinstance(X_col.dtype, np.dtype):
+        if issubclass(X_col.dtype.type, np.floating) or issubclass(X_col.dtype.type, np.integer) or X_col.dtype.type is np.bool_:
+            X_col = X_col.values
+            return _process_ndarray(X_col, None, categories, feature_type, min_unique_continuous)
+        elif X_col.dtype.type is np.object_:
+            nonmissings = None
+            if X_col.hasnans:
+                # if hasnans is true then there is definetly a real missing value in there and not just a mask
+                nonmissings = X_col.notna().values
+                X_col = X_col.dropna()
+            X_col = X_col.values
+            return _process_ndarray(X_col, nonmissings, categories, feature_type, min_unique_continuous)
+    elif isinstance(X_col.dtype, pd.CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.values
         is_ordered = X_col.ordered
@@ -843,11 +855,8 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
                 X_col, bad = _encode_pandas_categorical_existing(X_col, pd_categories, categories)
 
             return 'ordinal' if is_ordered else 'nominal', X_col, categories, bad
-    elif issubclass(X_col.dtype.type, np.floating):
-        X_col = X_col.values
-        return _process_ndarray(X_col, None, categories, feature_type, min_unique_continuous)
-    elif issubclass(X_col.dtype.type, np.integer) or X_col.dtype.type is np.bool_ or X_col.dtype.type is np.unicode_ or X_col.dtype.type is np.object_:
-        # this also handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
+    elif issubclass(X_col.dtype.type, np.integer) or X_col.dtype.type is np.bool_:
+        # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
         nonmissings = None
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
@@ -856,13 +865,13 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
         X_col = X_col.values
         X_col = X_col.astype(dtype=X_col.dtype.type, copy=False)
         return _process_ndarray(X_col, nonmissings, categories, feature_type, min_unique_continuous)
-    else:
-        # TODO: implement pd.SparseDtype
-        # TODO: implement pd.StringDtype both the numpy and arrow versions
-        # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.StringDtype.html#pandas.StringDtype
-        msg = f"{type(X_col.dtype)} not supported"
-        _log.error(msg)
-        raise ValueError(msg)
+
+    # TODO: implement pd.SparseDtype
+    # TODO: implement pd.StringDtype both the numpy and arrow versions
+    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.StringDtype.html#pandas.StringDtype
+    msg = f"{type(X_col.dtype)} not supported"
+    _log.error(msg)
+    raise ValueError(msg)
 
 def _process_scipy_column(X_col, categories, feature_type, min_unique_continuous):
     X_col = X_col.toarray().reshape(-1)
@@ -1501,7 +1510,7 @@ def bin_native(is_classification, feature_idxs, max_bins_iter, X, y, w, feature_
         if categories is None:
             # continuous feature
             X_col = native.discretize(X_col, bins)
-            n_bins = len(cuts) + 2
+            n_bins = len(bins) + 2
         else:
             # categorical feature
             n_bins = len(categories) + 1
