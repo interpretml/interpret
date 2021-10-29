@@ -413,6 +413,11 @@ def _densify_object_ndarray(X_col):
         places = np.fromiter((val_type is float or issubclass(val_type, np.floating) for val_type in map(type, X_col)), dtype=np.bool_, count=len(X_col))
         np.place(X_col, places, X_col[places].astype(np.float64))
 
+    # TODO: converting object types first to pd.CatigoricalDType is somewhat faster than our code here which converts
+    # to unicode.  We should consider either using a CatigoricalDTypes conversion first if pandas is installed, or
+    # writing our own cython code that can be more efficient at walking through items in an array.  If we write
+    # our own cython there is the added advantage that we can check types in the same loop and therefore eliminate
+    # the costly "set(map(type, X_col))" calls above
     return X_col.astype(np.unicode_)
 
 def _process_column_initial(X_col, nonmissings, processing, min_unique_continuous):
@@ -513,7 +518,8 @@ def _encode_categorical_existing(X_col, nonmissings, categories):
             encoded = encoded_tmp
         else:
             bad = np.full(len(encoded), None, dtype=np.object_)
-            np.place(bad, unknowns, uniques[indexes[encoded < 0]])
+            unknowns = encoded < 0
+            np.place(bad, unknowns, uniques[indexes[unknowns]])
     else:
         bad = None
         if nonmissings is not None:
@@ -902,7 +908,7 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
         if X_col.shape[1] == 1:
             X_col = X_col.iloc[:, 0]
             return _process_pandas_column(X_col, categories, feature_type, min_unique_continuous)
-        elif data.shape[0] == 1:
+        elif X_col.shape[0] == 1:
             X_col = X_col.astype(np.object_, copy=False).values.reshape(-1)
         else:
             msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
