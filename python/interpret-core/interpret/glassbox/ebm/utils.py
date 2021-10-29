@@ -716,6 +716,9 @@ class DPUtils:
         # Postprocess to ensure realistic bin values (integers, min=1)
         noisy_counts = np.clip(np.round(noisy_counts), 1, None)
 
+        # TODO PK: check with Harsha, but we can probably alternate the taking of nibbles from both ends
+        # so that the larger leftover bin tends to be in the center rather than on the right.
+
         # Greedily collapse bins until they meet or exceed target_count threshold
         target_count = col_data.shape[0] / max_bins
         bin_counts, bin_cuts = [0], [uniform_edges[0]]

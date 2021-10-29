@@ -438,7 +438,7 @@ class Native:
             # int64_t countValidationSamples
             ct.c_int64,
             # int64_t * targets
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * sampleCountsOut
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
@@ -561,7 +561,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binnedData
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.SizeFeature.restype = ct.c_int64
 
@@ -573,7 +573,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binnedData
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
@@ -585,7 +585,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * weights
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.SizeWeight.restype = ct.c_int64
 
@@ -593,7 +593,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * weights
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
@@ -607,7 +607,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # int64_t * targets
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.SizeClassificationTarget.restype = ct.c_int64
 
@@ -617,7 +617,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # int64_t * targets
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
@@ -629,7 +629,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * targets
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.SizeRegressionTarget.restype = ct.c_int64
 
@@ -637,7 +637,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * targets
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
@@ -667,23 +667,23 @@ class Native:
             # int64_t countFeatures
             ct.c_int64,
             # int64_t * featuresCategorical
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * featuresBinCount
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countFeatureGroups
             ct.c_int64,
             # int64_t * featureGroupsDimensionCount
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * featureGroupsFeatureIndexes
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countTrainingSamples
             ct.c_int64,
             # int64_t * trainingBinnedData
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # int64_t * trainingTargets
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # double * trainingWeights
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # ct.c_void_p,
             # double * trainingPredictorScores
             # scores can either be 1 or 2 dimensional
@@ -693,9 +693,9 @@ class Native:
             # int64_t * validationBinnedData
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # int64_t * validationTargets
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # double * validationWeights
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # ct.c_void_p,
             # double * validationPredictorScores
             # scores can either be 1 or 2 dimensional
@@ -715,37 +715,37 @@ class Native:
             # int64_t countFeatures
             ct.c_int64,
             # int64_t * featuresCategorical
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * featuresBinCount
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countFeatureGroups
             ct.c_int64,
             # int64_t * featureGroupsDimensionCount
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * featureGroupsFeatureIndexes
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countTrainingSamples
             ct.c_int64,
             # int64_t * trainingBinnedData
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * trainingTargets
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # double * trainingWeights
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # ct.c_void_p,
             # double * trainingPredictorScores
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countValidationSamples
             ct.c_int64,
             # int64_t * validationBinnedData
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * validationTargets
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # double * validationWeights
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # ct.c_void_p,
             # double * validationPredictorScores
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countInnerBags
             ct.c_int64,
             # double * optionalTempParams
@@ -767,7 +767,7 @@ class Native:
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_int64,
             # int64_t * leavesMax
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # double * gainOut
             ct.POINTER(ct.c_double),
         ]
@@ -781,7 +781,7 @@ class Native:
             # int64_t * countSplitsInOut
             ct.POINTER(ct.c_int64),
             # int64_t * splitIndexesOut
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.GetModelUpdateSplits.restype = ct.c_int32
 
@@ -844,17 +844,17 @@ class Native:
             # int64_t countFeatures
             ct.c_int64,
             # int64_t * featuresCategorical
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * featuresBinCount
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binnedData
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # int64_t * targets
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # double * weights
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # ct.c_void_p,
             # double * predictorScores
             # scores can either be 1 or 2 dimensional
@@ -870,20 +870,20 @@ class Native:
             # int64_t countFeatures
             ct.c_int64,
             # int64_t * featuresCategorical
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t * featuresBinCount
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binnedData
             ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * targets
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # double * weights
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # ct.c_void_p,
             # double * predictorScores
-            ndpointer(dtype=ct.c_double, ndim=1),
+            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
             # InteractionHandle * interactionHandleOut
@@ -897,7 +897,7 @@ class Native:
             # int64_t countDimensions
             ct.c_int64,
             # int64_t * featureIndexes
-            ndpointer(dtype=ct.c_int64, ndim=1),
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_int64,
             # double * interactionScoreOut

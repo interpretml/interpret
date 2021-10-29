@@ -2169,11 +2169,16 @@ def test_bin_native():
     y = np.array(["a", 99, 99, "b"])
     w = np.array([0.5, 1.1, 0.1, 0.5])
     feature_idxs = range(len(feature_names_in)) if feature_types_in is None else [feature_idx for feature_idx, feature_type in zip(count(), feature_types_in) if feature_type != 'ignore']
-    shared_dataset, feature_names_out, feature_types_out, bins_out, classes = bin_native(True, feature_idxs, repeat(256), X, y, w, feature_names_in, feature_types_in)
+    shared_dataset, classes, feature_names_out, feature_types_out, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts = bin_native(True, feature_idxs, repeat(256), X, y, w, feature_names_in, feature_types_in)
     assert(shared_dataset is not None)
     assert(feature_names_out is not None)
     assert(feature_types_out is not None)
-    assert(bins_out is not None)
+    assert(bins is not None)
+    assert(bin_counts is not None)
+    assert(min_vals is not None)
+    assert(max_vals is not None)
+    assert(histogram_cuts is not None)
+    assert(histogram_counts is not None)
 
 def test_score_terms():
     X = np.array([["a", 1, np.nan], ["b", 2, 8], ["a", 2, 9], [None, 3, "BAD_CONTINUOUS"]], dtype=np.object_)
@@ -2192,27 +2197,27 @@ def test_score_terms():
 
     term0 = {}
     term0['features'] = [0]
-    term0['scores'] = np.array([0.1, 0.2, 0.3], dtype=np.float64)
+    term0['scores'] = np.array([0.1, 0.2, 0.3, 0], dtype=np.float64)
 
     term1 = {}
     term1['features'] = [1]
-    term1['scores'] = np.array([0.01, 0.02, 0.03, 0.04], dtype=np.float64)
+    term1['scores'] = np.array([0.01, 0.02, 0.03, 0.04, 0], dtype=np.float64)
 
     term2 = {}
     term2['features'] = [2]
-    term2['scores'] = np.array([0.01, 0.02, 0.03], dtype=np.float64)
+    term2['scores'] = np.array([0.01, 0.02, 0.03, 0], dtype=np.float64)
 
     term3 = {}
     term3['features'] = [0, 1]
-    term3['scores'] = np.array([[0.001, 0.002, 0.003], [0.004, 0.005, 0.006]], dtype=np.float64)
+    term3['scores'] = np.array([[0.001, 0.002, 0.003, 0], [0.004, 0.005, 0.006, 0], [0, 0, 0, 0]], dtype=np.float64)
 
     term4 = {}
     term4['features'] = [0, 2]
-    term4['scores'] = np.array([[0.001, 0.002, 0.003], [0.004, 0.005, 0.006]], dtype=np.float64)
+    term4['scores'] = np.array([[0.001, 0.002, 0.003, 0], [0.004, 0.005, 0.006, 0], [0, 0, 0, 0]], dtype=np.float64)
 
     term5 = {}
     term5['features'] = [0, 1, 2]
-    term5['scores'] = np.array([[[0.001, 0.002], [0.003, 0.004]], [[0.005, 0.006], [0.007, 0.008]]], dtype=np.float64)
+    term5['scores'] = np.array([[[0.001, 0.002, 0], [0.003, 0.004, 0], [0, 0, 0]], [[0.005, 0.006, 0], [0.007, 0.008, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], dtype=np.float64)
 
     terms = [term0, term1, term2, term3, term4, term5]
 
