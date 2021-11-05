@@ -1537,7 +1537,7 @@ def bin_native(
                     max_val = bounds[1]
                 cuts, feature_bin_counts = DPUtils.private_numeric_binning(X_col, noise_scale, max_bins, min_val, max_val)
                 feature_bin_counts.append(0)
-                feature_bin_counts = np.array(feature_bin_counts)
+                feature_bin_counts = np.array(feature_bin_counts, dtype=np.int64)
 
                 X_col = native.discretize(X_col, cuts)
 
@@ -1549,6 +1549,7 @@ def bin_native(
                 feature_histogram_cuts = native.cut_uniform(X_col, n_cuts)
                 discretized = native.discretize(X_col, feature_histogram_cuts)
                 feature_histogram_counts = np.bincount(discretized, minlength=len(feature_histogram_cuts) + 3)
+                feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
 
                 min_val = np.nanmin(X_col)
                 max_val = np.nanmax(X_col)
@@ -1556,6 +1557,7 @@ def bin_native(
                 cuts = _cut_continuous(native, X_col, feature_type_in, binning, max_bins, min_samples_bin)
                 X_col = native.discretize(X_col, cuts)
                 feature_bin_counts = np.bincount(X_col, minlength=len(cuts) + 3)
+                feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
 
             feature_bins = cuts
             n_bins = len(cuts) + 2
@@ -1604,13 +1606,14 @@ def bin_native(
             else:
                 n_unique_indexes = len(set(categories.values()))
                 feature_bin_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
+                feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
 
             feature_bins = categories
 
             n_bins = len(feature_bin_counts)
             if feature_bin_counts[-1] == 0:
                 n_bins -= 1
-          
+
         n_bytes += native.size_feature(feature_type_out == 'nominal', n_bins, X_col)
         bins.append(feature_bins)
         bin_counts.append(feature_bin_counts)
@@ -1666,7 +1669,7 @@ def bin_native(
 
     return shared_dataset, classes, feature_names_out, feature_types_out, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts
 
-def score_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
+def eval_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
     # bin_levels contains: bins (mains), pair_bins (pairs), higher_bins (3 way and above), etc..
 
     # called under: predict
@@ -1755,9 +1758,8 @@ def score_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
                     if is_done:
                         # the requirements can contain features with both categoricals or continuous
                         binned_data = tuple(requirements[:-1])
-                        scores = term['scores'][binned_data]
                         requirements[:] = _none_list # clear references so that the garbage collector can free them
-                        yield term, scores
+                        yield term, binned_data
         else:
             # categorical feature
 
@@ -1783,9 +1785,59 @@ def score_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
                     if is_done:
                         # the requirements can contain features with both categoricals or continuous
                         binned_data = tuple(requirements[:-1])
-                        scores = term['scores'][binned_data]
                         requirements[:] = _none_list # clear references so that the garbage collector can free them
-                        yield term, scores
+                        yield term, binned_data
+
+def ebm_decision_function(X, n_samples, feature_names_out, feature_types_out, terms, bin_levels, intercept):
+    if len(intercept) == 1:
+        scores = np.full(n_samples, intercept, dtype=np.float64)
+    else:
+        scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
+
+    for term, binned_data in eval_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
+        scores += term['scores'][binned_data]
+
+    return scores
+
+def append_bin_counts(X, feature_names_out, feature_types_out, terms, bin_levels, w=None):
+    for term, binned_data in eval_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
+        features = term['features']
+        bin_level = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
+        multiple = 1
+        dimensions = []
+        for dimension_idx in range(len(features) - 1, -1, -1):
+            feature_idx = features[dimension_idx]
+            feature_bins = bin_level[feature_idx]
+
+            if isinstance(feature_bins, dict):
+                # categorical feature
+                n_bins = len(set(feature_bins.values())) + 2
+            else:
+                # continuous feature
+                n_bins = len(feature_bins) + 3
+
+            dimensions.append(n_bins)
+            dim_data = binned_data[dimension_idx]
+            dim_data = np.where(dim_data < 0, n_bins - 1, dim_data)
+            if multiple == 1:
+                flat_indexes = dim_data
+            else:
+                flat_indexes += dim_data * multiple
+            multiple *= n_bins
+        dimensions = tuple(reversed(dimensions))
+
+        bin_counts = np.bincount(flat_indexes, minlength=multiple)
+        bin_counts = bin_counts.astype(np.int64, copy=False)
+        bin_counts = bin_counts.reshape(dimensions)
+        term['bin_counts'] = bin_counts
+
+        if w is None:
+            bin_weights = bin_counts.astype(np.float64)
+        else:
+            bin_weights = np.bincount(flat_indexes, weights=w, minlength=multiple)
+            bin_weights = bin_weights.astype(np.float64, copy=False)
+            bin_weights = bin_weights.reshape(dimensions)
+        term['bin_weights'] = bin_weights
 
 def deduplicate_bins(bin_levels):
     # bin_levels contains: bins (mains), pair_bins (pairs), higher_bins (3 way and above), etc..
@@ -2009,11 +2061,13 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                     cuts = _cut_continuous(native, X_col, feature_type_in, self.binning, self.max_bins, self.min_samples_bin)
                     discretized = native.discretize(X_col, cuts)
                     feature_bin_counts = np.bincount(discretized, minlength=len(cuts) + 3)
+                    feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
 
                     n_cuts = native.get_histogram_cut_count(X_col)
                     feature_histogram_cuts = native.cut_uniform(X_col, n_cuts)
                     discretized = native.discretize(X_col, feature_histogram_cuts)
                     feature_histogram_counts = np.bincount(discretized, minlength=len(feature_histogram_cuts) + 3)
+                    feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
 
                 bins_out[feature_idx] = cuts
                 min_vals[feature_idx] = min_val
@@ -2065,6 +2119,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                 else:
                     n_unique_indexes = len(set(categories.values()))
                     feature_bin_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
+                    feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
 
                 bins_out[feature_idx] = categories
             bin_counts[feature_idx] = feature_bin_counts
@@ -2125,3 +2180,17 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
             X_binned[:, feature_idx] = X_col
 
         return X_binned
+
+    def fit_transform(self, X):
+        """ Fits and Transform on provided samples.
+
+        Args:
+            X: Numpy array for samples.
+
+        Returns:
+            Transformed numpy array.
+        """
+
+        X, _ = clean_X(X)
+        return self.fit(X).transform(X)
+
