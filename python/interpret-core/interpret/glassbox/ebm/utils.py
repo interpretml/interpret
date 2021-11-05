@@ -129,13 +129,13 @@ class EBMUtils:
                     # All the estimators of one ebm model share the same bin edges
                     for estimator in model.bagged_models_: 
 
-                        mvalues = estimator.model_[index]      
+                        mvalues = estimator['model'][index]      
                         
                         # expanding the prediction values to cover all the new merged bin edges                                              
                         new_model_ = [ mvalues[x] for x in adj_bin_idx ]
 
                         # updating the new EBM model estimator predictions with the new extended predictions
-                        ebm.bagged_models_[estimator_idx].model_[index] = new_model_
+                        ebm.bagged_models_[estimator_idx]['model'][index] = new_model_
                         
                         # bin counts are used as weights to calculate weighted average of new merged bins.                        
                         weights =[ bin_counts[x] for x in adj_bin_idx ]
@@ -161,7 +161,7 @@ class EBMUtils:
 
                     for estimator in model.bagged_models_:
 
-                        mvalues = estimator.model_[index]                           
+                        mvalues = estimator['model'][index]                           
                         new_model_ = [mvalues[0]] + [ mvalues[i] if i else 0.0 for i in mask]
                         
                         weights = [bin_counts[0]] + [ bin_counts[i] if i else 0.0 for i in mask ]
