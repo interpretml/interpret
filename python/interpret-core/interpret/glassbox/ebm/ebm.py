@@ -385,17 +385,17 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         else:  # pragma: no cover
             raise Exception("Unknown column type")
 
-def _fit_parallel(
+def _parallel_cyclic_gradient_boost(
+    scores_train,
+    scores_val,
     X, 
     y, 
     w, 
-    X_pair, 
+    feature_indices,
     n_classes,
     validation_size,
-    random_state,
     model_type,
-    main_features,
-    noise_scale,
+    update,
     features_categorical,
     features_bin_count,
     inner_bags,
@@ -405,9 +405,11 @@ def _fit_parallel(
     early_stopping_rounds,
     early_stopping_tolerance,
     max_rounds,
+    random_state,
+    noise_scale,
     bin_counts,
 ):
-    # Split data into train/val
+    log.info("Splitting train/test")
 
     X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
         X,
@@ -418,53 +420,26 @@ def _fit_parallel(
         is_classification=model_type == "classification",
     )
 
-    if X_pair is not None:
-        X_pair_train, X_pair_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
-            X_pair,
-            y,
-            w,
-            test_size=validation_size,
-            random_state=random_state,
-            is_classification=model_type == "classification",
-        )
-    else:
-        X_pair_train, X_pair_val = None, None
-              
-    # Build EBM allocation code
+    log.info("Cyclic boost")
 
-    if isinstance(main_features, str) and main_features == "all":
-        main_feature_indices = [[x] for x in range(X.shape[1])]
-    elif isinstance(main_features, list) and all(
-        isinstance(x, int) for x in main_features
-    ):
-        main_feature_indices = [[x] for x in main_features]
-    else:  # pragma: no cover
-        raise RuntimeError("Argument 'mains' has invalid value")
-
-    # Train main effects
-    if noise_scale is not None: # Differentially Private Training
-        update = Native.GenerateUpdateOptions_GradientSums | Native.GenerateUpdateOptions_RandomSplits
-    else:
-        update = Native.GenerateUpdateOptions_Default
-    log.info("Train main effects")
     (
-        model,
+        model_update,
         current_metric,
-        main_episode_idx,
+        episode_idx,
     ) = EBMUtils.cyclic_gradient_boost(
         model_type=model_type,
         n_classes=n_classes,
         features_categorical = features_categorical, 
         features_bin_count = features_bin_count, 
-        feature_groups=main_feature_indices,
+        feature_groups=feature_indices,
         X_train=X_train,
         y_train=y_train,
         w_train=w_train,
-        scores_train=None,
+        scores_train=scores_train,
         X_val=X_val,
         y_val=y_val,
         w_val=w_val,
-        scores_val=None,
+        scores_val=scores_val,
         n_inner_bags=inner_bags,
         generate_update_options=update,
         learning_rate=learning_rate,
@@ -474,32 +449,29 @@ def _fit_parallel(
         early_stopping_tolerance=early_stopping_tolerance,
         max_rounds=max_rounds,
         random_state=random_state,
-        name="Main",
+        name="Boost",
         noise_scale=noise_scale,
         bin_counts=bin_counts,
     )
-    return model, main_episode_idx, main_feature_indices
+    return model_update, episode_idx
 
-def _parallel_build_interactions(
+def _parallel_get_interactions(
+    scores_train,
     X, 
     y, 
     w, 
-    X_pair, 
     n_classes,
     validation_size,
     random_state,
     model_type,
     interactions,
-    feature_groups,
-    model,
-    intercept,
     pair_features_categorical, 
     pair_features_bin_count, 
     min_samples_leaf,
 ):
-    # Split data into train/val
+    log.info("Splitting train/test")
 
-    X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
+    X_pair_train, _, y_train, _, w_train, _ = EBMUtils.ebm_train_test_split(
         X,
         y,
         w,
@@ -507,147 +479,25 @@ def _parallel_build_interactions(
         random_state=random_state,
         is_classification=model_type == "classification",
     )
-
-    if X_pair is not None:
-        X_pair_train, X_pair_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
-            X_pair,
-            y,
-            w,
-            test_size=validation_size,
-            random_state=random_state,
-            is_classification=model_type == "classification",
-        )
-    else:
-        X_pair_train, X_pair_val = None, None
         
-    # Build interaction terms, if required
-    if isinstance(interactions, int) and interactions != 0:
-        log.info("Estimating with FAST")
+    log.info("Estimating with FAST")
 
-        scores_train = EBMUtils.decision_function(
-            X_train, X_pair_train, feature_groups, model, intercept
-        )
+    iter_feature_groups = combinations(range(X_pair_train.shape[0]), 2)
 
-        iter_feature_groups = combinations(range(X_pair_train.shape[0]), 2)
-
-        final_indices, final_scores = EBMUtils.get_interactions(
-            n_interactions=interactions,
-            iter_feature_groups=iter_feature_groups,
-            model_type=model_type,
-            n_classes=n_classes,
-            features_categorical = pair_features_categorical, 
-            features_bin_count = pair_features_bin_count, 
-            X=X_pair_train,
-            y=y_train,
-            w=w_train,
-            scores=scores_train,
-            min_samples_leaf=min_samples_leaf,
-        )
-    elif isinstance(interactions, int) and interactions == 0:
-        final_indices = []
-        final_scores = []
-    elif isinstance(interactions, list):
-        final_indices = interactions
-        final_scores = [None for _ in range(len(interactions))]
-    else:  # pragma: no cover
-        raise RuntimeError("Argument 'interaction' has invalid value")
-
-    return final_indices, final_scores
-
-def _parallel_staged_fit_interactions(
-    X, 
-    y, 
-    w, 
-    X_pair, 
-    inter_indices, 
-    validation_size, 
-    model_type, 
-    feature_groups, 
-    model, 
-    intercept,
-    n_classes,
-    pair_features_categorical, 
-    pair_features_bin_count, 
-    inner_bags,
-    learning_rate,
-    min_samples_leaf,
-    max_leaves,
-    early_stopping_rounds,
-    early_stopping_tolerance,
-    max_rounds,
-    random_state, 
-    noise_scale,
-    bin_counts,
-):
-    log.info("Splitting train/test for interactions")
-
-    # Split data into train/val
-    # NOTE: ideally we would store the train/validation split in the
-    #       remote processes, but joblib doesn't have a concept
-    #       of keeping remote state, so we re-split our sets
-    X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
-        X,
-        y,
-        w,
-        test_size=validation_size,
-        random_state=random_state,
-        is_classification=model_type == "classification",
-    )
-
-    X_pair_train, X_pair_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
-        X_pair,
-        y,
-        w,
-        test_size=validation_size,
-        random_state=random_state,
-        is_classification=model_type == "classification",
-    )
-
-    log.info("Training interactions")
-
-    scores_train = EBMUtils.decision_function(
-        X_train, X_pair_train, feature_groups, model, intercept
-    )
-    scores_val = EBMUtils.decision_function(
-        X_val, X_pair_val, feature_groups, model, intercept
-    )
-
-    (
-        model_update,
-        current_metric,
-        inter_episode_idx,
-    ) = EBMUtils.cyclic_gradient_boost(
+    final_indices, final_scores = EBMUtils.get_interactions(
+        n_interactions=interactions,
+        iter_feature_groups=iter_feature_groups,
         model_type=model_type,
         n_classes=n_classes,
         features_categorical = pair_features_categorical, 
         features_bin_count = pair_features_bin_count, 
-        feature_groups=inter_indices,
-        X_train=X_pair_train,
-        y_train=y_train,
-        w_train=w_train,
-        scores_train=scores_train,
-        X_val=X_pair_val,
-        y_val=y_val,
-        w_val=w_val,
-        scores_val=scores_val,
-        n_inner_bags=inner_bags,
-        generate_update_options=Native.GenerateUpdateOptions_Default, 
-        learning_rate=learning_rate,
+        X=X_pair_train,
+        y=y_train,
+        w=w_train,
+        scores=scores_train,
         min_samples_leaf=min_samples_leaf,
-        max_leaves=max_leaves,
-        early_stopping_rounds=early_stopping_rounds,
-        early_stopping_tolerance=early_stopping_tolerance,
-        max_rounds=max_rounds,
-        random_state=random_state,
-        name="Pair",
-        noise_scale=noise_scale,
-        bin_counts=bin_counts,
     )
-
-    model.extend(model_update)
-    feature_groups.extend(inter_indices)
-
-    return inter_episode_idx, model, feature_groups
+    return final_indices, final_scores
 
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
@@ -917,18 +767,34 @@ class BaseEBM(BaseEstimator):
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
+        if isinstance(self.mains, str) and self.mains == "all":
+            main_feature_indices = [[x] for x in range(X.shape[1])]
+        elif isinstance(self.mains, list) and all(
+            isinstance(x, int) for x in self.mains
+        ):
+            main_feature_indices = [[x] for x in self.mains]
+        else:  # pragma: no cover
+            raise RuntimeError("Argument 'mains' has invalid value")
+              
+        # Train main effects
+        noise_scale = getattr(self, 'noise_scale_', None)
+        if noise_scale is not None: # Differentially Private Training
+            update = Native.GenerateUpdateOptions_GradientSums | Native.GenerateUpdateOptions_RandomSplits
+        else:
+            update = Native.GenerateUpdateOptions_Default
+
         train_model_args_iter = (
             (
-                X, 
-                y, 
-                w, 
-                X_pair, 
+                None,
+                None,
+                X,
+                y,
+                w,
+                main_feature_indices,
                 n_classes,
                 self.validation_size,
-                estimators[i]['random_state'],
                 model_type,
-                self.mains,
-                getattr(self, 'noise_scale_', None),
+                update,
                 features_categorical,
                 features_bin_count,
                 self.inner_bags,
@@ -938,39 +804,69 @@ class BaseEBM(BaseEstimator):
                 self.early_stopping_rounds,
                 self.early_stopping_tolerance,
                 self.max_rounds,
+                estimators[i]['random_state'],
+                noise_scale,
                 bin_data_counts,
             ) for i in range(self.outer_bags)
         )
-        results = provider.parallel(_fit_parallel, train_model_args_iter)
+        results = provider.parallel(_parallel_cyclic_gradient_boost, train_model_args_iter)
         for i in range(self.outer_bags):
             estimators[i]['model'] = results[i][0]
             estimators[i]['main_episode_idx'] = results[i][1]
-            estimators[i]['feature_groups'] = results[i][2]
+            estimators[i]['feature_groups'] = main_feature_indices.copy()
 
-        train_model_args_iter2 = (
-            (
-                X, 
-                y, 
-                w, 
-                X_pair, 
-                n_classes,
-                self.validation_size, 
-                estimators[i]['random_state'], 
-                model_type, 
-                self.interactions, 
-                estimators[i]['feature_groups'], 
-                estimators[i]['model'], 
-                self.intercept_, 
-                pair_features_categorical, 
-                pair_features_bin_count, 
-                self.min_samples_leaf, 
-            ) for i in range(self.outer_bags)
-        )
-        results = provider.parallel(_parallel_build_interactions, train_model_args_iter2)
-        for i in range(self.outer_bags):
-            estimators[i]['inter_indices'] = results[i][0]
-            estimators[i]['inter_scores'] = results[i][1]
-            estimators[i]['inter_episode_idx'] = 0
+        # Build interaction terms, if required
+        if isinstance(self.interactions, int) and self.interactions != 0:
+            log.info("Estimating with FAST")
+
+            scores_train_bags = []
+            for i in range(self.outer_bags):
+                X_train, _, _, _, _, _ = EBMUtils.ebm_train_test_split(
+                    X,
+                    y,
+                    w,
+                    test_size=self.validation_size,
+                    random_state=estimators[i]['random_state'],
+                    is_classification=model_type == "classification",
+                )
+                scores_train = EBMUtils.decision_function(
+                    X_train, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
+                )
+                scores_train_bags.append(scores_train)
+
+            train_model_args_iter2 = (
+                (
+                    scores_train_bags[i],
+                    X_pair, 
+                    y, 
+                    w, 
+                    n_classes,
+                    self.validation_size, 
+                    estimators[i]['random_state'], 
+                    model_type, 
+                    self.interactions, 
+                    pair_features_categorical, 
+                    pair_features_bin_count, 
+                    self.min_samples_leaf, 
+                ) for i in range(self.outer_bags)
+            )
+            results = provider.parallel(_parallel_get_interactions, train_model_args_iter2)
+            for i in range(self.outer_bags):
+                estimators[i]['inter_indices'] = results[i][0]
+                estimators[i]['inter_scores'] = results[i][1]
+                estimators[i]['inter_episode_idx'] = 0
+        elif isinstance(self.interactions, int) and self.interactions == 0:
+            for i in range(self.outer_bags):
+                estimators[i]['inter_indices'] = []
+                estimators[i]['inter_scores'] = []
+                estimators[i]['inter_episode_idx'] = 0
+        elif isinstance(self.interactions, list):
+            for i in range(self.outer_bags):
+                estimators[i]['inter_indices'] = self.interactions
+                estimators[i]['inter_scores'] = [None for _ in range(len(self.interactions))]
+                estimators[i]['inter_episode_idx'] = 0
+        else:  # pragma: no cover
+            raise RuntimeError("Argument 'interaction' has invalid value")
 
         def select_pairs_from_fast(estimators, n_interactions):
             # Average rank from estimators
@@ -1011,19 +907,38 @@ class BaseEBM(BaseEstimator):
             if len(pair_indices) != 0:
                 # Retrain interactions for base models
 
+                scores_train_bags = []
+                scores_val_bags = []
+                for i in range(self.outer_bags):
+                    X_train, X_val, _, _, _, _ = EBMUtils.ebm_train_test_split(
+                        X,
+                        y,
+                        w,
+                        test_size=self.validation_size,
+                        random_state=estimators[i]['random_state'],
+                        is_classification=model_type == "classification",
+                    )
+                    scores_train = EBMUtils.decision_function(
+                        X_train, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
+                    )
+                    scores_val = EBMUtils.decision_function(
+                        X_val, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
+                    )
+                    scores_train_bags.append(scores_train)
+                    scores_val_bags.append(scores_val)
+
                 staged_fit_args_iter = (
                     (
-                        X, 
+                        scores_train_bags[i],
+                        scores_val_bags[i],
+                        X_pair, 
                         y, 
                         w, 
-                        X_pair, 
                         pair_indices, 
+                        n_classes, 
                         self.validation_size, 
                         model_type, 
-                        estimators[i]['feature_groups'], 
-                        estimators[i]['model'], 
-                        self.intercept_, 
-                        n_classes, 
+                        Native.GenerateUpdateOptions_Default,
                         pair_features_categorical, 
                         pair_features_bin_count, 
                         self.inner_bags, 
@@ -1038,11 +953,11 @@ class BaseEBM(BaseEstimator):
                         bin_data_counts, 
                     ) for i in range(self.outer_bags)
                 )
-                results = provider.parallel(_parallel_staged_fit_interactions, staged_fit_args_iter)
+                results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
                 for i in range(self.outer_bags):
-                    estimators[i]['inter_episode_idx'] = results[i][0]
-                    estimators[i]['model'] = results[i][1]
-                    estimators[i]['feature_groups'] = results[i][2]
+                    estimators[i]['model'].extend(results[i][0])
+                    estimators[i]['inter_episode_idx'] = results[i][1]
+                    estimators[i]['feature_groups'].extend(pair_indices)
 
         elif isinstance(self.interactions, int) and self.interactions == 0:
             pair_indices = []
@@ -1065,20 +980,39 @@ class BaseEBM(BaseEstimator):
                     pair_indices = unique_terms
                     self.interactions = pair_indices
 
+                scores_train_bags = []
+                scores_val_bags = []
+                for i in range(self.outer_bags):
+                    X_train, X_val, _, _, _, _ = EBMUtils.ebm_train_test_split(
+                        X,
+                        y,
+                        w,
+                        test_size=self.validation_size,
+                        random_state=estimators[i]['random_state'],
+                        is_classification=model_type == "classification",
+                    )
+                    scores_train = EBMUtils.decision_function(
+                        X_train, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
+                    )
+                    scores_val = EBMUtils.decision_function(
+                        X_val, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
+                    )
+                    scores_train_bags.append(scores_train)
+                    scores_val_bags.append(scores_val)
+
                 # Retrain interactions for base models
                 staged_fit_args_iter = (
                     (
-                        X, 
+                        scores_train_bags[i],
+                        scores_val_bags[i],
+                        X_pair, 
                         y, 
                         w, 
-                        X_pair, 
                         pair_indices, 
+                        n_classes, 
                         self.validation_size, 
                         model_type, 
-                        estimators[i]['feature_groups'], 
-                        estimators[i]['model'], 
-                        self.intercept_, 
-                        n_classes, 
+                        Native.GenerateUpdateOptions_Default,
                         pair_features_categorical, 
                         pair_features_bin_count, 
                         self.inner_bags, 
@@ -1093,11 +1027,11 @@ class BaseEBM(BaseEstimator):
                         bin_data_counts, 
                     ) for i in range(self.outer_bags)
                 )
-                results = provider.parallel(_parallel_staged_fit_interactions, staged_fit_args_iter)
+                results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
                 for i in range(self.outer_bags):
-                    estimators[i]['inter_episode_idx'] = results[i][0]
-                    estimators[i]['model'] = results[i][1]
-                    estimators[i]['feature_groups'] = results[i][2]
+                    estimators[i]['model'].extend(results[i][0])
+                    estimators[i]['inter_episode_idx'] = results[i][1]
+                    estimators[i]['feature_groups'].extend(pair_indices)
 
         else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
