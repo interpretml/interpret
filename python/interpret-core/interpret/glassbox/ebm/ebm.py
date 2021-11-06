@@ -497,7 +497,7 @@ def _parallel_get_interactions(
         scores=scores_train,
         min_samples_leaf=min_samples_leaf,
     )
-    return final_indices, final_scores
+    return final_indices
 
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
@@ -705,20 +705,6 @@ class BaseEBM(BaseEstimator):
         # NOTE: [DP] Passthrough to lower level layers for noise addition
         bin_data_counts = {i : self.preprocessor_.col_bin_counts_[i] for i in range(X.shape[1])}
 
-        if self.interactions != 0:
-            self.pair_preprocessor_ = EBMPreprocessor(
-                feature_names=self.feature_names,
-                feature_types=self.feature_types,
-                max_bins=self.max_interaction_bins,
-                binning=self.binning,
-            )
-            self.pair_preprocessor_.fit(X_orig)
-            X_pair = self.pair_preprocessor_.transform(X_orig)
-            pair_features_categorical = np.array([x == "categorical" for x in self.pair_preprocessor_.col_types_], dtype=ct.c_int64)
-            pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_], dtype=ct.c_int64)
-        else:
-            self.pair_preprocessor_, X_pair, pair_features_categorical, pair_features_bin_count = None, None, None, None
-
         native = Native.get_native_singleton()
 
         if is_classifier(self):
@@ -753,11 +739,11 @@ class BaseEBM(BaseEstimator):
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         if isinstance(self.mains, str) and self.mains == "all":
-            main_feature_indices = [[x] for x in range(X.shape[1])]
+            feature_groups = [[x] for x in range(X.shape[1])]
         elif isinstance(self.mains, list) and all(
             isinstance(x, int) for x in self.mains
         ):
-            main_feature_indices = [[x] for x in self.mains]
+            feature_groups = [[x] for x in self.mains]
         else:  # pragma: no cover
             raise RuntimeError("Argument 'mains' has invalid value")
               
@@ -780,7 +766,7 @@ class BaseEBM(BaseEstimator):
                 X,
                 y,
                 w,
-                main_feature_indices,
+                feature_groups,
                 n_classes,
                 self.validation_size,
                 model_type,
@@ -802,156 +788,102 @@ class BaseEBM(BaseEstimator):
 
         results = provider.parallel(_parallel_cyclic_gradient_boost, train_model_args_iter)
 
-        estimators = []
-        bagged_seed = init_seed
-        scores_train_bags = []
-        scores_val_bags = []
-        for i in range(self.outer_bags):
-            estimators.append({})
-            estimators[i]['model'] = results[i][0]
-            estimators[i]['main_episode_idx'] = results[i][1]
-            estimators[i]['feature_groups'] = main_feature_indices.copy()
+        bagged_additive_terms = []
+        for term_idx in range(len(feature_groups)):
+            bags = []
+            bagged_additive_terms.append(bags)
+            for model, _ in results:
+                bags.append(model[term_idx])
 
-            bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-            X_train, X_val, _, _, _, _ = EBMUtils.ebm_train_test_split(
-                X,
-                y,
-                w,
-                test_size=self.validation_size,
-                random_state=bagged_seed,
-                is_classification=model_type == "classification",
-            )
-            scores_train = EBMUtils.decision_function(
-                X_train, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
-            )
-            scores_val = EBMUtils.decision_function(
-                X_val, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
-            )
-            scores_train_bags.append(scores_train)
-            scores_val_bags.append(scores_val)
+        breakpoint_iteration = []
+        for _, bag_breakpoint_iteration in results:
+            breakpoint_iteration.append(bag_breakpoint_iteration)
 
-        # Build interaction terms, if required
-        if isinstance(self.interactions, int) and self.interactions != 0:
-            log.info("Estimating with FAST")
-
-            train_model_args_iter2 = []
+        if isinstance(self.interactions, int) and self.interactions == 0 or isinstance(self.interactions, list) and len(self.interactions) == 0:
+            # no interactions to consider
+            self.pair_preprocessor_ = None
+            X_pair = None
+        else:
             bagged_seed = init_seed
-            for i in range(self.outer_bags):
+            scores_train_bags = []
+            scores_val_bags = []
+            for model, _ in results:
                 bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-                parallel_params = (
-                    scores_train_bags[i],
-                    X_pair, 
-                    y, 
-                    w, 
-                    n_classes,
-                    self.validation_size, 
-                    bagged_seed, 
-                    model_type, 
-                    self.interactions, 
-                    pair_features_categorical, 
-                    pair_features_bin_count, 
-                    self.min_samples_leaf, 
+                X_train, X_val, _, _, _, _ = EBMUtils.ebm_train_test_split(
+                    X,
+                    y,
+                    w,
+                    test_size=self.validation_size,
+                    random_state=bagged_seed,
+                    is_classification=model_type == "classification",
                 )
-                train_model_args_iter2.append(parallel_params)
+                scores_train = EBMUtils.decision_function(
+                    X_train, None, feature_groups, model, self.intercept_
+                )
+                scores_val = EBMUtils.decision_function(
+                    X_val, None, feature_groups, model, self.intercept_
+                )
+                scores_train_bags.append(scores_train)
+                scores_val_bags.append(scores_val)
 
-            results = provider.parallel(_parallel_get_interactions, train_model_args_iter2)
-            for i in range(self.outer_bags):
-                estimators[i]['inter_indices'] = results[i][0]
-                estimators[i]['inter_scores'] = results[i][1]
-                estimators[i]['inter_episode_idx'] = 0
-        elif isinstance(self.interactions, int) and self.interactions == 0:
-            for i in range(self.outer_bags):
-                estimators[i]['inter_indices'] = []
-                estimators[i]['inter_scores'] = []
-                estimators[i]['inter_episode_idx'] = 0
-        elif isinstance(self.interactions, list):
-            for i in range(self.outer_bags):
-                estimators[i]['inter_indices'] = self.interactions
-                estimators[i]['inter_scores'] = [None for _ in range(len(self.interactions))]
-                estimators[i]['inter_episode_idx'] = 0
-        else:  # pragma: no cover
-            raise RuntimeError("Argument 'interaction' has invalid value")
+                # remove these variables from visibility so that the garbage collector can reclaim the memory
+                X_train = None
+                X_val = None
 
-        def select_pairs_from_fast(estimators, n_interactions):
-            # Average rank from estimators
-            pair_ranks = {}
+            self.pair_preprocessor_ = EBMPreprocessor(
+                feature_names=self.feature_names,
+                feature_types=self.feature_types,
+                max_bins=self.max_interaction_bins,
+                binning=self.binning,
+            )
+            self.pair_preprocessor_.fit(X_orig)
+            X_pair = self.pair_preprocessor_.transform(X_orig)
+            pair_features_categorical = np.array([x == "categorical" for x in self.pair_preprocessor_.col_types_], dtype=ct.c_int64)
+            pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_], dtype=ct.c_int64)
 
-            for n, estimator in enumerate(estimators):
-                for rank, indices in enumerate(estimator['inter_indices']):
-                    old_mean = pair_ranks.get(indices, 0)
-                    pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
+            if isinstance(self.interactions, int) and self.interactions > 0:
+                log.info("Estimating with FAST")
 
-            final_ranks = []
-            total_interactions = 0
-            for indices in pair_ranks:
-                heapq.heappush(final_ranks, (pair_ranks[indices], indices))
-                total_interactions += 1
-
-            n_interactions = min(n_interactions, total_interactions)
-            top_pairs = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
-            return top_pairs
-
-        if isinstance(self.interactions, int) and self.interactions > 0:
-            # Select merged pairs
-            pair_indices = select_pairs_from_fast(estimators, self.interactions)
-
-            for estimator in estimators:
-                # Discard initial interactions
-                new_model = []
-                new_feature_groups = []
-                for i, feature_group in enumerate(estimator['feature_groups']):
-                    if len(feature_group) != 1:
-                        continue
-                    new_model.append(estimator['model'][i])
-                    new_feature_groups.append(estimator['feature_groups'][i])
-                estimator['model'] = new_model
-                estimator['feature_groups'] = new_feature_groups
-                estimator['inter_episode_idx'] = 0
-
-            if len(pair_indices) != 0:
-                # Retrain interactions for base models
-
-                staged_fit_args_iter = []
+                train_model_args_iter2 = []
                 bagged_seed = init_seed
                 for i in range(self.outer_bags):
                     bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
                     parallel_params = (
                         scores_train_bags[i],
-                        scores_val_bags[i],
                         X_pair, 
                         y, 
                         w, 
-                        pair_indices, 
-                        n_classes, 
+                        n_classes,
                         self.validation_size, 
+                        bagged_seed, 
                         model_type, 
-                        Native.GenerateUpdateOptions_Default,
+                        self.interactions, 
                         pair_features_categorical, 
                         pair_features_bin_count, 
-                        self.inner_bags, 
-                        self.learning_rate, 
                         self.min_samples_leaf, 
-                        self.max_leaves, 
-                        self.early_stopping_rounds, 
-                        self.early_stopping_tolerance, 
-                        self.max_rounds, 
-                        bagged_seed, 
-                        getattr(self, 'noise_scale_', None), 
-                        bin_data_counts, 
                     )
-                    staged_fit_args_iter.append(parallel_params)
+                    train_model_args_iter2.append(parallel_params)
 
-                results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
-                for i in range(self.outer_bags):
-                    estimators[i]['model'].extend(results[i][0])
-                    estimators[i]['inter_episode_idx'] = results[i][1]
-                    estimators[i]['feature_groups'].extend(pair_indices)
+                bagged_interaction_indices = provider.parallel(_parallel_get_interactions, train_model_args_iter2)
 
-        elif isinstance(self.interactions, int) and self.interactions == 0:
-            pair_indices = []
-        elif isinstance(self.interactions, list):
-            pair_indices = self.interactions
-            if len(pair_indices) != 0:
+                # Select merged pairs
+                pair_ranks = {}
+                for n, interaction_indices in enumerate(bagged_interaction_indices):
+                    for rank, indices in enumerate(interaction_indices):
+                        old_mean = pair_ranks.get(indices, 0)
+                        pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
+
+                final_ranks = []
+                total_interactions = 0
+                for indices in pair_ranks:
+                    heapq.heappush(final_ranks, (pair_ranks[indices], indices))
+                    total_interactions += 1
+
+                n_interactions = min(self.interactions, total_interactions)
+                pair_indices = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
+
+            elif isinstance(self.interactions, list):
+                pair_indices = self.interactions
                 # Check and remove duplicate interaction terms
                 existing_terms = set()
                 unique_terms = []
@@ -968,95 +900,71 @@ class BaseEBM(BaseEstimator):
                     pair_indices = unique_terms
                     self.interactions = pair_indices
 
-                staged_fit_args_iter = []
-                bagged_seed = init_seed
-                for i in range(self.outer_bags):
-                    bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-                    parallel_params = (
-                        scores_train_bags[i],
-                        scores_val_bags[i],
-                        X_pair, 
-                        y, 
-                        w, 
-                        pair_indices, 
-                        n_classes, 
-                        self.validation_size, 
-                        model_type, 
-                        Native.GenerateUpdateOptions_Default,
-                        pair_features_categorical, 
-                        pair_features_bin_count, 
-                        self.inner_bags, 
-                        self.learning_rate, 
-                        self.min_samples_leaf, 
-                        self.max_leaves, 
-                        self.early_stopping_rounds, 
-                        self.early_stopping_tolerance, 
-                        self.max_rounds, 
-                        bagged_seed, 
-                        getattr(self, 'noise_scale_', None), 
-                        bin_data_counts, 
-                    )
-                    staged_fit_args_iter.append(parallel_params)
+            else:  # pragma: no cover
+                raise RuntimeError("Argument 'interaction' has invalid value")
 
-                results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
-                for i in range(self.outer_bags):
-                    estimators[i]['model'].extend(results[i][0])
-                    estimators[i]['inter_episode_idx'] = results[i][1]
-                    estimators[i]['feature_groups'].extend(pair_indices)
+            staged_fit_args_iter = []
+            bagged_seed = init_seed
+            for i in range(self.outer_bags):
+                bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+                parallel_params = (
+                    scores_train_bags[i],
+                    scores_val_bags[i],
+                    X_pair, 
+                    y, 
+                    w, 
+                    pair_indices, 
+                    n_classes, 
+                    self.validation_size, 
+                    model_type, 
+                    Native.GenerateUpdateOptions_Default,
+                    pair_features_categorical, 
+                    pair_features_bin_count, 
+                    self.inner_bags, 
+                    self.learning_rate, 
+                    self.min_samples_leaf, 
+                    self.max_leaves, 
+                    self.early_stopping_rounds, 
+                    self.early_stopping_tolerance, 
+                    self.max_rounds, 
+                    bagged_seed, 
+                    getattr(self, 'noise_scale_', None), 
+                    bin_data_counts, 
+                )
+                staged_fit_args_iter.append(parallel_params)
 
-        else:  # pragma: no cover
-            raise RuntimeError("Argument 'interaction' has invalid value")
+            results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
+
+            feature_groups.extend(pair_indices)
+
+            for term_idx in range(len(pair_indices)):
+                bags = []
+                bagged_additive_terms.append(bags)
+                for bag_scores, _ in results:
+                    bags.append(bag_scores[term_idx])
+
+            for _, bag_breakpoint_iteration in results:
+                breakpoint_iteration.append(bag_breakpoint_iteration)
 
         X = np.ascontiguousarray(X.T)
         if X_pair is not None:
             X_pair = np.ascontiguousarray(X_pair.T) # I have no idea if we're supposed to do this.
 
-        if isinstance(self.mains, str) and self.mains == "all":
-            main_indices = [[x] for x in range(X.shape[0])]
-        elif isinstance(self.mains, list) and all(
-            isinstance(x, int) for x in self.mains
-        ):
-            main_indices = [[x] for x in self.mains]
-        else:  # pragma: no cover
-            msg = "Argument 'mains' has invalid value (valid values are 'all'|list<int>): {}".format(
-                self.mains
-            )
-            raise RuntimeError(msg)
-
-        self.feature_groups_ = main_indices + pair_indices
-
-        self.bagged_models_ = estimators
-        # Merge estimators into one.
         self.additive_terms_ = []
         self.term_standard_deviations_ = []
-        for index, _ in enumerate(self.feature_groups_):
-            log_odds_tensors = []
-            for estimator in estimators:
-                log_odds_tensors.append(estimator['model'][index])
-
+        for index, log_odds_tensors in enumerate(bagged_additive_terms):
             averaged_model = np.average(np.array(log_odds_tensors), axis=0)
             model_errors = np.std(np.array(log_odds_tensors), axis=0)
 
             self.additive_terms_.append(averaged_model)
             self.term_standard_deviations_.append(model_errors)
 
-        # Get episode indexes for base estimators.
-        main_episode_idxs = []
-        inter_episode_idxs = []
-        for estimator in estimators:
-            main_episode_idxs.append(estimator['main_episode_idx'])
-            inter_episode_idxs.append(estimator['inter_episode_idx'])
-
-        self.breakpoint_iteration_ = [main_episode_idxs]
-        if len(pair_indices) != 0:
-            self.breakpoint_iteration_.append(inter_episode_idxs)
-
         # Extract feature group names and feature group types.
         # TODO PK v.3 don't overwrite feature_names and feature_types.  Create new fields called feature_names_out and
         #             feature_types_out_ or feature_group_names_ and feature_group_types_
         self.feature_names = []
         self.feature_types = []
-        for index, feature_indices in enumerate(self.feature_groups_):
+        for index, feature_indices in enumerate(feature_groups):
             feature_group_name = EBMUtils.gen_feature_group_name(
                 feature_indices, self.preprocessor_.col_names_
             )
@@ -1072,7 +980,7 @@ class BaseEBM(BaseEstimator):
                 # No additional privacy loss from this step
                 # self.additive_terms_ and self.preprocessor_.col_bin_counts_ are noisy and published publicly
                 self._original_term_means_ = []
-                for set_idx in range(len(self.feature_groups_)):
+                for set_idx in range(len(feature_groups)):
                     score_mean = np.average(self.additive_terms_[set_idx], weights=self.preprocessor_.col_bin_counts_[set_idx])
                     self.additive_terms_[set_idx] = (
                         self.additive_terms_[set_idx] - score_mean
@@ -1084,7 +992,7 @@ class BaseEBM(BaseEstimator):
             else:       
                 # Mean center graphs - only for binary classification and regression
                 scores_gen = EBMUtils.scores_by_feature_group(
-                    X, X_pair, self.feature_groups_, self.additive_terms_
+                    X, X_pair, feature_groups, self.additive_terms_
                 )
                 self._original_term_means_ = []
 
@@ -1103,7 +1011,7 @@ class BaseEBM(BaseEstimator):
 
             # Currently pairwise interactions are unsupported for multiclass-classification.
             binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
-                x, None, self.feature_groups_, self.additive_terms_, self.intercept_
+                x, None, feature_groups, self.additive_terms_, self.intercept_
             )
 
             postprocessed = multiclass_postprocess(
@@ -1112,7 +1020,7 @@ class BaseEBM(BaseEstimator):
             self.additive_terms_ = postprocessed["feature_graphs"]
             self.intercept_ = postprocessed["intercepts"]
 
-        for feature_group_idx, feature_group in enumerate(self.feature_groups_):
+        for feature_group_idx, feature_group in enumerate(feature_groups):
             entire_tensor = [slice(None, None, None) for i in range(self.additive_terms_[feature_group_idx].ndim)]
             for dimension_idx, feature_idx in enumerate(feature_group):
                 if self.preprocessor_.col_bin_counts_[feature_idx][0] == 0:
@@ -1125,12 +1033,12 @@ class BaseEBM(BaseEstimator):
         self.feature_importances_ = []
         if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
             # DP method of generating feature importances can generalize to non-dp if preprocessors start tracking joint distributions
-            for i in range(len(self.feature_groups_)):
+            for i in range(len(feature_groups)):
                 mean_abs_score = np.average(np.abs(self.additive_terms_[i]), weights=self.preprocessor_.col_bin_counts_[i])
                 self.feature_importances_.append(mean_abs_score)
         else:
             scores_gen = EBMUtils.scores_by_feature_group(
-                X, X_pair, self.feature_groups_, self.additive_terms_
+                X, X_pair, feature_groups, self.additive_terms_
             )
             for set_idx, _, scores in scores_gen:
                 mean_abs_score = np.mean(np.abs(scores))
@@ -1142,6 +1050,9 @@ class BaseEBM(BaseEstimator):
             X_orig, self.feature_names, self.feature_types, None
         )
 
+        self.bagged_additive_terms_ = bagged_additive_terms
+        self.feature_groups_ = feature_groups
+        self.breakpoint_iteration_ = breakpoint_iteration
         self.has_fitted_ = True
         return self
 

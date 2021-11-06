@@ -44,6 +44,9 @@ class EBMUtils:
             An EBM model with averaged mean and standard deviation of input models.
         """
 
+        # TODO: re-enable this function once the rest of the memory work is done
+        raise RuntimeError("Under construction")
+
         if len(models) < 2:  # pragma: no cover
             raise Exception("at least two models are required to merge.")
 
