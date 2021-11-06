@@ -1973,11 +1973,12 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
         self.delta = delta
         self.privacy_schema = privacy_schema
 
-    def fit(self, X):
+    def fit(self, X, y=None):
         """ Fits transformer to provided samples.
 
         Args:
             X: Numpy array for training samples.
+            y: Unused. Only included for scikit-learn compatibility
 
         Returns:
             Itself.
@@ -2181,11 +2182,12 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
 
         return X_binned
 
-    def fit_transform(self, X):
+    def fit_transform(self, X, y=None):
         """ Fits and Transform on provided samples.
 
         Args:
             X: Numpy array for samples.
+            y: Unused. Only included for scikit-learn compatibility
 
         Returns:
             Transformed numpy array.

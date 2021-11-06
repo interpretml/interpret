@@ -629,24 +629,15 @@ class BaseEBM(BaseEstimator):
         #       https://github.com/microsoft/LightGBM/issues/2628#issue-536116395
         #
 
-
-        # TODO PK sanity check all our inputs from the __init__ function, and this fit fuction
+        # TODO: we should define self.n_features_in_ per: 
+        # https://scikit-learn.org/stable/developers/develop.html
 
         # TODO PK we shouldn't expose our internal state until we are 100% sure that we succeeded
         #         so move everything to local variables until the end when we assign them to self.*
 
-        # TODO PK we should do some basic checks here that X and y have the same dimensions and that
-        #      they are well formed (look for NaNs, etc)
-
-        # TODO PK handle calls where X.dim == 1.  This could occur if there was only 1 feature, or if
-        #     there was only 1 sample?  We can differentiate either condition via y.dim and reshape
-        #     AND add some tests for the X.dim == 1 scenario
-
-        # TODO PK write an efficient striping converter for X that replaces unify_data for EBMs
-        # algorithm: grap N columns and convert them to rows then process those by sending them to C
-
-        # TODO: PK don't overwrite self.feature_names here (scikit-learn rules), and it's also confusing to
-        #       user to have their fields overwritten.  Use feature_names_out_ or something similar
+        # TODO: PK don't overwrite self.feature_names or self.feature_types here (scikit-learn rules), and it's also confusing to
+        #       user to have their fields overwritten.  Use feature_names_in_ since 
+        #       scikit-learn is using "feature_names_in_" in multiple estimators now
         X, y, self.feature_names, _ = unify_data(
             X, y, self.feature_names, self.feature_types, missing_data_allowed=False
         )
@@ -728,13 +719,7 @@ class BaseEBM(BaseEstimator):
         else:
             self.pair_preprocessor_, X_pair, pair_features_categorical, pair_features_bin_count = None, None, None, None
 
-        seed = EBMUtils.normalize_initial_random_seed(self.random_state)
         native = Native.get_native_singleton()
-
-        estimators = []
-        for idx in range(self.outer_bags):
-            seed=native.generate_random_number(seed, 1416147523)
-            estimators.append({'random_state': seed})
 
         if is_classifier(self):
             model_type="classification"
@@ -783,8 +768,13 @@ class BaseEBM(BaseEstimator):
         else:
             update = Native.GenerateUpdateOptions_Default
 
-        train_model_args_iter = (
-            (
+        init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
+
+        train_model_args_iter = []
+        bagged_seed = init_seed
+        for idx in range(self.outer_bags):
+            bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+            parallel_params = (
                 None,
                 None,
                 X,
@@ -804,52 +794,66 @@ class BaseEBM(BaseEstimator):
                 self.early_stopping_rounds,
                 self.early_stopping_tolerance,
                 self.max_rounds,
-                estimators[i]['random_state'],
+                bagged_seed,
                 noise_scale,
                 bin_data_counts,
-            ) for i in range(self.outer_bags)
-        )
+            )
+            train_model_args_iter.append(parallel_params)
+
         results = provider.parallel(_parallel_cyclic_gradient_boost, train_model_args_iter)
+
+        estimators = []
+        bagged_seed = init_seed
+        scores_train_bags = []
+        scores_val_bags = []
         for i in range(self.outer_bags):
+            estimators.append({})
             estimators[i]['model'] = results[i][0]
             estimators[i]['main_episode_idx'] = results[i][1]
             estimators[i]['feature_groups'] = main_feature_indices.copy()
+
+            bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+            X_train, X_val, _, _, _, _ = EBMUtils.ebm_train_test_split(
+                X,
+                y,
+                w,
+                test_size=self.validation_size,
+                random_state=bagged_seed,
+                is_classification=model_type == "classification",
+            )
+            scores_train = EBMUtils.decision_function(
+                X_train, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
+            )
+            scores_val = EBMUtils.decision_function(
+                X_val, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
+            )
+            scores_train_bags.append(scores_train)
+            scores_val_bags.append(scores_val)
 
         # Build interaction terms, if required
         if isinstance(self.interactions, int) and self.interactions != 0:
             log.info("Estimating with FAST")
 
-            scores_train_bags = []
+            train_model_args_iter2 = []
+            bagged_seed = init_seed
             for i in range(self.outer_bags):
-                X_train, _, _, _, _, _ = EBMUtils.ebm_train_test_split(
-                    X,
-                    y,
-                    w,
-                    test_size=self.validation_size,
-                    random_state=estimators[i]['random_state'],
-                    is_classification=model_type == "classification",
-                )
-                scores_train = EBMUtils.decision_function(
-                    X_train, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
-                )
-                scores_train_bags.append(scores_train)
-
-            train_model_args_iter2 = (
-                (
+                bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+                parallel_params = (
                     scores_train_bags[i],
                     X_pair, 
                     y, 
                     w, 
                     n_classes,
                     self.validation_size, 
-                    estimators[i]['random_state'], 
+                    bagged_seed, 
                     model_type, 
                     self.interactions, 
                     pair_features_categorical, 
                     pair_features_bin_count, 
                     self.min_samples_leaf, 
-                ) for i in range(self.outer_bags)
-            )
+                )
+                train_model_args_iter2.append(parallel_params)
+
             results = provider.parallel(_parallel_get_interactions, train_model_args_iter2)
             for i in range(self.outer_bags):
                 estimators[i]['inter_indices'] = results[i][0]
@@ -907,28 +911,11 @@ class BaseEBM(BaseEstimator):
             if len(pair_indices) != 0:
                 # Retrain interactions for base models
 
-                scores_train_bags = []
-                scores_val_bags = []
+                staged_fit_args_iter = []
+                bagged_seed = init_seed
                 for i in range(self.outer_bags):
-                    X_train, X_val, _, _, _, _ = EBMUtils.ebm_train_test_split(
-                        X,
-                        y,
-                        w,
-                        test_size=self.validation_size,
-                        random_state=estimators[i]['random_state'],
-                        is_classification=model_type == "classification",
-                    )
-                    scores_train = EBMUtils.decision_function(
-                        X_train, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
-                    )
-                    scores_val = EBMUtils.decision_function(
-                        X_val, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
-                    )
-                    scores_train_bags.append(scores_train)
-                    scores_val_bags.append(scores_val)
-
-                staged_fit_args_iter = (
-                    (
+                    bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+                    parallel_params = (
                         scores_train_bags[i],
                         scores_val_bags[i],
                         X_pair, 
@@ -948,11 +935,12 @@ class BaseEBM(BaseEstimator):
                         self.early_stopping_rounds, 
                         self.early_stopping_tolerance, 
                         self.max_rounds, 
-                        estimators[i]['random_state'], 
+                        bagged_seed, 
                         getattr(self, 'noise_scale_', None), 
                         bin_data_counts, 
-                    ) for i in range(self.outer_bags)
-                )
+                    )
+                    staged_fit_args_iter.append(parallel_params)
+
                 results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
                 for i in range(self.outer_bags):
                     estimators[i]['model'].extend(results[i][0])
@@ -980,29 +968,11 @@ class BaseEBM(BaseEstimator):
                     pair_indices = unique_terms
                     self.interactions = pair_indices
 
-                scores_train_bags = []
-                scores_val_bags = []
+                staged_fit_args_iter = []
+                bagged_seed = init_seed
                 for i in range(self.outer_bags):
-                    X_train, X_val, _, _, _, _ = EBMUtils.ebm_train_test_split(
-                        X,
-                        y,
-                        w,
-                        test_size=self.validation_size,
-                        random_state=estimators[i]['random_state'],
-                        is_classification=model_type == "classification",
-                    )
-                    scores_train = EBMUtils.decision_function(
-                        X_train, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
-                    )
-                    scores_val = EBMUtils.decision_function(
-                        X_val, None, estimators[i]['feature_groups'], estimators[i]['model'], self.intercept_
-                    )
-                    scores_train_bags.append(scores_train)
-                    scores_val_bags.append(scores_val)
-
-                # Retrain interactions for base models
-                staged_fit_args_iter = (
-                    (
+                    bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+                    parallel_params = (
                         scores_train_bags[i],
                         scores_val_bags[i],
                         X_pair, 
@@ -1022,11 +992,12 @@ class BaseEBM(BaseEstimator):
                         self.early_stopping_rounds, 
                         self.early_stopping_tolerance, 
                         self.max_rounds, 
-                        estimators[i]['random_state'], 
+                        bagged_seed, 
                         getattr(self, 'noise_scale_', None), 
                         bin_data_counts, 
-                    ) for i in range(self.outer_bags)
-                )
+                    )
+                    staged_fit_args_iter.append(parallel_params)
+
                 results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
                 for i in range(self.outer_bags):
                     estimators[i]['model'].extend(results[i][0])
