@@ -1,6 +1,6 @@
 # Copyright (c) 2019 Microsoft Corporation
-
 # Distributed under the MIT software license
+
 # TODO: Test EBMUtils
 
 from math import ceil
@@ -44,39 +44,34 @@ class EBMUtils:
             An EBM model with averaged mean and standard deviation of input models.
         """
 
-        # TODO: re-enable this function once the rest of the memory work is done
-        raise RuntimeError("Under construction")
-
         if len(models) < 2:  # pragma: no cover
             raise Exception("at least two models are required to merge.")
 
         # many features are invalid. preprocessor_ and pair_preprocessor_ are cloned form the first model.
         ebm = copy.deepcopy(models[0]) 
-        
 
-        ebm.additive_terms_ =[]
+        ebm.additive_terms_ = []
         ebm.term_standard_deviations_ = []
-        ebm.bagged_models_=[]
+        ebm.bagged_additive_terms_ = []
         ebm.pair_preprocessor_ = None       
-      
          
         if not all([  model.preprocessor_.col_types_ == ebm.preprocessor_.col_types_ for model in models]):  # pragma: no cover
             raise Exception("All models should have the same types of features.")
        
         if not all([  model.preprocessor_.col_bin_edges_.keys() == ebm.preprocessor_.col_bin_edges_.keys() for model in models]):  # pragma: no cover
-                    raise Exception("All models should have the same types of numeric features.")
+            raise Exception("All models should have the same types of numeric features.")
 
 
         if not all([  model.preprocessor_.col_mapping_.keys() == ebm.preprocessor_.col_mapping_.keys() for model in models]):  # pragma: no cover
-                    raise Exception("All models should have the same types of categorical features.")
+            raise Exception("All models should have the same types of categorical features.")
 
         if is_classifier(ebm):  # pragma: no cover
-                if not all([is_classifier(model) for model in models]):
-                    raise Exception("All models should be the same type.")
+            if not all([is_classifier(model) for model in models]):
+                raise Exception("All models should be the same type.")
         else:  # pragma: no cover
-                # Check if ebm is a regressor
-                if any([is_classifier(model) for model in models]):
-                    raise Exception("All models should be the same type.")
+            # Check if ebm is a regressor
+            if any([is_classifier(model) for model in models]):
+                raise Exception("All models should be the same type.")
 
         main_feature_len = len(ebm.preprocessor_.feature_names)
 
@@ -88,17 +83,18 @@ class EBMUtils:
         ebm.interactions = 0
         
         warnings.warn("Interaction features are not supported.")
-        
        
         ebm.additive_terms_ = []
         ebm.term_standard_deviations_ = []
-        
-        bagged_models = []
-        for x in models:
-            bagged_models.extend(x.bagged_models_) #             
-        ebm.bagged_models_ = bagged_models
- 
-        for index, feature_group in enumerate(ebm.feature_groups_):           
+
+        ebm.bagged_additive_terms_ = []
+        for term_idx in range(len(ebm.feature_groups_)):
+            bags = []
+            ebm.bagged_additive_terms_.append(bags)
+            for x in models:
+                bags.extend(x.bagged_additive_terms_[term_idx])
+
+        for index, feature_group in enumerate(ebm.feature_groups_):
 
             # Exluding interaction features 
             if len(feature_group) != 1:                
@@ -130,15 +126,15 @@ class EBMUtils:
                     # new_bin_count_ =  [ bin_counts[x] for x in adj_bin_idx ]  
                                         
                     # All the estimators of one ebm model share the same bin edges
-                    for estimator in model.bagged_models_: 
+                    for estimator2_idx in range(len(model.bagged_additive_terms_[0])):
 
-                        mvalues = estimator['model'][index]      
+                        mvalues = model.bagged_additive_terms_[index][estimator2_idx]
                         
                         # expanding the prediction values to cover all the new merged bin edges                                              
                         new_model_ = [ mvalues[x] for x in adj_bin_idx ]
 
                         # updating the new EBM model estimator predictions with the new extended predictions
-                        ebm.bagged_models_[estimator_idx]['model'][index] = new_model_
+                        ebm.bagged_additive_terms_[index][estimator_idx] = new_model_
                         
                         # bin counts are used as weights to calculate weighted average of new merged bins.                        
                         weights =[ bin_counts[x] for x in adj_bin_idx ]
@@ -162,9 +158,9 @@ class EBMUtils:
                     # mask contains the category values for common categories and None for missing ones for each categorical feature
                     mask = [ model.preprocessor_.col_mapping_[index].get(col, None ) for col in merged_col_mapping]
 
-                    for estimator in model.bagged_models_:
+                    for estimator2_idx in range(len(model.bagged_additive_terms_[0])):
 
-                        mvalues = estimator['model'][index]                           
+                        mvalues = model.bagged_additive_terms_[index][estimator2_idx]
                         new_model_ = [mvalues[0]] + [ mvalues[i] if i else 0.0 for i in mask]
                         
                         weights = [bin_counts[0]] + [ bin_counts[i] if i else 0.0 for i in mask ]

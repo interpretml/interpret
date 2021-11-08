@@ -499,6 +499,20 @@ def _parallel_get_interactions(
     )
     return final_indices
 
+def is_private(estimator):
+    """Return True if the given estimator is a differentially private EBM estimator
+    Parameters
+    ----------
+    estimator : estimator instance
+        Estimator object to test.
+    Returns
+    -------
+    out : bool
+        True if estimator is a differentially private EBM estimator and False otherwise.
+    """
+
+    return isinstance(estimator, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor))
+
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
@@ -647,7 +661,7 @@ class BaseEBM(BaseEstimator):
         w = unify_vector(w).astype(np.float64, casting="unsafe", copy=False)
 
         # Privacy calculations
-        if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
+        if is_private(self):
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
             DPUtils.validate_DP_EBM(self)
 
@@ -953,9 +967,9 @@ class BaseEBM(BaseEstimator):
         self.additive_terms_ = []
         self.term_standard_deviations_ = []
         for index, log_odds_tensors in enumerate(bagged_additive_terms):
-            averaged_model = np.average(np.array(log_odds_tensors), axis=0)
-            model_errors = np.std(np.array(log_odds_tensors), axis=0)
-
+            all_score_tensors = np.array(log_odds_tensors)
+            averaged_model = np.average(all_score_tensors, axis=0)
+            model_errors = np.std(all_score_tensors, axis=0)
             self.additive_terms_.append(averaged_model)
             self.term_standard_deviations_.append(model_errors)
 
@@ -975,11 +989,10 @@ class BaseEBM(BaseEstimator):
             self.feature_names.append(feature_group_name)
 
         if n_classes <= 2:
-            if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
+            if is_private(self):
                 # DP method of centering graphs can generalize if we log pairwise densities
                 # No additional privacy loss from this step
                 # self.additive_terms_ and self.preprocessor_.col_bin_counts_ are noisy and published publicly
-                self._original_term_means_ = []
                 for set_idx in range(len(feature_groups)):
                     score_mean = np.average(self.additive_terms_[set_idx], weights=self.preprocessor_.col_bin_counts_[set_idx])
                     self.additive_terms_[set_idx] = (
@@ -988,13 +1001,14 @@ class BaseEBM(BaseEstimator):
 
                     # Add mean center adjustment back to intercept
                     self.intercept_ += score_mean
-                    self._original_term_means_.append(score_mean)
             else:       
                 # Mean center graphs - only for binary classification and regression
                 scores_gen = EBMUtils.scores_by_feature_group(
                     X, X_pair, feature_groups, self.additive_terms_
                 )
-                self._original_term_means_ = []
+                # _original_term_means_ is no longer needed since bagged_additive_terms
+                # contains a superset of the information in _original_term_means_
+                # If we really want this, we can make it a property now
 
                 for set_idx, _, scores in scores_gen:
                     score_mean = np.average(scores, weights=w)
@@ -1005,7 +1019,6 @@ class BaseEBM(BaseEstimator):
 
                     # Add mean center adjustment back to intercept
                     self.intercept_ += score_mean
-                    self._original_term_means_.append(score_mean)
         else:
             # Postprocess model graphs for multiclass
 
@@ -1031,7 +1044,7 @@ class BaseEBM(BaseEstimator):
 
         # Generate overall importance
         self.feature_importances_ = []
-        if isinstance(self, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)):
+        if is_private(self):
             # DP method of generating feature importances can generalize to non-dp if preprocessors start tracking joint distributions
             for i in range(len(feature_groups)):
                 mean_abs_score = np.average(np.abs(self.additive_terms_[i]), weights=self.preprocessor_.col_bin_counts_[i])
@@ -1380,7 +1393,6 @@ class BaseEBM(BaseEstimator):
             name=name,
             selector=selector,
         )
-
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
