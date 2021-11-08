@@ -36,6 +36,7 @@ def multiclass_postprocess(
     intercepts = np.zeros(K)
     for i in range(len(feature_graphs)):
         bincount = np.bincount(X_binned[i, :].astype(int))
+        # TODO: shouldn't this be "continuous" instead of "numeric"?
         if feature_types[i] == "numeric":
             num_bins = feature_graphs[i].shape[0]
             change = np.zeros(num_bins)

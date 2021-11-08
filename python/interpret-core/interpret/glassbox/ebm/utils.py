@@ -640,7 +640,6 @@ class EBMUtils:
 
     @staticmethod
     def get_interactions(
-        n_interactions,
         iter_feature_groups,
         model_type,
         n_classes,

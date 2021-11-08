@@ -2189,12 +2189,14 @@ def test_eval_terms():
     shared_categores = {"a": 1} # "b" is unknown category
     shared_cuts = np.array([8.5], dtype=np.float64)
 
-    bins = [{"a": 1, "b": 2}, {"1": 1, "2": 2, "3": 3}, shared_cuts]
-    # "b" is unknown category
-    # we combine "2" and "3" into one category!
-    pair_bins = [shared_categores, {"1": 1, "2": 2, "3": 2}, shared_cuts]
-    # collapse all our categories to keep the tensor small for testing
-    higher_bins = [shared_categores, {"1": 1, "2": 1, "3": 1}, np.array([], dtype=np.float64)]
+    # for level 1, "b" is unknown category
+    # for level 1, we combine "2" and "3" into one category!
+    # for level 2, collapse all our categories to keep the tensor small for testing
+    bins = [
+        [{"a": 1, "b": 2}, shared_categores, shared_categores],
+        [{"1": 1, "2": 2, "3": 3}, {"1": 1, "2": 2, "3": 2}, {"1": 1, "2": 1, "3": 1}],
+        [shared_cuts, shared_cuts, np.array([], dtype=np.float64)]
+    ]
 
     term0 = {}
     term0['features'] = [0]
@@ -2222,9 +2224,9 @@ def test_eval_terms():
 
     terms = [term0, term1, term2, term3, term4, term5]
 
-    append_bin_counts(X, feature_names_out, feature_types_out, terms, [bins, pair_bins, higher_bins], w=None)
+    append_bin_counts(X, feature_names_out, feature_types_out, terms, bins, w=None)
 
-    result = list(eval_terms(X, feature_names_out, feature_types_out, terms, [bins, pair_bins, higher_bins]))
+    result = list(eval_terms(X, feature_names_out, feature_types_out, terms, bins))
     result = [(x[0], x[0]['scores'][x[1]]) for x in result]
 
     assert(result[0][1][0] == 0.2)
@@ -2259,7 +2261,7 @@ def test_eval_terms():
     assert(result[5][1][2] == 0.000008)
     assert(result[5][1][3] == 0)
 
-    scores = ebm_decision_function(X, X.shape[0], feature_names_out, feature_types_out, terms, [bins, pair_bins, higher_bins], np.array([7], dtype=np.float64))
+    scores = ebm_decision_function(X, X.shape[0], feature_names_out, feature_types_out, terms, bins, np.array([7], dtype=np.float64))
     assert(math.isclose(scores[0], 7.221547))
     assert(math.isclose(scores[1], 7.332000))
     assert(math.isclose(scores[2], 7.233668))
@@ -2267,16 +2269,19 @@ def test_eval_terms():
 
 
 def test_deduplicate_bins():
-    bins =        [{"a": 1, "b": 2}, np.array([1, 2, 3], dtype=np.float64)]
-    pair_bins =   [{"a": 2, "b": 1}, np.array([1, 3, 2], dtype=np.float64)]
-    higher_bins = [{"b": 2, "a": 1}, np.array([1, 2, 3], dtype=np.float64)]
+    bins = [
+        [{"a": 1, "b": 2}, {"a": 2, "b": 1}, {"b": 2, "a": 1}, {"b": 2, "a": 1}],
+        [np.array([1, 2, 3], dtype=np.float64), np.array([1, 3, 2], dtype=np.float64), np.array([1, 2, 3], dtype=np.float64)]
+    ]
 
-    deduplicate_bins([bins, pair_bins, higher_bins])
+    deduplicate_bins(bins)
 
-    assert(id(bins[0]) != id(pair_bins[0]))
-    assert(id(bins[0]) == id(higher_bins[0]))
-    assert(id(pair_bins[0]) != id(higher_bins[0]))
+    assert(len(bins[0]) == 3)
+    assert(id(bins[0][0]) != id(bins[0][1]))
+    assert(id(bins[0][0]) == id(bins[0][2]))
+    assert(id(bins[0][1]) != id(bins[0][2]))
 
-    assert(id(bins[1]) != id(pair_bins[1]))
-    assert(id(bins[1]) == id(higher_bins[1]))
-    assert(id(pair_bins[1]) != id(higher_bins[1]))
+    assert(len(bins[1]) == 3)
+    assert(id(bins[1][0]) != id(bins[1][1]))
+    assert(id(bins[1][0]) == id(bins[1][2]))
+    assert(id(bins[1][1]) != id(bins[1][2]))

@@ -464,14 +464,13 @@ def _parallel_get_interactions(
     validation_size,
     random_state,
     model_type,
-    interactions,
     pair_features_categorical, 
     pair_features_bin_count, 
     min_samples_leaf,
 ):
     log.info("Splitting train/test")
 
-    X_pair_train, _, y_train, _, w_train, _ = EBMUtils.ebm_train_test_split(
+    X_train, _, y_train, _, w_train, _ = EBMUtils.ebm_train_test_split(
         X,
         y,
         w,
@@ -482,16 +481,15 @@ def _parallel_get_interactions(
         
     log.info("Estimating with FAST")
 
-    iter_feature_groups = combinations(range(X_pair_train.shape[0]), 2)
+    iter_feature_groups = combinations(range(X.shape[1]), 2)
 
     final_indices, final_scores = EBMUtils.get_interactions(
-        n_interactions=interactions,
         iter_feature_groups=iter_feature_groups,
         model_type=model_type,
         n_classes=n_classes,
         features_categorical = pair_features_categorical, 
         features_bin_count = pair_features_bin_count, 
-        X=X_pair_train,
+        X=X_train,
         y=y_train,
         w=w_train,
         scores=scores_train,
@@ -636,23 +634,13 @@ class BaseEBM(BaseEstimator):
             Itself.
         """
 
-        # NOTE: Generally, we want to keep parameters in the __init__ function, since scikit-learn
-        #       doesn't like parameters in the fit function, other than ones like weights that have
-        #       the same length as the number of samples.  See:
-        #       https://scikit-learn.org/stable/developers/develop.html
-        #       https://github.com/microsoft/LightGBM/issues/2628#issue-536116395
-        #
-
         # TODO: we should define self.n_features_in_ per: 
         # https://scikit-learn.org/stable/developers/develop.html
-
-        # TODO PK we shouldn't expose our internal state until we are 100% sure that we succeeded
-        #         so move everything to local variables until the end when we assign them to self.*
 
         # TODO: PK don't overwrite self.feature_names or self.feature_types here (scikit-learn rules), and it's also confusing to
         #       user to have their fields overwritten.  Use feature_names_in_ since 
         #       scikit-learn is using "feature_names_in_" in multiple estimators now
-        X, y, self.feature_names, _ = unify_data(
+        X_unified, y, self.feature_names, _ = unify_data(
             X, y, self.feature_names, self.feature_types, missing_data_allowed=False
         )
 
@@ -665,12 +653,25 @@ class BaseEBM(BaseEstimator):
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
             DPUtils.validate_DP_EBM(self)
 
-            if self.privacy_schema is None:
-                warn("Possible privacy violation: assuming min/max values per feature/target are public info."
-                     "Pass a privacy schema with known public ranges to avoid this warning.")
-                self.privacy_schema = DPUtils.build_privacy_schema(X, y)
+            if self.privacy_schema is None or 'target' not in self.privacy_schema:
+                # TODO: check with Harsha how domain_size should be handled for classification
 
-            self.domain_size_ = self.privacy_schema['target'][1] - self.privacy_schema['target'][0]
+                warn("Possible privacy violation: assuming min/max values for target are public info."
+                     "Pass a privacy schema with known public target ranges to avoid this warning.")
+
+                domain_size = y.max() - y.min()
+            else:
+                min_target = self.privacy_schema['target'][0]
+                max_target = self.privacy_schema['target'][1]
+                if max_target < min_target:
+                    raise ValueError(f"target minimum {min_target} must be smaller than maximum {max_target}")
+                domain_size = max_target - min_target
+
+            if self.privacy_schema is None:
+                warn("Possible privacy violation: assuming min/max values per feature are public info."
+                     "Pass a privacy schema with known public feature ranges to avoid this warning.")
+                # TODO: scikit-learn violation: modifying existing attributes
+                self.privacy_schema = DPUtils.build_privacy_schema(X_unified, y)
 
             # Split epsilon, delta budget for binning and learning
             bin_eps_ = self.epsilon * self.bin_budget_frac
@@ -680,24 +681,25 @@ class BaseEBM(BaseEstimator):
             
              # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             if self.composition == 'classic':
-                self.noise_scale_ = DPUtils.calc_classic_noise_multi(
-                    total_queries = self.max_rounds * X.shape[1] * self.outer_bags, 
+                noise_scale = DPUtils.calc_classic_noise_multi(
+                    total_queries = self.max_rounds * X_unified.shape[1] * self.outer_bags, 
                     target_epsilon = training_eps_, 
                     delta = training_delta_, 
-                    sensitivity = self.domain_size_ * self.learning_rate * np.max(w)
+                    sensitivity = domain_size * self.learning_rate * np.max(w)
                 )
             elif self.composition == 'gdp':
-                self.noise_scale_ = DPUtils.calc_gdp_noise_multi(
-                    total_queries = self.max_rounds * X.shape[1] * self.outer_bags, 
+                noise_scale = DPUtils.calc_gdp_noise_multi(
+                    total_queries = self.max_rounds * X_unified.shape[1] * self.outer_bags, 
                     target_epsilon = training_eps_, 
                     delta = training_delta_
                 )
-                self.noise_scale_ = self.noise_scale_ * self.domain_size_ * self.learning_rate * np.max(w) # Alg Line 17
+                noise_scale = noise_scale * domain_size * self.learning_rate * np.max(w) # Alg Line 17
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
         else:
-            bin_eps_, bin_delta_ = None, None
-            training_eps_, training_delta_ = None, None
+            noise_scale = None
+            bin_eps_ = None
+            bin_delta_ = None
 
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
@@ -709,51 +711,44 @@ class BaseEBM(BaseEstimator):
             delta=bin_delta_,
             privacy_schema=getattr(self, 'privacy_schema', None)
         )
-        self.preprocessor_.fit(X)
-        X_orig = X
-        X = self.preprocessor_.transform(X_orig)
+        self.preprocessor_.fit(X_unified)
+        X_main = self.preprocessor_.transform(X_unified)
 
         features_categorical = np.array([x == "categorical" for x in self.preprocessor_.col_types_], dtype=ct.c_int64)
         features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_], dtype=ct.c_int64)
 
         # NOTE: [DP] Passthrough to lower level layers for noise addition
-        bin_data_counts = {i : self.preprocessor_.col_bin_counts_[i] for i in range(X.shape[1])}
+        bin_data_counts = {i : self.preprocessor_.col_bin_counts_[i] for i in range(X_unified.shape[1])}
 
         native = Native.get_native_singleton()
 
+        # scikit-learn returns an np.array for classification and
+        # a single float for regression, so we do the same
         if is_classifier(self):
-            model_type="classification"
+            model_type = "classification"
 
-            self.classes_, y = np.unique(y, return_inverse=True)
-            self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
+            classes, y = np.unique(y, return_inverse=True)
+            class_idx = {x: index for index, x in enumerate(classes)}
 
             y = y.astype(np.int64, casting="unsafe", copy=False)
-            n_classes = len(self.classes_)
+            n_classes = len(classes)
             if n_classes > 2:  # pragma: no cover
                 warn("Multiclass is still experimental. Subject to change per release.")
-            if n_classes > 2 and self.interactions != 0:
-                self.interactions = 0
-                warn("Detected multiclass problem: forcing interactions to 0")
-        else:
-            model_type="regression"
-            n_classes = -1
-            y = y.astype(np.float64, casting="unsafe", copy=False)
 
-        # Train base models for main effects, pair detection.
-
-        # scikit-learn returns an np.array for classification and
-        # a single float64 for regression, so we do the same
-        if is_classifier(self):
-            self.intercept_ = np.zeros(
+            intercept = np.zeros(
                 Native.get_count_scores_c(n_classes), dtype=np.float64, order="C",
             )
         else:
-            self.intercept_ = np.float64(0)
+            model_type = "regression"
+            classes = None
+            n_classes = -1
+            y = y.astype(np.float64, casting="unsafe", copy=False)
+            intercept = 0.0
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         if isinstance(self.mains, str) and self.mains == "all":
-            feature_groups = [[x] for x in range(X.shape[1])]
+            feature_groups = [[x] for x in range(X_unified.shape[1])]
         elif isinstance(self.mains, list) and all(
             isinstance(x, int) for x in self.mains
         ):
@@ -762,8 +757,7 @@ class BaseEBM(BaseEstimator):
             raise RuntimeError("Argument 'mains' has invalid value")
               
         # Train main effects
-        noise_scale = getattr(self, 'noise_scale_', None)
-        if noise_scale is not None: # Differentially Private Training
+        if is_private(self):
             update = Native.GenerateUpdateOptions_GradientSums | Native.GenerateUpdateOptions_RandomSplits
         else:
             update = Native.GenerateUpdateOptions_Default
@@ -777,7 +771,7 @@ class BaseEBM(BaseEstimator):
             parallel_params = (
                 None,
                 None,
-                X,
+                X_main,
                 y,
                 w,
                 feature_groups,
@@ -813,7 +807,9 @@ class BaseEBM(BaseEstimator):
         for _, bag_breakpoint_iteration in results:
             breakpoint_iteration.append(bag_breakpoint_iteration)
 
-        if isinstance(self.interactions, int) and self.interactions == 0 or isinstance(self.interactions, list) and len(self.interactions) == 0:
+        if n_classes > 2 or isinstance(self.interactions, int) and self.interactions == 0 or isinstance(self.interactions, list) and len(self.interactions) == 0:
+            if not (isinstance(self.interactions, int) and self.interactions == 0 or isinstance(self.interactions, list) and len(self.interactions) == 0):
+                warn("Detected multiclass problem: forcing interactions to 0")
             # no interactions to consider
             self.pair_preprocessor_ = None
             X_pair = None
@@ -824,18 +820,18 @@ class BaseEBM(BaseEstimator):
             for model, _ in results:
                 bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
                 X_train, X_val, _, _, _, _ = EBMUtils.ebm_train_test_split(
-                    X,
+                    X_main,
                     y,
-                    w,
+                    w, # TODO: allow w to be None
                     test_size=self.validation_size,
                     random_state=bagged_seed,
                     is_classification=model_type == "classification",
                 )
                 scores_train = EBMUtils.decision_function(
-                    X_train, None, feature_groups, model, self.intercept_
+                    X_train, None, feature_groups, model, intercept
                 )
                 scores_val = EBMUtils.decision_function(
-                    X_val, None, feature_groups, model, self.intercept_
+                    X_val, None, feature_groups, model, intercept
                 )
                 scores_train_bags.append(scores_train)
                 scores_val_bags.append(scores_val)
@@ -850,10 +846,14 @@ class BaseEBM(BaseEstimator):
                 max_bins=self.max_interaction_bins,
                 binning=self.binning,
             )
-            self.pair_preprocessor_.fit(X_orig)
-            X_pair = self.pair_preprocessor_.transform(X_orig)
+            self.pair_preprocessor_.fit(X_unified)
+            X_pair = self.pair_preprocessor_.transform(X_unified)
             pair_features_categorical = np.array([x == "categorical" for x in self.pair_preprocessor_.col_types_], dtype=ct.c_int64)
             pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_], dtype=ct.c_int64)
+
+            # TODO: re-enable this check
+            #if np.array_equal(features_categorical, pair_features_categorical):
+            #    raise RuntimeError("Main and pairs should have the same categorical feature definitions")
 
             if isinstance(self.interactions, int) and self.interactions > 0:
                 log.info("Estimating with FAST")
@@ -871,7 +871,6 @@ class BaseEBM(BaseEstimator):
                         self.validation_size, 
                         bagged_seed, 
                         model_type, 
-                        self.interactions, 
                         pair_features_categorical, 
                         pair_features_bin_count, 
                         self.min_samples_leaf, 
@@ -912,10 +911,11 @@ class BaseEBM(BaseEstimator):
                 if len(unique_terms) != len(pair_indices):
                     warn("Detected duplicate interaction terms: removing duplicate interaction terms")
                     pair_indices = unique_terms
-                    self.interactions = pair_indices
 
             else:  # pragma: no cover
                 raise RuntimeError("Argument 'interaction' has invalid value")
+
+            feature_groups.extend(pair_indices)
 
             staged_fit_args_iter = []
             bagged_seed = init_seed
@@ -931,7 +931,7 @@ class BaseEBM(BaseEstimator):
                     n_classes, 
                     self.validation_size, 
                     model_type, 
-                    Native.GenerateUpdateOptions_Default,
+                    update,
                     pair_features_categorical, 
                     pair_features_bin_count, 
                     self.inner_bags, 
@@ -942,14 +942,12 @@ class BaseEBM(BaseEstimator):
                     self.early_stopping_tolerance, 
                     self.max_rounds, 
                     bagged_seed, 
-                    getattr(self, 'noise_scale_', None), 
+                    noise_scale, 
                     bin_data_counts, 
                 )
                 staged_fit_args_iter.append(parallel_params)
 
             results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
-
-            feature_groups.extend(pair_indices)
 
             for term_idx in range(len(pair_indices)):
                 bags = []
@@ -960,31 +958,35 @@ class BaseEBM(BaseEstimator):
             for _, bag_breakpoint_iteration in results:
                 breakpoint_iteration.append(bag_breakpoint_iteration)
 
-        X = np.ascontiguousarray(X.T)
+        X_main = np.ascontiguousarray(X_main.T)
         if X_pair is not None:
             X_pair = np.ascontiguousarray(X_pair.T) # I have no idea if we're supposed to do this.
 
-        self.additive_terms_ = []
-        self.term_standard_deviations_ = []
-        for index, log_odds_tensors in enumerate(bagged_additive_terms):
-            all_score_tensors = np.array(log_odds_tensors)
+        additive_terms = []
+        term_standard_deviations = []
+        for score_tensors in bagged_additive_terms:
+            # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
+            # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
+
+            all_score_tensors = np.array(score_tensors)
             averaged_model = np.average(all_score_tensors, axis=0)
             model_errors = np.std(all_score_tensors, axis=0)
-            self.additive_terms_.append(averaged_model)
-            self.term_standard_deviations_.append(model_errors)
+            additive_terms.append(averaged_model)
+            term_standard_deviations.append(model_errors)
 
         # Extract feature group names and feature group types.
         # TODO PK v.3 don't overwrite feature_names and feature_types.  Create new fields called feature_names_out and
         #             feature_types_out_ or feature_group_names_ and feature_group_types_
         self.feature_names = []
         self.feature_types = []
-        for index, feature_indices in enumerate(feature_groups):
+        for feature_indices in feature_groups:
             feature_group_name = EBMUtils.gen_feature_group_name(
                 feature_indices, self.preprocessor_.col_names_
             )
             feature_group_type = EBMUtils.gen_feature_group_type(
                 feature_indices, self.preprocessor_.col_types_
             )
+            # TODO: scikit-learn violation: modifying existing attributes
             self.feature_types.append(feature_group_type)
             self.feature_names.append(feature_group_name)
 
@@ -992,66 +994,65 @@ class BaseEBM(BaseEstimator):
             if is_private(self):
                 # DP method of centering graphs can generalize if we log pairwise densities
                 # No additional privacy loss from this step
-                # self.additive_terms_ and self.preprocessor_.col_bin_counts_ are noisy and published publicly
+                # additive_terms and self.preprocessor_.col_bin_counts_ are noisy and published publicly
                 for set_idx in range(len(feature_groups)):
-                    score_mean = np.average(self.additive_terms_[set_idx], weights=self.preprocessor_.col_bin_counts_[set_idx])
-                    self.additive_terms_[set_idx] = (
-                        self.additive_terms_[set_idx] - score_mean
-                    )
+                    score_mean = np.average(additive_terms[set_idx], weights=self.preprocessor_.col_bin_counts_[set_idx])
+                    additive_terms[set_idx] = (additive_terms[set_idx] - score_mean)
 
                     # Add mean center adjustment back to intercept
-                    self.intercept_ += score_mean
+                    intercept += score_mean
             else:       
                 # Mean center graphs - only for binary classification and regression
                 scores_gen = EBMUtils.scores_by_feature_group(
-                    X, X_pair, feature_groups, self.additive_terms_
+                    X_main, X_pair, feature_groups, additive_terms
                 )
                 # _original_term_means_ is no longer needed since bagged_additive_terms
                 # contains a superset of the information in _original_term_means_
-                # If we really want this, we can make it a property now
+                # If we really want this, we can optionally make it a property now
 
                 for set_idx, _, scores in scores_gen:
                     score_mean = np.average(scores, weights=w)
 
-                    self.additive_terms_[set_idx] = (
-                        self.additive_terms_[set_idx] - score_mean
-                    )
+                    additive_terms[set_idx] = (additive_terms[set_idx] - score_mean)
 
                     # Add mean center adjustment back to intercept
-                    self.intercept_ += score_mean
+                    intercept += score_mean
         else:
             # Postprocess model graphs for multiclass
 
             # Currently pairwise interactions are unsupported for multiclass-classification.
             binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
-                x, None, feature_groups, self.additive_terms_, self.intercept_
+                x, None, feature_groups, additive_terms, intercept
             )
 
             postprocessed = multiclass_postprocess(
-                X, self.additive_terms_, binned_predict_proba, self.feature_types
+                X_main, additive_terms, binned_predict_proba, self.feature_types
             )
-            self.additive_terms_ = postprocessed["feature_graphs"]
-            self.intercept_ = postprocessed["intercepts"]
+            additive_terms = postprocessed["feature_graphs"]
+            intercept = postprocessed["intercepts"]
 
         for feature_group_idx, feature_group in enumerate(feature_groups):
-            entire_tensor = [slice(None, None, None) for i in range(self.additive_terms_[feature_group_idx].ndim)]
+            entire_tensor = [slice(None, None, None) for i in range(additive_terms[feature_group_idx].ndim)]
             for dimension_idx, feature_idx in enumerate(feature_group):
                 if self.preprocessor_.col_bin_counts_[feature_idx][0] == 0:
                     zero_dimension = entire_tensor.copy()
                     zero_dimension[dimension_idx] = 0
-                    self.additive_terms_[feature_group_idx][tuple(zero_dimension)] = 0
-                    self.term_standard_deviations_[feature_group_idx][tuple(zero_dimension)] = 0
+                    additive_terms[feature_group_idx][tuple(zero_dimension)] = 0
+                    term_standard_deviations[feature_group_idx][tuple(zero_dimension)] = 0
 
         # Generate overall importance
+        # TODO: once we have tensored bin counts we can eliminate the non-dp method used here and
+        # we can move this into a property since this information is completely constructable from the model
+        # or we could move it into a function where we'd have the ability to specify different importance metrics
         self.feature_importances_ = []
         if is_private(self):
             # DP method of generating feature importances can generalize to non-dp if preprocessors start tracking joint distributions
             for i in range(len(feature_groups)):
-                mean_abs_score = np.average(np.abs(self.additive_terms_[i]), weights=self.preprocessor_.col_bin_counts_[i])
+                mean_abs_score = np.average(np.abs(additive_terms[i]), weights=self.preprocessor_.col_bin_counts_[i])
                 self.feature_importances_.append(mean_abs_score)
         else:
             scores_gen = EBMUtils.scores_by_feature_group(
-                X, X_pair, feature_groups, self.additive_terms_
+                X_main, X_pair, feature_groups, additive_terms
             )
             for set_idx, _, scores in scores_gen:
                 mean_abs_score = np.mean(np.abs(scores))
@@ -1060,32 +1061,24 @@ class BaseEBM(BaseEstimator):
         # Generate selector
         # TODO PK v.3 shouldn't this be self._global_selector_ ??
         self.global_selector = gen_global_selector(
-            X_orig, self.feature_names, self.feature_types, None
+            X_unified, self.feature_names, self.feature_types, None
         )
 
+        if is_private(self):
+            self.domain_size_ = domain_size
+            self.noise_scale_ = noise_scale
+        if classes is not None:
+             # scikit-learn requires "self.classes_" for classifiers per documentation
+            self.classes_ = classes
+            self._class_idx_ = class_idx
+        self.intercept_ = intercept
         self.bagged_additive_terms_ = bagged_additive_terms
+        self.additive_terms_ = additive_terms
+        self.term_standard_deviations_ = term_standard_deviations
         self.feature_groups_ = feature_groups
         self.breakpoint_iteration_ = breakpoint_iteration
         self.has_fitted_ = True
         return self
-
-    # Select pairs from base models
-    def _merged_pair_score_fn(self, model_type, X, y, X_pair, feature_groups, model, intercept):
-        if model_type == "classification":
-            prob = EBMUtils.classifier_predict_proba(
-                X, X_pair, feature_groups, model, intercept
-            )
-            return (
-                0 if len(y) == 0 else log_loss(y, prob)
-            )  # use logloss to conform consistnetly and for multiclass
-        elif model_type == "regression":
-            pred = EBMUtils.regressor_predict(
-                X, X_pair, feature_groups, model, intercept
-            )
-            return 0 if len(y) == 0 else mean_squared_error(y, pred)
-        else:  # pragma: no cover
-            msg = "Unknown model_type: '{}'.".format(model_type)
-            raise ValueError(msg)
 
     def decision_function(self, X):
         """ Predict scores from model before calling the link function.
@@ -1097,18 +1090,18 @@ class BaseEBM(BaseEstimator):
                 The sum of the additive term contributions.
         """
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=False)
-        X = self.preprocessor_.transform(X_orig)
-        X = np.ascontiguousarray(X.T)
+        X_unified, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=False)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
-        if self.interactions != 0:
-            X_pair = self.pair_preprocessor_.transform(X_orig)
+        if self.pair_preprocessor_ is not None:
+            X_pair = self.pair_preprocessor_.transform(X_unified)
             X_pair = np.ascontiguousarray(X_pair.T)
         else:
             X_pair = None
 
         decision_scores = EBMUtils.decision_function(
-            X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
+            X_main, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
         )
 
         return decision_scores
@@ -1277,28 +1270,22 @@ class BaseEBM(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types, missing_data_allowed=False)
+        X_unified, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types, missing_data_allowed=False)
 
         # Transform y if classifier
         if is_classifier(self) and y is not None:
             y = np.array([self._class_idx_[el] for el in y])
 
-        samples = self.preprocessor_.transform(X)
-        samples = np.ascontiguousarray(samples.T)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
-        if self.interactions != 0:
-            pair_samples = self.pair_preprocessor_.transform(X)
-            pair_samples = np.ascontiguousarray(pair_samples.T)
+        if self.pair_preprocessor_ is not None:
+            X_pair = self.pair_preprocessor_.transform(X_unified)
+            X_pair = np.ascontiguousarray(X_pair.T)
         else:
-            pair_samples = None
+            X_pair = None
 
-        scores_gen = EBMUtils.scores_by_feature_group(
-            samples, pair_samples, self.feature_groups_, self.additive_terms_
-        )
-
-        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
-
-        n_rows = samples.shape[1]
+        n_rows = X_unified.shape[0]
         data_dicts = []
         intercept = self.intercept_
         if not is_classifier(self) or len(self.classes_) <= 2:
@@ -1321,6 +1308,9 @@ class BaseEBM(BaseEstimator):
                 }
             data_dicts.append(data_dict)
 
+        scores_gen = EBMUtils.scores_by_feature_group(
+            X_main, X_pair, self.feature_groups_, self.additive_terms_
+        )
         for set_idx, feature_group, scores in scores_gen:
             for row_idx in range(n_rows):
                 feature_name = self.feature_names[set_idx]
@@ -1328,7 +1318,7 @@ class BaseEBM(BaseEstimator):
                 data_dicts[row_idx]["scores"].append(scores[row_idx])
                 if len(feature_group) == 1:
                     data_dicts[row_idx]["values"].append(
-                        X[row_idx, feature_group[0]]
+                        X_unified[row_idx, feature_group[0]]
                     )
                 else:
                     data_dicts[row_idx]["values"].append("")
@@ -1336,11 +1326,11 @@ class BaseEBM(BaseEstimator):
         is_classification = is_classifier(self)
         if is_classification:
             scores = EBMUtils.classifier_predict_proba(
-                samples, pair_samples, self.feature_groups_, self.additive_terms_, self.intercept_,
+                X_main, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_,
             )
         else:
             scores = EBMUtils.regressor_predict(
-                samples, pair_samples, self.feature_groups_, self.additive_terms_, self.intercept_,
+                X_main, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_,
             )
 
         perf_list = []
@@ -1381,7 +1371,7 @@ class BaseEBM(BaseEstimator):
         internal_obj["mli"].append(
             {
                 "explanation_type": "evaluation_dataset",
-                "value": {"dataset_x": X, "dataset_y": y},
+                "value": {"dataset_x": X_unified, "dataset_y": y},
             }
         )
 
@@ -1494,20 +1484,18 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             Probability estimate of sample for each class.
         """
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=False)
-        X = self.preprocessor_.transform(X_orig)
-        X = np.ascontiguousarray(X.T)
+        X_unified, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=False)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
-        if self.interactions != 0:
-            X_pair = self.pair_preprocessor_.transform(X_orig)
+        if self.pair_preprocessor_ is not None:
+            X_pair = self.pair_preprocessor_.transform(X_unified)
             X_pair = np.ascontiguousarray(X_pair.T)
         else:
             X_pair = None
 
-        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
-
         prob = EBMUtils.classifier_predict_proba(
-            X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
+            X_main, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
         )
         return prob
 
@@ -1521,20 +1509,18 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             Predicted class label per sample.
         """
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=False)
-        X = self.preprocessor_.transform(X_orig)
-        X = np.ascontiguousarray(X.T)
+        X_unified, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=False)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
-        if self.interactions != 0:
-            X_pair = self.pair_preprocessor_.transform(X_orig)
+        if self.pair_preprocessor_ is not None:
+            X_pair = self.pair_preprocessor_.transform(X_unified)
             X_pair = np.ascontiguousarray(X_pair.T)
         else:
             X_pair = None
 
-        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
-
         return EBMUtils.classifier_predict(
-            X,
+            X_main,
             X_pair,
             self.feature_groups_,
             self.additive_terms_,
@@ -1560,20 +1546,20 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             raise ValueError(msg.format(output))
 
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(
+        X_unified, _, _, _ = unify_data(
             X, None, self.feature_names, self.feature_types, missing_data_allowed=False
         )
-        X = self.preprocessor_.transform(X_orig)
-        X = np.ascontiguousarray(X.T)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
-        if self.interactions != 0:
-            X_pair = self.pair_preprocessor_.transform(X_orig)
+        if self.pair_preprocessor_ is not None:
+            X_pair = self.pair_preprocessor_.transform(X_unified)
             X_pair = np.ascontiguousarray(X_pair.T)
         else:
             X_pair = None
 
         return EBMUtils.classifier_predict_and_contrib(
-            X,
+            X_main,
             X_pair,
             self.feature_groups_,
             self.additive_terms_,
@@ -1679,18 +1665,18 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             Predicted class label per sample.
         """
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=False)
-        X = self.preprocessor_.transform(X_orig)
-        X = np.ascontiguousarray(X.T)
+        X_unified, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types, missing_data_allowed=False)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
-        if self.interactions != 0:
-            X_pair = self.pair_preprocessor_.transform(X_orig)
+        if self.pair_preprocessor_ is not None:
+            X_pair = self.pair_preprocessor_.transform(X_unified)
             X_pair = np.ascontiguousarray(X_pair.T)
         else:
             X_pair = None
 
         return EBMUtils.regressor_predict(
-            X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
+            X_main, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
         )
 
 
@@ -1705,20 +1691,20 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         """
 
         check_is_fitted(self, "has_fitted_")
-        X_orig, _, _, _ = unify_data(
+        X_unified, _, _, _ = unify_data(
             X, None, self.feature_names, self.feature_types, missing_data_allowed=False
         )
-        X = self.preprocessor_.transform(X_orig)
-        X = np.ascontiguousarray(X.T)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
-        if self.interactions != 0:
-            X_pair = self.pair_preprocessor_.transform(X_orig)
+        if self.pair_preprocessor_ is not None:
+            X_pair = self.pair_preprocessor_.transform(X_unified)
             X_pair = np.ascontiguousarray(X_pair.T)
         else:
             X_pair = None
 
         return EBMUtils.regressor_predict_and_contrib(
-            X, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
+            X_main, X_pair, self.feature_groups_, self.additive_terms_, self.intercept_
         )
 
 class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
@@ -1826,15 +1812,12 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             Probability estimate of sample for each class.
         """
         check_is_fitted(self, "has_fitted_")
-        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
-        X = self.preprocessor_.transform(X)
-
-        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
-
-        X = np.ascontiguousarray(X.T)
+        X_unified, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
         prob = EBMUtils.classifier_predict_proba(
-            X, None, self.feature_groups_, self.additive_terms_, self.intercept_
+            X_main, None, self.feature_groups_, self.additive_terms_, self.intercept_
         )
         return prob
 
@@ -1848,15 +1831,12 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             Predicted class label per sample.
         """
         check_is_fitted(self, "has_fitted_")
-        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
-        X = self.preprocessor_.transform(X)
-
-        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
-
-        X = np.ascontiguousarray(X.T)
+        X_unified, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
         return EBMUtils.classifier_predict(
-            X,
+            X_main,
             None,
             self.feature_groups_,
             self.additive_terms_,
@@ -1969,13 +1949,10 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             Predicted class label per sample.
         """
         check_is_fitted(self, "has_fitted_")
-        X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
-        X = self.preprocessor_.transform(X)
-
-        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
-
-        X = np.ascontiguousarray(X.T)
+        X_unified, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
+        X_main = self.preprocessor_.transform(X_unified)
+        X_main = np.ascontiguousarray(X_main.T)
 
         return EBMUtils.regressor_predict(
-            X, None, self.feature_groups_, self.additive_terms_, self.intercept_
+            X_main, None, self.feature_groups_, self.additive_terms_, self.intercept_
         )

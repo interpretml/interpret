@@ -1669,9 +1669,7 @@ def bin_native(
 
     return shared_dataset, classes, feature_names_out, feature_types_out, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts
 
-def eval_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
-    # bin_levels contains: bins (mains), pair_bins (pairs), higher_bins (3 way and above), etc..
-
+def eval_terms(X, feature_names_out, feature_types_out, terms, bins):
     # called under: predict
 
     # prior to calling this function, call deduplicate_bins which will eliminate extra work in this function
@@ -1690,14 +1688,14 @@ def eval_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
     waiting = dict()
     for term in terms:
         features = term['features']
-        bin_level = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
 
         # the last position holds the term object
         # the first len(features) items hold the binned data that we get back as it arrives
         requirements = _none_list * (len(features) + 1)
         requirements[-1] = term
         for feature_idx in features:
-            feature_bins = bin_level[feature_idx]
+            bin_levels = bins[feature_idx]
+            feature_bins = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
                 request = (feature_idx, feature_bins)
@@ -1734,15 +1732,15 @@ def eval_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
                 X_col = X_col.copy()
 
             cuts_completed = dict()
+            bin_levels = bins[column_feature_idx]
             for requirements in waiting[column_feature_idx]:
                 term = requirements[-1]
                 if term is not None:
                     features = term['features']
-                    bin_level = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
-                    cuts = bin_level[column_feature_idx]
                     is_done = True
                     for dimension_idx, term_feature_idx in enumerate(features):
                         if term_feature_idx == column_feature_idx:
+                            cuts = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
                             discretized = cuts_completed.get(id(cuts), None)
                             if discretized is None:
                                 discretized = native.discretize(X_col, cuts)
@@ -1788,26 +1786,26 @@ def eval_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
                         requirements[:] = _none_list # clear references so that the garbage collector can free them
                         yield term, binned_data
 
-def ebm_decision_function(X, n_samples, feature_names_out, feature_types_out, terms, bin_levels, intercept):
-    if len(intercept) == 1:
+def ebm_decision_function(X, n_samples, feature_names_out, feature_types_out, terms, bins, intercept):
+    if type(intercept) is float or len(intercept) == 1:
         scores = np.full(n_samples, intercept, dtype=np.float64)
     else:
         scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
 
-    for term, binned_data in eval_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
+    for term, binned_data in eval_terms(X, feature_names_out, feature_types_out, terms, bins):
         scores += term['scores'][binned_data]
 
     return scores
 
-def append_bin_counts(X, feature_names_out, feature_types_out, terms, bin_levels, w=None):
-    for term, binned_data in eval_terms(X, feature_names_out, feature_types_out, terms, bin_levels):
+def append_bin_counts(X, feature_names_out, feature_types_out, terms, bins, w=None):
+    for term, binned_data in eval_terms(X, feature_names_out, feature_types_out, terms, bins):
         features = term['features']
-        bin_level = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
         multiple = 1
         dimensions = []
         for dimension_idx in range(len(features) - 1, -1, -1):
             feature_idx = features[dimension_idx]
-            feature_bins = bin_level[feature_idx]
+            bin_levels = bins[feature_idx]
+            feature_bins = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
 
             if isinstance(feature_bins, dict):
                 # categorical feature
@@ -1839,9 +1837,7 @@ def append_bin_counts(X, feature_names_out, feature_types_out, terms, bin_levels
             bin_weights = bin_weights.reshape(dimensions)
         term['bin_weights'] = bin_weights
 
-def deduplicate_bins(bin_levels):
-    # bin_levels contains: bins (mains), pair_bins (pairs), higher_bins (3 way and above), etc..
-
+def deduplicate_bins(bins):
     # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
     # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
     # use the id of the bins to identify feature data that was previously binned
@@ -1849,9 +1845,11 @@ def deduplicate_bins(bin_levels):
     # TODO: use this function!
 
     uniques = dict()
-    for bin_level in bin_levels:
-        for feature_idx in range(len(bin_level)):
-            feature_bins = bin_level[feature_idx]
+    for feature_idx in range(len(bins)):
+        bin_levels = bins[feature_idx]
+        highest_key = None
+        for level_idx in range(len(bin_levels)):
+            feature_bins = bin_levels[level_idx]
             if isinstance(feature_bins, dict):
                 key = frozenset(feature_bins.items())
             else:
@@ -1860,7 +1858,12 @@ def deduplicate_bins(bin_levels):
             if existing is None:
                 uniques[key] = feature_bins
             else:
-                bin_level[feature_idx] = existing
+                bin_levels[level_idx] = existing
+
+            if highest_key != key:
+                highest_key = key
+                highest_idx = level_idx
+        del bin_levels[highest_idx + 1:]
 
 def unify_data2(is_classification, X, y=None, w=None, feature_names=None, feature_types=None, missing_data_allowed=False, min_unique_continuous=3):
     _log.info("Unifying data")
