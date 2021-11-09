@@ -76,7 +76,7 @@ from .utils import DPUtils
 #        return vals
 # - add support for a "ordinal_fast" and "nominal_fast".  We would accept these in feature_types as
 #   a dict of (int/float -> string) for 'ordinal_fast', and (string -> int/float) for 'nominal_fast'
-#   the we'd write our feature_types_out values as "ordinal_fast" and "nominal_fast" and we'd exepct
+#   the we'd write our feature_types_in values as "ordinal_fast" and "nominal_fast" and we'd exepct
 #   integers in whatever evaluation format we got.  This would allow us to accept a float64 numpy array
 #   and have inside that nominal/ordinal/continuous/missing values that would be highly compressed.  Both of these
 #   would have restriction in that the numbers would have to be contiguous (maybe allowing for compression??) and
@@ -944,7 +944,7 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
     X_col = _reshape_1D_if_possible(X_col)
     return _process_numpy_column(X_col, categories, feature_type, min_unique_continuous)
 
-def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique_continuous=3, go_fast=False):
+def unify_columns(X, requests, feature_names_in, feature_types=None, min_unique_continuous=3, go_fast=False):
     # If the requests paramter contains a categories dictionary, then that same categories object is guaranteed to
     # be yielded back to the caller.  This guarantee can be used to rapidly identify which request is being 
     # yielded by using the id(categories) along with the feature_idx
@@ -970,9 +970,9 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
 
         n_cols = X.shape[1]
         col_map = None
-        if n_cols != len(feature_names_out):
+        if n_cols != len(feature_names_in):
             # during fit time unify_feature_names would only allow us to get here if this was legal, which requires 
-            # feature_types to not be None.  During predict time feature_types_out cannot be None, but we need 
+            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need 
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter((val != 'ignore' for val in feature_types), dtype=np.bool_, count=len(feature_types))
             if n_cols != keep_cols.sum():
@@ -1009,8 +1009,8 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
             col_idx = feature_idx if col_map is None else col_map[feature_idx]
             X_col = X[:, col_idx]
             feature_type = None if feature_types is None else feature_types[feature_idx]
-            feature_type_out, X_col, categories, bad = _process_numpy_column(X_col, categories, feature_type, min_unique_continuous)
-            yield feature_type_out, X_col, categories, bad
+            feature_type_in, X_col, categories, bad = _process_numpy_column(X_col, categories, feature_type, min_unique_continuous)
+            yield feature_type_in, X_col, categories, bad
     elif _pandas_installed and isinstance(X, pd.DataFrame):
         names_original = X.columns
         names_dict = dict(zip(map(str, names_original), count()))
@@ -1025,20 +1025,20 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
                     names_dict.remove(name)
 
         if feature_types is None:
-            if any(feature_name_out not in names_dict for feature_name_out in feature_names_out):
+            if any(feature_name_in not in names_dict for feature_name_in in feature_names_in):
                names_dict = None
         else:
-            if any(feature_name_out not in names_dict for feature_name_out, feature_type in zip(feature_names_out, feature_types) if feature_type != 'ignore'):
+            if any(feature_name_in not in names_dict for feature_name_in, feature_type in zip(feature_names_in, feature_types) if feature_type != 'ignore'):
                names_dict = None
 
         if names_dict is None:
-            if n_cols == len(feature_names_out):
-                names_dict = dict(zip(feature_names_out, count()))
+            if n_cols == len(feature_names_in):
+                names_dict = dict(zip(feature_names_in, count()))
             else:
                 # during fit time unify_feature_names would only allow us to get here if this was legal, which requires 
-                # feature_types to not be None.  During predict time feature_types_out cannot be None, but we need 
+                # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need 
                 # to check for legality on the dimensions of X
-                names_dict = dict(zip((feature_name_out for feature_name_out, feature_type in zip(feature_names_out, feature_types) if feature_type != 'ignore'), count()))
+                names_dict = dict(zip((feature_name_in for feature_name_in, feature_type in zip(feature_names_in, feature_types) if feature_type != 'ignore'), count()))
                 if n_cols != len(names_dict):
                     msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns"
                     _log.error(msg)
@@ -1050,18 +1050,18 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
         # https://uwekorn.com/2020/05/24/the-one-pandas-internal.html
 
         for feature_idx, categories in requests:
-            col_idx = names_dict[feature_names_out[feature_idx]]
+            col_idx = names_dict[feature_names_in[feature_idx]]
             X_col = X.iloc[:, col_idx]
             feature_type = None if feature_types is None else feature_types[feature_idx]
-            feature_type_out, X_col, categories, bad = _process_pandas_column(X_col, categories, feature_type, min_unique_continuous)
-            yield feature_type_out, X_col, categories, bad
+            feature_type_in, X_col, categories, bad = _process_pandas_column(X_col, categories, feature_type, min_unique_continuous)
+            yield feature_type_in, X_col, categories, bad
     elif _scipy_installed and isinstance(X, sp.sparse.spmatrix):
         n_cols = X.shape[1]
 
         col_map = None
-        if n_cols != len(feature_names_out):
+        if n_cols != len(feature_names_in):
             # during fit time unify_feature_names would only allow us to get here if this was legal, which requires 
-            # feature_types to not be None.  During predict time feature_types_out cannot be None, but we need 
+            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need 
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter((val != 'ignore' for val in feature_types), dtype=np.bool_, count=len(feature_types))
             if n_cols != keep_cols.sum():
@@ -1075,20 +1075,20 @@ def unify_columns(X, requests, feature_names_out, feature_types=None, min_unique
             col_idx = feature_idx if col_map is None else col_map[feature_idx]
             X_col = X.getcol(col_idx)
             feature_type = None if feature_types is None else feature_types[feature_idx]
-            feature_type_out, X_col, categories, bad = _process_scipy_column(X_col, categories, feature_type, min_unique_continuous)
-            yield feature_type_out, X_col, categories, bad
+            feature_type_in, X_col, categories, bad = _process_scipy_column(X_col, categories, feature_type, min_unique_continuous)
+            yield feature_type_in, X_col, categories, bad
     elif isinstance(X, dict):
         for feature_idx, categories in requests:
-            X_col = X[feature_names_out[feature_idx]]
+            X_col = X[feature_names_in[feature_idx]]
             feature_type = None if feature_types is None else feature_types[feature_idx]
-            feature_type_out, X_col, categories, bad = _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
-            yield feature_type_out, X_col, categories, bad
+            feature_type_in, X_col, categories, bad = _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
+            yield feature_type_in, X_col, categories, bad
     else:
         msg = "internal error"
         _log.error(msg)
         raise ValueError(msg)
 
-def unify_feature_names(X, feature_names_in=None, feature_types_in=None):
+def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
     # called under: fit
 
     if isinstance(X, np.ndarray): # this includes ma.masked_array
@@ -1112,32 +1112,32 @@ def unify_feature_names(X, feature_names_in=None, feature_types_in=None):
         raise ValueError(msg)
 
     n_ignored = 0
-    if feature_types_in is not None:
-       n_ignored = sum(1 for feature_type_in in feature_types_in if feature_type_in == 'ignore')
+    if feature_types_given is not None:
+       n_ignored = sum(1 for feature_type_given in feature_types_given if feature_type_given == 'ignore')
 
-    if feature_names_in is None:
-        if feature_types_in is not None:
-            if len(feature_types_in) != n_cols and len(feature_types_in) != n_cols + n_ignored:
-                msg = f"There are {len(feature_types_in)} feature_types, but X has {n_cols} columns"
+    if feature_names_given is None:
+        if feature_types_given is not None:
+            if len(feature_types_given) != n_cols and len(feature_types_given) != n_cols + n_ignored:
+                msg = f"There are {len(feature_types_given)} feature_types, but X has {n_cols} columns"
                 _log.error(msg)
                 raise ValueError(msg)
-            n_cols = len(feature_types_in)
+            n_cols = len(feature_types_given)
 
-        feature_names_out = X_names
+        feature_names_in = X_names
         if X_names is None:
-            feature_names_out = []
+            feature_names_in = []
             # this isn't used other than to indicate new names need to be created
-            feature_types_in = ['ignore'] * n_cols 
+            feature_types_given = ['ignore'] * n_cols 
     else:
-        n_final = len(feature_names_in)
-        if feature_types_in is not None:
-            n_final = len(feature_types_in)
-            if n_final != len(feature_names_in) and n_final != len(feature_names_in) + n_ignored:
-                msg = f"There are {n_final} feature_types and {len(feature_names_in)} feature_names which is a mismatch"
+        n_final = len(feature_names_given)
+        if feature_types_given is not None:
+            n_final = len(feature_types_given)
+            if n_final != len(feature_names_given) and n_final != len(feature_names_given) + n_ignored:
+                msg = f"There are {n_final} feature_types and {len(feature_names_given)} feature_names which is a mismatch"
                 _log.error(msg)
                 raise ValueError(msg)
 
-        feature_names_out = list(map(str, feature_names_in))
+        feature_names_in = list(map(str, feature_names_given))
 
         if X_names is None:
             # ok, need to use position indexing
@@ -1147,9 +1147,9 @@ def unify_feature_names(X, feature_names_in=None, feature_types_in=None):
                 raise ValueError(msg)
         else:
             # we might be indexing by name
-            names_used = feature_names_out
-            if feature_types_in is not None and len(feature_names_out) == len(feature_types_in):
-                names_used = [feature_name_out for feature_name_out, feature_type_in in zip(feature_names_out, feature_types_in) if feature_type_in != 'ignore']
+            names_used = feature_names_in
+            if feature_types_given is not None and len(feature_names_in) == len(feature_types_given):
+                names_used = [feature_name_in for feature_name_in, feature_type_given in zip(feature_names_in, feature_types_given) if feature_type_given != 'ignore']
 
             X_names_unique = set(name for name, n_count in Counter(X_names).items() if n_count == 1)
             if any(name not in X_names_unique for name in names_used):
@@ -1159,22 +1159,22 @@ def unify_feature_names(X, feature_names_in=None, feature_types_in=None):
                     _log.error(msg)
                     raise ValueError(msg)
 
-    if feature_types_in is not None:
-        if len(feature_types_in) == len(feature_names_out):
-            if len(feature_names_out) - n_ignored != len(set(feature_name_out for feature_name_out, feature_type_in in zip(feature_names_out, feature_types_in) if feature_type_in != 'ignore')):
+    if feature_types_given is not None:
+        if len(feature_types_given) == len(feature_names_in):
+            if len(feature_names_in) - n_ignored != len(set(feature_name_in for feature_name_in, feature_type_given in zip(feature_names_in, feature_types_given) if feature_type_given != 'ignore')):
                 msg = "cannot have duplicate feature names"
                 _log.error(msg)
                 raise ValueError(msg)
 
-            return feature_names_out
+            return feature_names_in
 
-        names_set = set(feature_names_out)
+        names_set = set(feature_names_in)
 
         names = []
         names_idx = 0
         feature_idx = 0
-        for feature_type_in in feature_types_in:
-            if feature_type_in == 'ignore':
+        for feature_type_given in feature_types_given:
+            if feature_type_given == 'ignore':
                 while True:
                     # non-devs looking at our models will like 1 indexing better than 0 indexing
                     # give 4 digits to the number so that anything below 9999 gets sorted in the right order in string format
@@ -1183,18 +1183,18 @@ def unify_feature_names(X, feature_names_in=None, feature_types_in=None):
                     if name not in names_set:
                         break
             else:
-                name = feature_names_out[names_idx]
+                name = feature_names_in[names_idx]
                 names_idx += 1
             names.append(name)
 
-        feature_names_out = names
+        feature_names_in = names
 
-    if len(feature_names_out) != len(set(feature_names_out)):
+    if len(feature_names_in) != len(set(feature_names_in)):
         msg = "cannot have duplicate feature names"
         _log.error(msg)
         raise ValueError(msg)
 
-    return feature_names_out
+    return feature_names_in
 
 def clean_vector(vec, dtype, param_name):
     # called under: fit
@@ -1423,8 +1423,8 @@ def bin_native(
     X, 
     y, 
     w, 
-    feature_names_in, 
-    feature_types_in, 
+    feature_names_given, 
+    feature_types_given, 
     binning='quantile', 
     min_samples_bin=1, 
     min_unique_continuous=3, 
@@ -1467,8 +1467,8 @@ def bin_native(
         # TODO: eliminate this eventually
         w = np.ones_like(y, dtype=np.float64)
 
-    feature_names_out = unify_feature_names(X, feature_names_in, feature_types_in)
-    n_features = len(feature_names_out)
+    feature_names_in = unify_feature_names(X, feature_names_given, feature_types_given)
+    n_features = len(feature_names_in)
 
     noise_scale = None # only applicable for private binning
     if binning == 'private':
@@ -1484,7 +1484,7 @@ def bin_native(
     native = Native.get_native_singleton()
     n_bytes = native.size_data_set_header(len(feature_idxs), 1, 1)
 
-    feature_types_out = _none_list * n_features
+    feature_types_in = _none_list * n_features
 
     bins = []
     bin_counts = []
@@ -1494,7 +1494,7 @@ def bin_native(
     histogram_counts = []
     is_privacy_warning = False
 
-    for feature_idx, max_bins, (feature_type_out, X_col, categories, bad) in zip(feature_idxs, max_bins_iter, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
+    for feature_idx, max_bins, (feature_type_in, X_col, categories, bad) in zip(feature_idxs, max_bins_iter, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_in, feature_types_given, min_unique_continuous, False)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
@@ -1507,7 +1507,7 @@ def bin_native(
             # X_col could be a slice that has a stride.  We need contiguous for caling into C
             X_col = X_col.copy()
 
-        feature_types_out[feature_idx] = feature_type_out
+        feature_types_in[feature_idx] = feature_type_in
 
         min_val = None
         max_val = None
@@ -1517,7 +1517,7 @@ def bin_native(
         if categories is None:
             # continuous feature
             if bad is not None:
-                msg = f"Feature {feature_names_out[feature_idx]} is indicated as continuous, but has non-numeric data"
+                msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -1553,8 +1553,8 @@ def bin_native(
 
                 min_val = np.nanmin(X_col)
                 max_val = np.nanmax(X_col)
-                feature_type_in = None if feature_types_in is None else feature_types_in[feature_idx]
-                cuts = _cut_continuous(native, X_col, feature_type_in, binning, max_bins, min_samples_bin)
+                feature_type_given = None if feature_types_given is None else feature_types_given[feature_idx]
+                cuts = _cut_continuous(native, X_col, feature_type_given, binning, max_bins, min_samples_bin)
                 X_col = native.discretize(X_col, cuts)
                 feature_bin_counts = np.bincount(X_col, minlength=len(cuts) + 3)
                 feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
@@ -1564,7 +1564,7 @@ def bin_native(
         else:
             # categorical feature
             if bad is not None:
-                msg = f"Feature {feature_names_out[feature_idx]} has unrecognized ordinal values"
+                msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -1614,7 +1614,7 @@ def bin_native(
             if feature_bin_counts[-1] == 0:
                 n_bins -= 1
 
-        n_bytes += native.size_feature(feature_type_out == 'nominal', n_bins, X_col)
+        n_bytes += native.size_feature(feature_type_in == 'nominal', n_bins, X_col)
         bins.append(feature_bins)
         bin_counts.append(feature_bin_counts)
         min_vals.append(min_val)
@@ -1636,7 +1636,7 @@ def bin_native(
 
     native.fill_data_set_header(len(feature_idxs), 1, 1, n_bytes, shared_dataset)
 
-    for feature_idx, feature_bins, feature_bin_counts, (feature_type_out, X_col, _, _) in zip(feature_idxs, bins, bin_counts, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_out, feature_types_in, min_unique_continuous, False)):
+    for feature_idx, feature_bins, feature_bin_counts, (feature_type_in, X_col, _, _) in zip(feature_idxs, bins, bin_counts, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_in, feature_types_given, min_unique_continuous, False)):
         if n_samples != len(X_col):
             # re-check that that number of samples is identical since iterators can be used up by looking at them
             # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
@@ -1659,7 +1659,7 @@ def bin_native(
             if feature_bin_counts[-1] == 0:
                 n_bins -= 1
 
-        native.fill_feature(feature_type_out == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
+        native.fill_feature(feature_type_in == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
 
     native.fill_weight(w, n_bytes, shared_dataset)
     if is_classification:
@@ -1667,9 +1667,9 @@ def bin_native(
     else:
         native.fill_regression_target(y, n_bytes, shared_dataset)
 
-    return shared_dataset, classes, feature_names_out, feature_types_out, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts
+    return shared_dataset, classes, feature_names_in, feature_types_in, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts
 
-def eval_terms(X, feature_names_out, feature_types_out, terms, bins):
+def eval_terms(X, feature_names_in, feature_types_in, terms, bins):
     # called under: predict
 
     # prior to calling this function, call deduplicate_bins which will eliminate extra work in this function
@@ -1713,7 +1713,7 @@ def eval_terms(X, feature_names_out, feature_types_out, terms, bins):
 
     native = Native.get_native_singleton()
 
-    for (column_feature_idx, _), (_, X_col, column_categories, bad) in zip(requests, unify_columns(X, requests, feature_names_out, feature_types_out, None, True)):
+    for (column_feature_idx, _), (_, X_col, column_categories, bad) in zip(requests, unify_columns(X, requests, feature_names_in, feature_types_in, None, True)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
@@ -1786,19 +1786,19 @@ def eval_terms(X, feature_names_out, feature_types_out, terms, bins):
                         requirements[:] = _none_list # clear references so that the garbage collector can free them
                         yield term, binned_data
 
-def ebm_decision_function(X, n_samples, feature_names_out, feature_types_out, terms, bins, intercept):
+def ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, terms, bins, intercept):
     if type(intercept) is float or len(intercept) == 1:
         scores = np.full(n_samples, intercept, dtype=np.float64)
     else:
         scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
 
-    for term, binned_data in eval_terms(X, feature_names_out, feature_types_out, terms, bins):
+    for term, binned_data in eval_terms(X, feature_names_in, feature_types_in, terms, bins):
         scores += term['scores'][binned_data]
 
     return scores
 
-def append_bin_counts(X, feature_names_out, feature_types_out, terms, bins, w=None):
-    for term, binned_data in eval_terms(X, feature_names_out, feature_types_out, terms, bins):
+def append_bin_counts(X, feature_names_in, feature_types_in, terms, bins, w=None):
+    for term, binned_data in eval_terms(X, feature_names_in, feature_types_in, terms, bins):
         features = term['features']
         multiple = 1
         dimensions = []
@@ -1897,25 +1897,25 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
             _log.error(msg)
             raise ValueError(msg)
 
-    feature_names_out = unify_feature_names(X, feature_names, feature_types)
-    feature_types_out = _none_list * len(feature_names_out)
+    feature_names_in = unify_feature_names(X, feature_names, feature_types)
+    feature_types_in = _none_list * len(feature_names_in)
 
     # TODO: this could be made more efficient by storing continuous and categorical values in separate numpy arrays
     # and merging afterwards.  Categoricals are going to share the same objects, but we don't want object
     # fragmentation for continuous values which generates a lot of garbage to collect later
-    X_unified = np.empty((n_samples, len(feature_names_out)), dtype=np.object_, order='F')
+    X_unified = np.empty((n_samples, len(feature_names_in)), dtype=np.object_, order='F')
 
-    for feature_idx, (feature_type_out, X_col, categories, bad) in zip(count(), unify_columns(X, zip(range(len(feature_names_out)), repeat(None)), feature_names_out, feature_types, min_unique_continuous, False)):
+    for feature_idx, (feature_type_in, X_col, categories, bad) in zip(count(), unify_columns(X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in, feature_types, min_unique_continuous, False)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
             raise ValueError(msg)
 
-        feature_types_out[feature_idx] = feature_type_out
+        feature_types_in[feature_idx] = feature_type_in
         if categories is None:
             # continuous feature
             if bad is not None:
-                msg = f"Feature {feature_names_out[feature_idx]} is indicated as continuous, but has non-numeric data"
+                msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -1928,7 +1928,7 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
         else:
             # categorical feature
             if bad is not None:
-                msg = f"Feature {feature_names_out[feature_idx]} has unrecognized ordinal values"
+                msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -1943,7 +1943,7 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
                 mapping.itemset(idx, category)
             X_unified[:, feature_idx] = mapping[X_col]
 
-    return X_unified, y, w, feature_names_out, feature_types_out
+    return X_unified, y, w, feature_names_in, feature_types_in
 
 
 class EBMPreprocessor2(BaseEstimator, TransformerMixin):
@@ -1993,8 +1993,8 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
             _log.error(msg)
             raise ValueError(msg)
 
-        feature_names_out = unify_feature_names(X, self.feature_names, self.feature_types)
-        n_features = len(feature_names_out)
+        feature_names_in = unify_feature_names(X, self.feature_names, self.feature_types)
+        n_features = len(feature_names_in)
 
         noise_scale = None # only applicable for private binning
         if self.binning == 'private':
@@ -2005,8 +2005,8 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                 delta = self.delta
             )
 
-        feature_types_out = _none_list * n_features
-        bins_out = _none_list * n_features
+        feature_types_in = _none_list * n_features
+        bins = _none_list * n_features
         bin_counts = _none_list * n_features
         min_vals = {}
         max_vals = {}
@@ -2015,7 +2015,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
 
         native = Native.get_native_singleton()
         is_privacy_warning = False
-        for feature_idx, (feature_type_out, X_col, categories, bad) in zip(count(), unify_columns(X, zip(range(n_features), repeat(None)), feature_names_out, self.feature_types, self.min_unique_continuous, False)):
+        for feature_idx, (feature_type_in, X_col, categories, bad) in zip(count(), unify_columns(X, zip(range(n_features), repeat(None)), feature_names_in, self.feature_types, self.min_unique_continuous, False)):
             if n_samples != len(X_col):
                 msg = "The columns of X are mismatched in the number of of samples"
                 _log.error(msg)
@@ -2029,11 +2029,11 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                 # X_col could be a slice that has a stride.  We need contiguous for caling into C
                 X_col = X_col.copy()
 
-            feature_types_out[feature_idx] = feature_type_out
+            feature_types_in[feature_idx] = feature_type_in
             if categories is None:
                 # continuous feature
                 if bad is not None:
-                    msg = f"Feature {feature_names_out[feature_idx]} is indicated as continuous, but has non-numeric data"
+                    msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
                     _log.error(msg)
                     raise ValueError(msg)
 
@@ -2061,8 +2061,8 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                 else:
                     min_val = np.nanmin(X_col)
                     max_val = np.nanmax(X_col)
-                    feature_type_in = None if self.feature_types is None else self.feature_types[feature_idx]
-                    cuts = _cut_continuous(native, X_col, feature_type_in, self.binning, self.max_bins, self.min_samples_bin)
+                    feature_type_given = None if self.feature_types is None else self.feature_types[feature_idx]
+                    cuts = _cut_continuous(native, X_col, feature_type_given, self.binning, self.max_bins, self.min_samples_bin)
                     discretized = native.discretize(X_col, cuts)
                     feature_bin_counts = np.bincount(discretized, minlength=len(cuts) + 3)
                     feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
@@ -2073,7 +2073,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                     feature_histogram_counts = np.bincount(discretized, minlength=len(feature_histogram_cuts) + 3)
                     feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
 
-                bins_out[feature_idx] = cuts
+                bins[feature_idx] = cuts
                 min_vals[feature_idx] = min_val
                 max_vals[feature_idx] = max_val
                 histogram_cuts[feature_idx] = feature_histogram_cuts
@@ -2081,7 +2081,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
             else:
                 # categorical feature
                 if bad is not None:
-                    msg = f"Feature {feature_names_out[feature_idx]} has unrecognized ordinal values"
+                    msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
                     _log.error(msg)
                     raise ValueError(msg)
 
@@ -2125,16 +2125,16 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                     feature_bin_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
                     feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
 
-                bins_out[feature_idx] = categories
+                bins[feature_idx] = categories
             bin_counts[feature_idx] = feature_bin_counts
 
         if is_privacy_warning:
             warn("Possible privacy violation: assuming min/max values per feature are public info. "
                     "Pass a privacy schema with known public ranges per feature to avoid this warning.")
 
-        self.feature_names_out_ = feature_names_out
-        self.feature_types_out_ = feature_types_out
-        self.bins_ = bins_out
+        self.feature_names_in_ = feature_names_in
+        self.feature_types_in_ = feature_types_in
+        self.bins_ = bins
         self.bin_counts_ = bin_counts
         self.min_vals_ = min_vals
         self.max_vals_ = max_vals
@@ -2160,12 +2160,12 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
             _log.error(msg)
             raise ValueError(msg)
 
-        X_binned = np.empty((n_samples, len(self.feature_names_out_)), dtype=np.int64, order='F')
+        X_binned = np.empty((n_samples, len(self.feature_names_in_)), dtype=np.int64, order='F')
 
         native = Native.get_native_singleton()
         category_iter = (category if isinstance(category, dict) else None for category in self.bins_)
         requests = zip(count(), category_iter)
-        cols = unify_columns(X, requests, self.feature_names_out_, self.feature_types_out_, None, False)
+        cols = unify_columns(X, requests, self.feature_names_in_, self.feature_types_in_, None, False)
         for feature_idx, bins, (_, X_col, _, _) in zip(count(), self.bins_, cols):
             if n_samples != len(X_col):
                 msg = "The columns of X are mismatched in the number of of samples"
