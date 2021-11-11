@@ -109,6 +109,30 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
     else:  # pragma: no cover
         return df
 
+def gen_global_selector2(n_samples, n_features, term_names, term_types, zeros, uniques, round=3):
+    records = []
+    for term_idx in range(len(term_names)):
+        record = {}
+        record["Name"] = term_names[term_idx]
+        feature_type = term_types[term_idx]
+        record["Type"] = 'categorical' if feature_type == 'nominal' or feature_type == 'ordinal' else feature_type
+
+        if term_idx < n_features:
+            record["# Unique"] = uniques[term_idx]
+            record["% Non-zero"] = (n_samples - zeros[term_idx]) / n_samples
+        else:
+            record["# Unique"] = np.nan
+            record["% Non-zero"] = np.nan
+
+        records.append(record)
+
+    # columns = ["Name", "Type", "# Unique", "% Non-zero", "Importance"]
+    columns = ["Name", "Type", "# Unique", "% Non-zero"]
+    df = pd.DataFrame.from_records(records, columns=columns)
+    if round is not None:
+        return df.round(round)
+    else:  # pragma: no cover
+        return df
 
 def gen_local_selector(data_dicts, round=3, is_classification=True):
     records = []

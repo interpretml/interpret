@@ -653,7 +653,8 @@ class BaseEBM(BaseEstimator):
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
             DPUtils.validate_DP_EBM(self)
 
-            if self.privacy_schema is None or 'target' not in self.privacy_schema:
+            bounds = None if self.privacy_schema is None else self.privacy_schema.get('target', None)
+            if bounds is None:
                 # TODO: check with Harsha how domain_size should be handled for classification
 
                 warn("Possible privacy violation: assuming min/max values for target are public info."
@@ -661,8 +662,8 @@ class BaseEBM(BaseEstimator):
 
                 domain_size = y.max() - y.min()
             else:
-                min_target = self.privacy_schema['target'][0]
-                max_target = self.privacy_schema['target'][1]
+                min_target = bounds[0]
+                max_target = bounds[1]
                 if max_target < min_target:
                     raise ValueError(f"target minimum {min_target} must be smaller than maximum {max_target}")
                 domain_size = max_target - min_target
@@ -1065,7 +1066,12 @@ class BaseEBM(BaseEstimator):
         )
 
         if is_private(self):
+            # TODO: check with Harsha that these need to be preserved, or if other properties should be as well
+            # TODO: consider recording the target min and max in all models, not just DP and remove the domain_size
             self.domain_size_ = domain_size
+            # TODO: make noise_scale a property?  We can re-calculate it after fitting since we need to know n_features_in_
+            # we could make an internal function to calcualte it and pass it n_features_in_ after we've been fit
+            # but also use it here to calculate the noise_scale
             self.noise_scale_ = noise_scale
         if classes is not None:
              # scikit-learn requires "self.classes_" for classifiers per documentation

@@ -3,6 +3,7 @@
 
 from collections import Counter
 from itertools import count, repeat, groupby
+from warnings import warn
 from multiprocessing.sharedctypes import RawArray
 import numpy as np
 import numpy.ma as ma
@@ -1394,21 +1395,21 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
         processing = binning
 
     if processing == 'quantile':
-        # one bin for missing, and # of cuts is one less again
-        cuts = native.cut_quantile(X_col, min_samples_bin, 0, max_bins - 2)
+        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        cuts = native.cut_quantile(X_col, min_samples_bin, 0, max_bins - 3)
     elif processing == 'quantile_humanized':
-        # one bin for missing, and # of cuts is one less again
-        cuts = native.cut_quantile(X_col, min_samples_bin, 1, max_bins - 2)
+        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        cuts = native.cut_quantile(X_col, min_samples_bin, 1, max_bins - 3)
     elif processing == 'uniform':
-        # one bin for missing, and # of cuts is one less again
-        cuts = native.cut_uniform(X_col, max_bins - 2)
+        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        cuts = native.cut_uniform(X_col, max_bins - 3)
     elif processing == 'winsorized':
-        # one bin for missing, and # of cuts is one less again
-        cuts = native.cut_winsorized(X_col, max_bins - 2)
+        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        cuts = native.cut_winsorized(X_col, max_bins - 3)
     elif isinstance(processing, np.ndarray):
         cuts = processing.astype(dtype=np.float64, copy=False)
     elif isinstance(processing, list):
-        cuts = np.array(processing, dtype=np.float64, copy=False)
+        cuts = np.array(processing, dtype=np.float64)
     else:
         msg = f"illegal binning type {processing}"
         _log.error(msg)
@@ -1416,21 +1417,369 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
 
     return cuts
 
-def bin_native(
-    is_classification, 
-    feature_idxs, 
-    max_bins_iter, 
-    X, 
-    y, 
-    w, 
+class EBMPreprocessor2(BaseEstimator, TransformerMixin):
+    """ Transformer that preprocesses data to be ready before EBM. """
+
+    def __init__(
+        self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", min_samples_bin=1, 
+        min_unique_continuous=3, epsilon=None, delta=None, privacy_schema=None
+    ):
+        """ Initializes EBM preprocessor.
+
+        Args:
+            feature_names: Feature names as list.
+            feature_types: Feature types as list, for example "continuous" or "categorical".
+            max_bins: Max number of bins to process numeric features.
+            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform", or "private". 
+            min_samples_bin: minimum number of samples to put into a quantile or quantile_humanized bin
+            min_unique_continuous: number of unique numbers required before a feature is considered continuous
+            epsilon: Privacy budget parameter. Only applicable when binning is "private".
+            delta: Privacy budget parameter. Only applicable when binning is "private".
+            privacy_schema: User specified min/max values for numeric features as dictionary. Only applicable when binning is "private".
+        """
+        self.feature_names = feature_names
+        self.feature_types = feature_types
+        self.max_bins = max_bins
+        self.binning = binning
+        self.min_samples_bin = min_samples_bin
+        self.min_unique_continuous = min_unique_continuous
+        self.epsilon = epsilon
+        self.delta = delta
+        self.privacy_schema = privacy_schema
+
+    def fit(self, X, y=None):
+        """ Fits transformer to provided samples.
+
+        Args:
+            X: Numpy array for training samples.
+            y: Unused. Only included for scikit-learn compatibility
+
+        Returns:
+            Itself.
+        """
+
+        X, n_samples = clean_X(X)
+        if n_samples <= 0:
+            msg = "X has no samples"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        feature_names_in = unify_feature_names(X, self.feature_names, self.feature_types)
+        n_features = len(feature_names_in)
+
+        noise_scale = None # only applicable for private binning
+        if self.binning == 'private':
+            DPUtils.validate_eps_delta(self.epsilon, self.delta)
+            noise_scale = DPUtils.calc_gdp_noise_multi(
+                total_queries = n_features, 
+                target_epsilon = self.epsilon, 
+                delta = self.delta
+            )
+
+        feature_types_in = _none_list * n_features
+        bins = _none_list * n_features
+        bin_counts = _none_list * n_features
+        min_vals = np.full(n_features, np.nan, dtype=np.float64)
+        max_vals = np.full(n_features, np.nan, dtype=np.float64)
+        histogram_cuts = _none_list * n_features
+        histogram_counts = _none_list * n_features
+        zeros = np.full(n_features, 0, dtype=np.int64)
+        unique = np.full(n_features, 0, dtype=np.int64)
+
+        native = Native.get_native_singleton()
+        is_privacy_warning = False
+        for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(unify_columns(X, zip(range(n_features), repeat(None)), feature_names_in, self.feature_types, self.min_unique_continuous, False)):
+            if n_samples != len(X_col):
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            max_bins = self.max_bins # TODO: in the future allow this to be per-feature
+            if max_bins < 3:
+                raise ValueError(f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unknown, and one or more bins for the non-missing values.")
+
+            if not X_col.flags.c_contiguous:
+                # X_col could be a slice that has a stride.  We need contiguous for caling into C
+                X_col = X_col.copy()
+
+            feature_types_in[feature_idx] = feature_type_in
+            if categories is None:
+                # continuous feature
+                if bad is not None:
+                    msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                if self.binning == 'private':
+                    if np.isnan(X_col).any():
+                        msg = "missing values in X not supported for private binning"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                    bounds = None if self.privacy_schema is None else self.privacy_schema.get(feature_idx, None)
+                    if bounds is None:
+                        is_privacy_warning = True
+                        min_val = np.nanmin(X_col)
+                        max_val = np.nanmax(X_col)
+                    else:
+                        min_val = bounds[0]
+                        max_val = bounds[1]
+                    cuts, feature_bin_counts = DPUtils.private_numeric_binning(X_col, noise_scale, max_bins - 1, min_val, max_val)
+                    feature_bin_counts.append(0)
+                    feature_bin_counts = np.array(feature_bin_counts, dtype=np.int64)
+                else:
+                    min_val = np.nanmin(X_col)
+                    max_val = np.nanmax(X_col)
+                    feature_type_given = None if self.feature_types is None else self.feature_types[feature_idx]
+                    cuts = _cut_continuous(native, X_col, feature_type_given, self.binning, max_bins, self.min_samples_bin)
+                    discretized = native.discretize(X_col, cuts)
+                    feature_bin_counts = np.bincount(discretized, minlength=len(cuts) + 3)
+                    feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
+
+                    n_cuts = native.get_histogram_cut_count(X_col)
+                    feature_histogram_cuts = native.cut_uniform(X_col, n_cuts)
+                    discretized = native.discretize(X_col, feature_histogram_cuts)
+                    feature_histogram_counts = np.bincount(discretized, minlength=len(feature_histogram_cuts) + 3)
+                    feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
+
+                    histogram_cuts[feature_idx] = feature_histogram_cuts
+                    histogram_counts[feature_idx] = feature_histogram_counts
+
+                    X_col = X_col[~np.isnan(X_col)]
+                    zeros.itemset(feature_idx, len(X_col) - np.count_nonzero(X_col))
+                    unique.itemset(feature_idx, len(np.unique(X_col)))
+
+                bins[feature_idx] = cuts
+                min_vals.itemset(feature_idx, min_val)
+                max_vals.itemset(feature_idx, max_val)
+            else:
+                # categorical feature
+                if bad is not None:
+                    msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                if self.binning == 'private':
+                    if np.count_nonzero(X_col) != len(X_col):
+                        msg = "missing values in X not supported for private binning"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                    # TODO: clean up this hack that uses strings of the indexes
+                    keep_bins, old_feature_bin_counts = DPUtils.private_categorical_binning(X_col, noise_scale, max_bins - 1)
+                    unknown_count = 0
+                    if keep_bins[-1] == 'DPOther':
+                        unknown_count = old_feature_bin_counts[-1]
+                        keep_bins = keep_bins[:-1]
+                        old_feature_bin_counts = old_feature_bin_counts[:-1]
+
+                    keep_bins = keep_bins.astype(np.int64)
+                    keep_bins = dict(zip(keep_bins, old_feature_bin_counts))
+
+                    feature_bin_counts = np.empty(len(keep_bins) + 2, dtype=np.int64)
+                    feature_bin_counts[0] = 0
+                    feature_bin_counts[-1] = unknown_count
+
+                    categories = list(map(tuple, map(reversed, categories.items())))
+                    categories.sort() # groupby requires sorted data
+
+                    new_categories = {}
+                    new_idx = 1
+                    for idx, category_iter in groupby(categories, lambda x: x[0]):
+                        bin_count = keep_bins.get(idx, None)
+                        if bin_count is not None:
+                            feature_bin_counts.itemset(new_idx, bin_count)
+                            for _, category in category_iter:
+                                new_categories[category] = new_idx
+                            new_idx += 1
+
+                    categories = new_categories
+                else:
+                    n_unique_indexes = len(set(categories.values()))
+                    feature_bin_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
+                    feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
+                    unique.itemset(feature_idx, len(categories))
+                    zero_indexes = _none_list * n_unique_indexes
+                    for category, idx in categories.items():
+                        try:
+                            val = float(category)
+                            if val == 0.0:
+                                zero_indexes[idx - 1] = True
+                        except ValueError:
+                            pass
+
+                    n_zeros = 0
+                    for idx, is_zero in enumerate(zero_indexes):
+                        if is_zero:
+                            n_zeros += np.count_nonzero(X_col == (idx + 1))
+                    zeros.itemset(feature_idx, n_zeros)
+
+                bins[feature_idx] = categories
+            bin_counts[feature_idx] = feature_bin_counts
+
+        if is_privacy_warning:
+            warn("Possible privacy violation: assuming min/max values per feature are public info. "
+                    "Pass a privacy schema with known public ranges per feature to avoid this warning.")
+
+        self.feature_names_in_ = feature_names_in
+        self.feature_types_in_ = feature_types_in
+        self.bins_ = bins
+        self.bin_counts_ = bin_counts
+        self.min_vals_ = min_vals
+        self.max_vals_ = max_vals
+        self.histogram_cuts_ = histogram_cuts
+        self.histogram_counts_ = histogram_counts
+        self.zeros_ = zeros
+        self.unique_ = unique
+        self.has_fitted_ = True
+        return self
+
+    def transform(self, X):
+        """ Transform on provided samples.
+
+        Args:
+            X: Numpy array for samples.
+
+        Returns:
+            Transformed numpy array.
+        """
+        check_is_fitted(self, "has_fitted_")
+
+        X, n_samples = clean_X(X)
+        if n_samples <= 0:
+            msg = "X has no samples"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        X_binned = np.empty((n_samples, len(self.feature_names_in_)), dtype=np.int64, order='F')
+
+        native = Native.get_native_singleton()
+        category_iter = (category if isinstance(category, dict) else None for category in self.bins_)
+        requests = zip(count(), category_iter)
+        cols = unify_columns(X, requests, self.feature_names_in_, self.feature_types_in_, None, False)
+        for feature_idx, bins, (_, X_col, _, _) in zip(count(), self.bins_, cols):
+            if n_samples != len(X_col):
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            if not isinstance(bins, dict):
+                # continuous feature
+
+                if not X_col.flags.c_contiguous:
+                    # X_col could be a slice that has a stride.  We need contiguous for caling into C
+                    X_col = X_col.copy()
+
+                X_col = native.discretize(X_col, bins)
+
+            X_binned[:, feature_idx] = X_col
+
+        return X_binned
+
+    def fit_transform(self, X, y=None):
+        """ Fits and Transform on provided samples.
+
+        Args:
+            X: Numpy array for samples.
+            y: Unused. Only included for scikit-learn compatibility
+
+        Returns:
+            Transformed numpy array.
+        """
+
+        X, _ = clean_X(X)
+        return self.fit(X).transform(X)
+
+def deduplicate_bins(bins):
+    # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
+    # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
+    # use the id of the bins to identify feature data that was previously binned
+
+    # TODO: use this function!
+
+    uniques = dict()
+    for feature_idx in range(len(bins)):
+        bin_levels = bins[feature_idx]
+        highest_key = None
+        for level_idx in range(len(bin_levels)):
+            feature_bins = bin_levels[level_idx]
+            if isinstance(feature_bins, dict):
+                key = frozenset(feature_bins.items())
+            else:
+                key = tuple(feature_bins)
+            existing = uniques.get(key, None)
+            if existing is None:
+                uniques[key] = feature_bins
+            else:
+                bin_levels[level_idx] = existing
+
+            if highest_key != key:
+                highest_key = key
+                highest_idx = level_idx
+        del bin_levels[highest_idx + 1:]
+
+def construct_bins(
+    X,
     feature_names_given, 
     feature_types_given, 
+    max_bins_leveled, 
     binning='quantile', 
     min_samples_bin=1, 
     min_unique_continuous=3, 
     epsilon=None, 
     delta=None, 
     privacy_schema=None,
+):
+    is_mains = True
+    for max_bins in max_bins_leveled:
+        preprocessor = EBMPreprocessor2(
+            feature_names_given, 
+            feature_types_given, 
+            max_bins, 
+            binning, 
+            min_samples_bin, 
+            min_unique_continuous, 
+            epsilon, 
+            delta, 
+            privacy_schema
+        )
+        preprocessor.fit(X)
+        if is_mains:
+            is_mains = False
+            bins = preprocessor.bins_
+            for feature_idx in range(len(bins)):
+                bins[feature_idx] = [bins[feature_idx]]
+
+            feature_names_in = preprocessor.feature_names_in_
+            feature_types_in = preprocessor.feature_types_in_
+            bin_counts = preprocessor.bin_counts_
+            min_vals = preprocessor.min_vals_
+            max_vals = preprocessor.max_vals_
+            histogram_cuts = preprocessor.histogram_cuts_
+            histogram_counts = preprocessor.histogram_counts_
+            zeros = preprocessor.zeros_
+            unique = preprocessor.unique_
+        else:
+            if feature_names_in != preprocessor.feature_names_in_:
+                raise RuntimeError("Mismatched feature_names")
+            if feature_types_in != preprocessor.feature_types_in_:
+                raise RuntimeError("Mismatched feature_types")
+
+            for bin_levels, feature_bins in zip(bins, preprocessor.bins_):
+                bin_levels.append(feature_bins)
+
+    deduplicate_bins(bins)
+    return feature_names_in, feature_types_in, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts, zeros, unique
+
+def bin_native(
+    is_classification, 
+    feature_idxs, 
+    bins_iter,
+    X, 
+    y, 
+    w, 
+    feature_names_in, 
+    feature_types_in, 
 ):
     # called under: fit
 
@@ -1467,176 +1816,20 @@ def bin_native(
         # TODO: eliminate this eventually
         w = np.ones_like(y, dtype=np.float64)
 
-    feature_names_in = unify_feature_names(X, feature_names_given, feature_types_given)
-    n_features = len(feature_names_in)
-
-    noise_scale = None # only applicable for private binning
-    if binning == 'private':
-        DPUtils.validate_eps_delta(epsilon, delta)
-        # for DP-EBMs we only support passing in mains and we require all 
-        # of them to be used, otherwise the formula below needs to be changed
-        noise_scale = DPUtils.calc_gdp_noise_multi(
-            total_queries = n_features, 
-            target_epsilon = epsilon, 
-            delta = delta
-        )
-
     native = Native.get_native_singleton()
-    n_bytes = native.size_data_set_header(len(feature_idxs), 1, 1)
 
-    feature_types_in = _none_list * n_features
+    responses = []
+    requests = []
+    for request in zip(feature_idxs, bins_iter):
+        responses.append(request)
+        if not isinstance(request[1], dict):
+            # continuous feature.  Don't include the continuous definition
+            request = (request[0], None)
+        requests.append(request)
 
-    bins = []
-    bin_counts = []
-    min_vals = []
-    max_vals = []
-    histogram_cuts = []
-    histogram_counts = []
-    is_privacy_warning = False
-
-    for feature_idx, max_bins, (feature_type_in, X_col, categories, bad) in zip(feature_idxs, max_bins_iter, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_in, feature_types_given, min_unique_continuous, False)):
-        if n_samples != len(X_col):
-            msg = "The columns of X are mismatched in the number of of samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        if max_bins < 3:
-            raise ValueError(f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unknown, and one or more bins for the non-missing values.")
-
-        if not X_col.flags.c_contiguous:
-            # X_col could be a slice that has a stride.  We need contiguous for caling into C
-            X_col = X_col.copy()
-
-        feature_types_in[feature_idx] = feature_type_in
-
-        min_val = None
-        max_val = None
-        feature_histogram_cuts = None
-        feature_histogram_counts = None
-
-        if categories is None:
-            # continuous feature
-            if bad is not None:
-                msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if binning == 'private':
-                if np.isnan(X_col).any():
-                    msg = "missing values in X not supported for private binning"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-                bounds = privacy_schema.get(feature_idx, None)
-                if bounds is None:
-                    is_privacy_warning = True
-                    min_val = np.nanmin(X_col)
-                    max_val = np.nanmax(X_col)
-                else:
-                    min_val = bounds[0]
-                    max_val = bounds[1]
-                cuts, feature_bin_counts = DPUtils.private_numeric_binning(X_col, noise_scale, max_bins, min_val, max_val)
-                feature_bin_counts.append(0)
-                feature_bin_counts = np.array(feature_bin_counts, dtype=np.int64)
-
-                X_col = native.discretize(X_col, cuts)
-
-                # TODO: is it ok that these are uneven histogram bins?  Can we restore the original bins and assign counts heuristically
-                feature_histogram_cuts = cuts
-                feature_histogram_counts = feature_bin_counts
-            else:
-                n_cuts = native.get_histogram_cut_count(X_col)
-                feature_histogram_cuts = native.cut_uniform(X_col, n_cuts)
-                discretized = native.discretize(X_col, feature_histogram_cuts)
-                feature_histogram_counts = np.bincount(discretized, minlength=len(feature_histogram_cuts) + 3)
-                feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
-
-                min_val = np.nanmin(X_col)
-                max_val = np.nanmax(X_col)
-                feature_type_given = None if feature_types_given is None else feature_types_given[feature_idx]
-                cuts = _cut_continuous(native, X_col, feature_type_given, binning, max_bins, min_samples_bin)
-                X_col = native.discretize(X_col, cuts)
-                feature_bin_counts = np.bincount(X_col, minlength=len(cuts) + 3)
-                feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
-
-            feature_bins = cuts
-            n_bins = len(cuts) + 2
-        else:
-            # categorical feature
-            if bad is not None:
-                msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if binning == 'private':
-                if np.count_nonzero(X_col) != len(X_col):
-                    msg = "missing values in X not supported for private binning"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-                # TODO: clean up this hack that uses strings of the indexes
-                keep_bins, old_feature_bin_counts = DPUtils.private_categorical_binning(X_col, noise_scale, max_bins)
-                unknown_count = 0
-                if keep_bins[-1] == 'DPOther':
-                    unknown_count = old_feature_bin_counts[-1]
-                    keep_bins = keep_bins[:-1]
-                    old_feature_bin_counts = old_feature_bin_counts[:-1]
-
-                keep_bins = keep_bins.astype(np.int64)
-                keep_bins = dict(zip(keep_bins, old_feature_bin_counts))
-
-                feature_bin_counts = np.empty(len(keep_bins) + 2, dtype=np.int64)
-                feature_bin_counts[0] = 0
-                feature_bin_counts[-1] = unknown_count
-
-                categories = list(map(tuple, map(reversed, categories.items())))
-                categories.sort() # groupby requires sorted data
-
-                new_categories = {}
-                new_idx = 1
-                for idx, category_iter in groupby(categories, lambda x: x[0]):
-                    bin_count = keep_bins.get(idx, None)
-                    if bin_count is not None:
-                        feature_bin_counts.itemset(new_idx, bin_count)
-                        for _, category in category_iter:
-                            new_categories[category] = new_idx
-                        new_idx += 1
-
-                categories = new_categories
-            else:
-                n_unique_indexes = len(set(categories.values()))
-                feature_bin_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
-                feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
-
-            feature_bins = categories
-
-            n_bins = len(feature_bin_counts)
-            if feature_bin_counts[-1] == 0:
-                n_bins -= 1
-
-        n_bytes += native.size_feature(feature_type_in == 'nominal', n_bins, X_col)
-        bins.append(feature_bins)
-        bin_counts.append(feature_bin_counts)
-        min_vals.append(min_val)
-        max_vals.append(max_val)
-        histogram_cuts.append(feature_histogram_cuts)
-        histogram_counts.append(feature_histogram_counts)
-
-    if is_privacy_warning:
-        warn("Possible privacy violation: assuming min/max values per feature are public info. "
-                "Pass a privacy schema with known public ranges per feature to avoid this warning.")
-
-    n_bytes += native.size_weight(w)
-    if is_classification:
-        n_bytes += native.size_classification_target(len(classes), y)
-    else:
-        n_bytes += native.size_regression_target(y)
-
-    shared_dataset = RawArray('B', n_bytes)
-
-    native.fill_data_set_header(len(feature_idxs), 1, 1, n_bytes, shared_dataset)
-
-    for feature_idx, feature_bins, feature_bin_counts, (feature_type_in, X_col, _, _) in zip(feature_idxs, bins, bin_counts, unify_columns(X, zip(feature_idxs, repeat(None)), feature_names_in, feature_types_given, min_unique_continuous, False)):
+    unknowns = []
+    n_bytes = native.size_data_set_header(len(requests), 1, 1)
+    for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
             # re-check that that number of samples is identical since iterators can be used up by looking at them
             # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
@@ -1649,17 +1842,59 @@ def bin_native(
             # X_col could be a slice that has a stride.  We need contiguous for caling into C
             X_col = X_col.copy()
 
-        if not isinstance(feature_bins, dict):
+        if isinstance(feature_bins, dict):
+            # categorical feature
+            n_bins = len(feature_bins) + 1
+        else:
             # continuous feature
             X_col = native.discretize(X_col, feature_bins)
             n_bins = len(feature_bins) + 2
-        else:
-            # categorical feature
-            n_bins = len(feature_bin_counts)
-            if feature_bin_counts[-1] == 0:
-                n_bins -= 1
 
-        native.fill_feature(feature_type_in == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
+        is_unknowns = False
+        if bad is not None:
+            is_unknowns = True
+            X_col[bad != _none_ndarray] = n_bins
+            n_bins += 1
+        unknowns.append(is_unknowns)
+
+        n_bytes += native.size_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col)
+
+    n_bytes += native.size_weight(w)
+    if is_classification:
+        n_bytes += native.size_classification_target(len(classes), y)
+    else:
+        n_bytes += native.size_regression_target(y)
+
+    shared_dataset = RawArray('B', n_bytes)
+
+    native.fill_data_set_header(len(requests), 1, 1, n_bytes, shared_dataset)
+
+    for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
+        if n_samples != len(X_col):
+            # re-check that that number of samples is identical since iterators can be used up by looking at them
+            # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
+            # unexpected number of items and thus a buffer overrun on the second pass through the data
+            msg = "The columns of X are mismatched in the number of of samples"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        if not X_col.flags.c_contiguous:
+            # X_col could be a slice that has a stride.  We need contiguous for caling into C
+            X_col = X_col.copy()
+
+        if isinstance(feature_bins, dict):
+            # categorical feature
+            n_bins = len(feature_bins) + 1
+        else:
+            # continuous feature
+            X_col = native.discretize(X_col, feature_bins)
+            n_bins = len(feature_bins) + 2
+
+        if bad is not None:
+            X_col[bad != _none_ndarray] = n_bins
+            n_bins += 1
+
+        native.fill_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
 
     native.fill_weight(w, n_bytes, shared_dataset)
     if is_classification:
@@ -1667,7 +1902,38 @@ def bin_native(
     else:
         native.fill_regression_target(y, n_bytes, shared_dataset)
 
-    return shared_dataset, classes, feature_names_in, feature_types_in, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts
+    # TODO: use the unknowns array instead of using the last count bin in the rest of our code
+    return shared_dataset, classes, unknowns
+
+def bin_native_by_dimension(
+    is_classification, 
+    n_dimensions,
+    bins,
+    X, 
+    y, 
+    w, 
+    feature_names_in, 
+    feature_types_in, 
+):
+    # called under: fit
+
+    feature_idxs = range(len(feature_names_in))
+    bins_iter = []
+    for feature_idx in feature_idxs:
+        bin_levels = bins[feature_idx]
+        feature_bins = bin_levels[-1 if len(bin_levels) < n_dimensions else n_dimensions - 1]
+        bins_iter.append(feature_bins)
+
+    return bin_native(
+        is_classification, 
+        feature_idxs, 
+        bins_iter,
+        X, 
+        y, 
+        w, 
+        feature_names_in, 
+        feature_types_in, 
+    )
 
 def eval_terms(X, feature_names_in, feature_types_in, terms, bins):
     # called under: predict
@@ -1695,7 +1961,7 @@ def eval_terms(X, feature_names_in, feature_types_in, terms, bins):
         requirements[-1] = term
         for feature_idx in features:
             bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
+            feature_bins = bin_levels[-1 if len(bin_levels) < len(features) else len(features) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
                 request = (feature_idx, feature_bins)
@@ -1740,7 +2006,7 @@ def eval_terms(X, feature_names_in, feature_types_in, terms, bins):
                     is_done = True
                     for dimension_idx, term_feature_idx in enumerate(features):
                         if term_feature_idx == column_feature_idx:
-                            cuts = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
+                            cuts = bin_levels[-1 if len(bin_levels) < len(features) else len(features) - 1]
                             discretized = cuts_completed.get(id(cuts), None)
                             if discretized is None:
                                 discretized = native.discretize(X_col, cuts)
@@ -1805,8 +2071,7 @@ def append_bin_counts(X, feature_names_in, feature_types_in, terms, bins, w=None
         for dimension_idx in range(len(features) - 1, -1, -1):
             feature_idx = features[dimension_idx]
             bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[-1] if len(bin_levels) < len(features) else bin_levels[len(features) - 1]
-
+            feature_bins = bin_levels[-1 if len(bin_levels) < len(features) else len(features) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
                 n_bins = len(set(feature_bins.values())) + 2
@@ -1836,34 +2101,6 @@ def append_bin_counts(X, feature_names_in, feature_types_in, terms, bins, w=None
             bin_weights = bin_weights.astype(np.float64, copy=False)
             bin_weights = bin_weights.reshape(dimensions)
         term['bin_weights'] = bin_weights
-
-def deduplicate_bins(bins):
-    # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
-    # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
-    # use the id of the bins to identify feature data that was previously binned
-
-    # TODO: use this function!
-
-    uniques = dict()
-    for feature_idx in range(len(bins)):
-        bin_levels = bins[feature_idx]
-        highest_key = None
-        for level_idx in range(len(bin_levels)):
-            feature_bins = bin_levels[level_idx]
-            if isinstance(feature_bins, dict):
-                key = frozenset(feature_bins.items())
-            else:
-                key = tuple(feature_bins)
-            existing = uniques.get(key, None)
-            if existing is None:
-                uniques[key] = feature_bins
-            else:
-                bin_levels[level_idx] = existing
-
-            if highest_key != key:
-                highest_key = key
-                highest_idx = level_idx
-        del bin_levels[highest_idx + 1:]
 
 def unify_data2(is_classification, X, y=None, w=None, feature_names=None, feature_types=None, missing_data_allowed=False, min_unique_continuous=3):
     _log.info("Unifying data")
@@ -1945,257 +2182,4 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
 
     return X_unified, y, w, feature_names_in, feature_types_in
 
-
-class EBMPreprocessor2(BaseEstimator, TransformerMixin):
-    """ Transformer that preprocesses data to be ready before EBM. """
-
-    def __init__(
-        self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", min_samples_bin=1, 
-        min_unique_continuous=3, epsilon=None, delta=None, privacy_schema=None
-    ):
-        """ Initializes EBM preprocessor.
-
-        Args:
-            feature_names: Feature names as list.
-            feature_types: Feature types as list, for example "continuous" or "categorical".
-            max_bins: Max number of bins to process numeric features.
-            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform", or "private". 
-            min_samples_bin: minimum number of samples to put into a quantile or quantile_humanized bin
-            min_unique_continuous: number of unique numbers required before a feature is considered continuous
-            epsilon: Privacy budget parameter. Only applicable when binning is "private".
-            delta: Privacy budget parameter. Only applicable when binning is "private".
-            privacy_schema: User specified min/max values for numeric features as dictionary. Only applicable when binning is "private".
-        """
-        self.feature_names = feature_names
-        self.feature_types = feature_types
-        self.max_bins = max_bins
-        self.binning = binning
-        self.min_samples_bin = min_samples_bin
-        self.min_unique_continuous = min_unique_continuous
-        self.epsilon = epsilon
-        self.delta = delta
-        self.privacy_schema = privacy_schema
-
-    def fit(self, X, y=None):
-        """ Fits transformer to provided samples.
-
-        Args:
-            X: Numpy array for training samples.
-            y: Unused. Only included for scikit-learn compatibility
-
-        Returns:
-            Itself.
-        """
-
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        feature_names_in = unify_feature_names(X, self.feature_names, self.feature_types)
-        n_features = len(feature_names_in)
-
-        noise_scale = None # only applicable for private binning
-        if self.binning == 'private':
-            DPUtils.validate_eps_delta(self.epsilon, self.delta)
-            noise_scale = DPUtils.calc_gdp_noise_multi(
-                total_queries = n_features, 
-                target_epsilon = self.epsilon, 
-                delta = self.delta
-            )
-
-        feature_types_in = _none_list * n_features
-        bins = _none_list * n_features
-        bin_counts = _none_list * n_features
-        min_vals = {}
-        max_vals = {}
-        histogram_cuts = {}
-        histogram_counts = {}
-
-        native = Native.get_native_singleton()
-        is_privacy_warning = False
-        for feature_idx, (feature_type_in, X_col, categories, bad) in zip(count(), unify_columns(X, zip(range(n_features), repeat(None)), feature_names_in, self.feature_types, self.min_unique_continuous, False)):
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            max_bins = self.max_bins # TODO: in the future allow this to be per-feature
-            if max_bins < 3:
-                raise ValueError(f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unknown, and one or more bins for the non-missing values.")
-
-            if not X_col.flags.c_contiguous:
-                # X_col could be a slice that has a stride.  We need contiguous for caling into C
-                X_col = X_col.copy()
-
-            feature_types_in[feature_idx] = feature_type_in
-            if categories is None:
-                # continuous feature
-                if bad is not None:
-                    msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-                if self.binning == 'private':
-                    if np.isnan(X_col).any():
-                        msg = "missing values in X not supported for private binning"
-                        _log.error(msg)
-                        raise ValueError(msg)
-
-                    bounds = self.privacy_schema.get(feature_idx, None)
-                    if bounds is None:
-                        is_privacy_warning = True
-                        min_val = np.nanmin(X_col)
-                        max_val = np.nanmax(X_col)
-                    else:
-                        min_val = bounds[0]
-                        max_val = bounds[1]
-                    cuts, feature_bin_counts = DPUtils.private_numeric_binning(X_col, noise_scale, self.max_bins, min_val, max_val)
-                    feature_bin_counts.append(0)
-                    feature_bin_counts = np.array(feature_bin_counts)
-
-                    # TODO: is it ok that these are uneven histogram bins?  Can we restore the original bins and assign counts heuristically
-                    feature_histogram_cuts = cuts
-                    feature_histogram_counts = feature_bin_counts
-                else:
-                    min_val = np.nanmin(X_col)
-                    max_val = np.nanmax(X_col)
-                    feature_type_given = None if self.feature_types is None else self.feature_types[feature_idx]
-                    cuts = _cut_continuous(native, X_col, feature_type_given, self.binning, self.max_bins, self.min_samples_bin)
-                    discretized = native.discretize(X_col, cuts)
-                    feature_bin_counts = np.bincount(discretized, minlength=len(cuts) + 3)
-                    feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
-
-                    n_cuts = native.get_histogram_cut_count(X_col)
-                    feature_histogram_cuts = native.cut_uniform(X_col, n_cuts)
-                    discretized = native.discretize(X_col, feature_histogram_cuts)
-                    feature_histogram_counts = np.bincount(discretized, minlength=len(feature_histogram_cuts) + 3)
-                    feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
-
-                bins[feature_idx] = cuts
-                min_vals[feature_idx] = min_val
-                max_vals[feature_idx] = max_val
-                histogram_cuts[feature_idx] = feature_histogram_cuts
-                histogram_counts[feature_idx] = feature_histogram_counts
-            else:
-                # categorical feature
-                if bad is not None:
-                    msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-                if self.binning == 'private':
-                    if np.count_nonzero(X_col) != len(X_col):
-                        msg = "missing values in X not supported for private binning"
-                        _log.error(msg)
-                        raise ValueError(msg)
-
-                    # TODO: clean up this hack that uses strings of the indexes
-                    keep_bins, old_feature_bin_counts = DPUtils.private_categorical_binning(X_col, noise_scale, self.max_bins)
-                    unknown_count = 0
-                    if keep_bins[-1] == 'DPOther':
-                        unknown_count = old_feature_bin_counts[-1]
-                        keep_bins = keep_bins[:-1]
-                        old_feature_bin_counts = old_feature_bin_counts[:-1]
-
-                    keep_bins = keep_bins.astype(np.int64)
-                    keep_bins = dict(zip(keep_bins, old_feature_bin_counts))
-
-                    feature_bin_counts = np.empty(len(keep_bins) + 2, dtype=np.int64)
-                    feature_bin_counts[0] = 0
-                    feature_bin_counts[-1] = unknown_count
-
-                    categories = list(map(tuple, map(reversed, categories.items())))
-                    categories.sort() # groupby requires sorted data
-
-                    new_categories = {}
-                    new_idx = 1
-                    for idx, category_iter in groupby(categories, lambda x: x[0]):
-                        bin_count = keep_bins.get(idx, None)
-                        if bin_count is not None:
-                            feature_bin_counts.itemset(new_idx, bin_count)
-                            for _, category in category_iter:
-                                new_categories[category] = new_idx
-                            new_idx += 1
-
-                    categories = new_categories
-                else:
-                    n_unique_indexes = len(set(categories.values()))
-                    feature_bin_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
-                    feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
-
-                bins[feature_idx] = categories
-            bin_counts[feature_idx] = feature_bin_counts
-
-        if is_privacy_warning:
-            warn("Possible privacy violation: assuming min/max values per feature are public info. "
-                    "Pass a privacy schema with known public ranges per feature to avoid this warning.")
-
-        self.feature_names_in_ = feature_names_in
-        self.feature_types_in_ = feature_types_in
-        self.bins_ = bins
-        self.bin_counts_ = bin_counts
-        self.min_vals_ = min_vals
-        self.max_vals_ = max_vals
-        self.histogram_cuts_ = histogram_cuts
-        self.histogram_counts_ = histogram_counts
-        self.has_fitted_ = True
-        return self
-
-    def transform(self, X):
-        """ Transform on provided samples.
-
-        Args:
-            X: Numpy array for samples.
-
-        Returns:
-            Transformed numpy array.
-        """
-        check_is_fitted(self, "has_fitted_")
-
-        X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        X_binned = np.empty((n_samples, len(self.feature_names_in_)), dtype=np.int64, order='F')
-
-        native = Native.get_native_singleton()
-        category_iter = (category if isinstance(category, dict) else None for category in self.bins_)
-        requests = zip(count(), category_iter)
-        cols = unify_columns(X, requests, self.feature_names_in_, self.feature_types_in_, None, False)
-        for feature_idx, bins, (_, X_col, _, _) in zip(count(), self.bins_, cols):
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if not isinstance(bins, dict):
-                # continuous feature
-
-                if not X_col.flags.c_contiguous:
-                    # X_col could be a slice that has a stride.  We need contiguous for caling into C
-                    X_col = X_col.copy()
-
-                X_col = native.discretize(X_col, bins)
-
-            X_binned[:, feature_idx] = X_col
-
-        return X_binned
-
-    def fit_transform(self, X, y=None):
-        """ Fits and Transform on provided samples.
-
-        Args:
-            X: Numpy array for samples.
-            y: Unused. Only included for scikit-learn compatibility
-
-        Returns:
-            Transformed numpy array.
-        """
-
-        X, _ = clean_X(X)
-        return self.fit(X).transform(X)
 
