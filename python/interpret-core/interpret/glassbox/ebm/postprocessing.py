@@ -73,3 +73,21 @@ def multiclass_postprocess(
             )
             intercepts[k] += mean
     return {"feature_graphs": updated_feature_graphs, "intercepts": intercepts}
+
+def multiclass_postprocess2(
+    n_classes, n_samples, additive_terms, intercept, bin_counts
+):
+    """ Postprocesses multiclass model graphs with desired properties.
+    """
+
+    # our existing implementation has a bug where it always uses the simpler method of taking 
+    # the mean of the class scores.  Copy this behavior for now since it's a lot simpler when
+    # moving to the generator unify_columns function.  Also, this method generalizes to tensors
+
+    # TODO: we can probably do all the classes together, and that would make it generalize to interactions as well
+
+    for i in range(len(additive_terms)):
+        for k in range(n_classes):
+            mean = np.sum(np.multiply(additive_terms[i][:, k], bin_counts[i])) / n_samples
+            additive_terms[i][:, k] = np.subtract(additive_terms[i][:, k], mean)
+            intercept[k] += mean

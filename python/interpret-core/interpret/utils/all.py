@@ -109,7 +109,7 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
     else:  # pragma: no cover
         return df
 
-def gen_global_selector2(n_samples, n_features, term_names, term_types, zeros, uniques, round=3):
+def gen_global_selector2(n_samples, n_features, term_names, term_types, unique_counts, zero_counts, round=3):
     records = []
     for term_idx in range(len(term_names)):
         record = {}
@@ -118,8 +118,8 @@ def gen_global_selector2(n_samples, n_features, term_names, term_types, zeros, u
         record["Type"] = 'categorical' if feature_type == 'nominal' or feature_type == 'ordinal' else feature_type
 
         if term_idx < n_features:
-            record["# Unique"] = uniques[term_idx]
-            record["% Non-zero"] = (n_samples - zeros[term_idx]) / n_samples
+            record["# Unique"] = unique_counts[term_idx]
+            record["% Non-zero"] = (n_samples - zero_counts[term_idx]) / n_samples
         else:
             record["# Unique"] = np.nan
             record["% Non-zero"] = np.nan

@@ -1483,8 +1483,8 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
         max_vals = np.full(n_features, np.nan, dtype=np.float64)
         histogram_cuts = _none_list * n_features
         histogram_counts = _none_list * n_features
-        zeros = np.full(n_features, 0, dtype=np.int64)
-        unique = np.full(n_features, 0, dtype=np.int64)
+        unique_counts = np.full(n_features, 0, dtype=np.int64)
+        zero_counts = np.full(n_features, 0, dtype=np.int64)
 
         native = Native.get_native_singleton()
         is_privacy_warning = False
@@ -1546,8 +1546,8 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                     histogram_counts[feature_idx] = feature_histogram_counts
 
                     X_col = X_col[~np.isnan(X_col)]
-                    zeros.itemset(feature_idx, len(X_col) - np.count_nonzero(X_col))
-                    unique.itemset(feature_idx, len(np.unique(X_col)))
+                    unique_counts.itemset(feature_idx, len(np.unique(X_col)))
+                    zero_counts.itemset(feature_idx, len(X_col) - np.count_nonzero(X_col))
 
                 bins[feature_idx] = cuts
                 min_vals.itemset(feature_idx, min_val)
@@ -1598,7 +1598,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                     n_unique_indexes = len(set(categories.values()))
                     feature_bin_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
                     feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
-                    unique.itemset(feature_idx, len(categories))
+                    unique_counts.itemset(feature_idx, len(categories))
                     zero_indexes = _none_list * n_unique_indexes
                     for category, idx in categories.items():
                         try:
@@ -1612,7 +1612,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
                     for idx, is_zero in enumerate(zero_indexes):
                         if is_zero:
                             n_zeros += np.count_nonzero(X_col == (idx + 1))
-                    zeros.itemset(feature_idx, n_zeros)
+                    zero_counts.itemset(feature_idx, n_zeros)
 
                 bins[feature_idx] = categories
             bin_counts[feature_idx] = feature_bin_counts
@@ -1629,8 +1629,8 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
         self.max_vals_ = max_vals
         self.histogram_cuts_ = histogram_cuts
         self.histogram_counts_ = histogram_counts
-        self.zeros_ = zeros
-        self.unique_ = unique
+        self.unique_counts_ = unique_counts
+        self.zero_counts_ = zero_counts
         self.has_fitted_ = True
         return self
 
@@ -1757,8 +1757,8 @@ def construct_bins(
             max_vals = preprocessor.max_vals_
             histogram_cuts = preprocessor.histogram_cuts_
             histogram_counts = preprocessor.histogram_counts_
-            zeros = preprocessor.zeros_
-            unique = preprocessor.unique_
+            unique_counts = preprocessor.unique_counts_
+            zero_counts = preprocessor.zero_counts_
         else:
             if feature_names_in != preprocessor.feature_names_in_:
                 raise RuntimeError("Mismatched feature_names")
@@ -1769,7 +1769,7 @@ def construct_bins(
                 bin_levels.append(feature_bins)
 
     deduplicate_bins(bins)
-    return feature_names_in, feature_types_in, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts, zeros, unique
+    return feature_names_in, feature_types_in, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts, unique_counts, zero_counts
 
 def bin_native(
     is_classification, 

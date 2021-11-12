@@ -8,7 +8,7 @@ from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import DPUtils, EBMUtils
 from .internal import Native
-from .postprocessing import multiclass_postprocess
+from .postprocessing import multiclass_postprocess2
 from ...utils import unify_data, autogen_schema, unify_vector
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
@@ -1020,17 +1020,7 @@ class BaseEBM(BaseEstimator):
                     intercept += score_mean
         else:
             # Postprocess model graphs for multiclass
-
-            # Currently pairwise interactions are unsupported for multiclass-classification.
-            binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
-                x, None, feature_groups, additive_terms, intercept
-            )
-
-            postprocessed = multiclass_postprocess(
-                X_main, additive_terms, binned_predict_proba, self.feature_types
-            )
-            additive_terms = postprocessed["feature_graphs"]
-            intercept = postprocessed["intercepts"]
+            multiclass_postprocess2(n_classes, X_unified.shape[0], additive_terms, intercept, self.preprocessor_.col_bin_counts_)
 
         for feature_group_idx, feature_group in enumerate(feature_groups):
             entire_tensor = [slice(None, None, None) for i in range(additive_terms[feature_group_idx].ndim)]
