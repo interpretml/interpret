@@ -13,6 +13,7 @@
 #include "zones.h"
 
 #include "ebm_internal.hpp"
+#include "data_set_shared.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -173,7 +174,7 @@ static_assert(std::is_standard_layout<HeaderDataSetShared>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<HeaderDataSetShared>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
-constexpr static size_t k_cBytesHeaderNoOffset = sizeof(HeaderDataSetShared) - sizeof(HeaderDataSetShared::m_offsets[0]);
+constexpr static size_t k_cBytesHeaderNoOffset = offsetof(HeaderDataSetShared, m_offsets);
 constexpr static SharedStorageDataType k_unfilledOffset = k_cBytesHeaderNoOffset - 1;
 
 struct FeatureDataSetShared {
@@ -183,17 +184,6 @@ struct FeatureDataSetShared {
 static_assert(std::is_standard_layout<FeatureDataSetShared>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<FeatureDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
-
-// No DenseFeatureDataSetShared required
-
-struct SparseFeatureDataSetSharedEntry {
-   SharedStorageDataType m_iSample;
-   SharedStorageDataType m_nonDefaultValue;
-};
-static_assert(std::is_standard_layout<SparseFeatureDataSetSharedEntry>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
-static_assert(std::is_trivial<SparseFeatureDataSetSharedEntry>::value,
    "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 
 struct SparseFeatureDataSetShared {
@@ -240,7 +230,7 @@ static bool IsHeaderError(
    const size_t cBytesAllocated,
    const unsigned char * const pFillMem
 ) {
-   EBM_ASSERT(sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType) <= cBytesAllocated); // checked by our caller
+   EBM_ASSERT(k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType) <= cBytesAllocated); // checked by our caller
    EBM_ASSERT(nullptr != pFillMem);
 
    const HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared *>(pFillMem);
@@ -522,7 +512,7 @@ static IntEbmType AppendFeature(
    unsigned char * const pFillMem
 ) {
    EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem || 
-      nullptr != pFillMem && sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType) <= cBytesAllocated);
+      nullptr != pFillMem && k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType) <= cBytesAllocated);
 
    LOG_N(
       TraceLevelInfo,
@@ -726,7 +716,7 @@ static IntEbmType AppendWeight(
    unsigned char * const pFillMem
 ) {
    EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem ||
-      nullptr != pFillMem && sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType) <= cBytesAllocated);
+      nullptr != pFillMem && k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType) <= cBytesAllocated);
 
    LOG_N(
       TraceLevelInfo,
@@ -890,7 +880,7 @@ static IntEbmType AppendTarget(
    unsigned char * const pFillMem
 ) {
    EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem ||
-      nullptr != pFillMem && sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType) <= cBytesAllocated);
+      nullptr != pFillMem && k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType) <= cBytesAllocated);
 
    LOG_N(
       TraceLevelInfo,
@@ -1166,8 +1156,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillFea
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
-   if(cBytesAllocated < sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType)) {
-      LOG_0(TraceLevelError, "ERROR FillFeature cBytesAllocated < sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType)");
+   if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
+      LOG_0(TraceLevelError, "ERROR FillFeature cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
@@ -1220,8 +1210,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillWei
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
-   if(cBytesAllocated < sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType)) {
-      LOG_0(TraceLevelError, "ERROR FillWeight cBytesAllocated < sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType)");
+   if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
+      LOG_0(TraceLevelError, "ERROR FillWeight cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
@@ -1276,8 +1266,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillCla
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
-   if(cBytesAllocated < sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType)) {
-      LOG_0(TraceLevelError, "ERROR FillClassificationTarget cBytesAllocated < sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType)");
+   if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
+      LOG_0(TraceLevelError, "ERROR FillClassificationTarget cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
@@ -1332,8 +1322,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillReg
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
-   if(cBytesAllocated < sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType)) {
-      LOG_0(TraceLevelError, "ERROR FillRegressionTarget cBytesAllocated < sizeof(HeaderDataSetShared) + sizeof(SharedStorageDataType)");
+   if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)) {
+      LOG_0(TraceLevelError, "ERROR FillRegressionTarget cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(SharedStorageDataType)");
       // don't set the header to bad if we don't have enough memory for the header itself
       return Error_IllegalParamValue;
    }
@@ -1354,6 +1344,300 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillReg
       static_cast<unsigned char *>(fillMem)
    );
    return static_cast<ErrorEbmType>(ret);
+}
+
+extern ErrorEbmType GetDataSetSharedHeader(
+   const unsigned char * const pDataSetShared,
+   size_t * const pcSamplesOut,
+   size_t * const pcFeaturesOut,
+   size_t * const pcWeightsOut,
+   size_t * const pcTargetsOut
+) {
+   const HeaderDataSetShared * const pHeaderDataSetShared = 
+      reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
+   
+   if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
+      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
+      return Error_IllegalParamValue;
+   }
+
+   const SharedStorageDataType countSamples = pHeaderDataSetShared->m_cSamples;
+   if(IsConvertError<size_t>(countSamples)) {
+      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countSamples)");
+      return Error_IllegalParamValue;
+   }
+   const size_t cSamples = static_cast<size_t>(countSamples);
+   *pcSamplesOut = cSamples;
+
+   const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
+   if(IsConvertError<size_t>(countFeatures)) {
+      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countFeatures)");
+      return Error_IllegalParamValue;
+   }
+   size_t cFeatures = static_cast<size_t>(countFeatures);
+   *pcFeaturesOut = cFeatures;
+
+   const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
+   if(IsConvertError<size_t>(countWeights)) {
+      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countWeights)");
+      return Error_IllegalParamValue;
+   }
+   size_t cWeights = static_cast<size_t>(countWeights);
+   *pcWeightsOut = cWeights;
+
+   const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
+   if(IsConvertError<size_t>(countTargets)) {
+      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countTargets)");
+      return Error_IllegalParamValue;
+   }
+   size_t cTargets = static_cast<size_t>(countTargets);
+   *pcTargetsOut = cTargets;
+
+   if(IsAddError(cFeatures, cWeights, cTargets)) {
+      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(cFeatures, cWeights, cTargets)");
+      return Error_IllegalParamValue;
+   }
+   const size_t cOffsets = cFeatures + cWeights + cTargets;
+
+   if(IsMultiplyError(cOffsets, sizeof(pHeaderDataSetShared->m_offsets[0]))) {
+      LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsMultiplyError(cOffsets, sizeof(pHeaderDataSetShared->m_offsets[0]))");
+      return Error_IllegalParamValue;
+   }
+   size_t iOffsetNext = cOffsets * sizeof(pHeaderDataSetShared->m_offsets[0]);
+   if(IsAddError(k_cBytesHeaderNoOffset, iOffsetNext)) {
+      LOG_0(TraceLevelError, "ERROR IsHeaderError IsAddError(k_cBytesHeaderNoOffset, iOffsetNext)");
+      return Error_IllegalParamValue;
+   }
+   iOffsetNext += k_cBytesHeaderNoOffset;
+
+   const SharedStorageDataType * pOffset = pHeaderDataSetShared->m_offsets;
+   while(0 != cFeatures) {
+      const SharedStorageDataType indexOffsetCur = *pOffset;
+      if(IsConvertError<size_t>(indexOffsetCur)) {
+         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(indexOffsetCur)");
+         return Error_IllegalParamValue;
+      }
+      const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
+
+      if(iOffsetNext != iOffsetCur) {
+         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader iOffsetNext != offsetCur");
+         return Error_IllegalParamValue;
+      }
+      ++pOffset;
+
+      if(IsAddError(iOffsetNext, sizeof(FeatureDataSetShared))) {
+         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, sizeof(FeatureDataSetShared))");
+         return Error_IllegalParamValue;
+      }
+      const FeatureDataSetShared * pFeatureDataSetShared =
+         reinterpret_cast<const FeatureDataSetShared *>(pDataSetShared + iOffsetNext);
+      iOffsetNext += sizeof(FeatureDataSetShared);
+
+      const SharedStorageDataType id = pFeatureDataSetShared->m_id;
+      if(!IsFeature(id)) {
+         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader !IsFeature(id)");
+         return Error_IllegalParamValue;
+      }
+
+      const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
+      if(IsConvertError<size_t>(countBins)) {
+         LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countBins)");
+         return Error_IllegalParamValue;
+      }
+      if(IsSparseFeature(id)) {
+         const size_t cBytesSparseHeaderNoOffset = offsetof(SparseFeatureDataSetShared, m_nonDefaults);
+
+         if(IsAddError(iOffsetNext, cBytesSparseHeaderNoOffset)) {
+            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cBytesSparseHeaderNoOffset)");
+            return Error_IllegalParamValue;
+         }
+         const SparseFeatureDataSetShared * const pSparseFeatureDataSetShared =
+            reinterpret_cast<const SparseFeatureDataSetShared *>(pDataSetShared + iOffsetNext);
+         iOffsetNext += cBytesSparseHeaderNoOffset;
+
+         // TODO: are there any limits to what defaultValue can be?
+         //const SharedStorageDataType defaultValue = pSparseFeatureDataSetShared->m_defaultValue;
+         //if(IsConvertError<size_t>(defaultValue)) {
+         //   LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(defaultValue)");
+         //   return Error_IllegalParamValue;
+         //}
+
+         const SharedStorageDataType countNonDefaults = pSparseFeatureDataSetShared->m_cNonDefaults;
+         if(IsConvertError<size_t>(countNonDefaults)) {
+            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsConvertError<size_t>(countNonDefaults)");
+            return Error_IllegalParamValue;
+         }
+         const size_t cNonDefaults = static_cast<size_t>(countNonDefaults);
+
+         if(IsMultiplyError(cNonDefaults, sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]))) {
+            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsMultiplyError(cNonDefaults, sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]))");
+            return Error_IllegalParamValue;
+         }
+         const size_t cTotalNonDefaults = cNonDefaults * sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]);
+         if(IsAddError(iOffsetNext, cTotalNonDefaults)) {
+            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalNonDefaults)");
+               return Error_IllegalParamValue;
+         }
+         iOffsetNext += cTotalNonDefaults;
+      } else {
+         if(IsMultiplyError(cSamples, sizeof(SharedStorageDataType))) {
+            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsMultiplyError(cSamples, sizeof(SharedStorageDataType))");
+            return Error_IllegalParamValue;
+         }
+         const size_t cTotalMem = cSamples * sizeof(SharedStorageDataType);
+
+         if(IsAddError(iOffsetNext, cTotalMem)) {
+            LOG_0(TraceLevelError, "ERROR GetDataSetSharedHeader IsAddError(iOffsetNext, cTotalMem)");
+            return Error_IllegalParamValue;
+         }
+         iOffsetNext += cTotalMem;
+      }
+      --cFeatures;
+   }
+
+   // TODO: do the same kind of offset and content checking for weights and targets as we do above for features
+
+   return Error_None;
+}
+
+// GetDataSetSharedFeature will return either SparseFeatureDataSetSharedEntry or SharedStorageDataType
+extern const void * GetDataSetSharedFeature(
+   const unsigned char * const pDataSetShared,
+   const size_t iFeature,
+   size_t * const pcBinsOut,
+   bool * const pbNominalOut,
+   bool * const pbSparseOut,
+   SharedStorageDataType * const pDefaultValueSparseOut,
+   size_t * const pcNonDefaultsSparseOut
+) {
+   const HeaderDataSetShared * const pHeaderDataSetShared = 
+      reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
+   EBM_ASSERT(k_sharedDataSetDoneId == pHeaderDataSetShared->m_id);
+
+   const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
+   EBM_ASSERT(!IsConvertError<size_t>(countFeatures));
+   const size_t cFeatures = static_cast<size_t>(countFeatures);
+   EBM_ASSERT(iFeature < cFeatures);
+
+   EBM_ASSERT(!IsMultiplyError(iFeature, sizeof(pHeaderDataSetShared->m_offsets[0])));
+   const SharedStorageDataType indexMem = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iFeature];
+   EBM_ASSERT(!IsConvertError<size_t>(indexMem));
+   const size_t iMem = static_cast<size_t>(indexMem);
+
+   const FeatureDataSetShared * pFeatureDataSetShared = 
+      reinterpret_cast<const FeatureDataSetShared *>(pDataSetShared + iMem);
+
+   const SharedStorageDataType id = pFeatureDataSetShared->m_id;
+   EBM_ASSERT(IsFeature(id));
+   *pbNominalOut = IsCategoricalFeature(id);
+   const bool bSparse = IsSparseFeature(id);
+   *pbSparseOut = bSparse;
+
+   const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
+   EBM_ASSERT(!IsConvertError<size_t>(countBins));
+   const size_t cBins = countBins;
+   *pcBinsOut = cBins;
+
+   const void * pRet = reinterpret_cast<const void *>(pFeatureDataSetShared + 1);
+   if(bSparse) {
+      const SparseFeatureDataSetShared * const pSparseFeatureDataSetShared =
+         reinterpret_cast<const SparseFeatureDataSetShared *>(pRet);
+
+      *pDefaultValueSparseOut = pSparseFeatureDataSetShared->m_defaultValue;
+      const SharedStorageDataType countNonDefaults = pSparseFeatureDataSetShared->m_cNonDefaults;
+      EBM_ASSERT(!IsConvertError<size_t>(countNonDefaults));
+      const size_t cNonDefaults = static_cast<size_t>(countNonDefaults);
+      *pcNonDefaultsSparseOut = cNonDefaults;
+      pRet = reinterpret_cast<const void *>(pSparseFeatureDataSetShared->m_nonDefaults);
+   }
+   return pRet;
+}
+
+extern const FloatEbmType * GetDataSetSharedWeight(
+   const unsigned char * const pDataSetShared,
+   const size_t iWeight
+) {
+   const HeaderDataSetShared * const pHeaderDataSetShared =
+      reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
+   EBM_ASSERT(k_sharedDataSetDoneId == pHeaderDataSetShared->m_id);
+
+   const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
+   EBM_ASSERT(!IsConvertError<size_t>(countFeatures));
+   const size_t cFeatures = static_cast<size_t>(countFeatures);
+
+   const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
+   EBM_ASSERT(!IsConvertError<size_t>(countWeights));
+   const size_t cWeights = static_cast<size_t>(countWeights);
+   EBM_ASSERT(iWeight < cWeights);
+
+   EBM_ASSERT(!IsAddError(cFeatures, iWeight));
+   const size_t iOffset = cFeatures + iWeight;
+
+   EBM_ASSERT(!IsMultiplyError(iOffset, sizeof(pHeaderDataSetShared->m_offsets[0])));
+   const SharedStorageDataType indexMem = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset];
+   EBM_ASSERT(!IsConvertError<size_t>(indexMem));
+   const size_t iMem = static_cast<size_t>(indexMem);
+
+   const WeightDataSetShared * pWeightDataSetShared =
+      reinterpret_cast<const WeightDataSetShared *>(pDataSetShared + iMem);
+
+   const SharedStorageDataType id = pWeightDataSetShared->m_id;
+   EBM_ASSERT(k_weightId == id);
+
+   return reinterpret_cast<const FloatEbmType *>(pWeightDataSetShared + 1);
+}
+
+// GetDataSetSharedTarget returns FloatEbmType * for regression and SharedStorageDataType * for classification
+extern const void * GetDataSetSharedTarget(
+   const unsigned char * const pDataSetShared,
+   const size_t iTarget,
+   ptrdiff_t * const pRuntimeLearningTypeOrCountTargetClassesOut
+) {
+   const HeaderDataSetShared * const pHeaderDataSetShared =
+      reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
+   EBM_ASSERT(k_sharedDataSetDoneId == pHeaderDataSetShared->m_id);
+
+   const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
+   EBM_ASSERT(!IsConvertError<size_t>(countFeatures));
+   const size_t cFeatures = static_cast<size_t>(countFeatures);
+
+   const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
+   EBM_ASSERT(!IsConvertError<size_t>(countWeights));
+   const size_t cWeights = static_cast<size_t>(countWeights);
+
+   const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
+   EBM_ASSERT(!IsConvertError<size_t>(countTargets));
+   const size_t cTargets = static_cast<size_t>(countTargets);
+   EBM_ASSERT(iTarget < cTargets);
+
+   EBM_ASSERT(!IsAddError(cFeatures, cWeights, iTarget));
+   const size_t iOffset = cFeatures + cWeights + iTarget;
+
+   EBM_ASSERT(!IsMultiplyError(iOffset, sizeof(pHeaderDataSetShared->m_offsets[0])));
+   const SharedStorageDataType indexMem = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset];
+   EBM_ASSERT(!IsConvertError<size_t>(indexMem));
+   const size_t iMem = static_cast<size_t>(indexMem);
+
+   const TargetDataSetShared * pTargetDataSetShared =
+      reinterpret_cast<const TargetDataSetShared *>(pDataSetShared + iMem);
+
+   const SharedStorageDataType id = pTargetDataSetShared->m_id;
+   EBM_ASSERT(IsTarget(id));
+
+   ptrdiff_t runtimeLearningTypeOrCountTargetClasses = k_regression;
+   const void * pRet = reinterpret_cast<const void *>(pTargetDataSetShared + 1);
+   if(IsClassificationTarget(id)) {
+      const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
+         reinterpret_cast<const ClassificationTargetDataSetShared *>(pRet);
+
+      const SharedStorageDataType countTargetClasses = pClassificationTargetDataSetShared->m_cTargetClasses;
+      EBM_ASSERT(!IsConvertError<ptrdiff_t>(countTargetClasses));
+      runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
+      EBM_ASSERT(1 <= runtimeLearningTypeOrCountTargetClasses);
+      pRet = reinterpret_cast<const void *>(pClassificationTargetDataSetShared + 1);
+   }
+   *pRuntimeLearningTypeOrCountTargetClassesOut = runtimeLearningTypeOrCountTargetClasses;
+   return pRet;
 }
 
 } // DEFINED_ZONE_NAME

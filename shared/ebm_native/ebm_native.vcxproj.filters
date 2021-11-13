@@ -92,6 +92,7 @@
       <Filter>common_c</Filter>
     </ClInclude>
     <ClInclude Include="compute_accessors.hpp" />
+    <ClInclude Include="data_set_shared.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />

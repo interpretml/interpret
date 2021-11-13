@@ -297,6 +297,7 @@ EXIT /B 0
     <ClInclude Include="common_cpp\common_cpp.hpp" />
     <ClInclude Include="common_c\common_c.h" />
     <ClInclude Include="compute_accessors.hpp" />
+    <ClInclude Include="data_set_shared.hpp" />
     <ClInclude Include="InteractionShell.hpp" />
     <ClInclude Include="InteractionCore.hpp" />
     <ClInclude Include="BoosterCore.hpp" />

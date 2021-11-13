@@ -437,4 +437,55 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    return Error_None;
 }
 WARNING_POP
+
+extern ErrorEbmType Unbag(
+   const size_t cSamples,
+   const IntEbmType * const aBag,
+   size_t * const pcTrainingSamplesOut,
+   size_t * const pcValidationSamplesOut
+) {
+   EBM_ASSERT(nullptr != aBag);
+   EBM_ASSERT(nullptr != pcTrainingSamplesOut);
+   EBM_ASSERT(nullptr != pcValidationSamplesOut);
+
+   size_t cTrainingSamples = 0;
+   size_t cValidationSamples = 0;
+   if(0 != cSamples) {
+      const IntEbmType * pBag = aBag;
+      const IntEbmType * const pBagEnd = aBag + cSamples;
+      do {
+         IntEbmType sampleDefinition = *pBag;
+         if(sampleDefinition < IntEbmType { 0 }) {
+            // technically this isn't guaranteed to work in C++, but should work on any two's compliment systems
+            sampleDefinition = -sampleDefinition;
+            if(IsConvertError<size_t>(sampleDefinition)) {
+               LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
+               return Error_IllegalParamValue;
+            }
+            const size_t cSampleDefinition = sampleDefinition;
+            if(IsAddError(cValidationSamples, cSampleDefinition)) {
+               LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cValidationSamples, cSampleDefinition)");
+               return Error_IllegalParamValue;
+            }
+            cValidationSamples += cSampleDefinition;
+         } else {
+            if(IsConvertError<size_t>(sampleDefinition)) {
+               LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
+               return Error_IllegalParamValue;
+            }
+            const size_t cSampleDefinition = sampleDefinition;
+            if(IsAddError(cTrainingSamples, cSampleDefinition)) {
+               LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cTrainingSamples, cSampleDefinition)");
+               return Error_IllegalParamValue;
+            }
+            cTrainingSamples += cSampleDefinition;
+         }
+         ++pBag;
+      } while(pBagEnd != pBag);
+   }
+   *pcTrainingSamplesOut = cTrainingSamples;
+   *pcValidationSamplesOut = cValidationSamples;
+   return Error_None;
+}
+
 } // DEFINED_ZONE_NAME
