@@ -456,13 +456,18 @@ extern ErrorEbmType Unbag(
       do {
          IntEbmType sampleDefinition = *pBag;
          if(sampleDefinition < IntEbmType { 0 }) {
-            // technically this isn't guaranteed to work in C++, but should work on any two's compliment systems
+            // by creating an IntEbmType with "IntEbmType { ... }" the compiler is suposed to give us an 
+            // error if for some reason the negation of the max fails
+            if(sampleDefinition < IntEbmType { -std::numeric_limits<IntEbmType>::max() } ) {
+               LOG_0(TraceLevelError, "ERROR Unbag sampleDefinition < IntEbmType { -std::numeric_limits<IntEbmType>::max() }");
+               return Error_IllegalParamValue;
+            }
             sampleDefinition = -sampleDefinition;
             if(IsConvertError<size_t>(sampleDefinition)) {
                LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
                return Error_IllegalParamValue;
             }
-            const size_t cSampleDefinition = sampleDefinition;
+            const size_t cSampleDefinition = static_cast<size_t>(sampleDefinition);
             if(IsAddError(cValidationSamples, cSampleDefinition)) {
                LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cValidationSamples, cSampleDefinition)");
                return Error_IllegalParamValue;
@@ -473,7 +478,7 @@ extern ErrorEbmType Unbag(
                LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
                return Error_IllegalParamValue;
             }
-            const size_t cSampleDefinition = sampleDefinition;
+            const size_t cSampleDefinition = static_cast<size_t>(sampleDefinition);
             if(IsAddError(cTrainingSamples, cSampleDefinition)) {
                LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cTrainingSamples, cSampleDefinition)");
                return Error_IllegalParamValue;
