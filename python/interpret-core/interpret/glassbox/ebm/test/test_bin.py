@@ -2230,70 +2230,67 @@ def test_eval_terms():
         [shared_cuts, shared_cuts, np.array([], dtype=np.float64)]
     ]
 
-    term0 = {}
-    term0['features'] = [0]
-    term0['scores'] = np.array([0.1, 0.2, 0.3, 0], dtype=np.float64)
+    feature_groups = []
+    additive_terms = []
 
-    term1 = {}
-    term1['features'] = [1]
-    term1['scores'] = np.array([0.01, 0.02, 0.03, 0.04, 0], dtype=np.float64)
+    feature_groups.append([0])
+    additive_terms.append(np.array([0.1, 0.2, 0.3, 0], dtype=np.float64))
 
-    term2 = {}
-    term2['features'] = [2]
-    term2['scores'] = np.array([0.001, 0.002, 0.003, 0], dtype=np.float64)
+    feature_groups.append([1])
+    additive_terms.append(np.array([0.01, 0.02, 0.03, 0.04, 0], dtype=np.float64))
 
-    term3 = {}
-    term3['features'] = [0, 1]
-    term3['scores'] = np.array([[0.0001, 0.0002, 0.0003, 0], [0.0004, 0.0005, 0.0006, 0], [0, 0, 0, 0]], dtype=np.float64)
+    feature_groups.append([2])
+    additive_terms.append(np.array([0.001, 0.002, 0.003, 0], dtype=np.float64))
 
-    term4 = {}
-    term4['features'] = [0, 2]
-    term4['scores'] = np.array([[0.00001, 0.00002, 0.00003, 0], [0.00004, 0.00005, 0.00006, 0], [0, 0, 0, 0]], dtype=np.float64)
+    feature_groups.append([0, 1])
+    additive_terms.append(np.array([[0.0001, 0.0002, 0.0003, 0], [0.0004, 0.0005, 0.0006, 0], [0, 0, 0, 0]], dtype=np.float64))
 
-    term5 = {}
-    term5['features'] = [0, 1, 2]
-    term5['scores'] = np.array([[[0.000001, 0.000002, 0], [0.000003, 0.000004, 0], [0, 0, 0]], [[0.000005, 0.000006, 0], [0.000007, 0.000008, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], dtype=np.float64)
+    feature_groups.append([0, 2])
+    additive_terms.append(np.array([[0.00001, 0.00002, 0.00003, 0], [0.00004, 0.00005, 0.00006, 0], [0, 0, 0, 0]], dtype=np.float64))
 
-    terms = [term0, term1, term2, term3, term4, term5]
+    feature_groups.append([0, 1, 2])
+    additive_terms.append(np.array([[[0.000001, 0.000002, 0], [0.000003, 0.000004, 0], [0, 0, 0]], [[0.000005, 0.000006, 0], [0.000007, 0.000008, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], dtype=np.float64))
 
-    append_bin_counts(X, feature_names_in, feature_types_in, terms, bins, w=None)
+    bin_counts, bin_weights = get_counts_and_weights(X, None, feature_names_in, feature_types_in, bins, feature_groups)
+    assert(bin_counts is not None)
+    assert(bin_weights is not None)
 
-    result = list(eval_terms(X, feature_names_in, feature_types_in, terms, bins))
-    result = [(x[0], x[0]['scores'][x[1]]) for x in result]
+    result = list(eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups))
+    result = [additive_terms[x[0]][tuple(x[1])] for x in result]
 
-    assert(result[0][1][0] == 0.2)
-    assert(result[0][1][1] == 0.3)
-    assert(result[0][1][2] == 0.2)
-    assert(result[0][1][3] == 0.1)
+    assert(result[0][0] == 0.2)
+    assert(result[0][1] == 0.3)
+    assert(result[0][2] == 0.2)
+    assert(result[0][3] == 0.1)
 
-    assert(result[1][1][0] == 0.02)
-    assert(result[1][1][1] == 0.03)
-    assert(result[1][1][2] == 0.03)
-    assert(result[1][1][3] == 0.04)
+    assert(result[1][0] == 0.02)
+    assert(result[1][1] == 0.03)
+    assert(result[1][2] == 0.03)
+    assert(result[1][3] == 0.04)
 
-    assert(result[2][1][0] == 0.001)
-    assert(result[2][1][1] == 0.002)
-    assert(result[2][1][2] == 0.003)
-    assert(result[2][1][3] == 0)
+    assert(result[2][0] == 0.001)
+    assert(result[2][1] == 0.002)
+    assert(result[2][2] == 0.003)
+    assert(result[2][3] == 0)
 
     # term4 finishes before term3 since shared_cuts allows the 3rd feature to be completed first
-    assert(result[4][1][0] == 0.0005)
-    assert(result[4][1][1] == 0)
-    assert(result[4][1][2] == 0.0006)
-    assert(result[4][1][3] == 0.0003)
+    assert(result[4][0] == 0.0005)
+    assert(result[4][1] == 0)
+    assert(result[4][2] == 0.0006)
+    assert(result[4][3] == 0.0003)
 
     # term4 finishes before term3 since shared_cuts allows the 3rd feature to be completed first
-    assert(result[3][1][0] == 0.00004)
-    assert(result[3][1][1] == 0)
-    assert(result[3][1][2] == 0.00006)
-    assert(result[3][1][3] == 0)
+    assert(result[3][0] == 0.00004)
+    assert(result[3][1] == 0)
+    assert(result[3][2] == 0.00006)
+    assert(result[3][3] == 0)
 
-    assert(result[5][1][0] == 0.000007)
-    assert(result[5][1][1] == 0)
-    assert(result[5][1][2] == 0.000008)
-    assert(result[5][1][3] == 0)
+    assert(result[5][0] == 0.000007)
+    assert(result[5][1] == 0)
+    assert(result[5][2] == 0.000008)
+    assert(result[5][3] == 0)
 
-    scores = ebm_decision_function(X, X.shape[0], feature_names_in, feature_types_in, terms, bins, np.array([7], dtype=np.float64))
+    scores = ebm_decision_function(X, X.shape[0], feature_names_in, feature_types_in, bins, np.array([7], dtype=np.float64), additive_terms, feature_groups)
     assert(math.isclose(scores[0], 7.221547))
     assert(math.isclose(scores[1], 7.332000))
     assert(math.isclose(scores[2], 7.233668))

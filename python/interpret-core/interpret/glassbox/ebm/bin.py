@@ -1771,6 +1771,45 @@ def construct_bins(
     deduplicate_bins(bins)
     return feature_names_in, feature_types_in, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts, unique_counts, zero_counts
 
+def bin_python(
+    X,
+    n_dimensions,
+    bins,
+    feature_names_in, 
+    feature_types_in, 
+):
+    X, n_samples = clean_X(X)
+    if n_samples <= 0:
+        msg = "X has no samples"
+        _log.error(msg)
+        raise ValueError(msg)
+
+    X_binned = np.empty((n_samples, len(feature_names_in)), dtype=np.int64, order='F')
+
+    native = Native.get_native_singleton()
+    bin_iter = [bin_levels[-1 if len(bin_levels) < n_dimensions else n_dimensions - 1] for bin_levels in bins]
+    category_iter = (category if isinstance(category, dict) else None for category in bin_iter)
+    requests = zip(count(), category_iter)
+    cols = unify_columns(X, requests, feature_names_in, feature_types_in, None, False)
+    for feature_idx, feature_bins, (_, X_col, _, _) in zip(count(), bin_iter, cols):
+        if n_samples != len(X_col):
+            msg = "The columns of X are mismatched in the number of of samples"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        if not isinstance(feature_bins, dict):
+            # continuous feature
+
+            if not X_col.flags.c_contiguous:
+                # X_col could be a slice that has a stride.  We need contiguous for caling into C
+                X_col = X_col.copy()
+
+            X_col = native.discretize(X_col, feature_bins)
+
+        X_binned[:, feature_idx] = X_col
+
+    return X_binned
+
 def bin_native(
     is_classification, 
     feature_idxs, 
@@ -1935,7 +1974,7 @@ def bin_native_by_dimension(
         feature_types_in, 
     )
 
-def eval_terms(X, feature_names_in, feature_types_in, terms, bins):
+def eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
     # called under: predict
 
     # prior to calling this function, call deduplicate_bins which will eliminate extra work in this function
@@ -1946,22 +1985,20 @@ def eval_terms(X, feature_names_in, feature_types_in, terms, bins):
     # could be [(0), (1), (2), (3), (1, 3), (4)].  More complicated pair/triples return even more randomized ordering.
     # For additive models the results can be processed in any order, so this imposes no penalities on us.
 
-    _log.info("score_terms")
+    _log.info("eval_terms")
 
     X, n_samples = clean_X(X)
 
     requests = []
     waiting = dict()
-    for term in terms:
-        features = term['features']
-
-        # the last position holds the term object
-        # the first len(features) items hold the binned data that we get back as it arrives
-        requirements = _none_list * (len(features) + 1)
-        requirements[-1] = term
-        for feature_idx in features:
+    for feature_group_idx, feature_idxs in enumerate(feature_groups):
+        # the last position holds the feature_group_idx object
+        # the first len(feature_idxs) items hold the binned data that we get back as it arrives
+        requirements = _none_list * (len(feature_idxs) + 1)
+        requirements[-1] = feature_group_idx
+        for feature_idx in feature_idxs:
             bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[-1 if len(bin_levels) < len(features) else len(features) - 1]
+            feature_bins = bin_levels[-1 if len(bin_levels) < len(feature_idxs) else len(feature_idxs) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
                 request = (feature_idx, feature_bins)
@@ -2000,13 +2037,13 @@ def eval_terms(X, feature_names_in, feature_types_in, terms, bins):
             cuts_completed = dict()
             bin_levels = bins[column_feature_idx]
             for requirements in waiting[column_feature_idx]:
-                term = requirements[-1]
-                if term is not None:
-                    features = term['features']
+                if len(requirements) != 0:
+                    feature_group_idx = requirements[-1]
+                    feature_idxs = feature_groups[feature_group_idx]
                     is_done = True
-                    for dimension_idx, term_feature_idx in enumerate(features):
+                    for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                         if term_feature_idx == column_feature_idx:
-                            cuts = bin_levels[-1 if len(bin_levels) < len(features) else len(features) - 1]
+                            cuts = bin_levels[-1 if len(bin_levels) < len(feature_idxs) else len(feature_idxs) - 1]
                             discretized = cuts_completed.get(id(cuts), None)
                             if discretized is None:
                                 discretized = native.discretize(X_col, cuts)
@@ -2015,15 +2052,15 @@ def eval_terms(X, feature_names_in, feature_types_in, terms, bins):
 
                                 cuts_completed[id(cuts)] = discretized
                             requirements[dimension_idx] = discretized
-                        else:
-                            if requirements[dimension_idx] is None:
-                                is_done = False
+                        elif requirements[dimension_idx] is None:
+                            is_done = False
 
                     if is_done:
                         # the requirements can contain features with both categoricals or continuous
-                        binned_data = tuple(requirements[:-1])
-                        requirements[:] = _none_list # clear references so that the garbage collector can free them
-                        yield term, binned_data
+                        binned_data = requirements[:-1]
+                        # clear references so that the garbage collector can free them
+                        requirements.clear()
+                        yield feature_group_idx, binned_data
         else:
             # categorical feature
 
@@ -2032,40 +2069,43 @@ def eval_terms(X, feature_names_in, feature_types_in, terms, bins):
                 pass # TODO: improve this handling
 
             for requirements in waiting[(column_feature_idx, id(column_categories))]:
-                term = requirements[-1]
-                if term is not None:
-                    features = term['features']
+                if len(requirements) != 0:
+                    feature_group_idx = requirements[-1]
+                    feature_idxs = feature_groups[feature_group_idx]
                     is_done = True
-                    for dimension_idx, term_feature_idx in enumerate(features):
+                    for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                         if term_feature_idx == column_feature_idx:
                             # "term_categories is column_categories" since any term in the waiting_list must have
                             # one of it's elements match this (feature_idx, categories) index, and all items in this
                             # term need to have the same categories since they came from the same bin_level
                             requirements[dimension_idx] = X_col
-                        else:
-                            if requirements[dimension_idx] is None:
-                                is_done = False
+                        elif requirements[dimension_idx] is None:
+                            is_done = False
 
                     if is_done:
                         # the requirements can contain features with both categoricals or continuous
-                        binned_data = tuple(requirements[:-1])
-                        requirements[:] = _none_list # clear references so that the garbage collector can free them
-                        yield term, binned_data
+                        binned_data = requirements[:-1]
+                        # clear references so that the garbage collector can free them
+                        requirements.clear()
+                        yield feature_group_idx, binned_data
 
-def ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, terms, bins, intercept):
+def ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins, intercept, additive_terms, feature_groups):
     if type(intercept) is float or len(intercept) == 1:
         scores = np.full(n_samples, intercept, dtype=np.float64)
     else:
         scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
 
-    for term, binned_data in eval_terms(X, feature_names_in, feature_types_in, terms, bins):
-        scores += term['scores'][binned_data]
+    for feature_group_idx, binned_data in eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
+        scores += additive_terms[feature_group_idx][tuple(binned_data)]
 
     return scores
 
-def append_bin_counts(X, feature_names_in, feature_types_in, terms, bins, w=None):
-    for term, binned_data in eval_terms(X, feature_names_in, feature_types_in, terms, bins):
-        features = term['features']
+def get_counts_and_weights(X, w, feature_names_in, feature_types_in, bins, feature_groups):
+    bin_counts = _none_list * len(feature_groups)
+    bin_weights = _none_list * len(feature_groups)
+
+    for feature_group_idx, binned_data in eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
+        features = feature_groups[feature_group_idx]
         multiple = 1
         dimensions = []
         for dimension_idx in range(len(features) - 1, -1, -1):
@@ -2089,18 +2129,22 @@ def append_bin_counts(X, feature_names_in, feature_types_in, terms, bins, w=None
             multiple *= n_bins
         dimensions = tuple(reversed(dimensions))
 
-        bin_counts = np.bincount(flat_indexes, minlength=multiple)
-        bin_counts = bin_counts.astype(np.int64, copy=False)
-        bin_counts = bin_counts.reshape(dimensions)
-        term['bin_counts'] = bin_counts
+        term_bin_counts = np.bincount(flat_indexes, minlength=multiple)
+        term_bin_counts = term_bin_counts.astype(np.int64, copy=False)
+        term_bin_counts = term_bin_counts.reshape(dimensions)
+
+        bin_counts[feature_group_idx] = term_bin_counts
 
         if w is None:
-            bin_weights = bin_counts.astype(np.float64)
+            term_bin_weights = term_bin_counts.astype(np.float64)
         else:
-            bin_weights = np.bincount(flat_indexes, weights=w, minlength=multiple)
-            bin_weights = bin_weights.astype(np.float64, copy=False)
-            bin_weights = bin_weights.reshape(dimensions)
-        term['bin_weights'] = bin_weights
+            term_bin_weights = np.bincount(flat_indexes, weights=w, minlength=multiple)
+            term_bin_weights = term_bin_weights.astype(np.float64, copy=False)
+            term_bin_weights = term_bin_weights.reshape(dimensions)
+        
+        bin_weights[feature_group_idx] = term_bin_weights
+
+    return bin_counts, bin_weights
 
 def unify_data2(is_classification, X, y=None, w=None, feature_names=None, feature_types=None, missing_data_allowed=False, min_unique_continuous=3):
     _log.info("Unifying data")

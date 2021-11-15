@@ -523,6 +523,7 @@ class BaseEBM(BaseEstimator):
     # https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
     # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
 
+    # TODO: order these parameters the same as our public parameter list
     def __init__(
         self,
         # Explainer
@@ -591,15 +592,18 @@ class BaseEBM(BaseEstimator):
 
         # Arguments for ensemble
         self.outer_bags = outer_bags
-        self.inner_bags = inner_bags
+        if not is_private(self):
+            self.inner_bags = inner_bags
 
         # Arguments for EBM beyond training a feature-step.
         self.mains = mains
-        self.interactions = interactions
+        if not is_private(self):
+            self.interactions = interactions
         self.validation_size = validation_size
         self.max_rounds = max_rounds
-        self.early_stopping_tolerance = early_stopping_tolerance
-        self.early_stopping_rounds = early_stopping_rounds
+        if not is_private(self):
+            self.early_stopping_tolerance = early_stopping_tolerance
+            self.early_stopping_rounds = early_stopping_rounds
 
         # Arguments for internal EBM.
         self.learning_rate = learning_rate
@@ -613,14 +617,16 @@ class BaseEBM(BaseEstimator):
         # Arguments for preprocessor
         self.binning = binning
         self.max_bins = max_bins
-        self.max_interaction_bins = max_interaction_bins
+        if not is_private(self):
+            self.max_interaction_bins = max_interaction_bins
 
         # Arguments for differential privacy
-        self.epsilon = epsilon
-        self.delta = delta
-        self.composition = composition
-        self.bin_budget_frac = bin_budget_frac
-        self.privacy_schema = privacy_schema
+        if is_private(self):
+            self.epsilon = epsilon
+            self.delta = delta
+            self.composition = composition
+            self.bin_budget_frac = bin_budget_frac
+            self.privacy_schema = privacy_schema
 
     def fit(self, X, y, sample_weight=None):  # noqa: C901
         """ Fits model to provided samples.
@@ -644,6 +650,9 @@ class BaseEBM(BaseEstimator):
             X, y, self.feature_names, self.feature_types, missing_data_allowed=False
         )
 
+        n_features = X_unified.shape[1]
+        n_samples = X_unified.shape[0]
+
         # NOTE: Temporary override -- replace before push
         w = sample_weight if sample_weight is not None else np.ones_like(y, dtype=np.float64)
         w = unify_vector(w).astype(np.float64, casting="unsafe", copy=False)
@@ -651,7 +660,6 @@ class BaseEBM(BaseEstimator):
         # Privacy calculations
         if is_private(self):
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
-            DPUtils.validate_DP_EBM(self)
 
             bounds = None if self.privacy_schema is None else self.privacy_schema.get('target', None)
             if bounds is None:
@@ -683,14 +691,14 @@ class BaseEBM(BaseEstimator):
              # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             if self.composition == 'classic':
                 noise_scale = DPUtils.calc_classic_noise_multi(
-                    total_queries = self.max_rounds * X_unified.shape[1] * self.outer_bags, 
+                    total_queries = self.max_rounds * n_features * self.outer_bags, 
                     target_epsilon = training_eps_, 
                     delta = training_delta_, 
                     sensitivity = domain_size * self.learning_rate * np.max(w)
                 )
             elif self.composition == 'gdp':
                 noise_scale = DPUtils.calc_gdp_noise_multi(
-                    total_queries = self.max_rounds * X_unified.shape[1] * self.outer_bags, 
+                    total_queries = self.max_rounds * n_features * self.outer_bags, 
                     target_epsilon = training_eps_, 
                     delta = training_delta_
                 )
@@ -719,7 +727,7 @@ class BaseEBM(BaseEstimator):
         features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_], dtype=ct.c_int64)
 
         # NOTE: [DP] Passthrough to lower level layers for noise addition
-        bin_data_counts = {i : self.preprocessor_.col_bin_counts_[i] for i in range(X_unified.shape[1])}
+        bin_data_counts = {i : self.preprocessor_.col_bin_counts_[i] for i in range(n_features)}
 
         native = Native.get_native_singleton()
 
@@ -749,7 +757,7 @@ class BaseEBM(BaseEstimator):
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         if isinstance(self.mains, str) and self.mains == "all":
-            feature_groups = [[x] for x in range(X_unified.shape[1])]
+            feature_groups = [[x] for x in range(n_features)]
         elif isinstance(self.mains, list) and all(
             isinstance(x, int) for x in self.mains
         ):
@@ -764,6 +772,10 @@ class BaseEBM(BaseEstimator):
             update = Native.GenerateUpdateOptions_Default
 
         init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
+
+        inner_bags = 0 if is_private(self) else self.inner_bags
+        early_stopping_rounds = -1 if is_private(self) else self.early_stopping_rounds
+        early_stopping_tolerance = -1 if is_private(self) else self.early_stopping_tolerance
 
         train_model_args_iter = []
         bagged_seed = init_seed
@@ -782,12 +794,12 @@ class BaseEBM(BaseEstimator):
                 update,
                 features_categorical,
                 features_bin_count,
-                self.inner_bags,
+                inner_bags,
                 self.learning_rate,
                 self.min_samples_leaf,
                 self.max_leaves,
-                self.early_stopping_rounds,
-                self.early_stopping_tolerance,
+                early_stopping_rounds,
+                early_stopping_tolerance,
                 self.max_rounds,
                 bagged_seed,
                 noise_scale,
@@ -808,8 +820,9 @@ class BaseEBM(BaseEstimator):
         for _, bag_breakpoint_iteration in results:
             breakpoint_iteration.append(bag_breakpoint_iteration)
 
-        if n_classes > 2 or isinstance(self.interactions, int) and self.interactions == 0 or isinstance(self.interactions, list) and len(self.interactions) == 0:
-            if not (isinstance(self.interactions, int) and self.interactions == 0 or isinstance(self.interactions, list) and len(self.interactions) == 0):
+        interactions = 0 if is_private(self) else self.interactions
+        if n_classes > 2 or isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0:
+            if not (isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0):
                 warn("Detected multiclass problem: forcing interactions to 0")
             # no interactions to consider
             self.pair_preprocessor_ = None
@@ -856,7 +869,7 @@ class BaseEBM(BaseEstimator):
             #if np.array_equal(features_categorical, pair_features_categorical):
             #    raise RuntimeError("Main and pairs should have the same categorical feature definitions")
 
-            if isinstance(self.interactions, int) and self.interactions > 0:
+            if isinstance(interactions, int) and interactions > 0:
                 log.info("Estimating with FAST")
 
                 train_model_args_iter2 = []
@@ -893,11 +906,11 @@ class BaseEBM(BaseEstimator):
                     heapq.heappush(final_ranks, (pair_ranks[indices], indices))
                     total_interactions += 1
 
-                n_interactions = min(self.interactions, total_interactions)
+                n_interactions = min(interactions, total_interactions)
                 pair_indices = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
 
-            elif isinstance(self.interactions, list):
-                pair_indices = self.interactions
+            elif isinstance(interactions, list):
+                pair_indices = interactions
                 # Check and remove duplicate interaction terms
                 existing_terms = set()
                 unique_terms = []
@@ -935,12 +948,12 @@ class BaseEBM(BaseEstimator):
                     update,
                     pair_features_categorical, 
                     pair_features_bin_count, 
-                    self.inner_bags, 
+                    inner_bags, 
                     self.learning_rate, 
                     self.min_samples_leaf, 
                     self.max_leaves, 
-                    self.early_stopping_rounds, 
-                    self.early_stopping_tolerance, 
+                    early_stopping_rounds, 
+                    early_stopping_tolerance, 
                     self.max_rounds, 
                     bagged_seed, 
                     noise_scale, 
@@ -1020,7 +1033,7 @@ class BaseEBM(BaseEstimator):
                     intercept += score_mean
         else:
             # Postprocess model graphs for multiclass
-            multiclass_postprocess2(n_classes, X_unified.shape[0], additive_terms, intercept, self.preprocessor_.col_bin_counts_)
+            multiclass_postprocess2(n_classes, n_samples, additive_terms, intercept, self.preprocessor_.col_bin_counts_)
 
         for feature_group_idx, feature_group in enumerate(feature_groups):
             entire_tensor = [slice(None, None, None) for i in range(additive_terms[feature_group_idx].ndim)]
@@ -1728,8 +1741,8 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         validation_size=0,
         max_rounds=300,
         # Trees
-        max_leaves=3,
         min_samples_leaf=2,
+        max_leaves=3,
         # Overall
         n_jobs=-2,
         random_state=42,
@@ -1784,8 +1797,8 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             early_stopping_tolerance=-1,
             max_rounds=max_rounds,
             # Trees
-            max_leaves=max_leaves,
             min_samples_leaf=min_samples_leaf,
+            max_leaves=max_leaves,
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
@@ -1866,8 +1879,8 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         validation_size=0,
         max_rounds=300,
         # Trees
-        max_leaves=3,
         min_samples_leaf=2,
+        max_leaves=3,
         # Overall
         n_jobs=-2,
         random_state=42,
@@ -1922,8 +1935,8 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             early_stopping_tolerance=-1,
             max_rounds=max_rounds,
             # Trees
-            max_leaves=max_leaves,
             min_samples_leaf=min_samples_leaf,
+            max_leaves=max_leaves,
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,

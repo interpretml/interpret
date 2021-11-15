@@ -787,21 +787,3 @@ class DPUtils:
     def validate_eps_delta(eps, delta):
         if eps is None or eps <= 0 or delta is None or delta <= 0:
             raise ValueError(f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers")
-
-    @staticmethod
-    def validate_DP_EBM(ebm):
-        fixed_params = dict(
-            max_interaction_bins=None,
-            interactions=0,
-            inner_bags=0,
-            early_stopping_rounds=-1,
-            early_stopping_tolerance=-1,
-        )
-
-        error_params = []
-        for param in fixed_params:
-            if getattr(ebm, param) != fixed_params[param]:
-                error_params.append(param)
-
-        if len(error_params) > 0:
-            raise ValueError(f"The following parameters: {error_params} cannot be changed when training with differential privacy.")
