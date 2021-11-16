@@ -1595,7 +1595,7 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
 
                     categories = new_categories
                 else:
-                    n_unique_indexes = len(set(categories.values()))
+                    n_unique_indexes = 0 if len(categories) == 0 else max(categories.values())
                     feature_bin_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
                     feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
                     unique_counts.itemset(feature_idx, len(categories))
@@ -1791,24 +1791,34 @@ def bin_python(
     category_iter = (category if isinstance(category, dict) else None for category in bin_iter)
     requests = zip(count(), category_iter)
     cols = unify_columns(X, requests, feature_names_in, feature_types_in, None, False)
-    for feature_idx, feature_bins, (_, X_col, _, _) in zip(count(), bin_iter, cols):
+    native_bin_counts = []
+    for feature_idx, feature_bins, (_, X_col, _, bad) in zip(count(), bin_iter, cols):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
             raise ValueError(msg)
 
-        if not isinstance(feature_bins, dict):
+        if isinstance(feature_bins, dict):
+            # categorical feature
+            n_bins = 1 if len(feature_bins) == 0 else max(feature_bins.values()) + 1
+        else:
             # continuous feature
-
+            
             if not X_col.flags.c_contiguous:
                 # X_col could be a slice that has a stride.  We need contiguous for caling into C
                 X_col = X_col.copy()
+            
+                X_col = native.discretize(X_col, feature_bins)
+            n_bins = len(feature_bins) + 2
 
-            X_col = native.discretize(X_col, feature_bins)
+        if bad is not None:
+            n_bins += 1
+            X_col[bad != _none_ndarray] = n_bins - 1
 
+        native_bin_counts.append(n_bins)
         X_binned[:, feature_idx] = X_col
 
-    return X_binned
+    return X_binned, native_bin_counts
 
 def bin_native(
     is_classification, 
@@ -1866,7 +1876,7 @@ def bin_native(
             request = (request[0], None)
         requests.append(request)
 
-    unknowns = []
+    native_bin_counts = []
     n_bytes = native.size_data_set_header(len(requests), 1, 1)
     for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
@@ -1883,18 +1893,17 @@ def bin_native(
 
         if isinstance(feature_bins, dict):
             # categorical feature
-            n_bins = len(feature_bins) + 1
+            n_bins = 1 if len(feature_bins) == 0 else max(feature_bins.values()) + 1
         else:
             # continuous feature
             X_col = native.discretize(X_col, feature_bins)
             n_bins = len(feature_bins) + 2
 
-        is_unknowns = False
         if bad is not None:
-            is_unknowns = True
-            X_col[bad != _none_ndarray] = n_bins
             n_bins += 1
-        unknowns.append(is_unknowns)
+            X_col[bad != _none_ndarray] = n_bins - 1
+
+        native_bin_counts.append(n_bins)
 
         n_bytes += native.size_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col)
 
@@ -1908,7 +1917,7 @@ def bin_native(
 
     native.fill_data_set_header(len(requests), 1, 1, n_bytes, shared_dataset)
 
-    for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
+    for (feature_idx, feature_bins), n_bins, (_, X_col, _, bad) in zip(responses, native_bin_counts, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
             # re-check that that number of samples is identical since iterators can be used up by looking at them
             # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
@@ -1921,17 +1930,12 @@ def bin_native(
             # X_col could be a slice that has a stride.  We need contiguous for caling into C
             X_col = X_col.copy()
 
-        if isinstance(feature_bins, dict):
-            # categorical feature
-            n_bins = len(feature_bins) + 1
-        else:
+        if not isinstance(feature_bins, dict):
             # continuous feature
             X_col = native.discretize(X_col, feature_bins)
-            n_bins = len(feature_bins) + 2
 
         if bad is not None:
-            X_col[bad != _none_ndarray] = n_bins
-            n_bins += 1
+            X_col[bad != _none_ndarray] = n_bins - 1
 
         native.fill_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
 
@@ -1942,7 +1946,7 @@ def bin_native(
         native.fill_regression_target(y, n_bytes, shared_dataset)
 
     # TODO: use the unknowns array instead of using the last count bin in the rest of our code
-    return shared_dataset, classes, unknowns
+    return shared_dataset, classes, native_bin_counts
 
 def bin_native_by_dimension(
     is_classification, 
@@ -2114,7 +2118,7 @@ def get_counts_and_weights(X, w, feature_names_in, feature_types_in, bins, featu
             feature_bins = bin_levels[-1 if len(bin_levels) < len(features) else len(features) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
-                n_bins = len(set(feature_bins.values())) + 2
+                n_bins = 2 if len(feature_bins) == 0 else max(feature_bins.values()) + 2
             else:
                 # continuous feature
                 n_bins = len(feature_bins) + 3

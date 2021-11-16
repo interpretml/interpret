@@ -2196,11 +2196,11 @@ def test_bin_native():
         feature_idxs.append(feature_idx)
         bins_iter.append(feature_bins)
 
-    shared_dataset, classes, unknowns = bin_native(True, feature_idxs, bins_iter, X, y, w, feature_names_in, feature_types_in)
+    shared_dataset, classes, native_bin_counts = bin_native(True, feature_idxs, bins_iter, X, y, w, feature_names_in, feature_types_in)
     assert(shared_dataset is not None)
-    assert(unknowns is not None)
+    assert(native_bin_counts is not None)
 
-    shared_dataset, classes, unknowns = bin_native_by_dimension(
+    shared_dataset, classes, native_bin_counts = bin_native_by_dimension(
         True, 
         1, 
         bins,
@@ -2211,7 +2211,7 @@ def test_bin_native():
         feature_types_in
     )
     assert(shared_dataset is not None)
-    assert(unknowns is not None)
+    assert(native_bin_counts is not None)
 
 def test_eval_terms():
     X = np.array([["a", 1, np.nan], ["b", 2, 8], ["a", 2, 9], [None, 3, "BAD_CONTINUOUS"]], dtype=np.object_)
