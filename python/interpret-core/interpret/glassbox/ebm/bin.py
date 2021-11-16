@@ -1808,7 +1808,8 @@ def bin_python(
                 # X_col could be a slice that has a stride.  We need contiguous for caling into C
                 X_col = X_col.copy()
             
-                X_col = native.discretize(X_col, feature_bins)
+            # the fix was to remove a tab for the line below
+            X_col = native.discretize(X_col, feature_bins)
             n_bins = len(feature_bins) + 2
 
         if bad is not None:
