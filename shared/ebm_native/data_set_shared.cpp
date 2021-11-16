@@ -1535,7 +1535,7 @@ extern const void * GetDataSetSharedFeature(
 
    const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
    EBM_ASSERT(!IsConvertError<size_t>(countBins));
-   const size_t cBins = countBins;
+   const size_t cBins = static_cast<size_t>(countBins);
    *pcBinsOut = cBins;
 
    const void * pRet = reinterpret_cast<const void *>(pFeatureDataSetShared + 1);
