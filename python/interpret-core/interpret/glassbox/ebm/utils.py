@@ -263,11 +263,14 @@ class EBMUtils:
 
     @staticmethod
     def ebm_train_test_split(
-        X, y, w, test_size, random_state, is_classification, is_train=True
+        X, y, w, test_size, random_state, is_classification, is_train=True, scores=None
     ):
         # all test/train splits should be done with this function to ensure that
         # if we re-generate the train/test splits that they are generated exactly
         # the same as before
+
+        scores_train = None
+        scores_val = None
 
         if (X.shape[0] != len(y) or X.shape[0] != len(w)):
             raise Exception("Data, labels and weights should have the same number of rows.")
@@ -279,6 +282,9 @@ class EBMUtils:
             X_val = np.empty(shape=(0, X.shape[1]), dtype=X.dtype)
             y_val = np.empty(shape=(0,), dtype=y.dtype)
             w_val = np.empty(shape=(0,), dtype=w.dtype)
+            if scores is not None:
+                scores_train = scores
+                scores_val = np.empty(shape=(0,), dtype=scores.dtype)
 
         elif test_size > 0:
             n_samples = X.shape[0]
@@ -330,6 +336,9 @@ class EBMUtils:
             y_val = y[test_indices]
             w_train = w[train_indices]
             w_val = w[test_indices]
+            if scores is not None:
+                scores_train = scores[train_indices]
+                scores_val = scores[test_indices]
 
         if not is_train:
             X_train, y_train = None, None
@@ -344,7 +353,7 @@ class EBMUtils:
 
         X_val = np.ascontiguousarray(X_val.T)
 
-        return X_train, X_val, y_train, y_val, w_train, w_val
+        return X_train, X_val, y_train, y_val, w_train, w_val, scores_train, scores_val
 
     @staticmethod
     def scores_by_feature_group(X, X_pair, feature_groups, model):

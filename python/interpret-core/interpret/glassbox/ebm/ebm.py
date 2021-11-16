@@ -411,7 +411,7 @@ def _parallel_cyclic_gradient_boost(
 ):
     log.info("Splitting train/test")
 
-    X_train, X_val, y_train, y_val, w_train, w_val = EBMUtils.ebm_train_test_split(
+    X_train, X_val, y_train, y_val, w_train, w_val, _, _ = EBMUtils.ebm_train_test_split(
         X,
         y,
         w,
@@ -470,7 +470,7 @@ def _parallel_get_interactions(
 ):
     log.info("Splitting train/test")
 
-    X_train, _, y_train, _, w_train, _ = EBMUtils.ebm_train_test_split(
+    X_train, _, y_train, _, w_train, _, _, _ = EBMUtils.ebm_train_test_split(
         X,
         y,
         w,
@@ -833,7 +833,7 @@ class BaseEBM(BaseEstimator):
             scores_val_bags = []
             for model, _ in results:
                 bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-                X_train, X_val, _, _, _, _ = EBMUtils.ebm_train_test_split(
+                X_train, X_val, _, _, _, _, _, _ = EBMUtils.ebm_train_test_split(
                     X_main,
                     y,
                     w, # TODO: allow w to be None
