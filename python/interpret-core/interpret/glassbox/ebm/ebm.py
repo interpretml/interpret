@@ -464,8 +464,8 @@ def _parallel_get_interactions(
     validation_size,
     random_state,
     model_type,
-    pair_features_categorical, 
-    pair_features_bin_count, 
+    features_categorical, 
+    features_bin_count, 
     min_samples_leaf,
 ):
     log.info("Splitting train/test")
@@ -487,8 +487,8 @@ def _parallel_get_interactions(
         iter_feature_groups=iter_feature_groups,
         model_type=model_type,
         n_classes=n_classes,
-        features_categorical = pair_features_categorical, 
-        features_bin_count = pair_features_bin_count, 
+        features_categorical = features_categorical, 
+        features_bin_count = features_bin_count, 
         X=X_train,
         y=y_train,
         w=w_train,
@@ -727,7 +727,7 @@ class BaseEBM(BaseEstimator):
         features_bin_count = np.array([len(x) for x in self.preprocessor_.col_bin_counts_], dtype=ct.c_int64)
 
         # NOTE: [DP] Passthrough to lower level layers for noise addition
-        bin_data_counts = {i : self.preprocessor_.col_bin_counts_[i] for i in range(n_features)}
+        bin_data_counts = [self.preprocessor_.col_bin_counts_[i] for i in range(n_features)]
 
         native = Native.get_native_singleton()
 
@@ -862,12 +862,7 @@ class BaseEBM(BaseEstimator):
             )
             self.pair_preprocessor_.fit(X_unified)
             X_pair = self.pair_preprocessor_.transform(X_unified)
-            pair_features_categorical = np.array([x == "categorical" for x in self.pair_preprocessor_.col_types_], dtype=ct.c_int64)
             pair_features_bin_count = np.array([len(x) for x in self.pair_preprocessor_.col_bin_counts_], dtype=ct.c_int64)
-
-            # TODO: re-enable this check
-            #if np.array_equal(features_categorical, pair_features_categorical):
-            #    raise RuntimeError("Main and pairs should have the same categorical feature definitions")
 
             if isinstance(interactions, int) and interactions > 0:
                 log.info("Estimating with FAST")
@@ -885,7 +880,7 @@ class BaseEBM(BaseEstimator):
                         self.validation_size, 
                         bagged_seed, 
                         model_type, 
-                        pair_features_categorical, 
+                        features_categorical, 
                         pair_features_bin_count, 
                         self.min_samples_leaf, 
                     )
@@ -946,7 +941,7 @@ class BaseEBM(BaseEstimator):
                     self.validation_size, 
                     model_type, 
                     update,
-                    pair_features_categorical, 
+                    features_categorical, 
                     pair_features_bin_count, 
                     inner_bags, 
                     self.learning_rate, 
