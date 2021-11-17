@@ -7,7 +7,7 @@ from typing import DefaultDict
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import DPUtils, EBMUtils
-from .bin import clean_X, clean_vector, construct_bins, bin_python, ebm_decision_function, make_boosting_counts, restore_missing_value_zeros, after_boosting, remove_last
+from .bin import clean_X, clean_vector, construct_bins, bin_python, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_counts, restore_missing_value_zeros, restore_missing_value_zeros2, after_boosting, remove_last, remove_last2, get_counts_and_weights
 from .internal import Native
 from .postprocessing import multiclass_postprocess2
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -1036,6 +1036,7 @@ class BaseEBM(BaseEstimator):
             multiclass_postprocess2(n_classes, n_samples, additive_terms, intercept, self.preprocessor_.col_bin_counts_)
 
 
+        # TODO: change this to restore_missing_value_zeros2
         restore_missing_value_zeros(feature_groups, additive_terms, self.preprocessor_.col_bin_counts_)
         restore_missing_value_zeros(feature_groups, term_standard_deviations, self.preprocessor_.col_bin_counts_)
 
@@ -1478,7 +1479,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             random_state=random_state,
         )
 
-    # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
     def predict_proba(self, X):
         """ Probability estimates on provided samples.
 
@@ -1806,7 +1806,6 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             privacy_schema=privacy_schema,
         )
 
-    # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
     def predict_proba(self, X):
         """ Probability estimates on provided samples.
 

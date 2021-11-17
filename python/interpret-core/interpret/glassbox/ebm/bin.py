@@ -1197,7 +1197,7 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
 
     return feature_names_in
 
-def clean_vector(vec, dtype, param_name):
+def clean_vector(vec, is_y_for_classification, param_name):
     # called under: fit
 
     if isinstance(vec, ma.masked_array):
@@ -1217,7 +1217,8 @@ def clean_vector(vec, dtype, param_name):
             msg = f"{param_name} cannot contain missing values"
             _log.error(msg)
             raise ValueError(msg)
-        vec = vec.values.astype(dtype=dtype, copy=False)
+        # this can result in be a non-numpy datatype, but we use astype below to ensure numpyness
+        vec = vec.values
     elif _pandas_installed and isinstance(vec, pd.DataFrame):
         if vec.shape[1] == 1:
             vec = vec.iloc[:, 0]
@@ -1226,7 +1227,8 @@ def clean_vector(vec, dtype, param_name):
                 msg = f"{param_name} cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
-            vec = vec.values.astype(dtype=dtype, copy=False)
+            # this can result in be a non-numpy datatype, but we use astype below to ensure numpyness
+            vec = vec.values
         elif vec.shape[0] == 1:
             # transition to np.object_ first to detect any missing values
             vec = vec.astype(np.object_, copy=False).values
@@ -1279,6 +1281,37 @@ def clean_vector(vec, dtype, param_name):
             msg = f"{param_name} cannot contain missing values"
             _log.error(msg)
             raise ValueError(msg)
+
+    if is_y_for_classification:
+        # Per scikit-learn, we need to accept y of list or numpy array that contains either strings or integers.
+        # We want to serialize these models to/from JSON, and JSON allows us to differentiate between string
+        # and integer types with just the JSON type, so that's nice.  JSON also allows boolean types,
+        # and that seems like a type someone might pass us for binary classification, so accept bools too.
+        # https://scikit-learn.org/stable/developers/develop.html
+
+        if issubclass(vec.dtype.type, np.integer):
+            # this also handles pandas Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype
+            # JSON has a number datatype, so we can preserve this information in JSON!
+            dtype = np.int64
+        elif issubclass(vec.dtype.type, np.bool_):
+            # this also handles pandas BooleanDtype
+            # JSON has a boolean datatype, so we can preserve this information in JSON!
+            dtype = np.bool_
+        elif issubclass(vec.dtype.type, np.object_):
+            types = set(map(type, vec))
+            if all(one_type is int or issubclass(one_type, np.integer) for one_type in types):
+                # the vec.astype call below can fail if we're passed an unsigned np.uint64
+                # array with big values, but we don't want to surprise anyone by converting to
+                # strings in that special case, so throw if we're presented this unusual type
+                dtype = np.int64
+            elif all(one_type is bool or issubclass(one_type, np.bool_) for one_type in types):
+                dtype = np.bool_
+            else:
+                dtype = np.unicode_
+        else:
+            dtype = np.unicode_
+    else:
+        dtype = np.float64
 
     return vec.astype(dtype, copy=False)
 
@@ -1842,13 +1875,13 @@ def bin_native(
         raise ValueError(msg)
 
     if is_classification:
-        y = clean_vector(y, np.unicode_, "y")
+        y = clean_vector(y, True, "y")
         # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
         # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
         # in two separate runs, which would flip the ordering of the classes within our score tensors.
         classes, y = np.unique(y, return_inverse=True)
     else:
-        y = clean_vector(y, np.float64, "y")
+        y = clean_vector(y, False, "y")
         classes = None
 
     if n_samples != len(y):
@@ -1857,7 +1890,7 @@ def bin_native(
         raise ValueError(msg)
 
     if w is not None:
-        w = clean_vector(w, np.float64, "sample_weight")
+        w = clean_vector(w, False, "sample_weight")
         if n_samples != len(w):
             msg = f"X has {n_samples} samples and sample_weight has {len(w)} samples"
             _log.error(msg)
@@ -2105,6 +2138,31 @@ def ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins
 
     return scores
 
+def ebm_decision_function_and_explain(
+    X, 
+    n_samples, 
+    feature_names_in, 
+    feature_types_in, 
+    bins, 
+    intercept, 
+    additive_terms, 
+    feature_groups
+):
+    if type(intercept) is float or len(intercept) == 1:
+        scores = np.full(n_samples, intercept, dtype=np.float64)
+        explanations = np.empty((n_samples, len(feature_groups)), dtype=np.float64)
+    else:
+        # TODO: add a test for multiclass calls to ebm_decision_function_and_explain
+        scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
+        explanations = np.empty((n_samples, len(feature_groups), len(intercept)), dtype=np.float64)
+
+    for feature_group_idx, binned_data in eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
+        term_scores = additive_terms[feature_group_idx][tuple(binned_data)]
+        scores += term_scores
+        explanations[:, feature_group_idx] = term_scores
+
+    return scores, explanations
+
 def get_counts_and_weights(X, w, feature_names_in, feature_types_in, bins, feature_groups):
     bin_counts = _none_list * len(feature_groups)
     bin_weights = _none_list * len(feature_groups)
@@ -2162,13 +2220,13 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
 
     if y is not None:
         if is_classification:
-            y = clean_vector(y, np.unicode_, "y")
+            y = clean_vector(y, True, "y")
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
             # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
         else:
-            y = clean_vector(y, np.float64, "y")
+            y = clean_vector(y, False, "y")
             classes = None
 
         if n_samples != len(y):
@@ -2177,7 +2235,7 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
             raise ValueError(msg)
 
     if w is not None:
-        w = clean_vector(w, np.float64, "sample_weight")
+        w = clean_vector(w, False, "sample_weight")
         if n_samples != len(w):
             msg = f"X has {n_samples} samples and sample_weight has {len(w)} samples"
             _log.error(msg)
@@ -2280,6 +2338,7 @@ def zero_tensor(tensor, zero_low=None, zero_high=None):
                 tensor[tuple(dim_slices)] = 0
 
 def make_boosting_counts(term_bin_counts):
+    # TODO: replace this function with a bool array that we generate in bin_native
     bin_data_counts = []
     for term_counts in term_bin_counts:
         if term_counts[-1] == 0:
@@ -2289,11 +2348,33 @@ def make_boosting_counts(term_bin_counts):
     return bin_data_counts
 
 def restore_missing_value_zeros(feature_groups, tensors, feature_bin_counts):
+    # TODO: DELETE this function once the memory stuff is in.  Replace it with restore_missing_value_zeros2
     for feature_group_idx, feature_group in enumerate(feature_groups):
         zero_low = [feature_bin_counts[feature_idx][0] == 0 for feature_idx in feature_group]
         zero_tensor(tensors[feature_group_idx], zero_low)
 
+def restore_missing_value_zeros2(tensors, term_bin_counts):
+    for tensor, counts in zip(tensors, term_bin_counts):
+        n_dimensions = counts.ndim
+        entire_tensor = [slice(None)] * n_dimensions
+        lower = []
+        higher = []
+        for dimension_idx in range(n_dimensions):
+            dim_slices = entire_tensor.copy()
+            dim_slices[dimension_idx] = 0
+            total_sum = np.sum(counts[tuple(dim_slices)])
+            lower.append(True if total_sum == 0 else False)
+            dim_slices[dimension_idx] = -1
+            total_sum = np.sum(counts[tuple(dim_slices)])
+            higher.append(True if total_sum == 0 else False)
+        zero_tensor(tensor, lower, higher)
+
 def after_boosting(feature_groups, tensors, feature_bin_counts):
+    # TODO: this isn't a problem today since any unnamed categories in the mains and the pairs are the same
+    #       (they don't exist in the pairs today at all since DP-EBMs aren't pair enabled yet and we haven't
+    #       made the option for them in regular EBMs), but when we eventually go that way then we'll
+    #       need to examine the tensored term based bin counts to see what to do.  Alternatively, we could
+    #       obtain this information from bin_native which would be cleaner since we only need it during boosting
     new_tensors=[]
     for feature_group_idx, feature_group in enumerate(feature_groups):
         higher = [feature_bin_counts[feature_idx][-1] == 0 for feature_idx in feature_group]
@@ -2301,8 +2382,23 @@ def after_boosting(feature_groups, tensors, feature_bin_counts):
     return new_tensors
 
 def remove_last(feature_groups, tensors, feature_bin_counts):
+    # TODO: remove this.  It's only used during testing.  We should use remove_last2 instead
     new_tensors=[]
     for feature_group_idx, feature_group in enumerate(feature_groups):
         higher = [feature_bin_counts[feature_idx][-1] == 0 for feature_idx in feature_group]
         new_tensors.append(trim_tensor(tensors[feature_group_idx], None, higher))
+    return new_tensors
+
+def remove_last2(tensors, term_bin_counts):
+    new_tensors=[]
+    for idx, tensor, counts in zip(count(), tensors, term_bin_counts):
+        n_dimensions = counts.ndim
+        entire_tensor = [slice(None)] * n_dimensions
+        higher = []
+        for dimension_idx in range(n_dimensions):
+            dim_slices = entire_tensor.copy()
+            dim_slices[dimension_idx] = -1
+            total_sum = np.sum(counts[tuple(dim_slices)])
+            higher.append(True if total_sum == 0 else False)
+        new_tensors.append(trim_tensor(tensor, None, higher))
     return new_tensors
