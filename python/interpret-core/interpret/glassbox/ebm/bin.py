@@ -2231,4 +2231,78 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
 
     return X_unified, y, w, feature_names_in, feature_types_in
 
+def append_tensor(tensor, append_low=None, append_high=None):
+    if append_low is None:
+        if append_high is None:
+            return tensor
+        dim_slices = [slice(0, dim_len) for dim_len in tensor.shape]
+        new_shape = [dim_len + int(is_high) for dim_len, is_high in zip(tensor.shape, append_high)]
+    else:
+        dim_slices = [slice(int(is_low), dim_len + int(is_low)) for dim_len, is_low in zip(tensor.shape, append_low)]
+        if append_high is None:
+            new_shape = [dim_len + int(is_low) for dim_len, is_low in zip(tensor.shape, append_low)]
+        else:
+            new_shape = [dim_len + int(is_low) + int(is_high) for dim_len, is_low, is_high in zip(tensor.shape, append_low, append_high)]
 
+    if len(new_shape) != tensor.ndim:
+        # multiclass
+        new_shape.append(tensor.shape[-1])
+
+    new_tensor = np.zeros(tuple(new_shape), dtype=tensor.dtype)
+    new_tensor[tuple(dim_slices)] = tensor
+    return new_tensor
+
+def trim_tensor(tensor, trim_low=None, trim_high=None):
+    if trim_low is None:
+        if trim_high is None:
+            return tensor
+        dim_slices = [slice(0, -1 if is_high else None) for dim_len, is_high in zip(tensor.shape, trim_high)]
+    else:
+        if trim_high is None:
+            dim_slices = [slice(int(is_low), None) for dim_len, is_low in zip(tensor.shape, trim_low)]
+        else:
+            dim_slices = [slice(int(is_low), -1 if is_high else None) for dim_len, is_low, is_high in zip(tensor.shape, trim_low, trim_high)]
+    return tensor[tuple(dim_slices)]
+
+def zero_tensor(tensor, zero_low=None, zero_high=None):
+    entire_tensor = [slice(None) for _ in range(tensor.ndim)]
+    if zero_low is not None:
+        for dimension_idx, is_zero in enumerate(zero_low):
+            if is_zero:
+                dim_slices = entire_tensor.copy()
+                dim_slices[dimension_idx] = 0
+                tensor[tuple(dim_slices)] = 0
+    if zero_high is not None:
+        for dimension_idx, is_zero in enumerate(zero_high):
+            if is_zero:
+                dim_slices = entire_tensor.copy()
+                dim_slices[dimension_idx] = -1
+                tensor[tuple(dim_slices)] = 0
+
+def make_boosting_counts(term_bin_counts):
+    bin_data_counts = []
+    for term_counts in term_bin_counts:
+        if term_counts[-1] == 0:
+            bin_data_counts.append(term_counts[:-1])
+        else:
+            bin_data_counts.append(term_counts)
+    return bin_data_counts
+
+def restore_missing_value_zeros(feature_groups, tensors, feature_bin_counts):
+    for feature_group_idx, feature_group in enumerate(feature_groups):
+        zero_low = [feature_bin_counts[feature_idx][0] == 0 for feature_idx in feature_group]
+        zero_tensor(tensors[feature_group_idx], zero_low)
+
+def after_boosting(feature_groups, tensors, feature_bin_counts):
+    new_tensors=[]
+    for feature_group_idx, feature_group in enumerate(feature_groups):
+        higher = [feature_bin_counts[feature_idx][-1] == 0 for feature_idx in feature_group]
+        new_tensors.append(append_tensor(tensors[feature_group_idx], None, higher))
+    return new_tensors
+
+def remove_last(feature_groups, tensors, feature_bin_counts):
+    new_tensors=[]
+    for feature_group_idx, feature_group in enumerate(feature_groups):
+        higher = [feature_bin_counts[feature_idx][-1] == 0 for feature_idx in feature_group]
+        new_tensors.append(trim_tensor(tensors[feature_group_idx], None, higher))
+    return new_tensors

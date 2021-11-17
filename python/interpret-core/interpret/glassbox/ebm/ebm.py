@@ -7,6 +7,7 @@ from typing import DefaultDict
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import DPUtils, EBMUtils
+from .bin import clean_X, clean_vector, construct_bins, bin_python, ebm_decision_function, make_boosting_counts, restore_missing_value_zeros, after_boosting, remove_last
 from .internal import Native
 from .postprocessing import multiclass_postprocess2
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -809,16 +810,18 @@ class BaseEBM(BaseEstimator):
 
         results = provider.parallel(_parallel_cyclic_gradient_boost, train_model_args_iter)
 
+        breakpoint_iteration = []
+        only_models = []
+        for model, bag_breakpoint_iteration in results:
+            only_models.append(model)
+            breakpoint_iteration.append(bag_breakpoint_iteration)
+
         bagged_additive_terms = []
         for term_idx in range(len(feature_groups)):
             bags = []
             bagged_additive_terms.append(bags)
-            for model, _ in results:
+            for model in only_models:
                 bags.append(model[term_idx])
-
-        breakpoint_iteration = []
-        for _, bag_breakpoint_iteration in results:
-            breakpoint_iteration.append(bag_breakpoint_iteration)
 
         interactions = 0 if is_private(self) else self.interactions
         if n_classes > 2 or isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0:
@@ -831,7 +834,7 @@ class BaseEBM(BaseEstimator):
             bagged_seed = init_seed
             scores_train_bags = []
             scores_val_bags = []
-            for model, _ in results:
+            for model in only_models:
                 bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
                 X_train, X_val, _, _, _, _, _, _ = EBMUtils.ebm_train_test_split(
                     X_main,
@@ -958,14 +961,16 @@ class BaseEBM(BaseEstimator):
 
             results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
 
+            only_models = []
+            for model, bag_breakpoint_iteration in results:
+                only_models.append(model)
+                breakpoint_iteration.append(bag_breakpoint_iteration)
+
             for term_idx in range(len(pair_indices)):
                 bags = []
                 bagged_additive_terms.append(bags)
-                for bag_scores, _ in results:
+                for bag_scores in only_models:
                     bags.append(bag_scores[term_idx])
-
-            for _, bag_breakpoint_iteration in results:
-                breakpoint_iteration.append(bag_breakpoint_iteration)
 
         X_main = np.ascontiguousarray(X_main.T)
         if X_pair is not None:
@@ -1030,14 +1035,10 @@ class BaseEBM(BaseEstimator):
             # Postprocess model graphs for multiclass
             multiclass_postprocess2(n_classes, n_samples, additive_terms, intercept, self.preprocessor_.col_bin_counts_)
 
-        for feature_group_idx, feature_group in enumerate(feature_groups):
-            entire_tensor = [slice(None, None, None) for i in range(additive_terms[feature_group_idx].ndim)]
-            for dimension_idx, feature_idx in enumerate(feature_group):
-                if self.preprocessor_.col_bin_counts_[feature_idx][0] == 0:
-                    zero_dimension = entire_tensor.copy()
-                    zero_dimension[dimension_idx] = 0
-                    additive_terms[feature_group_idx][tuple(zero_dimension)] = 0
-                    term_standard_deviations[feature_group_idx][tuple(zero_dimension)] = 0
+
+        restore_missing_value_zeros(feature_groups, additive_terms, self.preprocessor_.col_bin_counts_)
+        restore_missing_value_zeros(feature_groups, term_standard_deviations, self.preprocessor_.col_bin_counts_)
+
 
         # Generate overall importance
         # TODO: once we have tensored bin counts we can eliminate the non-dp method used here and
