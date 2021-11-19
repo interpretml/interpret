@@ -1728,8 +1728,6 @@ def deduplicate_bins(bins):
     # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
     # use the id of the bins to identify feature data that was previously binned
 
-    # TODO: use this function!
-
     uniques = dict()
     for feature_idx in range(len(bins)):
         bin_levels = bins[feature_idx]
@@ -1824,7 +1822,7 @@ def bin_python(
     category_iter = (category if isinstance(category, dict) else None for category in bin_iter)
     requests = zip(count(), category_iter)
     cols = unify_columns(X, requests, feature_names_in, feature_types_in, None, False)
-    native_bin_counts = []
+    native_bin_counts = np.empty(len(feature_names_in), dtype=np.int64)
     for feature_idx, feature_bins, (_, X_col, _, bad) in zip(count(), bin_iter, cols):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
@@ -1849,7 +1847,7 @@ def bin_python(
             n_bins += 1
             X_col[bad != _none_ndarray] = n_bins - 1
 
-        native_bin_counts.append(n_bins)
+        native_bin_counts.itemset(feature_idx, n_bins)
         X_binned[:, feature_idx] = X_col
 
     return X_binned, native_bin_counts
@@ -1980,7 +1978,7 @@ def bin_native(
         native.fill_regression_target(y, n_bytes, shared_dataset)
 
     # TODO: use the unknowns array instead of using the last count bin in the rest of our code
-    return shared_dataset, classes, native_bin_counts
+    return shared_dataset, classes, np.array(native_bin_counts, dtype=np.int64)
 
 def bin_native_by_dimension(
     is_classification, 
@@ -2218,6 +2216,7 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
         _log.error(msg)
         raise ValueError(msg)
 
+    classes = None
     if y is not None:
         if is_classification:
             y = clean_vector(y, True, "y")
@@ -2227,7 +2226,6 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
             classes, y = np.unique(y, return_inverse=True)
         else:
             y = clean_vector(y, False, "y")
-            classes = None
 
         if n_samples != len(y):
             msg = f"X has {n_samples} samples and y has {len(y)} samples"
@@ -2287,7 +2285,7 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
                 mapping.itemset(idx, category)
             X_unified[:, feature_idx] = mapping[X_col]
 
-    return X_unified, y, w, feature_names_in, feature_types_in
+    return X_unified, y, w, classes, feature_names_in, feature_types_in
 
 def append_tensor(tensor, append_low=None, append_high=None):
     if append_low is None:
