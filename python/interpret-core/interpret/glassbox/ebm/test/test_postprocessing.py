@@ -68,6 +68,7 @@ def _smoke_test_explanations(global_exp, local_exp, port):
 
     shutdown_show_server()
             
+@pytest.mark.skip(reason="merge_models needs to be updated")
 def test_merge_models():
     
     data = adult_classification()

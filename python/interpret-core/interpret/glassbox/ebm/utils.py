@@ -44,6 +44,8 @@ class EBMUtils:
             An EBM model with averaged mean and standard deviation of input models.
         """
 
+        raise Exception("merge_models under re-construction")
+
         if len(models) < 2:  # pragma: no cover
             raise Exception("at least two models are required to merge.")
 
