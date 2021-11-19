@@ -1,6 +1,8 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+import pytest
+
 from ..postprocessing import multiclass_postprocess
 
 from ....test.utils import (
