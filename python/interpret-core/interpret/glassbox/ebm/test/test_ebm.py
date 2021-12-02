@@ -12,7 +12,7 @@ from ....test.utils import (
     iris_classification,
 )
 from ....test.utils import synthetic_regression
-from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier
+from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier, DPExplainableBoostingClassifier, DPExplainableBoostingRegressor
 
 import numpy as np
 import pandas as pd
@@ -22,6 +22,7 @@ from sklearn.model_selection import (
     train_test_split,
 )
 from sklearn.metrics import accuracy_score
+from sklearn.utils.estimator_checks import check_estimator
 import pytest
 
 import warnings
@@ -635,3 +636,74 @@ def test_ebm_unknown_value_at_predict():
     clf.predict(X_test)
 
     valid_ebm(clf)
+
+@pytest.mark.skip(reason="can't run this test reliably until we depend on scikit-learn 0.22")
+def test_scikit_learn_compatibility():
+    """ Run scikit-learn compatibility tests
+    """
+
+    # sklearn tests in:
+    # https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/utils/estimator_checks.py    
+    
+    skip_tests = { 
+        'check_dtype_object', # the error message required to pass is too specific and incorrect for us
+        'check_classifiers_one_label', # TODO: fix this!  We should accept 1 category
+        'check_classifiers_regression_target', # we're more permissive and convert any y values to str
+        'check_supervised_y_no_nan', # error message too specific
+        'check_supervised_y_2d', # we ignore useless added dimensions
+        'check_fit2d_predict1d', # we accept 1d for predict
+        'check_fit2d_1sample', # TODO: we allow fitting on 1 sample, but this kind of input is likely a bug from the caller, so change this
+        'check_regressors_no_decision_function', # TODO: fix this!
+    }
+    for estimator, check_func in check_estimator(ExplainableBoostingClassifier(), generate_only=True): 
+        f = check_func.func 
+        module = f.__module__
+        shortname = f.__name__
+        fullname = f"{module}.{shortname}"
+        if shortname not in skip_tests:
+            try:
+                check_func(estimator) 
+            except BaseException as e:
+                print(fullname)
+                print(f"{type(e).__name__}: {e}") 
+                print() 
+
+    for estimator, check_func in check_estimator(ExplainableBoostingRegressor(), generate_only=True): 
+        f = check_func.func 
+        module = f.__module__
+        shortname = f.__name__
+        fullname = f"{module}.{shortname}"
+        if shortname not in skip_tests:
+            try:
+                check_func(estimator) 
+            except BaseException as e:
+                print(fullname)
+                print(f"{type(e).__name__}: {e}") 
+                print() 
+
+    for estimator, check_func in check_estimator(DPExplainableBoostingClassifier(), generate_only=True): 
+        f = check_func.func 
+        module = f.__module__
+        shortname = f.__name__
+        fullname = f"{module}.{shortname}"
+        if shortname not in skip_tests:
+            try:
+                check_func(estimator) 
+            except BaseException as e:
+                print(fullname)
+                print(f"{type(e).__name__}: {e}") 
+                print() 
+
+    for estimator, check_func in check_estimator(DPExplainableBoostingRegressor(), generate_only=True): 
+        f = check_func.func 
+        module = f.__module__
+        shortname = f.__name__
+        fullname = f"{module}.{shortname}"
+        if shortname not in skip_tests:
+            try:
+                check_func(estimator) 
+            except BaseException as e:
+                print(fullname)
+                print(f"{type(e).__name__}: {e}") 
+                print() 
+

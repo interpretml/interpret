@@ -37,7 +37,7 @@ from itertools import combinations
 
 import logging
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 class EBMExplanation(FeatureValueExplanation):
@@ -411,7 +411,7 @@ def _parallel_cyclic_gradient_boost(
     noise_scale,
     bin_counts,
 ):
-    log.info("Splitting train/test")
+    _log.info("Splitting train/test")
 
     X_train, X_val, y_train, y_val, w_train, w_val, _, _ = EBMUtils.ebm_train_test_split(
         X,
@@ -422,7 +422,7 @@ def _parallel_cyclic_gradient_boost(
         is_classification=model_type == "classification",
     )
 
-    log.info("Cyclic boost")
+    _log.info("Cyclic boost")
 
     (
         model_update,
@@ -470,7 +470,7 @@ def _parallel_get_interactions(
     features_bin_count, 
     min_samples_leaf,
 ):
-    log.info("Splitting train/test")
+    _log.info("Splitting train/test")
 
     X_train, _, y_train, _, w_train, _, _, _ = EBMUtils.ebm_train_test_split(
         X,
@@ -481,7 +481,7 @@ def _parallel_get_interactions(
         is_classification=model_type == "classification",
     )
         
-    log.info("Estimating with FAST")
+    _log.info("Estimating with FAST")
 
     iter_feature_groups = combinations(range(X.shape[1]), 2)
 
@@ -886,7 +886,7 @@ class BaseEBM(BaseEstimator):
             X_pair, pair_bin_counts = bin_python(X, 2, bins, feature_names_in,  feature_types_in)
 
             if isinstance(interactions, int) and interactions > 0:
-                log.info("Estimating with FAST")
+                _log.info("Estimating with FAST")
 
                 train_model_args_iter2 = []
                 bagged_seed = init_seed
@@ -1054,11 +1054,10 @@ class BaseEBM(BaseEstimator):
             # but also use it here to calculate the noise_scale
             self.noise_scale_ = noise_scale
         if 0 <= n_classes:
-             # scikit-learn requires "self.classes_" for classifiers per documentation
-            self.classes_ = classes
+            self.classes_ = classes # required by scikit-learn
             self._class_idx_ = class_idx
         self.n_samples_ = n_samples
-        self.n_features_in_ = n_features_in
+        self.n_features_in_ = n_features_in # required by scikit-learn
         self.feature_names_in_ = feature_names_in
         self.feature_types_in_ = feature_types_in
         self.bins_ = bins

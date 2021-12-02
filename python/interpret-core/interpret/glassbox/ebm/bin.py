@@ -385,17 +385,17 @@ def _densify_object_ndarray(X_col):
             # list of python types primarily from: https://docs.python.org/3/library/stdtypes.html
             msg = f"X contains the disallowed type {one_type}"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
         elif hasattr(one_type, '__iter__') or hasattr(one_type, '__getitem__'):
             # check for __iter__ and __getitem__ to filter out iterables
             # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
             msg = f"X contains the disallowed iterable type {one_type}"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
         elif hasattr(one_type, '__contains__'):
             msg = f"X contains the disallowed set type {one_type}"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
         elif one_type.__str__ is object.__str__:
             # if any object in our list uses the default object __str__ function then it'll
             # include the id(val) pointer in the string text, which isn't going to be useful as a categorical
@@ -405,7 +405,7 @@ def _densify_object_ndarray(X_col):
 
             msg = f"X contains the type {one_type} which does not define a __str__ function"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
     if is_float_conversion:
         # TODO: handle ints here too which need to be checked if they are larger than the safe int max value
@@ -766,7 +766,7 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
         except TypeError:
             msg = f"{processing} type invalid"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         if n_continuous == n_items:
             # if n_items == 0 then it must be continuous since we can have zero cut points, but not zero ordinal categories
@@ -779,7 +779,7 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
         else:
             msg = f"{processing} type invalid"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
 def _reshape_1D_if_possible(col):
     if col.ndim != 1:
@@ -878,7 +878,7 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
     # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.StringDtype.html#pandas.StringDtype
     msg = f"{type(X_col.dtype)} not supported"
     _log.error(msg)
-    raise ValueError(msg)
+    raise TypeError(msg)
 
 def _process_scipy_column(X_col, categories, feature_type, min_unique_continuous):
     X_col = X_col.toarray().reshape(-1)
@@ -952,13 +952,13 @@ def unify_columns(X, requests, feature_names_in, feature_types=None, min_unique_
 
     if isinstance(X, np.ndarray): # this includes ma.masked_array
         if issubclass(X.dtype.type, np.complexfloating):
-            msg = "X contains complex numbers, which are not a supported dtype"
+            msg = "Complex data not supported"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
         elif issubclass(X.dtype.type, np.void):
-            msg = "X contains numpy.void data, which are not a supported dtype"
+            msg = "np.void data not supported"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         # TODO: in the future special case this to make single samples faster at predict time
 
@@ -1246,17 +1246,19 @@ def clean_vector(vec, is_y_for_classification, param_name):
     elif isinstance(vec, list) or isinstance(vec, tuple):
         # transition to np.object_ first to detect any missing values
         vec = np.array(vec, dtype=np.object_)
+    elif callable(getattr(vec, '__array__', None)):
+        vec = vec.__array__()
     elif isinstance(vec, str):
         msg = f"{param_name} cannot be a single object"
         _log.error(msg)
-        raise ValueError(msg)
+        raise TypeError(msg)
     else:
         try:
             vec = list(vec)
         except TypeError:
             msg = f"{param_name} cannot be a single object"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
         # transition to np.object_ first to detect any missing values
         vec = np.array(vec, dtype=np.object_)
 
@@ -1331,15 +1333,18 @@ def clean_X(X):
         return X, -1
     elif isinstance(X, list) or isinstance(X, tuple):
         is_copied = False
+    elif callable(getattr(X, '__array__', None)):
+        X = X.__array__()
+        return X, 1 if X.ndim == 1 else X.shape[0]
     elif X is None:
-        msg = "X cannot be a single None"
+        msg = "X cannot be None"
         _log.error(msg)
-        raise ValueError(msg)
+        raise TypeError(msg)
     elif isinstance(X, str):
         # str objects are iterable, so don't allow them to get to the list() conversion below
         msg = "X cannot be a single str"
         _log.error(msg)
-        raise ValueError(msg)
+        raise TypeError(msg)
     else:
         try:
             X = list(X)
@@ -1347,7 +1352,7 @@ def clean_X(X):
         except TypeError:
             msg = "X must be an iterable"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
     # for consistency with what the caller expects, we should mirror what np.array([[..], [..], .., [..]]) does
     # [1, 2, 3] is one sample with 3 features
