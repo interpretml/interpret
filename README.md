@@ -96,6 +96,20 @@ And if you have multiple model explanations, compare them
 show([logistic_regression_global, decision_tree_global])
 ```
 ![Dashboard Image](./examples/python/assets/readme_dashboard.PNG?raw=true)
+
+<br/>
+
+If you need to keep your dataset private, we also support Differentially Private EBMs (see [DP-EBMs](http://proceedings.mlr.press/v139/nori21a/nori21a.pdf) for more info)
+
+```python
+from interpret.privacy import DPExplainableBoostingClassifier
+
+dpebm = DPExplainableBoostingClassifier(epsilon=1, delta=1e-5) # Specify privacy parameters
+dpebm.fit(X_train, y_train)
+
+show(dpebm.explain_global()) # Identical function calls to standard EBMs
+```
+
 <br/>
 <br/>
 
