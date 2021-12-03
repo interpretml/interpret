@@ -298,6 +298,31 @@ We also build on top of many great packages. Please check them out!
 </details>
 
 <details>
+  <summary><strong>Differential Privacy</strong></summary>
+  <hr/>
+  <details>
+    <summary>
+      <em>"Accuracy, Interpretability, and Differential Privacy via Explainable Boosting" (H. Nori, R. Caruana, Z. Bu, J. Shen, J. Kulkarni 2021)</em>
+    </summary>
+    <br/>
+    <pre>
+@inproceedings{pmlr-v139-nori21a,
+  title = 	 {Accuracy, Interpretability, and Differential Privacy via Explainable Boosting},
+  author =       {Nori, Harsha and Caruana, Rich and Bu, Zhiqi and Shen, Judy Hanwen and Kulkarni, Janardhan},
+  booktitle = 	 {Proceedings of the 38th International Conference on Machine Learning},
+  pages = 	 {8227--8237},
+  year = 	 {2021},
+  volume = 	 {139},
+  series = 	 {Proceedings of Machine Learning Research},
+  publisher =    {PMLR}
+}
+</pre>
+    <a href="http://proceedings.mlr.press/v139/nori21a/nori21a.pdf">Paper link</a>
+  </details>
+  <hr/>
+</details>
+
+<details>
   <summary><strong>LIME</strong></summary>
   <hr/>
   <details>
@@ -510,18 +535,21 @@ We also build on top of many great packages. Please check them out!
 - [How to Explain Models with InterpretML Deep Dive](https://www.youtube.com/watch?v=WwBeKMQ0-I8)
 - [Black-Box and Glass-Box Explanation in Machine Learning](https://youtu.be/7uzNKY8pEhQ)
 - [Explainable AI explained!  By-design interpretable models with Microsofts InterpretML](https://www.youtube.com/watch?v=qPn9m30ojfc)
+- [Interpreting Machine Learning Models with InterpretML](https://www.youtube.com/watch?v=ERNuFfsknhk)
 
 # External links
 
 - [Interpretable or Accurate? Why Not Both?](https://towardsdatascience.com/interpretable-or-accurate-why-not-both-4d9c73512192)
 - [The Explainable Boosting Machine. As accurate as gradient boosting, as interpretable as linear regression.](https://towardsdatascience.com/the-explainable-boosting-machine-f24152509ebb)
 - [Performance And Explainability With EBM](https://blog.oakbits.com/ebm-algorithm.html)
+- [InterpretML: Another Way to Explain Your Model](https://towardsdatascience.com/interpretml-another-way-to-explain-your-model-b7faf0a384f8)
 - [A gentle introduction to GA2Ms, a white box model](https://blog.fiddler.ai/2019/06/a-gentle-introduction-to-ga2ms-a-white-box-model)
 - [Model Interpretation with Microsoft’s Interpret ML](https://medium.com/@sand.mayur/model-interpretation-with-microsofts-interpret-ml-85aa0ad697ae)
 - [Explaining Model Pipelines With InterpretML](https://medium.com/@mariusvadeika/explaining-model-pipelines-with-interpretml-a9214f75400b)
 - [Explain Your Model with Microsoft’s InterpretML](https://medium.com/@Dataman.ai/explain-your-model-with-microsofts-interpretml-5daab1d693b4)
 - [On Model Explainability: From LIME, SHAP, to Explainable Boosting](https://everdark.github.io/k9/notebooks/ml/model_explain/model_explain.nb.html)
 - [Dealing with Imbalanced Data (Mortgage loans defaults)](https://mikewlange.github.io/ImbalancedData-/index.html)
+- [The right way to compute your Shapley Values](https://towardsdatascience.com/the-right-way-to-compute-your-shapley-values-cfea30509254)
 
 # Papers that use or compare EBMs
 
@@ -538,6 +566,7 @@ We also build on top of many great packages. Please check them out!
 # External tools
 
 - [EBM to Onnx converter by SoftAtHome](https://github.com/interpretml/ebm2onnx)
+- [GAMChanger](https://github.com/interpretml/GAMChanger)
 
 # Contact us
 
