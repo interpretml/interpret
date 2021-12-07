@@ -2168,7 +2168,7 @@ def test_bin_native():
     feature_names_given = ["f1", 99, "f3"]
     feature_types_given = ['nominal', 'nominal', 'continuous']
     y = np.array(["a", 99, 99, "b"])
-    w = np.array([0.5, 1.1, 0.1, 0.5])
+    sample_weight = np.array([0.5, 1.1, 0.1, 0.5])
 
     feature_names_in, feature_types_in, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts, unique_counts, zero_counts = construct_bins(
         X,
@@ -2196,7 +2196,7 @@ def test_bin_native():
         feature_idxs.append(feature_idx)
         bins_iter.append(feature_bins)
 
-    shared_dataset, classes, native_bin_counts = bin_native(True, feature_idxs, bins_iter, X, y, w, feature_names_in, feature_types_in)
+    shared_dataset, classes, native_bin_counts = bin_native(True, feature_idxs, bins_iter, X, y, sample_weight, feature_names_in, feature_types_in)
     assert(shared_dataset is not None)
     assert(native_bin_counts is not None)
 
@@ -2206,7 +2206,7 @@ def test_bin_native():
         bins,
         X, 
         y, 
-        w, 
+        sample_weight, 
         feature_names_in, 
         feature_types_in
     )

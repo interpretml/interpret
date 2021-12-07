@@ -1455,7 +1455,7 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
 
     return cuts
 
-class EBMPreprocessor2(BaseEstimator, TransformerMixin):
+class EBMPreprocessor(BaseEstimator, TransformerMixin):
     """ Transformer that preprocesses data to be ready before EBM. """
 
     def __init__(
@@ -1485,12 +1485,13 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
         self.delta = delta
         self.privacy_schema = privacy_schema
 
-    def fit(self, X, y=None):
+    def fit(self, X, y=None, sample_weight=None):
         """ Fits transformer to provided samples.
 
         Args:
             X: Numpy array for training samples.
             y: Unused. Only included for scikit-learn compatibility
+            sample_weight: Per-sample weights
 
         Returns:
             Itself.
@@ -1714,19 +1715,20 @@ class EBMPreprocessor2(BaseEstimator, TransformerMixin):
 
         return X_binned
 
-    def fit_transform(self, X, y=None):
+    def fit_transform(self, X, y=None, sample_weight=None):
         """ Fits and Transform on provided samples.
 
         Args:
             X: Numpy array for samples.
             y: Unused. Only included for scikit-learn compatibility
+            sample_weight: Per-sample weights
 
         Returns:
             Transformed numpy array.
         """
 
         X, _ = clean_X(X)
-        return self.fit(X).transform(X)
+        return self.fit(X, y, sample_weight).transform(X)
 
 def deduplicate_bins(bins):
     # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
@@ -1768,7 +1770,7 @@ def construct_bins(
 ):
     is_mains = True
     for max_bins in max_bins_leveled:
-        preprocessor = EBMPreprocessor2(
+        preprocessor = EBMPreprocessor(
             feature_names_given, 
             feature_types_given, 
             max_bins, 
@@ -1863,7 +1865,7 @@ def bin_native(
     bins_iter,
     X, 
     y, 
-    w, 
+    sample_weight, 
     feature_names_in, 
     feature_types_in, 
 ):
@@ -1892,15 +1894,15 @@ def bin_native(
         _log.error(msg)
         raise ValueError(msg)
 
-    if w is not None:
-        w = clean_vector(w, False, "sample_weight")
-        if n_samples != len(w):
-            msg = f"X has {n_samples} samples and sample_weight has {len(w)} samples"
+    if sample_weight is not None:
+        sample_weight = clean_vector(sample_weight, False, "sample_weight")
+        if n_samples != len(sample_weight):
+            msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
             _log.error(msg)
             raise ValueError(msg)
     else:
         # TODO: eliminate this eventually
-        w = np.ones_like(y, dtype=np.float64)
+        sample_weight = np.ones_like(y, dtype=np.float64)
 
     native = Native.get_native_singleton()
 
@@ -1944,7 +1946,7 @@ def bin_native(
 
         n_bytes += native.size_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col)
 
-    n_bytes += native.size_weight(w)
+    n_bytes += native.size_weight(sample_weight)
     if is_classification:
         n_bytes += native.size_classification_target(len(classes), y)
     else:
@@ -1976,7 +1978,7 @@ def bin_native(
 
         native.fill_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
 
-    native.fill_weight(w, n_bytes, shared_dataset)
+    native.fill_weight(sample_weight, n_bytes, shared_dataset)
     if is_classification:
         native.fill_classification_target(len(classes), y, n_bytes, shared_dataset)
     else:
@@ -1991,7 +1993,7 @@ def bin_native_by_dimension(
     bins,
     X, 
     y, 
-    w, 
+    sample_weight, 
     feature_names_in, 
     feature_types_in, 
 ):
@@ -2010,7 +2012,7 @@ def bin_native_by_dimension(
         bins_iter,
         X, 
         y, 
-        w, 
+        sample_weight, 
         feature_names_in, 
         feature_types_in, 
     )
@@ -2166,7 +2168,7 @@ def ebm_decision_function_and_explain(
 
     return scores, explanations
 
-def get_counts_and_weights(X, w, feature_names_in, feature_types_in, bins, feature_groups):
+def get_counts_and_weights(X, sample_weight, feature_names_in, feature_types_in, bins, feature_groups):
     bin_counts = _none_list * len(feature_groups)
     bin_weights = _none_list * len(feature_groups)
 
@@ -2201,10 +2203,10 @@ def get_counts_and_weights(X, w, feature_names_in, feature_types_in, bins, featu
 
         bin_counts[feature_group_idx] = term_bin_counts
 
-        if w is None:
+        if sample_weight is None:
             term_bin_weights = term_bin_counts.astype(np.float64)
         else:
-            term_bin_weights = np.bincount(flat_indexes, weights=w, minlength=multiple)
+            term_bin_weights = np.bincount(flat_indexes, weights=sample_weight, minlength=multiple)
             term_bin_weights = term_bin_weights.astype(np.float64, copy=False)
             term_bin_weights = term_bin_weights.reshape(dimensions)
         
@@ -2212,7 +2214,7 @@ def get_counts_and_weights(X, w, feature_names_in, feature_types_in, bins, featu
 
     return bin_counts, bin_weights
 
-def unify_data2(is_classification, X, y=None, w=None, feature_names=None, feature_types=None, missing_data_allowed=False, min_unique_continuous=3):
+def unify_data2(is_classification, X, y=None, sample_weight=None, feature_names=None, feature_types=None, missing_data_allowed=False, min_unique_continuous=3):
     _log.info("Unifying data")
 
     X, n_samples = clean_X(X)
@@ -2237,10 +2239,10 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
             _log.error(msg)
             raise ValueError(msg)
 
-    if w is not None:
-        w = clean_vector(w, False, "sample_weight")
-        if n_samples != len(w):
-            msg = f"X has {n_samples} samples and sample_weight has {len(w)} samples"
+    if sample_weight is not None:
+        sample_weight = clean_vector(sample_weight, False, "sample_weight")
+        if n_samples != len(sample_weight):
+            msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -2290,7 +2292,7 @@ def unify_data2(is_classification, X, y=None, w=None, feature_names=None, featur
                 mapping.itemset(idx, category)
             X_unified[:, feature_idx] = mapping[X_col]
 
-    return X_unified, y, w, classes, feature_names_in, feature_types_in
+    return X_unified, y, sample_weight, classes, feature_names_in, feature_types_in
 
 def append_tensor(tensor, append_low=None, append_high=None):
     if append_low is None:
