@@ -1514,10 +1514,8 @@ extern const void * GetDataSetSharedFeature(
       reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
    EBM_ASSERT(k_sharedDataSetDoneId == pHeaderDataSetShared->m_id);
 
-   const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
-   EBM_ASSERT(!IsConvertError<size_t>(countFeatures));
-   const size_t cFeatures = static_cast<size_t>(countFeatures);
-   EBM_ASSERT(iFeature < cFeatures);
+   EBM_ASSERT(!IsConvertError<size_t>(pHeaderDataSetShared->m_cFeatures));
+   EBM_ASSERT(iFeature < static_cast<size_t>(pHeaderDataSetShared->m_cFeatures));
 
    EBM_ASSERT(!IsMultiplyError(iFeature, sizeof(pHeaderDataSetShared->m_offsets[0])));
    const SharedStorageDataType indexMem = ArrayToPointer(pHeaderDataSetShared->m_offsets)[iFeature];
@@ -1565,10 +1563,8 @@ extern const FloatEbmType * GetDataSetSharedWeight(
    EBM_ASSERT(!IsConvertError<size_t>(countFeatures));
    const size_t cFeatures = static_cast<size_t>(countFeatures);
 
-   const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
-   EBM_ASSERT(!IsConvertError<size_t>(countWeights));
-   const size_t cWeights = static_cast<size_t>(countWeights);
-   EBM_ASSERT(iWeight < cWeights);
+   EBM_ASSERT(!IsConvertError<size_t>(pHeaderDataSetShared->m_cWeights));
+   EBM_ASSERT(iWeight < static_cast<size_t>(pHeaderDataSetShared->m_cWeights));
 
    EBM_ASSERT(!IsAddError(cFeatures, iWeight));
    const size_t iOffset = cFeatures + iWeight;
@@ -1581,8 +1577,7 @@ extern const FloatEbmType * GetDataSetSharedWeight(
    const WeightDataSetShared * pWeightDataSetShared =
       reinterpret_cast<const WeightDataSetShared *>(pDataSetShared + iMem);
 
-   const SharedStorageDataType id = pWeightDataSetShared->m_id;
-   EBM_ASSERT(k_weightId == id);
+   EBM_ASSERT(k_weightId == pWeightDataSetShared->m_id);
 
    return reinterpret_cast<const FloatEbmType *>(pWeightDataSetShared + 1);
 }
@@ -1605,10 +1600,8 @@ extern const void * GetDataSetSharedTarget(
    EBM_ASSERT(!IsConvertError<size_t>(countWeights));
    const size_t cWeights = static_cast<size_t>(countWeights);
 
-   const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
-   EBM_ASSERT(!IsConvertError<size_t>(countTargets));
-   const size_t cTargets = static_cast<size_t>(countTargets);
-   EBM_ASSERT(iTarget < cTargets);
+   EBM_ASSERT(!IsConvertError<size_t>(pHeaderDataSetShared->m_cTargets));
+   EBM_ASSERT(iTarget < static_cast<size_t>(pHeaderDataSetShared->m_cTargets));
 
    EBM_ASSERT(!IsAddError(cFeatures, cWeights, iTarget));
    const size_t iOffset = cFeatures + cWeights + iTarget;

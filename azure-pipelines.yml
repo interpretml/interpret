@@ -132,6 +132,8 @@ jobs:
   - task: ComponentGovernanceComponentDetection@0
     displayName: 'Scan dependencies for incompatible licenses and security issues'
   - task: CredScan@2
+    inputs:
+      toolMajorVersion: 'V2'
     displayName: 'Scan codebase for leaked secrets'
     condition: startsWith(variables['image.name'], 'windows')
 #  - task: BinSkim@3
@@ -362,7 +364,7 @@ jobs:
     inputs:
       codeCoverageTool: Cobertura
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
-      reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+      # reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Publish test coverage results'
 

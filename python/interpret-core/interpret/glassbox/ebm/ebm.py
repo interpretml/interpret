@@ -856,10 +856,10 @@ class BaseEBM(BaseEstimator):
 
         interactions = 0 if is_private(self) else self.interactions
         if n_classes > 2 or isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0:
+            del X_main # allow the garbage collector to dispose of X_main
             if not (isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0):
                 warn("Detected multiclass problem: forcing interactions to 0")
         else:
-
             bagged_seed = init_seed
             scores_train_bags = []
             scores_val_bags = []
@@ -881,7 +881,7 @@ class BaseEBM(BaseEstimator):
                 scores_val_bags.append(scores_val_local)
                 scores_local = None # allow the garbage collector to reclaim this
 
-            X_main = None # allow the garbage collector to dispose of X_main
+            del X_main # allow the garbage collector to dispose of X_main
 
             X_pair, pair_bin_counts = bin_python(X, 2, bins, feature_names_in,  feature_types_in)
 
@@ -977,6 +977,8 @@ class BaseEBM(BaseEstimator):
                 )
                 staged_fit_args_iter.append(parallel_params)
 
+            del X_pair # allow the garbage collector to dispose of X_pair
+
             results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
 
             only_models = []
@@ -989,9 +991,6 @@ class BaseEBM(BaseEstimator):
                 bagged_additive_terms.append(bags)
                 for model in only_models:
                     bags.append(model[term_idx])
-
-        X_main = None # allow the garbage collector to dispose of X_main
-        X_pair = None # allow the garbage collector to dispose of X_pair
 
         if is_private(self):
             # TODO: currently we're getting counts out of the binning code.  We need to instead return

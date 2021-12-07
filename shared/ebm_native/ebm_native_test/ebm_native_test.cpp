@@ -287,7 +287,7 @@ void TestApi::AddFeatureGroups(const std::vector<std::vector<size_t>> featureGro
       exit(1);
    }
 
-   for(const std::vector<size_t> oneFeatureGroup : featureGroups) {
+   for(const std::vector<size_t> & oneFeatureGroup : featureGroups) {
       m_featureGroupsDimensionCount.push_back(oneFeatureGroup.size());
       std::vector<size_t> countBins;
       for(const size_t oneIndex : oneFeatureGroup) {
@@ -317,7 +317,7 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
       const bool bNullWeights = samples[0].m_bNullWeight;
       m_bNullTrainingWeights = bNullWeights;
 
-      for(const TestSample oneSample : samples) {
+      for(const TestSample & oneSample : samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
@@ -455,7 +455,7 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
       const bool bNullWeights = samples[0].m_bNullWeight;
       m_bNullValidationWeights = bNullWeights;
 
-      for(const TestSample oneSample : samples) {
+      for(const TestSample & oneSample : samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
@@ -856,7 +856,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
       const bool bNullWeights = samples[0].m_bNullWeight;
       m_bNullInteractionWeights = bNullWeights;
 
-      for(const TestSample oneSample : samples) {
+      for(const TestSample & oneSample : samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
