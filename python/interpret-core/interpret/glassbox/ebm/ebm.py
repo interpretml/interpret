@@ -455,6 +455,7 @@ class BaseEBM(BaseEstimator):
 
         binning_result = construct_bins(
             X=X,
+            sample_weight=sample_weight,
             feature_names_given=self.feature_names, 
             feature_types_given=self.feature_types, 
             max_bins_leveled=bin_levels, 

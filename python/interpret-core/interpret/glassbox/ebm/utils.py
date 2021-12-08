@@ -716,7 +716,7 @@ class DPUtils:
         return root_scalar(f, bracket=[0, 500], method='brentq').root
 
     @staticmethod
-    def private_numeric_binning(col_data, noise_scale, max_bins, min_val, max_val):
+    def private_numeric_binning(col_data, sample_weight, noise_scale, max_bins, min_val, max_val):
         uniform_counts, uniform_edges = np.histogram(col_data, bins=max_bins*2, range=(min_val, max_val))
         noisy_counts = uniform_counts + np.random.normal(0, noise_scale, size=uniform_counts.shape[0])
         
@@ -746,7 +746,7 @@ class DPUtils:
         return bin_cuts, bin_counts
 
     @staticmethod
-    def private_categorical_binning(col_data, noise_scale, max_bins):
+    def private_categorical_binning(col_data, sample_weight, noise_scale, max_bins):
         # Initialize estimate
         col_data = col_data.astype('U')
         uniq_vals, counts = np.unique(col_data, return_counts=True)

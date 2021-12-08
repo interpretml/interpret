@@ -1503,6 +1503,16 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             _log.error(msg)
             raise ValueError(msg)
 
+        if sample_weight is not None:
+            sample_weight = clean_vector(sample_weight, False, "sample_weight")
+            if n_samples != len(sample_weight):
+                msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
+        else:
+            # TODO: eliminate this eventually
+            sample_weight = np.ones_like(y, dtype=np.float64)
+
         feature_names_in = unify_feature_names(X, self.feature_names, self.feature_types)
         n_features = len(feature_names_in)
 
@@ -1563,7 +1573,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     else:
                         min_val = bounds[0]
                         max_val = bounds[1]
-                    cuts, feature_bin_counts = DPUtils.private_numeric_binning(X_col, noise_scale, max_bins - 1, min_val, max_val)
+                    cuts, feature_bin_counts = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_val, max_val)
                     feature_bin_counts.append(0)
                     feature_bin_counts = np.array(feature_bin_counts, dtype=np.int64)
                 else:
@@ -1605,7 +1615,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         raise ValueError(msg)
 
                     # TODO: clean up this hack that uses strings of the indexes
-                    keep_bins, old_feature_bin_counts = DPUtils.private_categorical_binning(X_col, noise_scale, max_bins - 1)
+                    keep_bins, old_feature_bin_counts = DPUtils.private_categorical_binning(X_col, sample_weight, noise_scale, max_bins - 1)
                     unknown_count = 0
                     if keep_bins[-1] == 'DPOther':
                         unknown_count = old_feature_bin_counts[-1]
@@ -1758,6 +1768,7 @@ def deduplicate_bins(bins):
 
 def construct_bins(
     X,
+    sample_weight,
     feature_names_given, 
     feature_types_given, 
     max_bins_leveled, 
@@ -1781,7 +1792,7 @@ def construct_bins(
             delta, 
             privacy_schema
         )
-        preprocessor.fit(X)
+        preprocessor.fit(X, None, sample_weight)
         if is_mains:
             is_mains = False
             bins = preprocessor.bins_
