@@ -720,7 +720,8 @@ class DPUtils:
         uniform_weights, uniform_edges = np.histogram(col_data, bins=max_bins*2, range=(min_val, max_val), weights=sample_weight)
         noisy_weights = uniform_weights + np.random.normal(0, noise_scale, size=uniform_weights.shape[0])
         
-        # TODO: consider clipping to 0
+        # Postprocess to ensure realistic bin values (min=0)
+        noisy_weights = np.clip(noisy_weights, 0, None)
 
         # TODO PK: check with Harsha, but we can probably alternate the taking of nibbles from both ends
         # so that the larger leftover bin tends to be in the center rather than on the right.
@@ -761,7 +762,8 @@ class DPUtils:
 
         weights = weights + np.random.normal(0, noise_scale, size=weights.shape[0])
 
-        # TODO: consider clipping to 0
+        # Postprocess to ensure realistic bin values (min=0)
+        weights = np.clip(weights, 0, None)
 
         # Collapse bins until target_weight is achieved.
         target_weight = np.sum(sample_weight) / max_bins
