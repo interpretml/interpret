@@ -1460,7 +1460,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", min_samples_bin=1, 
-        min_unique_continuous=3, epsilon=None, delta=None, privacy_schema=None
+        min_unique_continuous=3, epsilon=None, delta=None, composition=None, privacy_schema=None
     ):
         """ Initializes EBM preprocessor.
 
@@ -1483,6 +1483,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.min_unique_continuous = min_unique_continuous
         self.epsilon = epsilon
         self.delta = delta
+        self.composition = composition
         self.privacy_schema = privacy_schema
 
     def fit(self, X, y=None, sample_weight=None):
@@ -1519,11 +1520,21 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         noise_scale = None # only applicable for private binning
         if self.binning == 'private':
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
-            noise_scale = DPUtils.calc_gdp_noise_multi(
-                total_queries = n_features, 
-                target_epsilon = self.epsilon, 
-                delta = self.delta
-            ) * np.max(sample_weight) # Alg Line 17"
+            if self.composition == 'classic':
+                noise_scale = DPUtils.calc_classic_noise_multi(
+                    total_queries = n_features, 
+                    target_epsilon = self.epsilon, 
+                    delta = self.delta, 
+                    sensitivity = np.max(sample_weight)
+                )
+            elif self.composition == 'gdp':
+                noise_scale = DPUtils.calc_gdp_noise_multi(
+                    total_queries = n_features, 
+                    target_epsilon = self.epsilon, 
+                    delta = self.delta
+                ) * np.max(sample_weight) # Alg Line 17"
+            else:
+                raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
 
         feature_types_in = _none_list * n_features
         bins = _none_list * n_features
@@ -1777,6 +1788,7 @@ def construct_bins(
     min_unique_continuous=3, 
     epsilon=None, 
     delta=None, 
+    composition=None, 
     privacy_schema=None,
 ):
     is_mains = True
@@ -1790,6 +1802,7 @@ def construct_bins(
             min_unique_continuous, 
             epsilon, 
             delta, 
+            composition, 
             privacy_schema
         )
         preprocessor.fit(X, None, sample_weight)

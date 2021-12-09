@@ -421,6 +421,7 @@ class BaseEBM(BaseEstimator):
         noise_scale = None
         bin_eps_ = None
         bin_delta_ = None
+        composition=None
         if is_private(self):
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
 
@@ -444,7 +445,7 @@ class BaseEBM(BaseEstimator):
             training_eps_ = self.epsilon - bin_eps_
             bin_delta_ = self.delta / 2
             training_delta_ = self.delta / 2
-
+            composition=self.composition
 
         if is_private(self):
             # TODO: remove the + 1 for max_bins and max_interaction_bins.  It's just here to compare to the previous results!
@@ -464,6 +465,7 @@ class BaseEBM(BaseEstimator):
             min_unique_continuous=3, 
             epsilon=bin_eps_, 
             delta=bin_delta_, 
+            composition=composition,
             privacy_schema=getattr(self, 'privacy_schema', None)
         )
         feature_names_in = binning_result[0]
