@@ -856,7 +856,7 @@ class BaseEBM(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        mod_counts = remove_last2(self.bin_weights_ if self.bin_counts_ is None else self.bin_counts_, self.bin_weights_)
+        mod_counts = remove_last2(getattr(self, 'bin_counts_', self.bin_weights_), self.bin_weights_)
         mod_additive_terms = remove_last2(self.additive_terms_, self.bin_weights_)
         mod_term_standard_deviations = remove_last2(self.term_standard_deviations_, self.bin_weights_)
         for feature_group_idx, feature_group in enumerate(self.feature_groups_):
