@@ -543,7 +543,7 @@ class EBMUtils:
         random_state,
         name,
         noise_scale,
-        bin_counts,
+        bin_weights,
         optional_temp_params=None,
     ):
         min_metric = np.inf
@@ -599,9 +599,9 @@ class EBMUtils:
                             noisy_update_tensor[f:s] = model_update_tensor[f:s] + noise
 
                             # Native code will be returning sums of residuals in slices, not averages.
-                            # Compute noisy average by dividing noisy sum by noisy histogram counts
-                            instance_count = np.sum(bin_counts[feature_group_index][f:s])
-                            noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_count
+                            # Compute noisy average by dividing noisy sum by noisy bin weights
+                            instance_weight = np.sum(bin_weights[feature_group_index][f:s])
+                            noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_weight
 
                         noisy_update_tensor = noisy_update_tensor * -1 # Invert gradients before updates
                         booster.set_model_update_expanded(feature_group_index, noisy_update_tensor)

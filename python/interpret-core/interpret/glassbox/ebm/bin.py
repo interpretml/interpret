@@ -1,6 +1,7 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+import math
 from collections import Counter
 from itertools import count, repeat, groupby
 from warnings import warn
@@ -1510,6 +1511,13 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
                 raise ValueError(msg)
+
+            min_weight = sample_weight.min() # NaN values are guaranteed to be the min if they exist
+            # TODO: for now weights of zero are illegal, but in the future accept them
+            if math.isnan(min_weight) or min_weight <= 0 or math.isinf(sample_weight.max()):
+                msg = "illegal sample_weight value"
+                _log.error(msg)
+                raise ValueError(msg)
         else:
             # TODO: eliminate this eventually
             sample_weight = np.ones_like(y, dtype=np.float64)
@@ -1538,7 +1546,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         feature_types_in = _none_list * n_features
         bins = _none_list * n_features
-        bin_counts = _none_list * n_features
+        bin_weights = _none_list * n_features
         min_vals = np.full(n_features, np.nan, dtype=np.float64)
         max_vals = np.full(n_features, np.nan, dtype=np.float64)
         histogram_cuts = _none_list * n_features
@@ -1584,17 +1592,17 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     else:
                         min_val = bounds[0]
                         max_val = bounds[1]
-                    cuts, feature_bin_counts = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_val, max_val)
-                    feature_bin_counts.append(0)
-                    feature_bin_counts = np.array(feature_bin_counts, dtype=np.int64)
+                    cuts, feature_bin_weights = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_val, max_val)
+                    feature_bin_weights.append(0)
+                    feature_bin_weights = np.array(feature_bin_weights, dtype=np.float64)
                 else:
                     min_val = np.nanmin(X_col)
                     max_val = np.nanmax(X_col)
                     feature_type_given = None if self.feature_types is None else self.feature_types[feature_idx]
                     cuts = _cut_continuous(native, X_col, feature_type_given, self.binning, max_bins, self.min_samples_bin)
                     discretized = native.discretize(X_col, cuts)
-                    feature_bin_counts = np.bincount(discretized, minlength=len(cuts) + 3)
-                    feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
+                    feature_bin_weights = np.bincount(discretized, weights=sample_weight, minlength=len(cuts) + 3)
+                    feature_bin_weights = feature_bin_weights.astype(np.float64, copy=False)
 
                     n_cuts = native.get_histogram_cut_count(X_col)
                     feature_histogram_cuts = native.cut_uniform(X_col, n_cuts)
@@ -1626,19 +1634,19 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         raise ValueError(msg)
 
                     # TODO: clean up this hack that uses strings of the indexes
-                    keep_bins, old_feature_bin_counts = DPUtils.private_categorical_binning(X_col, sample_weight, noise_scale, max_bins - 1)
-                    unknown_count = 0
+                    keep_bins, old_feature_bin_weights = DPUtils.private_categorical_binning(X_col, sample_weight, noise_scale, max_bins - 1)
+                    unknown_weight = 0
                     if keep_bins[-1] == 'DPOther':
-                        unknown_count = old_feature_bin_counts[-1]
+                        unknown_weight = old_feature_bin_weights[-1]
                         keep_bins = keep_bins[:-1]
-                        old_feature_bin_counts = old_feature_bin_counts[:-1]
+                        old_feature_bin_weights = old_feature_bin_weights[:-1]
 
                     keep_bins = keep_bins.astype(np.int64)
-                    keep_bins = dict(zip(keep_bins, old_feature_bin_counts))
+                    keep_bins = dict(zip(keep_bins, old_feature_bin_weights))
 
-                    feature_bin_counts = np.empty(len(keep_bins) + 2, dtype=np.int64)
-                    feature_bin_counts[0] = 0
-                    feature_bin_counts[-1] = unknown_count
+                    feature_bin_weights = np.empty(len(keep_bins) + 2, dtype=np.float64)
+                    feature_bin_weights[0] = 0
+                    feature_bin_weights[-1] = unknown_weight
 
                     categories = list(map(tuple, map(reversed, categories.items())))
                     categories.sort() # groupby requires sorted data
@@ -1646,9 +1654,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     new_categories = {}
                     new_idx = 1
                     for idx, category_iter in groupby(categories, lambda x: x[0]):
-                        bin_count = keep_bins.get(idx, None)
-                        if bin_count is not None:
-                            feature_bin_counts.itemset(new_idx, bin_count)
+                        bin_weight = keep_bins.get(idx, None)
+                        if bin_weight is not None:
+                            feature_bin_weights.itemset(new_idx, bin_weight)
                             for _, category in category_iter:
                                 new_categories[category] = new_idx
                             new_idx += 1
@@ -1656,8 +1664,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     categories = new_categories
                 else:
                     n_unique_indexes = 0 if len(categories) == 0 else max(categories.values())
-                    feature_bin_counts = np.bincount(X_col, minlength=n_unique_indexes + 2)
-                    feature_bin_counts = feature_bin_counts.astype(np.int64, copy=False)
+                    feature_bin_weights = np.bincount(X_col, weights=sample_weight, minlength=n_unique_indexes + 2)
+                    feature_bin_weights = feature_bin_weights.astype(np.float64, copy=False)
                     unique_counts.itemset(feature_idx, len(categories))
                     zero_indexes = _none_list * n_unique_indexes
                     for category, idx in categories.items():
@@ -1675,7 +1683,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     zero_counts.itemset(feature_idx, n_zeros)
 
                 bins[feature_idx] = categories
-            bin_counts[feature_idx] = feature_bin_counts
+            bin_weights[feature_idx] = feature_bin_weights
 
         if is_privacy_warning:
             warn("Possible privacy violation: assuming min/max values per feature are public info. "
@@ -1684,7 +1692,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.feature_names_in_ = feature_names_in
         self.feature_types_in_ = feature_types_in
         self.bins_ = bins
-        self.bin_counts_ = bin_counts
+        self.bin_weights_ = bin_weights
+        self.noise_scale_ = noise_scale
         self.min_vals_ = min_vals
         self.max_vals_ = max_vals
         self.histogram_cuts_ = histogram_cuts
@@ -1814,7 +1823,7 @@ def construct_bins(
 
             feature_names_in = preprocessor.feature_names_in_
             feature_types_in = preprocessor.feature_types_in_
-            bin_counts = preprocessor.bin_counts_
+            bin_weights = preprocessor.bin_weights_
             min_vals = preprocessor.min_vals_
             max_vals = preprocessor.max_vals_
             histogram_cuts = preprocessor.histogram_cuts_
@@ -1831,7 +1840,7 @@ def construct_bins(
                 bin_levels.append(feature_bins)
 
     deduplicate_bins(bins)
-    return feature_names_in, feature_types_in, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts, unique_counts, zero_counts
+    return feature_names_in, feature_types_in, bins, bin_weights, min_vals, max_vals, histogram_cuts, histogram_counts, unique_counts, zero_counts
 
 def bin_python(
     X,
@@ -2366,68 +2375,55 @@ def zero_tensor(tensor, zero_low=None, zero_high=None):
                 dim_slices[dimension_idx] = -1
                 tensor[tuple(dim_slices)] = 0
 
-def make_boosting_counts(term_bin_counts):
-    # TODO: replace this function with a bool array that we generate in bin_native
-    bin_data_counts = []
-    for term_counts in term_bin_counts:
-        if term_counts[-1] == 0:
-            bin_data_counts.append(term_counts[:-1])
+def make_boosting_weights(term_bin_weights):
+    # TODO: replace this function with a bool array that we generate in bin_native.. this function will crash
+    # if there are samples with zero weights
+    bin_data_weights = []
+    for term_weights in term_bin_weights:
+        if term_weights[-1] == 0:
+            bin_data_weights.append(term_weights[:-1])
         else:
-            bin_data_counts.append(term_counts)
-    return bin_data_counts
+            bin_data_weights.append(term_weights)
+    return bin_data_weights
 
-def restore_missing_value_zeros(feature_groups, tensors, feature_bin_counts):
-    # TODO: DELETE this function once the memory stuff is in.  Replace it with restore_missing_value_zeros2
-    for feature_group_idx, feature_group in enumerate(feature_groups):
-        zero_low = [feature_bin_counts[feature_idx][0] == 0 for feature_idx in feature_group]
-        zero_tensor(tensors[feature_group_idx], zero_low)
-
-def restore_missing_value_zeros2(tensors, term_bin_counts):
-    for tensor, counts in zip(tensors, term_bin_counts):
-        n_dimensions = counts.ndim
+def restore_missing_value_zeros2(tensors, term_bin_weights):
+    for tensor, weights in zip(tensors, term_bin_weights):
+        n_dimensions = weights.ndim
         entire_tensor = [slice(None)] * n_dimensions
         lower = []
         higher = []
         for dimension_idx in range(n_dimensions):
             dim_slices = entire_tensor.copy()
             dim_slices[dimension_idx] = 0
-            total_sum = np.sum(counts[tuple(dim_slices)])
+            total_sum = np.sum(weights[tuple(dim_slices)])
             lower.append(True if total_sum == 0 else False)
             dim_slices[dimension_idx] = -1
-            total_sum = np.sum(counts[tuple(dim_slices)])
+            total_sum = np.sum(weights[tuple(dim_slices)])
             higher.append(True if total_sum == 0 else False)
         zero_tensor(tensor, lower, higher)
 
-def after_boosting(feature_groups, tensors, feature_bin_counts):
+def after_boosting(feature_groups, tensors, feature_bin_weights):
     # TODO: this isn't a problem today since any unnamed categories in the mains and the pairs are the same
     #       (they don't exist in the pairs today at all since DP-EBMs aren't pair enabled yet and we haven't
     #       made the option for them in regular EBMs), but when we eventually go that way then we'll
-    #       need to examine the tensored term based bin counts to see what to do.  Alternatively, we could
+    #       need to examine the tensored term based bin weights to see what to do.  Alternatively, we could
     #       obtain this information from bin_native which would be cleaner since we only need it during boosting
     new_tensors=[]
     for feature_group_idx, feature_group in enumerate(feature_groups):
-        higher = [feature_bin_counts[feature_idx][-1] == 0 for feature_idx in feature_group]
+        higher = [feature_bin_weights[feature_idx][-1] == 0 for feature_idx in feature_group]
         new_tensors.append(append_tensor(tensors[feature_group_idx], None, higher))
     return new_tensors
 
-def remove_last(feature_groups, tensors, feature_bin_counts):
-    # TODO: remove this.  It's only used during testing.  We should use remove_last2 instead
+def remove_last2(tensors, term_bin_weights):
     new_tensors=[]
-    for feature_group_idx, feature_group in enumerate(feature_groups):
-        higher = [feature_bin_counts[feature_idx][-1] == 0 for feature_idx in feature_group]
-        new_tensors.append(trim_tensor(tensors[feature_group_idx], None, higher))
-    return new_tensors
-
-def remove_last2(tensors, term_bin_counts):
-    new_tensors=[]
-    for idx, tensor, counts in zip(count(), tensors, term_bin_counts):
-        n_dimensions = counts.ndim
+    for idx, tensor, weights in zip(count(), tensors, term_bin_weights):
+        n_dimensions = weights.ndim
         entire_tensor = [slice(None)] * n_dimensions
         higher = []
         for dimension_idx in range(n_dimensions):
             dim_slices = entire_tensor.copy()
             dim_slices[dimension_idx] = -1
-            total_sum = np.sum(counts[tuple(dim_slices)])
+            total_sum = np.sum(weights[tuple(dim_slices)])
             higher.append(True if total_sum == 0 else False)
         new_tensors.append(trim_tensor(tensor, None, higher))
     return new_tensors

@@ -2170,7 +2170,7 @@ def test_bin_native():
     y = np.array(["a", 99, 99, "b"])
     sample_weight = np.array([0.5, 1.1, 0.1, 0.5])
 
-    feature_names_in, feature_types_in, bins, bin_counts, min_vals, max_vals, histogram_cuts, histogram_counts, unique_counts, zero_counts = construct_bins(
+    feature_names_in, feature_types_in, bins, bin_weights, min_vals, max_vals, histogram_cuts, histogram_counts, unique_counts, zero_counts = construct_bins(
         X,
         sample_weight,
         feature_names_given, 
@@ -2180,7 +2180,7 @@ def test_bin_native():
     assert(feature_names_in is not None)
     assert(feature_types_in is not None)
     assert(bins is not None)
-    assert(bin_counts is not None)
+    assert(bin_weights is not None)
     assert(min_vals is not None)
     assert(max_vals is not None)
     assert(histogram_cuts is not None)

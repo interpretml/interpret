@@ -7,7 +7,7 @@ from typing import DefaultDict
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import DPUtils, EBMUtils
-from .bin import clean_X, clean_vector, construct_bins, bin_python, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_counts, restore_missing_value_zeros, restore_missing_value_zeros2, after_boosting, remove_last, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
+from .bin import clean_X, clean_vector, construct_bins, bin_python, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, restore_missing_value_zeros2, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
 from .internal import Native
 from .postprocessing import multiclass_postprocess2
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -147,7 +147,7 @@ def _parallel_cyclic_gradient_boost(
     max_rounds,
     random_state,
     noise_scale,
-    bin_counts,
+    bin_weights,
 ):
     _log.info("Splitting train/test")
 
@@ -191,7 +191,7 @@ def _parallel_cyclic_gradient_boost(
         random_state=random_state,
         name="Boost",
         noise_scale=noise_scale,
-        bin_counts=bin_counts,
+        bin_weights=bin_weights,
     )
     return model_update, episode_idx
 
@@ -471,7 +471,7 @@ class BaseEBM(BaseEstimator):
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
         bins = binning_result[2]
-        term_bin_counts = binning_result[3]
+        term_bin_weights = binning_result[3]
         min_vals = binning_result[4]
         max_vals = binning_result[5]
         histogram_cuts = binning_result[6]
@@ -504,7 +504,7 @@ class BaseEBM(BaseEstimator):
 
         X_main, main_bin_counts = bin_python(X, 1, bins, feature_names_in,  feature_types_in)
 
-        bin_data_counts = make_boosting_counts(term_bin_counts)
+        bin_data_weights = make_boosting_weights(term_bin_weights)
 
         native = Native.get_native_singleton()
 
@@ -575,7 +575,7 @@ class BaseEBM(BaseEstimator):
                 self.max_rounds,
                 bagged_seed,
                 noise_scale,
-                bin_data_counts,
+                bin_data_weights,
             )
             train_model_args_iter.append(parallel_params)
 
@@ -584,7 +584,7 @@ class BaseEBM(BaseEstimator):
         breakpoint_iteration = []
         only_models = []
         for model, bag_breakpoint_iteration in results:
-            only_models.append(after_boosting(feature_groups, model, term_bin_counts))
+            only_models.append(after_boosting(feature_groups, model, term_bin_weights))
             breakpoint_iteration.append(bag_breakpoint_iteration)
 
         bagged_additive_terms = []
@@ -714,7 +714,7 @@ class BaseEBM(BaseEstimator):
                     self.max_rounds, 
                     bagged_seed, 
                     noise_scale, 
-                    bin_data_counts, 
+                    bin_data_weights, 
                 )
                 staged_fit_args_iter.append(parallel_params)
 
@@ -725,7 +725,7 @@ class BaseEBM(BaseEstimator):
             only_models = []
             for model, bag_breakpoint_iteration in results:
                 breakpoint_iteration.append(bag_breakpoint_iteration)
-                only_models.append(after_boosting(pair_indices, model, term_bin_counts))
+                only_models.append(after_boosting(pair_indices, model, term_bin_weights))
 
             for term_idx in range(len(pair_indices)):
                 bags = []
@@ -734,13 +734,10 @@ class BaseEBM(BaseEstimator):
                     bags.append(model[term_idx])
 
         if is_private(self):
-            # TODO: currently we're getting counts out of the binning code.  We need to instead return
-            #       term_bin_weights and then this code will be correct.
-            bin_counts = None
             bin_weights = [None] * len(feature_groups)
             for feature_group_idx, feature_group in enumerate(feature_groups):
                 feature_idx = feature_group[0] # for now we only support mains for DP models
-                bin_weights[feature_group_idx] = term_bin_counts[feature_idx]
+                bin_weights[feature_group_idx] = term_bin_weights[feature_idx]
         else:
             bin_counts, bin_weights = get_counts_and_weights(X, sample_weight, feature_names_in, feature_types_in, bins, feature_groups)
 
@@ -772,13 +769,10 @@ class BaseEBM(BaseEstimator):
 
         feature_importances = []
         for i in range(len(feature_groups)):
-            # TODO: change this to use bin_weights ALWAYS after we're done comparing/testing this
-            avg_bins_weights = bin_weights if bin_counts is None else bin_counts
-
             mean_abs_score = np.abs(additive_terms[i])
             if 2 < n_classes:
                 mean_abs_score = np.average(mean_abs_score, axis=mean_abs_score.ndim - 1)
-            mean_abs_score = np.average(mean_abs_score, weights=avg_bins_weights[i])
+            mean_abs_score = np.average(mean_abs_score, weights=bin_weights[i])
             feature_importances.append(mean_abs_score)
 
         # using numpy operations can change this to np.float64, but scikit-learn uses a float for regression
@@ -789,10 +783,11 @@ class BaseEBM(BaseEstimator):
             # TODO: check with Harsha that these need to be preserved, or if other properties should be as well
             # TODO: consider recording 'min_target' and 'max_target' in all models, not just DP and remove the domain_size
             self.domain_size_ = domain_size
-            # TODO: make noise_scale a property?  We can re-calculate it after fitting since we need to know n_features_in_
-            # we could make an internal function to calcualte it and pass it n_features_in_ after we've been fit
-            # but also use it here to calculate the noise_scale
             self.noise_scale_ = noise_scale
+        else:
+            # we accept sample_weight for DP, so we get bin_weights as a result.  It would cost additional 
+            # privacy budget to also get the bin counts, so we'll live with just the weights for DP
+            self.bin_counts_ = bin_counts
         if 0 <= n_classes:
             self.classes_ = classes # required by scikit-learn
             self._class_idx_ = class_idx
@@ -801,7 +796,6 @@ class BaseEBM(BaseEstimator):
         self.feature_names_in_ = feature_names_in
         self.feature_types_in_ = feature_types_in
         self.bins_ = bins
-        self.bin_counts_ = bin_counts
         self.bin_weights_ = bin_weights
         self.min_vals_ = min_vals
         self.max_vals_ = max_vals
