@@ -756,14 +756,6 @@ class BaseEBM(BaseEstimator):
         restore_missing_value_zeros2(additive_terms, bin_weights)
         restore_missing_value_zeros2(term_standard_deviations, bin_weights)
 
-        feature_importances = []
-        for i in range(len(feature_groups)):
-            mean_abs_score = np.abs(additive_terms[i])
-            if 2 < n_classes:
-                mean_abs_score = np.average(mean_abs_score, axis=mean_abs_score.ndim - 1)
-            mean_abs_score = np.average(mean_abs_score, weights=bin_weights[i])
-            feature_importances.append(mean_abs_score)
-
         # using numpy operations can change this to np.float64, but scikit-learn uses a float for regression
         if not is_classifier(self):
             intercept = float(intercept)
@@ -786,7 +778,7 @@ class BaseEBM(BaseEstimator):
             self.min_target_ = min_target
             self.max_target_ = max_target
         self.n_features_in_ = n_features_in # required by scikit-learn
-        self.feature_names_in_ = feature_names_in
+        self.feature_names_in_ = feature_names_in # scikit-learn specified name
         self.feature_types_in_ = feature_types_in
         self.bins_ = bins
         self.bin_weights_ = bin_weights
@@ -796,7 +788,6 @@ class BaseEBM(BaseEstimator):
         self.additive_terms_ = additive_terms
         self.intercept_ = intercept
         self.term_standard_deviations_ = term_standard_deviations
-        self.feature_importances_ = feature_importances
         self.feature_groups_ = feature_groups
         self.breakpoint_iteration_ = breakpoint_iteration
         self.has_fitted_ = True
@@ -1154,6 +1145,16 @@ class BaseEBM(BaseEstimator):
             selector=selector,
         )
 
+    @property
+    def feature_importances_(self):
+        feature_importances = []
+        for i in range(len(self.feature_groups_)):
+            mean_abs_score = np.abs(self.additive_terms_[i])
+            if is_classifier(self) and 2 < len(self.classes_):
+                mean_abs_score = np.average(mean_abs_score, axis=mean_abs_score.ndim - 1)
+            mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
+            feature_importances.append(mean_abs_score)
+        return feature_importances
 
     @property
     def term_names_(self):
