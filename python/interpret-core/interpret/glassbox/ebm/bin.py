@@ -1523,7 +1523,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 total_queries = n_features, 
                 target_epsilon = self.epsilon, 
                 delta = self.delta
-            )
+            ) * np.max(sample_weight) # Alg Line 17"
 
         feature_types_in = _none_list * n_features
         bins = _none_list * n_features

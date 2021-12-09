@@ -717,69 +717,84 @@ class DPUtils:
 
     @staticmethod
     def private_numeric_binning(col_data, sample_weight, noise_scale, max_bins, min_val, max_val):
-        uniform_counts, uniform_edges = np.histogram(col_data, bins=max_bins*2, range=(min_val, max_val))
-        noisy_counts = uniform_counts + np.random.normal(0, noise_scale, size=uniform_counts.shape[0])
+        uniform_weights, uniform_edges = np.histogram(col_data, bins=max_bins*2, range=(min_val, max_val), weights=sample_weight)
+        noisy_weights = uniform_weights + np.random.normal(0, noise_scale, size=uniform_weights.shape[0])
         
-        # Postprocess to ensure realistic bin values (integers, min=1)
-        noisy_counts = np.clip(np.round(noisy_counts), 1, None)
+        # TODO: consider clipping to 0
 
         # TODO PK: check with Harsha, but we can probably alternate the taking of nibbles from both ends
         # so that the larger leftover bin tends to be in the center rather than on the right.
 
-        # Greedily collapse bins until they meet or exceed target_count threshold
-        target_count = col_data.shape[0] / max_bins
-        bin_counts, bin_cuts = [0], [uniform_edges[0]]
-        curr_count = 0
+        # Greedily collapse bins until they meet or exceed target_weight threshold
+        target_weight = np.sum(sample_weight) / max_bins
+        bin_weights, bin_cuts = [0], [uniform_edges[0]]
+        curr_weight = 0
         for index, right_edge in enumerate(uniform_edges[1:]):
-            curr_count += noisy_counts[index]
-            if curr_count >= target_count:
+            curr_weight += noisy_weights[index]
+            if curr_weight >= target_weight:
                 bin_cuts.append(right_edge)
-                bin_counts.append(curr_count)
-                curr_count = 0
+                bin_weights.append(curr_weight)
+                curr_weight = 0
 
-        # Ignore min/max value as part of cut definition
-        bin_cuts = np.array(bin_cuts)[1:-1] 
+        if len(bin_weights) == 1:
+            # since we're adding unbounded random noise, it's possible that the total weight is less than the
+            # threshold required for a single bin.  It could in theory even be negative.
+            # clip to the target_weight.  If we had more than the target weight we'd have a bin
 
-        # All leftover datapoints get collapsed into final bin
-        bin_counts[-1] += curr_count
+            bin_weights.append(target_weight)
+            bin_cuts = np.empty(0, dtype=np.float64)
+        else:
+            # Ignore min/max value as part of cut definition
+            bin_cuts = np.array(bin_cuts, dtype=np.float64)[1:-1]
 
-        return bin_cuts, bin_counts
+            # All leftover datapoints get collapsed into final bin
+            bin_weights[-1] += curr_weight
+
+        return bin_cuts, bin_weights
 
     @staticmethod
     def private_categorical_binning(col_data, sample_weight, noise_scale, max_bins):
         # Initialize estimate
         col_data = col_data.astype('U')
-        uniq_vals, counts = np.unique(col_data, return_counts=True)
+        uniq_vals, uniq_idxs = np.unique(col_data, return_inverse=True)
+        weights = np.bincount(uniq_idxs, weights=sample_weight, minlength=len(uniq_vals))
 
-        counts = counts + np.random.normal(0, noise_scale, size=counts.shape[0])
-        counts = np.clip(np.round(counts), 1, None) # Postprocessing: Clip and round counts to be realistic (positive ints)
+        weights = weights + np.random.normal(0, noise_scale, size=weights.shape[0])
 
-        # Collapse bins until target_size is achieved.
-        target_count = col_data.shape[0] / max_bins
-        small_bins = np.where(counts < target_count)[0]
+        # TODO: consider clipping to 0
+
+        # Collapse bins until target_weight is achieved.
+        target_weight = np.sum(sample_weight) / max_bins
+        small_bins = np.where(weights < target_weight)[0]
         if len(small_bins) > 0:
-            other_count = np.sum(counts[small_bins])
-            mask = np.ones(counts.shape, dtype=bool)
+            other_weight = np.sum(weights[small_bins])
+            mask = np.ones(weights.shape, dtype=bool)
             mask[small_bins] = False
 
             # Collapse all small bins into "DPOther"
             uniq_vals = np.append(uniq_vals[mask], "DPOther")
-            counts = np.append(counts[mask], other_count)
+            weights = np.append(weights[mask], other_weight)
 
-            # # If "DPOther" bin is too small, absorb 1 more bin (guaranteed above threshold)
-            if other_count < target_count:                               
-                collapse_bin = np.argmin(counts[:-1])
-                mask = np.ones(counts.shape, dtype=bool)
-                mask[collapse_bin] = False
+            if other_weight < target_weight:
+                if len(weights) == 1:
+                    # since we're adding unbounded random noise, it's possible that the total weight is less than the
+                    # threshold required for a single bin.  It could in theory even be negative.
+                    # clip to the target_weight
+                    weights[0] = target_weight
+                else:
+                    # If "DPOther" bin is too small, absorb 1 more bin (guaranteed above threshold)
+                    collapse_bin = np.argmin(weights[:-1])
+                    mask = np.ones(weights.shape, dtype=bool)
+                    mask[collapse_bin] = False
 
-                # Pack data into the final "DPOther" bin
-                counts[-1] += counts[collapse_bin]
+                    # Pack data into the final "DPOther" bin
+                    weights[-1] += weights[collapse_bin]
 
-                # Delete absorbed bin
-                uniq_vals = uniq_vals[mask]
-                counts = counts[mask]
+                    # Delete absorbed bin
+                    uniq_vals = uniq_vals[mask]
+                    weights = weights[mask]
 
-        return uniq_vals, counts
+        return uniq_vals, weights
 
     @staticmethod
     def build_privacy_schema(X, y=None):
