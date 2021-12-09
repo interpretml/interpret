@@ -117,7 +117,7 @@ def gen_global_selector2(n_samples, n_features, term_names, term_types, unique_c
         feature_type = term_types[term_idx]
         record["Type"] = 'categorical' if feature_type == 'nominal' or feature_type == 'ordinal' else feature_type
 
-        if term_idx < n_features:
+        if term_idx < n_features and n_samples is not None:
             record["# Unique"] = unique_counts[term_idx]
             record["% Non-zero"] = (n_samples - zero_counts[term_idx]) / n_samples
         else:

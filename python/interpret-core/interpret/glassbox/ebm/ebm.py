@@ -772,15 +772,19 @@ class BaseEBM(BaseEstimator):
             self.noise_scale_ = noise_scale
         else:
             # we accept sample_weight for DP, so we get bin_weights as a result.  It would cost additional 
-            # privacy budget to also get the bin counts, so we'll live with just the weights for DP
+            # privacy budget to also get the bin counts, so we'll live with just the bin weights for DP
             self.bin_counts_ = bin_counts
+            self.n_samples_ = n_samples # don't pay the small privacy budget to get this
+            self.histogram_cuts_ = histogram_cuts
+            self.histogram_counts_ = histogram_counts
+            self.unique_counts_ = unique_counts
+            self.zero_counts_ = zero_counts
         if 0 <= n_classes:
             self.classes_ = classes # required by scikit-learn
             self._class_idx_ = class_idx
         else:
             self.min_target_ = min_target
             self.max_target_ = max_target
-        self.n_samples_ = n_samples
         self.n_features_in_ = n_features_in # required by scikit-learn
         self.feature_names_in_ = feature_names_in
         self.feature_types_in_ = feature_types_in
@@ -788,10 +792,6 @@ class BaseEBM(BaseEstimator):
         self.bin_weights_ = bin_weights
         self.min_vals_ = min_vals
         self.max_vals_ = max_vals
-        self.histogram_cuts_ = histogram_cuts
-        self.histogram_counts_ = histogram_counts
-        self.unique_counts_ = unique_counts
-        self.zero_counts_ = zero_counts
         self.bagged_additive_terms_ = bagged_additive_terms
         self.additive_terms_ = additive_terms
         self.intercept_ = intercept
@@ -1015,7 +1015,7 @@ class BaseEBM(BaseEstimator):
             feature_names=self.term_names_,
             feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_],
             name=name,
-            selector=gen_global_selector2(self.n_samples_, self.n_features_in_, self.term_names_, ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_], self.unique_counts_, self.zero_counts_),
+            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, self.term_names_, ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_], getattr(self, 'unique_counts_', None), getattr(self, 'zero_counts_', None)),
         )
 
     def explain_local(self, X, y=None, name=None):
