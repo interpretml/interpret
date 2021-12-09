@@ -799,19 +799,6 @@ class DPUtils:
         return uniq_vals, weights
 
     @staticmethod
-    def build_privacy_schema(X, y=None):
-        privacy_schema = {}
-        for index in range(X.shape[1]):
-            min_val, max_val = (np.min(X[:, index]), np.max(X[:, index]))
-            if isinstance(min_val, numbers.Number) and isinstance(max_val, numbers.Number):
-                privacy_schema[index] = (min_val, max_val)
-
-        if y is not None:
-            privacy_schema['target'] = (np.min(y), np.max(y))
-
-        return privacy_schema
-
-    @staticmethod
     def validate_eps_delta(eps, delta):
         if eps is None or eps <= 0 or delta is None or delta <= 0:
             raise ValueError(f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers")

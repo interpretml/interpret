@@ -380,8 +380,6 @@ class BaseEBM(BaseEstimator):
             Itself.
         """
 
-
-
         X, n_samples = clean_X(X)
         if n_samples <= 0:
             msg = "X has no samples to train on"
@@ -394,9 +392,23 @@ class BaseEBM(BaseEstimator):
             # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
+
+            n_classes = len(classes)
+            if n_classes > 2:  # pragma: no cover
+                warn("Multiclass is still experimental. Subject to change per release.")
+
+            model_type = "classification"
+            class_idx = {x: index for index, x in enumerate(classes)}
+            intercept = np.zeros(
+                Native.get_count_scores_c(n_classes), dtype=np.float64, order="C",
+            )
         else:
             y = clean_vector(y, False, "y")
-            classes = None
+            min_target = y.min()
+            max_target = y.max()
+            model_type = "regression"
+            n_classes = -1
+            intercept = 0.0
 
         if n_samples != len(y):
             msg = f"X has {n_samples} samples and y has {len(y)} samples"
@@ -413,10 +425,6 @@ class BaseEBM(BaseEstimator):
             # TODO: eliminate this eventually
             sample_weight = np.ones_like(y, dtype=np.float64)
 
-
-
-
-
         # Privacy calculations
         noise_scale = None
         bin_eps_ = None
@@ -425,20 +433,18 @@ class BaseEBM(BaseEstimator):
         if is_private(self):
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
 
-            bounds = None if self.privacy_schema is None else self.privacy_schema.get('target', None)
-            if bounds is None:
-                # TODO: check with Harsha how domain_size should be handled for classification
+            if not is_classifier(self):
+                bounds = None if self.privacy_schema is None else self.privacy_schema.get('target', None)
+                if bounds is None:
+                    warn("Possible privacy violation: assuming min/max values for target are public info."
+                            "Pass a privacy schema with known public target ranges to avoid this warning.")
+                else:
+                    min_target = bounds[0]
+                    max_target = bounds[1]
+                    if max_target < min_target:
+                        raise ValueError(f"target minimum {min_target} must be smaller than maximum {max_target}")
 
-                warn("Possible privacy violation: assuming min/max values for target are public info."
-                     "Pass a privacy schema with known public target ranges to avoid this warning.")
-
-                domain_size = y.max() - y.min()
-            else:
-                min_target = bounds[0]
-                max_target = bounds[1]
-                if max_target < min_target:
-                    raise ValueError(f"target minimum {min_target} must be smaller than maximum {max_target}")
-                domain_size = max_target - min_target
+                    y = np.clip(y, min_target, max_target)
 
             # Split epsilon, delta budget for binning and learning
             bin_eps_ = self.epsilon * self.bin_budget_frac
@@ -447,7 +453,6 @@ class BaseEBM(BaseEstimator):
             training_delta_ = self.delta / 2
             composition=self.composition
 
-        if is_private(self):
             # TODO: remove the + 1 for max_bins and max_interaction_bins.  It's just here to compare to the previous results!
             bin_levels = [self.max_bins + 1]
         else:
@@ -483,6 +488,7 @@ class BaseEBM(BaseEstimator):
 
         if is_private(self):
              # [DP] Calculate how much noise will be applied to each iteration of the algorithm
+            domain_size = 1 if is_classifier(self) else max_target - min_target
             if self.composition == 'classic':
                 noise_scale = DPUtils.calc_classic_noise_multi(
                     total_queries = self.max_rounds * n_features_in * self.outer_bags, 
@@ -508,23 +514,6 @@ class BaseEBM(BaseEstimator):
 
         native = Native.get_native_singleton()
 
-        # scikit-learn returns an np.array for classification and
-        # a single float for regression, so we do the same
-        if is_classifier(self):
-            model_type = "classification"
-
-            n_classes = len(classes)
-            if n_classes > 2:  # pragma: no cover
-                warn("Multiclass is still experimental. Subject to change per release.")
-
-            class_idx = {x: index for index, x in enumerate(classes)}
-            intercept = np.zeros(
-                Native.get_count_scores_c(n_classes), dtype=np.float64, order="C",
-            )
-        else:
-            model_type = "regression"
-            n_classes = -1
-            intercept = 0.0
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
@@ -780,9 +769,6 @@ class BaseEBM(BaseEstimator):
             intercept = float(intercept)
 
         if is_private(self):
-            # TODO: check with Harsha that these need to be preserved, or if other properties should be as well
-            # TODO: consider recording 'min_target' and 'max_target' in all models, not just DP and remove the domain_size
-            self.domain_size_ = domain_size
             self.noise_scale_ = noise_scale
         else:
             # we accept sample_weight for DP, so we get bin_weights as a result.  It would cost additional 
@@ -791,6 +777,9 @@ class BaseEBM(BaseEstimator):
         if 0 <= n_classes:
             self.classes_ = classes # required by scikit-learn
             self._class_idx_ = class_idx
+        else:
+            self.min_target_ = min_target
+            self.max_target_ = max_target
         self.n_samples_ = n_samples
         self.n_features_in_ = n_features_in # required by scikit-learn
         self.feature_names_in_ = feature_names_in
