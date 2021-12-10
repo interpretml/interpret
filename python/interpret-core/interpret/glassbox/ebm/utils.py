@@ -3,7 +3,7 @@
 
 # TODO: Test EBMUtils
 
-from math import ceil
+from math import ceil, isnan
 from .internal import Native, Booster, InteractionDetector
 
 # from scipy.special import expit
@@ -364,6 +364,34 @@ class EBMUtils:
     @staticmethod
     def gen_feature_group_type(feature_idxs, col_types):
         return col_types[feature_idxs[0]] if len(feature_idxs) == 1 else "interaction"
+
+    @staticmethod
+    def jsonify_lists(vals):
+        if len(vals) != 0:
+            if type(vals[0]) is float:
+                for idx, val in enumerate(vals):
+                    # JSON doesn't have NaN, or infinities, but javaScript has these, so use javaScript strings
+                    if isnan(val):
+                        vals[idx] = "NaN" # this is what JavaScript outputs for 0/0
+                    elif val == np.inf:
+                        vals[idx] = "Infinity" # this is what JavaScript outputs for 1/0
+                    elif val == -np.inf:
+                        vals[idx] = "-Infinity" # this is what JavaScript outputs for -1/0
+            else:
+                for nested in vals:
+                    EBMUtils.jsonify_lists(nested)
+        return vals # we modify in place, but return it just for easy access
+
+    @staticmethod
+    def jsonify_item(val):
+        # JSON doesn't have NaN, or infinities, but javaScript has these, so use javaScript strings
+        if isnan(val):
+            val = "NaN" # this is what JavaScript outputs for 0/0
+        elif val == np.inf:
+            val = "Infinity" # this is what JavaScript outputs for 1/0
+        elif val == -np.inf:
+            val = "-Infinity" # this is what JavaScript outputs for -1/0
+        return val
 
     @staticmethod
     def cyclic_gradient_boost(

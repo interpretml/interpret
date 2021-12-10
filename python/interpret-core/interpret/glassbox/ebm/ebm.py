@@ -18,6 +18,9 @@ from ...utils import gen_name_from_class, gen_global_selector, gen_global_select
 import ctypes as ct
 from multiprocessing.sharedctypes import RawArray
 
+import json
+import math
+
 import numpy as np
 from warnings import warn
 
@@ -33,7 +36,7 @@ from sklearn.base import (
     RegressorMixin,
 )
 from sklearn.utils.extmath import softmax
-from itertools import combinations
+from itertools import combinations, groupby
 
 import logging
 
@@ -803,6 +806,74 @@ class BaseEBM(BaseEstimator):
         self.breakpoint_iteration_ = breakpoint_iteration
         self.has_fitted_ = True
         return self
+
+    def _to_json(self):
+        j = {}
+
+        if is_classifier(self):
+            j['model_type'] = "classification"
+            j['classes'] = self.classes_.tolist()
+        else:
+            j['model_type'] = "regression"
+            if hasattr(self, 'min_target_') and not math.isnan(self.min_target_):
+                j['min_target'] = EBMUtils.jsonify_item(self.min_target_)
+            if hasattr(self, 'max_target_') and not math.isnan(self.max_target_):
+                j['max_target'] = EBMUtils.jsonify_item(self.max_target_)
+
+        features = []
+        for i in range(self.n_features_in_):
+            feature = {}
+
+            feature['name'] = self.feature_names_in_[i]
+            feature_type = self.feature_types_in_[i]
+            feature['type'] = feature_type
+
+            if feature_type == 'continuous':
+                cuts = []
+                for bins in self.bins_[i]:
+                    cuts.append(bins.tolist())
+                feature['cuts'] = cuts
+                if hasattr(self, 'min_vals_') and not math.isnan(self.min_vals_[i]):
+                    feature['min'] = EBMUtils.jsonify_item(self.min_vals_[i])
+                if hasattr(self, 'max_vals_') and not math.isnan(self.max_vals_[i]):
+                    feature['max'] = EBMUtils.jsonify_item(self.max_vals_[i])
+                if hasattr(self, 'histogram_cuts_') and self.histogram_cuts_[i] is not None:
+                    feature['histogram_cuts'] = self.histogram_cuts_[i].tolist()
+                if hasattr(self, 'histogram_counts_') and self.histogram_counts_[i] is not None:
+                    feature['histogram_counts'] = self.histogram_counts_[i].tolist()
+            else:
+                categories = []
+                for bins in self.bins_[i]:
+                    leveled_categories = []
+                    feature_categories = list(map(tuple, map(reversed, bins.items())))
+                    feature_categories.sort() # groupby requires sorted data
+                    for _, category_iter in groupby(feature_categories, lambda x: x[0]):
+                        category_group = [category for _, category in category_iter]
+                        if len(category_group) == 1:
+                            leveled_categories.append(category_group[0])
+                        else:
+                            leveled_categories.append(category_group)
+                    categories.append(leveled_categories)
+                feature['categories'] = categories
+
+            features.append(feature)
+        j['features'] = features
+
+        j['intercept'] = EBMUtils.jsonify_item(self.intercept_) if type(self.intercept_) is float else EBMUtils.jsonify_lists(self.intercept_.tolist())
+
+        terms = []
+        for i in range(len(self.feature_groups_)):
+            term = {}
+            term['features'] = [self.feature_names_in_[feature_idx] for feature_idx in self.feature_groups_[i]]
+            term['scores'] = EBMUtils.jsonify_lists(self.additive_terms_[i].tolist())
+            if hasattr(self, 'bin_counts_') and self.bin_counts_[i] is not None:
+                term['bin_counts'] = self.bin_counts_[i].tolist()
+            term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[i].tolist())
+            
+            terms.append(term)
+        j['terms'] = terms
+
+        return json.dumps(j, allow_nan=False, indent=2)
 
     def decision_function(self, X):
         """ Predict scores from model before calling the link function.
