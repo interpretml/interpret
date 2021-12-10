@@ -294,7 +294,7 @@ class BaseEBM(BaseEstimator):
         outer_bags,
         inner_bags,
         # Core
-        # TODO PK v.3 replace mains in favor of a "boosting stage plan"
+        # TODO PK v.3 replace "mains" with a more flexible "exclude" parameter
         mains,
         interactions,
         validation_size,
@@ -601,7 +601,7 @@ class BaseEBM(BaseEstimator):
                 _, _, _, _, _, _, scores_train_local, scores_val_local = EBMUtils.ebm_train_test_split(
                     X_main,
                     y,
-                    sample_weight, # TODO: allow w to be None
+                    sample_weight, # TODO: allow sample_weight to be None
                     test_size=self.validation_size,
                     random_state=bagged_seed,
                     is_classification=model_type == "classification",
@@ -763,32 +763,43 @@ class BaseEBM(BaseEstimator):
         if is_private(self):
             self.noise_scale_ = noise_scale
         else:
-            # we accept sample_weight for DP, so we get bin_weights as a result.  It would cost additional 
-            # privacy budget to also get the bin counts, so we'll live with just the bin weights for DP
-            self.bin_counts_ = bin_counts
-            self.n_samples_ = n_samples # don't pay the small privacy budget to get this
+            # differentially private models would need to pay additional privacy budget to make
+            # these public, but they are non-essential so we don't disclose them in the DP setting
+
+            self.n_samples_ = n_samples
+
+            # per-feature
             self.histogram_cuts_ = histogram_cuts
             self.histogram_counts_ = histogram_counts
             self.unique_counts_ = unique_counts
             self.zero_counts_ = zero_counts
+
+            # per-feature group
+            self.bin_counts_ = bin_counts # use bin_weights_ instead for DP models
         if 0 <= n_classes:
             self.classes_ = classes # required by scikit-learn
             self._class_idx_ = class_idx
         else:
             self.min_target_ = min_target
             self.max_target_ = max_target
+
+        # per-feature
         self.n_features_in_ = n_features_in # required by scikit-learn
         self.feature_names_in_ = feature_names_in # scikit-learn specified name
         self.feature_types_in_ = feature_types_in
         self.bins_ = bins
-        self.bin_weights_ = bin_weights
         self.min_vals_ = min_vals
         self.max_vals_ = max_vals
+
+        # per-feature group
+        self.feature_groups_ = feature_groups
+        self.bin_weights_ = bin_weights
         self.bagged_additive_terms_ = bagged_additive_terms
         self.additive_terms_ = additive_terms
-        self.intercept_ = intercept
         self.term_standard_deviations_ = term_standard_deviations
-        self.feature_groups_ = feature_groups
+
+        # general
+        self.intercept_ = intercept
         self.breakpoint_iteration_ = breakpoint_iteration
         self.has_fitted_ = True
         return self
@@ -856,6 +867,8 @@ class BaseEBM(BaseEstimator):
 
         bounds = (lower_bound, upper_bound)
 
+        native = Native.get_native_singleton()
+
         # Add per feature graph
         data_dicts = []
         feature_list = []
@@ -884,6 +897,10 @@ class BaseEBM(BaseEstimator):
                     # continuous
                     min_val = self.min_vals_[feature_index0]
                     max_val = self.max_vals_[feature_index0]
+
+                    # this will have no effect in normal models, but will handle inconsistent editied models
+                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+
                     bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
 
                     if is_private(self):
@@ -943,6 +960,10 @@ class BaseEBM(BaseEstimator):
                     # continuous
                     min_val = self.min_vals_[feature_indexes[0]]
                     max_val = self.max_vals_[feature_indexes[0]]
+
+                    # this will have no effect in normal models, but will handle inconsistent editied models
+                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+
                     bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
                 bin_labels_left = bin_labels
 
@@ -958,6 +979,10 @@ class BaseEBM(BaseEstimator):
                     # continuous
                     min_val = self.min_vals_[feature_indexes[1]]
                     max_val = self.max_vals_[feature_indexes[1]]
+
+                    # this will have no effect in normal models, but will handle inconsistent editied models
+                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+
                     bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
                 bin_labels_right = bin_labels
 

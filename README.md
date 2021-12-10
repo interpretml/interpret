@@ -99,15 +99,15 @@ show([logistic_regression_global, decision_tree_global])
 
 <br/>
 
-If you need to keep your dataset private, we also support Differentially Private EBMs (see [DP-EBMs](http://proceedings.mlr.press/v139/nori21a/nori21a.pdf) for more info)
+If you need to keep your dataset private, we also support Differentially Private EBMs (see [DP-EBMs](http://proceedings.mlr.press/v139/nori21a/nori21a.pdf))
 
 ```python
 from interpret.privacy import DPExplainableBoostingClassifier
 
-dpebm = DPExplainableBoostingClassifier(epsilon=1, delta=1e-5) # Specify privacy parameters
-dpebm.fit(X_train, y_train)
+dp_ebm = DPExplainableBoostingClassifier(epsilon=1, delta=1e-5) # Specify privacy parameters
+dp_ebm.fit(X_train, y_train)
 
-show(dpebm.explain_global()) # Identical function calls to standard EBMs
+show(dp_ebm.explain_global()) # Identical function calls to standard EBMs
 ```
 
 <br/>
@@ -580,6 +580,10 @@ We also build on top of many great packages. Please check them out!
 - [Development and Validation of an Interpretable 3-day Intensive Care Unit Readmission Prediction Model Using Explainable Boosting Machines](https://www.medrxiv.org/content/10.1101/2021.11.01.21265700v1.full.pdf)
 - [Explainable Boosting Machine for Predicting Alzheimer’s Disease from MRI Hippocampal Subfields](https://link.springer.com/chapter/10.1007/978-3-030-86993-9_31)
 - [Impact of Accuracy on Model Interpretations](https://arxiv.org/pdf/2011.09903.pdf)
+
+# Books
+
+- [Interpretable Machine Learning with Python](https://www.amazon.com/Interpretable-Machine-Learning-Python-hands/dp/180020390X)
 
 # External tools
 

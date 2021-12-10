@@ -33,22 +33,16 @@ from .internal import Native
 from .utils import DPUtils
 
 # BIG TODO LIST:
-#- review all my other changes in other files (or afterwards)
-#- review the entire bin.py file
+#- review this entire bin.py file
+#- write a cython single instance prediction pathway
+#- consider re-writing most of this bin.py functionality in cython for anything that gets used during prediction for speed
 #- test: clean_vector with ma.masked_array... and other stuff in there
 #- test: clean_X with pd.Series with missing values and maybe a categorical -> gets converted as N features and 1 sample
 #- test: clean_X with list that CONTAINS a ma.masked_array sample entry with missing data and without missing data
-#- publish
-#- unify_data2 -> convert to the old style
-#- TEST that I can swap unify_data2 for unify_data on some problem
 #- add better processing for ignored columsn where we return the existing data if we can, and we return all None
 #  values if not which our caller can detect.  Then unify_data2 can convert that to int(0) values which should work for
 #  all feature types
 #- disable 'ignore' columns temporarily.  We need to update C++ to make a distinction because you can have 3 real columns and 5 referencable columsn and our datastructures need to be updated to handle this in C++ first
-#- after publishing BUT before integration with python, we should add re-ordering feature ids to C++ and make sure
-#  that we can use the higher level layer's understanding of features.  To do this, write a re-mapper inside
-#  the shared dataframe.  We might as well use shared memory to have the remapper since it'll otherwise be in all processes
-#- start work on integrating into python
 #- handle the thorny questions of converting float to int for categorical strings
 #  - in the object converter, convert all int64/uint64 and all floats objects to float64, then use the floor check
 #    and compare with +-9007199254740991 to decide if they should be expressed as integers or floats
@@ -248,12 +242,10 @@ from .utils import DPUtils
 #     Python is our premier language and has poor performance if you try to do operations in loops, so we'll
 #     force all the other platforms to conform to python specifications.
 #   - when we recieve bool values in python we can probably keep the python string representations of "False" and "True".
-#     Unlike float64 values, there are just 2 possible bool values and we express them in strings, so a JavaScript
-#     implementation can express them as strings, and with just 2 possible values there are no issues with different
+#     Unlike float64 values, there are just 2 possible bool values and we express them as JavaScript bool items,
+#     and with just 2 possible values there are no issues with different
 #     hard to standardize string formats.  I like giving the user a little more context of the underlying value in
 #     the graphs, and "True", "False" are a bit nicer than "false" and "true" or "FALSE" and "TRUE"
-#   - None -> array.astype converts this to 'None', but we filter out missing values so these should go away
-#   - np.nan -> array.astype converts this to 'nan', but we filter out missing values so these should go away
 #   - If our caller gives us strings [" a ", "a"] we will consider those to be two separate categories since the caller 
 #     could have some requirement to keep these as separate categories.  Eliminating the whitespace makes it impossible
 #     for our caller to differentiate these.  If the caller wants these to be the same string then they can preprocess this
