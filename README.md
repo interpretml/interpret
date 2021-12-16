@@ -99,10 +99,10 @@ show([logistic_regression_global, decision_tree_global])
 
 <br/>
 
-If you need to keep your dataset private, we also support Differentially Private EBMs (see [DP-EBMs](http://proceedings.mlr.press/v139/nori21a/nori21a.pdf))
+If you need to keep your data private, we also support Differentially Private EBMs (see [DP-EBMs](http://proceedings.mlr.press/v139/nori21a/nori21a.pdf))
 
 ```python
-from interpret.privacy import DPExplainableBoostingClassifier
+from interpret.privacy import DPExplainableBoostingClassifier, DPExplainableBoostingRegressor
 
 dp_ebm = DPExplainableBoostingClassifier(epsilon=1, delta=1e-5) # Specify privacy parameters
 dp_ebm.fit(X_train, y_train)
@@ -582,14 +582,15 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Boosting Machine for Predicting Alzheimer’s Disease from MRI Hippocampal Subfields](https://link.springer.com/chapter/10.1007/978-3-030-86993-9_31)
 - [Impact of Accuracy on Model Interpretations](https://arxiv.org/pdf/2011.09903.pdf)
 
-# Books
+# Books that include EBMs
 
 - [Interpretable Machine Learning with Python](https://www.amazon.com/Interpretable-Machine-Learning-Python-hands/dp/180020390X)
+- [Explainable Artificial Intelligence: An Introduction to Interpretable Machine Learning](https://www.amazon.com/Explainable-Artificial-Intelligence_-An-Introduction-to-Interpretable-XAI/dp/3030833550)
 
 # External tools
 
 - [EBM to Onnx converter by SoftAtHome](https://github.com/interpretml/ebm2onnx)
-- [GAMChanger](https://github.com/interpretml/GAMChanger)
+- [GAM Changer](https://github.com/interpretml/gam-changer)
 
 # Contact us
 
