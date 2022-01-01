@@ -36,8 +36,8 @@ requirements:
     - pandas >=0.19.2
     - joblib >=0.11
     # Equiv. to extras.
-    - ipython >=7.4.0
-    - ipykernel >=5.1.0
+    - ipython >=5.5.0
+    - ipykernel >=4.10.0
     - plotly >=3.8.1
     - lime >=0.1.1.33
     - SALib >=1.3.3
