@@ -14,8 +14,7 @@ EXPORTS
   FillClassificationTarget
   SizeRegressionTarget
   FillRegressionTarget
-  CreateClassificationBooster
-  CreateRegressionBooster
+  CreateBooster
   CreateBoosterView
   GenerateModelUpdate
   GetModelUpdateSplits
@@ -25,8 +24,7 @@ EXPORTS
   GetBestModelFeatureGroup
   GetCurrentModelFeatureGroup
   FreeBooster
-  CreateClassificationInteractionDetector
-  CreateRegressionInteractionDetector
+  CreateInteractionDetector
   CalculateInteractionScore
   FreeInteractionDetector
   GetHistogramCutCount

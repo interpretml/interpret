@@ -14,6 +14,7 @@
 
 #include "ebm_internal.hpp"
 
+#include "data_set_shared.hpp"
 #include "Feature.hpp"
 #include "FeatureGroup.hpp"
 #include "DataSetBoosting.hpp"
@@ -43,37 +44,70 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(c
 }
 
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
-   const size_t cSamples, 
-   const size_t cVectorLength, 
-   const FloatEbmType * const aPredictorScoresFrom
+   const size_t cVectorLength,
+   const IntEbmType direction,
+   const IntEbmType * const aBag,
+   const FloatEbmType * const aPredictorScoresFrom,
+   const size_t cSetSamples
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructPredictorScores");
 
-   EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(0 < cVectorLength);
-   EBM_ASSERT(nullptr != aPredictorScoresFrom);
+   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(0 < cSetSamples);
 
-   if(IsMultiplyError(cVectorLength, cSamples)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores IsMultiplyError(cVectorLength, cSamples)");
+   if(IsMultiplyError(cVectorLength, cSetSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores IsMultiplyError(cVectorLength, cSetSamples)");
       return nullptr;
    }
 
-   const size_t cElements = cVectorLength * cSamples;
+   const size_t cElements = cVectorLength * cSetSamples;
    FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType>(cElements);
    if(nullptr == aPredictorScoresTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
    }
 
-   const size_t cBytes = sizeof(FloatEbmType) * cElements;
-   // if there are any NaN or +- infinity values we should just propagate them and exit during boosting
-   memcpy(aPredictorScoresTo, aPredictorScoresFrom, cBytes);
+   const size_t cBytesPerItem = sizeof(FloatEbmType) * cVectorLength;
+
+   const IntEbmType * pBag = aBag;
+   FloatEbmType * pPredictorScoresTo = aPredictorScoresTo;
+   const FloatEbmType * const pPredictorScoresToEnd = aPredictorScoresTo + cVectorLength * cSetSamples;
+   const FloatEbmType * pPredictorScoresFrom = aPredictorScoresFrom;
+   const bool isLoopTraining = IntEbmType { 0 } < direction;
+   do {
+      IntEbmType countBagged = 1;
+      if(nullptr != pBag) {
+         countBagged = *pBag;
+         ++pBag;
+      }
+      if(IntEbmType { 0 } != countBagged) {
+         const bool isItemTraining = IntEbmType { 0 } < countBagged;
+         if(isLoopTraining == isItemTraining) {
+            do {
+               EBM_ASSERT(pPredictorScoresTo < aPredictorScoresTo + cVectorLength * cSetSamples);
+               if(nullptr == pPredictorScoresFrom) {
+                  static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
+                  memset(pPredictorScoresTo, 0, cBytesPerItem);
+               } else {
+                  memcpy(pPredictorScoresTo, pPredictorScoresFrom, cBytesPerItem);
+               }
+               pPredictorScoresTo += cVectorLength;
+               countBagged -= direction;
+            } while(IntEbmType { 0 } != countBagged);
+         }
+         if(nullptr != pPredictorScoresFrom) {
+            pPredictorScoresFrom += cVectorLength;
+         }
+      }
+   } while(pPredictorScoresToEnd != pPredictorScoresTo);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
 
+   // TODO: move this into the loop above
    if(2 <= cVectorLength) {
       FloatEbmType * pScore = aPredictorScoresTo;
-      const FloatEbmType * const pScoreExteriorEnd = pScore + cVectorLength * cSamples;
+      const FloatEbmType * const pScoreExteriorEnd = pScore + cVectorLength * cSetSamples;
       do {
          FloatEbmType scoreShift = pScore[0];
          const FloatEbmType * const pScoreInteriorEnd = pScore + cVectorLength;
@@ -91,57 +125,69 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
 }
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
-   const size_t cSamples, 
-   const IntEbmType * const aTargets, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   const unsigned char * const pDataSetShared,
+   const IntEbmType direction,
+   const IntEbmType * const aBag,
+   const size_t cSetSamples
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructTargetData");
 
-   EBM_ASSERT(0 < cSamples);
+   EBM_ASSERT(nullptr != pDataSetShared);
+   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(0 < cSetSamples);
+
+   ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
+   const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &runtimeLearningTypeOrCountTargetClasses);
+   EBM_ASSERT(1 <= runtimeLearningTypeOrCountTargetClasses); // this should be classification, and 0 < cSetSamples
    EBM_ASSERT(nullptr != aTargets);
-   EBM_ASSERT(1 <= runtimeLearningTypeOrCountTargetClasses); // this should be classification
+
    const size_t countTargetClasses = static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
 
-   StorageDataType * const aTargetData = EbmMalloc<StorageDataType>(cSamples);
+   StorageDataType * const aTargetData = EbmMalloc<StorageDataType>(cSetSamples);
    if(nullptr == aTargetData) {
       LOG_0(TraceLevelWarning, "WARNING nullptr == aTargetData");
       return nullptr;
    }
 
-   const IntEbmType * pTargetFrom = aTargets;
-   const IntEbmType * const pTargetFromEnd = aTargets + cSamples;
+   const IntEbmType * pBag = aBag;
+   const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
    StorageDataType * pTargetTo = aTargetData;
+   StorageDataType * pTargetToEnd = aTargetData + cSetSamples;
+   const bool isLoopTraining = IntEbmType { 0 } < direction;
    do {
-      const IntEbmType data = *pTargetFrom;
-      if(data < 0) {
-         LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData target value cannot be negative");
-         free(aTargetData);
-         return nullptr;
+      IntEbmType countBagged = 1;
+      if(nullptr != pBag) {
+         countBagged = *pBag;
+         ++pBag;
       }
-      if(IsConvertError<StorageDataType>(data)) {
-         // this shouldn't be possible since we previously checked that we could convert our target,
-         // so if this is failing then we'll be larger than the maximum number of classes
-         LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
-         free(aTargetData);
-         return nullptr;
+      if(IntEbmType { 0 } != countBagged) {
+         const bool isItemTraining = IntEbmType { 0 } < countBagged;
+         if(isLoopTraining == isItemTraining) {
+            const SharedStorageDataType data = *pTargetFrom;
+            EBM_ASSERT(!IsConvertError<size_t>(data));
+            if(IsConvertError<StorageDataType>(data)) {
+               // this shouldn't be possible since we previously checked that we could convert our target,
+               // so if this is failing then we'll be larger than the maximum number of classes
+               LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
+               free(aTargetData);
+               return nullptr;
+            }
+            const StorageDataType iData = static_cast<StorageDataType>(data);
+            if(countTargetClasses <= static_cast<size_t>(iData)) {
+               LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
+               free(aTargetData);
+               return nullptr;
+            }
+            do {
+               EBM_ASSERT(pTargetTo < aTargetData + cSetSamples);
+               *pTargetTo = iData;
+               ++pTargetTo;
+               countBagged -= direction;
+            } while(IntEbmType { 0 } != countBagged);
+         }
       }
-      if(IsConvertError<size_t>(data)) {
-         // this shouldn't be possible since we previously checked that we could convert our target,
-         // so if this is failing then we'll be larger than the maximum number of classes
-         LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData data target too big to reference memory");
-         free(aTargetData);
-         return nullptr;
-      }
-      const StorageDataType iData = static_cast<StorageDataType>(data);
-      if(countTargetClasses <= static_cast<size_t>(iData)) {
-         LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructTargetData target value larger than number of classes");
-         free(aTargetData);
-         return nullptr;
-      }
-      *pTargetTo = iData;
-      ++pTargetTo;
       ++pTargetFrom;
-   } while(pTargetFromEnd != pTargetFrom);
+   } while(pTargetToEnd != pTargetTo);
 
    LOG_0(TraceLevelInfo, "Exited DataSetBoosting::ConstructTargetData");
    return aTargetData;
@@ -154,7 +200,7 @@ struct InputDataPointerAndCountBins {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   const IntEbmType * m_pInputData;
+   const SharedStorageDataType * m_pInputData;
    size_t m_cBins;
 };
 static_assert(std::is_standard_layout<InputDataPointerAndCountBins>::value,
@@ -165,24 +211,28 @@ static_assert(std::is_pod<InputDataPointerAndCountBins>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
-   const size_t cFeatureGroups, 
-   const FeatureGroup * const * const apFeatureGroup, 
-   const size_t cSamples, 
-   const IntEbmType * const aInputDataFrom
+   const unsigned char * const pDataSetShared,
+   const IntEbmType direction,
+   const IntEbmType * const aBag,
+   const size_t cSetSamples,
+   const size_t cFeatureGroups,
+   const FeatureGroup * const * const apFeatureGroup
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructInputData");
 
+   EBM_ASSERT(nullptr != pDataSetShared);
+   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(0 < cSetSamples);
    EBM_ASSERT(0 < cFeatureGroups);
    EBM_ASSERT(nullptr != apFeatureGroup);
-   EBM_ASSERT(0 < cSamples);
-   // aInputDataFrom can be nullptr EVEN if 0 < cFeatureGroups && 0 < cSamples IF the featureGroups are all empty, 
-   // which makes none of them refer to features, so the aInputDataFrom pointer isn't necessary
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatureGroups);
    if(nullptr == aaInputDataTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
+
+   const bool isLoopTraining = IntEbmType { 0 } < direction;
 
    StorageDataType ** paInputDataTo = aaInputDataTo;
    const FeatureGroup * const * ppFeatureGroup = apFeatureGroup;
@@ -202,8 +252,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          // if we have 1 item, it can't be larger than the number of bits of storage
          EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>());
 
-         EBM_ASSERT(0 < cSamples);
-         const size_t cDataUnits = (cSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
+         EBM_ASSERT(0 < cSetSamples);
+         const size_t cDataUnits = (cSetSamples - 1) / cItemsPerBitPack + 1; // this can't overflow or underflow
 
          StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cDataUnits);
          if(nullptr == pInputDataTo) {
@@ -213,13 +263,9 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          *paInputDataTo = pInputDataTo;
          ++paInputDataTo;
 
-         const size_t cBytesData = sizeof(StorageDataType) * cDataUnits;
          // stop on the last item in our array AND then do one special last loop with less or equal iterations to the normal loop
-         const StorageDataType * const pInputDataToLast = 
-            reinterpret_cast<const StorageDataType *>(reinterpret_cast<const char *>(pInputDataTo) + cBytesData) - 1;
+         const StorageDataType * const pInputDataToLast = pInputDataTo + cDataUnits - 1;
          EBM_ASSERT(pInputDataTo <= pInputDataToLast); // we have 1 item or more, and therefore the last one can't be before the first item
-
-         EBM_ASSERT(nullptr != aInputDataFrom);
 
          const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
          EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
@@ -232,7 +278,25 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             const size_t cBins = pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we don't construct datasets on empty training sets
             if(size_t { 1 } < cBins) {
-               pDimensionInfoInit->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cSamples];
+               size_t cBinsOut;
+               bool bNominalOut;
+               bool bSparseOut;
+               SharedStorageDataType defaultValueSparseOut;
+               size_t cNonDefaultsSparseOut;
+               const void * pInputDataFrom = GetDataSetSharedFeature(
+                  pDataSetShared,
+                  pFeature->GetIndexFeatureData(),
+                  &cBinsOut,
+                  &bNominalOut,
+                  &bSparseOut,
+                  &defaultValueSparseOut,
+                  &cNonDefaultsSparseOut
+               );
+               EBM_ASSERT(nullptr != pInputDataFrom);
+               EBM_ASSERT(cBinsOut == cBins);
+               EBM_ASSERT(!bSparseOut); // we don't support sparse yet
+
+               pDimensionInfoInit->m_pInputData = static_cast<const SharedStorageDataType *>(pInputDataFrom);
                pDimensionInfoInit->m_cBins = cBins;
                ++pDimensionInfoInit;
             }
@@ -240,67 +304,83 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pFeatureGroup->GetCountSignificantDimensions()]);
 
-         // THIS IS NOT A CONSTANT FOR A REASON.. WE CHANGE IT ON OUR LAST ITERATION
-         // if we ever template this function on cItemsPerBitPack, then we'd want
-         // to make this a constant so that the compiler could reason about it an eliminate loops
-         // as it is, it isn't a constant, so the compiler would not be able to figure out that most
-         // of the time it is a constant
+         const IntEbmType * pBag = aBag;
+         IntEbmType countBagged = 0;
+         size_t tensorIndex = 0;
+
          size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPack;
          while(pInputDataTo < pInputDataToLast) /* do the last iteration AFTER we re-enter this loop through the goto label! */ {
          one_last_loop:;
             EBM_ASSERT(shiftEnd <= CountBitsRequiredPositiveMax<StorageDataType>());
 
-            size_t bits = 0;
+            StorageDataType bits = 0;
             size_t shift = 0;
             do {
-               size_t tensorMultiple = 1;
-               size_t tensorIndex = 0;
-               InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
-               do {
-                  const IntEbmType * pInputData = pDimensionInfo->m_pInputData;
-                  const IntEbmType inputData = *pInputData;
-                  pDimensionInfo->m_pInputData = pInputData + 1;
-                  if(inputData < 0) {
-                     LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData inputData value cannot be negative");
-                     goto free_all;
-                  }
-                  if(IsConvertError<size_t>(inputData)) {
-                     LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData inputData value too big to reference memory");
-                     goto free_all;
-                  }
-                  const size_t iData = static_cast<size_t>(inputData);
+               if(IntEbmType { 0 } == countBagged) {
+                  while(true) {
+                     tensorIndex = 0;
+                     size_t tensorMultiple = 1;
+                     InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
+                     do {
+                        const SharedStorageDataType * pInputData = pDimensionInfo->m_pInputData;
+                        const SharedStorageDataType inputData = *pInputData;
+                        pDimensionInfo->m_pInputData = pInputData + 1;
+                        EBM_ASSERT(!IsConvertError<size_t>(inputData));
+                        const size_t iData = static_cast<size_t>(inputData);
 
-                  if(pDimensionInfo->m_cBins <= iData) {
-                     LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData iData value must be less than the number of bins");
-                     goto free_all;
+                        if(pDimensionInfo->m_cBins <= iData) {
+                           // TODO: I think this check has been moved to constructing the shared dataset
+                           LOG_0(TraceLevelError, "ERROR DataSetBoosting::ConstructInputData iData value must be less than the number of bins");
+                           goto free_all;
+                        }
+                        // we check for overflows during FeatureGroup construction, but let's check here again
+                        EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
+
+                        // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
+                        tensorIndex += tensorMultiple * iData;
+                        tensorMultiple *= pDimensionInfo->m_cBins;
+
+                        ++pDimensionInfo;
+                     } while(pDimensionInfoInit != pDimensionInfo);
+
+                     countBagged = 1;
+                     if(nullptr != pBag) {
+                        countBagged = *pBag;
+                        ++pBag;
+                     }
+                     if(IntEbmType { 0 } != countBagged) {
+                        const bool isItemTraining = IntEbmType { 0 } < countBagged;
+                        if(isLoopTraining == isItemTraining) {
+                           break;
+                        }
+                     }
                   }
-                  // we check for overflows during FeatureGroup construction, but let's check here again
-                  EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
+               }
+               EBM_ASSERT(0 != countBagged);
+               EBM_ASSERT(0 < countBagged && 0 < direction || countBagged < 0 && direction < 0);
+               countBagged -= direction;
 
-                  // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
-                  tensorIndex += tensorMultiple * iData;
-                  tensorMultiple *= pDimensionInfo->m_cBins;
-
-                  ++pDimensionInfo;
-               } while(pDimensionInfoInit != pDimensionInfo);
                // put our first item in the least significant bits.  We do this so that later when
                // unpacking the indexes, we can just AND our mask with the bitfield to get the index and in subsequent loops
                // we can just shift down.  This eliminates one extra shift that we'd otherwise need to make if the first
                // item was in the MSB
                EBM_ASSERT(shift < CountBitsRequiredPositiveMax<StorageDataType>());
-               bits |= tensorIndex << shift;
+               // the tensor index needs to fit in memory, but concivably StorageDataType does not
+               EBM_ASSERT(!IsConvertError<StorageDataType>(tensorIndex)); // this was checked when determining packing
+               bits |= static_cast<StorageDataType>(tensorIndex) << shift;
                shift += cBitsPerItemMax;
             } while(shiftEnd != shift);
-            EBM_ASSERT(!IsConvertError<StorageDataType>(bits));
-            *pInputDataTo = static_cast<StorageDataType>(bits);
+            *pInputDataTo = bits;
             ++pInputDataTo;
          }
 
          if(pInputDataTo == pInputDataToLast) {
             // if this is the first time we've exited the loop, then re-enter it to do our last loop, but reduce the number of times we do the inner loop
-            shiftEnd = cBitsPerItemMax * ((cSamples - 1) % cItemsPerBitPack + 1);
+            shiftEnd = cBitsPerItemMax * ((cSetSamples - 1) % cItemsPerBitPack + 1);
             goto one_last_loop;
          }
+
+         EBM_ASSERT(0 == countBagged);
       }
       ++ppFeatureGroup;
    } while(ppFeatureGroupEnd != ppFeatureGroup);
@@ -318,18 +398,22 @@ free_all:
 }
 
 ErrorEbmType DataSetBoosting::Initialize(
-   const bool bAllocateGradients, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const bool bAllocateGradients,
    const bool bAllocateHessians,
    const bool bAllocatePredictorScores,
-   const bool bAllocateTargetData, 
-   const size_t cFeatureGroups, 
-   const FeatureGroup * const * const apFeatureGroup, 
-   const size_t cSamples, 
-   const IntEbmType * const aInputDataFrom, 
-   const void * const aTargets, 
-   const FloatEbmType * const aPredictorScoresFrom, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   const bool bAllocateTargetData,
+   const unsigned char * const pDataSetShared,
+   const IntEbmType direction,
+   const IntEbmType * const aBag,
+   const FloatEbmType * const aPredictorScores,
+   const size_t cSetSamples,
+   const size_t cFeatureGroups,
+   const FeatureGroup * const * const apFeatureGroup
 ) {
+   EBM_ASSERT(nullptr != pDataSetShared);
+   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+
    EBM_ASSERT(nullptr == m_aGradientsAndHessians);
    EBM_ASSERT(nullptr == m_aPredictorScores);
    EBM_ASSERT(nullptr == m_aTargetData);
@@ -338,9 +422,9 @@ ErrorEbmType DataSetBoosting::Initialize(
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::Initialize");
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(0 != cSamples) {
+   if(0 != cSetSamples) {
       if(bAllocateGradients) {
-         FloatEbmType * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSamples, cVectorLength);
+         FloatEbmType * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cVectorLength);
          if(nullptr == aGradientsAndHessians) {
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
             return Error_OutOfMemory;
@@ -350,15 +434,26 @@ ErrorEbmType DataSetBoosting::Initialize(
          EBM_ASSERT(!bAllocateHessians);
       }
       if(bAllocatePredictorScores) {
-         FloatEbmType * aPredictorScores = ConstructPredictorScores(cSamples, cVectorLength, aPredictorScoresFrom);
-         if(nullptr == aPredictorScores) {
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aPredictorScores");
+         FloatEbmType * const aPredictorScoresBag = ConstructPredictorScores(
+            cVectorLength, 
+            direction, 
+            aBag, 
+            aPredictorScores,
+            cSetSamples
+         );
+         if(nullptr == aPredictorScoresBag) {
+            LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aPredictorScoresBag");
             return Error_OutOfMemory;
          }
-         m_aPredictorScores = aPredictorScores;
+         m_aPredictorScores = aPredictorScoresBag;
       }
       if(bAllocateTargetData) {
-         StorageDataType * aTargetData = ConstructTargetData(cSamples, static_cast<const IntEbmType *>(aTargets), runtimeLearningTypeOrCountTargetClasses);
+         StorageDataType * const aTargetData = ConstructTargetData(
+            pDataSetShared,
+            direction,
+            aBag,
+            cSetSamples
+         );
          if(nullptr == aTargetData) {
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aTargetData");
             return Error_OutOfMemory;
@@ -366,14 +461,21 @@ ErrorEbmType DataSetBoosting::Initialize(
          m_aTargetData = aTargetData;
       }
       if(0 != cFeatureGroups) {
-         StorageDataType ** aaInputData = ConstructInputData(cFeatureGroups, apFeatureGroup, cSamples, aInputDataFrom);
+         StorageDataType ** const aaInputData = ConstructInputData(
+            pDataSetShared,
+            direction,
+            aBag,
+            cSetSamples,
+            cFeatureGroups,
+            apFeatureGroup
+         );
          if(nullptr == aaInputData) {
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aaInputData");
             return Error_OutOfMemory;
          }
          m_aaInputData = aaInputData;
       }
-      m_cSamples = cSamples;
+      m_cSamples = cSetSamples;
       m_cFeatureGroups = cFeatureGroups;
    }
 

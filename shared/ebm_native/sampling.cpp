@@ -10,6 +10,7 @@
 
 #include "ebm_internal.hpp"
 
+#include "data_set_shared.hpp"
 #include "RandomStream.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -444,53 +445,151 @@ extern ErrorEbmType Unbag(
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 ) {
-   EBM_ASSERT(nullptr != aBag);
    EBM_ASSERT(nullptr != pcTrainingSamplesOut);
    EBM_ASSERT(nullptr != pcValidationSamplesOut);
 
-   size_t cTrainingSamples = 0;
+   size_t cTrainingSamples = cSamples;
    size_t cValidationSamples = 0;
-   if(0 != cSamples) {
-      const IntEbmType * pBag = aBag;
-      const IntEbmType * const pBagEnd = aBag + cSamples;
-      do {
-         IntEbmType sampleDefinition = *pBag;
-         if(sampleDefinition < IntEbmType { 0 }) {
-            // by creating an IntEbmType with "IntEbmType { ... }" the compiler is suposed to give us an 
-            // error if for some reason the negation of the max fails
-            if(sampleDefinition < IntEbmType { -std::numeric_limits<IntEbmType>::max() } ) {
-               LOG_0(TraceLevelError, "ERROR Unbag sampleDefinition < IntEbmType { -std::numeric_limits<IntEbmType>::max() }");
-               return Error_IllegalParamValue;
+   if(nullptr != aBag) {
+      cTrainingSamples = 0;
+      if(0 != cSamples) {
+         const IntEbmType * pBag = aBag;
+         const IntEbmType * const pBagEnd = aBag + cSamples;
+         do {
+            IntEbmType sampleDefinition = *pBag;
+            if(sampleDefinition < IntEbmType { 0 }) {
+               // by creating an IntEbmType with "IntEbmType { ... }" the compiler is suposed to give us an 
+               // error if for some reason the negation of the max fails
+               if(sampleDefinition < IntEbmType { -std::numeric_limits<IntEbmType>::max() }) {
+                  LOG_0(TraceLevelError, "ERROR Unbag sampleDefinition < IntEbmType { -std::numeric_limits<IntEbmType>::max() }");
+                  return Error_IllegalParamValue;
+               }
+               sampleDefinition = -sampleDefinition;
+               if(IsConvertError<size_t>(sampleDefinition)) {
+                  LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
+                  return Error_IllegalParamValue;
+               }
+               const size_t cSampleDefinition = static_cast<size_t>(sampleDefinition);
+               if(IsAddError(cValidationSamples, cSampleDefinition)) {
+                  LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cValidationSamples, cSampleDefinition)");
+                  return Error_IllegalParamValue;
+               }
+               cValidationSamples += cSampleDefinition;
+            } else {
+               if(IsConvertError<size_t>(sampleDefinition)) {
+                  LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
+                  return Error_IllegalParamValue;
+               }
+               const size_t cSampleDefinition = static_cast<size_t>(sampleDefinition);
+               if(IsAddError(cTrainingSamples, cSampleDefinition)) {
+                  LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cTrainingSamples, cSampleDefinition)");
+                  return Error_IllegalParamValue;
+               }
+               cTrainingSamples += cSampleDefinition;
             }
-            sampleDefinition = -sampleDefinition;
-            if(IsConvertError<size_t>(sampleDefinition)) {
-               LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
-               return Error_IllegalParamValue;
-            }
-            const size_t cSampleDefinition = static_cast<size_t>(sampleDefinition);
-            if(IsAddError(cValidationSamples, cSampleDefinition)) {
-               LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cValidationSamples, cSampleDefinition)");
-               return Error_IllegalParamValue;
-            }
-            cValidationSamples += cSampleDefinition;
-         } else {
-            if(IsConvertError<size_t>(sampleDefinition)) {
-               LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
-               return Error_IllegalParamValue;
-            }
-            const size_t cSampleDefinition = static_cast<size_t>(sampleDefinition);
-            if(IsAddError(cTrainingSamples, cSampleDefinition)) {
-               LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cTrainingSamples, cSampleDefinition)");
-               return Error_IllegalParamValue;
-            }
-            cTrainingSamples += cSampleDefinition;
-         }
-         ++pBag;
-      } while(pBagEnd != pBag);
+            ++pBag;
+         } while(pBagEnd != pBag);
+      }
    }
    *pcTrainingSamplesOut = cTrainingSamples;
    *pcValidationSamplesOut = cValidationSamples;
    return Error_None;
 }
+
+INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
+   const IntEbmType direction,
+   const size_t cAllSamples,
+   const IntEbmType * pBag,
+   const FloatEbmType * pWeights
+) {
+   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(1 <= cAllSamples);
+   EBM_ASSERT(nullptr != pWeights);
+
+   FloatEbmType firstWeight = std::numeric_limits<FloatEbmType>::quiet_NaN();
+   const FloatEbmType * const pWeightsEnd = pWeights + cAllSamples;
+   const bool isLoopTraining = IntEbmType { 0 } < direction;
+   do {
+      IntEbmType countBagged = 1;
+      if(nullptr != pBag) {
+         countBagged = *pBag;
+         ++pBag;
+      }
+      if(IntEbmType { 0 } != countBagged) {
+         const bool isItemTraining = IntEbmType { 0 } < countBagged;
+         if(isLoopTraining == isItemTraining) {
+            const FloatEbmType weight = *pWeights;
+            // this relies on the property that NaN is not equal to everything, including NaN
+            if(UNLIKELY(firstWeight != weight)) {
+               if(!std::isnan(firstWeight)) {
+                  // if firstWeight or *pWeight is NaN this should trigger, which is good since we don't want to
+                  // replace arrays containing all NaN weights with weights of 1
+                  return false;
+               }
+               firstWeight = weight;
+            }
+         }
+      }
+      ++pWeights;
+   } while(LIKELY(pWeightsEnd != pWeights));
+   return true;
+}
+
+extern ErrorEbmType ExtractWeights(
+   const unsigned char * const pDataSetShared,
+   const IntEbmType direction,
+   const size_t cAllSamples,
+   const IntEbmType * const aBag,
+   const size_t cSetSamples,
+   const FloatEbmType ** ppWeightsOut
+) {
+   EBM_ASSERT(nullptr != pDataSetShared);
+   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(0 < cSetSamples);
+   EBM_ASSERT(cSetSamples <= cAllSamples);
+   EBM_ASSERT(0 < cAllSamples); // from the previous two rules
+   EBM_ASSERT(nullptr != ppWeightsOut);
+   EBM_ASSERT(nullptr == *ppWeightsOut);
+
+   const FloatEbmType * const aWeights = GetDataSetSharedWeight(pDataSetShared, 0);
+   EBM_ASSERT(nullptr != aWeights);
+   if(!CheckWeightsEqual(direction, cAllSamples, aBag, aWeights)) {
+      const size_t cBytes = sizeof(*aWeights) * cSetSamples;
+      FloatEbmType * const aRet = static_cast<FloatEbmType *>(malloc(cBytes));
+      if(UNLIKELY(nullptr == aRet)) {
+         LOG_0(TraceLevelWarning, "WARNING ExtractWeights nullptr == aRet");
+         return Error_OutOfMemory;
+      }
+      *ppWeightsOut = aRet;
+
+      const IntEbmType * pBag = aBag;
+      const FloatEbmType * pWeightFrom = aWeights;
+      FloatEbmType * pWeightTo = aRet;
+      FloatEbmType * pWeightToEnd = aRet + cSetSamples;
+      const bool isLoopTraining = IntEbmType { 0 } < direction;
+      do {
+         IntEbmType countBagged = 1;
+         if(nullptr != pBag) {
+            countBagged = *pBag;
+            ++pBag;
+         }
+         if(IntEbmType { 0 } != countBagged) {
+            const bool isItemTraining = IntEbmType { 0 } < countBagged;
+            if(isLoopTraining == isItemTraining) {
+               const FloatEbmType weight = *pWeightFrom;
+               do {
+                  EBM_ASSERT(pWeightTo < pWeightToEnd);
+                  *pWeightTo = weight;
+                  ++pWeightTo;
+                  countBagged -= direction;
+               } while(IntEbmType { 0 } != countBagged);
+            }
+         }
+         ++pWeightFrom;
+      } while(pWeightToEnd != pWeightTo);
+   }
+   return Error_None;
+}
+
 
 } // DEFINED_ZONE_NAME

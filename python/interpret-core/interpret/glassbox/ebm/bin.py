@@ -1510,9 +1510,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 msg = "illegal sample_weight value"
                 _log.error(msg)
                 raise ValueError(msg)
-        else:
-            # TODO: eliminate this eventually
-            sample_weight = np.ones_like(y, dtype=np.float64)
 
         feature_names_in = unify_feature_names(X, self.feature_names, self.feature_types)
         n_features = len(feature_names_in)
@@ -1520,19 +1517,20 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         noise_scale = None # only applicable for private binning
         if self.binning == 'private':
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
+            max_weight = 1 if sample_weight is None else np.max(sample_weight)
             if self.composition == 'classic':
                 noise_scale = DPUtils.calc_classic_noise_multi(
                     total_queries = n_features, 
                     target_epsilon = self.epsilon, 
                     delta = self.delta, 
-                    sensitivity = np.max(sample_weight)
+                    sensitivity = max_weight
                 )
             elif self.composition == 'gdp':
                 noise_scale = DPUtils.calc_gdp_noise_multi(
                     total_queries = n_features, 
                     target_epsilon = self.epsilon, 
                     delta = self.delta
-                ) * np.max(sample_weight) # Alg Line 17"
+                ) * max_weight # Alg Line 17"
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
 
@@ -1834,58 +1832,9 @@ def construct_bins(
     deduplicate_bins(bins)
     return feature_names_in, feature_types_in, bins, bin_weights, min_vals, max_vals, histogram_cuts, histogram_counts, unique_counts, zero_counts
 
-def bin_python(
-    X,
-    n_dimensions,
-    bins,
-    feature_names_in, 
-    feature_types_in, 
-):
-    X, n_samples = clean_X(X)
-    if n_samples <= 0:
-        msg = "X has no samples"
-        _log.error(msg)
-        raise ValueError(msg)
-
-    X_binned = np.empty((n_samples, len(feature_names_in)), dtype=np.int64, order='F')
-
-    native = Native.get_native_singleton()
-    bin_iter = [bin_levels[-1 if len(bin_levels) < n_dimensions else n_dimensions - 1] for bin_levels in bins]
-    category_iter = (category if isinstance(category, dict) else None for category in bin_iter)
-    requests = zip(count(), category_iter)
-    cols = unify_columns(X, requests, feature_names_in, feature_types_in, None, False)
-    native_bin_counts = np.empty(len(feature_names_in), dtype=np.int64)
-    for feature_idx, feature_bins, (_, X_col, _, bad) in zip(count(), bin_iter, cols):
-        if n_samples != len(X_col):
-            msg = "The columns of X are mismatched in the number of of samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        if isinstance(feature_bins, dict):
-            # categorical feature
-            n_bins = 1 if len(feature_bins) == 0 else max(feature_bins.values()) + 1
-        else:
-            # continuous feature
-            
-            if not X_col.flags.c_contiguous:
-                # X_col could be a slice that has a stride.  We need contiguous for caling into C
-                X_col = X_col.copy()
-            
-            # the fix was to remove a tab for the line below
-            X_col = native.discretize(X_col, feature_bins)
-            n_bins = len(feature_bins) + 2
-
-        if bad is not None:
-            n_bins += 1
-            X_col[bad != _none_ndarray] = n_bins - 1
-
-        native_bin_counts.itemset(feature_idx, n_bins)
-        X_binned[:, feature_idx] = X_col
-
-    return X_binned, native_bin_counts
 
 def bin_native(
-    is_classification, 
+    n_classes,
     feature_idxs, 
     bins_iter,
     X, 
@@ -1898,36 +1847,7 @@ def bin_native(
 
     _log.info("Creating native dataset")
 
-    X, n_samples = clean_X(X)
-    if n_samples <= 0:
-        msg = "X has no samples to train on"
-        _log.error(msg)
-        raise ValueError(msg)
-
-    if is_classification:
-        y = clean_vector(y, True, "y")
-        # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
-        # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
-        # in two separate runs, which would flip the ordering of the classes within our score tensors.
-        classes, y = np.unique(y, return_inverse=True)
-    else:
-        y = clean_vector(y, False, "y")
-        classes = None
-
-    if n_samples != len(y):
-        msg = f"X has {n_samples} samples and y has {len(y)} samples"
-        _log.error(msg)
-        raise ValueError(msg)
-
-    if sample_weight is not None:
-        sample_weight = clean_vector(sample_weight, False, "sample_weight")
-        if n_samples != len(sample_weight):
-            msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
-            _log.error(msg)
-            raise ValueError(msg)
-    else:
-        # TODO: eliminate this eventually
-        sample_weight = np.ones_like(y, dtype=np.float64)
+    n_samples = len(y)
 
     native = Native.get_native_singleton()
 
@@ -1940,8 +1860,10 @@ def bin_native(
             request = (request[0], None)
         requests.append(request)
 
+    n_weights = 0 if sample_weight is None else 1
+
     native_bin_counts = []
-    n_bytes = native.size_data_set_header(len(requests), 1, 1)
+    n_bytes = native.size_data_set_header(len(requests), n_weights, 1)
     for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
             # re-check that that number of samples is identical since iterators can be used up by looking at them
@@ -1971,15 +1893,17 @@ def bin_native(
 
         n_bytes += native.size_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col)
 
-    n_bytes += native.size_weight(sample_weight)
-    if is_classification:
-        n_bytes += native.size_classification_target(len(classes), y)
+    if sample_weight is not None:
+        n_bytes += native.size_weight(sample_weight)
+    
+    if 0 <= n_classes:
+        n_bytes += native.size_classification_target(n_classes, y)
     else:
         n_bytes += native.size_regression_target(y)
 
-    shared_dataset = RawArray('B', n_bytes)
+    shared_dataset = np.empty(n_bytes, np.ubyte) # joblib loky doesn't support RawArray
 
-    native.fill_data_set_header(len(requests), 1, 1, n_bytes, shared_dataset)
+    native.fill_data_set_header(len(requests), n_weights, 1, n_bytes, shared_dataset)
 
     for (feature_idx, feature_bins), n_bins, (_, X_col, _, bad) in zip(responses, native_bin_counts, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
@@ -2003,17 +1927,19 @@ def bin_native(
 
         native.fill_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
 
-    native.fill_weight(sample_weight, n_bytes, shared_dataset)
-    if is_classification:
-        native.fill_classification_target(len(classes), y, n_bytes, shared_dataset)
+    if sample_weight is not None:
+        native.fill_weight(sample_weight, n_bytes, shared_dataset)
+
+    if 0 <= n_classes:
+        native.fill_classification_target(n_classes, y, n_bytes, shared_dataset)
     else:
         native.fill_regression_target(y, n_bytes, shared_dataset)
 
     # TODO: use the unknowns array instead of using the last count bin in the rest of our code
-    return shared_dataset, classes, np.array(native_bin_counts, dtype=np.int64)
+    return shared_dataset, np.array(native_bin_counts, dtype=np.int64)
 
 def bin_native_by_dimension(
-    is_classification, 
+    n_classes,
     n_dimensions,
     bins,
     X, 
@@ -2032,7 +1958,7 @@ def bin_native_by_dimension(
         bins_iter.append(feature_bins)
 
     return bin_native(
-        is_classification, 
+        n_classes,
         feature_idxs, 
         bins_iter,
         X, 

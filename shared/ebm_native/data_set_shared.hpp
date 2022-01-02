@@ -37,7 +37,7 @@ extern ErrorEbmType GetDataSetSharedHeader(
    size_t * const pcTargetsOut
 );
 
-// GetDataSetSharedFeature will return either SparseFeatureDataSetSharedEntry or SharedStorageDataType
+// GetDataSetSharedFeature will return either (SparseFeatureDataSetSharedEntry *) or (SharedStorageDataType *)
 extern const void * GetDataSetSharedFeature(
    const unsigned char * const pDataSetShared,
    const size_t iFeature,
@@ -53,6 +53,7 @@ extern const FloatEbmType * GetDataSetSharedWeight(
    const size_t iWeight
 );
 
+// GetDataSetSharedTarget returns (FloatEbmType *) for regression and (SharedStorageDataType *) for classification
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,
    const size_t iTarget,

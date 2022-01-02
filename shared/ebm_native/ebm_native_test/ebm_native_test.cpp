@@ -590,6 +590,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
    ErrorEbmType error;
+   const size_t cFeatures = m_featuresBinCount.size();
    if(IsClassification(m_learningTypeOrCountTargetClasses)) {
       if(m_bNullTrainingPredictionScores) {
          m_trainingPredictionScores.resize(cVectorLength * m_trainingClassificationTargets.size());
@@ -603,25 +604,63 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       if(m_bNullValidationWeights) {
          m_validationWeights.resize(m_validationClassificationTargets.size());
       }
-      error = CreateClassificationBooster(
+
+      const size_t cTrainingSamples = m_trainingClassificationTargets.size();
+      const size_t cValidationSamples = m_validationClassificationTargets.size();
+      const size_t cSamples = cTrainingSamples + cValidationSamples;
+
+      IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
+      for(size_t i = 0; i < cFeatures; ++i) {
+         std::vector<IntEbmType> trainingFeatures(m_trainingBinnedData.begin() + i * cTrainingSamples, m_trainingBinnedData.begin() + i * cTrainingSamples + cTrainingSamples);
+         std::vector<IntEbmType> validationFeatures(m_validationBinnedData.begin() + i * cValidationSamples, m_validationBinnedData.begin() + i * cValidationSamples + cValidationSamples);
+
+         std::vector<IntEbmType> allFeatures(trainingFeatures);
+         allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
+
+         size += SizeFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      }
+
+      std::vector<FloatEbmType> allWeights(m_trainingWeights);
+      allWeights.insert(allWeights.end(), m_validationWeights.begin(), m_validationWeights.end());
+      size += SizeWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0]);
+
+      std::vector<IntEbmType> allTargets(m_trainingClassificationTargets);
+      allTargets.insert(allTargets.end(), m_validationClassificationTargets.begin(), m_validationClassificationTargets.end());
+      size += SizeClassificationTarget(m_learningTypeOrCountTargetClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
+
+      void * pDataSet = malloc(size);
+
+      error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
+
+      for(size_t i = 0; i < cFeatures; ++i) {
+         std::vector<IntEbmType> trainingFeatures(m_trainingBinnedData.begin() + i * cTrainingSamples, m_trainingBinnedData.begin() + i * cTrainingSamples + cTrainingSamples);
+         std::vector<IntEbmType> validationFeatures(m_validationBinnedData.begin() + i * cValidationSamples, m_validationBinnedData.begin() + i * cValidationSamples + cValidationSamples);
+
+         std::vector<IntEbmType> allFeatures(trainingFeatures);
+         allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
+
+         error = FillFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      }
+
+      error = FillWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0], size, pDataSet);
+
+      error = FillClassificationTarget(m_learningTypeOrCountTargetClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0], size, pDataSet);
+
+      std::vector<IntEbmType> bag;
+      bag.insert(bag.end(), cTrainingSamples, 1);
+      bag.insert(bag.end(), cValidationSamples, -1);
+
+      std::vector<FloatEbmType> allScores(m_trainingPredictionScores);
+      allScores.insert(allScores.end(), m_validationPredictionScores.begin(), m_validationPredictionScores.end());
+
+      error = CreateBooster(
          k_randomSeed,
-         m_learningTypeOrCountTargetClasses,
-         m_featuresBinCount.size(),
-         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
-         0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
+         pDataSet,
+         0 == bag.size() ? nullptr : &bag[0],
+         0 == allScores.size() ? nullptr : &allScores[0],
          m_featureGroupsDimensionCount.size(),
          0 == m_featureGroupsDimensionCount.size() ? nullptr : &m_featureGroupsDimensionCount[0],
          0 == m_featureGroupsFeatureIndexes.size() ? nullptr : &m_featureGroupsFeatureIndexes[0],
-         m_trainingClassificationTargets.size(),
-         0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0],
-         0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0],
-         0 == m_trainingWeights.size() ? nullptr : &m_trainingWeights[0],
-         0 == m_trainingPredictionScores.size() ? nullptr : &m_trainingPredictionScores[0],
-         m_validationClassificationTargets.size(),
-         0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0],
-         0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0],
-         0 == m_validationWeights.size() ? nullptr : &m_validationWeights[0],
-         0 == m_validationPredictionScores.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
          nullptr,
          &m_boosterHandle
@@ -639,24 +678,63 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       if(m_bNullValidationWeights) {
          m_validationWeights.resize(m_validationRegressionTargets.size());
       }
-      error = CreateRegressionBooster(
+
+      size_t cTrainingSamples = m_trainingRegressionTargets.size();
+      size_t cValidationSamples = m_validationRegressionTargets.size();
+      size_t cSamples = cTrainingSamples + cValidationSamples;
+
+      IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
+      for(size_t i = 0; i < cFeatures; ++i) {
+         std::vector<IntEbmType> trainingFeatures(m_trainingBinnedData.begin() + i * cTrainingSamples, m_trainingBinnedData.begin() + i * cTrainingSamples + cTrainingSamples);
+         std::vector<IntEbmType> validationFeatures(m_validationBinnedData.begin() + i * cValidationSamples, m_validationBinnedData.begin() + i * cValidationSamples + cValidationSamples);
+
+         std::vector<IntEbmType> allFeatures(trainingFeatures);
+         allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
+
+         size += SizeFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      }
+
+      std::vector<FloatEbmType> allWeights(m_trainingWeights);
+      allWeights.insert(allWeights.end(), m_validationWeights.begin(), m_validationWeights.end());
+      size += SizeWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0]);
+
+      std::vector<FloatEbmType> allTargets(m_trainingRegressionTargets);
+      allTargets.insert(allTargets.end(), m_validationRegressionTargets.begin(), m_validationRegressionTargets.end());
+      size += SizeRegressionTarget(allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
+
+      void * pDataSet = malloc(size);
+
+      error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
+
+      for(size_t i = 0; i < cFeatures; ++i) {
+         std::vector<IntEbmType> trainingFeatures(m_trainingBinnedData.begin() + i * cTrainingSamples, m_trainingBinnedData.begin() + i * cTrainingSamples + cTrainingSamples);
+         std::vector<IntEbmType> validationFeatures(m_validationBinnedData.begin() + i * cValidationSamples, m_validationBinnedData.begin() + i * cValidationSamples + cValidationSamples);
+
+         std::vector<IntEbmType> allFeatures(trainingFeatures);
+         allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
+
+         error = FillFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      }
+
+      error = FillWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0], size, pDataSet);
+
+      error = FillRegressionTarget(allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0], size, pDataSet);
+
+      std::vector<IntEbmType> bag;
+      bag.insert(bag.end(), cTrainingSamples, 1);
+      bag.insert(bag.end(), cValidationSamples, -1);
+
+      std::vector<FloatEbmType> allScores(m_trainingPredictionScores);
+      allScores.insert(allScores.end(), m_validationPredictionScores.begin(), m_validationPredictionScores.end());
+
+      error = CreateBooster(
          k_randomSeed,
-         m_featuresBinCount.size(),
-         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
-         0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
+         pDataSet,
+         0 == bag.size() ? nullptr : &bag[0],
+         0 == allScores.size() ? nullptr : &allScores[0],
          m_featureGroupsDimensionCount.size(),
          0 == m_featureGroupsDimensionCount.size() ? nullptr : &m_featureGroupsDimensionCount[0],
          0 == m_featureGroupsFeatureIndexes.size() ? nullptr : &m_featureGroupsFeatureIndexes[0],
-         m_trainingRegressionTargets.size(),
-         0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0],
-         0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0],
-         0 == m_trainingWeights.size() ? nullptr : &m_trainingWeights[0],
-         0 == m_trainingPredictionScores.size() ? nullptr : &m_trainingPredictionScores[0],
-         m_validationRegressionTargets.size(),
-         0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0],
-         0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0],
-         0 == m_validationWeights.size() ? nullptr : &m_validationWeights[0],
-         0 == m_validationPredictionScores.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
          nullptr,
          &m_boosterHandle
@@ -990,6 +1068,7 @@ void TestApi::InitializeInteraction() {
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
    ErrorEbmType error;
+   const size_t cFeatures = m_featuresBinCount.size();
    if(IsClassification(m_learningTypeOrCountTargetClasses)) {
       if(m_bNullInteractionPredictionScores) {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionClassificationTargets.size());
@@ -997,15 +1076,38 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionWeights) {
          m_interactionWeights.resize(m_interactionClassificationTargets.size());
       }
-      error = CreateClassificationInteractionDetector(
-         m_learningTypeOrCountTargetClasses,
-         m_featuresBinCount.size(),
-         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
-         0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
-         m_interactionClassificationTargets.size(),
-         0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0],
-         0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0],
-         0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0],
+      
+      const size_t cSamples = m_interactionClassificationTargets.size();
+
+      IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
+      for(size_t i = 0; i < cFeatures; ++i) {
+         std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
+         size += SizeFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      }
+
+      size += SizeWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0]);
+
+      size += SizeClassificationTarget(m_learningTypeOrCountTargetClasses, m_interactionClassificationTargets.size(), 0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0]);
+
+      void * pDataSet = malloc(size);
+
+      error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
+
+      for(size_t i = 0; i < cFeatures; ++i) {
+         std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
+         error = FillFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      }
+
+      error = FillWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0], size, pDataSet);
+
+      error = FillClassificationTarget(m_learningTypeOrCountTargetClasses, m_interactionClassificationTargets.size(), 0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0], size, pDataSet);
+
+      std::vector<IntEbmType> bag;
+      bag.insert(bag.end(), cSamples, 1);
+
+      error = CreateInteractionDetector(
+         pDataSet,
+         0 == bag.size() ? nullptr : &bag[0],
          0 == m_interactionPredictionScores.size() ? nullptr : &m_interactionPredictionScores[0],
          nullptr,
          &m_interactionHandle
@@ -1017,14 +1119,38 @@ void TestApi::InitializeInteraction() {
       if(m_bNullInteractionWeights) {
          m_interactionWeights.resize(m_interactionRegressionTargets.size());
       }
-      error = CreateRegressionInteractionDetector(
-         m_featuresBinCount.size(),
-         0 == m_featuresCategorical.size() ? nullptr : &m_featuresCategorical[0],
-         0 == m_featuresBinCount.size() ? nullptr : &m_featuresBinCount[0],
-         m_interactionRegressionTargets.size(),
-         0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0],
-         0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0],
-         0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0],
+
+      const size_t cSamples = m_interactionRegressionTargets.size();
+
+      IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
+      for(size_t i = 0; i < cFeatures; ++i) {
+         std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
+         size += SizeFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      }
+
+      size += SizeWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0]);
+
+      size += SizeRegressionTarget(m_interactionRegressionTargets.size(), 0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0]);
+
+      void * pDataSet = malloc(size);
+
+      error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
+
+      for(size_t i = 0; i < cFeatures; ++i) {
+         std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
+         error = FillFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      }
+
+      error = FillWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0], size, pDataSet);
+
+      error = FillRegressionTarget(m_interactionRegressionTargets.size(), 0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0], size, pDataSet);
+
+      std::vector<IntEbmType> bag;
+      bag.insert(bag.end(), cSamples, 1);
+
+      error = CreateInteractionDetector(
+         pDataSet,
+         0 == bag.size() ? nullptr : &bag[0],
          0 == m_interactionPredictionScores.size() ? nullptr : &m_interactionPredictionScores[0],
          nullptr,
          &m_interactionHandle

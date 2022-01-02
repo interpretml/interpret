@@ -48,17 +48,18 @@ public:
    void Destruct();
 
    ErrorEbmType Initialize(
-      const bool bAllocateGradients, 
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const bool bAllocateGradients,
       const bool bAllocateHessians,
       const bool bAllocatePredictorScores,
-      const bool bAllocateTargetData, 
-      const size_t cFeatureGroups, 
-      const FeatureGroup * const * const apFeatureGroup, 
-      const size_t cSamples, 
-      const IntEbmType * const aInputDataFrom, 
-      const void * const aTargets, 
-      const FloatEbmType * const aPredictorScoresFrom, 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+      const bool bAllocateTargetData,
+      const unsigned char * const pDataSetShared,
+      const IntEbmType direction,
+      const IntEbmType * const aBag,
+      const FloatEbmType * const aPredictorScores,
+      const size_t cSetSamples,
+      const size_t cFeatureGroups,
+      const FeatureGroup * const * const apFeatureGroup
    );
 
    INLINE_ALWAYS FloatEbmType * GetGradientsAndHessiansPointer() {

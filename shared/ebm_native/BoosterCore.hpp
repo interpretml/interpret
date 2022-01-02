@@ -54,7 +54,7 @@ class BoosterCore final {
    size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
    FloatEbmType m_validationWeightTotal;
-   FloatEbmType * m_aValidationWeights;
+   const FloatEbmType * m_aValidationWeights;
 
    CompressibleTensor ** m_apCurrentModel;
    CompressibleTensor ** m_apBestModel;
@@ -84,7 +84,7 @@ class BoosterCore final {
       m_validationSet.Destruct();
 
       SamplingSet::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
-      free(m_aValidationWeights);
+      free(const_cast<FloatEbmType *>(m_aValidationWeights));
 
       FeatureGroup::FreeFeatureGroups(m_cFeatureGroups, m_apFeatureGroups);
 
@@ -191,25 +191,14 @@ public:
    static ErrorEbmType Create(
       BoosterShell * const pBoosterShell,
       const SeedEbmType randomSeed,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cFeatures,
       const size_t cFeatureGroups,
       const size_t cSamplingSets,
       const FloatEbmType * const optionalTempParams,
-      const BoolEbmType * const aFeaturesCategorical,
-      const IntEbmType * const aFeaturesBinCount,
       const IntEbmType * const aFeatureGroupsDimensionCounts,
-      const IntEbmType * const aFeatureGroupsFeatureIndexes, 
-      const size_t cTrainingSamples, 
-      const void * const aTrainingTargets, 
-      const IntEbmType * const aTrainingBinnedData, 
-      const FloatEbmType * const aTrainingWeights,
-      const FloatEbmType * const aTrainingPredictorScores,
-      const size_t cValidationSamples, 
-      const void * const aValidationTargets, 
-      const IntEbmType * const aValidationBinnedData, 
-      const FloatEbmType * const aValidationWeights,
-      const FloatEbmType * const aValidationPredictorScores
+      const IntEbmType * const aFeatureGroupsFeatureIndexes,
+      const unsigned char * const pDataSetShared,
+      const IntEbmType * const aBag,
+      const FloatEbmType * const aPredictorScores
    );
 };
 

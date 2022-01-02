@@ -249,7 +249,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetT
 //     will subtract into a register and subract that from the pointer indirection to the target memory location.
 //   - clearly, keeping normal logits instead of negated logits will be less confusing
 //   - keeping negated logits would be even more confusing since we want to keep non-negated values for regression models
-//   - when calling CreateClassificationBooster, the trainingPredictorScores and validationPredictorScores values would logically need to be negated 
+//   - when calling CreateBooster, the trainingPredictorScores and validationPredictorScores values would logically need to be negated 
 //     for consistency with the models if we stored the models as negated, so it would be even more confusing
 //   - even if it were better to keep negated logits, in order to calculate a probabily from a model, you need to loop over all the "feature groups" 
 //     and get the logit for that "feature group" to sum them all together for the combined logit, and that work is going to be far far greater 
@@ -481,47 +481,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stra
    IntEbmType* sampleCountsOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBooster(
    SeedEbmType randomSeed,
-   IntEbmType countTargetClasses,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
+   const void * dataSet,
+   const IntEbmType * bag,
+   const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
    IntEbmType countFeatureGroups,
-   const IntEbmType * featureGroupsDimensionCount,
-   const IntEbmType * featureGroupsFeatureIndexes,
-   IntEbmType countTrainingSamples,
-   const IntEbmType * trainingBinnedData,
-   const IntEbmType * trainingTargets,
-   const FloatEbmType * trainingWeights,
-   const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationSamples,
-   const IntEbmType * validationBinnedData,
-   const IntEbmType * validationTargets,
-   const FloatEbmType * validationWeights,
-   const FloatEbmType * validationPredictorScores,
-   IntEbmType countInnerBags,
-   const FloatEbmType * optionalTempParams,
-   BoosterHandle * boosterHandleOut
-);
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
-   SeedEbmType randomSeed,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
-   IntEbmType countFeatureGroups,
-   const IntEbmType * featureGroupsDimensionCount, 
-   const IntEbmType * featureGroupsFeatureIndexes, 
-   IntEbmType countTrainingSamples,
-   const IntEbmType * trainingBinnedData, 
-   const FloatEbmType * trainingTargets,
-   const FloatEbmType * trainingWeights,
-   const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationSamples,
-   const IntEbmType * validationBinnedData, 
-   const FloatEbmType * validationTargets,
-   const FloatEbmType * validationWeights,
-   const FloatEbmType * validationPredictorScores,
+   const IntEbmType * dimensionCounts,
+   const IntEbmType * featureIndexes,
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams,
    BoosterHandle * boosterHandleOut
@@ -572,29 +539,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
 );
 
-
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateClassificationInteractionDetector(
-   IntEbmType countTargetClasses,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
-   IntEbmType countSamples,
-   const IntEbmType * binnedData,
-   const IntEbmType * targets,
-   const FloatEbmType * weights,
-   const FloatEbmType * predictorScores,
-   const FloatEbmType * optionalTempParams,
-   InteractionHandle * interactionHandleOut
-);
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateRegressionInteractionDetector(
-   IntEbmType countFeatures, 
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
-   IntEbmType countSamples,
-   const IntEbmType * binnedData, 
-   const FloatEbmType * targets,
-   const FloatEbmType * weights,
-   const FloatEbmType * predictorScores,
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
+   const void * dataSet,
+   const IntEbmType * bag,
+   const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
    const FloatEbmType * optionalTempParams,
    InteractionHandle * interactionHandleOut
 );

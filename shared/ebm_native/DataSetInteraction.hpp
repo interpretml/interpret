@@ -26,7 +26,7 @@ class DataSetInteraction final {
    size_t m_cSamples;
    size_t m_cFeatures;
 
-   FloatEbmType * m_aWeights;
+   const FloatEbmType * m_aWeights;
    FloatEbmType m_weightTotal;
 
 public:
@@ -49,14 +49,13 @@ public:
 
    ErrorEbmType Initialize(
       const bool bAllocateHessians,
-      const size_t cFeatures,
-      const Feature * const aFeatures, 
-      const size_t cSamples, 
-      const IntEbmType * const aInputDataFrom, 
-      const FloatEbmType * const aWeights,
-      const void * const aTargetData,
-      const FloatEbmType * const aPredictorScores, 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+      const unsigned char * const pDataSetShared,
+      const size_t cAllSamples,
+      const IntEbmType * const aBag,
+      const FloatEbmType * const aPredictorScores,
+      const size_t cSetSamples,
+      const size_t cWeights,
+      const size_t cFeatures
    );
 
    INLINE_ALWAYS const FloatEbmType * GetWeights() const {

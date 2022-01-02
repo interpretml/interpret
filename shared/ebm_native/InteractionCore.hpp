@@ -102,16 +102,10 @@ public:
    static void Free(InteractionCore * const pInteractionCore);
    static ErrorEbmType Create(
       InteractionShell * const pInteractionShell,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cFeatures,
-      const FloatEbmType * const optionalTempParams,
-      const BoolEbmType * const aFeaturesCategorical,
-      const IntEbmType * const aFeaturesBinCount,
-      const size_t cSamples,
-      const void * const aTargets,
-      const IntEbmType * const aBinnedData,
-      const FloatEbmType * const aWeights,
-      const FloatEbmType * const aPredictorScores
+      const unsigned char * const pDataSetShared,
+      const IntEbmType * const aBag,
+      const FloatEbmType * const aPredictorScores,
+      const FloatEbmType * const optionalTempParams
    );
 };
 

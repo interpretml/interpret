@@ -282,7 +282,7 @@ class Native:
             n_weights, 
             n_targets, 
             n_bytes, 
-            shared_data, 
+            shared_data.ctypes.data, 
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
@@ -300,7 +300,7 @@ class Native:
             len(binned_data), 
             binned_data, 
             n_bytes, 
-            shared_data,
+            shared_data.ctypes.data,
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillFeature")
@@ -316,7 +316,7 @@ class Native:
             len(weights), 
             weights, 
             n_bytes, 
-            shared_data, 
+            shared_data.ctypes.data, 
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillWeight")
@@ -333,7 +333,7 @@ class Native:
             len(targets), 
             targets, 
             n_bytes, 
-            shared_data,
+            shared_data.ctypes.data,
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillClassificationTarget")
@@ -349,7 +349,7 @@ class Native:
             len(targets), 
             targets, 
             n_bytes, 
-            shared_data, 
+            shared_data.ctypes.data, 
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillRegressionTarget")
@@ -659,47 +659,21 @@ class Native:
         self._unsafe.Softmax.restype = ct.c_int32
 
 
-        self._unsafe.CreateClassificationBooster.argtypes = [
+        self._unsafe.CreateBooster.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
-            # int64_t countTargetClasses
-            ct.c_int64,
-            # int64_t countFeatures
-            ct.c_int64,
-            # int64_t * featuresCategorical
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * featuresBinCount
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            # void * dataSet
+            ct.c_void_p,
+            # int64_t * bag
+            ct.c_void_p,
+            # double * predictorScores
+            ct.c_void_p,
             # int64_t countFeatureGroups
             ct.c_int64,
-            # int64_t * featureGroupsDimensionCount
+            # int64_t * dimensionCounts
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * featureGroupsFeatureIndexes
+            # int64_t * featureIndexes
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countTrainingSamples
-            ct.c_int64,
-            # int64_t * trainingBinnedData
-            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
-            # int64_t * trainingTargets
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # double * trainingWeights
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # ct.c_void_p,
-            # double * trainingPredictorScores
-            # scores can either be 1 or 2 dimensional
-            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
-            # int64_t countValidationSamples
-            ct.c_int64,
-            # int64_t * validationBinnedData
-            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
-            # int64_t * validationTargets
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # double * validationWeights
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # ct.c_void_p,
-            # double * validationPredictorScores
-            # scores can either be 1 or 2 dimensional
-            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
             # int64_t countInnerBags
             ct.c_int64,
             # double * optionalTempParams
@@ -707,53 +681,7 @@ class Native:
             # BoosterHandle * boosterHandleOut
             ct.POINTER(ct.c_void_p),
         ]
-        self._unsafe.CreateClassificationBooster.restype = ct.c_int32
-
-        self._unsafe.CreateRegressionBooster.argtypes = [
-            # int32_t randomSeed
-            ct.c_int32,
-            # int64_t countFeatures
-            ct.c_int64,
-            # int64_t * featuresCategorical
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * featuresBinCount
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countFeatureGroups
-            ct.c_int64,
-            # int64_t * featureGroupsDimensionCount
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * featureGroupsFeatureIndexes
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countTrainingSamples
-            ct.c_int64,
-            # int64_t * trainingBinnedData
-            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
-            # double * trainingTargets
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # double * trainingWeights
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # ct.c_void_p,
-            # double * trainingPredictorScores
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countValidationSamples
-            ct.c_int64,
-            # int64_t * validationBinnedData
-            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
-            # double * validationTargets
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # double * validationWeights
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # ct.c_void_p,
-            # double * validationPredictorScores
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countInnerBags
-            ct.c_int64,
-            # double * optionalTempParams
-            ct.POINTER(ct.c_double),
-            # BoosterHandle * boosterHandleOut
-            ct.POINTER(ct.c_void_p),
-        ]
-        self._unsafe.CreateRegressionBooster.restype = ct.c_int32
+        self._unsafe.CreateBooster.restype = ct.c_int32
 
         self._unsafe.GenerateModelUpdate.argtypes = [
             # void * boosterHandle
@@ -838,58 +766,19 @@ class Native:
         self._unsafe.FreeBooster.restype = None
 
 
-        self._unsafe.CreateClassificationInteractionDetector.argtypes = [
-            # int64_t countTargetClasses
-            ct.c_int64,
-            # int64_t countFeatures
-            ct.c_int64,
-            # int64_t * featuresCategorical
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * featuresBinCount
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countSamples
-            ct.c_int64,
-            # int64_t * binnedData
-            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
-            # int64_t * targets
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # double * weights
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # ct.c_void_p,
+        self._unsafe.CreateInteractionDetector.argtypes = [
+            # void * dataSet
+            ct.c_void_p,
+            # int64_t * bag
+            ct.c_void_p,
             # double * predictorScores
-            # scores can either be 1 or 2 dimensional
-            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # double * optionalTempParams
             ct.POINTER(ct.c_double),
             # InteractionHandle * interactionHandleOut
             ct.POINTER(ct.c_void_p),
         ]
-        self._unsafe.CreateClassificationInteractionDetector.restype = ct.c_int32
-
-        self._unsafe.CreateRegressionInteractionDetector.argtypes = [
-            # int64_t countFeatures
-            ct.c_int64,
-            # int64_t * featuresCategorical
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * featuresBinCount
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t countSamples
-            ct.c_int64,
-            # int64_t * binnedData
-            ndpointer(dtype=ct.c_int64, ndim=2, flags="C_CONTIGUOUS"),
-            # double * targets
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # double * weights
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # ct.c_void_p,
-            # double * predictorScores
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
-            # double * optionalTempParams
-            ct.POINTER(ct.c_double),
-            # InteractionHandle * interactionHandleOut
-            ct.POINTER(ct.c_void_p),
-        ]
-        self._unsafe.CreateRegressionInteractionDetector.restype = ct.c_int32
+        self._unsafe.CreateInteractionDetector.restype = ct.c_int32
 
         self._unsafe.CalculateInteractionScore.argtypes = [
             # void * interactionHandle
@@ -933,19 +822,12 @@ class Booster(AbstractContextManager):
 
     def __init__(
         self,
-        model_type,
         n_classes,
-        features_categorical, 
+        data_set,
+        bag,
+        scores,
         features_bin_count,
         feature_groups,
-        X_train,
-        y_train,
-        w_train,
-        scores_train,
-        X_val,
-        y_val,
-        w_val,
-        scores_val,
         n_inner_bags,
         random_state,
         optional_temp_params,
@@ -954,42 +836,28 @@ class Booster(AbstractContextManager):
         """ Initializes internal wrapper for EBM C code.
 
         Args:
-            model_type: 'regression'/'classification'.
             n_classes: Specific to classification,
                 number of unique classes.
-            features_categorical: list of categorical features represented by bools 
+            data_set: binned data in a compressed native form
+            bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
+            scores: predictions from a prior predictor
+                that this class will boost on top of.  For regression
+                there is 1 prediction per sample.  For binary classification
+                there is one logit.  For multiclass there are n_classes logits
             features_bin_count: count of the number of bins for each feature
             feature_groups: List of feature groups represented as
                 a dictionary of keys ("features")
-            X_train: Training design matrix as 2-D ndarray.
-            y_train: Training response as 1-D ndarray.
-            scores_train: training predictions from a prior predictor
-                that this class will boost on top of.  For regression
-                there is 1 prediction per sample.  For binary classification
-                there is one logit.  For multiclass there are n_classes logits
-            X_val: Validation design matrix as 2-D ndarray.
-            y_val: Validation response as 1-D ndarray.
-            scores_val: Validation predictions from a prior predictor
-                that this class will boost on top of.  For regression
-                there is 1 prediction per sample.  For binary classification
-                there is one logit.  For multiclass there are n_classes logits
             n_inner_bags: number of inner bags.
             random_state: Random seed as integer.
+            optional_temp_params: unused data that can be passed into the native layer for debugging
         """
 
-        self.model_type = model_type
         self.n_classes = n_classes
-        self.features_categorical = features_categorical
+        self.data_set = data_set
+        self.bag = bag
+        self.scores = scores
         self.features_bin_count = features_bin_count
         self.feature_groups = feature_groups
-        self.X_train = X_train
-        self.y_train = y_train
-        self.w_train = w_train
-        self.scores_train = scores_train
-        self.X_val = X_val
-        self.y_val = y_val
-        self.w_val = w_val
-        self.scores_val = scores_val
         self.n_inner_bags = n_inner_bags
         self.random_state = random_state
         self.optional_temp_params = optional_temp_params
@@ -999,55 +867,8 @@ class Booster(AbstractContextManager):
 
     def __enter__(self):
 
-        # check inputs for important inputs or things that would segfault in C
-        if not isinstance(self.features_categorical, np.ndarray):  # pragma: no cover
-            raise ValueError("features_categorical should be an np.ndarray")
-
-        if not isinstance(self.features_bin_count, np.ndarray):  # pragma: no cover
-            raise ValueError("features_bin_count should be an np.ndarray")
-
         if not isinstance(self.feature_groups, list):  # pragma: no cover
             raise ValueError("feature_groups should be a list")
-
-        if self.X_train.ndim != 2:  # pragma: no cover
-            raise ValueError("X_train should have exactly 2 dimensions")
-
-        if self.y_train.ndim != 1:  # pragma: no cover
-            raise ValueError("y_train should have exactly 1 dimension")
-
-        if self.X_train.shape[0] != len(self.features_categorical):  # pragma: no cover
-            raise ValueError(
-                "X_train does not have the same number of items as the features_categorical array"
-            )
-
-        if self.X_train.shape[0] != len(self.features_bin_count):  # pragma: no cover
-            raise ValueError(
-                "X_train does not have the same number of items as the features_bin_count array"
-            )
-
-        if self.X_train.shape[1] != len(self.y_train):  # pragma: no cover
-            raise ValueError(
-                "X_train does not have the same number of samples as y_train"
-            )
-
-        if self.X_val.ndim != 2:  # pragma: no cover
-            raise ValueError("X_val should have exactly 2 dimensions")
-
-        if self.y_val.ndim != 1:  # pragma: no cover
-            raise ValueError("y_val should have exactly 1 dimension")
-
-        if self.X_val.shape[0] != self.X_train.shape[0]:  # pragma: no cover
-            raise ValueError(
-                "X_val does not have the same number of features as the X_train array"
-            )
-
-        if self.X_val.shape[1] != len(self.y_val):  # pragma: no cover
-            raise ValueError(
-                "X_val does not have the same number of samples as y_val"
-            )
-
-        if self.w_train.shape != self.y_train.shape or self.w_val.shape != self.y_val.shape:
-            raise ValueError("Sample weight shape must be equal to training label shape.")
 
         native = Native.get_native_singleton()
 
@@ -1058,52 +879,31 @@ class Booster(AbstractContextManager):
             feature_groups_feature_indexes,
         ) = Native._convert_feature_groups_to_c(self.feature_groups)
 
-        n_scores = Native.get_count_scores_c(self.n_classes)
-        scores_train = self.scores_train
-        if scores_train is None:
-            scores_train = np.zeros(len(self.y_train) * n_scores, dtype=ct.c_double, order="C")
-        else:
-            if scores_train.shape[0] != len(self.y_train):  # pragma: no cover
-                raise ValueError(
-                    "scores_train does not have the same number of samples as y_train"
-                )
-            if n_scores == 1:
-                if scores_train.ndim != 1:  # pragma: no cover
-                    raise ValueError(
-                        "scores_train should have exactly 1 dimensions for regression or binary classification"
-                    )
-            else:
-                if scores_train.ndim != 2:  # pragma: no cover
-                    raise ValueError(
-                        "scores_train should have exactly 2 dimensions for multiclass"
-                    )
-                if scores_train.shape[1] != n_scores:  # pragma: no cover
-                    raise ValueError(
-                        "scores_train does not have the same number of logit scores as n_scores"
-                    )
+        bag = self.bag
+        if bag is not None:
+            if not isinstance(bag, np.ndarray):  # pragma: no cover
+                raise ValueError("bag should be an ndarray")
 
-        scores_val = self.scores_val
-        if scores_val is None:
-            scores_val = np.zeros(len(self.y_val) * n_scores, dtype=ct.c_double, order="C")
-        else:
-            if scores_val.shape[0] != len(self.y_val):  # pragma: no cover
-                raise ValueError(
-                    "scores_val does not have the same number of samples as y_val"
-                )
-            if n_scores == 1:
-                if scores_val.ndim != 1:  # pragma: no cover
-                    raise ValueError(
-                        "scores_val should have exactly 1 dimensions for regression or binary classification"
-                    )
-            else:
-                if scores_val.ndim != 2:  # pragma: no cover
-                    raise ValueError(
-                        "scores_val should have exactly 2 dimensions for multiclass"
-                    )
-                if scores_val.shape[1] != n_scores:  # pragma: no cover
-                    raise ValueError(
-                        "scores_val does not have the same number of logit scores as n_scores"
-                    )
+            if bag.dtype.type is not np.int64:  # pragma: no cover
+                raise ValueError("bag should be an ndarray of np.int64")
+
+            if not bag.flags.c_contiguous:  # pragma: no cover
+                raise ValueError("bag should be a contiguous ndarray")
+
+            bag = bag.ctypes.data
+
+        scores = self.scores
+        if scores is not None:
+            if not isinstance(scores, np.ndarray):  # pragma: no cover
+                raise ValueError("scores should be an ndarray")
+
+            if scores.dtype.type is not np.float64:  # pragma: no cover
+                raise ValueError("scores should be an ndarray of np.float64")
+
+            if not scores.flags.c_contiguous:  # pragma: no cover
+                raise ValueError("scores should be a contiguous ndarray")
+
+            scores = scores.ctypes.data
 
         optional_temp_params = self.optional_temp_params
         if optional_temp_params is not None:  # pragma: no cover
@@ -1113,59 +913,20 @@ class Booster(AbstractContextManager):
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
-        if self.model_type == "classification":
-            return_code = native._unsafe.CreateClassificationBooster(
-                self.random_state,
-                self.n_classes,
-                len(self.features_bin_count),
-                self.features_categorical, 
-                self.features_bin_count,
-                len(feature_groups_feature_count),
-                feature_groups_feature_count,
-                feature_groups_feature_indexes,
-                len(self.y_train),
-                self.X_train,
-                self.y_train,
-                self.w_train,
-                scores_train,
-                len(self.y_val),
-                self.X_val,
-                self.y_val,
-                self.w_val,
-                scores_val,
-                self.n_inner_bags,
-                optional_temp_params,
-                ct.byref(booster_handle),
-            )
-            if return_code:  # pragma: no cover
-                raise Native._get_native_exception(return_code, "CreateClassificationBooster")
-        elif self.model_type == "regression":
-            return_code = native._unsafe.CreateRegressionBooster(
-                self.random_state,
-                len(self.features_bin_count),
-                self.features_categorical, 
-                self.features_bin_count,
-                len(feature_groups_feature_count),
-                feature_groups_feature_count,
-                feature_groups_feature_indexes,
-                len(self.y_train),
-                self.X_train,
-                self.y_train,
-                self.w_train,
-                scores_train,
-                len(self.y_val),
-                self.X_val,
-                self.y_val,
-                self.w_val,
-                scores_val,
-                self.n_inner_bags,
-                optional_temp_params,
-                ct.byref(booster_handle),
-            )
-            if return_code:  # pragma: no cover
-                raise Native._get_native_exception(return_code, "CreateRegressionBooster")
-        else:  # pragma: no cover
-            raise AttributeError("Unrecognized model_type")
+        return_code = native._unsafe.CreateBooster(
+            self.random_state,
+            self.data_set.ctypes.data,
+            bag,
+            scores,
+            len(feature_groups_feature_count),
+            feature_groups_feature_count,
+            feature_groups_feature_indexes,
+            self.n_inner_bags,
+            optional_temp_params,
+            ct.byref(booster_handle),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "CreateBooster")
 
         self._booster_handle = booster_handle.value
 
@@ -1329,7 +1090,7 @@ class Booster(AbstractContextManager):
             An ndarray that represents the model.
         """
 
-        if self.model_type == "classification" and self.n_classes <= 1:  # pragma: no cover
+        if self.n_classes == 1 or self.n_classes == 0:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1365,7 +1126,7 @@ class Booster(AbstractContextManager):
             An ndarray that represents the model.
         """
 
-        if self.model_type == "classification" and self.n_classes <= 1:  # pragma: no cover
+        if self.n_classes == 1 or self.n_classes == 0:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1416,7 +1177,7 @@ class Booster(AbstractContextManager):
         if self._feature_group_index < 0:  # pragma: no cover
             raise RuntimeError("invalid internal self._feature_group_index")
 
-        if self.model_type == "classification" and self.n_classes <= 1:  # pragma: no cover
+        if self.n_classes == 1 or self.n_classes == 0:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1442,7 +1203,7 @@ class Booster(AbstractContextManager):
     def set_model_update_expanded(self, feature_group_index, model_update):
         self._feature_group_index = -1
 
-        if self.model_type == "classification" and self.n_classes <= 1:  # pragma: no cover
+        if self.n_classes == 1 or self.n_classes == 0:  # pragma: no cover
             if model_update is None:  # pragma: no cover
                 self._feature_group_index = feature_group_index
                 return
@@ -1477,99 +1238,60 @@ class InteractionDetector(AbstractContextManager):
 
     def __init__(
         self, 
-        model_type, 
-        n_classes, 
-        features_categorical, 
-        features_bin_count, 
-        X, 
-        y, 
-        w, 
-        scores, 
-        optional_temp_params
+        data_set,
+        bag,
+        scores,
+        optional_temp_params,
     ):
 
         """ Initializes internal wrapper for EBM C code.
 
         Args:
-            model_type: 'regression'/'classification'.
-            n_classes: Specific to classification,
-                number of unique classes.
-            features_categorical: list of categorical features represented by bools 
-            features_bin_count: count of the number of bins for each feature
-            X: Training design matrix as 2-D ndarray.
-            y: Training response as 1-D ndarray.
-            w: Sample weights as 1-D ndarray (must be same shape as y).
-            scores: predictions from a prior predictor.  For regression
+            data_set: binned data in a compressed native form
+            bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
+            scores: predictions from a prior predictor
+                that this class will boost on top of.  For regression
                 there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
+            optional_temp_params: unused data that can be passed into the native layer for debugging
 
         """
 
-        self.model_type = model_type
-        self.n_classes = n_classes
-        self.features_categorical = features_categorical
-        self.features_bin_count = features_bin_count
-        self.X = X
-        self.y = y
-        self.w = w
+        self.data_set = data_set
+        self.bag = bag
         self.scores = scores
         self.optional_temp_params = optional_temp_params
 
     def __enter__(self):
-        # check inputs for important inputs or things that would segfault in C
-        if not isinstance(self.features_categorical, np.ndarray):  # pragma: no cover
-            raise ValueError("features_categorical should be an np.ndarray")
-
-        if not isinstance(self.features_bin_count, np.ndarray):  # pragma: no cover
-            raise ValueError("features_bin_count should be an np.ndarray")
-
-        if self.X.ndim != 2:  # pragma: no cover
-            raise ValueError("X should have exactly 2 dimensions")
-
-        if self.y.ndim != 1:  # pragma: no cover
-            raise ValueError("y should have exactly 1 dimension")
-
-
-        if self.X.shape[0] != len(self.features_categorical):  # pragma: no cover
-            raise ValueError(
-                "X does not have the same number of items as the features_categorical array"
-            )
-
-        if self.X.shape[0] != len(self.features_bin_count):  # pragma: no cover
-            raise ValueError(
-                "X does not have the same number of items as the features_bin_count array"
-            )
-
-        if self.X.shape[1] != len(self.y):  # pragma: no cover
-            raise ValueError("X does not have the same number of samples as y")
+        log.info("Allocation interaction start")
 
         native = Native.get_native_singleton()
 
-        log.info("Allocation interaction start")
+        bag = self.bag
+        if bag is not None:
+            if not isinstance(bag, np.ndarray):  # pragma: no cover
+                raise ValueError("bag should be an ndarray")
 
-        n_scores = Native.get_count_scores_c(self.n_classes)
+            if bag.dtype.type is not np.int64:  # pragma: no cover
+                raise ValueError("bag should be an ndarray of np.int64")
+
+            if not bag.flags.c_contiguous:  # pragma: no cover
+                raise ValueError("bag should be a contiguous ndarray")
+
+            bag = bag.ctypes.data
+
         scores = self.scores
-        if scores is None:  # pragma: no cover
-            scores = np.zeros(len(self.y) * n_scores, dtype=ct.c_double, order="C")
-        else:
-            if scores.shape[0] != len(self.y):  # pragma: no cover
-                raise ValueError(
-                    "scores does not have the same number of samples as y"
-                )
-            if n_scores == 1:
-                if scores.ndim != 1:  # pragma: no cover
-                    raise ValueError(
-                        "scores should have exactly 1 dimensions for regression or binary classification"
-                    )
-            else:
-                if scores.ndim != 2:  # pragma: no cover
-                    raise ValueError(
-                        "scores should have exactly 2 dimensions for multiclass"
-                    )
-                if scores.shape[1] != n_scores:  # pragma: no cover
-                    raise ValueError(
-                        "scores does not have the same number of logit scores as n_scores"
-                    )
+        if scores is not None:  # pragma: no cover
+            if not isinstance(scores, np.ndarray):  # pragma: no cover
+                raise ValueError("scores should be an ndarray")
+
+            if scores.dtype.type is not np.float64:  # pragma: no cover
+                raise ValueError("scores should be an ndarray of np.float64")
+
+            if not scores.flags.c_contiguous:  # pragma: no cover
+                raise ValueError("scores should be a contiguous ndarray")
+
+            scores = scores.ctypes.data
 
         optional_temp_params = self.optional_temp_params
         if optional_temp_params is not None:  # pragma: no cover
@@ -1579,39 +1301,15 @@ class InteractionDetector(AbstractContextManager):
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
-        if self.model_type == "classification":
-            return_code = native._unsafe.CreateClassificationInteractionDetector(
-                self.n_classes,
-                len(self.features_bin_count),
-                self.features_categorical, 
-                self.features_bin_count,
-                len(self.y),
-                self.X,
-                self.y,
-                self.w,
-                scores,
-                optional_temp_params,
-                ct.byref(interaction_handle),
-            )
-            if return_code:  # pragma: no cover
-                raise Native._get_native_exception(return_code, "CreateClassificationInteractionDetector")
-        elif self.model_type == "regression":
-            return_code = native._unsafe.CreateRegressionInteractionDetector(
-                len(self.features_bin_count),
-                self.features_categorical, 
-                self.features_bin_count,
-                len(self.y),
-                self.X,
-                self.y,
-                self.w,
-                scores,
-                optional_temp_params,
-                ct.byref(interaction_handle),
-            )
-            if return_code:  # pragma: no cover
-                raise Native._get_native_exception(return_code, "CreateRegressionInteractionDetector")
-        else:  # pragma: no cover
-            raise AttributeError("Unrecognized model_type")
+        return_code = native._unsafe.CreateInteractionDetector(
+            self.data_set.ctypes.data,
+            bag,
+            scores,
+            optional_temp_params,
+            ct.byref(interaction_handle),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "CreateInteractionDetector")
 
         self._interaction_handle = interaction_handle.value
 

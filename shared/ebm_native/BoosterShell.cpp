@@ -161,172 +161,81 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static ErrorEbmType CreateBooster(
+static ErrorEbmType CreateBoosterInternal(
    const SeedEbmType randomSeed,
-   const IntEbmType countFeatures,
-   const BoolEbmType * const aFeaturesCategorical,
-   const IntEbmType * const aFeaturesBinCount,
+   const void * const dataSet,
+   const IntEbmType * const bag,
+   const FloatEbmType * const predictorScores,
    const IntEbmType countFeatureGroups,
-   const IntEbmType * const aFeatureGroupsDimensionCount,
+   const IntEbmType * const aFeatureGroupsDimensionCounts,
    const IntEbmType * const aFeatureGroupsFeatureIndexes,
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const IntEbmType countTrainingSamples,
-   const void * const trainingTargets,
-   const IntEbmType * const trainingBinnedData,
-   const FloatEbmType * const aTrainingWeights,
-   const FloatEbmType * const trainingPredictorScores,
-   const IntEbmType countValidationSamples,
-   const void * const validationTargets,
-   const IntEbmType * const validationBinnedData,
-   const FloatEbmType * const aValidationWeights,
-   const FloatEbmType * const validationPredictorScores,
    const IntEbmType countInnerBags,
    const FloatEbmType * const optionalTempParams,
    BoosterHandle * boosterHandleOut
 ) {
-   // TODO : give CreateBooster the same calling parameter order as CreateClassificationBooster
+   // TODO : give CreateBoosterInternal the same calling parameter order as CreateBooster... actually even better would be to eliminate CreateBoosterInternal
 
    EBM_ASSERT(nullptr != boosterHandleOut);
    EBM_ASSERT(nullptr == *boosterHandleOut);
 
-   if(countFeatures < 0) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster countFeatures must be positive");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countFeatures && nullptr == aFeaturesCategorical) {
-      // TODO: in the future maybe accept null aFeaturesCategorical and assume there are no missing values
-      LOG_0(TraceLevelError, "ERROR CreateBooster aFeaturesCategorical cannot be nullptr if 0 < countFeatures");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countFeatures && nullptr == aFeaturesBinCount) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster aFeaturesBinCount cannot be nullptr if 0 < countFeatures");
-      return Error_IllegalParamValue;
-   }
    if(countFeatureGroups < 0) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster countFeatureGroups must be positive");
+      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal countFeatureGroups must be positive");
       return Error_IllegalParamValue;
    }
-   if(0 != countFeatureGroups && nullptr == aFeatureGroupsDimensionCount) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster aFeatureGroupsDimensionCount cannot be nullptr if 0 < countFeatureGroups");
+   if(0 != countFeatureGroups && nullptr == aFeatureGroupsDimensionCounts) {
+      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal aFeatureGroupsDimensionCounts cannot be nullptr if 0 < countFeatureGroups");
       return Error_IllegalParamValue;
    }
-   // aFeatureGroupsFeatureIndexes -> it's legal for aFeatureGroupsFeatureIndexes to be nullptr if there are no features indexed by our featureGroups.  
-   // FeatureGroups can have zero features, so it could be legal for this to be null even if there are aFeatureGroupsDimensionCount
-   if(countTrainingSamples < 0) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster countTrainingSamples must be positive");
+   // it's legal for aFeatureGroupsFeatureIndexes to be nullptr if there are no features indexed by our feature groups
+   // aFeatureGroupsDimensionCounts can have zero features, so it could be legal for this to be nullptr 
+   // even if 0 != countFeatureGroups
+
+   if(nullptr == dataSet) {
+      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal nullptr == dataSet");
       return Error_IllegalParamValue;
    }
-   if(0 != countTrainingSamples && nullptr == trainingTargets) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster trainingTargets cannot be nullptr if 0 < countTrainingSamples");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countTrainingSamples && 0 != countFeatures && nullptr == trainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster trainingBinnedData cannot be nullptr if 0 < countTrainingSamples AND 0 < countFeatures");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countTrainingSamples && nullptr == trainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster trainingPredictorScores cannot be nullptr if 0 < countTrainingSamples");
-      return Error_IllegalParamValue;
-   }
-   if(countValidationSamples < 0) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster countValidationSamples must be positive");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countValidationSamples && nullptr == validationTargets) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster validationTargets cannot be nullptr if 0 < countValidationSamples");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countValidationSamples && 0 != countFeatures && nullptr == validationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster validationBinnedData cannot be nullptr if 0 < countValidationSamples AND 0 < countFeatures");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countValidationSamples && nullptr == validationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster validationPredictorScores cannot be nullptr if 0 < countValidationSamples");
-      return Error_IllegalParamValue;
-   }
+
    if(countInnerBags < 0) {
       // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
-      LOG_0(TraceLevelError, "ERROR CreateBooster countInnerBags must be positive");
+      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal countInnerBags must be positive");
       return Error_UserParamValue;
    }
-   if(IsConvertError<size_t>(countFeatures)) {
-      // the caller should not have been able to allocate enough memory in "features" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countFeatures)");
-      return Error_IllegalParamValue;
-   }
    if(IsConvertError<size_t>(countFeatureGroups)) {
-      // the caller should not have been able to allocate enough memory in "aFeatureGroupsDimensionCount" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countFeatureGroups)");
-      return Error_IllegalParamValue;
-   }
-   if(IsConvertError<size_t>(countTrainingSamples)) {
-      // the caller should not have been able to allocate enough memory in "trainingTargets" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countTrainingSamples)");
-      return Error_IllegalParamValue;
-   }
-   if(IsConvertError<size_t>(countValidationSamples)) {
-      // the caller should not have been able to allocate enough memory in "validationTargets" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countValidationSamples)");
+      // the caller should not have been able to allocate enough memory in "aFeatureGroupsDimensionCounts" if this didn't fit in memory
+      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal IsConvertError<size_t>(countFeatureGroups)");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(countInnerBags)) {
       // this is just a warning since the caller doesn't pass us anything material, but if it's this high
       // then our allocation would fail since it can't even in pricipal fit into memory
-      LOG_0(TraceLevelWarning, "WARNING CreateBooster IsConvertError<size_t>(countInnerBags)");
+      LOG_0(TraceLevelWarning, "WARNING CreateBoosterInternal IsConvertError<size_t>(countInnerBags)");
       return Error_OutOfMemory;
    }
 
-   size_t cFeatures = static_cast<size_t>(countFeatures);
    size_t cFeatureGroups = static_cast<size_t>(countFeatureGroups);
-   size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
-   size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
    size_t cInnerBags = static_cast<size_t>(countInnerBags);
-
-   size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-
-   if(IsMultiplyError(cVectorLength, cTrainingSamples)) {
-      // the caller should not have been able to allocate enough memory in "trainingPredictorScores" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster IsMultiplyError(cVectorLength, cTrainingSamples)");
-      return Error_IllegalParamValue; // our input data wouldn't fit in memory
-   }
-   if(IsMultiplyError(cVectorLength, cValidationSamples)) {
-      // the caller should not have been able to allocate enough memory in "validationPredictorScores" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBooster IsMultiplyError(cVectorLength, cValidationSamples)");
-      return Error_IllegalParamValue; // our input data wouldn't fit in memory
-   }
 
    BoosterShell * const pBoosterShell = BoosterShell::Create();
    if(UNLIKELY(nullptr == pBoosterShell)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateBooster nullptr == pBoosterShell");
+      LOG_0(TraceLevelWarning, "WARNING CreateBoosterInternal nullptr == pBoosterShell");
       return Error_OutOfMemory;
    }
 
    const ErrorEbmType error1 = BoosterCore::Create(
       pBoosterShell,
       randomSeed,
-      runtimeLearningTypeOrCountTargetClasses,
-      cFeatures,
       cFeatureGroups,
       cInnerBags,
       optionalTempParams,
-      aFeaturesCategorical,
-      aFeaturesBinCount,
-      aFeatureGroupsDimensionCount,
+      aFeatureGroupsDimensionCounts,
       aFeatureGroupsFeatureIndexes,
-      cTrainingSamples,
-      trainingTargets,
-      trainingBinnedData,
-      aTrainingWeights,
-      trainingPredictorScores,
-      cValidationSamples,
-      validationTargets,
-      validationBinnedData,
-      aValidationWeights,
-      validationPredictorScores
+      static_cast<const unsigned char *>(dataSet),
+      bag,
+      predictorScores
    );
    if(UNLIKELY(Error_None != error1)) {
       BoosterShell::Free(pBoosterShell);
-      LOG_0(TraceLevelWarning, "WARNING CreateBooster pBoosterCore->Initialize");
+      LOG_0(TraceLevelWarning, "WARNING CreateBoosterInternal pBoosterCore->Initialize");
       return error1;
    }
 
@@ -340,231 +249,64 @@ static ErrorEbmType CreateBooster(
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateClassificationBooster(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBooster(
    SeedEbmType randomSeed,
-   IntEbmType countTargetClasses,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
+   const void * dataSet,
+   const IntEbmType * bag,
+   const FloatEbmType * predictorScores,
    IntEbmType countFeatureGroups,
-   const IntEbmType * featureGroupsDimensionCount,
-   const IntEbmType * featureGroupsFeatureIndexes,
-   IntEbmType countTrainingSamples,
-   const IntEbmType * trainingBinnedData,
-   const IntEbmType * trainingTargets,
-   const FloatEbmType * trainingWeights,
-   const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationSamples,
-   const IntEbmType * validationBinnedData,
-   const IntEbmType * validationTargets,
-   const FloatEbmType * validationWeights,
-   const FloatEbmType * validationPredictorScores,
+   const IntEbmType * dimensionCounts,
+   const IntEbmType * featureIndexes,
    IntEbmType countInnerBags,
    const FloatEbmType * optionalTempParams,
    BoosterHandle * boosterHandleOut
 ) {
    LOG_N(
       TraceLevelInfo,
-      "Entered CreateClassificationBooster: "
+      "Entered CreateBooster: "
       "randomSeed=%" SeedEbmTypePrintf ", "
-      "countTargetClasses=%" IntEbmTypePrintf ", "
-      "countFeatures=%" IntEbmTypePrintf ", "
-      "featuresCategorical=%p, "
-      "featuresBinCount=%p, "
+      "dataSet=%p, "
+      "bag=%p, "
+      "predictorScores=%p, "
       "countFeatureGroups=%" IntEbmTypePrintf ", "
-      "featureGroupsDimensionCount=%p, "
-      "featureGroupsFeatureIndexes=%p, "
-      "countTrainingSamples=%" IntEbmTypePrintf ", "
-      "trainingBinnedData=%p, "
-      "trainingTargets=%p, "
-      "trainingWeights=%p, "
-      "trainingPredictorScores=%p, "
-      "countValidationSamples=%" IntEbmTypePrintf ", "
-      "validationBinnedData=%p, "
-      "validationTargets=%p, "
-      "validationWeights=%p, "
-      "validationPredictorScores=%p, "
+      "dimensionCounts=%p, "
+      "featureIndexes=%p, "
       "countInnerBags=%" IntEbmTypePrintf ", "
       "optionalTempParams=%p, "
       "boosterHandleOut=%p"
       ,
       randomSeed,
-      countTargetClasses,
-      countFeatures,
-      static_cast<const void *>(featuresCategorical),
-      static_cast<const void *>(featuresBinCount),
+      static_cast<const void *>(dataSet),
+      static_cast<const void *>(bag),
+      static_cast<const void *>(predictorScores),
       countFeatureGroups,
-      static_cast<const void *>(featureGroupsDimensionCount),
-      static_cast<const void *>(featureGroupsFeatureIndexes),
-      countTrainingSamples,
-      static_cast<const void *>(trainingBinnedData),
-      static_cast<const void *>(trainingTargets),
-      static_cast<const void *>(trainingWeights),
-      static_cast<const void *>(trainingPredictorScores),
-      countValidationSamples,
-      static_cast<const void *>(validationBinnedData),
-      static_cast<const void *>(validationTargets),
-      static_cast<const void *>(validationWeights),
-      static_cast<const void *>(validationPredictorScores),
+      static_cast<const void *>(dimensionCounts),
+      static_cast<const void *>(featureIndexes),
       countInnerBags,
       static_cast<const void *>(optionalTempParams),
       static_cast<const void *>(boosterHandleOut)
    );
 
    if(nullptr == boosterHandleOut) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster nullptr == boosterHandleOut");
+      LOG_0(TraceLevelError, "ERROR CreateBooster nullptr == boosterHandleOut");
       return Error_IllegalParamValue;
    }
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
-   if(countTargetClasses < 0) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster countTargetClasses can't be negative");
-      return Error_IllegalParamValue;
-   }
-   if(0 == countTargetClasses && (0 != countTrainingSamples || 0 != countValidationSamples)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster countTargetClasses can't be zero unless there are no training and no validation cases");
-      return Error_IllegalParamValue;
-   }
-   if(IsConvertError<ptrdiff_t>(countTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateClassificationBooster IsConvertError<ptrdiff_t>(countTargetClasses)");
-      // we didn't run out of memory, but we will if we accept this and it's not worth making a new error code
-      return Error_OutOfMemory;
-   }
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   const ErrorEbmType error = CreateBooster(
+   const ErrorEbmType error = CreateBoosterInternal(
       randomSeed,
-      countFeatures,
-      featuresCategorical,
-      featuresBinCount,
+      dataSet,
+      bag,
+      predictorScores,
       countFeatureGroups,
-      featureGroupsDimensionCount,
-      featureGroupsFeatureIndexes,
-      runtimeLearningTypeOrCountTargetClasses,
-      countTrainingSamples,
-      trainingTargets,
-      trainingBinnedData,
-      trainingWeights,
-      trainingPredictorScores,
-      countValidationSamples,
-      validationTargets,
-      validationBinnedData,
-      validationWeights,
-      validationPredictorScores,
+      dimensionCounts,
+      featureIndexes,
       countInnerBags,
       optionalTempParams,
       boosterHandleOut
    );
 
-   LOG_N(TraceLevelInfo, "Exited CreateClassificationBooster: "
-      "*boosterHandleOut=%p, "
-      "return=%" ErrorEbmTypePrintf
-      ,
-      static_cast<void *>(*boosterHandleOut),
-      error
-   );
-
-   return error;
-}
-
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateRegressionBooster(
-   SeedEbmType randomSeed,
-   IntEbmType countFeatures,
-   const BoolEbmType * featuresCategorical,
-   const IntEbmType * featuresBinCount,
-   IntEbmType countFeatureGroups,
-   const IntEbmType * featureGroupsDimensionCount,
-   const IntEbmType * featureGroupsFeatureIndexes,
-   IntEbmType countTrainingSamples,
-   const IntEbmType * trainingBinnedData,
-   const FloatEbmType * trainingTargets,
-   const FloatEbmType * trainingWeights,
-   const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationSamples,
-   const IntEbmType * validationBinnedData,
-   const FloatEbmType * validationTargets,
-   const FloatEbmType * validationWeights,
-   const FloatEbmType * validationPredictorScores,
-   IntEbmType countInnerBags,
-   const FloatEbmType * optionalTempParams,
-   BoosterHandle * boosterHandleOut
-) {
-   LOG_N(
-      TraceLevelInfo,
-      "Entered CreateRegressionBooster: "
-      "randomSeed=%" SeedEbmTypePrintf ", "
-      "countFeatures=%" IntEbmTypePrintf ", "
-      "featuresCategorical=%p, "
-      "featuresBinCount=%p, "
-      "countFeatureGroups=%" IntEbmTypePrintf ", "
-      "featureGroupsDimensionCount=%p, "
-      "featureGroupsFeatureIndexes=%p, "
-      "countTrainingSamples=%" IntEbmTypePrintf ", "
-      "trainingBinnedData=%p, "
-      "trainingTargets=%p, "
-      "trainingWeights=%p, "
-      "trainingPredictorScores=%p, "
-      "countValidationSamples=%" IntEbmTypePrintf ", "
-      "validationBinnedData=%p, "
-      "validationTargets=%p, "
-      "validationWeights=%p, "
-      "validationPredictorScores=%p, "
-      "countInnerBags=%" IntEbmTypePrintf ", "
-      "optionalTempParams=%p, "
-      "boosterHandleOut=%p"
-      ,
-      randomSeed,
-      countFeatures,
-      static_cast<const void *>(featuresCategorical),
-      static_cast<const void *>(featuresBinCount),
-      countFeatureGroups,
-      static_cast<const void *>(featureGroupsDimensionCount),
-      static_cast<const void *>(featureGroupsFeatureIndexes),
-      countTrainingSamples,
-      static_cast<const void *>(trainingBinnedData),
-      static_cast<const void *>(trainingTargets),
-      static_cast<const void *>(trainingWeights),
-      static_cast<const void *>(trainingPredictorScores),
-      countValidationSamples,
-      static_cast<const void *>(validationBinnedData),
-      static_cast<const void *>(validationTargets),
-      static_cast<const void *>(validationWeights),
-      static_cast<const void *>(validationPredictorScores),
-      countInnerBags,
-      static_cast<const void *>(optionalTempParams),
-      static_cast<const void *>(boosterHandleOut)
-   );
-
-   if(nullptr == boosterHandleOut) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster nullptr == boosterHandleOut");
-      return Error_IllegalParamValue;
-   }
-   *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
-
-   const ErrorEbmType error = CreateBooster(
-      randomSeed,
-      countFeatures,
-      featuresCategorical,
-      featuresBinCount,
-      countFeatureGroups,
-      featureGroupsDimensionCount,
-      featureGroupsFeatureIndexes,
-      k_regression,
-      countTrainingSamples,
-      trainingTargets,
-      trainingBinnedData,
-      trainingWeights,
-      trainingPredictorScores,
-      countValidationSamples,
-      validationTargets,
-      validationBinnedData,
-      validationWeights,
-      validationPredictorScores,
-      countInnerBags,
-      optionalTempParams,
-      boosterHandleOut
-   );
-
-   LOG_N(TraceLevelInfo, "Exited CreateRegressionBooster: "
+   LOG_N(TraceLevelInfo, "Exited CreateBooster: "
       "*boosterHandleOut=%p, "
       "return=%" ErrorEbmTypePrintf
       ,

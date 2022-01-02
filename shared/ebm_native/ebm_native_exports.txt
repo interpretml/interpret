@@ -13,8 +13,7 @@
       FillClassificationTarget;
       SizeRegressionTarget;
       FillRegressionTarget;
-      CreateClassificationBooster;
-      CreateRegressionBooster;
+      CreateBooster;
       CreateBoosterView;
       GenerateModelUpdate;
       GetModelUpdateSplits;
@@ -24,8 +23,7 @@
       GetBestModelFeatureGroup;
       GetCurrentModelFeatureGroup;
       FreeBooster;
-      CreateClassificationInteractionDetector;
-      CreateRegressionInteractionDetector;
+      CreateInteractionDetector;
       CalculateInteractionScore;
       FreeInteractionDetector;
       GetHistogramCutCount;

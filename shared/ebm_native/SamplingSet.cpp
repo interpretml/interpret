@@ -69,7 +69,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    }
 
    FloatEbmType total;
-   if(nullptr == aWeights || CheckAllWeightsEqual(cSamples, aWeights)) {
+   if(nullptr == aWeights) {
       for(size_t iSample = 0; iSample < cSamples; ++iSample) {
          const FloatEbmType weight = static_cast<FloatEbmType>(aCountOccurrences[iSample]);
          aWeightsInternal[iSample] = weight;
@@ -139,7 +139,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
    pRet->m_aWeights = aWeightsInternal;
 
    FloatEbmType total;
-   if(nullptr == aWeights || CheckAllWeightsEqual(cSamples, aWeights)) {
+   if(nullptr == aWeights) {
       for(size_t iSample = 0; iSample < cSamples; ++iSample) {
          aCountOccurrences[iSample] = 1;
          aWeightsInternal[iSample] = 1;

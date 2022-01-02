@@ -264,32 +264,15 @@ class EBMUtils:
         return cuts
 
     @staticmethod
-    def ebm_train_test_split(
-        X, y, w, test_size, random_state, is_classification, is_train=True, scores=None
-    ):
+    def make_bag(y, test_size, random_state, is_classification):
         # all test/train splits should be done with this function to ensure that
         # if we re-generate the train/test splits that they are generated exactly
         # the same as before
 
-        scores_train = None
-        scores_val = None
-
-        if (X.shape[0] != len(y) or X.shape[0] != len(w)):
-            raise Exception("Data, labels and weights should have the same number of rows.")
-
-        sampling_result = None
-
         if test_size == 0:
-            X_train, y_train, w_train = X, y, w
-            X_val = np.empty(shape=(0, X.shape[1]), dtype=X.dtype)
-            y_val = np.empty(shape=(0,), dtype=y.dtype)
-            w_val = np.empty(shape=(0,), dtype=w.dtype)
-            if scores is not None:
-                scores_train = scores
-                scores_val = np.empty(shape=(0,), dtype=scores.dtype)
-
+            return None
         elif test_size > 0:
-            n_samples = X.shape[0]
+            n_samples = len(y)
             n_test_samples = 0
 
             if test_size >= 1:
@@ -312,7 +295,7 @@ class EBMUtils:
                     n_test_samples = y_uniq
                     n_train_samples = n_samples - n_test_samples
 
-                sampling_result = native.stratified_sampling_without_replacement(
+                return native.stratified_sampling_without_replacement(
                     random_state,
                     y_uniq,
                     n_train_samples,
@@ -320,42 +303,13 @@ class EBMUtils:
                     y
                 )
             else:
-                sampling_result = native.sample_without_replacement(
+                return native.sample_without_replacement(
                     random_state,
                     n_train_samples,
                     n_test_samples
                 )
-
         else:  # pragma: no cover
             raise Exception("test_size must be a positive numeric value.")
-
-        if sampling_result is not None:
-            train_indices = np.where(sampling_result == 1)
-            test_indices = np.where(sampling_result == -1)
-            X_train = X[train_indices]
-            X_val = X[test_indices]
-            y_train = y[train_indices]
-            y_val = y[test_indices]
-            w_train = w[train_indices]
-            w_val = w[test_indices]
-            if scores is not None:
-                scores_train = scores[train_indices]
-                scores_val = scores[test_indices]
-
-        if not is_train:
-            X_train, y_train = None, None
-
-        # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
-        #         push the re-ordering right to our first call to fit(..) AND stripe convert
-        #         groups of rows at once and they process them in fortran order after that
-        # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
-        # AND our C code expects it in that ordering
-        if X_train is not None:
-            X_train = np.ascontiguousarray(X_train.T)
-
-        X_val = np.ascontiguousarray(X_val.T)
-
-        return X_train, X_val, y_train, y_val, w_train, w_val, scores_train, scores_val
 
     @staticmethod
     def gen_feature_group_name(feature_idxs, col_names):
@@ -395,19 +349,12 @@ class EBMUtils:
 
     @staticmethod
     def cyclic_gradient_boost(
-        model_type,
         n_classes,
-        features_categorical, 
+        data_set,
+        bag,
+        scores,
         features_bin_count,
         feature_groups,
-        X_train,
-        y_train,
-        w_train,
-        scores_train,
-        X_val,
-        y_val,
-        w_val,
-        scores_val,
         n_inner_bags,
         generate_update_options,
         learning_rate,
@@ -416,28 +363,21 @@ class EBMUtils:
         early_stopping_rounds,
         early_stopping_tolerance,
         max_rounds,
-        random_state,
-        name,
         noise_scale,
         bin_weights,
+        random_state,
+        name,
         optional_temp_params=None,
     ):
         min_metric = np.inf
         episode_index = 0
         with Booster(
-            model_type,
             n_classes,
-            features_categorical, 
+            data_set,
+            bag,
+            scores,
             features_bin_count,
             feature_groups,
-            X_train,
-            y_train,
-            w_train,
-            scores_train,
-            X_val,
-            y_val,
-            w_val,
-            scores_val,
             n_inner_bags,
             random_state,
             optional_temp_params,
@@ -516,31 +456,24 @@ class EBMUtils:
             # TODO: Add more ways to call alternative get_current_model
             # Use latest model if there are no instances in the (transposed) validation set 
             # or if training with privacy
-            if X_val.shape[1] == 0 or noise_scale is not None:
+            if bag is None or noise_scale is not None:
                 model_update = booster.get_current_model()
             else:
                 model_update = booster.get_best_model()
 
-        return model_update, min_metric, episode_index
+        return model_update, episode_index
 
     @staticmethod
     def get_interactions(
-        iter_feature_groups,
-        model_type,
-        n_classes,
-        features_categorical, 
-        features_bin_count,
-        X,
-        y,
-        w,
+        data_set,
+        bag,
         scores,
+        iter_feature_groups,
         min_samples_leaf,
         optional_temp_params=None,
     ):
         interaction_scores = []
-        with InteractionDetector(
-            model_type, n_classes, features_categorical, features_bin_count, X, y, w, scores, optional_temp_params
-        ) as interaction_detector:
+        with InteractionDetector(data_set, bag, scores, optional_temp_params) as interaction_detector:
             for feature_group in iter_feature_groups:
                 score = interaction_detector.get_interaction_score(
                     feature_group, min_samples_leaf,
@@ -555,7 +488,7 @@ class EBMUtils:
         final_indices = [x[0] for x in final_ranked_scores]
         final_scores = [x[1] for x in final_ranked_scores]
 
-        return final_indices, final_scores
+        return final_indices
 
 
 class DPUtils:
@@ -603,7 +536,8 @@ class DPUtils:
         # so that the larger leftover bin tends to be in the center rather than on the right.
 
         # Greedily collapse bins until they meet or exceed target_weight threshold
-        target_weight = np.sum(sample_weight) / max_bins
+        sample_weight_total = len(col_data) if sample_weight is None else np.sum(sample_weight)
+        target_weight = sample_weight_total / max_bins
         bin_weights, bin_cuts = [0], [uniform_edges[0]]
         curr_weight = 0
         for index, right_edge in enumerate(uniform_edges[1:]):
@@ -642,7 +576,8 @@ class DPUtils:
         weights = np.clip(weights, 0, None)
 
         # Collapse bins until target_weight is achieved.
-        target_weight = np.sum(sample_weight) / max_bins
+        sample_weight_total = len(col_data) if sample_weight is None else np.sum(sample_weight)
+        target_weight = sample_weight_total / max_bins
         small_bins = np.where(weights < target_weight)[0]
         if len(small_bins) > 0:
             other_weight = np.sum(weights[small_bins])

@@ -13,16 +13,13 @@
 
 #include "ebm_internal.hpp"
 
+#include "data_set_shared.hpp"
 #include "ebm_stats.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
-
-// TODO: we can replace this (I think) with an "ApplyModelUpdate" which has all zeros.  That might be useful
-//       when we get to templating those functions hundreds of times since then we won't have to duplicate all
-//       that instruction address space here
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
@@ -35,20 +32,22 @@ public:
 
    static ErrorEbmType Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cSamples,
-      const void * const aTargetData,
+      const IntEbmType direction,
+      const IntEbmType * const aBag,
+      const void * const aTargets,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pGradientAndHessian
+      const size_t cSetSamples,
+      FloatEbmType * const aGradientAndHessian
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
-      EBM_ASSERT(0 < cSamples);
-      EBM_ASSERT(nullptr != aTargetData);
-      EBM_ASSERT(nullptr != aPredictorScores);
-      EBM_ASSERT(nullptr != pGradientAndHessian);
+      EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+      EBM_ASSERT(0 < cSetSamples);
+      EBM_ASSERT(nullptr != aTargets);
+      EBM_ASSERT(nullptr != aGradientAndHessian);
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -56,75 +55,95 @@ public:
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
-      FloatEbmType aLocalExpVector[
-         k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
-      ];
-      FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? EbmMalloc<FloatEbmType>(cVectorLength) : aLocalExpVector;
+      // TODO: we could eliminate this memory by doing the calculation twice below and then this code could return on error value (or would that work with the loss function stuff?)
+      FloatEbmType * const aExpVector = EbmMalloc<FloatEbmType>(cVectorLength);
       if(UNLIKELY(nullptr == aExpVector)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeGradientsAndHessians nullptr == aExpVector");
          return Error_OutOfMemory;
       }
 
-      const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
+      const IntEbmType * pBag = aBag;
+      const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + 2 * cSamples * cVectorLength;
-
+      FloatEbmType * pGradientAndHessian = aGradientAndHessian;
+      const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cVectorLength * cSetSamples * 2;
+      const bool isLoopTraining = IntEbmType { 0 } < direction;
       do {
-         const IntEbmType targetOriginal = *pTargetData;
-         ++pTargetData;
-         EBM_ASSERT(0 <= targetOriginal);
-         // if we can't fit it, then we should increase our StorageDataType size!
-         EBM_ASSERT(!IsConvertError<size_t>(targetOriginal));
-         const size_t target = static_cast<size_t>(targetOriginal);
-         EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
-         FloatEbmType * pExpVector = aExpVector;
+         IntEbmType countBagged = 1;
+         if(nullptr != pBag) {
+            countBagged = *pBag;
+            ++pBag;
+         }
+         if(IntEbmType { 0 } != countBagged) {
+            const bool isItemTraining = IntEbmType { 0 } < countBagged;
+            if(isLoopTraining == isItemTraining) {
+               const SharedStorageDataType targetOriginal = *pTargetData;
+               // if we can't fit it, then we should increase our StorageDataType size!
+               EBM_ASSERT(!IsConvertError<size_t>(targetOriginal));
+               const size_t target = static_cast<size_t>(targetOriginal);
+               EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
+               FloatEbmType * pExpVector = aExpVector;
 
-         FloatEbmType sumExp = FloatEbmType { 0 };
+               FloatEbmType sumExp = FloatEbmType { 0 };
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-         FloatEbmType zeroLogit = FloatEbmType { 0 };
+               FloatEbmType zeroLogit = FloatEbmType { 0 };
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-         size_t iVector = 0;
-         do {
-            FloatEbmType predictorScore = *pPredictorScores;
-
+               size_t iVector = 0;
+               do {
+                  FloatEbmType predictorScore = 0;
+                  if(nullptr != pPredictorScores) {
+                     predictorScore = *pPredictorScores;
+                     ++pPredictorScores;
+                  }
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-               if(size_t { 0 } == iVector) {
-                  zeroLogit = predictorScore;
+                  if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                     if(size_t { 0 } == iVector) {
+                        zeroLogit = predictorScore;
+                     }
+                     predictorScore -= zeroLogit;
+                  }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
+                  const FloatEbmType oneExp = ExpForMulticlass<false>(predictorScore);
+                  *pExpVector = oneExp;
+                  ++pExpVector;
+                  sumExp += oneExp;
+                  ++iVector;
+               } while(iVector < cVectorLength);
+
+               do {
+                  // go back to the start so that we can iterate again
+                  pExpVector -= cVectorLength;
+
+                  iVector = 0;
+                  do {
+                     FloatEbmType gradient;
+                     FloatEbmType hessian;
+                     EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(sumExp, *pExpVector, target, iVector, gradient, hessian);
+                     ++pExpVector;
+
+                     EBM_ASSERT(pGradientAndHessian < pGradientAndHessianEnd - 1);
+
+                     *pGradientAndHessian = gradient;
+                     *(pGradientAndHessian + 1) = hessian;
+                     pGradientAndHessian += 2;
+                     ++iVector;
+                  } while(iVector < cVectorLength);
+
+                  countBagged -= direction;
+               } while(IntEbmType { 0 } != countBagged);
+            } else {
+               if(nullptr != pPredictorScores) {
+                  pPredictorScores += cVectorLength;
                }
-               predictorScore -= zeroLogit;
             }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
+         }
+         ++pTargetData;
+      } while(pGradientAndHessianEnd != pGradientAndHessian);
 
-            ++pPredictorScores;
-            const FloatEbmType oneExp = ExpForMulticlass<false>(predictorScore);
-            *pExpVector = oneExp;
-            ++pExpVector;
-            sumExp += oneExp;
-            ++iVector;
-         } while(iVector < cVectorLength);
-
-         // go back to the start so that we can iterate again
-         pExpVector -= cVectorLength;
-
-         iVector = 0;
-         do {
-            FloatEbmType gradient;
-            FloatEbmType hessian;
-            EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(sumExp, *pExpVector, target, iVector, gradient, hessian);
-            ++pExpVector;
-            *pGradientAndHessian = gradient;
-            *(pGradientAndHessian + 1) = hessian;
-            pGradientAndHessian += 2;
-            ++iVector;
-         } while(iVector < cVectorLength);
-      } while(pGradientAndHessiansEnd != pGradientAndHessian);
-
-      if(UNLIKELY(aExpVector != aLocalExpVector)) {
-         free(aExpVector);
-      }
+      free(aExpVector);
 
       LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
       return Error_None;
@@ -140,10 +159,12 @@ public:
 
    static ErrorEbmType Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cSamples,
-      const void * const aTargetData,
+      const IntEbmType direction,
+      const IntEbmType * const aBag,
+      const void * const aTargets,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pGradientAndHessian
+      const size_t cSetSamples,
+      FloatEbmType * const aGradientAndHessian
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
@@ -152,30 +173,54 @@ public:
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
-      EBM_ASSERT(0 < cSamples);
-      EBM_ASSERT(nullptr != aTargetData);
-      EBM_ASSERT(nullptr != aPredictorScores);
-      EBM_ASSERT(nullptr != pGradientAndHessian);
 
-      const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
+      EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+      EBM_ASSERT(0 < cSetSamples);
+      EBM_ASSERT(nullptr != aTargets);
+      EBM_ASSERT(nullptr != aGradientAndHessian);
+
+      const IntEbmType * pBag = aBag;
+      const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + 2 * cSamples;
-
+      FloatEbmType * pGradientAndHessian = aGradientAndHessian;
+      const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples * 2;
+      const bool isLoopTraining = IntEbmType { 0 } < direction;
       do {
-         const IntEbmType targetOriginal = *pTargetData;
+         IntEbmType countBagged = 1;
+         if(nullptr != pBag) {
+            countBagged = *pBag;
+            ++pBag;
+         }
+         if(IntEbmType { 0 } != countBagged) {
+            FloatEbmType predictionScore = 0;
+            if(nullptr != pPredictorScores) {
+               predictionScore = *pPredictorScores;
+               ++pPredictorScores;
+            }
+            const bool isItemTraining = IntEbmType { 0 } < countBagged;
+            if(isLoopTraining == isItemTraining) {
+               const SharedStorageDataType targetOriginal = *pTargetData;
+               // if we can't fit it, then we should increase our StorageDataType size!
+               EBM_ASSERT(!IsConvertError<size_t>(targetOriginal));
+               const size_t target = static_cast<size_t>(targetOriginal);
+               EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
+
+               const FloatEbmType gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictionScore, target);
+               const FloatEbmType hessian = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
+
+               do {
+                  EBM_ASSERT(pGradientAndHessian < pGradientAndHessianEnd - 1);
+                  *pGradientAndHessian = gradient;
+                  *(pGradientAndHessian + 1) = hessian;
+                  pGradientAndHessian += 2;
+
+                  countBagged -= direction;
+               } while(IntEbmType { 0 } != countBagged);
+            }
+         }
          ++pTargetData;
-         EBM_ASSERT(0 <= targetOriginal);
-         // if we can't fit it, then we should increase our StorageDataType size!
-         EBM_ASSERT(!IsConvertError<size_t>(targetOriginal));
-         const size_t target = static_cast<size_t>(targetOriginal);
-         EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
-         const FloatEbmType predictionScore = *pPredictorScores;
-         ++pPredictorScores;
-         const FloatEbmType gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictionScore, target);
-         *pGradientAndHessian = gradient;
-         *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
-         pGradientAndHessian += 2;
-      } while(pGradientAndHessiansEnd != pGradientAndHessian);
+      } while(pGradientAndHessianEnd != pGradientAndHessian);
+
       LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
       return Error_None;
    }
@@ -190,10 +235,12 @@ public:
 
    static ErrorEbmType Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cSamples,
-      const void * const aTargetData,
+      const IntEbmType direction,
+      const IntEbmType * const aBag,
+      const void * const aTargets,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pGradientAndHessian
+      const size_t cSetSamples,
+      FloatEbmType * const aGradientAndHessian
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
@@ -202,69 +249,107 @@ public:
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
-      EBM_ASSERT(0 < cSamples);
-      EBM_ASSERT(nullptr != aTargetData);
-      EBM_ASSERT(nullptr != aPredictorScores);
-      EBM_ASSERT(nullptr != pGradientAndHessian);
 
-      const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargetData);
+      EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+      EBM_ASSERT(0 < cSetSamples);
+      EBM_ASSERT(nullptr != aTargets);
+      EBM_ASSERT(nullptr != aGradientAndHessian);
+
+      const IntEbmType * pBag = aBag;
+      const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargets);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + cSamples;
+      FloatEbmType * pGradientAndHessian = aGradientAndHessian;
+      const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
+      const bool isLoopTraining = IntEbmType { 0 } < direction;
       do {
-         // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
-         //   from the input data
+         IntEbmType countBagged = 1;
+         if(nullptr != pBag) {
+            countBagged = *pBag;
+            ++pBag;
+         }
+         if(IntEbmType { 0 } != countBagged) {
+            FloatEbmType predictionScore = 0;
+            if(nullptr != pPredictorScores) {
+               predictionScore = *pPredictorScores;
+               ++pPredictorScores;
+            }
+            const bool isItemTraining = IntEbmType { 0 } < countBagged;
+            if(isLoopTraining == isItemTraining) {
+               // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
+               //   from the input data
 
-         // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
-         // There is no need to check it here since we already have graceful detection later for other reasons.
+               // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
+               // There is no need to check it here since we already have graceful detection later for other reasons.
 
-         const FloatEbmType data = *pTargetData;
+               const FloatEbmType data = *pTargetData;
+               // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
+               //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
+               const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEInit(predictionScore, data);
+               do {
+                  EBM_ASSERT(pGradientAndHessian < pGradientAndHessianEnd);
+                  *pGradientAndHessian = gradient;
+                  ++pGradientAndHessian;
+
+                  countBagged -= direction;
+               } while(IntEbmType { 0 } != countBagged);
+            }
+         }
          ++pTargetData;
-         // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
-         //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-         const FloatEbmType predictionScore = *pPredictorScores;
-         ++pPredictorScores;
-         const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEInit(predictionScore, data);
-         *pGradientAndHessian = gradient;
-         ++pGradientAndHessian;
-      } while(pGradientAndHessiansEnd != pGradientAndHessian);
+      } while(pGradientAndHessianEnd != pGradientAndHessian);
+
       LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
       return Error_None;
    }
 };
 
 extern ErrorEbmType InitializeGradientsAndHessians(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cSamples,
-   const void * const aTargetData,
+   const unsigned char * const pDataSetShared,
+   const IntEbmType direction,
+   const IntEbmType * const aBag,
    const FloatEbmType * const aPredictorScores,
-   FloatEbmType * pGradientAndHessian
+   const size_t cSetSamples,
+   FloatEbmType * const aGradientAndHessian
 ) {
+   ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
+   const void * const aTargets = GetDataSetSharedTarget(
+      pDataSetShared,
+      0,
+      &runtimeLearningTypeOrCountTargetClasses
+   );
+   EBM_ASSERT(nullptr != aTargets);
+
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
          return InitializeGradientsAndHessiansInternal<2>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            cSamples,
-            aTargetData,
+            direction,
+            aBag,
+            aTargets,
             aPredictorScores,
-            pGradientAndHessian
+            cSetSamples,
+            aGradientAndHessian
          );
       } else {
          return InitializeGradientsAndHessiansInternal<k_dynamicClassification>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            cSamples,
-            aTargetData,
+            direction,
+            aBag,
+            aTargets,
             aPredictorScores,
-            pGradientAndHessian
+            cSetSamples,
+            aGradientAndHessian
          );
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       return InitializeGradientsAndHessiansInternal<k_regression>::Func(
          runtimeLearningTypeOrCountTargetClasses,
-         cSamples,
-         aTargetData,
+         direction,
+         aBag,
+         aTargets,
          aPredictorScores,
-         pGradientAndHessian
+         cSetSamples,
+         aGradientAndHessian
       );
    }
 }

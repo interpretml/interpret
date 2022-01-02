@@ -1500,7 +1500,7 @@ extern ErrorEbmType GetDataSetSharedHeader(
    return Error_None;
 }
 
-// GetDataSetSharedFeature will return either SparseFeatureDataSetSharedEntry or SharedStorageDataType
+// GetDataSetSharedFeature will return either (SparseFeatureDataSetSharedEntry *) or (SharedStorageDataType *)
 extern const void * GetDataSetSharedFeature(
    const unsigned char * const pDataSetShared,
    const size_t iFeature,
@@ -1582,7 +1582,7 @@ extern const FloatEbmType * GetDataSetSharedWeight(
    return reinterpret_cast<const FloatEbmType *>(pWeightDataSetShared + 1);
 }
 
-// GetDataSetSharedTarget returns FloatEbmType * for regression and SharedStorageDataType * for classification
+// GetDataSetSharedTarget returns (FloatEbmType *) for regression and (SharedStorageDataType *) for classification
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,
    const size_t iTarget,
@@ -1626,7 +1626,7 @@ extern const void * GetDataSetSharedTarget(
       const SharedStorageDataType countTargetClasses = pClassificationTargetDataSetShared->m_cTargetClasses;
       EBM_ASSERT(!IsConvertError<ptrdiff_t>(countTargetClasses));
       runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-      EBM_ASSERT(1 <= runtimeLearningTypeOrCountTargetClasses);
+      EBM_ASSERT(0 <= runtimeLearningTypeOrCountTargetClasses); // 0 is possible with 0 samples
       pRet = reinterpret_cast<const void *>(pClassificationTargetDataSetShared + 1);
    }
    *pRuntimeLearningTypeOrCountTargetClassesOut = runtimeLearningTypeOrCountTargetClasses;

@@ -18,6 +18,7 @@
 
 #include "compute_accessors.hpp"
 
+#include "data_set_shared.hpp"
 #include "RandomStream.hpp"
 #include "CompressibleTensor.hpp"
 #include "ebm_stats.hpp"
@@ -40,11 +41,28 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 extern ErrorEbmType InitializeGradientsAndHessians(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cSamples,
-   const void * const aTargetData,
+   const unsigned char * const pDataSetShared,
+   const IntEbmType direction,
+   const IntEbmType * const aBag,
    const FloatEbmType * const aPredictorScores,
-   FloatEbmType * pGradient
+   const size_t cSetSamples,
+   FloatEbmType * const aGradientAndHessian
+);
+
+extern ErrorEbmType Unbag(
+   const size_t cSamples,
+   const IntEbmType * const aBag,
+   size_t * const pcTrainingSamplesOut,
+   size_t * const pcValidationSamplesOut
+);
+
+extern ErrorEbmType ExtractWeights(
+   const unsigned char * const pDataSetShared,
+   const IntEbmType direction,
+   const size_t cAllSamples,
+   const IntEbmType * const aBag,
+   const size_t cSetSamples,
+   const FloatEbmType ** ppWeightsOut
 );
 
 INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
@@ -140,39 +158,30 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
    LOG_0(TraceLevelInfo, "Exited BoosterCore::Free");
 }
 
-static int g_TODO_removeThisThreadTest = 0;
-void TODO_removeThisThreadTest() {
-   g_TODO_removeThisThreadTest = 1;
-}
+//static int g_TODO_removeThisThreadTest = 0;
+//void TODO_removeThisThreadTest() {
+//   g_TODO_removeThisThreadTest = 1;
+//}
 
 ErrorEbmType BoosterCore::Create(
    BoosterShell * const pBoosterShell,
    const SeedEbmType randomSeed,
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cFeatures,
    const size_t cFeatureGroups,
    const size_t cSamplingSets,
    const FloatEbmType * const optionalTempParams,
-   const BoolEbmType * const aFeaturesCategorical,
-   const IntEbmType * const aFeaturesBinCount,
-   const IntEbmType * const aFeatureGroupsDimensionCount,
+   const IntEbmType * const aFeatureGroupsDimensionCounts,
    const IntEbmType * const aFeatureGroupsFeatureIndexes, 
-   const size_t cTrainingSamples, 
-   const void * const aTrainingTargets, 
-   const IntEbmType * const aTrainingBinnedData, 
-   const FloatEbmType * const aTrainingWeights,
-   const FloatEbmType * const aTrainingPredictorScores,
-   const size_t cValidationSamples, 
-   const void * const aValidationTargets, 
-   const IntEbmType * const aValidationBinnedData, 
-   const FloatEbmType * const aValidationWeights,
-   const FloatEbmType * const aValidationPredictorScores
+   const unsigned char * const pDataSetShared,
+   const IntEbmType * const aBag,
+   const FloatEbmType * const aPredictorScores
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(optionalTempParams);
 
    LOG_0(TraceLevelInfo, "Entered BoosterCore::Create");
+
+   EBM_ASSERT(nullptr != pBoosterShell);
 
    //try {
    //   // TODO: eliminate this code I added to test that threads are available on the majority of our systems
@@ -211,6 +220,36 @@ ErrorEbmType BoosterCore::Create(
    // give ownership of our object to pBoosterShell
    pBoosterShell->SetBoosterCore(pBoosterCore);
 
+   size_t cSamples = 0;
+   size_t cFeatures = 0;
+   size_t cWeights = 0;
+   size_t cTargets = 0;
+   const ErrorEbmType errorHeader =
+      GetDataSetSharedHeader(pDataSetShared, &cSamples, &cFeatures, &cWeights, &cTargets);
+   if(Error_None != errorHeader) {
+      // already logged
+      return errorHeader;
+   }
+   if(size_t { 1 } < cWeights) {
+      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
+      return Error_IllegalParamValue;
+   }
+   if(size_t { 1 } != cTargets) {
+      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create 1 != cTargets");
+      return Error_IllegalParamValue;
+   }
+
+   ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
+   GetDataSetSharedTarget(pDataSetShared, 0, &runtimeLearningTypeOrCountTargetClasses);
+
+   size_t cTrainingSamples;
+   size_t cValidationSamples;
+   const ErrorEbmType errorBag = Unbag(cSamples, aBag, &cTrainingSamples, &cValidationSamples);
+   if(Error_None != errorBag) {
+      // already logged
+      return errorBag;
+   }
+
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelInfo, "BoosterCore::Create starting feature processing");
@@ -222,24 +261,26 @@ ErrorEbmType BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      const BoolEbmType * pFeatureCategorical = aFeaturesCategorical;
-      const IntEbmType * pFeatureBinCount = aFeaturesBinCount;
       size_t iFeatureInitialize = size_t { 0 };
       do {
-         const IntEbmType countBins = *pFeatureBinCount;
-         if(countBins < 0) {
-            LOG_0(TraceLevelError, "ERROR BoosterCore::Create countBins cannot be negative");
-            return Error_IllegalParamValue;
-         }
-         if(0 == countBins && (0 != cTrainingSamples || 0 != cValidationSamples)) {
+         size_t cBins;
+         bool bNominal;
+         bool bSparse;
+         SharedStorageDataType defaultValueSparse;
+         size_t cNonDefaultsSparse;
+         GetDataSetSharedFeature(
+            pDataSetShared,
+            iFeatureInitialize,
+            &cBins,
+            &bNominal,
+            &bSparse,
+            &defaultValueSparse,
+            &cNonDefaultsSparse
+         );
+         if(0 == cBins && (0 != cTrainingSamples || 0 != cValidationSamples)) {
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
             return Error_IllegalParamValue;
          }
-         if(IsConvertError<size_t>(countBins)) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create countBins is too high for us to allocate enough memory");
-            return Error_IllegalParamValue;
-         }
-         const size_t cBins = static_cast<size_t>(countBins);
          if(0 == cBins) {
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
@@ -250,16 +291,7 @@ ErrorEbmType BoosterCore::Create(
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(TraceLevelInfo, "INFO BoosterCore::Create feature with 1 value");
          }
-         const BoolEbmType isCategorical = *pFeatureCategorical;
-         if(EBM_FALSE != isCategorical && EBM_TRUE != isCategorical) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create featuresCategorical should either be EBM_TRUE or EBM_FALSE");
-         }
-         const bool bCategorical = EBM_FALSE != isCategorical;
-
-         pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, bCategorical);
-
-         ++pFeatureCategorical;
-         ++pFeatureBinCount;
+         pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);
@@ -290,7 +322,7 @@ ErrorEbmType BoosterCore::Create(
       const IntEbmType * pFeatureGroupFeatureIndexes = aFeatureGroupsFeatureIndexes;
       size_t iFeatureGroup = 0;
       do {
-         const IntEbmType countDimensions = aFeatureGroupsDimensionCount[iFeatureGroup];
+         const IntEbmType countDimensions = aFeatureGroupsDimensionCounts[iFeatureGroup];
          if(countDimensions < 0) {
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countDimensions cannot be negative");
             return Error_IllegalParamValue;
@@ -422,17 +454,18 @@ ErrorEbmType BoosterCore::Create(
    pBoosterCore->m_cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplitMax;
 
    const ErrorEbmType error1 = pBoosterCore->m_trainingSet.Initialize(
+      runtimeLearningTypeOrCountTargetClasses,
       true,
       bClassification,
       bClassification,
       bClassification,
-      cFeatureGroups,
-      pBoosterCore->m_apFeatureGroups,
+      pDataSetShared,
+      IntEbmType { 1 },
+      aBag,
+      aPredictorScores,
       cTrainingSamples,
-      aTrainingBinnedData,
-      aTrainingTargets,
-      aTrainingPredictorScores,
-      runtimeLearningTypeOrCountTargetClasses
+      cFeatureGroups,
+      pBoosterCore->m_apFeatureGroups
    );
    if(Error_None != error1) {
       LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create m_trainingSet.Initialize");
@@ -440,17 +473,18 @@ ErrorEbmType BoosterCore::Create(
    }
 
    const ErrorEbmType error2 = pBoosterCore->m_validationSet.Initialize(
+      runtimeLearningTypeOrCountTargetClasses,
       !bClassification,
       false,
       bClassification,
       bClassification,
-      cFeatureGroups,
-      pBoosterCore->m_apFeatureGroups,
+      pDataSetShared,
+      IntEbmType { -1 },
+      aBag,
+      aPredictorScores,
       cValidationSamples,
-      aValidationBinnedData,
-      aValidationTargets,
-      aValidationPredictorScores,
-      runtimeLearningTypeOrCountTargetClasses
+      cFeatureGroups,
+      pBoosterCore->m_apFeatureGroups
    );
    if(Error_None != error2) {
       LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create m_validationSet.Initialize");
@@ -461,24 +495,48 @@ ErrorEbmType BoosterCore::Create(
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apSamplingSets);
    if(0 != cTrainingSamples) {
+      const FloatEbmType * aWeights = nullptr;
+      if(0 != cWeights) {
+         const ErrorEbmType errorWeights = ExtractWeights(
+            pDataSetShared,
+            IntEbmType { 1 },
+            cSamples, 
+            aBag, 
+            cTrainingSamples,
+            &aWeights
+         );
+         if(Error_None != errorWeights) {
+            // error already logged
+            return errorWeights;
+         }
+      }
       pBoosterCore->m_cSamplingSets = cSamplingSets;
-      pBoosterCore->m_apSamplingSets = SamplingSet::GenerateSamplingSets(&pBoosterCore->m_randomStream, &pBoosterCore->m_trainingSet, aTrainingWeights, cSamplingSets);
+      // TODO: we could steal the aWeights in GenerateSamplingSets for flat sampling sets
+      pBoosterCore->m_apSamplingSets = SamplingSet::GenerateSamplingSets(&pBoosterCore->m_randomStream, &pBoosterCore->m_trainingSet, aWeights, cSamplingSets);
       if(UNLIKELY(nullptr == pBoosterCore->m_apSamplingSets)) {
          LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apSamplingSets");
          return Error_OutOfMemory;
       }
+      free(const_cast<FloatEbmType *>(aWeights));
    }
 
    EBM_ASSERT(nullptr == pBoosterCore->m_aValidationWeights);
    pBoosterCore->m_validationWeightTotal = static_cast<FloatEbmType>(cValidationSamples);
-   if(0 != cValidationSamples && nullptr != aValidationWeights) {
-      if(IsMultiplyError(sizeof(*aValidationWeights), cValidationSamples)) {
-         LOG_0(TraceLevelWarning,
-            "WARNING BoosterCore::Create IsMultiplyError(sizeof(*aValidationWeights), cValidationSamples)");
-         return Error_IllegalParamValue;
+   if(0 != cWeights && 0 != cValidationSamples) {
+      const ErrorEbmType errorWeights = ExtractWeights(
+         pDataSetShared,
+         IntEbmType { -1 },
+         cSamples, 
+         aBag, 
+         cValidationSamples,
+         &pBoosterCore->m_aValidationWeights
+      );
+      if(Error_None != errorWeights) {
+         // error already logged
+         return errorWeights;
       }
-      if(!CheckAllWeightsEqual(cValidationSamples, aValidationWeights)) {
-         const FloatEbmType total = AddPositiveFloatsSafe(cValidationSamples, aValidationWeights);
+      if(nullptr != pBoosterCore->m_aValidationWeights) {
+         const FloatEbmType total = AddPositiveFloatsSafe(cValidationSamples, pBoosterCore->m_aValidationWeights);
          if(std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
             return Error_UserParamValue;
@@ -487,25 +545,17 @@ ErrorEbmType BoosterCore::Create(
          // to zero though so check it after checking for negative
          EBM_ASSERT(FloatEbmType { 0 } != total);
          pBoosterCore->m_validationWeightTotal = total;
-
-         const size_t cBytes = sizeof(*aValidationWeights) * cValidationSamples;
-         FloatEbmType * pValidationWeightInternal = static_cast<FloatEbmType *>(malloc(cBytes));
-         if(UNLIKELY(nullptr == pValidationWeightInternal)) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == pValidationWeightInternal");
-            return Error_OutOfMemory;
-         }
-         pBoosterCore->m_aValidationWeights = pValidationWeightInternal;
-         memcpy(pValidationWeightInternal, aValidationWeights, cBytes);
       }
    }
 
    if(bClassification) {
       if(0 != cTrainingSamples) {
          const ErrorEbmType error = InitializeGradientsAndHessians(
-            runtimeLearningTypeOrCountTargetClasses,
+            pDataSetShared,
+            IntEbmType { 1 },
+            aBag,
+            aPredictorScores,
             cTrainingSamples,
-            aTrainingTargets,
-            aTrainingPredictorScores,
             pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
          );
          if(Error_None != error) {
@@ -520,10 +570,11 @@ ErrorEbmType BoosterCore::Create(
          const ErrorEbmType error =
 #endif // NDEBUG
          InitializeGradientsAndHessians(
-            k_regression,
+            pDataSetShared,
+            IntEbmType { 1 },
+            aBag,
+            aPredictorScores,
             cTrainingSamples,
-            aTrainingTargets,
-            aTrainingPredictorScores,
             pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
          );
          EBM_ASSERT(Error_None == error); // InitializeGradientsAndHessians doesn't allocate on regression
@@ -533,10 +584,11 @@ ErrorEbmType BoosterCore::Create(
          const ErrorEbmType error =
 #endif // NDEBUG
          InitializeGradientsAndHessians(
-            k_regression,
+            pDataSetShared,
+            IntEbmType { -1 },
+            aBag,
+            aPredictorScores,
             cValidationSamples,
-            aValidationTargets,
-            aValidationPredictorScores,
             pBoosterCore->m_validationSet.GetGradientsAndHessiansPointer()
          );
          EBM_ASSERT(Error_None == error); // InitializeGradientsAndHessians doesn't allocate on regression

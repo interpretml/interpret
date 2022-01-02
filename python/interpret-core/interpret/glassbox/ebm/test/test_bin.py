@@ -2170,6 +2170,15 @@ def test_bin_native():
     y = np.array(["a", 99, 99, "b"])
     sample_weight = np.array([0.5, 1.1, 0.1, 0.5])
 
+
+    X, n_samples = clean_X(X)
+
+    y = clean_vector(y, True, "y")
+    classes, y = np.unique(y, return_inverse=True)
+    n_classes = len(classes)
+
+    sample_weight = clean_vector(sample_weight, False, "sample_weight")
+
     feature_names_in, feature_types_in, bins, bin_weights, min_vals, max_vals, histogram_cuts, histogram_counts, unique_counts, zero_counts = construct_bins(
         X,
         sample_weight,
@@ -2197,12 +2206,13 @@ def test_bin_native():
         feature_idxs.append(feature_idx)
         bins_iter.append(feature_bins)
 
-    shared_dataset, classes, native_bin_counts = bin_native(True, feature_idxs, bins_iter, X, y, sample_weight, feature_names_in, feature_types_in)
+
+    shared_dataset, native_bin_counts = bin_native(n_classes, feature_idxs, bins_iter, X, y, sample_weight, feature_names_in, feature_types_in)
     assert(shared_dataset is not None)
     assert(native_bin_counts is not None)
 
-    shared_dataset, classes, native_bin_counts = bin_native_by_dimension(
-        True, 
+    shared_dataset, native_bin_counts = bin_native_by_dimension(
+        n_classes, 
         1, 
         bins,
         X, 

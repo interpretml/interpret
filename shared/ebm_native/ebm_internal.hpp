@@ -137,24 +137,6 @@ static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
    return totalOuter;
 }
 
-template<typename T>
-static bool CheckAllWeightsEqual(const size_t cWeights, const T * pWeights) {
-   EBM_ASSERT(0 != cWeights);
-   EBM_ASSERT(nullptr != pWeights);
-   const T firstWeight = *pWeights;
-   const T * const pWeightsEnd = pWeights + cWeights;
-   do {
-      if(UNLIKELY(firstWeight != *pWeights)) {
-         // if firstWeight or *pWeight is NaN this should trigger, which is good since we don't want to
-         // replace arrays containing all NaN weights with weights of 1
-         return false;
-      }
-      ++pWeights;
-   } while(LIKELY(pWeightsEnd != pWeights));
-   return true;
-}
-
-
 //#define ZERO_FIRST_MULTICLASS_LOGIT
 
 } // DEFINED_ZONE_NAME

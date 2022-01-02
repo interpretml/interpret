@@ -7,7 +7,7 @@ from typing import DefaultDict
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import DPUtils, EBMUtils
-from .bin import clean_X, clean_vector, construct_bins, bin_python, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, restore_missing_value_zeros2, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
+from .bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, restore_missing_value_zeros2, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
 from .internal import Native
 from .postprocessing import multiclass_postprocess2
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -15,8 +15,6 @@ from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_global_selector2, gen_local_selector
-import ctypes as ct
-from multiprocessing.sharedctypes import RawArray
 
 import json
 import math
@@ -128,117 +126,6 @@ class EBMExplanation(FeatureValueExplanation):
 
         return super().visualize(key)
 
-def _parallel_cyclic_gradient_boost(
-    scores_train,
-    scores_val,
-    X, 
-    y, 
-    w, 
-    feature_indices,
-    n_classes,
-    validation_size,
-    model_type,
-    update,
-    features_categorical,
-    features_bin_count,
-    inner_bags,
-    learning_rate,
-    min_samples_leaf,
-    max_leaves,
-    early_stopping_rounds,
-    early_stopping_tolerance,
-    max_rounds,
-    random_state,
-    noise_scale,
-    bin_weights,
-):
-    _log.info("Splitting train/test")
-
-    X_train, X_val, y_train, y_val, w_train, w_val, _, _ = EBMUtils.ebm_train_test_split(
-        X,
-        y,
-        w,
-        test_size=validation_size,
-        random_state=random_state,
-        is_classification=model_type == "classification",
-    )
-
-    _log.info("Cyclic boost")
-
-    (
-        model_update,
-        current_metric,
-        episode_idx,
-    ) = EBMUtils.cyclic_gradient_boost(
-        model_type=model_type,
-        n_classes=n_classes,
-        features_categorical = features_categorical, 
-        features_bin_count = features_bin_count, 
-        feature_groups=feature_indices,
-        X_train=X_train,
-        y_train=y_train,
-        w_train=w_train,
-        scores_train=scores_train,
-        X_val=X_val,
-        y_val=y_val,
-        w_val=w_val,
-        scores_val=scores_val,
-        n_inner_bags=inner_bags,
-        generate_update_options=update,
-        learning_rate=learning_rate,
-        min_samples_leaf=min_samples_leaf,
-        max_leaves=max_leaves,
-        early_stopping_rounds=early_stopping_rounds,
-        early_stopping_tolerance=early_stopping_tolerance,
-        max_rounds=max_rounds,
-        random_state=random_state,
-        name="Boost",
-        noise_scale=noise_scale,
-        bin_weights=bin_weights,
-    )
-    return model_update, episode_idx
-
-def _parallel_get_interactions(
-    scores_train,
-    X, 
-    y, 
-    w, 
-    n_classes,
-    validation_size,
-    random_state,
-    model_type,
-    features_categorical, 
-    features_bin_count, 
-    min_samples_leaf,
-):
-    _log.info("Splitting train/test")
-
-    X_train, _, y_train, _, w_train, _, _, _ = EBMUtils.ebm_train_test_split(
-        X,
-        y,
-        w,
-        test_size=validation_size,
-        random_state=random_state,
-        is_classification=model_type == "classification",
-    )
-        
-    _log.info("Estimating with FAST")
-
-    iter_feature_groups = combinations(range(X.shape[1]), 2)
-
-    final_indices, final_scores = EBMUtils.get_interactions(
-        iter_feature_groups=iter_feature_groups,
-        model_type=model_type,
-        n_classes=n_classes,
-        features_categorical = features_categorical, 
-        features_bin_count = features_bin_count, 
-        X=X_train,
-        y=y_train,
-        w=w_train,
-        scores=scores_train,
-        min_samples_leaf=min_samples_leaf,
-    )
-    return final_indices
 
 def is_private(estimator):
     """Return True if the given estimator is a differentially private EBM estimator
@@ -424,9 +311,6 @@ class BaseEBM(BaseEstimator):
                 msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
                 raise ValueError(msg)
-        else:
-            # TODO: eliminate this eventually
-            sample_weight = np.ones_like(y, dtype=np.float64)
 
         # Privacy calculations
         noise_scale = None
@@ -492,12 +376,13 @@ class BaseEBM(BaseEstimator):
         if is_private(self):
              # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             domain_size = 1 if is_classifier(self) else max_target - min_target
+            max_weight = 1 if sample_weight is None else np.max(sample_weight)
             if self.composition == 'classic':
                 noise_scale = DPUtils.calc_classic_noise_multi(
                     total_queries = self.max_rounds * n_features_in * self.outer_bags, 
                     target_epsilon = training_eps_, 
                     delta = training_delta_, 
-                    sensitivity = domain_size * self.learning_rate * np.max(sample_weight)
+                    sensitivity = domain_size * self.learning_rate * max_weight
                 )
             elif self.composition == 'gdp':
                 noise_scale = DPUtils.calc_gdp_noise_multi(
@@ -505,13 +390,21 @@ class BaseEBM(BaseEstimator):
                     target_epsilon = training_eps_, 
                     delta = training_delta_
                 )
-                noise_scale = noise_scale * domain_size * self.learning_rate * np.max(sample_weight) # Alg Line 17
+                noise_scale = noise_scale * domain_size * self.learning_rate * max_weight # Alg Line 17
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
 
-        nominal_features = np.fromiter((x == 'nominal' for x in feature_types_in), dtype=ct.c_int64, count=len(feature_types_in))
 
-        X_main, main_bin_counts = bin_python(X, 1, bins, feature_names_in,  feature_types_in)
+        dataset, main_bin_counts = bin_native_by_dimension(
+            n_classes, 
+            1,
+            bins,
+            X, 
+            y, 
+            sample_weight, 
+            feature_names_in, 
+            feature_types_in, 
+        )
 
         bin_data_weights = make_boosting_weights(term_bin_weights)
 
@@ -545,33 +438,36 @@ class BaseEBM(BaseEstimator):
         bagged_seed = init_seed
         for idx in range(self.outer_bags):
             bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+            bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
             parallel_params = (
-                None,
-                None,
-                X_main,
-                y,
-                sample_weight,
-                feature_groups,
                 n_classes,
-                self.validation_size,
-                model_type,
-                update,
-                nominal_features,
+                dataset,
+                bag,
+                None,
                 main_bin_counts,
+                feature_groups,
                 inner_bags,
+                update,
                 self.learning_rate,
                 self.min_samples_leaf,
                 self.max_leaves,
                 early_stopping_rounds,
                 early_stopping_tolerance,
                 self.max_rounds,
-                bagged_seed,
                 noise_scale,
                 bin_data_weights,
+                bagged_seed,
+                "Boost",
+                None,
             )
             train_model_args_iter.append(parallel_params)
 
-        results = provider.parallel(_parallel_cyclic_gradient_boost, train_model_args_iter)
+        del bag # garbage collect anything we can
+        del dataset # remove our reference so it can be recycled once train_model_args_iter is deleted
+
+        results = provider.parallel(EBMUtils.cyclic_gradient_boost, train_model_args_iter)
+
+        del train_model_args_iter # garbage collect anything we can, including the dataset
 
         breakpoint_iteration = []
         only_models = []
@@ -589,34 +485,25 @@ class BaseEBM(BaseEstimator):
 
         interactions = 0 if is_private(self) else self.interactions
         if n_classes > 2 or isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0:
-            del X_main # allow the garbage collector to dispose of X_main
             if not (isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0):
                 warn("Detected multiclass problem: forcing interactions to 0")
         else:
-            bagged_seed = init_seed
-            scores_train_bags = []
-            scores_val_bags = []
+            scores_bags = []
             for model in only_models:
-                bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+                scores = ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins, intercept, model, feature_groups)
+                scores_bags.append(scores)
+            del scores # release this for the garbage collector later
 
-                scores_local = ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins, intercept, model, feature_groups)
-
-                _, _, _, _, _, _, scores_train_local, scores_val_local = EBMUtils.ebm_train_test_split(
-                    X_main,
-                    y,
-                    sample_weight, # TODO: allow sample_weight to be None
-                    test_size=self.validation_size,
-                    random_state=bagged_seed,
-                    is_classification=model_type == "classification",
-                    scores=scores_local
-                )
-                scores_train_bags.append(scores_train_local)
-                scores_val_bags.append(scores_val_local)
-                scores_local = None # allow the garbage collector to reclaim this
-
-            del X_main # allow the garbage collector to dispose of X_main
-
-            X_pair, pair_bin_counts = bin_python(X, 2, bins, feature_names_in,  feature_types_in)
+            dataset, pair_bin_counts = bin_native_by_dimension(
+                n_classes, 
+                2,
+                bins,
+                X, 
+                y, 
+                sample_weight, 
+                feature_names_in, 
+                feature_types_in, 
+            )
 
             if isinstance(interactions, int) and interactions > 0:
                 _log.info("Estimating with FAST")
@@ -625,22 +512,22 @@ class BaseEBM(BaseEstimator):
                 bagged_seed = init_seed
                 for i in range(self.outer_bags):
                     bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+                    bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
                     parallel_params = (
-                        scores_train_bags[i],
-                        X_pair, 
-                        y, 
-                        sample_weight, 
-                        n_classes,
-                        self.validation_size, 
-                        bagged_seed, 
-                        model_type, 
-                        nominal_features, 
-                        pair_bin_counts, 
-                        self.min_samples_leaf, 
+                        dataset,
+                        bag,
+                        scores_bags[i],
+                        combinations(range(n_features_in), 2),
+                        self.min_samples_leaf,
+                        None,
                     )
                     train_model_args_iter2.append(parallel_params)
 
-                bagged_interaction_indices = provider.parallel(_parallel_get_interactions, train_model_args_iter2)
+                del bag # garbage collect anything we can
+
+                bagged_interaction_indices = provider.parallel(EBMUtils.get_interactions, train_model_args_iter2)
+
+                del train_model_args_iter2 # garbage collect anything we can
 
                 # Select merged pairs
                 pair_ranks = {}
@@ -684,35 +571,38 @@ class BaseEBM(BaseEstimator):
             bagged_seed = init_seed
             for i in range(self.outer_bags):
                 bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+                bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
                 parallel_params = (
-                    scores_train_bags[i],
-                    scores_val_bags[i],
-                    X_pair, 
-                    y, 
-                    sample_weight, 
-                    pair_indices, 
-                    n_classes, 
-                    self.validation_size, 
-                    model_type, 
+                    n_classes,
+                    dataset,
+                    bag,
+                    scores_bags[i],
+                    pair_bin_counts,
+                    pair_indices,
+                    inner_bags,
                     update,
-                    nominal_features, 
-                    pair_bin_counts, 
-                    inner_bags, 
-                    self.learning_rate, 
-                    self.min_samples_leaf, 
-                    self.max_leaves, 
-                    early_stopping_rounds, 
-                    early_stopping_tolerance, 
-                    self.max_rounds, 
-                    bagged_seed, 
-                    noise_scale, 
-                    bin_data_weights, 
+                    self.learning_rate,
+                    self.min_samples_leaf,
+                    self.max_leaves,
+                    early_stopping_rounds,
+                    early_stopping_tolerance,
+                    self.max_rounds,
+                    noise_scale,
+                    bin_data_weights,
+                    bagged_seed,
+                    "Boost",
+                    None,
                 )
                 staged_fit_args_iter.append(parallel_params)
 
-            del X_pair # allow the garbage collector to dispose of X_pair
+            del bag # garbage collect anything we can
+            del scores_bags # garbage collect anything we can
+            del dataset # remove our reference so it can be recycled once train_model_args_iter is deleted
 
-            results = provider.parallel(_parallel_cyclic_gradient_boost, staged_fit_args_iter)
+            results = provider.parallel(EBMUtils.cyclic_gradient_boost, staged_fit_args_iter)
+
+            del staged_fit_args_iter # garbage collect anything we can, including the dataset
+
 
             only_models = []
             for model, bag_breakpoint_iteration in results:

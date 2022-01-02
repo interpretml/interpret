@@ -14,6 +14,8 @@
 
 #include "ebm_internal.hpp"
 
+#include "data_set_shared.hpp"
+
 // feature includes
 #include "Feature.hpp"
 #include "FeatureGroup.hpp"
@@ -28,6 +30,13 @@ namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+extern ErrorEbmType Unbag(
+   const size_t cSamples,
+   const IntEbmType * const aBag,
+   size_t * const pcTrainingSamplesOut,
+   size_t * const pcValidationSamplesOut
+);
 
 void InteractionCore::Free(InteractionCore * const pInteractionCore) {
    LOG_0(TraceLevelInfo, "Entered InteractionCore::Free");
@@ -57,22 +66,19 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
 
 ErrorEbmType InteractionCore::Create(
    InteractionShell * const pInteractionShell,
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cFeatures,
-   const FloatEbmType * const optionalTempParams,
-   const BoolEbmType * const aFeaturesCategorical,
-   const IntEbmType * const aFeaturesBinCount,
-   const size_t cSamples,
-   const void * const aTargets,
-   const IntEbmType * const aBinnedData,
-   const FloatEbmType * const aWeights, 
-   const FloatEbmType * const aPredictorScores
+   const unsigned char * const pDataSetShared,
+   const IntEbmType * const aBag,
+   const FloatEbmType * const aPredictorScores,
+   const FloatEbmType * const optionalTempParams
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(optionalTempParams);
 
    LOG_0(TraceLevelInfo, "Entered InteractionCore::Allocate");
+
+   EBM_ASSERT(nullptr != pInteractionShell);
+   EBM_ASSERT(nullptr != pDataSetShared);
 
    InteractionCore * pRet;
    try {
@@ -92,6 +98,38 @@ ErrorEbmType InteractionCore::Create(
    // give ownership of our object to pInteractionShell
    pInteractionShell->SetInteractionCore(pRet);
 
+   size_t cSamples = 0;
+   size_t cFeatures = 0;
+   size_t cWeights = 0;
+   size_t cTargets = 0;
+   const ErrorEbmType errorHeader =
+      GetDataSetSharedHeader(pDataSetShared, &cSamples, &cFeatures, &cWeights, &cTargets);
+   if(Error_None != errorHeader) {
+      // already logged
+      return errorHeader;
+   }
+   if(size_t { 1 } < cWeights) {
+      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
+      return Error_IllegalParamValue;
+   }
+   if(size_t { 1 } != cTargets) {
+      LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create 1 != cTargets");
+      return Error_IllegalParamValue;
+   }
+
+   ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
+   GetDataSetSharedTarget(pDataSetShared, 0, &runtimeLearningTypeOrCountTargetClasses);
+
+   size_t cTrainingSamples;
+   size_t cValidationSamples;
+   const ErrorEbmType errorBag = Unbag(cSamples, aBag, &cTrainingSamples, &cValidationSamples);
+   if(Error_None != errorBag) {
+      // already logged
+      return errorBag;
+   }
+
+   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelInfo, "InteractionCore::Allocate starting feature processing");
    if(0 != cFeatures) {
       pRet->m_cFeatures = cFeatures;
@@ -102,24 +140,26 @@ ErrorEbmType InteractionCore::Create(
       }
       pRet->m_aFeatures = aFeatures;
 
-      const BoolEbmType * pFeatureCategorical = aFeaturesCategorical;
-      const IntEbmType * pFeatureBinCount = aFeaturesBinCount;
       size_t iFeatureInitialize = 0;
       do {
-         const IntEbmType countBins = *pFeatureBinCount;
-         if(countBins < 0) {
-            LOG_0(TraceLevelError, "ERROR InteractionCore::Allocate countBins cannot be negative");
-            return Error_IllegalParamValue;
-         }
-         if(0 == countBins && 0 != cSamples) {
+         size_t cBins;
+         bool bNominal;
+         bool bSparse;
+         SharedStorageDataType defaultValueSparse;
+         size_t cNonDefaultsSparse;
+         GetDataSetSharedFeature(
+            pDataSetShared,
+            iFeatureInitialize,
+            &cBins,
+            &bNominal,
+            &bSparse,
+            &defaultValueSparse,
+            &cNonDefaultsSparse
+         );
+         if(0 == cBins && 0 != cSamples) {
             LOG_0(TraceLevelError, "ERROR InteractionCore::Allocate countBins cannot be zero if 0 < cSamples");
             return Error_IllegalParamValue;
          }
-         if(IsConvertError<size_t>(countBins)) {
-            LOG_0(TraceLevelWarning, "WARNING InteractionCore::Allocate countBins is too high for us to allocate enough memory");
-            return Error_IllegalParamValue;
-         }
-         const size_t cBins = static_cast<size_t>(countBins);
          if(0 == cBins) {
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
             // can only occur if there were zero training and zero validation cases since the 
@@ -130,16 +170,7 @@ ErrorEbmType InteractionCore::Create(
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(TraceLevelInfo, "INFO InteractionCore::Allocate feature with 1 value");
          }
-         const BoolEbmType isCategorical = *pFeatureCategorical;
-         if(EBM_FALSE != isCategorical && EBM_TRUE != isCategorical) {
-            LOG_0(TraceLevelWarning, "WARNING InteractionCore::Initialize featuresCategorical should either be EBM_TRUE or EBM_FALSE");
-         }
-         const bool bCategorical = EBM_FALSE != isCategorical;
-
-         aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, bCategorical);
-
-         ++pFeatureCategorical;
-         ++pFeatureBinCount;
+         aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);
@@ -152,14 +183,13 @@ ErrorEbmType InteractionCore::Create(
 
    const ErrorEbmType error = pRet->m_dataFrame.Initialize(
       IsClassification(runtimeLearningTypeOrCountTargetClasses),
-      cFeatures,
-      pRet->m_aFeatures,
+      pDataSetShared,
       cSamples,
-      aBinnedData,
-      aWeights,
-      aTargets,
+      aBag,
       aPredictorScores,
-      runtimeLearningTypeOrCountTargetClasses
+      cTrainingSamples,
+      cWeights,
+      cFeatures
    );
    if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING InteractionCore::Allocate m_dataFrame.Initialize");
