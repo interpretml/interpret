@@ -7,6 +7,7 @@ from ....test.utils import (
 )
 
 import numpy as np
+import pytest
 
 @pytest.mark.skip(reason="make_bag test needs to be updated")
 def test_make_bag_regression():

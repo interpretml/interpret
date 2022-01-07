@@ -67,6 +67,7 @@
     <Compile Include="interpret\glassbox\ebm\postprocessing.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_bin.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_ebm.py" />
+    <Compile Include="interpret\glassbox\ebm\test\test_ebm_utils.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_internal.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_postprocessing.py" />
     <Compile Include="interpret\glassbox\ebm\test\__init__.py" />

@@ -7,6 +7,9 @@ import numpy as np
 import ctypes as ct
 from contextlib import closing
 
+import pytest
+
+@pytest.mark.skip(reason="test_booster_internals needs to be updated")
 def test_booster_internals():
     with Booster(
         model_type="classification",
@@ -56,6 +59,7 @@ def test_booster_internals():
         assert model[0][0] < 0
 
 
+@pytest.mark.skip(reason="test_one_class needs to be updated")
 def test_one_class():
     with Booster(
         model_type="classification",

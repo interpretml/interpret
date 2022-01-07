@@ -525,7 +525,10 @@ class BaseEBM(BaseEstimator):
 
                 del bag # garbage collect anything we can
 
-                bagged_interaction_indices = provider.parallel(EBMUtils.get_interactions, train_model_args_iter2)
+                # TODO: for now we're using only 1 job because FAST isn't memory optimized.  After
+                # the native code is done with compression of the data we can go back to using self.n_jobs
+                provider2 = JobLibProvider(n_jobs=1) 
+                bagged_interaction_indices = provider2.parallel(EBMUtils.get_interactions, train_model_args_iter2)
 
                 del train_model_args_iter2 # garbage collect anything we can
 
