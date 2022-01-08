@@ -128,8 +128,6 @@ ErrorEbmType InteractionCore::Create(
       return errorBag;
    }
 
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-
    LOG_0(TraceLevelInfo, "InteractionCore::Allocate starting feature processing");
    if(0 != cFeatures) {
       pRet->m_cFeatures = cFeatures;

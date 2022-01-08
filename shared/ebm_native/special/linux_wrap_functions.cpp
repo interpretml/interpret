@@ -51,7 +51,7 @@ extern "C" {
       return log(x);
    }
    double __wrap_log2(double x) {
-      return log(x);
+      return log2(x);
    }
 }
 
