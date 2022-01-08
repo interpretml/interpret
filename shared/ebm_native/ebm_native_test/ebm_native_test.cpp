@@ -1112,6 +1112,9 @@ void TestApi::InitializeInteraction() {
          nullptr,
          &m_interactionHandle
       );
+
+      free(pDataSet);
+
    } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
       if(m_bNullInteractionPredictionScores) {
          m_interactionPredictionScores.resize(cVectorLength * m_interactionRegressionTargets.size());
@@ -1155,6 +1158,9 @@ void TestApi::InitializeInteraction() {
          nullptr,
          &m_interactionHandle
       );
+
+      free(pDataSet);
+
    } else {
       exit(1);
    }
