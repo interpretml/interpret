@@ -38,6 +38,7 @@
 __asm__(".symver memcpy, memcpy@GLIBC_2.2.5");
 __asm__(".symver exp, exp@GLIBC_2.2.5");
 __asm__(".symver log, log@GLIBC_2.2.5");
+__asm__(".symver log2, log2@GLIBC_2.2.5");
 
 extern "C" {
    void * __wrap_memcpy(void * dest, const void * src, size_t n) {
@@ -47,6 +48,9 @@ extern "C" {
       return exp(x);
    }
    double __wrap_log(double x) {
+      return log(x);
+   }
+   double __wrap_log2(double x) {
       return log(x);
    }
 }
