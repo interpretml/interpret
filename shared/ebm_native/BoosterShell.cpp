@@ -164,7 +164,7 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
 static ErrorEbmType CreateBoosterInternal(
    const SeedEbmType randomSeed,
    const void * const dataSet,
-   const IntEbmType * const bag,
+   const BagEbmType * const bag,
    const FloatEbmType * const predictorScores,
    const IntEbmType countFeatureGroups,
    const IntEbmType * const aFeatureGroupsDimensionCounts,
@@ -252,7 +252,7 @@ static ErrorEbmType CreateBoosterInternal(
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBooster(
    SeedEbmType randomSeed,
    const void * dataSet,
-   const IntEbmType * bag,
+   const BagEbmType * bag,
    const FloatEbmType * predictorScores,
    IntEbmType countFeatureGroups,
    const IntEbmType * dimensionCounts,

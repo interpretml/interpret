@@ -38,7 +38,7 @@ TEST_CASE("GenerateRandomNumber, lowest") {
 TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
    constexpr size_t cSamples = 500;
    IntEbmType targets[cSamples];
-   IntEbmType sampleCounts[cSamples];
+   BagEbmType sampleCounts[cSamples];
    constexpr size_t cClasses = 10;
    size_t trainingCount[cClasses];
    size_t valCount[cClasses];
@@ -85,7 +85,7 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
       size_t cValidationSamplesVerified = 0;
       for (size_t i = 0; i < cRandomSamples; ++i) {
          const IntEbmType targetClass = targets[i];
-         const IntEbmType val = sampleCounts[i];
+         const BagEbmType val = sampleCounts[i];
          CHECK(-1 == val || 1 == val);
          if (val == 1) {
             ++cTrainingSamplesVerified;
@@ -176,7 +176,7 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
 
 TEST_CASE("SampleWithoutReplacement, stress test") {
    constexpr size_t cSamples = 1000;
-   IntEbmType samples[cSamples];
+   BagEbmType samples[cSamples];
 
    RandomStreamTest randomStream(k_randomSeed);
    if(!randomStream.IsSuccess()) {
@@ -201,7 +201,7 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
       size_t cTrainingSamplesVerified = 0;
       size_t cValidationSamplesVerified = 0;
       for(size_t i = 0; i < cRandomSamples; ++i) {
-         const IntEbmType val = samples[i];
+         const BagEbmType val = samples[i];
          CHECK(-1 == val || 1 == val);
          if(0 < val) {
             ++cTrainingSamplesVerified;

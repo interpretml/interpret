@@ -45,15 +45,15 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(c
 
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    const size_t cVectorLength,
-   const IntEbmType direction,
-   const IntEbmType * const aBag,
+   const BagEbmType direction,
+   const BagEbmType * const aBag,
    const FloatEbmType * const aPredictorScoresFrom,
    const size_t cSetSamples
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructPredictorScores");
 
    EBM_ASSERT(0 < cVectorLength);
-   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
 
    if(IsMultiplyError(cVectorLength, cSetSamples)) {
@@ -70,19 +70,19 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
 
    const size_t cBytesPerItem = sizeof(FloatEbmType) * cVectorLength;
 
-   const IntEbmType * pBag = aBag;
+   const BagEbmType * pBag = aBag;
    FloatEbmType * pPredictorScoresTo = aPredictorScoresTo;
    const FloatEbmType * const pPredictorScoresToEnd = aPredictorScoresTo + cVectorLength * cSetSamples;
    const FloatEbmType * pPredictorScoresFrom = aPredictorScoresFrom;
-   const bool isLoopTraining = IntEbmType { 0 } < direction;
+   const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
-      IntEbmType countBagged = 1;
+      BagEbmType countBagged = 1;
       if(nullptr != pBag) {
          countBagged = *pBag;
          ++pBag;
       }
-      if(IntEbmType { 0 } != countBagged) {
-         const bool isItemTraining = IntEbmType { 0 } < countBagged;
+      if(BagEbmType { 0 } != countBagged) {
+         const bool isItemTraining = BagEbmType { 0 } < countBagged;
          if(isLoopTraining == isItemTraining) {
             do {
                EBM_ASSERT(pPredictorScoresTo < aPredictorScoresTo + cVectorLength * cSetSamples);
@@ -94,7 +94,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
                }
                pPredictorScoresTo += cVectorLength;
                countBagged -= direction;
-            } while(IntEbmType { 0 } != countBagged);
+            } while(BagEbmType { 0 } != countBagged);
          }
          if(nullptr != pPredictorScoresFrom) {
             pPredictorScoresFrom += cVectorLength;
@@ -126,14 +126,14 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    const unsigned char * const pDataSetShared,
-   const IntEbmType direction,
-   const IntEbmType * const aBag,
+   const BagEbmType direction,
+   const BagEbmType * const aBag,
    const size_t cSetSamples
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructTargetData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
 
    ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
@@ -149,19 +149,19 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
       return nullptr;
    }
 
-   const IntEbmType * pBag = aBag;
+   const BagEbmType * pBag = aBag;
    const SharedStorageDataType * pTargetFrom = static_cast<const SharedStorageDataType *>(aTargets);
    StorageDataType * pTargetTo = aTargetData;
    StorageDataType * pTargetToEnd = aTargetData + cSetSamples;
-   const bool isLoopTraining = IntEbmType { 0 } < direction;
+   const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
-      IntEbmType countBagged = 1;
+      BagEbmType countBagged = 1;
       if(nullptr != pBag) {
          countBagged = *pBag;
          ++pBag;
       }
-      if(IntEbmType { 0 } != countBagged) {
-         const bool isItemTraining = IntEbmType { 0 } < countBagged;
+      if(BagEbmType { 0 } != countBagged) {
+         const bool isItemTraining = BagEbmType { 0 } < countBagged;
          if(isLoopTraining == isItemTraining) {
             const SharedStorageDataType data = *pTargetFrom;
             EBM_ASSERT(!IsConvertError<size_t>(data));
@@ -183,7 +183,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
                *pTargetTo = iData;
                ++pTargetTo;
                countBagged -= direction;
-            } while(IntEbmType { 0 } != countBagged);
+            } while(BagEbmType { 0 } != countBagged);
          }
       }
       ++pTargetFrom;
@@ -212,8 +212,8 @@ static_assert(std::is_pod<InputDataPointerAndCountBins>::value,
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const unsigned char * const pDataSetShared,
-   const IntEbmType direction,
-   const IntEbmType * const aBag,
+   const BagEbmType direction,
+   const BagEbmType * const aBag,
    const size_t cSetSamples,
    const size_t cFeatureGroups,
    const FeatureGroup * const * const apFeatureGroup
@@ -221,7 +221,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructInputData");
 
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
    EBM_ASSERT(0 < cFeatureGroups);
    EBM_ASSERT(nullptr != apFeatureGroup);
@@ -232,7 +232,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       return nullptr;
    }
 
-   const bool isLoopTraining = IntEbmType { 0 } < direction;
+   const bool isLoopTraining = BagEbmType { 0 } < direction;
 
    StorageDataType ** paInputDataTo = aaInputDataTo;
    const FeatureGroup * const * ppFeatureGroup = apFeatureGroup;
@@ -304,8 +304,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
          EBM_ASSERT(pDimensionInfoInit == &dimensionInfo[pFeatureGroup->GetCountSignificantDimensions()]);
 
-         const IntEbmType * pBag = aBag;
-         IntEbmType countBagged = 0;
+         const BagEbmType * pBag = aBag;
+         BagEbmType countBagged = 0;
          size_t tensorIndex = 0;
 
          size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPack;
@@ -316,7 +316,7 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             StorageDataType bits = 0;
             size_t shift = 0;
             do {
-               if(IntEbmType { 0 } == countBagged) {
+               if(BagEbmType { 0 } == countBagged) {
                   while(true) {
                      tensorIndex = 0;
                      size_t tensorMultiple = 1;
@@ -348,8 +348,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
                         countBagged = *pBag;
                         ++pBag;
                      }
-                     if(IntEbmType { 0 } != countBagged) {
-                        const bool isItemTraining = IntEbmType { 0 } < countBagged;
+                     if(BagEbmType { 0 } != countBagged) {
+                        const bool isItemTraining = BagEbmType { 0 } < countBagged;
                         if(isLoopTraining == isItemTraining) {
                            break;
                         }
@@ -404,15 +404,15 @@ ErrorEbmType DataSetBoosting::Initialize(
    const bool bAllocatePredictorScores,
    const bool bAllocateTargetData,
    const unsigned char * const pDataSetShared,
-   const IntEbmType direction,
-   const IntEbmType * const aBag,
+   const BagEbmType direction,
+   const BagEbmType * const aBag,
    const FloatEbmType * const aPredictorScores,
    const size_t cSetSamples,
    const size_t cFeatureGroups,
    const FeatureGroup * const * const apFeatureGroup
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
 
    EBM_ASSERT(nullptr == m_aGradientsAndHessians);
    EBM_ASSERT(nullptr == m_aPredictorScores);

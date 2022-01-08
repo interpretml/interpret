@@ -33,7 +33,7 @@ namespace DEFINED_ZONE_NAME {
 
 extern ErrorEbmType Unbag(
    const size_t cSamples,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 );
@@ -67,7 +67,7 @@ void InteractionCore::Free(InteractionCore * const pInteractionCore) {
 ErrorEbmType InteractionCore::Create(
    InteractionShell * const pInteractionShell,
    const unsigned char * const pDataSetShared,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    const FloatEbmType * const aPredictorScores,
    const FloatEbmType * const optionalTempParams
 ) {

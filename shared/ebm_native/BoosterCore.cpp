@@ -42,8 +42,8 @@ namespace DEFINED_ZONE_NAME {
 
 extern ErrorEbmType InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
-   const IntEbmType direction,
-   const IntEbmType * const aBag,
+   const BagEbmType direction,
+   const BagEbmType * const aBag,
    const FloatEbmType * const aPredictorScores,
    const size_t cSetSamples,
    FloatEbmType * const aGradientAndHessian
@@ -51,16 +51,16 @@ extern ErrorEbmType InitializeGradientsAndHessians(
 
 extern ErrorEbmType Unbag(
    const size_t cSamples,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 );
 
 extern ErrorEbmType ExtractWeights(
    const unsigned char * const pDataSetShared,
-   const IntEbmType direction,
+   const BagEbmType direction,
    const size_t cAllSamples,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    const size_t cSetSamples,
    const FloatEbmType ** ppWeightsOut
 );
@@ -172,7 +172,7 @@ ErrorEbmType BoosterCore::Create(
    const IntEbmType * const aFeatureGroupsDimensionCounts,
    const IntEbmType * const aFeatureGroupsFeatureIndexes, 
    const unsigned char * const pDataSetShared,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    const FloatEbmType * const aPredictorScores
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
@@ -460,7 +460,7 @@ ErrorEbmType BoosterCore::Create(
       bClassification,
       bClassification,
       pDataSetShared,
-      IntEbmType { 1 },
+      BagEbmType { 1 },
       aBag,
       aPredictorScores,
       cTrainingSamples,
@@ -479,7 +479,7 @@ ErrorEbmType BoosterCore::Create(
       bClassification,
       bClassification,
       pDataSetShared,
-      IntEbmType { -1 },
+      BagEbmType { -1 },
       aBag,
       aPredictorScores,
       cValidationSamples,
@@ -499,7 +499,7 @@ ErrorEbmType BoosterCore::Create(
       if(0 != cWeights) {
          const ErrorEbmType errorWeights = ExtractWeights(
             pDataSetShared,
-            IntEbmType { 1 },
+            BagEbmType { 1 },
             cSamples, 
             aBag, 
             cTrainingSamples,
@@ -525,7 +525,7 @@ ErrorEbmType BoosterCore::Create(
    if(0 != cWeights && 0 != cValidationSamples) {
       const ErrorEbmType errorWeights = ExtractWeights(
          pDataSetShared,
-         IntEbmType { -1 },
+         BagEbmType { -1 },
          cSamples, 
          aBag, 
          cValidationSamples,
@@ -552,7 +552,7 @@ ErrorEbmType BoosterCore::Create(
       if(0 != cTrainingSamples) {
          const ErrorEbmType error = InitializeGradientsAndHessians(
             pDataSetShared,
-            IntEbmType { 1 },
+            BagEbmType { 1 },
             aBag,
             aPredictorScores,
             cTrainingSamples,
@@ -571,7 +571,7 @@ ErrorEbmType BoosterCore::Create(
 #endif // NDEBUG
          InitializeGradientsAndHessians(
             pDataSetShared,
-            IntEbmType { 1 },
+            BagEbmType { 1 },
             aBag,
             aPredictorScores,
             cTrainingSamples,
@@ -585,7 +585,7 @@ ErrorEbmType BoosterCore::Create(
 #endif // NDEBUG
          InitializeGradientsAndHessians(
             pDataSetShared,
-            IntEbmType { -1 },
+            BagEbmType { -1 },
             aBag,
             aPredictorScores,
             cValidationSamples,

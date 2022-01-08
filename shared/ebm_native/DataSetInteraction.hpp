@@ -51,7 +51,7 @@ public:
       const bool bAllocateHessians,
       const unsigned char * const pDataSetShared,
       const size_t cAllSamples,
-      const IntEbmType * const aBag,
+      const BagEbmType * const aBag,
       const FloatEbmType * const aPredictorScores,
       const size_t cSetSamples,
       const size_t cWeights,

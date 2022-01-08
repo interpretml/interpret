@@ -144,7 +144,7 @@ class Native:
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
 
-        sample_counts_out = np.empty(count_samples, dtype=np.int64, order="C")
+        sample_counts_out = np.empty(count_samples, dtype=np.int8, order="C")
 
         self._unsafe.SampleWithoutReplacement(
             random_seed,
@@ -173,7 +173,7 @@ class Native:
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
 
-        sample_counts_out = np.empty(count_samples, dtype=np.int64, order="C")
+        sample_counts_out = np.empty(count_samples, dtype=np.int8, order="C")
 
         return_code = self._unsafe.StratifiedSamplingWithoutReplacement(
             random_seed,
@@ -423,8 +423,8 @@ class Native:
             ct.c_int64,
             # int64_t countValidationSamples
             ct.c_int64,
-            # int64_t * sampleCountsOut
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            # int8_t * sampleCountsOut
+            ndpointer(dtype=ct.c_int8, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.SampleWithoutReplacement.restype = None
 
@@ -439,8 +439,8 @@ class Native:
             ct.c_int64,
             # int64_t * targets
             ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * sampleCountsOut
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            # int8_t * sampleCountsOut
+            ndpointer(dtype=ct.c_int8, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self._unsafe.StratifiedSamplingWithoutReplacement.restype = ct.c_int32
 
@@ -664,7 +664,7 @@ class Native:
             ct.c_int32,
             # void * dataSet
             ct.c_void_p,
-            # int64_t * bag
+            # int8_t * bag
             ct.c_void_p,
             # double * predictorScores
             ct.c_void_p,
@@ -769,7 +769,7 @@ class Native:
         self._unsafe.CreateInteractionDetector.argtypes = [
             # void * dataSet
             ct.c_void_p,
-            # int64_t * bag
+            # int8_t * bag
             ct.c_void_p,
             # double * predictorScores
             ct.c_void_p,
@@ -884,8 +884,8 @@ class Booster(AbstractContextManager):
             if not isinstance(bag, np.ndarray):  # pragma: no cover
                 raise ValueError("bag should be an ndarray")
 
-            if bag.dtype.type is not np.int64:  # pragma: no cover
-                raise ValueError("bag should be an ndarray of np.int64")
+            if bag.dtype.type is not np.int8:  # pragma: no cover
+                raise ValueError("bag should be an ndarray of np.int8")
 
             if not bag.flags.c_contiguous:  # pragma: no cover
                 raise ValueError("bag should be a contiguous ndarray")
@@ -1272,8 +1272,8 @@ class InteractionDetector(AbstractContextManager):
             if not isinstance(bag, np.ndarray):  # pragma: no cover
                 raise ValueError("bag should be an ndarray")
 
-            if bag.dtype.type is not np.int64:  # pragma: no cover
-                raise ValueError("bag should be an ndarray of np.int64")
+            if bag.dtype.type is not np.int8:  # pragma: no cover
+                raise ValueError("bag should be an ndarray of np.int8")
 
             if not bag.flags.c_contiguous:  # pragma: no cover
                 raise ValueError("bag should be a contiguous ndarray")

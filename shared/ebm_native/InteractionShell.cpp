@@ -72,7 +72,7 @@ HistogramBucketBase * InteractionShell::GetHistogramBucketBase(size_t cBytesRequ
 // a*PredictorScores = predictedValue for regression
 static ErrorEbmType CreateInteractionDetectorInternal(
    const void * dataSet,
-   const IntEbmType * bag,
+   const BagEbmType * bag,
    const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
    const FloatEbmType * optionalTempParams,
    InteractionHandle * interactionHandleOut
@@ -112,7 +112,7 @@ static ErrorEbmType CreateInteractionDetectorInternal(
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
-   const IntEbmType * bag,
+   const BagEbmType * bag,
    const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
    const FloatEbmType * optionalTempParams,
    InteractionHandle * interactionHandleOut

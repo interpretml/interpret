@@ -164,6 +164,8 @@ typedef uint64_t UIntEbmType;
 #define UIntEbmTypePrintf PRIu64
 typedef int32_t SeedEbmType;
 #define SeedEbmTypePrintf PRId32
+typedef int8_t BagEbmType;
+#define BagEbmTypePrintf PRId8
 typedef int32_t TraceEbmType;
 #define TraceEbmTypePrintf PRId32
 typedef int64_t BoolEbmType;
@@ -469,7 +471,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SampleWithou
    SeedEbmType randomSeed,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
-   IntEbmType * sampleCountsOut
+   BagEbmType * sampleCountsOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
@@ -477,14 +479,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stra
    IntEbmType countTargetClasses,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
-   IntEbmType* targets,
-   IntEbmType* sampleCountsOut
+   IntEbmType * targets,
+   BagEbmType * sampleCountsOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBooster(
    SeedEbmType randomSeed,
    const void * dataSet,
-   const IntEbmType * bag,
+   const BagEbmType * bag,
    const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
    IntEbmType countFeatureGroups,
    const IntEbmType * dimensionCounts,
@@ -541,7 +543,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
-   const IntEbmType * bag,
+   const BagEbmType * bag,
    const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
    const FloatEbmType * optionalTempParams,
    InteractionHandle * interactionHandleOut

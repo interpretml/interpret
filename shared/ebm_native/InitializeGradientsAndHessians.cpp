@@ -32,8 +32,8 @@ public:
 
    static ErrorEbmType Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const IntEbmType direction,
-      const IntEbmType * const aBag,
+      const BagEbmType direction,
+      const BagEbmType * const aBag,
       const void * const aTargets,
       const FloatEbmType * const aPredictorScores,
       const size_t cSetSamples,
@@ -44,7 +44,7 @@ public:
 
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
-      EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+      EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
       EBM_ASSERT(0 < cSetSamples);
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
@@ -62,20 +62,20 @@ public:
          return Error_OutOfMemory;
       }
 
-      const IntEbmType * pBag = aBag;
+      const BagEbmType * pBag = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const FloatEbmType * pPredictorScores = aPredictorScores;
       FloatEbmType * pGradientAndHessian = aGradientAndHessian;
       const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cVectorLength * cSetSamples * 2;
-      const bool isLoopTraining = IntEbmType { 0 } < direction;
+      const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
-         IntEbmType countBagged = 1;
+         BagEbmType countBagged = 1;
          if(nullptr != pBag) {
             countBagged = *pBag;
             ++pBag;
          }
-         if(IntEbmType { 0 } != countBagged) {
-            const bool isItemTraining = IntEbmType { 0 } < countBagged;
+         if(BagEbmType { 0 } != countBagged) {
+            const bool isItemTraining = BagEbmType { 0 } < countBagged;
             if(isLoopTraining == isItemTraining) {
                const SharedStorageDataType targetOriginal = *pTargetData;
                // if we can't fit it, then we should increase our StorageDataType size!
@@ -133,7 +133,7 @@ public:
                   } while(iVector < cVectorLength);
 
                   countBagged -= direction;
-               } while(IntEbmType { 0 } != countBagged);
+               } while(BagEbmType { 0 } != countBagged);
             } else {
                if(nullptr != pPredictorScores) {
                   pPredictorScores += cVectorLength;
@@ -159,8 +159,8 @@ public:
 
    static ErrorEbmType Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const IntEbmType direction,
-      const IntEbmType * const aBag,
+      const BagEbmType direction,
+      const BagEbmType * const aBag,
       const void * const aTargets,
       const FloatEbmType * const aPredictorScores,
       const size_t cSetSamples,
@@ -174,30 +174,30 @@ public:
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
 
-      EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+      EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
       EBM_ASSERT(0 < cSetSamples);
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
-      const IntEbmType * pBag = aBag;
+      const BagEbmType * pBag = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const FloatEbmType * pPredictorScores = aPredictorScores;
       FloatEbmType * pGradientAndHessian = aGradientAndHessian;
       const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples * 2;
-      const bool isLoopTraining = IntEbmType { 0 } < direction;
+      const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
-         IntEbmType countBagged = 1;
+         BagEbmType countBagged = 1;
          if(nullptr != pBag) {
             countBagged = *pBag;
             ++pBag;
          }
-         if(IntEbmType { 0 } != countBagged) {
+         if(BagEbmType { 0 } != countBagged) {
             FloatEbmType predictionScore = 0;
             if(nullptr != pPredictorScores) {
                predictionScore = *pPredictorScores;
                ++pPredictorScores;
             }
-            const bool isItemTraining = IntEbmType { 0 } < countBagged;
+            const bool isItemTraining = BagEbmType { 0 } < countBagged;
             if(isLoopTraining == isItemTraining) {
                const SharedStorageDataType targetOriginal = *pTargetData;
                // if we can't fit it, then we should increase our StorageDataType size!
@@ -215,7 +215,7 @@ public:
                   pGradientAndHessian += 2;
 
                   countBagged -= direction;
-               } while(IntEbmType { 0 } != countBagged);
+               } while(BagEbmType { 0 } != countBagged);
             }
          }
          ++pTargetData;
@@ -235,8 +235,8 @@ public:
 
    static ErrorEbmType Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const IntEbmType direction,
-      const IntEbmType * const aBag,
+      const BagEbmType direction,
+      const BagEbmType * const aBag,
       const void * const aTargets,
       const FloatEbmType * const aPredictorScores,
       const size_t cSetSamples,
@@ -250,30 +250,30 @@ public:
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
 
-      EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+      EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
       EBM_ASSERT(0 < cSetSamples);
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
-      const IntEbmType * pBag = aBag;
+      const BagEbmType * pBag = aBag;
       const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargets);
       const FloatEbmType * pPredictorScores = aPredictorScores;
       FloatEbmType * pGradientAndHessian = aGradientAndHessian;
       const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
-      const bool isLoopTraining = IntEbmType { 0 } < direction;
+      const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
-         IntEbmType countBagged = 1;
+         BagEbmType countBagged = 1;
          if(nullptr != pBag) {
             countBagged = *pBag;
             ++pBag;
          }
-         if(IntEbmType { 0 } != countBagged) {
+         if(BagEbmType { 0 } != countBagged) {
             FloatEbmType predictionScore = 0;
             if(nullptr != pPredictorScores) {
                predictionScore = *pPredictorScores;
                ++pPredictorScores;
             }
-            const bool isItemTraining = IntEbmType { 0 } < countBagged;
+            const bool isItemTraining = BagEbmType { 0 } < countBagged;
             if(isLoopTraining == isItemTraining) {
                // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
                //   from the input data
@@ -291,7 +291,7 @@ public:
                   ++pGradientAndHessian;
 
                   countBagged -= direction;
-               } while(IntEbmType { 0 } != countBagged);
+               } while(BagEbmType { 0 } != countBagged);
             }
          }
          ++pTargetData;
@@ -304,8 +304,8 @@ public:
 
 extern ErrorEbmType InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
-   const IntEbmType direction,
-   const IntEbmType * const aBag,
+   const BagEbmType direction,
+   const BagEbmType * const aBag,
    const FloatEbmType * const aPredictorScores,
    const size_t cSetSamples,
    FloatEbmType * const aGradientAndHessian

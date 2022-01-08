@@ -658,7 +658,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       error = FillRegressionTarget(allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0], size, pDataSet);
    }
 
-   std::vector<IntEbmType> bag;
+   std::vector<BagEbmType> bag;
    bag.insert(bag.end(), cTrainingSamples, 1);
    bag.insert(bag.end(), cValidationSamples, -1);
 
@@ -1046,7 +1046,7 @@ void TestApi::InitializeInteraction() {
       error = FillRegressionTarget(cSamples, 0 == cSamples ? nullptr : &m_interactionRegressionTargets[0], size, pDataSet);
    }
 
-   std::vector<IntEbmType> bag;
+   std::vector<BagEbmType> bag;
    bag.insert(bag.end(), cSamples, 1);
 
    error = CreateInteractionDetector(

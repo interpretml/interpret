@@ -28,8 +28,8 @@ namespace DEFINED_ZONE_NAME {
 
 extern ErrorEbmType InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
-   const IntEbmType direction,
-   const IntEbmType * const aBag,
+   const BagEbmType direction,
+   const BagEbmType * const aBag,
    const FloatEbmType * const aPredictorScores,
    const size_t cSetSamples,
    FloatEbmType * const aGradientAndHessian
@@ -37,9 +37,9 @@ extern ErrorEbmType InitializeGradientsAndHessians(
 
 extern ErrorEbmType ExtractWeights(
    const unsigned char * const pDataSetShared,
-   const IntEbmType direction,
+   const BagEbmType direction,
    const size_t cAllSamples,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    const size_t cSetSamples,
    const FloatEbmType ** ppWeightsOut
 );
@@ -48,7 +48,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    const FloatEbmType * const aPredictorScores,
    const size_t cSetSamples,
    FloatEbmType ** paGradientsAndHessiansOut
@@ -81,7 +81,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
 
    const ErrorEbmType error = InitializeGradientsAndHessians(
       pDataSetShared,
-      IntEbmType { 1 },
+      BagEbmType { 1 },
       aBag,
       aPredictorScores,
       cSetSamples,
@@ -98,7 +98,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
 
 INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const unsigned char * const pDataSetShared,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    const size_t cSetSamples,
    const size_t cFeatures
 ) {
@@ -142,14 +142,14 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
 
       ++iFeature;
 
-      const IntEbmType * pBag = aBag;
-      IntEbmType countBagged = 0;
+      const BagEbmType * pBag = aBag;
+      BagEbmType countBagged = 0;
       size_t iData = 0;
 
       const SharedStorageDataType * pInputDataFrom = static_cast<const SharedStorageDataType *>(aInputDataFrom);
       const StorageDataType * pInputDataToEnd = &pInputDataTo[cSetSamples];
       do {
-         while(countBagged <= IntEbmType { 0 }) {
+         while(countBagged <= BagEbmType { 0 }) {
             const SharedStorageDataType inputData = *pInputDataFrom;
             ++pInputDataFrom;
 
@@ -220,7 +220,7 @@ ErrorEbmType DataSetInteraction::Initialize(
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
    const size_t cAllSamples,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    const FloatEbmType * const aPredictorScores,
    const size_t cSetSamples,
    const size_t cWeights,
@@ -250,7 +250,7 @@ ErrorEbmType DataSetInteraction::Initialize(
       if(0 != cWeights) {
          const ErrorEbmType errorWeights = ExtractWeights(
             pDataSetShared,
-            IntEbmType { 1 },
+            BagEbmType { 1 },
             cAllSamples,
             aBag,
             cSetSamples,

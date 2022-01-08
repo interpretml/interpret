@@ -197,7 +197,7 @@ public:
       const IntEbmType * const aFeatureGroupsDimensionCounts,
       const IntEbmType * const aFeatureGroupsFeatureIndexes,
       const unsigned char * const pDataSetShared,
-      const IntEbmType * const aBag,
+      const BagEbmType * const aBag,
       const FloatEbmType * const aPredictorScores
    );
 };

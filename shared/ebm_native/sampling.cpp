@@ -54,7 +54,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
    SeedEbmType randomSeed,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
-   IntEbmType * sampleCountsOut
+   BagEbmType * sampleCountsOut
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterSampleWithoutReplacementParametersMessages,
@@ -116,12 +116,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
    RandomStream randomStream;
    randomStream.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
 
-   IntEbmType * pSampleCountsOut = sampleCountsOut;
+   BagEbmType * pSampleCountsOut = sampleCountsOut;
    do {
       const size_t iRandom = randomStream.Next(cSamplesRemaining);
       const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
       cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
-      *pSampleCountsOut = UNPREDICTABLE(bTrainingSample) ? IntEbmType { 1 } : IntEbmType { -1 };
+      *pSampleCountsOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
       ++pSampleCountsOut;
       --cSamplesRemaining;
    } while(0 != cSamplesRemaining);
@@ -147,8 +147,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    IntEbmType countTargetClasses,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
-   IntEbmType* targets,
-   IntEbmType* sampleCountsOut
+   IntEbmType * targets,
+   BagEbmType * sampleCountsOut
 ) {
    struct TargetSamplingCounts {
       size_t m_cTraining;
@@ -407,10 +407,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
 
       if (UNPREDICTABLE(bTrainingSample)) {
          --pTargetSample->m_cTraining;
-         sampleCountsOut[iSample] = IntEbmType{ 1 };
+         sampleCountsOut[iSample] = BagEbmType{ 1 };
       }
       else {
-         sampleCountsOut[iSample] = IntEbmType{ -1 };
+         sampleCountsOut[iSample] = BagEbmType{ -1 };
       }
 
       --pTargetSample->m_cTotalRemaining;
@@ -441,7 +441,7 @@ WARNING_POP
 
 extern ErrorEbmType Unbag(
    const size_t cSamples,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    size_t * const pcTrainingSamplesOut,
    size_t * const pcValidationSamplesOut
 ) {
@@ -453,23 +453,24 @@ extern ErrorEbmType Unbag(
    if(nullptr != aBag) {
       cTrainingSamples = 0;
       if(0 != cSamples) {
-         const IntEbmType * pBag = aBag;
-         const IntEbmType * const pBagEnd = aBag + cSamples;
+         const BagEbmType * pBag = aBag;
+         const BagEbmType * const pBagEnd = aBag + cSamples;
          do {
-            IntEbmType sampleDefinition = *pBag;
-            if(sampleDefinition < IntEbmType { 0 }) {
-               // by creating an IntEbmType with "IntEbmType { ... }" the compiler is suposed to give us an 
+            BagEbmType sampleDefinition = *pBag;
+            if(sampleDefinition < BagEbmType { 0 }) {
+               if(IsConvertError<ptrdiff_t>(sampleDefinition)) {
+                  LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<ptrdiff_t>(sampleDefinition)");
+                  return Error_IllegalParamValue;
+               }
+               ptrdiff_t cSampleDefinitionSigned = static_cast<ptrdiff_t>(sampleDefinition);
+               // by creating a ptrdiff_t with "ptrdiff_t { ... }" the compiler is suposed to give us an 
                // error if for some reason the negation of the max fails
-               if(sampleDefinition < IntEbmType { -std::numeric_limits<IntEbmType>::max() }) {
-                  LOG_0(TraceLevelError, "ERROR Unbag sampleDefinition < IntEbmType { -std::numeric_limits<IntEbmType>::max() }");
+               if(cSampleDefinitionSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }) {
+                  LOG_0(TraceLevelError, "ERROR Unbag cSampleDefinitionSigned < ptrdiff_t { -std::numeric_limits<ptrdiff_t>::max() }");
                   return Error_IllegalParamValue;
                }
-               sampleDefinition = -sampleDefinition;
-               if(IsConvertError<size_t>(sampleDefinition)) {
-                  LOG_0(TraceLevelError, "ERROR Unbag IsConvertError<size_t>(sampleDefinition)");
-                  return Error_IllegalParamValue;
-               }
-               const size_t cSampleDefinition = static_cast<size_t>(sampleDefinition);
+               cSampleDefinitionSigned = -cSampleDefinitionSigned;
+               const size_t cSampleDefinition = static_cast<size_t>(cSampleDefinitionSigned);
                if(IsAddError(cValidationSamples, cSampleDefinition)) {
                   LOG_0(TraceLevelError, "ERROR Unbag IsAddError(cValidationSamples, cSampleDefinition)");
                   return Error_IllegalParamValue;
@@ -497,26 +498,26 @@ extern ErrorEbmType Unbag(
 }
 
 INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
-   const IntEbmType direction,
+   const BagEbmType direction,
    const size_t cAllSamples,
-   const IntEbmType * pBag,
+   const BagEbmType * pBag,
    const FloatEbmType * pWeights
 ) {
-   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(1 <= cAllSamples);
    EBM_ASSERT(nullptr != pWeights);
 
    FloatEbmType firstWeight = std::numeric_limits<FloatEbmType>::quiet_NaN();
    const FloatEbmType * const pWeightsEnd = pWeights + cAllSamples;
-   const bool isLoopTraining = IntEbmType { 0 } < direction;
+   const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
-      IntEbmType countBagged = 1;
+      BagEbmType countBagged = 1;
       if(nullptr != pBag) {
          countBagged = *pBag;
          ++pBag;
       }
-      if(IntEbmType { 0 } != countBagged) {
-         const bool isItemTraining = IntEbmType { 0 } < countBagged;
+      if(BagEbmType { 0 } != countBagged) {
+         const bool isItemTraining = BagEbmType { 0 } < countBagged;
          if(isLoopTraining == isItemTraining) {
             const FloatEbmType weight = *pWeights;
             // this relies on the property that NaN is not equal to everything, including NaN
@@ -537,14 +538,14 @@ INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
 
 extern ErrorEbmType ExtractWeights(
    const unsigned char * const pDataSetShared,
-   const IntEbmType direction,
+   const BagEbmType direction,
    const size_t cAllSamples,
-   const IntEbmType * const aBag,
+   const BagEbmType * const aBag,
    const size_t cSetSamples,
    const FloatEbmType ** ppWeightsOut
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(IntEbmType { -1 } == direction || IntEbmType { 1 } == direction);
+   EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
    EBM_ASSERT(cSetSamples <= cAllSamples);
    EBM_ASSERT(0 < cAllSamples); // from the previous two rules
@@ -562,19 +563,19 @@ extern ErrorEbmType ExtractWeights(
       }
       *ppWeightsOut = aRet;
 
-      const IntEbmType * pBag = aBag;
+      const BagEbmType * pBag = aBag;
       const FloatEbmType * pWeightFrom = aWeights;
       FloatEbmType * pWeightTo = aRet;
       FloatEbmType * pWeightToEnd = aRet + cSetSamples;
-      const bool isLoopTraining = IntEbmType { 0 } < direction;
+      const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
-         IntEbmType countBagged = 1;
+         BagEbmType countBagged = 1;
          if(nullptr != pBag) {
             countBagged = *pBag;
             ++pBag;
          }
-         if(IntEbmType { 0 } != countBagged) {
-            const bool isItemTraining = IntEbmType { 0 } < countBagged;
+         if(BagEbmType { 0 } != countBagged) {
+            const bool isItemTraining = BagEbmType { 0 } < countBagged;
             if(isLoopTraining == isItemTraining) {
                const FloatEbmType weight = *pWeightFrom;
                do {
@@ -582,7 +583,7 @@ extern ErrorEbmType ExtractWeights(
                   *pWeightTo = weight;
                   ++pWeightTo;
                   countBagged -= direction;
-               } while(IntEbmType { 0 } != countBagged);
+               } while(BagEbmType { 0 } != countBagged);
             }
          }
          ++pWeightFrom;

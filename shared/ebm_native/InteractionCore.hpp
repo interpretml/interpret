@@ -103,7 +103,7 @@ public:
    static ErrorEbmType Create(
       InteractionShell * const pInteractionShell,
       const unsigned char * const pDataSetShared,
-      const IntEbmType * const aBag,
+      const BagEbmType * const aBag,
       const FloatEbmType * const aPredictorScores,
       const FloatEbmType * const optionalTempParams
    );
