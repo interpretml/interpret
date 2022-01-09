@@ -82,6 +82,8 @@ static ErrorEbmType CreateInteractionDetectorInternal(
    EBM_ASSERT(nullptr != interactionHandleOut);
    EBM_ASSERT(nullptr == *interactionHandleOut);
 
+   ErrorEbmType error;
+
    if(nullptr == dataSet) {
       LOG_0(TraceLevelError, "ERROR CreateInteractionDetectorInternal nullptr == dataSet");
       return Error_IllegalParamValue;
@@ -93,7 +95,7 @@ static ErrorEbmType CreateInteractionDetectorInternal(
       return Error_OutOfMemory;
    }
 
-   const ErrorEbmType error = InteractionCore::Create(
+   error = InteractionCore::Create(
       pInteractionShell,
       static_cast<const unsigned char *>(dataSet),
       bag,
@@ -131,13 +133,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateI
       static_cast<const void *>(interactionHandleOut)
    );
 
+   ErrorEbmType error;
+
    if(nullptr == interactionHandleOut) {
       LOG_0(TraceLevelError, "ERROR CreateInteractionDetector nullptr == interactionHandleOut");
       return Error_IllegalParamValue;
    }
    *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
-   const ErrorEbmType error = CreateInteractionDetectorInternal(
+   error = CreateInteractionDetectorInternal(
       dataSet,
       bag,
       predictorScores,

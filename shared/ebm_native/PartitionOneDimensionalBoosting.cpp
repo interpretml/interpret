@@ -893,13 +893,14 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
 ) {
    LOG_0(TraceLevelVerbose, "Entered PartitionOneDimensionalBoosting");
 
+   ErrorEbmType error;
+
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
-   ErrorEbmType bRet;
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         bRet = PartitionOneDimensionalBoostingInternal<2>::Func(
+         error = PartitionOneDimensionalBoostingInternal<2>::Func(
             pBoosterShell,
             cHistogramBuckets,
             cSamplesTotal,
@@ -909,7 +910,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
             pTotalGain
          );
       } else {
-         bRet = PartitionOneDimensionalBoostingInternal<k_dynamicClassification>::Func(
+         error = PartitionOneDimensionalBoostingInternal<k_dynamicClassification>::Func(
             pBoosterShell,
             cHistogramBuckets,
             cSamplesTotal,
@@ -921,7 +922,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      bRet = PartitionOneDimensionalBoostingInternal<k_regression>::Func(
+      error = PartitionOneDimensionalBoostingInternal<k_regression>::Func(
          pBoosterShell,
          cHistogramBuckets,
          cSamplesTotal,
@@ -934,7 +935,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
 
    LOG_0(TraceLevelVerbose, "Exited PartitionOneDimensionalBoosting");
 
-   return bRet;
+   return error;
 }
 
 } // DEFINED_ZONE_NAME

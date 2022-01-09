@@ -268,6 +268,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
       static_cast<void *>(interactionScoreOut)
    );
 
+   ErrorEbmType error;
+
    InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromInteractionHandle(interactionHandle);
    if(nullptr == pInteractionShell) {
       if(LIKELY(nullptr != interactionScoreOut)) {
@@ -421,15 +423,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
    }
 
    // TODO: remove the pInteractionCore object here.  pInteractionShell contains pInteractionCore
-   ErrorEbmType ret = CalculateInteractionScoreInternal(
+   error = CalculateInteractionScoreInternal(
       pInteractionShell,
       pInteractionCore,
       pFeatureGroup,
       cSamplesRequiredForChildSplitMin,
       interactionScoreOut
    );
-   if(Error_None != ret) {
-      LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" ErrorEbmTypePrintf, ret);
+   if(Error_None != error) {
+      LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" ErrorEbmTypePrintf, error);
    }
 
    if(nullptr != interactionScoreOut) {
@@ -444,7 +446,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
    } else {
       LOG_COUNTED_0(pInteractionCore->GetPointerCountLogExitMessages(), TraceLevelInfo, TraceLevelVerbose, "Exited CalculateInteractionScore");
    }
-   return ret;
+   return error;
 }
 
 } // DEFINED_ZONE_NAME

@@ -314,22 +314,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
       static_cast<void *>(discretizedOut)
    );
 
-   ErrorEbmType ret;
+   ErrorEbmType error;
+   
    if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
       if(UNLIKELY(countSamples < IntEbmType { 0 })) {
          LOG_0(TraceLevelError, "ERROR Discretize countSamples cannot be negative");
-         ret = Error_IllegalParamValue;
+         error = Error_IllegalParamValue;
          goto exit_with_log;
       } else {
          EBM_ASSERT(IntEbmType { 0 } == countSamples);
-         ret = Error_None;
+         error = Error_None;
          goto exit_with_log;
       }
    } else {
       if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into memory");
-         ret = Error_IllegalParamValue;
+         error = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
@@ -337,25 +338,25 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
 
       if(IsMultiplyError(sizeof(*featureValues), cSamples)) {
          LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into featureValues");
-         ret = Error_IllegalParamValue;
+         error = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*discretizedOut), cSamples)) {
          LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into discretizedOut");
-         ret = Error_IllegalParamValue;
+         error = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == featureValues)) {
          LOG_0(TraceLevelError, "ERROR Discretize featureValues cannot be null");
-         ret = Error_IllegalParamValue;
+         error = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == discretizedOut)) {
          LOG_0(TraceLevelError, "ERROR Discretize discretizedOut cannot be null");
-         ret = Error_IllegalParamValue;
+         error = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
@@ -366,7 +367,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
       if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
          if(UNLIKELY(countCuts < IntEbmType { 0 })) {
             LOG_0(TraceLevelError, "ERROR Discretize countCuts cannot be negative");
-            ret = Error_IllegalParamValue;
+            error = Error_IllegalParamValue;
             goto exit_with_log;
          }
          EBM_ASSERT(IntEbmType { 0 } == countCuts);
@@ -380,13 +381,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = Error_None;
+         error = Error_None;
          goto exit_with_log;
       }
 
       if(UNLIKELY(nullptr == cutsLowerBoundInclusive)) {
          LOG_0(TraceLevelError, "ERROR Discretize cutsLowerBoundInclusive cannot be null");
-         ret = Error_IllegalParamValue;
+         error = Error_IllegalParamValue;
          goto exit_with_log;
       }
 
@@ -425,7 +426,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = Error_None;
+         error = Error_None;
          goto exit_with_log;
       }
 
@@ -446,7 +447,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = Error_None;
+         error = Error_None;
          goto exit_with_log;
       }
 
@@ -469,7 +470,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = Error_None;
+         error = Error_None;
          goto exit_with_log;
       }
 
@@ -494,7 +495,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = Error_None;
+         error = Error_None;
          goto exit_with_log;
       }
 
@@ -521,7 +522,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = Error_None;
+         error = Error_None;
          goto exit_with_log;
       }
 
@@ -550,7 +551,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         ret = Error_None;
+         error = Error_None;
          goto exit_with_log;
       }
 
@@ -605,7 +606,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = Error_None;
+            error = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 30 })) {
@@ -652,7 +653,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = Error_None;
+            error = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 62 })) {
@@ -700,7 +701,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = Error_None;
+            error = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 126 })) {
@@ -749,7 +750,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = Error_None;
+            error = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 254 })) {
@@ -799,7 +800,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = Error_None;
+            error = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 510 })) {
@@ -850,7 +851,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = Error_None;
+            error = Error_None;
             goto exit_with_log;
          }
       } else if(PREDICTABLE(countCuts <= IntEbmType { 1022 })) {
@@ -902,7 +903,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
                ++pDiscretized;
                ++pValue;
             } while(LIKELY(pValueEnd != pValue));
-            ret = Error_None;
+            error = Error_None;
             goto exit_with_log;
          }
       }
@@ -910,14 +911,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
       if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(TraceLevelError, "ERROR Discretize countCuts was too large to fit into memory");
-         ret = Error_IllegalParamValue; // the cutsLowerBoundInclusive wouldn't be possible
+         error = Error_IllegalParamValue; // the cutsLowerBoundInclusive wouldn't be possible
          goto exit_with_log;
       }
 
       if(IsMultiplyError(sizeof(*cutsLowerBoundInclusive), cCuts)) {
          LOG_0(TraceLevelError,
             "ERROR Discretize countCuts was too large to fit into cutsLowerBoundInclusive");
-         ret = Error_IllegalParamValue; // the cutsLowerBoundInclusive array wouldn't be possible
+         error = Error_IllegalParamValue; // the cutsLowerBoundInclusive array wouldn't be possible
          goto exit_with_log;
       }
 
@@ -932,7 +933,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
          // tried to allocate it since it doesn't seem worth creating a new error class for it
-         ret = Error_OutOfMemory;
+         error = Error_OutOfMemory;
          goto exit_with_log;
       }
 
@@ -944,7 +945,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
          // tried to allocate it since it doesn't seem worth creating a new error class for it
-         ret = Error_OutOfMemory;
+         error = Error_OutOfMemory;
          goto exit_with_log;
       }
 
@@ -957,7 +958,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
          // tried to allocate it since it doesn't seem worth creating a new error class for it
-         ret = Error_OutOfMemory;
+         error = Error_OutOfMemory;
          goto exit_with_log;
       }
 
@@ -970,7 +971,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
          // tried to allocate it since it doesn't seem worth creating a new error class for it
-         ret = Error_OutOfMemory;
+         error = Error_OutOfMemory;
          goto exit_with_log;
       }
 
@@ -1041,7 +1042,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
          ++pDiscretized;
          ++pValue;
       } while(LIKELY(pValueEnd != pValue));
-      ret = Error_None;
+      error = Error_None;
    }
 
 exit_with_log:;
@@ -1053,10 +1054,10 @@ exit_with_log:;
       "Exited Discretize: "
       "return=%" ErrorEbmTypePrintf
       ,
-      ret
+      error
    );
 
-   return ret;
+   return error;
 }
 
 } // DEFINED_ZONE_NAME

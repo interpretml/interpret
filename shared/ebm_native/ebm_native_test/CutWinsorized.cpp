@@ -12,6 +12,8 @@ static const TestPriority k_filePriority = TestPriority::CutWinsorized;
 constexpr FloatEbmType illegalVal = FloatEbmType { -888.88 };
 
 TEST_CASE("CutWinsorized, 0 samples") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues {};
@@ -20,13 +22,13 @@ TEST_CASE("CutWinsorized, 0 samples") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -38,6 +40,8 @@ TEST_CASE("CutWinsorized, 0 samples") {
 }
 
 TEST_CASE("CutWinsorized, only missing") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::quiet_NaN(), std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -46,13 +50,13 @@ TEST_CASE("CutWinsorized, only missing") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -64,6 +68,8 @@ TEST_CASE("CutWinsorized, only missing") {
 }
 
 TEST_CASE("CutWinsorized, one item") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 1 };
@@ -72,13 +78,13 @@ TEST_CASE("CutWinsorized, one item") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -90,6 +96,8 @@ TEST_CASE("CutWinsorized, one item") {
 }
 
 TEST_CASE("CutWinsorized, zero cuts") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 0;
 
    std::vector<FloatEbmType> featureValues { 1, 2, 3, 4 };
@@ -98,13 +106,13 @@ TEST_CASE("CutWinsorized, zero cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -116,6 +124,8 @@ TEST_CASE("CutWinsorized, zero cuts") {
 }
 
 TEST_CASE("CutWinsorized, one cut, identical values") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { 1, 1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 1 };
@@ -124,13 +134,13 @@ TEST_CASE("CutWinsorized, one cut, identical values") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -142,6 +152,8 @@ TEST_CASE("CutWinsorized, one cut, identical values") {
 }
 
 TEST_CASE("CutWinsorized, one cut, even") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { 1, 2, 3, 4 };
@@ -150,13 +162,13 @@ TEST_CASE("CutWinsorized, one cut, even") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -168,6 +180,8 @@ TEST_CASE("CutWinsorized, one cut, even") {
 }
 
 TEST_CASE("CutWinsorized, one cut, odd") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { 1, 2, 3.5, 4, 5 };
@@ -176,13 +190,13 @@ TEST_CASE("CutWinsorized, one cut, odd") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -194,6 +208,8 @@ TEST_CASE("CutWinsorized, one cut, odd") {
 }
 
 TEST_CASE("CutWinsorized, one cut, even, two loops") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { 1, 2, 2, 4 };
@@ -202,13 +218,13 @@ TEST_CASE("CutWinsorized, one cut, even, two loops") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -220,6 +236,8 @@ TEST_CASE("CutWinsorized, one cut, even, two loops") {
 }
 
 TEST_CASE("CutWinsorized, one cut, odd, two loops") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { 1, 4, 4, 4, 5 };
@@ -228,13 +246,13 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -246,6 +264,8 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops") {
 }
 
 TEST_CASE("CutWinsorized, one cut, even, two loops, exit up") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { 2, 2, 2, 4 };
@@ -254,13 +274,13 @@ TEST_CASE("CutWinsorized, one cut, even, two loops, exit up") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -272,6 +292,8 @@ TEST_CASE("CutWinsorized, one cut, even, two loops, exit up") {
 }
 
 TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { 4, 4, 4, 4, 5 };
@@ -280,13 +302,13 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -298,6 +320,8 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
 }
 
 TEST_CASE("CutWinsorized, one cut, even, two loops, exit down") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { 1, 2, 2, 2 };
@@ -306,13 +330,13 @@ TEST_CASE("CutWinsorized, one cut, even, two loops, exit down") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -324,6 +348,8 @@ TEST_CASE("CutWinsorized, one cut, even, two loops, exit down") {
 }
 
 TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { 1, 4, 4, 4, 4 };
@@ -332,13 +358,13 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -350,6 +376,8 @@ TEST_CASE("CutWinsorized, one cut, odd, two loops, exit up") {
 }
 
 TEST_CASE("CutWinsorized, one cut, -infinity") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { -std::numeric_limits<FloatEbmType>::infinity(), -std::numeric_limits<FloatEbmType>::infinity() };
@@ -358,13 +386,13 @@ TEST_CASE("CutWinsorized, one cut, -infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -376,6 +404,8 @@ TEST_CASE("CutWinsorized, one cut, -infinity") {
 }
 
 TEST_CASE("CutWinsorized, one cut, +infinity") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::infinity(), std::numeric_limits<FloatEbmType>::infinity() };
@@ -384,13 +414,13 @@ TEST_CASE("CutWinsorized, one cut, +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -402,6 +432,8 @@ TEST_CASE("CutWinsorized, one cut, +infinity") {
 }
 
 TEST_CASE("CutWinsorized, one cut, -infinity and +infinity") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues { -std::numeric_limits<FloatEbmType>::infinity(), std::numeric_limits<FloatEbmType>::infinity() };
@@ -410,13 +442,13 @@ TEST_CASE("CutWinsorized, one cut, -infinity and +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -428,6 +460,8 @@ TEST_CASE("CutWinsorized, one cut, -infinity and +infinity") {
 }
 
 TEST_CASE("CutWinsorized, outer test, cuts both sides") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 0, 1, 1, 1, 1, 1, 1, 7 };
@@ -436,13 +470,13 @@ TEST_CASE("CutWinsorized, outer test, cuts both sides") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -454,6 +488,8 @@ TEST_CASE("CutWinsorized, outer test, cuts both sides") {
 }
 
 TEST_CASE("CutWinsorized, outer test, cut bottom") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 0, 1, 1, 1, 1, 1, 1, 1 };
@@ -462,13 +498,13 @@ TEST_CASE("CutWinsorized, outer test, cut bottom") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -480,6 +516,8 @@ TEST_CASE("CutWinsorized, outer test, cut bottom") {
 }
 
 TEST_CASE("CutWinsorized, outer test, cut top") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 1, 1, 1, 1, 1, 1, 1, 7 };
@@ -488,13 +526,13 @@ TEST_CASE("CutWinsorized, outer test, cut top") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -506,6 +544,8 @@ TEST_CASE("CutWinsorized, outer test, cut top") {
 }
 
 TEST_CASE("CutWinsorized, outer test, no cuts") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 1, 1, 1, 1, 1, 1, 1, 1 };
@@ -514,13 +554,13 @@ TEST_CASE("CutWinsorized, outer test, no cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -532,6 +572,8 @@ TEST_CASE("CutWinsorized, outer test, no cuts") {
 }
 
 TEST_CASE("CutWinsorized, center, one transition") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 1, 1, 1, 1, 2, 2, 2, 2 };
@@ -540,13 +582,13 @@ TEST_CASE("CutWinsorized, center, one transition") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -558,6 +600,8 @@ TEST_CASE("CutWinsorized, center, one transition") {
 }
 
 TEST_CASE("CutWinsorized, center, two transitions") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 1, 1, 1, 2, 2, 3, 3, 3 };
@@ -566,13 +610,13 @@ TEST_CASE("CutWinsorized, center, two transitions") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -584,6 +628,8 @@ TEST_CASE("CutWinsorized, center, two transitions") {
 }
 
 TEST_CASE("CutWinsorized, two cuts") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 2;
 
    std::vector<FloatEbmType> featureValues { 0, 1, 2, 3, 4, 5 };
@@ -592,13 +638,13 @@ TEST_CASE("CutWinsorized, two cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -610,6 +656,8 @@ TEST_CASE("CutWinsorized, two cuts") {
 }
 
 TEST_CASE("CutWinsorized, three cuts") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 0, 1, 2, 3, 4, 5, 6, 7 };
@@ -618,13 +666,13 @@ TEST_CASE("CutWinsorized, three cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -636,6 +684,8 @@ TEST_CASE("CutWinsorized, three cuts") {
 }
 
 TEST_CASE("CutWinsorized, four cuts") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 4;
 
    std::vector<FloatEbmType> featureValues { 0, 1, 2, 3, 5, 7, 8, 9, 10 };
@@ -644,13 +694,13 @@ TEST_CASE("CutWinsorized, four cuts") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -662,6 +712,8 @@ TEST_CASE("CutWinsorized, four cuts") {
 }
 
 TEST_CASE("CutWinsorized, one cut, -infinity, lowest, max, and +infinity") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues {
@@ -675,13 +727,13 @@ TEST_CASE("CutWinsorized, one cut, -infinity, lowest, max, and +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -693,6 +745,8 @@ TEST_CASE("CutWinsorized, one cut, -infinity, lowest, max, and +infinity") {
 }
 
 TEST_CASE("CutWinsorized, one cut, -infinity, lowest + 1, max - 1, and +infinity") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 1;
 
    std::vector<FloatEbmType> featureValues {
@@ -706,13 +760,13 @@ TEST_CASE("CutWinsorized, one cut, -infinity, lowest + 1, max - 1, and +infinity
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -724,6 +778,8 @@ TEST_CASE("CutWinsorized, one cut, -infinity, lowest + 1, max - 1, and +infinity
 }
 
 TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest, max, and +infinity") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues { 
@@ -737,13 +793,13 @@ TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest, max, and +infinity") {
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);
@@ -755,6 +811,8 @@ TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest, max, and +infinity") {
 }
 
 TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest + 1, max - 1, and +infinity") {
+   ErrorEbmType error;
+
    IntEbmType countCuts = 3;
 
    std::vector<FloatEbmType> featureValues {
@@ -772,13 +830,13 @@ TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest + 1, max - 1, and +infinity"
    std::vector<FloatEbmType> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
 
-   ErrorEbmType ret = CutWinsorized(
+   error = CutWinsorized(
       featureValues.size(),
       0 == featureValues.size() ? nullptr : &featureValues[0],
       &countCuts,
       &cutsLowerBoundInclusive[0]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    size_t cCuts = static_cast<size_t>(countCuts);
    CHECK(expectedCuts.size() == cCuts);

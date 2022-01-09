@@ -53,32 +53,33 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
       static_cast<void *>(cutsLowerBoundInclusiveOut)
    );
 
+   ErrorEbmType error;
+
    IntEbmType countCutsRet = IntEbmType { 0 };
-   ErrorEbmType ret;
 
    if(UNLIKELY(nullptr == countCutsInOut)) {
       LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == countCutsInOut");
-      ret = Error_IllegalParamValue;
+      error = Error_IllegalParamValue;
    } else {
       if(UNLIKELY(countSamples <= IntEbmType { 1 })) {
          // can't cut 1 sample
-         ret = Error_None;
+         error = Error_None;
          if(UNLIKELY(countSamples < IntEbmType { 0 })) {
             LOG_0(TraceLevelError, "ERROR CutWinsorized countSamples < IntEbmType { 0 }");
-            ret = Error_IllegalParamValue;
+            error = Error_IllegalParamValue;
          }
       } else {
          if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
             LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countSamples)");
 
-            ret = Error_IllegalParamValue;
+            error = Error_IllegalParamValue;
             goto exit_with_log;
          }
 
          if(UNLIKELY(nullptr == featureValues)) {
             LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == featureValues");
 
-            ret = Error_IllegalParamValue;
+            error = Error_IllegalParamValue;
             goto exit_with_log;
          }
 
@@ -88,7 +89,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
          if(UNLIKELY(nullptr == aFeatureValues)) {
             LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == aFeatureValues");
 
-            ret = Error_OutOfMemory;
+            error = Error_OutOfMemory;
             goto exit_with_log;
          }
          const size_t cBytesFeatureValues = sizeof(*featureValues) * cSamplesIncludingMissingValues;
@@ -110,10 +111,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
 
             if(UNLIKELY(countCuts <= IntEbmType { 0 })) {
                free(aFeatureValues);
-               ret = Error_None;
+               error = Error_None;
                if(UNLIKELY(countCuts < IntEbmType { 0 })) {
                   LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts can't be negative.");
-                  ret = Error_IllegalParamValue;
+                  error = Error_IllegalParamValue;
                }
                goto exit_with_log;
             }
@@ -121,7 +122,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
             if(UNLIKELY(IsConvertError<size_t>(countCuts))) {
                LOG_0(TraceLevelWarning, "WARNING CutWinsorized IsConvertError<size_t>(countCuts)");
                free(aFeatureValues);
-               ret = Error_IllegalParamValue;
+               error = Error_IllegalParamValue;
                goto exit_with_log;
             }
             const size_t cCuts = static_cast<size_t>(countCuts);
@@ -129,7 +130,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
             if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
                LOG_0(TraceLevelError, "ERROR CutWinsorized countCuts was too large to fit into cutsLowerBoundInclusiveOut");
                free(aFeatureValues);
-               ret = Error_IllegalParamValue;
+               error = Error_IllegalParamValue;
                goto exit_with_log;
             }
 
@@ -137,7 +138,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
                LOG_0(TraceLevelError, "ERROR CutWinsorized nullptr == cutsLowerBoundInclusiveOut");
                free(aFeatureValues);
-               ret = Error_IllegalParamValue;
+               error = Error_IllegalParamValue;
                goto exit_with_log;
             }
 
@@ -391,7 +392,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
             }
          }
          free(aFeatureValues);
-         ret = Error_None;
+         error = Error_None;
       }
 
    exit_with_log:;
@@ -409,10 +410,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
       "return=%" ErrorEbmTypePrintf
       ,
       countCutsRet,
-      ret
+      error
    );
 
-   return ret;
+   return error;
 }
 
 } // DEFINED_ZONE_NAME

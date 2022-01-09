@@ -62,6 +62,8 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    EBM_ASSERT(nullptr != paGradientsAndHessiansOut);
    EBM_ASSERT(nullptr == *paGradientsAndHessiansOut);
 
+   ErrorEbmType error;
+
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(1 <= cVectorLength);
 
@@ -79,7 +81,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    }
    *paGradientsAndHessiansOut = aGradientsAndHessians; // transfer ownership for future deletion
 
-   const ErrorEbmType error = InitializeGradientsAndHessians(
+   error = InitializeGradientsAndHessians(
       pDataSetShared,
       BagEbmType { 1 },
       aBag,
@@ -235,6 +237,8 @@ ErrorEbmType DataSetInteraction::Initialize(
 
    LOG_0(TraceLevelInfo, "Entered DataSetInteraction::Initialize");
 
+   ErrorEbmType error;
+
    ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
    GetDataSetSharedTarget(pDataSetShared, 0, &runtimeLearningTypeOrCountTargetClasses);
 
@@ -248,7 +252,7 @@ ErrorEbmType DataSetInteraction::Initialize(
       EBM_ASSERT(nullptr == m_aWeights);
       m_weightTotal = static_cast<FloatEbmType>(cSetSamples);
       if(0 != cWeights) {
-         const ErrorEbmType errorWeights = ExtractWeights(
+         error = ExtractWeights(
             pDataSetShared,
             BagEbmType { 1 },
             cAllSamples,
@@ -256,9 +260,9 @@ ErrorEbmType DataSetInteraction::Initialize(
             cSetSamples,
             &m_aWeights
          );
-         if(Error_None != errorWeights) {
+         if(Error_None != error) {
             // error already logged
-            return errorWeights;
+            return error;
          }
          if(nullptr != m_aWeights) {
             const FloatEbmType total = AddPositiveFloatsSafe(cSetSamples, m_aWeights);
@@ -273,7 +277,7 @@ ErrorEbmType DataSetInteraction::Initialize(
          }
       }
 
-      ErrorEbmType error = ConstructGradientsAndHessians(
+      error = ConstructGradientsAndHessians(
          runtimeLearningTypeOrCountTargetClasses,
          bAllocateHessians,
          pDataSetShared,

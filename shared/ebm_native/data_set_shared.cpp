@@ -20,22 +20,23 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// the stuff in this file is for handling a raw chunk of shared memory that our caller allocates and which we fill
-
-
-
-
-// TODO PK Implement the following for memory efficiency and speed of initialization :
+// TODO PK Implement the following to speed boosting and generating the gradients/hessians in interaction detection:
 //   - OBSERVATION: We want sparse feature support in our booster since we don't need to access
 //                  memory if there are long segments with just a single value
 //   - OBSERVATION: our boosting algorithm is position independent, so we can sort the data by the target feature, which
-//   -              helps us because we can move the class number into a loop count and not fetch the memory, and it allows
+//   -              helps us because we can move the class number into a loop counter and not fetch the memory, and it allows
 //                  us to elimiante a branch when calculating statistics since all samples will have the same target within a loop
 //   - OBSERVATION: we'll be sorting on the target, so we can't sort primarily on intput features (secondary sort ok)
 //                  So, sparse input features are not typically expected to clump into ranges of non - default parameters
 //                  So, we won't use ranges in our representation, so our sparse feature representation will be
 //                  class Sparse { size_t index; size_t val; }
 //                  This representation is invariant to position, so we'll be able to pre-compute the size before sorting
+//   - OBSERVATION: having a secondary sort would allow a few features to have better memory locality since they'll
+//                  cluster their updates into a single memory location.  We should pick the features that have the
+//                  highest numbers of identical values so that we can get this benefit for the most number of features possible
+//   - OBSERVATION: for regression, we might want to sort by increasing absolute values of the target since then we'll
+//                  have more precision in the earlier numbers which can have benefits in IEEE 754 where smaller numbers
+//                  have more precision in the early additions where the bin sums will be lower
 //   - OBSERVATION: We will be sorting on the target values, BUT since the sort on the target will have no discontinuities
 //                  We can represent it purely as class Target { size_t count; } and each item in the array is an increment
 //                  of the class value(for classification).
@@ -51,8 +52,6 @@ namespace DEFINED_ZONE_NAME {
 //                  and then template the combination <number_of_dimensions, number_of_bits> which has 16 * 64 possible combinations, most of which are not 
 //                  used. You can get this down to maybe 16 * 4 combinations templated with loops on the others, but then you still can't easily do
 //                  sparse features, so you're stuck with dense features if you go this route.
-//   - OBSERVATION: For templates, always put the more universal template featutres at the end, incase C++ changes such that variadic template/macros
-//                  work for us someday (currently they only allow only just typenames or the same datatypes per parameter pack)
 //   - OBSERVATION: For interaction detection, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDimensions, cDataItemsPerPack>
 //                  The main reason is that we want to load data via SIMD, and we can't have branches in order to do that, so we can't bitpack each feature
 //                  differently, so they all need to use the same number of bits per pack.
@@ -76,7 +75,7 @@ namespace DEFINED_ZONE_NAME {
 //   - OBSERVATION: when we make train/validation sets, the size of the sets will be indeterminate until we know the exact indexes for each set since the 
 //                  number of sparse features will determine it, BUT we can have python give us the complete memory representation and then we can calcualte 
 //                  the size, then return that to pyhton, have python allocate it, then pass us in the memory for a second pass at filling it
-//   - OBSERVATION: since sorting this data by target is so expensive (and the transpose to get it there), we'll create a special "all feature" data 
+//   - OBSERVATION: since sorting this data by target is so expensive, we'll create a special "all feature" data 
 //                  represenation that is just features without feature groups.  This representation will be compressed per feature.
 //                  and will include a reverse index to work back to the original unsorted indexes
 //                  We'll generate the main/interaction training dataset from that directly when python passes us the train/validation set indexes and 
@@ -89,24 +88,6 @@ namespace DEFINED_ZONE_NAME {
 //   - C will fill a temporary index array in the RawArray, sort the data by target with the indexes, and secondarily by input features.  The index array 
 //     will remain for reconstructing the original order
 //   - Now the memory is read only from now on, and shareable, and the original order can be re-constructed
-//   - first generate the mains train/validation boosting datasets, then create the interaction sets, then create the pair boosting datasets.  We only 
-//     need these in memory one at a time
-//   - FOR BOOSTING:
-//     - pass the process shared read only RawArray, and the train/validation counts AND the feature_group definitions (we already have the feature 
-//       definitions in the RawArray)
-//   - FOR INTERACTIONS:
-//     - pass the process shared read only RawArray, and the train/validation bools (we already have all feature definitions in the RawArray)
-//     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation set, so the 
-//       train/validation can't be calculated without a first pass). We have all the data to do this!
-//     - C will allocate the memory for the interaction detection dataset
-//     - C will do a second pass to fill the data structure and return that to python (no need for a RawArray this time since it isn't shared)
-//     - per the notes above, we will bit pack each feature by it's best fit size, and keep sparse features.  We're pretty much just copying data for 
-//       interactions into the train/validations sets
-//     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements 
-//       to select whether each sample for that feature goes into the train or validation set, and handling increments
-
-
-
 
 
 // header ids

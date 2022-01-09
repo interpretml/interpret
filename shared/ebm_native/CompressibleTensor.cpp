@@ -185,6 +185,8 @@ ErrorEbmType CompressibleTensor::EnsureValueCapacity(const size_t cValues) {
 ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
+   ErrorEbmType error;
+
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
    const DimensionInfo * pRhsDimensionInfo = rhs.GetDimensions();
 
@@ -194,7 +196,7 @@ ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
       size_t cSplits = pDimension->m_cSplits;
       EBM_ASSERT(!IsMultiplyError(cValues, cSplits + 1)); // we're copying this memory, so multiplication can't overflow
       cValues *= (cSplits + 1);
-      const ErrorEbmType error = SetCountSplits(iDimension, cSplits);
+      error = SetCountSplits(iDimension, cSplits);
       if(UNLIKELY(Error_None != error)) {
          LOG_0(TraceLevelWarning, "WARNING Copy SetCountSplits(iDimension, cSplits)");
          return error;
@@ -202,7 +204,7 @@ ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
       EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cSplits)); // we're copying this memory, so multiplication can't overflow
       memcpy(pThisDimensionInfo[iDimension].m_aSplits, pDimension->m_aSplits, sizeof(ActiveDataType) * cSplits);
    }
-   const ErrorEbmType error = EnsureValueCapacity(cValues);
+   error = EnsureValueCapacity(cValues);
    if(UNLIKELY(Error_None != error)) {
       // already logged
       return error;
@@ -483,9 +485,9 @@ void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatEbmType * 
 // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops 
 //   without needing to super-optimize it
 ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
-   DimensionInfoStack dimensionStack[k_cDimensionsMax];
-
    ErrorEbmType error;
+
+   DimensionInfoStack dimensionStack[k_cDimensionsMax];
 
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 

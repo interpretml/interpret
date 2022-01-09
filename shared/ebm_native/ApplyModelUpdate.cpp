@@ -43,6 +43,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
    LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateInternal");
 
    ErrorEbmType error;
+
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
@@ -156,6 +157,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
       static_cast<void *>(validationMetricOut)
    );
 
+   ErrorEbmType error;
+
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != validationMetricOut)) {
@@ -202,12 +205,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
       return Error_None;
    }
 
-   const ErrorEbmType ret = ApplyModelUpdateInternal(
+   error = ApplyModelUpdateInternal(
       pBoosterShell,
       validationMetricOut
    );
-   if(Error_None != ret) {
-      LOG_N(TraceLevelWarning, "WARNING ApplyModelUpdate returned %" ErrorEbmTypePrintf, ret);
+   if(Error_None != error) {
+      LOG_N(TraceLevelWarning, "WARNING ApplyModelUpdate returned %" ErrorEbmTypePrintf, error);
    }
 
    pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
@@ -231,7 +234,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
          "Exited ApplyModelUpdate.  No validation pointer."
       );
    }
-   return ret;
+   return error;
 }
 
 // we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before 
@@ -376,6 +379,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       static_cast<void *>(modelFeatureGroupUpdateTensorOut)
    );
 
+   ErrorEbmType error;
+
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
@@ -397,7 +402,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    }
 
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   const ErrorEbmType error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
+   error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
    if(Error_None != error) {
       return error;
    }
@@ -446,6 +451,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
       static_cast<void *>(modelFeatureGroupUpdateTensor)
    );
 
+   ErrorEbmType error;
+
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
@@ -481,7 +488,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
    }
 
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   const ErrorEbmType error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
+   error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
    if(Error_None != error) {
       // already logged
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);

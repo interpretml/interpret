@@ -35,6 +35,8 @@ void TestQuantileBinning(
    const std::vector<FloatEbmType> featureValues,
    const std::vector<FloatEbmType> expectedCuts
 ) {
+   ErrorEbmType error;
+
    const IntEbmType countCutsMax = cCutsMax;
    const IntEbmType countSamplesPerBinMin = cSamplesPerBinMin;
 
@@ -47,7 +49,7 @@ void TestQuantileBinning(
       [](FloatEbmType & val) { return -val; });
 
    IntEbmType countCuts = countCutsMax;
-   ErrorEbmType ret = CutQuantile(
+   error = CutQuantile(
       featureValues1.size(),
       0 == featureValues1.size() ? nullptr : &featureValues1[0],
       countSamplesPerBinMin,
@@ -55,7 +57,7 @@ void TestQuantileBinning(
       &countCuts,
       &cutsLowerBoundInclusive[1]
    );
-   CHECK(Error_None == ret);
+   CHECK(Error_None == error);
 
    CHECK(illegalVal == cutsLowerBoundInclusive[0]);
    for(size_t iCheck = static_cast<size_t>(countCuts) + 1; iCheck < cCutsMax + 2; ++iCheck) {
@@ -74,7 +76,7 @@ void TestQuantileBinning(
       // try the reverse now.  We try very hard to ensure that we preserve symmetry in the cutting algorithm
 
       countCuts = countCutsMax;
-      ret = CutQuantile(
+      error = CutQuantile(
          featureValues2.size(),
          0 == featureValues2.size() ? nullptr : &featureValues2[0],
          countSamplesPerBinMin,
@@ -82,7 +84,7 @@ void TestQuantileBinning(
          &countCuts,
          &cutsLowerBoundInclusive[1]
       );
-      CHECK(Error_None == ret);
+      CHECK(Error_None == error);
 
       CHECK(illegalVal == cutsLowerBoundInclusive[0]);
       for(size_t iCheck = static_cast<size_t>(countCuts) + 1; iCheck < cCutsMax + 2; ++iCheck) {
@@ -1196,6 +1198,8 @@ TEST_CASE("CutQuantile, stress test the guarantee of one cut per CuttingRange, b
 }
 
 TEST_CASE("CutQuantile, randomized fairness check") {
+   ErrorEbmType error;
+
    RandomStreamTest randomStream(k_randomSeed);
    if(!randomStream.IsSuccess()) {
       exit(1);
@@ -1241,7 +1245,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * countSamples);
 
          IntEbmType countCutsForward = static_cast<IntEbmType>(cCuts);
-         ErrorEbmType ret = CutQuantile(
+         error = CutQuantile(
             countSamples,
             featureValuesForward,
             countSamplesPerBinMin,
@@ -1249,7 +1253,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
             &countCutsForward,
             cutsLowerBoundInclusiveForward
          );
-         CHECK(Error_None == ret);
+         CHECK(Error_None == error);
 
          //DisplayCuts(
          //   countSamples,
@@ -1267,7 +1271,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
             [](FloatEbmType & val) { return -val; });
 
          IntEbmType countCutsReversed = static_cast<IntEbmType>(cCuts);
-         ret = CutQuantile(
+         error = CutQuantile(
             countSamples,
             featureValuesReversed,
             countSamplesPerBinMin,
@@ -1275,7 +1279,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
             &countCutsReversed,
             cutsLowerBoundInclusiveReversed
          );
-         CHECK(Error_None == ret);
+         CHECK(Error_None == error);
 
          CHECK(countCutsForward == countCutsReversed);
 
@@ -1328,6 +1332,8 @@ TEST_CASE("CutQuantile, randomized fairness check") {
 }
 
 TEST_CASE("CutQuantile, chunky randomized check") {
+   ErrorEbmType error;
+
    RandomStreamTest randomStream(k_randomSeed);
    if(!randomStream.IsSuccess()) {
       exit(1);
@@ -1401,7 +1407,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
       memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * cSamples);
 
       IntEbmType countCutsForward = static_cast<IntEbmType>(cCuts);
-      ErrorEbmType ret = CutQuantile(
+      error = CutQuantile(
          countSamples,
          featureValuesForward,
          countSamplesPerBinMin,
@@ -1409,13 +1415,13 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          &countCutsForward,
          cutsLowerBoundInclusiveForward
       );
-      CHECK(Error_None == ret);
+      CHECK(Error_None == error);
 
       std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
          [](FloatEbmType & val) { return -val; });
 
       IntEbmType countCutsReversed = static_cast<IntEbmType>(cCuts);
-      ret = CutQuantile(
+      error = CutQuantile(
          countSamples,
          featureValuesReversed,
          countSamplesPerBinMin,
@@ -1423,7 +1429,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          &countCutsReversed,
          cutsLowerBoundInclusiveReversed
       );
-      CHECK(Error_None == ret);
+      CHECK(Error_None == error);
 
       CHECK(countCutsForward == countCutsReversed);
       if(countCutsForward == countCutsReversed) {

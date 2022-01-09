@@ -178,6 +178,8 @@ static ErrorEbmType CreateBoosterInternal(
    EBM_ASSERT(nullptr != boosterHandleOut);
    EBM_ASSERT(nullptr == *boosterHandleOut);
 
+   ErrorEbmType error;
+
    if(countFeatureGroups < 0) {
       LOG_0(TraceLevelError, "ERROR CreateBoosterInternal countFeatureGroups must be positive");
       return Error_IllegalParamValue;
@@ -221,7 +223,7 @@ static ErrorEbmType CreateBoosterInternal(
       return Error_OutOfMemory;
    }
 
-   const ErrorEbmType error1 = BoosterCore::Create(
+   error = BoosterCore::Create(
       pBoosterShell,
       randomSeed,
       cFeatureGroups,
@@ -233,16 +235,16 @@ static ErrorEbmType CreateBoosterInternal(
       bag,
       predictorScores
    );
-   if(UNLIKELY(Error_None != error1)) {
+   if(UNLIKELY(Error_None != error)) {
       BoosterShell::Free(pBoosterShell);
       LOG_0(TraceLevelWarning, "WARNING CreateBoosterInternal pBoosterCore->Initialize");
-      return error1;
+      return error;
    }
 
-   const ErrorEbmType error2 = pBoosterShell->FillAllocations();
-   if(Error_None != error2) {
+   error = pBoosterShell->FillAllocations();
+   if(Error_None != error) {
       BoosterShell::Free(pBoosterShell);
-      return error2;
+      return error;
    }
 
    *boosterHandleOut = pBoosterShell->GetHandle();
@@ -287,13 +289,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       static_cast<const void *>(boosterHandleOut)
    );
 
+   ErrorEbmType error;
+
    if(nullptr == boosterHandleOut) {
       LOG_0(TraceLevelError, "ERROR CreateBooster nullptr == boosterHandleOut");
       return Error_IllegalParamValue;
    }
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
-   const ErrorEbmType error = CreateBoosterInternal(
+   error = CreateBoosterInternal(
       randomSeed,
       dataSet,
       bag,
@@ -331,6 +335,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       static_cast<void *>(boosterHandleViewOut)
    );
 
+   ErrorEbmType error;
+
    if(UNLIKELY(nullptr == boosterHandleViewOut)) {
       LOG_0(TraceLevelWarning, "WARNING CreateBooster nullptr == boosterHandleViewOut");
       return Error_IllegalParamValue;
@@ -353,7 +359,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    pBoosterCore->AddReferenceCount();
    pBoosterShellNew->SetBoosterCore(pBoosterCore); // assume ownership of pBoosterCore reference count increment
 
-   const ErrorEbmType error = pBoosterShellNew->FillAllocations();
+   error = pBoosterShellNew->FillAllocations();
    if(Error_None != error) {
       // TODO: we might move the call to FillAllocations to be more lazy incase the caller doesn't use it all
       BoosterShell::Free(pBoosterShellNew);

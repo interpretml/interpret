@@ -80,6 +80,8 @@ ErrorEbmType InteractionCore::Create(
    EBM_ASSERT(nullptr != pInteractionShell);
    EBM_ASSERT(nullptr != pDataSetShared);
 
+   ErrorEbmType error;
+
    InteractionCore * pRet;
    try {
       pRet = new InteractionCore();
@@ -102,11 +104,10 @@ ErrorEbmType InteractionCore::Create(
    size_t cFeatures = 0;
    size_t cWeights = 0;
    size_t cTargets = 0;
-   const ErrorEbmType errorHeader =
-      GetDataSetSharedHeader(pDataSetShared, &cSamples, &cFeatures, &cWeights, &cTargets);
-   if(Error_None != errorHeader) {
+   error = GetDataSetSharedHeader(pDataSetShared, &cSamples, &cFeatures, &cWeights, &cTargets);
+   if(Error_None != error) {
       // already logged
-      return errorHeader;
+      return error;
    }
    if(size_t { 1 } < cWeights) {
       LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
@@ -122,10 +123,10 @@ ErrorEbmType InteractionCore::Create(
 
    size_t cTrainingSamples;
    size_t cValidationSamples;
-   const ErrorEbmType errorBag = Unbag(cSamples, aBag, &cTrainingSamples, &cValidationSamples);
-   if(Error_None != errorBag) {
+   error = Unbag(cSamples, aBag, &cTrainingSamples, &cValidationSamples);
+   if(Error_None != error) {
       // already logged
-      return errorBag;
+      return error;
    }
 
    LOG_0(TraceLevelInfo, "InteractionCore::Allocate starting feature processing");
@@ -179,7 +180,7 @@ ErrorEbmType InteractionCore::Create(
    pRet->m_cLogEnterMessages = 1000;
    pRet->m_cLogExitMessages = 1000;
 
-   const ErrorEbmType error = pRet->m_dataFrame.Initialize(
+   error = pRet->m_dataFrame.Initialize(
       IsClassification(runtimeLearningTypeOrCountTargetClasses),
       pDataSetShared,
       cSamples,

@@ -195,6 +195,8 @@ static ErrorEbmType BoostSingleDimensional(
    const IntEbmType countLeavesMax,
    FloatEbmType * const pTotalGain
 ) {
+   ErrorEbmType error;
+
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureGroup->GetCountSignificantDimensions());
@@ -282,7 +284,7 @@ static ErrorEbmType BoostSingleDimensional(
    EBM_ASSERT(1 <= cSamplesTotal);
    const FloatEbmType weightTotal = pTrainingSet->GetWeightTotal();
 
-   const ErrorEbmType bRet = PartitionOneDimensionalBoosting(
+   error = PartitionOneDimensionalBoosting(
       pBoosterShell,
       cHistogramBuckets,
       cSamplesTotal,
@@ -293,7 +295,7 @@ static ErrorEbmType BoostSingleDimensional(
    );
 
    LOG_0(TraceLevelVerbose, "Exited BoostSingleDimensional");
-   return bRet;
+   return error;
 }
 
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the hessian isn't required (yet) in order to make decisions about
@@ -310,6 +312,8 @@ static ErrorEbmType BoostMultiDimensional(
 
    EBM_ASSERT(2 <= pFeatureGroup->GetCountDimensions());
    EBM_ASSERT(2 <= pFeatureGroup->GetCountSignificantDimensions());
+
+   ErrorEbmType error;
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
@@ -528,7 +532,7 @@ static ErrorEbmType BoostMultiDimensional(
          cTotalBucketsMainSpace - 1
       );
 
-      const ErrorEbmType error = PartitionTwoDimensionalBoosting(
+      error = PartitionTwoDimensionalBoosting(
          pBoosterShell,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
@@ -586,6 +590,8 @@ static ErrorEbmType BoostRandom(
    // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
    LOG_0(TraceLevelVerbose, "Entered BoostRandom");
+
+   ErrorEbmType error;
 
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
    EBM_ASSERT(1 <= cDimensions);
@@ -650,7 +656,7 @@ static ErrorEbmType BoostRandom(
       pTrainingSet
    );
 
-   const ErrorEbmType error = PartitionRandomBoosting(
+   error = PartitionRandomBoosting(
       pBoosterShell,
       pFeatureGroup,
       options,
@@ -685,6 +691,8 @@ static ErrorEbmType GenerateModelUpdateInternal(
    const IntEbmType * const aLeavesMax, 
    FloatEbmType * const pGainReturn
 ) {
+   ErrorEbmType error;
+
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
@@ -745,7 +753,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
          FloatEbmType gain;
          if(UNLIKELY(IntEbmType { 0 } == lastDimensionLeavesMax)) {
             LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal boosting zero dimensional");
-            const ErrorEbmType error =
+            error =
                BoostZeroDimensional(pBoosterShell, pBoosterCore->GetSamplingSets()[iSamplingSet], options);
             if(Error_None != error) {
                if(LIKELY(nullptr != pGainReturn)) {
@@ -762,7 +770,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
             }
             // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
-            const ErrorEbmType error = BoostRandom(
+            error = BoostRandom(
                pBoosterShell,
                pFeatureGroup,
                pBoosterCore->GetSamplingSets()[iSamplingSet],
@@ -781,7 +789,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
             EBM_ASSERT(IntEbmType { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
             EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
 
-            const ErrorEbmType error = BoostSingleDimensional(
+            error = BoostSingleDimensional(
                pBoosterShell,
                pFeatureGroup,
                cSignificantBinCount,
@@ -797,7 +805,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                return error;
             }
          } else {
-            const ErrorEbmType error = BoostMultiDimensional(
+            error = BoostMultiDimensional(
                pBoosterShell,
                pFeatureGroup,
                pBoosterCore->GetSamplingSets()[iSamplingSet],
@@ -817,7 +825,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
          totalGain += gain;
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
          // others are working, so there should be no blocking and our final result won't require adding by the main thread
-         const ErrorEbmType error = pBoosterShell->GetAccumulatedModelUpdate()->Add(*pBoosterShell->GetOverwritableModelUpdate());
+         error = pBoosterShell->GetAccumulatedModelUpdate()->Add(*pBoosterShell->GetOverwritableModelUpdate());
          if(Error_None != error) {
             if(LIKELY(nullptr != pGainReturn)) {
                *pGainReturn = FloatEbmType { 0 };
@@ -957,6 +965,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       static_cast<void *>(gainOut)
    );
 
+   ErrorEbmType error;
+
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != gainOut)) {
@@ -1049,7 +1059,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       return Error_None;
    }
 
-   const ErrorEbmType ret = GenerateModelUpdateInternal(
+   error = GenerateModelUpdateInternal(
       pBoosterShell,
       iFeatureGroup,
       options,
@@ -1079,7 +1089,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
          "Exited GenerateModelUpdate no gain"
       );
    }
-   return ret;
+   return error;
 }
 
 } // DEFINED_ZONE_NAME

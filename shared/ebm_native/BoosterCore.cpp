@@ -100,6 +100,8 @@ ErrorEbmType BoosterCore::InitializeCompressibleTensors(
    EBM_ASSERT(nullptr != papCompressibleTensorsOut);
    EBM_ASSERT(nullptr == *papCompressibleTensorsOut);
 
+   ErrorEbmType error;
+
    CompressibleTensor ** const apCompressibleTensors = EbmMalloc<CompressibleTensor *>(cFeatureGroups);
    if(UNLIKELY(nullptr == apCompressibleTensors)) {
       LOG_0(TraceLevelWarning, "WARNING InitializeCompressibleTensors nullptr == apCompressibleTensors");
@@ -121,7 +123,7 @@ ErrorEbmType BoosterCore::InitializeCompressibleTensors(
       }
       *ppCompressibleTensors = pCompressibleTensors; // transfer ownership for future deletion
 
-      const ErrorEbmType error = pCompressibleTensors->Expand(pFeatureGroup);
+      error = pCompressibleTensors->Expand(pFeatureGroup);
       if(Error_None != error) {
          // already logged
          return error;
@@ -183,6 +185,8 @@ ErrorEbmType BoosterCore::Create(
 
    EBM_ASSERT(nullptr != pBoosterShell);
 
+   ErrorEbmType error;
+
    //try {
    //   // TODO: eliminate this code I added to test that threads are available on the majority of our systems
    //   std::thread testThread(TODO_removeThisThreadTest);
@@ -224,11 +228,10 @@ ErrorEbmType BoosterCore::Create(
    size_t cFeatures = 0;
    size_t cWeights = 0;
    size_t cTargets = 0;
-   const ErrorEbmType errorHeader =
-      GetDataSetSharedHeader(pDataSetShared, &cSamples, &cFeatures, &cWeights, &cTargets);
-   if(Error_None != errorHeader) {
+   error = GetDataSetSharedHeader(pDataSetShared, &cSamples, &cFeatures, &cWeights, &cTargets);
+   if(Error_None != error) {
       // already logged
-      return errorHeader;
+      return error;
    }
    if(size_t { 1 } < cWeights) {
       LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
@@ -244,10 +247,10 @@ ErrorEbmType BoosterCore::Create(
 
    size_t cTrainingSamples;
    size_t cValidationSamples;
-   const ErrorEbmType errorBag = Unbag(cSamples, aBag, &cTrainingSamples, &cValidationSamples);
-   if(Error_None != errorBag) {
+   error = Unbag(cSamples, aBag, &cTrainingSamples, &cValidationSamples);
+   if(Error_None != error) {
       // already logged
-      return errorBag;
+      return error;
    }
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
@@ -437,7 +440,7 @@ ErrorEbmType BoosterCore::Create(
       } while(iFeatureGroup < cFeatureGroups);
 
       if(!bClassification || ptrdiff_t { 2 } <= runtimeLearningTypeOrCountTargetClasses) {
-         ErrorEbmType error = InitializeCompressibleTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apCurrentModel);
+         error = InitializeCompressibleTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apCurrentModel);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentModel");
             return error;
@@ -453,7 +456,7 @@ ErrorEbmType BoosterCore::Create(
 
    pBoosterCore->m_cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplitMax;
 
-   const ErrorEbmType error1 = pBoosterCore->m_trainingSet.Initialize(
+   error = pBoosterCore->m_trainingSet.Initialize(
       runtimeLearningTypeOrCountTargetClasses,
       true,
       bClassification,
@@ -467,12 +470,12 @@ ErrorEbmType BoosterCore::Create(
       cFeatureGroups,
       pBoosterCore->m_apFeatureGroups
    );
-   if(Error_None != error1) {
+   if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create m_trainingSet.Initialize");
-      return error1;
+      return error;
    }
 
-   const ErrorEbmType error2 = pBoosterCore->m_validationSet.Initialize(
+   error = pBoosterCore->m_validationSet.Initialize(
       runtimeLearningTypeOrCountTargetClasses,
       !bClassification,
       false,
@@ -486,9 +489,9 @@ ErrorEbmType BoosterCore::Create(
       cFeatureGroups,
       pBoosterCore->m_apFeatureGroups
    );
-   if(Error_None != error2) {
+   if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create m_validationSet.Initialize");
-      return error2;
+      return error;
    }
 
    pBoosterCore->m_randomStream.InitializeUnsigned(randomSeed, k_boosterRandomizationMix);
@@ -497,7 +500,7 @@ ErrorEbmType BoosterCore::Create(
    if(0 != cTrainingSamples) {
       const FloatEbmType * aWeights = nullptr;
       if(0 != cWeights) {
-         const ErrorEbmType errorWeights = ExtractWeights(
+         error = ExtractWeights(
             pDataSetShared,
             BagEbmType { 1 },
             cSamples, 
@@ -505,9 +508,9 @@ ErrorEbmType BoosterCore::Create(
             cTrainingSamples,
             &aWeights
          );
-         if(Error_None != errorWeights) {
+         if(Error_None != error) {
             // error already logged
-            return errorWeights;
+            return error;
          }
       }
       pBoosterCore->m_cSamplingSets = cSamplingSets;
@@ -523,7 +526,7 @@ ErrorEbmType BoosterCore::Create(
    EBM_ASSERT(nullptr == pBoosterCore->m_aValidationWeights);
    pBoosterCore->m_validationWeightTotal = static_cast<FloatEbmType>(cValidationSamples);
    if(0 != cWeights && 0 != cValidationSamples) {
-      const ErrorEbmType errorWeights = ExtractWeights(
+      error = ExtractWeights(
          pDataSetShared,
          BagEbmType { -1 },
          cSamples, 
@@ -531,9 +534,9 @@ ErrorEbmType BoosterCore::Create(
          cValidationSamples,
          &pBoosterCore->m_aValidationWeights
       );
-      if(Error_None != errorWeights) {
+      if(Error_None != error) {
          // error already logged
-         return errorWeights;
+         return error;
       }
       if(nullptr != pBoosterCore->m_aValidationWeights) {
          const FloatEbmType total = AddPositiveFloatsSafe(cValidationSamples, pBoosterCore->m_aValidationWeights);
@@ -550,7 +553,7 @@ ErrorEbmType BoosterCore::Create(
 
    if(bClassification) {
       if(0 != cTrainingSamples) {
-         const ErrorEbmType error = InitializeGradientsAndHessians(
+         error = InitializeGradientsAndHessians(
             pDataSetShared,
             BagEbmType { 1 },
             aBag,
@@ -567,7 +570,7 @@ ErrorEbmType BoosterCore::Create(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       if(0 != cTrainingSamples) {
 #ifndef NDEBUG
-         const ErrorEbmType error =
+         const ErrorEbmType errorDebug =
 #endif // NDEBUG
          InitializeGradientsAndHessians(
             pDataSetShared,
@@ -577,11 +580,11 @@ ErrorEbmType BoosterCore::Create(
             cTrainingSamples,
             pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
          );
-         EBM_ASSERT(Error_None == error); // InitializeGradientsAndHessians doesn't allocate on regression
+         EBM_ASSERT(Error_None == errorDebug); // InitializeGradientsAndHessians doesn't allocate on regression
       }
       if(0 != cValidationSamples) {
 #ifndef NDEBUG
-         const ErrorEbmType error =
+         const ErrorEbmType errorDebug =
 #endif // NDEBUG
          InitializeGradientsAndHessians(
             pDataSetShared,
@@ -591,7 +594,7 @@ ErrorEbmType BoosterCore::Create(
             cValidationSamples,
             pBoosterCore->m_validationSet.GetGradientsAndHessiansPointer()
          );
-         EBM_ASSERT(Error_None == error); // InitializeGradientsAndHessians doesn't allocate on regression
+         EBM_ASSERT(Error_None == errorDebug); // InitializeGradientsAndHessians doesn't allocate on regression
       }
    }
 

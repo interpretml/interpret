@@ -581,6 +581,8 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
 }
 
 void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
+   ErrorEbmType error;
+
    if(Stage::ValidationAdded != m_stage) {
       exit(1);
    }
@@ -589,7 +591,6 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    }
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
-   ErrorEbmType error;
    const size_t cFeatures = m_featuresBinCount.size();
    const size_t cTrainingSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_trainingClassificationTargets.size() : m_trainingRegressionTargets.size();
    const size_t cValidationSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_validationClassificationTargets.size() : m_validationRegressionTargets.size();
@@ -698,6 +699,8 @@ FloatEbmType TestApi::Boost(
    const IntEbmType countSamplesRequiredForChildSplitMin,
    const std::vector<IntEbmType> leavesMax
 ) {
+   ErrorEbmType error;
+
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
@@ -719,7 +722,7 @@ FloatEbmType TestApi::Boost(
 
    FloatEbmType validationMetricOut = FloatEbmType { 0 };
 
-   const ErrorEbmType retGenerate = GenerateModelUpdate(
+   error = GenerateModelUpdate(
       m_boosterHandle,
       indexFeatureGroup,
       options,
@@ -728,7 +731,7 @@ FloatEbmType TestApi::Boost(
       0 == leavesMax.size() ? nullptr : &leavesMax[0],
       nullptr
    );
-   if(Error_None != retGenerate) {
+   if(Error_None != error) {
       exit(1);
    }
    if(0 != (GenerateUpdateOptions_GradientSums & options)) {
@@ -745,7 +748,7 @@ FloatEbmType TestApi::Boost(
       FloatEbmType * aMem = new FloatEbmType[cValues];
       memset(aMem, 0, sizeof(*aMem) * cValues);
 
-      const ErrorEbmType retSet = SetModelUpdateExpanded(
+      error = SetModelUpdateExpanded(
          m_boosterHandle,
          indexFeatureGroup,
          aMem
@@ -753,16 +756,16 @@ FloatEbmType TestApi::Boost(
 
       delete[] aMem;
 
-      if(Error_None != retSet) {
+      if(Error_None != error) {
          exit(1);
       }
    }
-   const ErrorEbmType ret = ApplyModelUpdate(
+   error = ApplyModelUpdate(
       m_boosterHandle,
       &validationMetricOut
    );
 
-   if(Error_None != ret) {
+   if(Error_None != error) {
       exit(1);
    }
    return validationMetricOut;
@@ -773,6 +776,8 @@ FloatEbmType TestApi::GetBestModelPredictorScore(
    const std::vector<size_t> indexes, 
    const size_t iScore
 ) const {
+   ErrorEbmType error;
+
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
@@ -791,8 +796,8 @@ FloatEbmType TestApi::GetBestModelPredictorScore(
    std::vector<FloatEbmType> model;
    model.resize(multiple);
 
-   const ErrorEbmType ret = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
-   if(Error_None != ret) {
+   error = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   if(Error_None != error) {
       exit(1);
    }
 
@@ -801,14 +806,16 @@ FloatEbmType TestApi::GetBestModelPredictorScore(
 }
 
 void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
+   ErrorEbmType error;
+
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
    if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
       exit(1);
    }
-   const ErrorEbmType ret = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
-   if(Error_None != ret) {
+   error = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   if(Error_None != error) {
       exit(1);
    }
 }
@@ -818,6 +825,8 @@ FloatEbmType TestApi::GetCurrentModelPredictorScore(
    const std::vector<size_t> indexes,
    const size_t iScore
 ) const {
+   ErrorEbmType error;
+
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
@@ -836,8 +845,8 @@ FloatEbmType TestApi::GetCurrentModelPredictorScore(
    std::vector<FloatEbmType> model;
    model.resize(multiple);
 
-   const ErrorEbmType ret = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
-   if(Error_None != ret) {
+   error = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   if(Error_None != error) {
       exit(1);
    }
 
@@ -846,14 +855,16 @@ FloatEbmType TestApi::GetCurrentModelPredictorScore(
 }
 
 void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
+   ErrorEbmType error;
+
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
    if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
       exit(1);
    }
-   const ErrorEbmType ret = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
-   if(Error_None != ret) {
+   error = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   if(Error_None != error) {
       exit(1);
    }
 }
@@ -999,12 +1010,13 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
 }
 
 void TestApi::InitializeInteraction() {
+   ErrorEbmType error;
+
    if(Stage::InteractionAdded != m_stage) {
       exit(1);
    }
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
-   ErrorEbmType error;
    const size_t cFeatures = m_featuresBinCount.size();
    const size_t cSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_interactionClassificationTargets.size() : m_interactionRegressionTargets.size();
 
@@ -1074,6 +1086,8 @@ FloatEbmType TestApi::InteractionScore(
    const std::vector<IntEbmType> featuresInGroup, 
    const IntEbmType countSamplesRequiredForChildSplitMin
 ) const {
+   ErrorEbmType error;
+
    if(Stage::InitializedInteraction != m_stage) {
       exit(1);
    }
@@ -1087,14 +1101,14 @@ FloatEbmType TestApi::InteractionScore(
    }
 
    FloatEbmType interactionScoreOut = FloatEbmType { 0 };
-   const ErrorEbmType ret = CalculateInteractionScore(
+   error = CalculateInteractionScore(
       m_interactionHandle,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
       countSamplesRequiredForChildSplitMin,
       &interactionScoreOut
    );
-   if(Error_None != ret) {
+   if(Error_None != error) {
       exit(1);
    }
    return interactionScoreOut;

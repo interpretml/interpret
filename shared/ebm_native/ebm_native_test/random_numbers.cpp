@@ -37,9 +37,12 @@ TEST_CASE("GenerateRandomNumber, lowest") {
 
 TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
    constexpr size_t cSamples = 500;
+   constexpr size_t cClasses = 10;
+
+   ErrorEbmType error;
+
    IntEbmType targets[cSamples];
    BagEbmType sampleCounts[cSamples];
-   constexpr size_t cClasses = 10;
    size_t trainingCount[cClasses];
    size_t valCount[cClasses];
    size_t classCount[cClasses];
@@ -70,7 +73,7 @@ TEST_CASE("StratifiedSamplingWithoutReplacement, stress test") {
          ++classCount[targetClass];
       }
 
-      const ErrorEbmType error = StratifiedSamplingWithoutReplacement(
+      error = StratifiedSamplingWithoutReplacement(
          randomSeed,
          cClassSize,
          cTrainingSamples,

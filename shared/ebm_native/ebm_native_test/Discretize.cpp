@@ -28,12 +28,14 @@ TEST_CASE("GetHistogramCutCount, out of bound inputs") {
 }
 
 TEST_CASE("Discretize, zero samples") {
+   ErrorEbmType error;
+
    UNUSED(testCaseHidden);
    const FloatEbmType cutsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
    constexpr IntEbmType countCuts = sizeof(cutsLowerBoundInclusive) / sizeof(cutsLowerBoundInclusive[0]);
    constexpr IntEbmType  cSamples = 0;
 
-   ErrorEbmType error = Discretize(
+   error = Discretize(
       cSamples,
       nullptr,
       countCuts,
@@ -54,8 +56,10 @@ TEST_CASE("Discretize, zero samples") {
 
 TEST_CASE("Discretize, increasing lengths") {
    constexpr size_t cCutsEnd = 1024 * 2 + 100;
-
    constexpr size_t cData = 11 * cCutsEnd;
+
+   ErrorEbmType error;
+
    FloatEbmType * cutsLowerBoundInclusive = new FloatEbmType[cCutsEnd];
    FloatEbmType * featureValues = new FloatEbmType[cData];
    IntEbmType * singleFeatureDiscretized = new IntEbmType[cData];
@@ -90,7 +94,7 @@ TEST_CASE("Discretize, increasing lengths") {
 
       const size_t cSamples = cData - cRemoveLow - cRemoveHigh;
       memset(singleFeatureDiscretized + cRemoveLow, 0, cSamples * sizeof(*singleFeatureDiscretized));
-      const ErrorEbmType error = Discretize(
+      error = Discretize(
          static_cast<IntEbmType>(cSamples),
          featureValues + cRemoveLow,
          cCuts,

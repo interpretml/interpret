@@ -297,6 +297,8 @@ SEXP CutQuantile_R(
    EBM_ASSERT(nullptr != isHumanized);
    EBM_ASSERT(nullptr != countCuts);
 
+   ErrorEbmType error;
+
    size_t cFeatureValues;
    const FloatEbmType * aFeatureValues;
    if(ConvertDoublesToEbmFloats(featureValues, &cFeatureValues, &aFeatureValues)) {
@@ -344,7 +346,7 @@ SEXP CutQuantile_R(
       R_alloc(static_cast<size_t>(countCutsIntEbmType), static_cast<int>(sizeof(FloatEbmType))));
    EBM_ASSERT(nullptr != aCutsLowerBoundInclusive); // R_alloc doesn't return nullptr, so we don't need to check aItems
 
-   const ErrorEbmType error = CutQuantile(
+   error = CutQuantile(
       static_cast<IntEbmType>(cFeatureValues),
       aFeatureValues,
       countSamplesPerBinMinIntEbmType,
@@ -583,6 +585,8 @@ SEXP CreateClassificationBooster_R(
    EBM_ASSERT(nullptr != validationPredictorScores);
    EBM_ASSERT(nullptr != countInnerBags);
 
+   ErrorEbmType error;
+
    if(!IsSingleIntVector(randomSeed)) {
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
@@ -778,7 +782,7 @@ SEXP CreateClassificationBooster_R(
    }
 
    BoosterHandle boosterHandle;
-   const ErrorEbmType error = CreateClassificationBooster(
+   error = CreateClassificationBooster(
       randomSeedLocal,
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures, 
@@ -845,6 +849,8 @@ SEXP CreateRegressionBooster_R(
    EBM_ASSERT(nullptr != validationWeights);
    EBM_ASSERT(nullptr != validationPredictorScores);
    EBM_ASSERT(nullptr != countInnerBags);
+
+   ErrorEbmType error;
 
    if(!IsSingleIntVector(randomSeed)) {
       LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R !IsSingleIntVector(randomSeed)");
@@ -1016,7 +1022,7 @@ SEXP CreateRegressionBooster_R(
    }
 
    BoosterHandle boosterHandle;
-   const ErrorEbmType error = CreateRegressionBooster(
+   error = CreateRegressionBooster(
       randomSeedLocal,
       countFeatures,
       aFeaturesCategorical,
@@ -1063,6 +1069,8 @@ SEXP GenerateModelUpdate_R(
    EBM_ASSERT(nullptr != learningRate);
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
    EBM_ASSERT(nullptr != leavesMax);
+
+   ErrorEbmType error;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
@@ -1128,7 +1136,7 @@ SEXP GenerateModelUpdate_R(
 
    FloatEbmType gainOut;
 
-   const ErrorEbmType error = GenerateModelUpdate(
+   error = GenerateModelUpdate(
       boosterHandle,
       static_cast<IntEbmType>(iFeatureGroup),
       GenerateUpdateOptions_Default,
@@ -1153,6 +1161,8 @@ SEXP ApplyModelUpdate_R(
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped);
 
+   ErrorEbmType error;
+
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       LOG_0(TraceLevelError, "ERROR ApplyModelUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
@@ -1161,7 +1171,7 @@ SEXP ApplyModelUpdate_R(
    // we don't use boosterHandle in this function, so let ApplyModelUpdate check if it's null or invalid
 
    FloatEbmType validationMetricOut;
-   const ErrorEbmType error = ApplyModelUpdate(boosterHandle, &validationMetricOut);
+   error = ApplyModelUpdate(boosterHandle, &validationMetricOut);
    if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING ApplyModelUpdate_R ApplyModelUpdate returned error code");
       return R_NilValue;
@@ -1179,6 +1189,8 @@ SEXP GetBestModelFeatureGroup_R(
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != indexFeatureGroup); // shouldn't be possible
+
+   ErrorEbmType error;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
@@ -1227,7 +1239,7 @@ SEXP GetBestModelFeatureGroup_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   const ErrorEbmType error = GetBestModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   error = GetBestModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 
    UNPROTECT(1);
 
@@ -1244,6 +1256,8 @@ SEXP GetCurrentModelFeatureGroup_R(
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != indexFeatureGroup); // shouldn't be possible
+
+   ErrorEbmType error;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
@@ -1292,7 +1306,7 @@ SEXP GetCurrentModelFeatureGroup_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   const ErrorEbmType error = GetCurrentModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   error = GetCurrentModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 
    UNPROTECT(1);
 
@@ -1327,6 +1341,8 @@ SEXP CreateClassificationInteractionDetector_R(
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
    EBM_ASSERT(nullptr != predictorScores);
+
+   ErrorEbmType error;
 
    if(!IsSingleDoubleVector(countTargetClasses)) {
       LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R !IsSingleDoubleVector(countTargetClasses)");
@@ -1423,7 +1439,7 @@ SEXP CreateClassificationInteractionDetector_R(
    }
 
    InteractionHandle interactionHandle;
-   const ErrorEbmType error = CreateClassificationInteractionDetector(
+   error = CreateClassificationInteractionDetector(
       static_cast<IntEbmType>(cTargetClasses),
       countFeatures,
       aFeaturesCategorical,
@@ -1464,6 +1480,8 @@ SEXP CreateRegressionInteractionDetector_R(
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
    EBM_ASSERT(nullptr != predictorScores);
+
+   ErrorEbmType error;
 
    size_t cFeatures;
    const BoolEbmType * aFeaturesCategorical;
@@ -1540,7 +1558,7 @@ SEXP CreateRegressionInteractionDetector_R(
    }
 
    InteractionHandle interactionHandle;
-   const ErrorEbmType error = CreateRegressionInteractionDetector(
+   error = CreateRegressionInteractionDetector(
       countFeatures, 
       aFeaturesCategorical,
       aFeaturesBinCount,
