@@ -16,6 +16,7 @@ from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_global_selector2, gen_local_selector
 
+import gc
 import json
 import math
 
@@ -282,12 +283,10 @@ class BaseEBM(BaseEstimator):
             # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
-
             n_classes = len(classes)
             if n_classes > 2:  # pragma: no cover
                 warn("Multiclass is still experimental. Subject to change per release.")
 
-            model_type = "classification"
             class_idx = {x: index for index, x in enumerate(classes)}
             intercept = np.zeros(
                 Native.get_count_scores_c(n_classes), dtype=np.float64, order="C",
@@ -296,7 +295,6 @@ class BaseEBM(BaseEstimator):
             y = clean_vector(y, False, "y")
             min_target = y.min()
             max_target = y.max()
-            model_type = "regression"
             n_classes = -1
             intercept = 0.0
 
@@ -394,7 +392,6 @@ class BaseEBM(BaseEstimator):
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
 
-
         dataset, main_bin_counts = bin_native_by_dimension(
             n_classes, 
             1,
@@ -410,14 +407,11 @@ class BaseEBM(BaseEstimator):
 
         native = Native.get_native_singleton()
 
-
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         if isinstance(self.mains, str) and self.mains == "all":
             feature_groups = [[x] for x in range(n_features_in)]
-        elif isinstance(self.mains, list) and all(
-            isinstance(x, int) for x in self.mains
-        ):
+        elif isinstance(self.mains, list) and all(isinstance(x, int) for x in self.mains):
             feature_groups = [[x] for x in self.mains]
         else:  # pragma: no cover
             raise RuntimeError("Argument 'mains' has invalid value")
@@ -434,65 +428,76 @@ class BaseEBM(BaseEstimator):
         early_stopping_rounds = -1 if is_private(self) else self.early_stopping_rounds
         early_stopping_tolerance = -1 if is_private(self) else self.early_stopping_tolerance
 
-        train_model_args_iter = []
+        bags = []
+        bagged_seed = init_seed
+        for _ in range(self.outer_bags):
+            bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+            bags.append(EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self)))
+
+        parallel_args = []
         bagged_seed = init_seed
         for idx in range(self.outer_bags):
             bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-            bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
-            parallel_params = (
-                n_classes,
-                dataset,
-                bag,
-                None,
-                main_bin_counts,
-                feature_groups,
-                inner_bags,
-                update,
-                self.learning_rate,
-                self.min_samples_leaf,
-                self.max_leaves,
-                early_stopping_rounds,
-                early_stopping_tolerance,
-                self.max_rounds,
-                noise_scale,
-                bin_data_weights,
-                bagged_seed,
-                "Boost",
-                None,
+            parallel_args.append(
+                (
+                    n_classes,
+                    dataset,
+                    bags[idx],
+                    None,
+                    main_bin_counts,
+                    feature_groups,
+                    inner_bags,
+                    update,
+                    self.learning_rate,
+                    self.min_samples_leaf,
+                    self.max_leaves,
+                    early_stopping_rounds,
+                    early_stopping_tolerance,
+                    self.max_rounds,
+                    noise_scale,
+                    bin_data_weights,
+                    bagged_seed,
+                    "Boost",
+                    None,
+                )
             )
-            train_model_args_iter.append(parallel_params)
 
-        del bag # garbage collect anything we can
-        del dataset # remove our reference so it can be recycled once train_model_args_iter is deleted
+        gc.collect() # clean up before starting/forking new processes
+        results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
 
-        results = provider.parallel(EBMUtils.cyclic_gradient_boost, train_model_args_iter)
-
-        del train_model_args_iter # garbage collect anything we can, including the dataset
+        # let the garbage collector claim the dataset
+        del parallel_args # parallel_args holds referecnes to dataset, so must be deleted
+        del dataset
+        gc.collect()
 
         breakpoint_iteration = []
-        only_models = []
+        models = []
         for model, bag_breakpoint_iteration in results:
-            only_models.append(after_boosting(feature_groups, model, term_bin_weights))
             breakpoint_iteration.append(bag_breakpoint_iteration)
-
-        bagged_additive_terms = []
-        for term_idx in range(len(feature_groups)):
-            bags = []
-            bagged_additive_terms.append(bags)
-            for model in only_models:
-                bags.append(model[term_idx])
-
+            models.append(after_boosting(feature_groups, model, term_bin_weights))
 
         interactions = 0 if is_private(self) else self.interactions
         if n_classes > 2 or isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0:
+            # garbage collect anything we can
+            del bags 
+            del y
             if not (isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0):
                 warn("Detected multiclass problem: forcing interactions to 0")
         else:
             scores_bags = []
-            for model in only_models:
-                scores = ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins, intercept, model, feature_groups)
-                scores_bags.append(scores)
-            del scores # release this for the garbage collector later
+            for model in models:
+                # TODO: instead of going back to the original data in X, we 
+                # could use the compressed and already binned data in dataset
+                scores_bags.append(ebm_decision_function(
+                    X, 
+                    n_samples, 
+                    feature_names_in, 
+                    feature_types_in, 
+                    bins, 
+                    intercept, 
+                    model, 
+                    feature_groups
+                ))
 
             dataset, pair_bin_counts = bin_native_by_dimension(
                 n_classes, 
@@ -504,33 +509,31 @@ class BaseEBM(BaseEstimator):
                 feature_names_in, 
                 feature_types_in, 
             )
+            del y # we no longer need this, so allow the garbage collector to reclaim it
 
             if isinstance(interactions, int) and interactions > 0:
                 _log.info("Estimating with FAST")
 
-                train_model_args_iter2 = []
-                bagged_seed = init_seed
-                for i in range(self.outer_bags):
-                    bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-                    bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
-                    parallel_params = (
-                        dataset,
-                        bag,
-                        scores_bags[i],
-                        combinations(range(n_features_in), 2),
-                        self.min_samples_leaf,
-                        None,
+                parallel_args = []
+                for idx in range(self.outer_bags):
+                    parallel_args.append(
+                        (
+                            dataset,
+                            bags[idx],
+                            scores_bags[idx],
+                            combinations(range(n_features_in), 2),
+                            self.min_samples_leaf,
+                            None,
+                        )
                     )
-                    train_model_args_iter2.append(parallel_params)
-
-                del bag # garbage collect anything we can
 
                 # TODO: for now we're using only 1 job because FAST isn't memory optimized.  After
                 # the native code is done with compression of the data we can go back to using self.n_jobs
                 provider2 = JobLibProvider(n_jobs=1) 
-                bagged_interaction_indices = provider2.parallel(EBMUtils.get_interactions, train_model_args_iter2)
+                gc.collect() # clean up before starting/forking new processes
+                bagged_interaction_indices = provider2.parallel(EBMUtils.get_interactions, parallel_args)
 
-                del train_model_args_iter2 # garbage collect anything we can
+                del parallel_args # this holds references to dataset, bags, and scores_bags which we want to gc later
 
                 # Select merged pairs
                 pair_ranks = {}
@@ -568,80 +571,83 @@ class BaseEBM(BaseEstimator):
             else:  # pragma: no cover
                 raise RuntimeError("Argument 'interaction' has invalid value")
 
+            parallel_args = []
+            bagged_seed = init_seed
+            for idx in range(self.outer_bags):
+                bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+                parallel_args.append(
+                    (
+                        n_classes,
+                        dataset,
+                        bags[idx],
+                        scores_bags[idx],
+                        pair_bin_counts,
+                        pair_indices,
+                        inner_bags,
+                        update,
+                        self.learning_rate,
+                        self.min_samples_leaf,
+                        self.max_leaves,
+                        early_stopping_rounds,
+                        early_stopping_tolerance,
+                        self.max_rounds,
+                        noise_scale,
+                        bin_data_weights,
+                        bagged_seed,
+                        "Boost",
+                        None,
+                    )
+                )
+
+            gc.collect() # clean up before starting/forking new processes
+            results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
+
+            # allow the garbage collector to reclaim these big memory items
+            del parallel_args # this holds references to dataset, scores_bags, and bags
+            del dataset
+            del scores_bags
+            del bags
+            gc.collect()
+
+            for idx in range(self.outer_bags):
+                breakpoint_iteration.append(results[idx][1])
+                models[idx].extend(after_boosting(pair_indices, results[idx][0], term_bin_weights))
+
             feature_groups.extend(pair_indices)
 
-            staged_fit_args_iter = []
-            bagged_seed = init_seed
-            for i in range(self.outer_bags):
-                bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-                bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
-                parallel_params = (
-                    n_classes,
-                    dataset,
-                    bag,
-                    scores_bags[i],
-                    pair_bin_counts,
-                    pair_indices,
-                    inner_bags,
-                    update,
-                    self.learning_rate,
-                    self.min_samples_leaf,
-                    self.max_leaves,
-                    early_stopping_rounds,
-                    early_stopping_tolerance,
-                    self.max_rounds,
-                    noise_scale,
-                    bin_data_weights,
-                    bagged_seed,
-                    "Boost",
-                    None,
-                )
-                staged_fit_args_iter.append(parallel_params)
-
-            del bag # garbage collect anything we can
-            del scores_bags # garbage collect anything we can
-            del dataset # remove our reference so it can be recycled once train_model_args_iter is deleted
-
-            results = provider.parallel(EBMUtils.cyclic_gradient_boost, staged_fit_args_iter)
-
-            del staged_fit_args_iter # garbage collect anything we can, including the dataset
-
-
-            only_models = []
-            for model, bag_breakpoint_iteration in results:
-                breakpoint_iteration.append(bag_breakpoint_iteration)
-                only_models.append(after_boosting(pair_indices, model, term_bin_weights))
-
-            for term_idx in range(len(pair_indices)):
-                bags = []
-                bagged_additive_terms.append(bags)
-                for model in only_models:
-                    bags.append(model[term_idx])
+        breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
         if is_private(self):
-            bin_weights = [None] * len(feature_groups)
-            for feature_group_idx, feature_group in enumerate(feature_groups):
-                feature_idx = feature_group[0] # for now we only support mains for DP models
-                bin_weights[feature_group_idx] = term_bin_weights[feature_idx]
+            # for now we only support mains for DP models
+            bin_weights = [term_bin_weights[feature_group[0]] for feature_group in feature_groups]
         else:
-            bin_counts, bin_weights = get_counts_and_weights(X, sample_weight, feature_names_in, feature_types_in, bins, feature_groups)
+            bin_counts, bin_weights = get_counts_and_weights(
+                X, 
+                sample_weight, 
+                feature_names_in, 
+                feature_types_in, 
+                bins, 
+                feature_groups
+            )
 
+        bagged_additive_terms = []
         additive_terms = []
         term_standard_deviations = []
-        for score_tensors in bagged_additive_terms:
+        for idx in range(len(feature_groups)):
             # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
             # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
 
-            all_score_tensors = np.array(score_tensors)
-            averaged_model = np.average(all_score_tensors, axis=0)
-            model_errors = np.std(all_score_tensors, axis=0)
+            score_tensors = np.array([model[idx] for model in models], np.float64)
+            bagged_additive_terms.append(score_tensors)
+            averaged_model = np.average(score_tensors, axis=0)
+            model_errors = np.std(score_tensors, axis=0)
             additive_terms.append(averaged_model)
             term_standard_deviations.append(model_errors)
 
         if n_classes <= 2:
-            for set_idx in range(len(feature_groups)):
-                score_mean = np.average(additive_terms[set_idx], weights=bin_weights[set_idx])
-                additive_terms[set_idx] = (additive_terms[set_idx] - score_mean)
+            for idx in range(len(feature_groups)):
+                score_mean = np.average(additive_terms[idx], weights=bin_weights[idx])
+                additive_terms[idx] = (additive_terms[idx] - score_mean)
 
                 # Add mean center adjustment back to intercept
                 intercept += score_mean
@@ -672,6 +678,7 @@ class BaseEBM(BaseEstimator):
 
             # per-feature group
             self.bin_counts_ = bin_counts # use bin_weights_ instead for DP models
+        
         if 0 <= n_classes:
             self.classes_ = classes # required by scikit-learn
             self._class_idx_ = class_idx

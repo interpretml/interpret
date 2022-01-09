@@ -677,7 +677,7 @@ class Native:
             # int64_t countInnerBags
             ct.c_int64,
             # double * optionalTempParams
-            ct.POINTER(ct.c_double),
+            ct.c_void_p,
             # BoosterHandle * boosterHandleOut
             ct.POINTER(ct.c_void_p),
         ]
@@ -774,7 +774,7 @@ class Native:
             # double * predictorScores
             ct.c_void_p,
             # double * optionalTempParams
-            ct.POINTER(ct.c_double),
+            ct.c_void_p,
             # InteractionHandle * interactionHandleOut
             ct.POINTER(ct.c_void_p),
         ]
@@ -907,9 +907,16 @@ class Booster(AbstractContextManager):
 
         optional_temp_params = self.optional_temp_params
         if optional_temp_params is not None:  # pragma: no cover
-            optional_temp_params = (ct.c_double * len(optional_temp_params))(
-                *optional_temp_params
-            )
+            if not isinstance(optional_temp_params, np.ndarray):  # pragma: no cover
+                raise ValueError("optional_temp_params should be an ndarray")
+
+            if optional_temp_params.dtype.type is not np.float64:  # pragma: no cover
+                raise ValueError("optional_temp_params should be an ndarray of np.float64")
+
+            if not optional_temp_params.flags.c_contiguous:  # pragma: no cover
+                raise ValueError("optional_temp_params should be a contiguous ndarray")
+
+            optional_temp_params = optional_temp_params.ctypes.data
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
@@ -1295,9 +1302,16 @@ class InteractionDetector(AbstractContextManager):
 
         optional_temp_params = self.optional_temp_params
         if optional_temp_params is not None:  # pragma: no cover
-            optional_temp_params = (ct.c_double * len(optional_temp_params))(
-                *optional_temp_params
-            )
+            if not isinstance(optional_temp_params, np.ndarray):  # pragma: no cover
+                raise ValueError("optional_temp_params should be an ndarray")
+
+            if optional_temp_params.dtype.type is not np.float64:  # pragma: no cover
+                raise ValueError("optional_temp_params should be an ndarray of np.float64")
+
+            if not optional_temp_params.flags.c_contiguous:  # pragma: no cover
+                raise ValueError("optional_temp_params should be a contiguous ndarray")
+
+            optional_temp_params = optional_temp_params.ctypes.data
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
