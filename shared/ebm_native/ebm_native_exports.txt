@@ -13,6 +13,7 @@
       FillClassificationTarget;
       SizeRegressionTarget;
       FillRegressionTarget;
+      ExtractDataSetHeader;
       CreateBooster;
       CreateBoosterView;
       GenerateModelUpdate;

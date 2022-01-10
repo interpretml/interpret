@@ -157,100 +157,6 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    return Error_None;
 }
 
-
-// a*PredictorScores = logOdds for binary classification
-// a*PredictorScores = logWeights for multiclass classification
-// a*PredictorScores = predictedValue for regression
-static ErrorEbmType CreateBoosterInternal(
-   const SeedEbmType randomSeed,
-   const void * const dataSet,
-   const BagEbmType * const bag,
-   const FloatEbmType * const predictorScores,
-   const IntEbmType countFeatureGroups,
-   const IntEbmType * const aFeatureGroupsDimensionCounts,
-   const IntEbmType * const aFeatureGroupsFeatureIndexes,
-   const IntEbmType countInnerBags,
-   const FloatEbmType * const optionalTempParams,
-   BoosterHandle * boosterHandleOut
-) {
-   // TODO : give CreateBoosterInternal the same calling parameter order as CreateBooster... actually even better would be to eliminate CreateBoosterInternal
-
-   EBM_ASSERT(nullptr != boosterHandleOut);
-   EBM_ASSERT(nullptr == *boosterHandleOut);
-
-   ErrorEbmType error;
-
-   if(countFeatureGroups < 0) {
-      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal countFeatureGroups must be positive");
-      return Error_IllegalParamValue;
-   }
-   if(0 != countFeatureGroups && nullptr == aFeatureGroupsDimensionCounts) {
-      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal aFeatureGroupsDimensionCounts cannot be nullptr if 0 < countFeatureGroups");
-      return Error_IllegalParamValue;
-   }
-   // it's legal for aFeatureGroupsFeatureIndexes to be nullptr if there are no features indexed by our feature groups
-   // aFeatureGroupsDimensionCounts can have zero features, so it could be legal for this to be nullptr 
-   // even if 0 != countFeatureGroups
-
-   if(nullptr == dataSet) {
-      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal nullptr == dataSet");
-      return Error_IllegalParamValue;
-   }
-
-   if(countInnerBags < 0) {
-      // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
-      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal countInnerBags must be positive");
-      return Error_UserParamValue;
-   }
-   if(IsConvertError<size_t>(countFeatureGroups)) {
-      // the caller should not have been able to allocate enough memory in "aFeatureGroupsDimensionCounts" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR CreateBoosterInternal IsConvertError<size_t>(countFeatureGroups)");
-      return Error_IllegalParamValue;
-   }
-   if(IsConvertError<size_t>(countInnerBags)) {
-      // this is just a warning since the caller doesn't pass us anything material, but if it's this high
-      // then our allocation would fail since it can't even in pricipal fit into memory
-      LOG_0(TraceLevelWarning, "WARNING CreateBoosterInternal IsConvertError<size_t>(countInnerBags)");
-      return Error_OutOfMemory;
-   }
-
-   size_t cFeatureGroups = static_cast<size_t>(countFeatureGroups);
-   size_t cInnerBags = static_cast<size_t>(countInnerBags);
-
-   BoosterShell * const pBoosterShell = BoosterShell::Create();
-   if(UNLIKELY(nullptr == pBoosterShell)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateBoosterInternal nullptr == pBoosterShell");
-      return Error_OutOfMemory;
-   }
-
-   error = BoosterCore::Create(
-      pBoosterShell,
-      randomSeed,
-      cFeatureGroups,
-      cInnerBags,
-      optionalTempParams,
-      aFeatureGroupsDimensionCounts,
-      aFeatureGroupsFeatureIndexes,
-      static_cast<const unsigned char *>(dataSet),
-      bag,
-      predictorScores
-   );
-   if(UNLIKELY(Error_None != error)) {
-      BoosterShell::Free(pBoosterShell);
-      LOG_0(TraceLevelWarning, "WARNING CreateBoosterInternal pBoosterCore->Initialize");
-      return error;
-   }
-
-   error = pBoosterShell->FillAllocations();
-   if(Error_None != error) {
-      BoosterShell::Free(pBoosterShell);
-      return error;
-   }
-
-   *boosterHandleOut = pBoosterShell->GetHandle();
-   return Error_None;
-}
-
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBooster(
    SeedEbmType randomSeed,
    const void * dataSet,
@@ -297,28 +203,77 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    }
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
-   error = CreateBoosterInternal(
+   if(nullptr == dataSet) {
+      LOG_0(TraceLevelError, "ERROR CreateBooster nullptr == dataSet");
+      return Error_IllegalParamValue;
+   }
+
+   if(countFeatureGroups < IntEbmType { 0 }) {
+      LOG_0(TraceLevelError, "ERROR CreateBooster countFeatureGroups must be positive");
+      return Error_IllegalParamValue;
+   }
+   if(IntEbmType { 0 } != countFeatureGroups && nullptr == dimensionCounts) {
+      LOG_0(TraceLevelError, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countFeatureGroups");
+      return Error_IllegalParamValue;
+   }
+   // it's legal for featureIndexes to be null if there are no features indexed by our feature groups
+   // dimensionCounts can have zero features, so it could be legal for this to be null even if 0 < countFeatureGroups
+
+   if(countInnerBags < IntEbmType { 0 }) {
+      // 0 means use the full set. 1 means make a single bag which is useless, but allowed for comparison purposes
+      LOG_0(TraceLevelError, "ERROR CreateBooster countInnerBags cannot be negative");
+      return Error_UserParamValue;
+   }
+
+   if(IsConvertError<size_t>(countFeatureGroups)) {
+      // the caller should not have been able to allocate memory for dimensionCounts if this wasn't fittable in size_t
+      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countFeatureGroups)");
+      return Error_IllegalParamValue;
+   }
+   if(IsConvertError<size_t>(countInnerBags)) {
+      // this is just a warning since the caller doesn't pass us anything material, but if it's this high
+      // then our allocation would fail since it can't even in pricipal fit into memory
+      LOG_0(TraceLevelWarning, "WARNING CreateBooster IsConvertError<size_t>(countInnerBags)");
+      return Error_OutOfMemory;
+   }
+
+   size_t cFeatureGroups = static_cast<size_t>(countFeatureGroups);
+   size_t cInnerBags = static_cast<size_t>(countInnerBags);
+
+   BoosterShell * const pBoosterShell = BoosterShell::Create();
+   if(UNLIKELY(nullptr == pBoosterShell)) {
+      return Error_OutOfMemory;
+   }
+
+   error = BoosterCore::Create(
+      pBoosterShell,
       randomSeed,
-      dataSet,
-      bag,
-      predictorScores,
-      countFeatureGroups,
+      cFeatureGroups,
+      cInnerBags,
+      optionalTempParams,
       dimensionCounts,
       featureIndexes,
-      countInnerBags,
-      optionalTempParams,
-      boosterHandleOut
+      static_cast<const unsigned char *>(dataSet),
+      bag,
+      predictorScores
    );
+   if(UNLIKELY(Error_None != error)) {
+      BoosterShell::Free(pBoosterShell);
+      return error;
+   }
 
-   LOG_N(TraceLevelInfo, "Exited CreateBooster: "
-      "*boosterHandleOut=%p, "
-      "return=%" ErrorEbmTypePrintf
-      ,
-      static_cast<void *>(*boosterHandleOut),
-      error
-   );
+   error = pBoosterShell->FillAllocations();
+   if(Error_None != error) {
+      BoosterShell::Free(pBoosterShell);
+      return error;
+   }
 
-   return error;
+   const BoosterHandle handle = pBoosterShell->GetHandle();
+
+   LOG_N(TraceLevelInfo, "Exited CreateBooster: *boosterHandleOut=%p", static_cast<void *>(handle));
+
+   *boosterHandleOut = handle;
+   return Error_None;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBoosterView(

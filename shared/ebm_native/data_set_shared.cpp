@@ -1481,6 +1481,74 @@ extern ErrorEbmType GetDataSetSharedHeader(
    return Error_None;
 }
 
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ExtractDataSetHeader(
+   const void * dataSet,
+   IntEbmType * countSamplesOut,
+   IntEbmType * countFeaturesOut,
+   IntEbmType * countWeightsOut,
+   IntEbmType * countTargetsOut
+) {
+   ErrorEbmType error;
+
+   if(nullptr == dataSet) {
+      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader nullptr == dataSet");
+      return Error_IllegalParamValue;
+   }
+
+   size_t cSamples;
+   size_t cFeatures;
+   size_t cWeights;
+   size_t cTargets;
+
+   error = GetDataSetSharedHeader(
+      static_cast<const unsigned char *>(dataSet),
+      &cSamples,
+      &cFeatures,
+      &cWeights,
+      &cTargets
+   );
+   if(Error_None != error) {
+      // already logged
+      return error;
+   }
+
+   if(IsConvertError<IntEbmType>(cSamples)) {
+      // cSamples should have originally came to us as an IntEbmType, but check in case of corruption
+      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cSamples)");
+      return Error_IllegalParamValue;
+   }
+   if(IsConvertError<IntEbmType>(cFeatures)) {
+      // cFeatures should have originally came to us as an IntEbmType, but check in case of corruption
+      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cFeatures)");
+      return Error_IllegalParamValue;
+   }
+   if(IsConvertError<IntEbmType>(cWeights)) {
+      // cWeights should have originally came to us as an IntEbmType, but check in case of corruption
+      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cWeights)");
+      return Error_IllegalParamValue;
+   }
+   if(IsConvertError<IntEbmType>(cTargets)) {
+      // cTargets should have originally came to us as an IntEbmType, but check in case of corruption
+      LOG_0(TraceLevelError, "ERROR ExtractDataSetHeader IsConvertError<IntEbmType>(cTargets)");
+      return Error_IllegalParamValue;
+   }
+
+   if(nullptr != countSamplesOut) {
+      *countSamplesOut = static_cast<IntEbmType>(cSamples);
+   }
+   if(nullptr != countFeaturesOut) {
+      *countFeaturesOut = static_cast<IntEbmType>(cFeatures);
+   }
+   if(nullptr != countWeightsOut) {
+      *countWeightsOut = static_cast<IntEbmType>(cWeights);
+   }
+   if(nullptr != countTargetsOut) {
+      *countTargetsOut = static_cast<IntEbmType>(cTargets);
+   }
+
+   return Error_None;
+}
+
 // GetDataSetSharedFeature will return either (SparseFeatureDataSetSharedEntry *) or (SharedStorageDataType *)
 extern const void * GetDataSetSharedFeature(
    const unsigned char * const pDataSetShared,

@@ -67,51 +67,6 @@ HistogramBucketBase * InteractionShell::GetHistogramBucketBase(size_t cBytesRequ
    return aBuffer;
 }
 
-// a*PredictorScores = logOdds for binary classification
-// a*PredictorScores = logWeights for multiclass classification
-// a*PredictorScores = predictedValue for regression
-static ErrorEbmType CreateInteractionDetectorInternal(
-   const void * dataSet,
-   const BagEbmType * bag,
-   const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
-   const FloatEbmType * optionalTempParams,
-   InteractionHandle * interactionHandleOut
-) {
-   // TODO : give CreateInteractionDetectorInternal the same calling parameter order as CreateClassificationInteractionDetector
-
-   EBM_ASSERT(nullptr != interactionHandleOut);
-   EBM_ASSERT(nullptr == *interactionHandleOut);
-
-   ErrorEbmType error;
-
-   if(nullptr == dataSet) {
-      LOG_0(TraceLevelError, "ERROR CreateInteractionDetectorInternal nullptr == dataSet");
-      return Error_IllegalParamValue;
-   }
-
-   InteractionShell * const pInteractionShell = InteractionShell::Create();
-   if(UNLIKELY(nullptr == pInteractionShell)) {
-      LOG_0(TraceLevelWarning, "WARNING CreateInteractionDetectorInternal nullptr == pInteractionShell");
-      return Error_OutOfMemory;
-   }
-
-   error = InteractionCore::Create(
-      pInteractionShell,
-      static_cast<const unsigned char *>(dataSet),
-      bag,
-      predictorScores,
-      optionalTempParams
-   );
-   if(Error_None != error) {
-      InteractionShell::Free(pInteractionShell);
-      LOG_0(TraceLevelWarning, "WARNING CreateInteractionDetectorInternal nullptr == pInteractionCore");
-      return Error_OutOfMemory;
-   }
-
-   *interactionHandleOut = pInteractionShell->GetHandle();
-   return Error_None;
-}
-
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbmType * bag,
@@ -141,23 +96,35 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateI
    }
    *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
-   error = CreateInteractionDetectorInternal(
-      dataSet,
+   if(nullptr == dataSet) {
+      LOG_0(TraceLevelError, "ERROR CreateInteractionDetector nullptr == dataSet");
+      return Error_IllegalParamValue;
+   }
+
+   InteractionShell * const pInteractionShell = InteractionShell::Create();
+   if(UNLIKELY(nullptr == pInteractionShell)) {
+      LOG_0(TraceLevelWarning, "WARNING CreateInteractionDetector nullptr == pInteractionShell");
+      return Error_OutOfMemory;
+   }
+
+   error = InteractionCore::Create(
+      pInteractionShell,
+      static_cast<const unsigned char *>(dataSet),
       bag,
       predictorScores,
-      optionalTempParams,
-      interactionHandleOut
+      optionalTempParams
    );
+   if(Error_None != error) {
+      InteractionShell::Free(pInteractionShell);
+      return error;
+   }
 
-   LOG_N(TraceLevelInfo, "Exited CreateInteractionDetector: "
-      "*interactionHandleOut=%p, "
-      "return=%" ErrorEbmTypePrintf
-      ,
-      static_cast<void *>(*interactionHandleOut),
-      error
-   );
+   const InteractionHandle handle = pInteractionShell->GetHandle();
 
-   return error;
+   LOG_N(TraceLevelInfo, "Exited CreateInteractionDetector: *interactionHandleOut=%p", static_cast<void *>(handle));
+
+   *interactionHandleOut = handle;
+   return Error_None;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(

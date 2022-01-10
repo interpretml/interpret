@@ -348,6 +348,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
    void * fillMem
 );
 
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ExtractDataSetHeader(
+   const void * dataSet,
+   IntEbmType * countSamplesOut,
+   IntEbmType * countFeaturesOut,
+   IntEbmType * countWeightsOut,
+   IntEbmType * countTargetsOut
+);
+
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
    IntEbmType countTargetClasses,
