@@ -278,23 +278,27 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
             const size_t cBins = pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we don't construct datasets on empty training sets
             if(size_t { 1 } < cBins) {
-               size_t cBinsOut;
-               bool bNominalOut;
-               bool bSparseOut;
-               SharedStorageDataType defaultValueSparseOut;
-               size_t cNonDefaultsSparseOut;
+               size_t cBinsUnused;
+               bool bMissing;
+               bool bUnknown;
+               bool bNominal;
+               bool bSparse;
+               SharedStorageDataType defaultValueSparse;
+               size_t cNonDefaultsSparse;
                const void * pInputDataFrom = GetDataSetSharedFeature(
                   pDataSetShared,
                   pFeature->GetIndexFeatureData(),
-                  &cBinsOut,
-                  &bNominalOut,
-                  &bSparseOut,
-                  &defaultValueSparseOut,
-                  &cNonDefaultsSparseOut
+                  &cBinsUnused,
+                  &bMissing,
+                  &bUnknown,
+                  &bNominal,
+                  &bSparse,
+                  &defaultValueSparse,
+                  &cNonDefaultsSparse
                );
                EBM_ASSERT(nullptr != pInputDataFrom);
-               EBM_ASSERT(cBinsOut == cBins);
-               EBM_ASSERT(!bSparseOut); // we don't support sparse yet
+               EBM_ASSERT(cBinsUnused == cBins);
+               EBM_ASSERT(!bSparse); // we don't support sparse yet
 
                pDimensionInfoInit->m_pInputData = static_cast<const SharedStorageDataType *>(pInputDataFrom);
                pDimensionInfoInit->m_cBins = cBins;

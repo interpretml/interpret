@@ -126,6 +126,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
       aaInputDataTo[iFeature] = pInputDataTo;
 
       size_t cBins;
+      bool bMissing;
+      bool bUnknown;
       bool bNominal;
       bool bSparse;
       SharedStorageDataType defaultValueSparse;
@@ -134,6 +136,8 @@ INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
          pDataSetShared,
          iFeature,
          &cBins,
+         &bMissing,
+         &bUnknown,
          &bNominal,
          &bSparse,
          &defaultValueSparse,

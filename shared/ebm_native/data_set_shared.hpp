@@ -42,6 +42,8 @@ extern const void * GetDataSetSharedFeature(
    const unsigned char * const pDataSetShared,
    const size_t iFeature,
    size_t * const pcBinsOut,
+   bool * const pbMissingOut,
+   bool * const pbUnknownOut,
    bool * const pbNominalOut,
    bool * const pbSparseOut,
    SharedStorageDataType * const pDefaultValueSparseOut,

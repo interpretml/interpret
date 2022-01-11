@@ -1459,7 +1459,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         Args:
             feature_names: Feature names as list.
-            feature_types: Feature types as list, for example "continuous" or "categorical".
+            feature_types: Feature types as list, for example "continuous" or "nominal".
             max_bins: Max number of bins to process numeric features.
             binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform", or "private". 
             min_samples_bin: minimum number of samples to put into a quantile or quantile_humanized bin
@@ -1862,8 +1862,7 @@ def bin_native(
 
     n_weights = 0 if sample_weight is None else 1
 
-    native_bin_counts = []
-    n_bytes = native.size_data_set_header(len(requests), n_weights, 1)
+    n_bytes = native.size_dataset_header(len(requests), n_weights, 1)
     for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
             # re-check that that number of samples is identical since iterators can be used up by looking at them
@@ -1879,7 +1878,7 @@ def bin_native(
 
         if isinstance(feature_bins, dict):
             # categorical feature
-            n_bins = 1 if len(feature_bins) == 0 else max(feature_bins.values()) + 1
+            n_bins = 1 if len(feature_bins) == 0 else (max(feature_bins.values()) + 1)
         else:
             # continuous feature
             X_col = native.discretize(X_col, feature_bins)
@@ -1889,9 +1888,13 @@ def bin_native(
             n_bins += 1
             X_col[bad != _none_ndarray] = n_bins - 1
 
-        native_bin_counts.append(n_bins)
-
-        n_bytes += native.size_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col)
+        n_bytes += native.size_feature(
+            n_bins, 
+            np.count_nonzero(X_col) != len(X_col), 
+            bad is not None, 
+            feature_types_in[feature_idx] == 'nominal', 
+            X_col
+        )
 
     if sample_weight is not None:
         n_bytes += native.size_weight(sample_weight)
@@ -1903,9 +1906,9 @@ def bin_native(
 
     shared_dataset = np.empty(n_bytes, np.ubyte) # joblib loky doesn't support RawArray
 
-    native.fill_data_set_header(len(requests), n_weights, 1, n_bytes, shared_dataset)
+    native.fill_dataset_header(len(requests), n_weights, 1, n_bytes, shared_dataset)
 
-    for (feature_idx, feature_bins), n_bins, (_, X_col, _, bad) in zip(responses, native_bin_counts, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
+    for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
             # re-check that that number of samples is identical since iterators can be used up by looking at them
             # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
@@ -1918,14 +1921,27 @@ def bin_native(
             # X_col could be a slice that has a stride.  We need contiguous for caling into C
             X_col = X_col.copy()
 
-        if not isinstance(feature_bins, dict):
+        if isinstance(feature_bins, dict):
+            # categorical feature
+            n_bins = 1 if len(feature_bins) == 0 else (max(feature_bins.values()) + 1)
+        else:
             # continuous feature
             X_col = native.discretize(X_col, feature_bins)
+            n_bins = len(feature_bins) + 2
 
         if bad is not None:
+            n_bins += 1
             X_col[bad != _none_ndarray] = n_bins - 1
 
-        native.fill_feature(feature_types_in[feature_idx] == 'nominal', n_bins, X_col, n_bytes, shared_dataset)
+        native.fill_feature(
+            n_bins, 
+            np.count_nonzero(X_col) != len(X_col), 
+            bad is not None, 
+            feature_types_in[feature_idx] == 'nominal', 
+            X_col, 
+            n_bytes, 
+            shared_dataset
+        )
 
     if sample_weight is not None:
         native.fill_weight(sample_weight, n_bytes, shared_dataset)
@@ -1935,8 +1951,7 @@ def bin_native(
     else:
         native.fill_regression_target(y, n_bytes, shared_dataset)
 
-    # TODO: use the unknowns array instead of using the last count bin in the rest of our code
-    return shared_dataset, np.array(native_bin_counts, dtype=np.int64)
+    return shared_dataset
 
 def bin_native_by_dimension(
     n_classes,

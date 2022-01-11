@@ -158,35 +158,13 @@ class BaseEBM(BaseEstimator):
     def __init__(
         self,
         # Explainer
-        #
-        # feature_names in scikit-learn convention should probably be passed in via the fit function.  Also,
-        #   we can get feature_names via pandas dataframes, and those would only be known at fit time, so
-        #   we need a version of feature_names_out_ with the underscore to indicate items set at fit time.
-        #   Despite this, we need to recieve a list of feature_names here to be compatible with blackbox explainations
-        #   where we still need to have feature_names, but we do not have a fit function since we explain existing
-        #   models without fitting them ourselves.  To conform to a common explaination API we get the feature_names
-        #   here.
         feature_names,
-        # other packages LightGBM, CatBoost, Scikit-Learn (future) are using categorical specific ways to indicate
-        #   feature_types.  The benefit to them is that they can accept multiple ways of specifying categoricals like:
-        #   categorical = [true, false, true, true] OR categorical = [1, 4, 8] OR categorical = 'all'/'auto'/'none'
-        #   We're choosing a different route because for visualization we want to be able to express multiple
-        #   different types of data.  For example, if the user has data with strings of "low", "medium", "high"
-        #   We want to keep both the ordinal nature of this feature and we wish to preserve the text for visualization
-        #   scikit-learn callers can pre-convert these things to [0, 1, 2] in the correct order because they don't
-        #   need to worry about visualizing the data afterwards, but for us we  need a way to specify the strings
-        #   back anyways.  So we need some way to express both the categorical nature of features and the order
-        #   mapping.  We can do this and more complicated conversions via:
-        #   feature_types = ["categorical", ["low", "medium", "high"], "continuous", "time", "bool"]
         feature_types,
-        # Data
-        #
         # Ensemble
         outer_bags,
         inner_bags,
         # Core
-        # TODO PK v.3 replace "mains" with a more flexible "exclude" parameter
-        mains,
+        mains, # TODO PK v.3 replace "mains" with a more flexible "exclude" parameter
         interactions,
         validation_size,
         max_rounds,
@@ -213,10 +191,6 @@ class BaseEBM(BaseEstimator):
         bin_budget_frac=None,
         privacy_schema=None,
     ):
-        # NOTE: Per scikit-learn convention, we shouldn't attempt to sanity check these inputs here.  We just
-        #       Store these values for future use.  Validate inputs in the fit or other functions.  More details in:
-        #       https://scikit-learn.org/stable/developers/develop.html
-
         # Arguments for explainer
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -392,7 +366,7 @@ class BaseEBM(BaseEstimator):
             else:
                 raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
 
-        dataset, main_bin_counts = bin_native_by_dimension(
+        dataset = bin_native_by_dimension(
             n_classes, 
             1,
             bins,
@@ -403,7 +377,9 @@ class BaseEBM(BaseEstimator):
             feature_types_in, 
         )
 
-        bin_data_weights = make_boosting_weights(term_bin_weights)
+        bin_data_weights = None
+        if is_private(self):
+            bin_data_weights = make_boosting_weights(term_bin_weights)
 
         native = Native.get_native_singleton()
 
@@ -440,11 +416,9 @@ class BaseEBM(BaseEstimator):
             bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
             parallel_args.append(
                 (
-                    n_classes,
                     dataset,
                     bags[idx],
                     None,
-                    main_bin_counts,
                     feature_groups,
                     inner_bags,
                     update,
@@ -457,7 +431,6 @@ class BaseEBM(BaseEstimator):
                     noise_scale,
                     bin_data_weights,
                     bagged_seed,
-                    "Boost",
                     None,
                 )
             )
@@ -499,7 +472,7 @@ class BaseEBM(BaseEstimator):
                     feature_groups
                 ))
 
-            dataset, pair_bin_counts = bin_native_by_dimension(
+            dataset = bin_native_by_dimension(
                 n_classes, 
                 2,
                 bins,
@@ -577,11 +550,9 @@ class BaseEBM(BaseEstimator):
                 bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
                 parallel_args.append(
                     (
-                        n_classes,
                         dataset,
                         bags[idx],
                         scores_bags[idx],
-                        pair_bin_counts,
                         pair_indices,
                         inner_bags,
                         update,
@@ -594,7 +565,6 @@ class BaseEBM(BaseEstimator):
                         noise_scale,
                         bin_data_weights,
                         bagged_seed,
-                        "Boost",
                         None,
                     )
                 )

@@ -14,6 +14,8 @@
       SizeRegressionTarget;
       FillRegressionTarget;
       ExtractDataSetHeader;
+      ExtractBinCounts;
+      ExtractTargetClasses;
       CreateBooster;
       CreateBoosterView;
       GenerateModelUpdate;

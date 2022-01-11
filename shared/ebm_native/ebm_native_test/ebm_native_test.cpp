@@ -275,7 +275,7 @@ void TestApi::AddFeatures(const std::vector<FeatureTest> features) {
    }
 
    for(const FeatureTest & oneFeature : features) {
-      m_featuresCategorical.push_back(oneFeature.m_bCategorical ? EBM_TRUE : EBM_FALSE);
+      m_featuresNominal.push_back(oneFeature.m_bNominal ? EBM_TRUE : EBM_FALSE);
       m_featuresBinCount.push_back(oneFeature.m_countBins);
    }
 
@@ -616,7 +616,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       std::vector<IntEbmType> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
 
-      size += SizeFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      size += SizeFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
    std::vector<FloatEbmType> allWeights(m_trainingWeights);
@@ -644,7 +644,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       std::vector<IntEbmType> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
 
-      error = FillFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      error = FillFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
    }
 
    error = FillWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0], size, pDataSet);
@@ -1030,7 +1030,7 @@ void TestApi::InitializeInteraction() {
    IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
    for(size_t i = 0; i < cFeatures; ++i) {
       std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
-      size += SizeFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      size += SizeFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
    size += SizeWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0]);
@@ -1047,7 +1047,7 @@ void TestApi::InitializeInteraction() {
 
    for(size_t i = 0; i < cFeatures; ++i) {
       std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
-      error = FillFeature(m_featuresCategorical[i], m_featuresBinCount[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      error = FillFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
    }
 
    error = FillWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0], size, pDataSet);

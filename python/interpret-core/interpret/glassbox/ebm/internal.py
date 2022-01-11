@@ -82,7 +82,12 @@ class Native:
     @staticmethod
     def get_count_scores_c(n_classes):
         # this should reflect how the C code represents scores
-        return 1 if n_classes <= 2 else n_classes
+        if n_classes < 0 or 2 == n_classes:
+            return 1
+        elif 2 < n_classes:
+            return n_classes
+        else:
+            return 0
 
     def set_logging(self, level=None):
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
@@ -270,13 +275,13 @@ class Native:
         return discretized
 
 
-    def size_data_set_header(self, n_features, n_weights, n_targets):
+    def size_dataset_header(self, n_features, n_weights, n_targets):
         n_bytes = self._unsafe.SizeDataSetHeader(n_features, n_weights, n_targets)
         if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(n_bytes, "SizeDataSetHeader")
         return n_bytes
 
-    def fill_data_set_header(self, n_features, n_weights, n_targets, n_bytes, shared_data):
+    def fill_dataset_header(self, n_features, n_weights, n_targets, n_bytes, shared_data):
         return_code = self._unsafe.FillDataSetHeader(
             n_features, 
             n_weights, 
@@ -287,16 +292,18 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
-    def size_feature(self, categorical, n_bins, binned_data):
-        n_bytes = self._unsafe.SizeFeature(categorical, n_bins, len(binned_data), binned_data)
+    def size_feature(self, n_bins, missing, unknown, nominal, binned_data):
+        n_bytes = self._unsafe.SizeFeature(n_bins, missing, unknown, nominal, len(binned_data), binned_data)
         if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(n_bytes, "SizeFeature")
         return n_bytes
 
-    def fill_feature(self, categorical, n_bins, binned_data, n_bytes, shared_data):
+    def fill_feature(self, n_bins, missing, unknown, nominal, binned_data, n_bytes, shared_data):
         return_code = self._unsafe.FillFeature(
-            categorical, 
             n_bins, 
+            missing, 
+            unknown, 
+            nominal, 
             len(binned_data), 
             binned_data, 
             n_bytes, 
@@ -353,6 +360,50 @@ class Native:
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillRegressionTarget")
+
+    def extract_dataset_header(self, dataset):
+        n_samples = ct.c_int64(-1)
+        n_features = ct.c_int64(-1)
+        n_weights = ct.c_int64(-1)
+        n_targets = ct.c_int64(-1)
+
+        return_code = self._unsafe.ExtractDataSetHeader(
+            dataset.ctypes.data, 
+            ct.byref(n_samples),
+            ct.byref(n_features),
+            ct.byref(n_weights),
+            ct.byref(n_targets),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "ExtractDataSetHeader")
+
+        return n_samples.value, n_features.value, n_weights.value, n_targets.value
+
+    def extract_bin_counts(self, dataset, n_features):
+        bin_counts = np.empty(n_features, dtype=np.int64, order="C")
+
+        return_code = self._unsafe.ExtractBinCounts(
+            dataset.ctypes.data, 
+            n_features, 
+            bin_counts, 
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "ExtractBinCounts")
+
+        return bin_counts
+
+    def extract_target_classes(self, dataset, n_targets):
+        class_counts = np.empty(n_targets, dtype=np.int64, order="C")
+
+        return_code = self._unsafe.ExtractTargetClasses(
+            dataset.ctypes.data, 
+            n_targets, 
+            class_counts, 
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "ExtractTargetClasses")
+
+        return class_counts
 
 
     @staticmethod
@@ -554,9 +605,13 @@ class Native:
         self._unsafe.FillDataSetHeader.restype = ct.c_int32
 
         self._unsafe.SizeFeature.argtypes = [
-            # int64_t categorical
-            ct.c_int64,
             # int64_t countBins
+            ct.c_int64,
+            # int64_t missing
+            ct.c_int64,
+            # int64_t unknown
+            ct.c_int64,
+            # int64_t nominal
             ct.c_int64,
             # int64_t countSamples
             ct.c_int64,
@@ -566,9 +621,13 @@ class Native:
         self._unsafe.SizeFeature.restype = ct.c_int64
 
         self._unsafe.FillFeature.argtypes = [
-            # int64_t categorical
-            ct.c_int64,
             # int64_t countBins
+            ct.c_int64,
+            # int64_t missing
+            ct.c_int64,
+            # int64_t unknown
+            ct.c_int64,
+            # int64_t nominal
             ct.c_int64,
             # int64_t countSamples
             ct.c_int64,
@@ -644,6 +703,40 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.FillRegressionTarget.restype = ct.c_int32
+
+        self._unsafe.ExtractDataSetHeader.argtypes = [
+            # void * dataSet
+            ct.c_void_p,
+            # int64_t * countSamplesOut
+            ct.POINTER(ct.c_int64),
+            # int64_t * countFeaturesOut
+            ct.POINTER(ct.c_int64),
+            # int64_t * countWeightsOut
+            ct.POINTER(ct.c_int64),
+            # int64_t * countTargetsOut
+            ct.POINTER(ct.c_int64),
+        ]
+        self._unsafe.ExtractDataSetHeader.restype = ct.c_int32
+
+        self._unsafe.ExtractBinCounts.argtypes = [
+            # void * dataSet
+            ct.c_void_p,
+            # int64_t countFeaturesVerify
+            ct.c_int64,
+            # int64_t * binCountsOut
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+        ]
+        self._unsafe.ExtractBinCounts.restype = ct.c_int32
+
+        self._unsafe.ExtractTargetClasses.argtypes = [
+            # void * dataSet
+            ct.c_void_p,
+            # int64_t countTargetsVerify
+            ct.c_int64,
+            # int64_t * classCountsOut
+            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+        ]
+        self._unsafe.ExtractTargetClasses.restype = ct.c_int32
 
 
         self._unsafe.Softmax.argtypes = [
@@ -800,33 +893,15 @@ class Native:
         ]
         self._unsafe.FreeInteractionDetector.restype = None
 
-    @staticmethod
-    def _convert_feature_groups_to_c(feature_groups):
-        # Create C form of feature_groups
-
-        feature_groups_feature_count = np.empty(len(feature_groups), dtype=ct.c_int64, order='C')
-        feature_groups_feature_indexes = []
-        for idx, features_in_group in enumerate(feature_groups):
-            feature_groups_feature_count[idx] = len(features_in_group)
-            for feature_idx in features_in_group:
-                feature_groups_feature_indexes.append(feature_idx)
-
-        feature_groups_feature_indexes = np.array(feature_groups_feature_indexes, dtype=ct.c_int64)
-
-        return feature_groups_feature_count, feature_groups_feature_indexes
-
-
 class Booster(AbstractContextManager):
     """Lightweight wrapper for EBM C boosting code.
     """
 
     def __init__(
         self,
-        n_classes,
-        data_set,
+        dataset,
         bag,
         scores,
-        features_bin_count,
         feature_groups,
         n_inner_bags,
         random_state,
@@ -836,15 +911,12 @@ class Booster(AbstractContextManager):
         """ Initializes internal wrapper for EBM C code.
 
         Args:
-            n_classes: Specific to classification,
-                number of unique classes.
-            data_set: binned data in a compressed native form
+            dataset: binned data in a compressed native form
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
             scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
                 there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
-            features_bin_count: count of the number of bins for each feature
             feature_groups: List of feature groups represented as
                 a dictionary of keys ("features")
             n_inner_bags: number of inner bags.
@@ -852,11 +924,9 @@ class Booster(AbstractContextManager):
             optional_temp_params: unused data that can be passed into the native layer for debugging
         """
 
-        self.n_classes = n_classes
-        self.data_set = data_set
+        self.dataset = dataset
         self.bag = bag
         self.scores = scores
-        self.features_bin_count = features_bin_count
         self.feature_groups = feature_groups
         self.n_inner_bags = n_inner_bags
         self.random_state = random_state
@@ -866,19 +936,43 @@ class Booster(AbstractContextManager):
         self._feature_group_index = -1
 
     def __enter__(self):
+        log.info("Booster allocation start")
 
-        if not isinstance(self.feature_groups, list):  # pragma: no cover
-            raise ValueError("feature_groups should be a list")
+        feature_counts = np.empty(len(self.feature_groups), ct.c_int64)
+        feature_indexes = []
+        for idx, feature_group in enumerate(self.feature_groups):
+            feature_counts.itemset(idx, len(feature_group))
+            feature_indexes.extend(feature_group)
+        feature_indexes = np.array(feature_indexes, ct.c_int64)
 
         native = Native.get_native_singleton()
 
-        log.info("Allocation training start")
+        n_samples, n_features, n_weights, n_targets = native.extract_dataset_header(self.dataset)
 
-        (
-            feature_groups_feature_count,
-            feature_groups_feature_indexes,
-        ) = Native._convert_feature_groups_to_c(self.feature_groups)
+        if n_weights != 0 and n_weights != 1:  # pragma: no cover
+            raise ValueError("n_weights must be 0 or 1")
 
+        if n_targets != 1:  # pragma: no cover
+            raise ValueError("n_targets must be 1")
+
+        class_counts = native.extract_target_classes(self.dataset, n_targets)
+        n_class_scores = sum((Native.get_count_scores_c(n_classes) for n_classes in class_counts))
+
+        self._feature_group_shapes = None
+        if 0 < n_class_scores:
+            bin_counts = native.extract_bin_counts(self.dataset, n_features)
+            self._feature_group_shapes = []
+            for feature_group in self.feature_groups:
+                dimensions = [bin_counts[feature_idx] for feature_idx in feature_group]
+                dimensions = list(reversed(dimensions))
+
+                # Array returned for multiclass is one higher dimension
+                if n_class_scores > 1:
+                    dimensions.append(n_class_scores)
+
+                self._feature_group_shapes.append(tuple(dimensions))
+
+        n_scores = n_samples
         bag = self.bag
         if bag is not None:
             if not isinstance(bag, np.ndarray):  # pragma: no cover
@@ -889,6 +983,14 @@ class Booster(AbstractContextManager):
 
             if not bag.flags.c_contiguous:  # pragma: no cover
                 raise ValueError("bag should be a contiguous ndarray")
+
+            if bag.ndim != 1:  # pragma: no cover
+                raise ValueError("bag should be single dimensional")
+
+            if bag.shape[0] != n_samples:  # pragma: no cover
+                raise ValueError("bag should be len(n_samples)")
+
+            n_scores = np.count_nonzero(bag)
 
             bag = bag.ctypes.data
 
@@ -902,6 +1004,19 @@ class Booster(AbstractContextManager):
 
             if not scores.flags.c_contiguous:  # pragma: no cover
                 raise ValueError("scores should be a contiguous ndarray")
+
+            if n_class_scores > 1:
+                if scores.ndim != 2:  # pragma: no cover
+                    raise ValueError("scores should have 2 dimensions for multiclass or multitarget")
+
+                if scores.shape[1] != n_class_scores:  # pragma: no cover
+                    raise ValueError(f"scores should have {n_class_scores} scores")
+            else:
+                if scores.ndim != 1:  # pragma: no cover
+                    raise ValueError("scores should have 1 dimension for non-multiclass and non-multitarget")
+
+            if scores.shape[0] != n_scores:  # pragma: no cover
+                raise ValueError("scores should have the same length as the number of non-zero bag entries")
 
             scores = scores.ctypes.data
 
@@ -922,12 +1037,12 @@ class Booster(AbstractContextManager):
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
             self.random_state,
-            self.data_set.ctypes.data,
+            self.dataset.ctypes.data,
             bag,
             scores,
-            len(feature_groups_feature_count),
-            feature_groups_feature_count,
-            feature_groups_feature_indexes,
+            len(feature_counts),
+            feature_counts,
+            feature_indexes,
             self.n_inner_bags,
             optional_temp_params,
             ct.byref(booster_handle),
@@ -937,7 +1052,7 @@ class Booster(AbstractContextManager):
 
         self._booster_handle = booster_handle.value
 
-        log.info("Allocation boosting end")
+        log.info("Booster allocation end")
         return self
 
     def __exit__(self, *args):
@@ -950,7 +1065,6 @@ class Booster(AbstractContextManager):
         log.info("Deallocation boosting start")
 
         booster_handle = getattr(self, "_booster_handle", None)
-
         if booster_handle:
             native = Native.get_native_singleton()
             self._booster_handle = None
@@ -1059,32 +1173,11 @@ class Booster(AbstractContextManager):
 
         splits = []
         feature_indexes = self.feature_groups[self._feature_group_index]
-        for dimension_idx, _ in enumerate(feature_indexes):
+        for dimension_idx in range(len(feature_indexes)):
             splits_dimension = self._get_model_update_splits_dimension(dimension_idx)
             splits.append(splits_dimension)
 
         return splits
-
-    def _get_feature_group_shape(self, feature_group_index):
-        # TODO PK do this once during construction so that we don't have to do it again
-        #         and so that we don't have to store self._features & self.feature_groups
-
-        # Retrieve dimensions of log odds tensor
-        dimensions = []
-        feature_indexes = self.feature_groups[feature_group_index]
-        for _, feature_idx in enumerate(feature_indexes):
-            n_bins = self.features_bin_count[feature_idx]
-            dimensions.append(n_bins)
-
-        dimensions = list(reversed(dimensions))
-
-        # Array returned for multiclass is one higher dimension
-        n_scores = Native.get_count_scores_c(self.n_classes)
-        if n_scores > 1:
-            dimensions.append(n_scores)
-
-        shape = tuple(dimensions)
-        return shape
 
     def _get_best_model_feature_group(self, feature_group_index):
         """ Returns best model/function according to validation set
@@ -1097,7 +1190,7 @@ class Booster(AbstractContextManager):
             An ndarray that represents the model.
         """
 
-        if self.n_classes == 1 or self.n_classes == 0:  # pragma: no cover
+        if self._feature_group_shapes is None:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1105,7 +1198,7 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
-        shape = self._get_feature_group_shape(feature_group_index)
+        shape = self._feature_group_shapes[feature_group_index]
         model_feature_group = np.empty(shape, dtype=np.float64, order="C")
 
         return_code = native._unsafe.GetBestModelFeatureGroup(
@@ -1114,8 +1207,10 @@ class Booster(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetBestModelFeatureGroup")
 
-        if len(self.feature_groups[feature_group_index]) == 2:
-            if 2 < self.n_classes:
+        n_dimensions = len(self.feature_groups[feature_group_index])
+        if n_dimensions == 2:
+            if len(shape) != n_dimensions:
+                # multiclass
                 model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0, 2)))
             else:
                 model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0)))
@@ -1133,7 +1228,7 @@ class Booster(AbstractContextManager):
             An ndarray that represents the model.
         """
 
-        if self.n_classes == 1 or self.n_classes == 0:  # pragma: no cover
+        if self._feature_group_shapes is None:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1141,7 +1236,7 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
-        shape = self._get_feature_group_shape(feature_group_index)
+        shape = self._feature_group_shapes[feature_group_index]
         model_feature_group = np.empty(shape, dtype=np.float64, order="C")
 
         return_code = native._unsafe.GetCurrentModelFeatureGroup(
@@ -1150,8 +1245,10 @@ class Booster(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetCurrentModelFeatureGroup")
 
-        if len(self.feature_groups[feature_group_index]) == 2:
-            if 2 < self.n_classes:
+        n_dimensions = len(self.feature_groups[feature_group_index])
+        if n_dimensions == 2:
+            if len(shape) != n_dimensions:
+                # multiclass
                 model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0, 2)))
             else:
                 model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0)))
@@ -1159,10 +1256,15 @@ class Booster(AbstractContextManager):
         return model_feature_group
 
     def _get_model_update_splits_dimension(self, dimension_index):
+        if self._feature_group_shapes is None:  # pragma: no cover
+            # if there is only one legal state for a classification problem, then we know with 100%
+            # certainty what the result will be, and our model has no information since we always predict
+            # the only output
+            return np.empty(0, np.int64)
+
         native = Native.get_native_singleton()
 
-        feature_index = self.feature_groups[self._feature_group_index][dimension_index]
-        n_bins = self.features_bin_count[feature_index]
+        n_bins = self._feature_group_shapes[self._feature_group_index][dimension_index]
 
         count_splits = n_bins - 1
         splits = np.empty(count_splits, dtype=np.int64, order="C")
@@ -1184,7 +1286,7 @@ class Booster(AbstractContextManager):
         if self._feature_group_index < 0:  # pragma: no cover
             raise RuntimeError("invalid internal self._feature_group_index")
 
-        if self.n_classes == 1 or self.n_classes == 0:  # pragma: no cover
+        if self._feature_group_shapes is None:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1192,15 +1294,17 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
-        shape = self._get_feature_group_shape(self._feature_group_index)
+        shape = self._feature_group_shapes[self._feature_group_index]
         model_update = np.empty(shape, dtype=np.float64, order="C")
 
         return_code = native._unsafe.GetModelUpdateExpanded(self._booster_handle, model_update)
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetModelUpdateExpanded")
 
-        if len(self.feature_groups[self._feature_group_index]) == 2:
-            if 2 < self.n_classes:
+        n_dimensions = len(self.feature_groups[self._feature_group_index])
+        if n_dimensions == 2:
+            if len(shape) != n_dimensions:
+                # multiclass
                 model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0, 2)))
             else:
                 model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0)))
@@ -1210,19 +1314,20 @@ class Booster(AbstractContextManager):
     def set_model_update_expanded(self, feature_group_index, model_update):
         self._feature_group_index = -1
 
-        if self.n_classes == 1 or self.n_classes == 0:  # pragma: no cover
+        if self._feature_group_shapes is None:  # pragma: no cover
             if model_update is None:  # pragma: no cover
                 self._feature_group_index = feature_group_index
                 return
             raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
 
-        if len(self.feature_groups[feature_group_index]) == 2:
-            if 2 < self.n_classes:
+        shape = self._feature_group_shapes[feature_group_index]
+        n_dimensions = len(self.feature_groups[feature_group_index])
+        if n_dimensions == 2:
+            if len(shape) != n_dimensions:
+                # multiclass
                 model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0, 2)))
             else:
                 model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0)))
-
-        shape = self._get_feature_group_shape(feature_group_index)
 
         if shape != model_update.shape:  # pragma: no cover
             raise ValueError("incorrect tensor shape in call to set_model_update_expanded")
@@ -1245,7 +1350,7 @@ class InteractionDetector(AbstractContextManager):
 
     def __init__(
         self, 
-        data_set,
+        dataset,
         bag,
         scores,
         optional_temp_params,
@@ -1254,7 +1359,7 @@ class InteractionDetector(AbstractContextManager):
         """ Initializes internal wrapper for EBM C code.
 
         Args:
-            data_set: binned data in a compressed native form
+            dataset: binned data in a compressed native form
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
             scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
@@ -1264,7 +1369,7 @@ class InteractionDetector(AbstractContextManager):
 
         """
 
-        self.data_set = data_set
+        self.dataset = dataset
         self.bag = bag
         self.scores = scores
         self.optional_temp_params = optional_temp_params
@@ -1274,6 +1379,18 @@ class InteractionDetector(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
+        n_samples, n_features, n_weights, n_targets = native.extract_dataset_header(self.dataset)
+
+        if n_weights != 0 and n_weights != 1:  # pragma: no cover
+            raise ValueError("n_weights must be 0 or 1")
+
+        if n_targets != 1:  # pragma: no cover
+            raise ValueError("n_targets must be 1")
+
+        class_counts = native.extract_target_classes(self.dataset, n_targets)
+        n_class_scores = sum((Native.get_count_scores_c(n_classes) for n_classes in class_counts))
+
+        n_scores = n_samples
         bag = self.bag
         if bag is not None:
             if not isinstance(bag, np.ndarray):  # pragma: no cover
@@ -1285,10 +1402,18 @@ class InteractionDetector(AbstractContextManager):
             if not bag.flags.c_contiguous:  # pragma: no cover
                 raise ValueError("bag should be a contiguous ndarray")
 
+            if bag.ndim != 1:  # pragma: no cover
+                raise ValueError("bag should be single dimensional")
+
+            if bag.shape[0] != n_samples:  # pragma: no cover
+                raise ValueError("bag should be len(n_samples)")
+
+            n_scores = np.count_nonzero(bag)
+
             bag = bag.ctypes.data
 
         scores = self.scores
-        if scores is not None:  # pragma: no cover
+        if scores is not None:
             if not isinstance(scores, np.ndarray):  # pragma: no cover
                 raise ValueError("scores should be an ndarray")
 
@@ -1297,6 +1422,19 @@ class InteractionDetector(AbstractContextManager):
 
             if not scores.flags.c_contiguous:  # pragma: no cover
                 raise ValueError("scores should be a contiguous ndarray")
+
+            if n_class_scores > 1:
+                if scores.ndim != 2:  # pragma: no cover
+                    raise ValueError("scores should have 2 dimensions for multiclass or multitarget")
+
+                if scores.shape[1] != n_class_scores:  # pragma: no cover
+                    raise ValueError(f"scores should have {n_class_scores} scores")
+            else:
+                if scores.ndim != 1:  # pragma: no cover
+                    raise ValueError("scores should have 1 dimension for non-multiclass and non-multitarget")
+
+            if scores.shape[0] != n_scores:  # pragma: no cover
+                raise ValueError("scores should have the same length as the number of non-zero bag entries")
 
             scores = scores.ctypes.data
 
@@ -1316,7 +1454,7 @@ class InteractionDetector(AbstractContextManager):
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateInteractionDetector(
-            self.data_set.ctypes.data,
+            self.dataset.ctypes.data,
             bag,
             scores,
             optional_temp_params,

@@ -267,6 +267,8 @@ ErrorEbmType BoosterCore::Create(
       size_t iFeatureInitialize = size_t { 0 };
       do {
          size_t cBins;
+         bool bMissing;
+         bool bUnknown;
          bool bNominal;
          bool bSparse;
          SharedStorageDataType defaultValueSparse;
@@ -275,6 +277,8 @@ ErrorEbmType BoosterCore::Create(
             pDataSetShared,
             iFeatureInitialize,
             &cBins,
+            &bMissing,
+            &bUnknown,
             &bNominal,
             &bSparse,
             &defaultValueSparse,
@@ -294,7 +298,7 @@ ErrorEbmType BoosterCore::Create(
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(TraceLevelInfo, "INFO BoosterCore::Create feature with 1 value");
          }
-         pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, bNominal);
+         pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(iFeatureInitialize, cBins, bMissing, bUnknown, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);

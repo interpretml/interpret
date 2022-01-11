@@ -142,6 +142,8 @@ ErrorEbmType InteractionCore::Create(
       size_t iFeatureInitialize = 0;
       do {
          size_t cBins;
+         bool bMissing;
+         bool bUnknown;
          bool bNominal;
          bool bSparse;
          SharedStorageDataType defaultValueSparse;
@@ -150,6 +152,8 @@ ErrorEbmType InteractionCore::Create(
             pDataSetShared,
             iFeatureInitialize,
             &cBins,
+            &bMissing,
+            &bUnknown,
             &bNominal,
             &bSparse,
             &defaultValueSparse,
@@ -169,7 +173,7 @@ ErrorEbmType InteractionCore::Create(
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(TraceLevelInfo, "INFO InteractionCore::Allocate feature with 1 value");
          }
-         aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, bNominal);
+         aFeatures[iFeatureInitialize].Initialize(iFeatureInitialize, cBins, bMissing, bUnknown, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);

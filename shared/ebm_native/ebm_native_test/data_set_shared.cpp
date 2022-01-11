@@ -70,11 +70,11 @@ TEST_CASE("data_set_shared, two features, zero samples, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 0, 0, nullptr);
+   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 0, 0, nullptr);
+   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -87,9 +87,9 @@ TEST_CASE("data_set_shared, two features, zero samples, regression") {
 
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillRegressionTarget(0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -109,11 +109,11 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -126,9 +126,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
 
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillRegressionTarget(k_cSamples, &targets[0], sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -196,11 +196,11 @@ TEST_CASE("data_set_shared, two features, zero samples, classification") {
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 0, 0, nullptr);
+   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 0, 0, nullptr);
+   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -213,9 +213,9 @@ TEST_CASE("data_set_shared, two features, zero samples, classification") {
 
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillClassificationTarget(0, 0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -235,11 +235,11 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -252,9 +252,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, classification") {
 
    error = FillDataSetHeader(2, 0, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillClassificationTarget(3, k_cSamples, &targets[0], sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -343,11 +343,11 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 0, 0, nullptr);
+   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 0, 0, nullptr);
+   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -360,9 +360,9 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, regression") {
 
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillWeight(0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -385,11 +385,11 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -406,9 +406,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
 
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillWeight(k_cSamples, weights, sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -491,11 +491,11 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, classification"
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 0, 0, nullptr);
+   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 0, 0, nullptr);
+   part = SizeFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr);
    CHECK(0 <= part);
    sum += part;
 
@@ -512,9 +512,9 @@ TEST_CASE("data_set_shared, two features, zero samples, weights, classification"
 
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 0, 0, nullptr, sum, &buffer[0]);
+   error = FillFeature(0, EBM_TRUE, EBM_TRUE, EBM_FALSE, 0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillWeight(0, nullptr, sum, &buffer[0]);
    CHECK(Error_None == error);
@@ -537,11 +537,11 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
    CHECK(0 <= part);
    sum += part;
 
-   part = SizeFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0]);
+   part = SizeFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0]);
    CHECK(0 <= part);
    sum += part;
 
@@ -558,9 +558,9 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
 
    error = FillDataSetHeader(2, 1, 1, sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
    CHECK(Error_None == error);
-   error = FillFeature(EBM_FALSE, 3, k_cSamples, &binnedData[0], sum, &buffer[0]);
+   error = FillFeature(3, EBM_TRUE, EBM_TRUE, EBM_FALSE, k_cSamples, &binnedData[0], sum, &buffer[0]);
    CHECK(Error_None == error);
    error = FillWeight(k_cSamples, weights, sum, &buffer[0]);
    CHECK(Error_None == error);

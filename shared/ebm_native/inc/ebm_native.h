@@ -299,14 +299,18 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeFeature(
-   BoolEbmType categorical,
    IntEbmType countBins,
+   BoolEbmType missing,
+   BoolEbmType unknown,
+   BoolEbmType nominal,
    IntEbmType countSamples,
    const IntEbmType * binnedData
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillFeature(
-   BoolEbmType categorical,
    IntEbmType countBins,
+   BoolEbmType missing,
+   BoolEbmType unknown,
+   BoolEbmType nominal,
    IntEbmType countSamples,
    const IntEbmType * binnedData,
    IntEbmType countBytesAllocated,
@@ -354,6 +358,18 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Extr
    IntEbmType * countFeaturesOut,
    IntEbmType * countWeightsOut,
    IntEbmType * countTargetsOut
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ExtractBinCounts(
+   const void * dataSet,
+   IntEbmType countFeaturesVerify,
+   IntEbmType * binCountsOut
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ExtractTargetClasses(
+   const void * dataSet,
+   IntEbmType countTargetsVerify,
+   IntEbmType * classCountsOut
 );
 
 

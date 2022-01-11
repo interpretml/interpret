@@ -132,14 +132,14 @@ constexpr SeedEbmType k_randomSeed = SeedEbmType { -42 };
 class FeatureTest final {
 public:
 
-   const bool m_bCategorical;
+   const bool m_bNominal;
    const IntEbmType m_countBins;
 
    inline FeatureTest(
       const IntEbmType countBins, 
-      const bool bCategorical = false
+      const bool bNominal = false
    ) :
-      m_bCategorical(bCategorical),
+      m_bNominal(bNominal),
       m_countBins(countBins) {
       if(countBins < 0) {
          exit(1);
@@ -266,7 +266,7 @@ class TestApi {
    const ptrdiff_t m_learningTypeOrCountTargetClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<BoolEbmType> m_featuresCategorical;
+   std::vector<BoolEbmType> m_featuresNominal;
    std::vector<IntEbmType> m_featuresBinCount;
    std::vector<IntEbmType> m_featureGroupsDimensionCount;
    std::vector<IntEbmType> m_featureGroupsFeatureIndexes;

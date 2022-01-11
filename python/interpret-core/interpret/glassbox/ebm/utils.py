@@ -349,11 +349,9 @@ class EBMUtils:
 
     @staticmethod
     def cyclic_gradient_boost(
-        n_classes,
-        data_set,
+        dataset,
         bag,
         scores,
-        features_bin_count,
         feature_groups,
         n_inner_bags,
         generate_update_options,
@@ -366,17 +364,14 @@ class EBMUtils:
         noise_scale,
         bin_weights,
         random_state,
-        name,
         optional_temp_params=None,
     ):
         min_metric = np.inf
         episode_index = 0
         with Booster(
-            n_classes,
-            data_set,
+            dataset,
             bag,
             scores,
-            features_bin_count,
             feature_groups,
             n_inner_bags,
             random_state,
@@ -384,10 +379,10 @@ class EBMUtils:
         ) as booster:
             no_change_run_length = 0
             bp_metric = np.inf
-            log.info("Start boosting {0}".format(name))
+            log.info("Start boosting")
             for episode_index in range(max_rounds):
                 if episode_index % 10 == 0:
-                    log.debug("Sweep Index for {0}: {1}".format(name, episode_index))
+                    log.debug("Sweep Index {0}".format(episode_index))
                     log.debug("Metric: {0}".format(min_metric))
 
                 for feature_group_index in range(len(feature_groups)):
@@ -448,8 +443,8 @@ class EBMUtils:
                     break
 
             log.info(
-                "End boosting {0}, Best Metric: {1}, Num Rounds: {2}".format(
-                    name, min_metric, episode_index
+                "End boosting, Best Metric: {0}, Num Rounds: {1}".format(
+                    min_metric, episode_index
                 )
             )
 
@@ -465,7 +460,7 @@ class EBMUtils:
 
     @staticmethod
     def get_interactions(
-        data_set,
+        dataset,
         bag,
         scores,
         iter_feature_groups,
@@ -473,7 +468,7 @@ class EBMUtils:
         optional_temp_params=None,
     ):
         interaction_scores = []
-        with InteractionDetector(data_set, bag, scores, optional_temp_params) as interaction_detector:
+        with InteractionDetector(dataset, bag, scores, optional_temp_params) as interaction_detector:
             for feature_group in iter_feature_groups:
                 score = interaction_detector.get_interaction_score(
                     feature_group, min_samples_leaf,

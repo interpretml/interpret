@@ -96,9 +96,11 @@ constexpr static SharedStorageDataType k_sharedDataSetErrorId = 0x103; // anythi
 constexpr static SharedStorageDataType k_sharedDataSetDoneId = 0x61E3; // random 15 bit number
 
 // feature ids
-constexpr static SharedStorageDataType k_categoricalFeatureBit = 0x1;
-constexpr static SharedStorageDataType k_sparseFeatureBit = 0x2;
-constexpr static SharedStorageDataType k_featureId = 0x2B44; // random 15 bit number with lower 2 bits set to zero
+constexpr static SharedStorageDataType k_missingFeatureBit = 0x1;
+constexpr static SharedStorageDataType k_unknownFeatureBit = 0x2;
+constexpr static SharedStorageDataType k_nominalFeatureBit = 0x4;
+constexpr static SharedStorageDataType k_sparseFeatureBit = 0x8;
+constexpr static SharedStorageDataType k_featureId = 0x2B40; // random 15 bit number with lower 4 bits set to zero
 
 // weight ids
 constexpr static SharedStorageDataType k_weightId = 0x61FB; // random 15 bit number
@@ -108,22 +110,39 @@ constexpr static SharedStorageDataType k_classificationBit = 0x1;
 constexpr static SharedStorageDataType k_targetId = 0x5A92; // random 15 bit number with lowest bit set to zero
 
 INLINE_ALWAYS static bool IsFeature(const SharedStorageDataType id) noexcept {
-   return (k_categoricalFeatureBit | k_sparseFeatureBit | k_featureId) ==
-      ((k_categoricalFeatureBit | k_sparseFeatureBit) | id);
+   return (k_missingFeatureBit | k_unknownFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit | k_featureId) ==
+      ((k_missingFeatureBit | k_unknownFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit) | id);
 }
-INLINE_ALWAYS static bool IsCategoricalFeature(const SharedStorageDataType id) noexcept {
-   static_assert(0 == (k_categoricalFeatureBit & k_featureId), "k_featureId should not be categorical");
+INLINE_ALWAYS static bool IsMissingFeature(const SharedStorageDataType id) noexcept {
+   static_assert(0 == (k_missingFeatureBit & k_featureId), "k_featureId should not be missing");
    EBM_ASSERT(IsFeature(id));
-   return 0 != (k_categoricalFeatureBit & id);
+   return 0 != (k_missingFeatureBit & id);
+}
+INLINE_ALWAYS static bool IsUnknownFeature(const SharedStorageDataType id) noexcept {
+   static_assert(0 == (k_unknownFeatureBit & k_featureId), "k_featureId should not be unknown");
+   EBM_ASSERT(IsFeature(id));
+   return 0 != (k_unknownFeatureBit & id);
+}
+INLINE_ALWAYS static bool IsNominalFeature(const SharedStorageDataType id) noexcept {
+   static_assert(0 == (k_nominalFeatureBit & k_featureId), "k_featureId should not be nominal");
+   EBM_ASSERT(IsFeature(id));
+   return 0 != (k_nominalFeatureBit & id);
 }
 INLINE_ALWAYS static bool IsSparseFeature(const SharedStorageDataType id) noexcept {
    static_assert(0 == (k_sparseFeatureBit & k_featureId), "k_featureId should not be sparse");
    EBM_ASSERT(IsFeature(id));
    return 0 != (k_sparseFeatureBit & id);
 }
-INLINE_ALWAYS static SharedStorageDataType GetFeatureId(const bool bCategorical, const bool bSparse) noexcept {
+INLINE_ALWAYS static SharedStorageDataType GetFeatureId(
+   const bool bMissing,
+   const bool bUnknown,
+   const bool bNominal,
+   const bool bSparse
+) noexcept {
    return k_featureId | 
-      (bCategorical ? k_categoricalFeatureBit : SharedStorageDataType { 0 }) | 
+      (bMissing ? k_missingFeatureBit : SharedStorageDataType { 0 }) |
+      (bUnknown ? k_unknownFeatureBit : SharedStorageDataType { 0 }) |
+      (bNominal ? k_nominalFeatureBit : SharedStorageDataType { 0 }) |
       (bSparse ? k_sparseFeatureBit : SharedStorageDataType { 0 });
 }
 
@@ -159,7 +178,7 @@ constexpr static size_t k_cBytesHeaderNoOffset = offsetof(HeaderDataSetShared, m
 constexpr static SharedStorageDataType k_unfilledOffset = k_cBytesHeaderNoOffset - 1;
 
 struct FeatureDataSetShared {
-   SharedStorageDataType m_id; // dense or sparse?  categorical or not?
+   SharedStorageDataType m_id; // dense or sparse?  nominal, missing, unknown or not?
    SharedStorageDataType m_cBins;
 };
 static_assert(std::is_standard_layout<FeatureDataSetShared>::value,
@@ -467,7 +486,7 @@ static IntEbmType AppendHeader(
       return Error_None;
    }
    if(IsConvertError<IntEbmType>(cBytesHeader)) {
-      LOG_0(TraceLevelError, "ERROR SizeDataSetHeader IsConvertError<IntEbmType>(cBytesHeader)");
+      LOG_0(TraceLevelError, "ERROR AppendHeader IsConvertError<IntEbmType>(cBytesHeader)");
       return Error_OutOfMemory;
    }
    return cBytesHeader;
@@ -485,8 +504,10 @@ static bool DecideIfSparse(const size_t cSamples, const IntEbmType * aBinnedData
 }
 
 static IntEbmType AppendFeature(
-   const BoolEbmType categorical,
    const IntEbmType countBins,
+   const BoolEbmType missing,
+   const BoolEbmType unknown,
+   const BoolEbmType nominal,
    const IntEbmType countSamples,
    const IntEbmType * aBinnedData,
    const size_t cBytesAllocated,
@@ -498,15 +519,19 @@ static IntEbmType AppendFeature(
    LOG_N(
       TraceLevelInfo,
       "Entered AppendFeature: "
-      "categorical=%" BoolEbmTypePrintf ", "
       "countBins=%" IntEbmTypePrintf ", "
+      "missing=%" BoolEbmTypePrintf ", "
+      "unknown=%" BoolEbmTypePrintf ", "
+      "nominal=%" BoolEbmTypePrintf ", "
       "countSamples=%" IntEbmTypePrintf ", "
       "aBinnedData=%p, "
       "cBytesAllocated=%zu, "
       "pFillMem=%p"
       ,
-      categorical,
       countBins,
+      missing,
+      unknown,
+      nominal,
       countSamples,
       static_cast<const void *>(aBinnedData),
       cBytesAllocated,
@@ -514,16 +539,23 @@ static IntEbmType AppendFeature(
    );
 
    {
-      if(EBM_FALSE != categorical && EBM_TRUE != categorical) {
-         LOG_0(TraceLevelError, "ERROR AppendFeature categorical is not EBM_FALSE or EBM_TRUE");
-         goto return_bad;
-      }
-
       if(IsConvertErrorDual<size_t, SharedStorageDataType>(countBins)) {
          LOG_0(TraceLevelError, "ERROR AppendFeature countBins is outside the range of a valid index");
          goto return_bad;
       }
+      if(EBM_FALSE != missing && EBM_TRUE != missing) {
+         LOG_0(TraceLevelError, "ERROR AppendFeature missing is not EBM_FALSE or EBM_TRUE");
+         goto return_bad;
+      }
 
+      if(EBM_FALSE != unknown && EBM_TRUE != unknown) {
+         LOG_0(TraceLevelError, "ERROR AppendFeature unknown is not EBM_FALSE or EBM_TRUE");
+         goto return_bad;
+      }
+      if(EBM_FALSE != nominal && EBM_TRUE != nominal) {
+         LOG_0(TraceLevelError, "ERROR AppendFeature nominal is not EBM_FALSE or EBM_TRUE");
+         goto return_bad;
+      }
       if(IsConvertErrorDual<size_t, SharedStorageDataType>(countSamples)) {
          LOG_0(TraceLevelError, "ERROR AppendFeature countSamples is outside the range of a valid index");
          goto return_bad;
@@ -579,7 +611,12 @@ static IntEbmType AppendFeature(
          pHeaderDataSetShared->m_cSamples = static_cast<SharedStorageDataType>(cSamples);
 
          FeatureDataSetShared * pFeatureDataSetShared = reinterpret_cast<FeatureDataSetShared *>(pFillMem + iHighestOffset);
-         pFeatureDataSetShared->m_id = GetFeatureId(EBM_FALSE != categorical, bSparse);
+         pFeatureDataSetShared->m_id = GetFeatureId(
+            EBM_FALSE != missing,
+            EBM_FALSE != unknown,
+            EBM_FALSE != nominal,
+            bSparse
+         );
          pFeatureDataSetShared->m_cBins = static_cast<SharedStorageDataType>(countBins);
       }
 
@@ -675,7 +712,7 @@ static IntEbmType AppendFeature(
          return Error_None;
       }
       if(IsConvertError<IntEbmType>(iByteCur)) {
-         LOG_0(TraceLevelError, "ERROR SizeFeature IsConvertError<IntEbmType>(cBytes)");
+         LOG_0(TraceLevelError, "ERROR AppendFeature IsConvertError<IntEbmType>(iByteCur)");
          goto return_bad;
       }
       return static_cast<IntEbmType>(iByteCur);
@@ -837,7 +874,7 @@ static IntEbmType AppendWeight(
          return Error_None;
       }
       if(IsConvertError<IntEbmType>(iByteCur)) {
-         LOG_0(TraceLevelError, "ERROR SizeFeature IsConvertError<IntEbmType>(cBytes)");
+         LOG_0(TraceLevelError, "ERROR AppendWeight IsConvertError<IntEbmType>(iByteCur)");
          goto return_bad;
       }
       return static_cast<IntEbmType>(iByteCur);
@@ -1049,7 +1086,7 @@ static IntEbmType AppendTarget(
          return Error_None;
       }
       if(IsConvertError<IntEbmType>(iByteCur)) {
-         LOG_0(TraceLevelError, "ERROR SizeFeature IsConvertError<IntEbmType>(cBytes)");
+         LOG_0(TraceLevelError, "ERROR AppendTarget IsConvertError<IntEbmType>(iByteCur)");
          goto return_bad;
       }
       return static_cast<IntEbmType>(iByteCur);
@@ -1102,14 +1139,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDat
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeFeature(
-   BoolEbmType categorical,
    IntEbmType countBins,
+   BoolEbmType missing,
+   BoolEbmType unknown,
+   BoolEbmType nominal,
    IntEbmType countSamples,
    const IntEbmType * binnedData
 ) {
    return AppendFeature(
-      categorical,
       countBins,
+      missing,
+      unknown,
+      nominal,
       countSamples,
       binnedData,
       0,
@@ -1118,8 +1159,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeFeatu
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillFeature(
-   BoolEbmType categorical,
    IntEbmType countBins,
+   BoolEbmType missing,
+   BoolEbmType unknown,
+   BoolEbmType nominal,
    IntEbmType countSamples,
    const IntEbmType * binnedData,
    IntEbmType countBytesAllocated,
@@ -1151,8 +1194,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillFea
    }
 
    const IntEbmType ret = AppendFeature(
-      categorical,
       countBins,
+      missing,
+      unknown,
+      nominal,
       countSamples,
       binnedData,
       cBytesAllocated,
@@ -1554,6 +1599,8 @@ extern const void * GetDataSetSharedFeature(
    const unsigned char * const pDataSetShared,
    const size_t iFeature,
    size_t * const pcBinsOut,
+   bool * const pbMissingOut,
+   bool * const pbUnknownOut,
    bool * const pbNominalOut,
    bool * const pbSparseOut,
    SharedStorageDataType * const pDefaultValueSparseOut,
@@ -1576,7 +1623,9 @@ extern const void * GetDataSetSharedFeature(
 
    const SharedStorageDataType id = pFeatureDataSetShared->m_id;
    EBM_ASSERT(IsFeature(id));
-   *pbNominalOut = IsCategoricalFeature(id);
+   *pbMissingOut = IsMissingFeature(id);
+   *pbUnknownOut = IsUnknownFeature(id);
+   *pbNominalOut = IsNominalFeature(id);
    const bool bSparse = IsSparseFeature(id);
    *pbSparseOut = bSparse;
 
@@ -1598,6 +1647,82 @@ extern const void * GetDataSetSharedFeature(
       pRet = reinterpret_cast<const void *>(pSparseFeatureDataSetShared->m_nonDefaults);
    }
    return pRet;
+}
+
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ExtractBinCounts(
+   const void * dataSet,
+   IntEbmType countFeaturesVerify,
+   IntEbmType * binCountsOut
+) {
+   if(nullptr == dataSet) {
+      LOG_0(TraceLevelError, "ERROR ExtractBinCounts nullptr == dataSet");
+      return Error_IllegalParamValue;
+   }
+
+   if(IsConvertError<size_t>(countFeaturesVerify)) {
+      LOG_0(TraceLevelError, "ERROR ExtractBinCounts IsConvertError<size_t>(countFeaturesVerify)");
+      return Error_IllegalParamValue;
+   }
+   const size_t cFeaturesVerify = static_cast<size_t>(countFeaturesVerify);
+
+   const HeaderDataSetShared * const pHeaderDataSetShared =
+      reinterpret_cast<const HeaderDataSetShared *>(dataSet);
+
+   if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
+      LOG_0(TraceLevelError, "ERROR ExtractBinCounts k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
+      return Error_IllegalParamValue;
+   }
+
+   const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
+   if(IsConvertError<size_t>(countFeatures)) {
+      LOG_0(TraceLevelError, "ERROR ExtractBinCounts IsConvertError<size_t>(countFeatures)");
+      return Error_IllegalParamValue;
+   }
+   size_t cFeatures = static_cast<size_t>(countFeatures);
+
+   if(cFeatures != cFeaturesVerify) {
+      LOG_0(TraceLevelError, "ERROR ExtractBinCounts cFeatures != cFeaturesVerify");
+      return Error_IllegalParamValue;
+   }
+   if(size_t { 0 } != cFeatures) {
+      if(nullptr == binCountsOut) {
+         LOG_0(TraceLevelError, "ERROR ExtractBinCounts nullptr == binCountsOut");
+         return Error_IllegalParamValue;
+      }
+
+      const SharedStorageDataType * pOffset = pHeaderDataSetShared->m_offsets;
+      IntEbmType * pcBins = binCountsOut;
+      const IntEbmType * const pcBinsEnd = binCountsOut + cFeatures;
+      do {
+         const SharedStorageDataType indexOffsetCur = *pOffset;
+         ++pOffset;
+
+         if(IsConvertError<size_t>(indexOffsetCur)) {
+            LOG_0(TraceLevelError, "ERROR ExtractBinCounts IsConvertError<size_t>(indexOffsetCur)");
+            return Error_IllegalParamValue;
+         }
+         const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
+
+         const FeatureDataSetShared * pFeatureDataSetShared =
+            reinterpret_cast<const FeatureDataSetShared *>(static_cast<const char *>(dataSet) + iOffsetCur);
+
+         const SharedStorageDataType id = pFeatureDataSetShared->m_id;
+         if(!IsFeature(id)) {
+            LOG_0(TraceLevelError, "ERROR ExtractBinCounts !IsFeature(id)");
+            return Error_IllegalParamValue;
+         }
+
+         const SharedStorageDataType countBins = pFeatureDataSetShared->m_cBins;
+         if(IsConvertError<IntEbmType>(countBins)) {
+            LOG_0(TraceLevelError, "ERROR ExtractBinCounts IsConvertError<IntEbmType>(countBins)");
+            return Error_IllegalParamValue;
+         }
+
+         *pcBins = static_cast<IntEbmType>(countBins);
+         ++pcBins;
+      } while(pcBinsEnd != pcBins);
+   }
+   return Error_None;
 }
 
 extern const FloatEbmType * GetDataSetSharedWeight(
@@ -1680,6 +1805,110 @@ extern const void * GetDataSetSharedTarget(
    }
    *pRuntimeLearningTypeOrCountTargetClassesOut = runtimeLearningTypeOrCountTargetClasses;
    return pRet;
+}
+
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ExtractTargetClasses(
+   const void * dataSet,
+   IntEbmType countTargetsVerify,
+   IntEbmType * classCountsOut
+) {
+   if(nullptr == dataSet) {
+      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses nullptr == dataSet");
+      return Error_IllegalParamValue;
+   }
+
+   if(IsConvertError<size_t>(countTargetsVerify)) {
+      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(countTargetsVerify)");
+      return Error_IllegalParamValue;
+   }
+   const size_t cTargetsVerify = static_cast<size_t>(countTargetsVerify);
+
+   const HeaderDataSetShared * const pHeaderDataSetShared =
+      reinterpret_cast<const HeaderDataSetShared *>(dataSet);
+
+   if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
+      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
+      return Error_IllegalParamValue;
+   }
+
+   const SharedStorageDataType countFeatures = pHeaderDataSetShared->m_cFeatures;
+   if(IsConvertError<size_t>(countFeatures)) {
+      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(countFeatures)");
+      return Error_IllegalParamValue;
+   }
+   size_t cFeatures = static_cast<size_t>(countFeatures);
+
+   const SharedStorageDataType countWeights = pHeaderDataSetShared->m_cWeights;
+   if(IsConvertError<size_t>(countWeights)) {
+      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(countWeights)");
+      return Error_IllegalParamValue;
+   }
+   size_t cWeights = static_cast<size_t>(countWeights);
+
+   const SharedStorageDataType countTargets = pHeaderDataSetShared->m_cTargets;
+   if(IsConvertError<size_t>(countTargets)) {
+      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(countTargets)");
+      return Error_IllegalParamValue;
+   }
+   size_t cTargets = static_cast<size_t>(countTargets);
+
+   if(cTargets != cTargetsVerify) {
+      LOG_0(TraceLevelError, "ERROR ExtractTargetClasses cTargets != cTargetsVerify");
+      return Error_IllegalParamValue;
+   }
+
+   if(size_t { 0 } != cTargets) {
+      if(nullptr == classCountsOut) {
+         LOG_0(TraceLevelError, "ERROR ExtractTargetClasses nullptr == classCountsOut");
+         return Error_IllegalParamValue;
+      }
+
+      const SharedStorageDataType * pOffset = &pHeaderDataSetShared->m_offsets[cFeatures + cWeights];
+      IntEbmType * pcClasses = classCountsOut;
+      const IntEbmType * const pcClassesEnd = classCountsOut + cTargets;
+      do {
+         const SharedStorageDataType indexOffsetCur = *pOffset;
+         ++pOffset;
+
+         if(IsConvertError<size_t>(indexOffsetCur)) {
+            LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<size_t>(indexOffsetCur)");
+            return Error_IllegalParamValue;
+         }
+         const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
+
+         const TargetDataSetShared * pTargetDataSetShared =
+            reinterpret_cast<const TargetDataSetShared *>(static_cast<const char *>(dataSet) + iOffsetCur);
+
+         const SharedStorageDataType id = pTargetDataSetShared->m_id;
+         if(!IsTarget(id)) {
+            LOG_0(TraceLevelError, "ERROR ExtractTargetClasses !IsTarget(id)");
+            return Error_IllegalParamValue;
+         }
+
+         IntEbmType countClasses = IntEbmType { -1 };
+         if(IsClassificationTarget(id)) {
+            const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
+               reinterpret_cast<const ClassificationTargetDataSetShared *>(pTargetDataSetShared + 1);
+
+            const SharedStorageDataType countTargetClasses = pClassificationTargetDataSetShared->m_cTargetClasses;
+
+            if(IsConvertError<IntEbmType>(countTargetClasses)) {
+               LOG_0(TraceLevelError, "ERROR ExtractTargetClasses IsConvertError<IntEbmType>(countTargetClasses)");
+               return Error_IllegalParamValue;
+            }
+
+            countClasses = static_cast<IntEbmType>(countTargetClasses);
+            if(countClasses < IntEbmType { 0 }) {
+               LOG_0(TraceLevelError, "ERROR ExtractTargetClasses countClasses < IntEbmType { 0 }");
+               return Error_IllegalParamValue;
+            }
+         }
+
+         *pcClasses = countClasses;
+         ++pcClasses;
+      } while(pcClassesEnd != pcClasses);
+   }
+   return Error_None;
 }
 
 } // DEFINED_ZONE_NAME

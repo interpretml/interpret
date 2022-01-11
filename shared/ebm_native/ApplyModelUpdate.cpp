@@ -346,11 +346,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
 
    const size_t cSplits = pBoosterShell->GetAccumulatedModelUpdate()->GetCountSplits(iSignficantDimension);
    EBM_ASSERT(cSplits < cBins);
-   const ActiveDataType * const aSplitIndexes = pBoosterShell->GetAccumulatedModelUpdate()->GetSplitPointer(iSignficantDimension);
+   if(0 != cSplits) {
+      const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetAccumulatedModelUpdate()->GetSplitPointer(iSignficantDimension);
+      IntEbmType * pSplitIndexesTo = splitIndexesOut;
+      IntEbmType * pSplitIndexesToEnd = splitIndexesOut + cSplits;
+      do {
+         const ActiveDataType indexSplit = *pSplitIndexesFrom;
+         ++pSplitIndexesFrom;
 
-   // TODO: handle this better where we handle mismatches in index types
-   static_assert(sizeof(*splitIndexesOut) == sizeof(*aSplitIndexes), "not same type for splits");
-   memcpy(splitIndexesOut, aSplitIndexes, sizeof(*aSplitIndexes) * cSplits);
+         EBM_ASSERT(!IsConvertError<IntEbmType>(indexSplit)); // the total count works so the index should too
+         *pSplitIndexesTo = static_cast<IntEbmType>(indexSplit);
+
+         ++pSplitIndexesTo;
+      } while(pSplitIndexesToEnd != pSplitIndexesTo);
+   }
 
    EBM_ASSERT(!IsConvertError<IntEbmType>(cSplits)); // cSplits originally came from an IntEbmType
 
