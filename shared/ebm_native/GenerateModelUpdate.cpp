@@ -762,7 +762,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                return error;
             }
             gain = FloatEbmType { 0 };
-         } else if(0 != (GenerateUpdateOptions_RandomSplits & options)) {
+         } else if(0 != (GenerateUpdateOptions_RandomSplits & options) || 2 < cSignificantDimensions) {
             if(size_t { 1 } != cSamplesRequiredForChildSplitMin) {
                LOG_0(TraceLevelWarning, 
                   "WARNING GenerateModelUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"

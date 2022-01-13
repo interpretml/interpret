@@ -1208,13 +1208,10 @@ class Booster(AbstractContextManager):
             raise Native._get_native_exception(return_code, "GetBestModelFeatureGroup")
 
         n_dimensions = len(self.feature_groups[feature_group_index])
-        if n_dimensions == 2:
-            if len(shape) != n_dimensions:
-                # multiclass
-                model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0, 2)))
-            else:
-                model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0)))
-
+        temp_transpose = [*range(n_dimensions - 1, -1, -1)]
+        if len(shape) != n_dimensions: # multiclass
+            temp_transpose.append(len(temp_transpose))
+        model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, tuple(temp_transpose)))
         return model_feature_group
 
     def _get_current_model_feature_group(self, feature_group_index):
@@ -1246,13 +1243,10 @@ class Booster(AbstractContextManager):
             raise Native._get_native_exception(return_code, "GetCurrentModelFeatureGroup")
 
         n_dimensions = len(self.feature_groups[feature_group_index])
-        if n_dimensions == 2:
-            if len(shape) != n_dimensions:
-                # multiclass
-                model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0, 2)))
-            else:
-                model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, (1, 0)))
-
+        temp_transpose = [*range(n_dimensions - 1, -1, -1)]
+        if len(shape) != n_dimensions: # multiclass
+            temp_transpose.append(len(temp_transpose))
+        model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, tuple(temp_transpose)))
         return model_feature_group
 
     def _get_model_update_splits_dimension(self, dimension_index):
@@ -1302,13 +1296,10 @@ class Booster(AbstractContextManager):
             raise Native._get_native_exception(return_code, "GetModelUpdateExpanded")
 
         n_dimensions = len(self.feature_groups[self._feature_group_index])
-        if n_dimensions == 2:
-            if len(shape) != n_dimensions:
-                # multiclass
-                model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0, 2)))
-            else:
-                model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0)))
-
+        temp_transpose = [*range(n_dimensions - 1, -1, -1)]
+        if len(shape) != n_dimensions: # multiclass
+            temp_transpose.append(len(temp_transpose))
+        model_update = np.ascontiguousarray(np.transpose(model_update, tuple(temp_transpose)))
         return model_update
 
     def set_model_update_expanded(self, feature_group_index, model_update):
@@ -1321,13 +1312,12 @@ class Booster(AbstractContextManager):
             raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
 
         shape = self._feature_group_shapes[feature_group_index]
+
         n_dimensions = len(self.feature_groups[feature_group_index])
-        if n_dimensions == 2:
-            if len(shape) != n_dimensions:
-                # multiclass
-                model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0, 2)))
-            else:
-                model_update = np.ascontiguousarray(np.transpose(model_update, (1, 0)))
+        temp_transpose = [*range(n_dimensions - 1, -1, -1)]
+        if len(shape) != n_dimensions: # multiclass
+            temp_transpose.append(len(temp_transpose))
+        model_update = np.ascontiguousarray(np.transpose(model_update, tuple(temp_transpose)))
 
         if shape != model_update.shape:  # pragma: no cover
             raise ValueError("incorrect tensor shape in call to set_model_update_expanded")

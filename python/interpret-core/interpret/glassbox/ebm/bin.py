@@ -1560,6 +1560,13 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 # X_col could be a slice that has a stride.  We need contiguous for caling into C
                 X_col = X_col.copy()
 
+
+
+            if categories is None and np.isnan(X_col).any() or categories is not None and np.count_nonzero(X_col) != len(X_col):
+                raise ValueError("Missing values are currently disabled because our graphs do not show them yet, but if you want to enable them anyways, you can remove this check and they will work everywhere else.")
+
+
+
             feature_types_in[feature_idx] = feature_type_in
             if categories is None:
                 # continuous feature

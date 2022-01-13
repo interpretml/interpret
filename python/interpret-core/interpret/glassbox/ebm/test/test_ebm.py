@@ -726,7 +726,7 @@ def test_json_multiclass():
     y = data["full"]["y"]
     feature_types = ['continuous'] * X.shape[1]
     feature_types[0] = 'nominal'
-    clf = ExplainableBoostingClassifier(max_bins=10, max_interaction_bins=4, feature_types=feature_types, interactions=[(1,2), (2,3)])
+    clf = ExplainableBoostingClassifier(max_bins=10, feature_types=feature_types, interactions=0)
     clf.fit(X, y)
     json_text = clf._to_json()
 
@@ -751,16 +751,6 @@ def test_json_dp_classification():
     clf.additive_terms_[0][0] = np.nan
     clf.additive_terms_[0][1] = np.inf
     clf.additive_terms_[0][2] = -np.inf
-    json_text = clf._to_json()
-
-def test_json_dp_multiclass():
-    data = synthetic_multiclass()
-    X = data["full"]["X"]
-    y = data["full"]["y"]
-    feature_types = ['continuous'] * X.shape[1]
-    feature_types[0] = 'nominal'
-    clf = DPExplainableBoostingClassifier(max_bins=10, feature_types=feature_types)
-    clf.fit(X, y)
     json_text = clf._to_json()
 
 def test_json_dp_regression():

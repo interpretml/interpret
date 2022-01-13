@@ -247,7 +247,7 @@ class BaseEBM(BaseEstimator):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -259,6 +259,9 @@ class BaseEBM(BaseEstimator):
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
             if n_classes > 2:  # pragma: no cover
+                if is_private(self):
+                    raise ValueError("multiclass not supported in Differentially private EBMs")
+
                 warn("Multiclass is still experimental. Subject to change per release.")
 
             class_idx = {x: index for index, x in enumerate(classes)}
@@ -450,12 +453,20 @@ class BaseEBM(BaseEstimator):
             models.append(after_boosting(feature_groups, model, term_bin_weights))
 
         interactions = 0 if is_private(self) else self.interactions
-        if n_classes > 2 or isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0:
+        if not isinstance(interactions, int) and not isinstance(interactions, list):
+            raise ValueError("interactions must be either an int or list")
+
+        if n_classes > 2:
+            if isinstance(interactions, int) and interactions != 0:
+                warn("Detected multiclass problem: forcing interactions to 0")
+                interactions = 0
+            if isinstance(interactions, list) and len(interactions) != 0:
+                raise ValueError("interactions are not supported for multiclass")
+
+        if isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0:
             # garbage collect anything we can
             del bags 
             del y
-            if not (isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0):
-                warn("Detected multiclass problem: forcing interactions to 0")
         else:
             scores_bags = []
             for model in models:
@@ -758,7 +769,7 @@ class BaseEBM(BaseEstimator):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -814,6 +825,7 @@ class BaseEBM(BaseEstimator):
         data_dicts = []
         feature_list = []
         density_list = []
+        keep_idxs = []
         for feature_group_index, feature_indexes in enumerate(
             self.feature_groups_
         ):
@@ -823,6 +835,8 @@ class BaseEBM(BaseEstimator):
             errors = mod_term_standard_deviations[feature_group_index]
 
             if len(feature_indexes) == 1:
+                keep_idxs.append(feature_group_index)
+
                 feature_index0 = feature_indexes[0]
 
                 feature_bins = self.bins_[feature_index0][0]
@@ -890,6 +904,8 @@ class BaseEBM(BaseEstimator):
 
                 data_dicts.append(data_dict)
             elif len(feature_indexes) == 2:
+                keep_idxs.append(feature_group_index)
+
                 bin_levels = self.bins_[feature_indexes[0]]
                 feature_bins = bin_levels[1] if 1 < len(bin_levels) else bin_levels[0]
                 if isinstance(feature_bins, dict):
@@ -947,12 +963,12 @@ class BaseEBM(BaseEstimator):
                 }
                 data_dicts.append(data_dict)
             else:  # pragma: no cover
-                raise Exception("Interactions greater than 2 not supported.")
+                warn(f"Dropping feature {self.term_names_[feature_group_index]} from explanation since we can't graph more than 2 dimensions.")
 
         overall_dict = {
             "type": "univariate",
-            "names": self.term_names_,
-            "scores": self.feature_importances_,
+            "names": [self.term_names_[i] for i in keep_idxs],
+            "scores": [self.feature_importances_[i] for i in keep_idxs],
         }
         internal_obj = {
             "overall": overall_dict,
@@ -969,10 +985,10 @@ class BaseEBM(BaseEstimator):
         return EBMExplanation(
             "global",
             internal_obj,
-            feature_names=self.term_names_,
-            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_],
+            feature_names=[self.term_names_[i] for i in keep_idxs],
+            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [self.term_types_[i] for i in keep_idxs]],
             name=name,
-            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, self.term_names_, ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_], getattr(self, 'unique_counts_', None), getattr(self, 'zero_counts_', None)),
+            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, [self.term_names_[i] for i in keep_idxs], ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [self.term_types_[i] for i in keep_idxs]], getattr(self, 'unique_counts_', None), getattr(self, 'zero_counts_', None)),
         )
 
     def explain_local(self, X, y=None, name=None):
@@ -997,7 +1013,7 @@ class BaseEBM(BaseEstimator):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1233,7 +1249,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1267,7 +1283,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1309,7 +1325,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1438,7 +1454,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1467,7 +1483,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1590,7 +1606,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1624,7 +1640,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1754,7 +1770,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
 
         X, n_samples = clean_X(X)
         if n_samples <= 0:
-            msg = "X has no samples to train on"
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
