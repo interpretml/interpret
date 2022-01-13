@@ -2163,6 +2163,7 @@ def test_unify_columns_ma_objects():
     assert(X_cols[0][1][5] == 3)
     assert(np.isnan(X_cols[0][1][6]))
 
+@pytest.mark.skip(reason="skip this until we have support for missing values")
 def test_bin_native():
     X = np.array([["a", 1, np.nan], ["b", 2, 7], ["a", 2, 8], [None, 3, 9]], dtype=np.object_)
     feature_names_given = ["f1", 99, "f3"]
