@@ -10,12 +10,12 @@ from ..utils import unify_data
 from abc import abstractmethod
 from sklearn.base import is_classifier
 import numpy as np
-from sklearn.base import ClassifierMixin, RegressorMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.linear_model import LogisticRegression as SKLogistic
 from sklearn.linear_model import Lasso as SKLinear
 
 
-class BaseLinear:
+class BaseLinear(BaseEstimator):
     """ Base linear model.
 
     Currently wrapper around linear models in scikit-learn.
@@ -43,10 +43,25 @@ class BaseLinear:
         self.linear_class = linear_class
         self.kwargs = kwargs
 
+        for key, value in self.kwargs.items():
+            setattr(self, key, value)
+
     @abstractmethod
     def _model(self):
         # This method should be overridden.
         return None
+
+    # get_params and set_params are usually inherited from BaseEstimator, but they will 
+    # fail here due to the **kwargs in the __init__. Therefore, we implement them.
+    def get_params(self, deep = True):
+        return {param: getattr(self, param)
+                    for param in self.kwargs}
+
+    def set_params(self, **parameters):
+        for parameter, value in parameters.items():
+            setattr(self, parameter, value)
+
+        return self
 
     def fit(self, X, y):
         """ Fits model to provided instances.
