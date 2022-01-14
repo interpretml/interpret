@@ -246,7 +246,7 @@ class BaseEBM(BaseEstimator):
         """
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
+        if n_samples == 0:
             msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
@@ -604,6 +604,7 @@ class BaseEBM(BaseEstimator):
         else:
             bin_counts, bin_weights = get_counts_and_weights(
                 X, 
+                n_samples,
                 sample_weight, 
                 feature_names_in, 
                 feature_types_in, 
@@ -768,10 +769,6 @@ class BaseEBM(BaseEstimator):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         return ebm_decision_function(
             X, 
@@ -1006,92 +1003,87 @@ class BaseEBM(BaseEstimator):
 
         # Produce feature value pairs for each sample.
         # Values are the model graph score per respective feature group.
-        if name is None:
-            name = gen_name_from_class(self)
 
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
-        X_unified, y, _, classes_temp, _, _ = unify_data2(
-            is_classifier(self), 
-            X, 
-            y, 
-            None, 
-            feature_names=self.feature_names_in_, 
-            feature_types=self.feature_types_in_
-        )
+        if y is not None:
+            if is_classifier(self):
+                y = clean_vector(y, True, "y")
+                y = np.array([self._class_idx_[el] for el in y], dtype=np.int64)
+            else:
+                y = clean_vector(y, False, "y")
 
-        if is_classifier(self) and y is not None:
-            y = np.array([self._class_idx_[el] for el in classes_temp[y]], dtype=np.int64)
+            if n_samples != len(y):
+                msg = f"X has {n_samples} samples and y has {len(y)} samples"
+                _log.error(msg)
+                raise ValueError(msg)
 
         data_dicts = []
-        intercept = self.intercept_
-        if not is_classifier(self) or len(self.classes_) <= 2:
-            if isinstance(self.intercept_, np.ndarray) or isinstance(
-                self.intercept_, list
-            ):
-                intercept = intercept[0]
-
-        for _ in range(n_samples):
-            data_dict = {
-                "type": "univariate",
-                "names": [None] * len(self.feature_groups_),
-                "scores": [None] * len(self.feature_groups_),
-                "values": [None] * len(self.feature_groups_),
-                "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
-            }
-            if is_classifier(self):
-                data_dict["meta"] = {
-                    "label_names": self.classes_.tolist()  # Classes should be numpy array, convert to list.
-                }
-            data_dicts.append(data_dict)
-
-        term_names = self.term_names_
-        for set_idx, binned_data in eval_terms(X, self.feature_names_in_, self.feature_types_in_, self.bins_, self.feature_groups_):
-            scores = self.additive_terms_[set_idx][tuple(binned_data)]
-            feature_group = self.feature_groups_[set_idx]
-            for row_idx in range(n_samples):
-                feature_name = term_names[set_idx]
-                data_dicts[row_idx]["names"][set_idx] = feature_name
-                data_dicts[row_idx]["scores"][set_idx] = scores[row_idx]
-                if len(feature_group) == 1:
-                    data_dicts[row_idx]["values"][set_idx] = X_unified[row_idx, feature_group[0]]
-                else:
-                    data_dicts[row_idx]["values"][set_idx] = ""
-
-        is_classification = is_classifier(self)
-
-        scores = ebm_decision_function(
-            X, 
-            n_samples, 
-            self.feature_names_in_, 
-            self.feature_types_in_, 
-            self.bins_, 
-            self.intercept_, 
-            self.additive_terms_, 
-            self.feature_groups_
-        )
-
-        if is_classification:
-            # Handle binary classification case -- softmax only works with 0s appended
-            if scores.ndim == 1:
-                scores = np.c_[np.zeros(scores.shape), scores]
-
-            scores = softmax(scores)
-
         perf_list = []
-        perf_dicts = gen_perf_dicts(scores, y, is_classification)
-        for row_idx in range(n_samples):
-            perf = None if perf_dicts is None else perf_dicts[row_idx]
-            perf_list.append(perf)
-            data_dicts[row_idx]["perf"] = perf
+        if n_samples == 0:
+            X_unified = np.empty((0, len(self.feature_names_in_)), dtype=np.object_)
+        else:
+            X_unified, _, _ = unify_data2(X, n_samples, self.feature_names_in_, self.feature_types_in_, True)
 
-        selector = gen_local_selector(data_dicts, is_classification=is_classification)
+            intercept = self.intercept_
+            if not is_classifier(self) or len(self.classes_) <= 2:
+                if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
+                    intercept = intercept[0]
+
+            for _ in range(n_samples):
+                data_dict = {
+                    "type": "univariate",
+                    "names": [None] * len(self.feature_groups_),
+                    "scores": [None] * len(self.feature_groups_),
+                    "values": [None] * len(self.feature_groups_),
+                    "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
+                }
+                if is_classifier(self):
+                    data_dict["meta"] = {
+                        "label_names": self.classes_.tolist()  # Classes should be numpy array, convert to list.
+                    }
+                data_dicts.append(data_dict)
+
+            term_names = self.term_names_
+            for set_idx, binned_data in eval_terms(X, n_samples, self.feature_names_in_, self.feature_types_in_, self.bins_, self.feature_groups_):
+                scores = self.additive_terms_[set_idx][tuple(binned_data)]
+                feature_group = self.feature_groups_[set_idx]
+                for row_idx in range(n_samples):
+                    feature_name = term_names[set_idx]
+                    data_dicts[row_idx]["names"][set_idx] = feature_name
+                    data_dicts[row_idx]["scores"][set_idx] = scores[row_idx]
+                    if len(feature_group) == 1:
+                        data_dicts[row_idx]["values"][set_idx] = X_unified[row_idx, feature_group[0]]
+                    else:
+                        data_dicts[row_idx]["values"][set_idx] = ""
+
+            scores = ebm_decision_function(
+                X, 
+                n_samples, 
+                self.feature_names_in_, 
+                self.feature_types_in_, 
+                self.bins_, 
+                self.intercept_, 
+                self.additive_terms_, 
+                self.feature_groups_
+            )
+
+            if is_classifier(self):
+                # Handle binary classification case -- softmax only works with 0s appended
+                if scores.ndim == 1:
+                    scores = np.c_[np.zeros(scores.shape), scores]
+
+                scores = softmax(scores)
+
+            perf_dicts = gen_perf_dicts(scores, y, is_classifier(self))
+            for row_idx in range(n_samples):
+                perf = None if perf_dicts is None else perf_dicts[row_idx]
+                perf_list.append(perf)
+                data_dicts[row_idx]["perf"] = perf
+
+        selector = gen_local_selector(data_dicts, is_classification=is_classifier(self))
 
         additive_terms = remove_last2(self.additive_terms_, self.bin_weights_)
         for feature_group_idx, feature_group in enumerate(self.feature_groups_):
@@ -1123,7 +1115,7 @@ class BaseEBM(BaseEstimator):
             internal_obj,
             feature_names=self.term_names_,
             feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_],
-            name=name,
+            name=gen_name_from_class(self) if name is None else name,
             selector=selector,
         )
 
@@ -1248,10 +1240,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1282,10 +1270,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1315,19 +1299,15 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             Predictions and local explanations for each sample.
         """
 
+        check_is_fitted(self, "has_fitted_")
+
         allowed_outputs = ['probabilities', 'logits', 'labels']
         if output not in allowed_outputs:
             msg = "Argument 'output' has invalid value.  Got '{}', expected one of " 
             + repr(allowed_outputs)
             raise ValueError(msg.format(output))
 
-        check_is_fitted(self, "has_fitted_")
-
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         scores, explanations = ebm_decision_function_and_explain(
             X, 
@@ -1453,10 +1433,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         return ebm_decision_function(
             X, 
@@ -1482,10 +1458,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         return ebm_decision_function_and_explain(
             X, 
@@ -1605,10 +1577,6 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1639,10 +1607,6 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         log_odds_vector = ebm_decision_function(
             X, 
@@ -1769,10 +1733,6 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         return ebm_decision_function(
             X, 

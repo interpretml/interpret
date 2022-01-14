@@ -776,10 +776,14 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
 
 def _reshape_1D_if_possible(col):
     if col.ndim != 1:
+        if col.ndim == 0: 
+            # 0 dimensional items exist, but are weird/unexpected. len fails, shape is length 0.
+            return np.empty(0, col.dtype)
+
         # ignore dimensions that have just 1 item and assume the intent was to give us 1D
         is_found = False
         for n_items in col.shape:
-            if n_items != 1:
+            if 1 < n_items:
                 if is_found:
                     msg = f"Cannot reshape to 1D. Original shape was {col.shape}"
                     _log.error(msg)
@@ -904,6 +908,8 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
             return _process_pandas_column(X_col, categories, feature_type, min_unique_continuous)
         elif X_col.shape[0] == 1:
             X_col = X_col.astype(np.object_, copy=False).values.reshape(-1)
+        elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
+            X_col = np.empty(0, np.object_)
         else:
             msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
             _log.error(msg)
@@ -911,6 +917,8 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
     elif _scipy_installed and isinstance(X_col, sp.sparse.spmatrix):
         if X_col.shape[1] == 1 or X_col.shape[0] == 1:
             return _process_scipy_column(X_col, categories, feature_type, min_unique_continuous)
+        elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
+            X_col = np.empty(0, np.object_)
         else:
             msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
             _log.error(msg)
@@ -1085,6 +1093,9 @@ def unify_columns(X, requests, feature_names_in, feature_types=None, min_unique_
 def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
     # called under: fit
 
+    # if feature_names_given and feature_types_given were the outputs of a fit function, then this function
+    # is re-callable because it will return the same feature names as previously generated
+
     if isinstance(X, np.ndarray): # this includes ma.masked_array
         X_names = None
         n_cols = X.shape[0] if X.ndim == 1 else X.shape[1]
@@ -1225,13 +1236,17 @@ def clean_vector(vec, is_y_for_classification, param_name):
         elif vec.shape[0] == 1:
             # transition to np.object_ first to detect any missing values
             vec = vec.astype(np.object_, copy=False).values
+        elif vec.shape[1] == 0 or vec.shape[0] == 0:
+            vec = np.empty(0, np.object)
         else:
             msg = f"{param_name} cannot be a multidimensional pandas.DataFrame"
             _log.error(msg)
             raise ValueError(msg)
     elif _scipy_installed and isinstance(vec, sp.sparse.spmatrix):
-        if vec.shape[0] == 1 or vec.shape[1] == 1:
+        if vec.shape[1] == 1 or vec.shape[0] == 1:
             vec = vec.toarray()
+        elif vec.shape[1] == 0 or vec.shape[0] == 0:
+            vec = np.empty(0, np.object)
         else:
             msg = f"{param_name} cannot be a multidimensional scipy.sparse.spmatrix"
             _log.error(msg)
@@ -1314,6 +1329,8 @@ def clean_X(X):
     # called under: fit or predict
 
     if isinstance(X, np.ndarray): # this includes ma.masked_array
+        if X.ndim == 0:
+            return np.empty(0, X.dtype), 0
         return X, 1 if X.ndim == 1 else X.shape[0]
     elif _pandas_installed and isinstance(X, pd.DataFrame):
         return X, X.shape[0]
@@ -1321,13 +1338,17 @@ def clean_X(X):
         return X, X.shape[0]
     elif isinstance(X, dict):
         for val in X.values():
+            if isinstance(val, np.ndarray) and val.ndim == 0:
+                break
             # we don't support iterators for dict, so len should work
             return X, len(val)
-        return X, -1
+        return X, 0
     elif isinstance(X, list) or isinstance(X, tuple):
         is_copied = False
     elif callable(getattr(X, '__array__', None)):
         X = X.__array__()
+        if X.ndim == 0:
+            return np.empty(0, X.dtype), 0
         return X, 1 if X.ndim == 1 else X.shape[0]
     elif X is None:
         msg = "X cannot be None"
@@ -1379,21 +1400,31 @@ def clean_X(X):
                 X = list(X)
             X[idx] = sample.astype(np.object_, copy=False).values
         elif _pandas_installed and isinstance(sample, pd.DataFrame):
-            if sample.shape[0] == 1 or sample.shape[1] == 1:
+            if sample.shape[1] == 1 or sample.shape[0] == 1:
                 if not is_copied:
                     is_copied = True
                     X = list(X)
                 X[idx] = sample.astype(np.object_, copy=False).values.reshape(-1)
+            elif sample.shape[1] == 0 or sample.shape[0] == 0:
+                if not is_copied:
+                    is_copied = True
+                    X = list(X)
+                X[idx] = np.empty(0, np.object_)
             else:
                 msg = f"Cannot reshape to 1D. Original shape was {sample.shape}"
                 _log.error(msg)
                 raise ValueError(msg)
         elif _scipy_installed and isinstance(sample, sp.sparse.spmatrix):
-            if sample.shape[0] == 1 or sample.shape[1] == 1:
+            if sample.shape[1] == 1 or sample.shape[0] == 1:
                 if not is_copied:
                     is_copied = True
                     X = list(X)
                 X[idx] = sample.toarray().reshape(-1)
+            elif sample.shape[1] == 0 or sample.shape[0] == 0:
+                if not is_copied:
+                    is_copied = True
+                    X = list(X)
+                X[idx] = np.empty(0, np.object_)
             else:
                 msg = f"Cannot reshape to 1D. Original shape was {sample.shape}"
                 _log.error(msg)
@@ -1492,8 +1523,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         """
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples"
+        if n_samples == 0:
+            msg = "X has 0 samples"
             _log.error(msg)
             raise ValueError(msg)
 
@@ -1712,33 +1743,30 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = clean_X(X)
-        if n_samples <= 0:
-            msg = "X has no samples"
-            _log.error(msg)
-            raise ValueError(msg)
 
         X_binned = np.empty((n_samples, len(self.feature_names_in_)), dtype=np.int64, order='F')
 
-        native = Native.get_native_singleton()
-        category_iter = (category if isinstance(category, dict) else None for category in self.bins_)
-        requests = zip(count(), category_iter)
-        cols = unify_columns(X, requests, self.feature_names_in_, self.feature_types_in_, None, False)
-        for feature_idx, bins, (_, X_col, _, _) in zip(count(), self.bins_, cols):
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
+        if 0 < n_samples:
+            native = Native.get_native_singleton()
+            category_iter = (category if isinstance(category, dict) else None for category in self.bins_)
+            requests = zip(count(), category_iter)
+            cols = unify_columns(X, requests, self.feature_names_in_, self.feature_types_in_, None, False)
+            for feature_idx, bins, (_, X_col, _, _) in zip(count(), self.bins_, cols):
+                if n_samples != len(X_col):
+                    msg = "The columns of X are mismatched in the number of of samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
 
-            if not isinstance(bins, dict):
-                # continuous feature
+                if not isinstance(bins, dict):
+                    # continuous feature
 
-                if not X_col.flags.c_contiguous:
-                    # X_col could be a slice that has a stride.  We need contiguous for caling into C
-                    X_col = X_col.copy()
+                    if not X_col.flags.c_contiguous:
+                        # X_col could be a slice that has a stride.  We need contiguous for caling into C
+                        X_col = X_col.copy()
 
-                X_col = native.discretize(X_col, bins)
+                    X_col = native.discretize(X_col, bins)
 
-            X_binned[:, feature_idx] = X_col
+                X_binned[:, feature_idx] = X_col
 
         return X_binned
 
@@ -1754,7 +1782,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             Transformed numpy array.
         """
 
-        X, _ = clean_X(X)
+        X, _ = clean_X(X) # materialize any iterators first
         return self.fit(X, y, sample_weight).transform(X)
 
 def deduplicate_bins(bins):
@@ -1990,7 +2018,7 @@ def bin_native_by_dimension(
         feature_types_in, 
     )
 
-def eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
+def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_groups):
     # called under: predict
 
     # prior to calling this function, call deduplicate_bins which will eliminate extra work in this function
@@ -2002,8 +2030,6 @@ def eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
     # For additive models the results can be processed in any order, so this imposes no penalities on us.
 
     _log.info("eval_terms")
-
-    X, n_samples = clean_X(X)
 
     requests = []
     waiting = dict()
@@ -2105,14 +2131,24 @@ def eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
                         requirements.clear()
                         yield feature_group_idx, binned_data
 
-def ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins, intercept, additive_terms, feature_groups):
+def ebm_decision_function(
+    X, 
+    n_samples, 
+    feature_names_in, 
+    feature_types_in, 
+    bins, 
+    intercept, 
+    additive_terms, 
+    feature_groups
+):
     if type(intercept) is float or len(intercept) == 1:
         scores = np.full(n_samples, intercept, dtype=np.float64)
     else:
         scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
 
-    for feature_group_idx, binned_data in eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
-        scores += additive_terms[feature_group_idx][tuple(binned_data)]
+    if 0 < n_samples:
+        for feature_group_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_groups):
+            scores += additive_terms[feature_group_idx][tuple(binned_data)]
 
     return scores
 
@@ -2134,18 +2170,19 @@ def ebm_decision_function_and_explain(
         scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
         explanations = np.empty((n_samples, len(feature_groups), len(intercept)), dtype=np.float64)
 
-    for feature_group_idx, binned_data in eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
-        term_scores = additive_terms[feature_group_idx][tuple(binned_data)]
-        scores += term_scores
-        explanations[:, feature_group_idx] = term_scores
+    if 0 < n_samples:
+        for feature_group_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_groups):
+            term_scores = additive_terms[feature_group_idx][tuple(binned_data)]
+            scores += term_scores
+            explanations[:, feature_group_idx] = term_scores
 
     return scores, explanations
 
-def get_counts_and_weights(X, sample_weight, feature_names_in, feature_types_in, bins, feature_groups):
+def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, feature_groups):
     bin_counts = _none_list * len(feature_groups)
     bin_weights = _none_list * len(feature_groups)
 
-    for feature_group_idx, binned_data in eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups):
+    for feature_group_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_groups):
         features = feature_groups[feature_group_idx]
         multiple = 1
         dimensions = []
@@ -2187,38 +2224,18 @@ def get_counts_and_weights(X, sample_weight, feature_names_in, feature_types_in,
 
     return bin_counts, bin_weights
 
-def unify_data2(is_classification, X, y=None, sample_weight=None, feature_names=None, feature_types=None, missing_data_allowed=False, min_unique_continuous=3):
+def unify_data2(X, n_samples, feature_names=None, feature_types=None, missing_data_allowed=False, min_unique_continuous=3):
     _log.info("Unifying data")
 
-    X, n_samples = clean_X(X)
-    if n_samples <= 0:
-        msg = "X has no samples"
+    if n_samples == 0:
+        # for some callers this might be legal if they've been fitted before, but we'll let the caller
+        # decide how they want to handle this condition
+        msg = "X has 0 samples"
         _log.error(msg)
         raise ValueError(msg)
 
-    classes = None
-    if y is not None:
-        if is_classification:
-            y = clean_vector(y, True, "y")
-            # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
-            # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
-            # in two separate runs, which would flip the ordering of the classes within our score tensors.
-            classes, y = np.unique(y, return_inverse=True)
-        else:
-            y = clean_vector(y, False, "y")
-
-        if n_samples != len(y):
-            msg = f"X has {n_samples} samples and y has {len(y)} samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
-    if sample_weight is not None:
-        sample_weight = clean_vector(sample_weight, False, "sample_weight")
-        if n_samples != len(sample_weight):
-            msg = f"X has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
+    # if feature_names_in and feature_types_in were generated in a call to fit(..) then unify_feature_names
+    # and unify_columns will return the identical names and types
     feature_names_in = unify_feature_names(X, feature_names, feature_types)
     feature_types_in = _none_list * len(feature_names_in)
 
@@ -2265,7 +2282,7 @@ def unify_data2(is_classification, X, y=None, sample_weight=None, feature_names=
                 mapping.itemset(idx, category)
             X_unified[:, feature_idx] = mapping[X_col]
 
-    return X_unified, y, sample_weight, classes, feature_names_in, feature_types_in
+    return X_unified, feature_names_in, feature_types_in
 
 def append_tensor(tensor, append_low=None, append_high=None):
     if append_low is None:

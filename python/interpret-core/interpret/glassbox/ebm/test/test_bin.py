@@ -2261,11 +2261,13 @@ def test_eval_terms():
     feature_groups.append([0, 1, 2])
     additive_terms.append(np.array([[[0.000001, 0.000002, 0], [0.000003, 0.000004, 0], [0, 0, 0]], [[0.000005, 0.000006, 0], [0.000007, 0.000008, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], dtype=np.float64))
 
-    bin_counts, bin_weights = get_counts_and_weights(X, None, feature_names_in, feature_types_in, bins, feature_groups)
+    X, n_samples = clean_X(X)
+
+    bin_counts, bin_weights = get_counts_and_weights(X, n_samples, None, feature_names_in, feature_types_in, bins, feature_groups)
     assert(bin_counts is not None)
     assert(bin_weights is not None)
 
-    result = list(eval_terms(X, feature_names_in, feature_types_in, bins, feature_groups))
+    result = list(eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_groups))
     result = [additive_terms[x[0]][tuple(x[1])] for x in result]
 
     assert(result[0][0] == 0.2)
@@ -2300,7 +2302,7 @@ def test_eval_terms():
     assert(result[5][2] == 0.000008)
     assert(result[5][3] == 0)
 
-    scores = ebm_decision_function(X, X.shape[0], feature_names_in, feature_types_in, bins, np.array([7], dtype=np.float64), additive_terms, feature_groups)
+    scores = ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins, np.array([7], dtype=np.float64), additive_terms, feature_groups)
     assert(math.isclose(scores[0], 7.221547))
     assert(math.isclose(scores[1], 7.332000))
     assert(math.isclose(scores[2], 7.233668))
