@@ -389,11 +389,9 @@ class BaseEBM(BaseEstimator):
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         if isinstance(self.mains, str) and self.mains == "all":
-            feature_groups = [[x] for x in range(n_features_in)]
-        elif isinstance(self.mains, list) and all(isinstance(x, int) for x in self.mains):
-            feature_groups = [[x] for x in self.mains]
-        else:  # pragma: no cover
-            raise RuntimeError("Argument 'mains' has invalid value")
+            feature_groups = [(x,) for x in range(n_features_in)]
+        else:
+            feature_groups = [(int(x),) for x in self.mains]
               
         # Train main effects
         if is_private(self):
@@ -446,24 +444,22 @@ class BaseEBM(BaseEstimator):
         del dataset
         gc.collect()
 
-        breakpoint_iteration = []
+        breakpoint_iteration = [[]]
         models = []
         for model, bag_breakpoint_iteration in results:
-            breakpoint_iteration.append(bag_breakpoint_iteration)
+            breakpoint_iteration[-1].append(bag_breakpoint_iteration)
             models.append(after_boosting(feature_groups, model, term_bin_weights))
 
         interactions = 0 if is_private(self) else self.interactions
-        if not isinstance(interactions, int) and not isinstance(interactions, list):
-            raise ValueError("interactions must be either an int or list")
-
         if n_classes > 2:
-            if isinstance(interactions, int) and interactions != 0:
-                warn("Detected multiclass problem: forcing interactions to 0")
-                interactions = 0
-            if isinstance(interactions, list) and len(interactions) != 0:
+            if isinstance(interactions, int):
+               if interactions != 0:
+                    warn("Detected multiclass problem: forcing interactions to 0")
+                    interactions = 0
+            elif len(interactions) != 0:
                 raise ValueError("interactions are not supported for multiclass")
 
-        if isinstance(interactions, int) and interactions == 0 or isinstance(interactions, list) and len(interactions) == 0:
+        if isinstance(interactions, int) and interactions <= 0 or not isinstance(interactions, int) and len(interactions) == 0:
             # garbage collect anything we can
             del bags 
             del y
@@ -495,7 +491,7 @@ class BaseEBM(BaseEstimator):
             )
             del y # we no longer need this, so allow the garbage collector to reclaim it
 
-            if isinstance(interactions, int) and interactions > 0:
+            if isinstance(interactions, int):
                 _log.info("Estimating with FAST")
 
                 parallel_args = []
@@ -533,27 +529,30 @@ class BaseEBM(BaseEstimator):
                     total_interactions += 1
 
                 n_interactions = min(interactions, total_interactions)
-                pair_indices = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
-
-            elif isinstance(interactions, list):
-                pair_indices = interactions
+                boost_groups = [heapq.heappop(final_ranks)[1] for _ in range(n_interactions)]
+            else:
                 # Check and remove duplicate interaction terms
-                existing_terms = set()
-                unique_terms = []
+                uniquifier = set()
+                boost_groups = []
+                max_dimensions = 0
 
-                for i, term in enumerate(pair_indices):
-                    sorted_tuple = tuple(sorted(term))
-                    if sorted_tuple not in existing_terms:
-                        existing_terms.add(sorted_tuple)
-                        unique_terms.append(term)
+                for feature_group in interactions:
+                    # clean these up since we expose them publically inside self.feature_groups_ 
+                    feature_group = tuple([int(feature_idx) for feature_idx in feature_group])
+
+                    max_dimensions = max(max_dimensions, len(feature_group))
+                    sorted_tuple = tuple(sorted(feature_group))
+                    if sorted_tuple not in uniquifier:
+                        uniquifier.add(sorted_tuple)
+                        boost_groups.append(feature_group)
 
                 # Warn the users that we have made change to the interactions list
-                if len(unique_terms) != len(pair_indices):
+                if len(boost_groups) != len(interactions):
                     warn("Detected duplicate interaction terms: removing duplicate interaction terms")
-                    pair_indices = unique_terms
 
-            else:  # pragma: no cover
-                raise RuntimeError("Argument 'interaction' has invalid value")
+                if 2 < max_dimensions:
+                    warn("Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact.")
+
 
             parallel_args = []
             bagged_seed = init_seed
@@ -564,7 +563,7 @@ class BaseEBM(BaseEstimator):
                         dataset,
                         bags[idx],
                         scores_bags[idx],
-                        pair_indices,
+                        boost_groups,
                         inner_bags,
                         update,
                         self.learning_rate,
@@ -590,11 +589,12 @@ class BaseEBM(BaseEstimator):
             del bags
             gc.collect()
 
+            breakpoint_iteration.append([])
             for idx in range(self.outer_bags):
-                breakpoint_iteration.append(results[idx][1])
-                models[idx].extend(after_boosting(pair_indices, results[idx][0], term_bin_weights))
+                breakpoint_iteration[-1].append(results[idx][1])
+                models[idx].extend(after_boosting(boost_groups, results[idx][0], term_bin_weights))
 
-            feature_groups.extend(pair_indices)
+            feature_groups.extend(boost_groups)
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
@@ -1121,13 +1121,13 @@ class BaseEBM(BaseEstimator):
 
     @property
     def feature_importances_(self):
-        feature_importances = []
+        feature_importances = np.empty(len(self.feature_groups_), np.float64)
         for i in range(len(self.feature_groups_)):
             mean_abs_score = np.abs(self.additive_terms_[i])
             if is_classifier(self) and 2 < len(self.classes_):
                 mean_abs_score = np.average(mean_abs_score, axis=mean_abs_score.ndim - 1)
             mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
-            feature_importances.append(mean_abs_score)
+            feature_importances.itemset(i, mean_abs_score)
         return feature_importances
 
     @property

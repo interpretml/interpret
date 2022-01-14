@@ -47,7 +47,7 @@ def test_multiclass_postprocess_smoke():
     assert "feature_graphs" in results
 
 def valid_ebm(ebm):
-    assert ebm.feature_groups_[0] == [0]
+    assert ebm.feature_groups_[0] == (0,)
 
     for _, model_feature_group in enumerate(ebm.additive_terms_):
         all_finite = np.isfinite(model_feature_group).all()
