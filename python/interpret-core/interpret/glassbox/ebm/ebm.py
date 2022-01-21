@@ -389,9 +389,9 @@ class BaseEBM(BaseEstimator):
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         if isinstance(self.mains, str) and self.mains == "all":
-            feature_groups_unsorted = [(x,) for x in range(n_features_in)]
+            feature_groups = [(x,) for x in range(n_features_in)]
         else:
-            feature_groups_unsorted = [(int(x),) for x in self.mains]
+            feature_groups = [(int(x),) for x in self.mains]
               
         # Train main effects
         if is_private(self):
@@ -420,7 +420,7 @@ class BaseEBM(BaseEstimator):
                     dataset,
                     bags[idx],
                     None,
-                    feature_groups_unsorted,
+                    feature_groups,
                     inner_bags,
                     update,
                     self.learning_rate,
@@ -448,7 +448,7 @@ class BaseEBM(BaseEstimator):
         models = []
         for model, bag_breakpoint_iteration in results:
             breakpoint_iteration[-1].append(bag_breakpoint_iteration)
-            models.append(after_boosting(feature_groups_unsorted, model, term_bin_weights))
+            models.append(after_boosting(feature_groups, model, term_bin_weights))
 
         interactions = 0 if is_private(self) else self.interactions
         if n_classes > 2:
@@ -476,7 +476,7 @@ class BaseEBM(BaseEstimator):
                     bins, 
                     intercept, 
                     model, 
-                    feature_groups_unsorted
+                    feature_groups
                 ))
 
             dataset = bin_native_by_dimension(
@@ -594,31 +594,15 @@ class BaseEBM(BaseEstimator):
                 breakpoint_iteration[-1].append(results[idx][1])
                 models[idx].extend(after_boosting(boost_groups, results[idx][0], term_bin_weights))
 
-            feature_groups_unsorted.extend(boost_groups)
+            feature_groups.extend(boost_groups)
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
-        # to make ordering consistent, always sort by # of feature, then by sorted feature_idxs
-        feature_groups_sortable = [tuple([len(x)] + sorted(x)) for x in feature_groups_unsorted]
-        reindex_fg = list(range(len(feature_groups_sortable)))
-        reindex_fg.sort(key=lambda x: feature_groups_sortable[x])
+        bagged_additive_terms = [np.array([model[idx] for model in models]) for idx in range(len(feature_groups))]
 
-        feature_groups = []
-        bagged_additive_terms = []
-        additive_terms = []
-        term_standard_deviations = []
-        for idx in range(len(feature_groups_unsorted)):
-            # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
-            # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
-
-            old_feature_group_idx = reindex_fg[idx]
-            feature_groups.append(feature_groups_unsorted[old_feature_group_idx])
-            score_tensors = np.array([model[old_feature_group_idx] for model in models], np.float64)
-            bagged_additive_terms.append(score_tensors)
-            averaged_model = np.average(score_tensors, axis=0)
-            model_errors = np.std(score_tensors, axis=0)
-            additive_terms.append(averaged_model)
-            term_standard_deviations.append(model_errors)
+        feature_groups, bagged_additive_terms = list(zip(*sorted(zip(feature_groups, bagged_additive_terms), key=lambda x: [len(x[0])] + sorted(x[0]))))
+        feature_groups = list(feature_groups)
+        bagged_additive_terms = list(bagged_additive_terms)
 
         if is_private(self):
             # for now we only support mains for DP models
@@ -633,6 +617,15 @@ class BaseEBM(BaseEstimator):
                 bins, 
                 feature_groups
             )
+
+        additive_terms = []
+        term_standard_deviations = []
+        for score_tensors in bagged_additive_terms:
+            # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
+            # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
+
+            additive_terms.append(np.average(score_tensors, axis=0))
+            term_standard_deviations.append(np.std(score_tensors, axis=0))
 
         if n_classes <= 2:
             for idx in range(len(feature_groups)):
