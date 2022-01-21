@@ -1,7 +1,7 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from ..linear import LogisticRegression, LinearRegression
+from interpret.glassbox.linear import LogisticRegression, LinearRegression
 from sklearn.datasets import load_breast_cancer, load_boston
 from sklearn.linear_model import LogisticRegression as SKLogistic
 from sklearn.linear_model import Lasso as SKLinear
@@ -128,7 +128,8 @@ def test_logistic_regression_sklearn_compatibility():
     sk_pred = search_sk.predict_proba(X)
     our_pred = search_our.predict_proba(X)
 
-    assert np.allclose(sk_pred, our_pred)
+    assert np.allclose(sk_pred, our_pred, rtol=1e-03, atol=1e-06)
+
 
 
 def test_sorting():
