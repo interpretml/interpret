@@ -65,7 +65,7 @@ def test_unknown_binary_category():
     X_te = data["test"]["X"]
     y_te = data["test"]["y"]
 
-    ebm = ExplainableBoostingClassifier(n_jobs=2, outer_bags=2, interactions=[[0, 13], [13, 3], [1, 2]])
+    ebm = ExplainableBoostingClassifier(n_jobs=2, outer_bags=2, interactions=[[0, 13], [1, 2], [13, 3]])
     ebm.fit(X_tr, y_tr)
 
     test_point = X_te[[0]].copy()
@@ -87,8 +87,8 @@ def test_unknown_binary_category():
     assert perturbed_inter_contrib == 0
 
     # Perturbed interaction contribution (dim 2)
-    country_inter_contrib_2 = ebm.explain_local(test_point).data(0)['scores'][-2]
-    perturbed_inter_contrib_2 = ebm.explain_local(perturbed_point).data(0)['scores'][-2]
+    country_inter_contrib_2 = ebm.explain_local(test_point).data(0)['scores'][-1]
+    perturbed_inter_contrib_2 = ebm.explain_local(perturbed_point).data(0)['scores'][-1]
 
     assert country_inter_contrib_2 != 0
     assert perturbed_inter_contrib_2 == 0
