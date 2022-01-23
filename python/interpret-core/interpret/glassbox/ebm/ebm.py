@@ -598,11 +598,12 @@ class BaseEBM(BaseEstimator):
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
-        bagged_additive_terms = [np.array([model[idx] for model in models]) for idx in range(len(feature_groups))]
+        bagged_additive_terms = (np.array([model[idx] for model in models]) for idx in range(len(feature_groups)))
 
-        feature_groups, bagged_additive_terms = list(zip(*sorted(zip(feature_groups, bagged_additive_terms), key=lambda x: [len(x[0])] + sorted(x[0]))))
-        feature_groups = list(feature_groups)
-        bagged_additive_terms = list(bagged_additive_terms)
+        keys = ([len(feature_group)] + sorted(feature_group) for feature_group in feature_groups)
+        sorted_items = sorted(zip(keys, feature_groups, bagged_additive_terms))
+        feature_groups = [x[1] for x in sorted_items]
+        bagged_additive_terms = [x[2] for x in sorted_items]
 
         if is_private(self):
             # for now we only support mains for DP models
