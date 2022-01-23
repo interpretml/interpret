@@ -22,6 +22,30 @@ import logging
 
 log = logging.getLogger(__name__)
 
+def deduplicate_bins(bins):
+    # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
+    # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
+    # use the id of the bins to identify feature data that was previously binned
+
+    uniques = dict()
+    for feature_idx in range(len(bins)):
+        bin_levels = bins[feature_idx]
+        highest_key = None
+        for level_idx, feature_bins in enumerate(bin_levels):
+            if isinstance(feature_bins, dict):
+                key = frozenset(feature_bins.items())
+            else:
+                key = tuple(feature_bins)
+            existing = uniques.get(key, None)
+            if existing is None:
+                uniques[key] = feature_bins
+            else:
+                bin_levels[level_idx] = existing
+
+            if highest_key != key:
+                highest_key = key
+                highest_idx = level_idx
+        del bin_levels[highest_idx + 1:]
 
 # TODO: Clean up
 class EBMUtils:

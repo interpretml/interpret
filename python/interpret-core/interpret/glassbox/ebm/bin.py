@@ -30,7 +30,7 @@ except ImportError:
     _scipy_installed = False
 
 from .internal import Native
-from .utils import DPUtils
+from .utils import DPUtils, deduplicate_bins
 
 # BIG TODO LIST:
 #- review this entire bin.py file
@@ -1785,32 +1785,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         X, _ = clean_X(X) # materialize any iterators first
         return self.fit(X, y, sample_weight).transform(X)
 
-def deduplicate_bins(bins):
-    # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
-    # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
-    # use the id of the bins to identify feature data that was previously binned
-
-    uniques = dict()
-    for feature_idx in range(len(bins)):
-        bin_levels = bins[feature_idx]
-        highest_key = None
-        for level_idx in range(len(bin_levels)):
-            feature_bins = bin_levels[level_idx]
-            if isinstance(feature_bins, dict):
-                key = frozenset(feature_bins.items())
-            else:
-                key = tuple(feature_bins)
-            existing = uniques.get(key, None)
-            if existing is None:
-                uniques[key] = feature_bins
-            else:
-                bin_levels[level_idx] = existing
-
-            if highest_key != key:
-                highest_key = key
-                highest_idx = level_idx
-        del bin_levels[highest_idx + 1:]
-
 def construct_bins(
     X,
     sample_weight,
@@ -2004,7 +1978,7 @@ def bin_native_by_dimension(
     bins_iter = []
     for feature_idx in feature_idxs:
         bin_levels = bins[feature_idx]
-        feature_bins = bin_levels[-1 if len(bin_levels) < n_dimensions else n_dimensions - 1]
+        feature_bins = bin_levels[min(len(bin_levels), n_dimensions) - 1]
         bins_iter.append(feature_bins)
 
     return bin_native(
@@ -2040,7 +2014,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_g
         requirements[-1] = feature_group_idx
         for feature_idx in feature_idxs:
             bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[-1 if len(bin_levels) < len(feature_idxs) else len(feature_idxs) - 1]
+            feature_bins = bin_levels[min(len(bin_levels), len(feature_idxs)) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
                 request = (feature_idx, feature_bins)
@@ -2085,7 +2059,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_g
                     is_done = True
                     for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                         if term_feature_idx == column_feature_idx:
-                            cuts = bin_levels[-1 if len(bin_levels) < len(feature_idxs) else len(feature_idxs) - 1]
+                            cuts = bin_levels[min(len(bin_levels), len(feature_idxs)) - 1]
                             discretized = cuts_completed.get(id(cuts), None)
                             if discretized is None:
                                 discretized = native.discretize(X_col, cuts)
@@ -2189,7 +2163,7 @@ def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, featur
         for dimension_idx in range(len(features) - 1, -1, -1):
             feature_idx = features[dimension_idx]
             bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[-1 if len(bin_levels) < len(features) else len(features) - 1]
+            feature_bins = bin_levels[min(len(bin_levels), len(features)) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
                 n_bins = 2 if len(feature_bins) == 0 else max(feature_bins.values()) + 2

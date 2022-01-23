@@ -245,6 +245,10 @@ class BaseEBM(BaseEstimator):
             Itself.
         """
 
+        # sometimes building EBMs takes a lot of memory, and sometimes the OS terminates big memory programs without
+        # warning, so clear away as much previous cruft as possible before we allocate big chunks of memory
+        gc.collect()
+
         X, n_samples = clean_X(X)
         if n_samples == 0:
             msg = "X has 0 samples"
@@ -459,11 +463,7 @@ class BaseEBM(BaseEstimator):
             elif len(interactions) != 0:
                 raise ValueError("interactions are not supported for multiclass")
 
-        if isinstance(interactions, int) and interactions <= 0 or not isinstance(interactions, int) and len(interactions) == 0:
-            # garbage collect anything we can
-            del bags 
-            del y
-        else:
+        if isinstance(interactions, int) and 0 < interactions or not isinstance(interactions, int) and 0 < len(interactions):
             scores_bags = []
             for model in models:
                 # TODO: instead of going back to the original data in X, we 
