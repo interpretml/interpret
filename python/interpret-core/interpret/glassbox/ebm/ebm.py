@@ -6,10 +6,9 @@ from typing import DefaultDict
 
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
-from .utils import DPUtils, EBMUtils
-from .bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, restore_missing_value_zeros2, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
+from .utils import DPUtils, EBMUtils, process_terms
+from .bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
 from .internal import Native
-from .postprocessing import multiclass_postprocess2
 from ...utils import unify_data, autogen_schema, unify_vector
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
@@ -269,15 +268,11 @@ class BaseEBM(BaseEstimator):
                 warn("Multiclass is still experimental. Subject to change per release.")
 
             class_idx = {x: index for index, x in enumerate(classes)}
-            intercept = np.zeros(
-                Native.get_count_scores_c(n_classes), dtype=np.float64, order="C",
-            )
         else:
             y = clean_vector(y, False, "y")
             min_target = y.min()
             max_target = y.max()
             n_classes = -1
-            intercept = 0.0
 
         if n_samples != len(y):
             msg = f"X has {n_samples} samples and y has {len(y)} samples"
@@ -464,6 +459,8 @@ class BaseEBM(BaseEstimator):
                 raise ValueError("interactions are not supported for multiclass")
 
         if isinstance(interactions, int) and 0 < interactions or not isinstance(interactions, int) and 0 < len(interactions):
+            initial_intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
+
             scores_bags = []
             for model in models:
                 # TODO: instead of going back to the original data in X, we 
@@ -474,7 +471,7 @@ class BaseEBM(BaseEstimator):
                     feature_names_in, 
                     feature_types_in, 
                     bins, 
-                    intercept, 
+                    initial_intercept, 
                     model, 
                     feature_groups
                 ))
@@ -619,32 +616,12 @@ class BaseEBM(BaseEstimator):
                 feature_groups
             )
 
-        additive_terms = []
-        term_standard_deviations = []
-        for score_tensors in bagged_additive_terms:
-            # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
-            # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
-
-            additive_terms.append(np.average(score_tensors, axis=0))
-            term_standard_deviations.append(np.std(score_tensors, axis=0))
-
-        if n_classes <= 2:
-            for idx in range(len(feature_groups)):
-                score_mean = np.average(additive_terms[idx], weights=bin_weights[idx])
-                additive_terms[idx] = (additive_terms[idx] - score_mean)
-
-                # Add mean center adjustment back to intercept
-                intercept += score_mean
-        else:
-            # Postprocess model graphs for multiclass
-            multiclass_postprocess2(n_classes, n_samples, additive_terms, intercept, bin_weights)
-
-        restore_missing_value_zeros2(additive_terms, bin_weights)
-        restore_missing_value_zeros2(term_standard_deviations, bin_weights)
-
-        # using numpy operations can change this to np.float64, but scikit-learn uses a float for regression
-        if not is_classifier(self):
-            intercept = float(intercept)
+        additive_terms, term_standard_deviations, intercept = process_terms(
+            n_classes, 
+            n_samples, 
+            bagged_additive_terms, 
+            bin_weights
+        )
 
         if is_private(self):
             self.noise_scale_ = noise_scale

@@ -18,9 +18,77 @@ import copy
 from scipy.stats import norm
 from scipy.optimize import root_scalar, brentq
 
+from .postprocessing import multiclass_postprocess2
+
+from itertools import count, chain
+
 import logging
 
 log = logging.getLogger(__name__)
+
+def zero_tensor(tensor, zero_low=None, zero_high=None):
+    entire_tensor = [slice(None) for _ in range(tensor.ndim)]
+    if zero_low is not None:
+        for dimension_idx, is_zero in enumerate(zero_low):
+            if is_zero:
+                dim_slices = entire_tensor.copy()
+                dim_slices[dimension_idx] = 0
+                tensor[tuple(dim_slices)] = 0
+    if zero_high is not None:
+        for dimension_idx, is_zero in enumerate(zero_high):
+            if is_zero:
+                dim_slices = entire_tensor.copy()
+                dim_slices[dimension_idx] = -1
+                tensor[tuple(dim_slices)] = 0
+
+def restore_missing_value_zeros2(tensors, term_bin_weights):
+    for tensor, weights in zip(tensors, term_bin_weights):
+        n_dimensions = weights.ndim
+        entire_tensor = [slice(None)] * n_dimensions
+        lower = []
+        higher = []
+        for dimension_idx in range(n_dimensions):
+            dim_slices = entire_tensor.copy()
+            dim_slices[dimension_idx] = 0
+            total_sum = np.sum(weights[tuple(dim_slices)])
+            lower.append(True if total_sum == 0 else False)
+            dim_slices[dimension_idx] = -1
+            total_sum = np.sum(weights[tuple(dim_slices)])
+            higher.append(True if total_sum == 0 else False)
+        zero_tensor(tensor, lower, higher)
+
+def process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights):
+    additive_terms = []
+    term_standard_deviations = []
+    for score_tensors in bagged_additive_terms:
+        # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
+        # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
+
+        additive_terms.append(np.average(score_tensors, axis=0))
+        term_standard_deviations.append(np.std(score_tensors, axis=0))
+
+    intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
+
+    if n_classes <= 2:
+        for idx in range(len(bagged_additive_terms)):
+            score_mean = np.average(additive_terms[idx], weights=bin_weights[idx])
+            additive_terms[idx] = (additive_terms[idx] - score_mean)
+
+            # Add mean center adjustment back to intercept
+            intercept += score_mean
+    else:
+        # Postprocess model graphs for multiclass
+        multiclass_postprocess2(n_classes, n_samples, additive_terms, intercept, bin_weights)
+
+    restore_missing_value_zeros2(additive_terms, bin_weights)
+    restore_missing_value_zeros2(term_standard_deviations, bin_weights)
+
+    if n_classes < 0:
+        # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
+        intercept = float(intercept)
+
+    return additive_terms, term_standard_deviations, intercept
+
 
 def deduplicate_bins(bins):
     # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
@@ -46,6 +114,169 @@ def deduplicate_bins(bins):
                 highest_key = key
                 highest_idx = level_idx
         del bin_levels[highest_idx + 1:]
+
+def _harmonize_tensor(
+    new_feature_group, 
+    new_bins, 
+    new_mins, 
+    new_maxes, 
+    old_feature_group, 
+    old_bins, 
+    old_mins, 
+    old_maxes, 
+    old_tensor, 
+    is_proportional
+):
+    old_feature_group = list(old_feature_group)
+
+    axes = []
+    for feature_idx in new_feature_group:
+        old_idx = old_feature_group.index(feature_idx)
+        old_feature_group[old_idx] = -1 # in case we have duplicate feature idxs
+        axes.append(old_idx)
+
+
+    if len(axes) != old_tensor.ndim:
+        # multiclass. The last dimension always stays put
+        axes.append(len(axes))
+
+    old_tensor = old_tensor.transpose(tuple(axes))
+
+    lookups = []
+    percentages = []
+    for feature_idx in new_feature_group:
+        old_bin_levels = old_bins[feature_idx]
+        old_feature_bins = old_bin_levels[min(len(old_bin_levels), len(old_feature_group)) - 1]
+
+        new_bin_levels = new_bins[feature_idx]
+        new_feature_bins = new_bin_levels[min(len(new_bin_levels), len(new_feature_group)) - 1]
+
+
+        if isinstance(old_feature_bins, dict):
+            # categorical feature
+
+            old_reversed = dict()
+            for category, bin_idx in old_feature_bins.items():
+                category_list = old_reversed.get(bin_idx)
+                if category_list is None:
+                    old_reversed[bin_idx] = [category]
+                else:
+                    category_list.append(category)
+
+            new_reversed = dict()
+            for category, bin_idx in new_feature_bins.items():
+                category_list = new_reversed.get(bin_idx)
+                if category_list is None:
+                    new_reversed[bin_idx] = [category]
+                else:
+                    category_list.append(category)
+            new_reversed = sorted(new_reversed.items())
+
+            lookup = [0]
+            percentage = [1.0]
+            for _, new_categories in new_reversed:
+                # if there are two items in new_categories then they should both resolve
+                # to the same index in old_feature_bins otherwise they would have been
+                # split into two categories
+                old_bin_idx = old_feature_bins.get(new_categories[0], -1)
+                if 0 <= old_bin_idx:
+                    percentage.append(len(new_categories) / len(old_reversed[old_bin_idx]))
+                else:
+                    percentage.append(np.nan)
+                    if not is_proportional:
+                        old_bin_idx = len(old_reversed) + 1 # use the unknown value for scores
+                lookup.append(old_bin_idx)
+            percentage.append(1.0)
+            lookup.append(len(old_reversed) + 1)
+        else:
+            # continuous feature
+
+            lookup = list(np.searchsorted(old_feature_bins, new_feature_bins) + 1)
+            lookup.append(len(old_feature_bins) + 1)
+
+            percentage = [1.0]
+            for new_idx_minus_one, old_idx in enumerate(lookup):
+                if new_idx_minus_one == 0:
+                    new_low = new_mins[feature_idx]
+                    # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
+                else:
+                    new_low = new_feature_bins[new_idx_minus_one - 1]
+
+                if len(new_feature_bins) <= new_idx_minus_one:
+                    new_high = new_maxes[feature_idx]
+                    # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
+                else:
+                    new_high = new_feature_bins[new_idx_minus_one]
+
+
+                if old_idx == 1:
+                    old_low = old_mins[feature_idx]
+                    # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
+                else:
+                    old_low = old_feature_bins[old_idx - 2]
+
+                if len(old_feature_bins) < old_idx:
+                    old_high = old_maxes[feature_idx]
+                    # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
+                else:
+                    old_high = old_feature_bins[old_idx - 1]
+
+                if old_high <= new_low or new_high <= old_low:
+                    # if there are bins in the area above where the old data extended, then 
+                    # we'll have zero contribution in the old data where these new bins are
+                    # located
+                    percentage.append(0)
+                else:
+                    if new_low < old_low:
+                        # this can't happen except at the lowest bin where the new min can be
+                        # lower than the old min.  In that case we know the old data
+                        # had zero contribution between the new min to the old min.
+                        new_low = old_low
+
+                    if old_high < new_high:
+                        # this can't happen except at the lowest bin where the new max can be
+                        # higher than the old max.  In that case we know the old data
+                        # had zero contribution between the new max to the old max.
+                        new_high = old_high
+
+                    percentage.append((new_high - new_low) / (old_high - old_low))
+
+            percentage.append(1.0)
+            lookup.insert(0, 0)
+            lookup.append(len(old_feature_bins) + 2)
+
+        lookups.append(lookup)
+        percentages.append(percentage)
+
+    new_shape = tuple(len(lookup) for lookup in lookups)
+    n_cells = np.prod(new_shape)
+
+    lookups.reverse()
+    percentages.reverse()
+
+    # now we need to inflate it
+    new_tensor = np.empty(n_cells, np.float64)
+    for cell_idx in range(n_cells):
+        remainder = cell_idx
+        old_reversed_bin_idxs = []
+        frac = 1
+        for lookup, percentage in zip(lookups, percentages):
+            n_bins = len(lookup)
+            new_bin_idx = remainder % n_bins
+            remainder //= n_bins
+            old_reversed_bin_idxs.append(lookup[new_bin_idx])
+            frac *= percentage[new_bin_idx]
+
+        if any(bin_idx < 0 for bin_idx in old_reversed_bin_idxs):
+            val = 0 # categorical that exists in the new tensor but not the old one
+        else:
+            val = old_tensor[tuple(reversed(old_reversed_bin_idxs))]
+            if is_proportional:
+                val *= frac
+        new_tensor.itemset(cell_idx, val)
+    new_tensor = new_tensor.reshape(new_shape)
+    return new_tensor
+
 
 # TODO: Clean up
 class EBMUtils:
@@ -74,7 +305,7 @@ class EBMUtils:
             raise Exception("at least two models are required to merge.")
 
         # many features are invalid. preprocessor_ and pair_preprocessor_ are cloned form the first model.
-        ebm = copy.deepcopy(models[0]) 
+        ebm = copy.deepcopy(models[0])
 
         ebm.additive_terms_ = []
         ebm.term_standard_deviations_ = []
@@ -83,7 +314,7 @@ class EBMUtils:
          
         if not all([  model.preprocessor_.col_types_ == ebm.preprocessor_.col_types_ for model in models]):  # pragma: no cover
             raise Exception("All models should have the same types of features.")
-       
+
         if not all([  model.preprocessor_.col_bin_edges_.keys() == ebm.preprocessor_.col_bin_edges_.keys() for model in models]):  # pragma: no cover
             raise Exception("All models should have the same types of numeric features.")
 

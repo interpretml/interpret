@@ -69,7 +69,7 @@ def _smoke_test_explanations(global_exp, local_exp, port):
         preserve(global_exp, selector_key)
 
     shutdown_show_server()
-            
+
 @pytest.mark.skip(reason="merge_models needs to be updated")
 def test_merge_models():
     
@@ -81,26 +81,32 @@ def test_merge_models():
     
     seed =1
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=seed)
-    ebm1 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1)
+    ebm1 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=2, interactions=[(8,7)])
 
     ebm1.fit(X_train, y_train)  
 
     seed +=10
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=seed)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.40, random_state=seed)
 
-    ebm2 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1)
+    ebm2 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=3, interactions=[(8, 2), (10, 11), (12, 7)])
     ebm2.fit(X_train, y_train)  
 
     seed +=10
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=seed)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.60, random_state=seed)
 
-    ebm3 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1)
+    ebm3 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=4, interactions=[(12, 7), (2, 8)])
     ebm3.fit(X_train, y_train) 
         
-    models = [ebm1, ebm2 , ebm3]
-    merged_ebm = EBMUtils.merge_models(models=models)
+    merged_ebm = EBMUtils.merge_models([ebm1, ebm2 , ebm3])
 
-    ebm_global = merged_ebm.explain_global(name='EBM')
+    seed +=10
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.80, random_state=seed)
+    ebm4 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=8, interactions=2)
+    ebm4.fit(X_train, y_train) 
+        
+    remerged_ebm = EBMUtils.merge_models([merged_ebm, ebm4])
+
+    ebm_global = remerged_ebm.explain_global(name='EBM')
     
     valid_ebm(merged_ebm)
 

@@ -2291,21 +2291,6 @@ def trim_tensor(tensor, trim_low=None, trim_high=None):
             dim_slices = [slice(int(is_low), -1 if is_high else None) for dim_len, is_low, is_high in zip(tensor.shape, trim_low, trim_high)]
     return tensor[tuple(dim_slices)]
 
-def zero_tensor(tensor, zero_low=None, zero_high=None):
-    entire_tensor = [slice(None) for _ in range(tensor.ndim)]
-    if zero_low is not None:
-        for dimension_idx, is_zero in enumerate(zero_low):
-            if is_zero:
-                dim_slices = entire_tensor.copy()
-                dim_slices[dimension_idx] = 0
-                tensor[tuple(dim_slices)] = 0
-    if zero_high is not None:
-        for dimension_idx, is_zero in enumerate(zero_high):
-            if is_zero:
-                dim_slices = entire_tensor.copy()
-                dim_slices[dimension_idx] = -1
-                tensor[tuple(dim_slices)] = 0
-
 def make_boosting_weights(term_bin_weights):
     # TODO: replace this function with a bool array that we generate in bin_native.. this function will crash
     # if there are samples with zero weights
@@ -2316,22 +2301,6 @@ def make_boosting_weights(term_bin_weights):
         else:
             bin_data_weights.append(term_weights)
     return bin_data_weights
-
-def restore_missing_value_zeros2(tensors, term_bin_weights):
-    for tensor, weights in zip(tensors, term_bin_weights):
-        n_dimensions = weights.ndim
-        entire_tensor = [slice(None)] * n_dimensions
-        lower = []
-        higher = []
-        for dimension_idx in range(n_dimensions):
-            dim_slices = entire_tensor.copy()
-            dim_slices[dimension_idx] = 0
-            total_sum = np.sum(weights[tuple(dim_slices)])
-            lower.append(True if total_sum == 0 else False)
-            dim_slices[dimension_idx] = -1
-            total_sum = np.sum(weights[tuple(dim_slices)])
-            higher.append(True if total_sum == 0 else False)
-        zero_tensor(tensor, lower, higher)
 
 def after_boosting(feature_groups, tensors, feature_bin_weights):
     # TODO: this isn't a problem today since any unnamed categories in the mains and the pairs are the same
