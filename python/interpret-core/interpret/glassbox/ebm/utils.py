@@ -681,14 +681,6 @@ class EBMUtils:
             raise Exception("test_size must be a positive numeric value.")
 
     @staticmethod
-    def gen_feature_group_name(feature_idxs, col_names):
-        return " x ".join([col_names[i] for i in feature_idxs])
-
-    @staticmethod
-    def gen_feature_group_type(feature_idxs, col_types):
-        return col_types[feature_idxs[0]] if len(feature_idxs) == 1 else "interaction"
-
-    @staticmethod
     def jsonify_lists(vals):
         if len(vals) != 0:
             if type(vals[0]) is float:

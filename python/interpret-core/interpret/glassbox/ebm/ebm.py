@@ -1112,12 +1112,11 @@ class BaseEBM(BaseEstimator):
 
     @property
     def term_names_(self):
-        return [EBMUtils.gen_feature_group_name(feature_idxs, self.feature_names_in_) for feature_idxs in self.feature_groups_]
-
+        return [" x ".join(self.feature_names_in_[i] for i in grp) for grp in self.feature_groups_]
+    
     @property
     def term_types_(self):
-        return [EBMUtils.gen_feature_group_type(feature_idxs, self.feature_types_in_) for feature_idxs in self.feature_groups_]
-
+        return [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.feature_groups_]
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
