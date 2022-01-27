@@ -795,6 +795,9 @@ class BaseEBM(BaseEstimator):
 
         bounds = (lower_bound, upper_bound)
 
+        term_names = self.get_feature_names_out()
+        term_types = self.get_feature_types_out()
+
         native = Native.get_native_singleton()
 
         # Add per feature graph
@@ -940,12 +943,14 @@ class BaseEBM(BaseEstimator):
                 }
                 data_dicts.append(data_dict)
             else:  # pragma: no cover
-                warn(f"Dropping feature {self.term_names_[feature_group_index]} from explanation since we can't graph more than 2 dimensions.")
+                warn(f"Dropping feature {term_names[feature_group_index]} from explanation since we can't graph more than 2 dimensions.")
+
+        importances = self.get_importances()
 
         overall_dict = {
             "type": "univariate",
-            "names": [self.term_names_[i] for i in keep_idxs],
-            "scores": [self.feature_importances_[i] for i in keep_idxs],
+            "names": [term_names[i] for i in keep_idxs],
+            "scores": [importances[i] for i in keep_idxs],
         }
         internal_obj = {
             "overall": overall_dict,
@@ -962,10 +967,10 @@ class BaseEBM(BaseEstimator):
         return EBMExplanation(
             "global",
             internal_obj,
-            feature_names=[self.term_names_[i] for i in keep_idxs],
-            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [self.term_types_[i] for i in keep_idxs]],
+            feature_names=[term_names[i] for i in keep_idxs],
+            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [term_types[i] for i in keep_idxs]],
             name=name,
-            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, [self.term_names_[i] for i in keep_idxs], ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [self.term_types_[i] for i in keep_idxs]], getattr(self, 'unique_counts_', None), getattr(self, 'zero_counts_', None)),
+            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, [term_names[i] for i in keep_idxs], ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [term_types[i] for i in keep_idxs]], getattr(self, 'unique_counts_', None), getattr(self, 'zero_counts_', None)),
         )
 
     def explain_local(self, X, y=None, name=None):
@@ -1000,6 +1005,9 @@ class BaseEBM(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
+        term_names = self.get_feature_names_out()
+        term_types = self.get_feature_types_out()
+
         data_dicts = []
         perf_list = []
         if n_samples == 0:
@@ -1026,7 +1034,6 @@ class BaseEBM(BaseEstimator):
                     }
                 data_dicts.append(data_dict)
 
-            term_names = self.term_names_
             for set_idx, binned_data in eval_terms(X, n_samples, self.feature_names_in_, self.feature_types_in_, self.bins_, self.feature_groups_):
                 scores = self.additive_terms_[set_idx][tuple(binned_data)]
                 feature_group = self.feature_groups_[set_idx]
@@ -1093,29 +1100,31 @@ class BaseEBM(BaseEstimator):
         return EBMExplanation(
             "local",
             internal_obj,
-            feature_names=self.term_names_,
-            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in self.term_types_],
+            feature_names=term_names,
+            feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in term_types],
             name=gen_name_from_class(self) if name is None else name,
             selector=selector,
         )
 
-    @property
-    def feature_importances_(self):
-        feature_importances = np.empty(len(self.feature_groups_), np.float64)
-        for i in range(len(self.feature_groups_)):
-            mean_abs_score = np.abs(self.additive_terms_[i])
-            if is_classifier(self) and 2 < len(self.classes_):
-                mean_abs_score = np.average(mean_abs_score, axis=mean_abs_score.ndim - 1)
-            mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
-            feature_importances.itemset(i, mean_abs_score)
-        return feature_importances
+    def get_importances(self, style='avg_weight'):
+        if style == 'avg_weight':
+            feature_importances = np.empty(len(self.feature_groups_), np.float64)
+            for i in range(len(self.feature_groups_)):
+                mean_abs_score = np.abs(self.additive_terms_[i])
+                if is_classifier(self) and 2 < len(self.classes_):
+                    mean_abs_score = np.average(mean_abs_score, axis=mean_abs_score.ndim - 1)
+                mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
+                feature_importances.itemset(i, mean_abs_score)
+            return feature_importances
+        elif style == 'max':
+            return np.array([np.max(np.abs(tensor)) for tensor in self.additive_terms_], np.float64)
+        else:
+            raise ValueError(f"Unrecognized style: {style}")
 
-    @property
-    def term_names_(self):
+    def get_feature_names_out(self):
         return [" x ".join(self.feature_names_in_[i] for i in grp) for grp in self.feature_groups_]
     
-    @property
-    def term_types_(self):
+    def get_feature_types_out(self):
         return [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.feature_groups_]
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
