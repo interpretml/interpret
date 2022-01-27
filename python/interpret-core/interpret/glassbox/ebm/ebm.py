@@ -834,12 +834,13 @@ class BaseEBM(BaseEstimator):
 
                     bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
 
-                    if is_private(self):
-                        names = feature_bins
-                        densities = list(mod_counts[feature_group_index])
-                    else:
+                    if hasattr(self, 'histogram_cuts_') and hasattr(self, 'histogram_counts_'):
                         names = self.histogram_cuts_[feature_index0]
                         densities = list(self.histogram_counts_[feature_index0][1:-1])
+                    else:
+                        names = feature_bins
+                        densities = list(mod_counts[feature_group_index])
+
                     names = list(np.concatenate(([min_val], names, [max_val])))
 
                 scores = list(model_graph)

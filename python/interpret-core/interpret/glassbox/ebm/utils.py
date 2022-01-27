@@ -57,15 +57,19 @@ def restore_missing_value_zeros2(tensors, term_bin_weights):
             higher.append(True if total_sum == 0 else False)
         zero_tensor(tensor, lower, higher)
 
-def process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights):
+def process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag_weights=None):
     additive_terms = []
     term_standard_deviations = []
     for score_tensors in bagged_additive_terms:
         # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
         # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
 
-        additive_terms.append(np.average(score_tensors, axis=0))
-        term_standard_deviations.append(np.std(score_tensors, axis=0))
+        if bag_weights is None:
+            additive_terms.append(np.average(score_tensors, axis=0))
+            term_standard_deviations.append(np.std(score_tensors, axis=0))
+        else:
+            additive_terms.append(np.average(score_tensors, axis=0, weights=bag_weights))
+            term_standard_deviations.append(EBMUtils.weighted_std(score_tensors, axis=0, weights=bag_weights))
 
     intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
 
@@ -299,154 +303,264 @@ class EBMUtils:
             An EBM model with averaged mean and standard deviation of input models.
         """
 
-        raise Exception("merge_models under re-construction")
+
+        # TODO: merge_models is public and shouldn't be exposed inside the EBMUtils class
+
+        # TODO: We're not currently moving over any of the __init__ parameters, but we should do that
 
         if len(models) < 2:  # pragma: no cover
-            raise Exception("at least two models are required to merge.")
+            raise Exception("At least two models are required to merge.")
 
-        # many features are invalid. preprocessor_ and pair_preprocessor_ are cloned form the first model.
+        if len(set(type(model) for model in models)) != 1:  # pragma: no cover
+            # TODO: we might be able to relax this and merge for instance a DP classification model with a non-DP one
+            raise Exception("All models should be the same type.")
+
         ebm = copy.deepcopy(models[0])
 
-        ebm.additive_terms_ = []
-        ebm.term_standard_deviations_ = []
+        type_name = type(ebm).__name__
+        if type_name not in {'ExplainableBoostingClassifier', 'DPExplainableBoostingClassifier', 'ExplainableBoostingRegressor', 'DPExplainableBoostingRegressor'}:
+            raise Exception(f"Unknown EBM model type {type_name}.")
+
+        is_classifier = type_name == 'ExplainableBoostingClassifier' or type_name == 'DPExplainableBoostingClassifier'
+        is_private = type_name == 'DPExplainableBoostingClassifier' or type_name == 'DPExplainableBoostingRegressor'
+
+        if any(not getattr(model, 'has_fitted_', False) for model in models):  # pragma: no cover
+            raise Exception("All models must be fitted.")
+
+        if any(ebm.n_features_in_ != model.n_features_in_ for model in models):  # pragma: no cover
+            raise Exception("All models should have the same number of features.")
+
+        if any(ebm.feature_names_in_ != model.feature_names_in_ for model in models):  # pragma: no cover
+            raise Exception("All models should have the same feature names.")
+
+        if any(ebm.feature_types_in_ != model.feature_types_in_ for model in models):  # pragma: no cover
+            raise Exception("All models should have the same feature types.")
+
+        if ebm.n_features_in_ != len(ebm.feature_names_in_ ):  # pragma: no cover
+            raise Exception("Bad model format.  Number of features doesn't match feature names.")
+
+        if ebm.n_features_in_ != len(ebm.feature_types_in_ ):  # pragma: no cover
+            raise Exception("Bad model format.  Number of features doesn't match feature types.")
+
+        if is_private:
+            if hasattr(ebm, 'noise_scale_'):
+                del ebm.noise_scale_ # TODO ask Harsha if we can/should estimate this
+        else:
+            ebm.n_samples_ = sum(model.n_samples_ for model in models)
+
+            # TODO: we could probably use the overall min/max to construct new bins (using the max number of histogram bins), 
+            # and then approximate the counts by proportioning them
+            if hasattr(ebm, 'histogram_cuts_'):
+                del ebm.histogram_cuts_
+            if hasattr(ebm, 'histogram_counts_'):
+                del ebm.histogram_counts_
+
+            if hasattr(ebm, 'unique_counts_'):
+                del ebm.unique_counts_
+
+            ebm.zero_counts_ = sum(model.zero_counts_ for model in models)
+
+            # TODO: we could probably estimate these like we do with weights but with the added step
+            # of afterwards re-integerizing the counts by putting residuals into the most likely bins
+            if hasattr(ebm, 'bin_counts_'):
+                del ebm.bin_counts_
+
+        if is_classifier:
+            if any(not np.array_equal(ebm.classes_, model.classes_) for model in models):  # pragma: no cover
+                raise Exception("The target classes should be identical.")
+
+            ebm._class_idx_ = {x: index for index, x in enumerate(ebm.classes_)}
+            n_classes = len(ebm.classes_)
+        else:
+            ebm.min_target_ = min(model.min_target_ for model in models)
+            ebm.max_target_ = max(model.max_target_ for model in models)
+            n_classes = -1
+
+        min_vals = [model.min_vals_ for model in models if getattr(model, 'min_vals_', None) is not None]
+        max_vals = [model.max_vals_ for model in models if getattr(model, 'max_vals_', None) is not None]
+
+        if any(ebm.n_features_in_ != len(model_mins) for model_mins in min_vals):  # pragma: no cover
+            raise Exception("All min_vals_ should have the same length as the number of features.")
+
+        if any(ebm.n_features_in_ != len(model_maxes) for model_maxes in max_vals):  # pragma: no cover
+            raise Exception("All max_vals_ should have the same length as the number of features.")
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+
+            if hasattr(ebm, 'min_vals_'):
+                del ebm.min_vals_
+            if 0 < len(min_vals):
+                ebm.min_vals_ = np.nanmin(min_vals, axis=0)
+
+            if hasattr(ebm, 'max_vals_'):
+                del ebm.max_vals_
+            if 0 < len(max_vals):
+                ebm.max_vals_ = np.nanmax(max_vals, axis=0)
+
+        if hasattr(ebm, 'breakpoint_iteration_'):
+            del ebm.breakpoint_iteration_
+
+        if any(ebm.n_features_in_ != len(model.bins_) for model in models):  # pragma: no cover
+            raise Exception("All bins_ should have the same length as the number of features.")
+
+        new_bins = []
+        for idx in range(ebm.n_features_in_):
+            level_end = max(len(model.bins_[idx]) for model in models)
+            new_leveled_bins = []
+            for level_idx in range(level_end):
+                bagged_bins = []
+                for model in models:
+                    bin_levels = model.bins_[idx]
+                    bagged_bins.append(bin_levels[min(level_idx, len(bin_levels) - 1)])
+
+                if len(set(type(bins) for bins in bagged_bins)) != 1:  # pragma: no cover
+                    raise Exception("All models should have the same feature types.")
+
+                if isinstance(bagged_bins[0], dict):
+                    # categorical
+                    merged_keys = sorted(set(chain.from_iterable(bin.keys() for bin in bagged_bins)))
+                    # TODO: for now we just support alphabetical ordering in merged models, but
+                    # we could do all sort of special processing like trying to figure out if the original
+                    # ordering was by prevalence or alphabetical and then attempting to preserve that
+                    # order and also handling merged categories (where two categories map to a single score)
+                    merged_bins = dict(zip(merged_keys, count(1)))
+                else:
+                    # continuous
+                    merged_bins = np.array(sorted(set(chain.from_iterable(bagged_bins))), np.float64)
+                new_leveled_bins.append(merged_bins)
+            new_bins.append(new_leveled_bins)
+        deduplicate_bins(new_bins)
+        ebm.bins_ = new_bins
+
+        bag_weights = []
+        model_weights = []
+        for model in models:
+            avg_weight = np.average([tensor.sum() for tensor in model.bin_weights_])
+            model_weights.append(avg_weight)
+
+            n_outer_bags = -1
+            if hasattr(model, 'bagged_additive_terms_'):
+                if 0 < len(model.bagged_additive_terms_):
+                    n_outer_bags = len(model.bagged_additive_terms_[0])
+
+            model_bag_weights = getattr(model, 'bag_weights_', None)
+            if model_bag_weights is None:
+                # this model wasn't the result of a merge, so get the total weight for the model
+                # every feature group in a model should have the same weight, but perhaps the user edited
+                # the model weights and they don't agree.  We handle these by taking the average
+                model_bag_weights = [avg_weight] * n_outer_bags
+            elif len(model_bag_weights) != n_outer_bags:
+                raise Exception("self.bagged_weights_ should have the same length as n_outer_bags.")
+
+            bag_weights.extend(model_bag_weights)
+        # this attribute wasn't available in the original model since we can calculate it for non-merged
+        # models, but once a model is merged we need to preserve it for future merging or other uses
+        # of the ebm.bagged_additive_terms_ attribute
+        ebm.bag_weights_ = bag_weights
+
+        fg_dicts = []
+        all_fg = set()
+        for model in models:
+            fg_sorted = [tuple(sorted(feature_group)) for feature_group in model.feature_groups_]
+            fg_dicts.append(dict(zip(fg_sorted, count(0))))
+            all_fg.update(fg_sorted)
+
+        all_fg = list(all_fg)
+        keys = ([len(feature_group)] + sorted(feature_group) for feature_group in all_fg)
+        sorted_items = sorted(zip(keys, all_fg))
+        sorted_fgs = [x[1] for x in sorted_items]
+        # TODO: in the future we might at this point try and figure out the most 
+        #       common feature ordering within the feature groups
+        ebm.feature_groups_ = sorted_fgs
+
+
+        ebm.bin_weights_ = []
         ebm.bagged_additive_terms_ = []
-        ebm.pair_preprocessor_ = None       
-         
-        if not all([  model.preprocessor_.col_types_ == ebm.preprocessor_.col_types_ for model in models]):  # pragma: no cover
-            raise Exception("All models should have the same types of features.")
+        for sorted_fg in sorted_fgs:
+            # many times we'll have interaction mismatches where an interaction will be in one
+            # model, but not the other.  We need to estimate the bin_weight_ tensors that would have been, 
+            # so we'll use the feature groups that we do have to estimate the distribution of weight
+            # and then scale it by the weights in each bag
 
-        if not all([  model.preprocessor_.col_bin_edges_.keys() == ebm.preprocessor_.col_bin_edges_.keys() for model in models]):  # pragma: no cover
-            raise Exception("All models should have the same types of numeric features.")
+            bin_weight_percentages = []
+            for model, fg_dict, model_weight in zip(models, fg_dicts, model_weights):
+                feature_group_idx = fg_dict.get(sorted_fg)
+                if feature_group_idx is not None:
+                    fixed_tensor = _harmonize_tensor(
+                        sorted_fg,
+                        ebm.bins_, 
+                        ebm.min_vals_,
+                        ebm.max_vals_,
+                        model.feature_groups_[feature_group_idx], 
+                        model.bins_,
+                        model.min_vals_,
+                        model.max_vals_,
+                        model.bin_weights_[feature_group_idx], 
+                        True
+                    )
+                    bin_weight_percentages.append(fixed_tensor * model_weight)
 
+            # use this when we don't have a feature group in a model as a reasonable 
+            # set of guesses for the distribution of the weight of the model
+            bin_weight_percentages = np.sum(bin_weight_percentages, axis=0)
+            bin_weight_percentages = bin_weight_percentages / bin_weight_percentages.sum()
 
-        if not all([  model.preprocessor_.col_mapping_.keys() == ebm.preprocessor_.col_mapping_.keys() for model in models]):  # pragma: no cover
-            raise Exception("All models should have the same types of categorical features.")
+            additive_shape = bin_weight_percentages.shape
+            if 2 < n_classes:
+                additive_shape = tuple(list(additive_shape) + [n_classes])
 
-        if is_classifier(ebm):  # pragma: no cover
-            if not all([is_classifier(model) for model in models]):
-                raise Exception("All models should be the same type.")
-        else:  # pragma: no cover
-            # Check if ebm is a regressor
-            if any([is_classifier(model) for model in models]):
-                raise Exception("All models should be the same type.")
+            new_bin_weights = []
+            new_bagged_additive_terms = []
+            for model, fg_dict, model_weight in zip(models, fg_dicts, model_weights):
+                n_outer_bags = -1
+                if hasattr(model, 'bagged_additive_terms_'):
+                    if 0 < len(model.bagged_additive_terms_):
+                        n_outer_bags = len(model.bagged_additive_terms_[0])
 
-        main_feature_len = len(ebm.preprocessor_.feature_names)
+                feature_group_idx = fg_dict.get(sorted_fg)
+                if feature_group_idx is None:
+                    new_bin_weights.append(model_weight * bin_weight_percentages)
+                    new_bagged_additive_terms.extend(n_outer_bags * [np.zeros(additive_shape, np.float64)])
+                else:
+                    harmonized_bin_weights = _harmonize_tensor(
+                        sorted_fg,
+                        ebm.bins_, 
+                        ebm.min_vals_,
+                        ebm.max_vals_,
+                        model.feature_groups_[feature_group_idx], 
+                        model.bins_,
+                        model.min_vals_,
+                        model.max_vals_,
+                        model.bin_weights_[feature_group_idx], 
+                        True
+                    )
+                    new_bin_weights.append(harmonized_bin_weights)
+                    for bag_idx in range(n_outer_bags):
+                        harmonized_bagged_additive_terms = _harmonize_tensor(
+                            sorted_fg,
+                            ebm.bins_, 
+                            ebm.min_vals_,
+                            ebm.max_vals_,
+                            model.feature_groups_[feature_group_idx], 
+                            model.bins_,
+                            model.min_vals_,
+                            model.max_vals_,
+                            model.bagged_additive_terms_[feature_group_idx][bag_idx], 
+                            False
+                        )
+                        new_bagged_additive_terms.append(harmonized_bagged_additive_terms)
+            ebm.bin_weights_.append(np.sum(new_bin_weights, axis=0))
+            ebm.bagged_additive_terms_.append(np.array(new_bagged_additive_terms, np.float64))
 
-        ebm.feature_groups_ = ebm.feature_groups_[:main_feature_len] 
-        ebm.feature_names = ebm.feature_names[:main_feature_len] 
-        ebm.feature_types = ebm.feature_types[:main_feature_len]
+        ebm.additive_terms_, ebm.term_standard_deviations_, ebm.intercept_ = process_terms(
+            n_classes, 
+            ebm.n_samples_, 
+            ebm.bagged_additive_terms_, 
+            ebm.bin_weights_,
+            ebm.bag_weights_
+        )
 
-        ebm.global_selector = ebm.global_selector.iloc[:main_feature_len]
-        ebm.interactions = 0
-        
-        warnings.warn("Interaction features are not supported.")
-       
-        ebm.additive_terms_ = []
-        ebm.term_standard_deviations_ = []
-
-        ebm.bagged_additive_terms_ = []
-        for term_idx in range(len(ebm.feature_groups_)):
-            bags = []
-            ebm.bagged_additive_terms_.append(bags)
-            for x in models:
-                bags.extend(x.bagged_additive_terms_[term_idx])
-
-        for index, feature_group in enumerate(ebm.feature_groups_):
-
-            # Exluding interaction features 
-            if len(feature_group) != 1:                
-                continue
-
-            log_odds_tensors = []
-            bin_weights = []
-            
-            # numeric features
-            if index in ebm.preprocessor_.col_bin_edges_.keys():           
-                        
-                # merging all bin edges for the current feature across all models.        
-                merged_bin_edges = sorted(set().union(*[ set(model.preprocessor_.col_bin_edges_[index]) for model in models]))
-                
-                ebm.preprocessor_.col_bin_edges_[index] = np.array(merged_bin_edges)
-                
-            
-                estimator_idx=0
-                for model in models:            
-                    # Merging the bin edges for different models for each feature group
-                    bin_edges = model.preprocessor_.col_bin_edges_[index]
-                    bin_counts = model.preprocessor_.col_bin_counts_[index]
-
-                    #bin_idx contains the index of each new merged bin edges against the existing bin edges
-                    bin_idx = np.searchsorted(bin_edges, merged_bin_edges + [np.inf])   
-                    # the first element of adjusted bin indexes is used for weighted average of misssing values.
-                    adj_bin_idx = [0] + ( [ x+1 for x in bin_idx ])
-                    
-                    # new_bin_count_ =  [ bin_counts[x] for x in adj_bin_idx ]  
-                                        
-                    # All the estimators of one ebm model share the same bin edges
-                    for estimator2_idx in range(len(model.bagged_additive_terms_[0])):
-
-                        mvalues = model.bagged_additive_terms_[index][estimator2_idx]
-                        
-                        # expanding the prediction values to cover all the new merged bin edges                                              
-                        new_model_ = [ mvalues[x] for x in adj_bin_idx ]
-
-                        # updating the new EBM model estimator predictions with the new extended predictions
-                        ebm.bagged_additive_terms_[index][estimator_idx] = new_model_
-                        
-                        # bin counts are used as weights to calculate weighted average of new merged bins.                        
-                        weights =[ bin_counts[x] for x in adj_bin_idx ]
-                        
-                        log_odds_tensors.append(new_model_)
-                        bin_weights.append( weights)
-                        
-                        estimator_idx +=1
-
-                                
-            else:
-                # Categorical features
-                merged_col_mapping = sorted(set().union(*[ set(model.preprocessor_.col_mapping_[index]) for model in models]))
-            
-                ebm.preprocessor_.col_mapping_[index] = dict( (key, idx +1) for idx, key in enumerate(merged_col_mapping))
-                
-                for model in models: 
-                                        
-                    bin_counts = model.preprocessor_.col_bin_counts_[index]
-                    
-                    # mask contains the category values for common categories and None for missing ones for each categorical feature
-                    mask = [ model.preprocessor_.col_mapping_[index].get(col, None ) for col in merged_col_mapping]
-
-                    for estimator2_idx in range(len(model.bagged_additive_terms_[0])):
-
-                        mvalues = model.bagged_additive_terms_[index][estimator2_idx]
-                        new_model_ = [mvalues[0]] + [ mvalues[i] if i else 0.0 for i in mask]
-                        
-                        weights = [bin_counts[0]] + [ bin_counts[i] if i else 0.0 for i in mask ]
-                    
-                        log_odds_tensors.append(new_model_)
-                        bin_weights.append( weights)
-            
-                       
-            # Adjusting zero weight values to one to avoid sum-to-zero error for weighted average
-            if all([ w[0]==0 for w in bin_weights ])  :
-                 for bw in bin_weights:
-                     bw[0] = 1
-            
-            ebm.preprocessor_.col_bin_counts_[index] = np.round(np.average(bin_weights, axis=0))
-                   
-            averaged_model = np.average(log_odds_tensors, axis=0 , weights=bin_weights )
-            model_errors = EBMUtils.weighted_std(np.array(log_odds_tensors), axis=0, weights= np.array(bin_weights) )
-
-            ebm.additive_terms_.append(averaged_model)
-            ebm.term_standard_deviations_.append(model_errors)           
-            
-        
-        ebm.feature_importances_ = []        
-        for i in range(len(ebm.feature_groups_)):
-
-            mean_abs_score = np.average(np.abs(ebm.additive_terms_[i]), weights=ebm.preprocessor_.col_bin_counts_[i])
-
-            ebm.feature_importances_.append(mean_abs_score)
-           
         return ebm
     
     @staticmethod
