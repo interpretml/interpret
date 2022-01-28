@@ -122,12 +122,10 @@ def deduplicate_bins(bins):
 def _harmonize_tensor(
     new_feature_group, 
     new_bins, 
-    new_mins, 
-    new_maxes, 
+    new_bounds, 
     old_feature_group, 
     old_bins, 
-    old_mins, 
-    old_maxes, 
+    old_bounds, 
     old_tensor, 
     is_proportional
 ):
@@ -201,26 +199,26 @@ def _harmonize_tensor(
             percentage = [1.0]
             for new_idx_minus_one, old_idx in enumerate(lookup):
                 if new_idx_minus_one == 0:
-                    new_low = new_mins[feature_idx]
+                    new_low = new_bounds[feature_idx, 0]
                     # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
                 else:
                     new_low = new_feature_bins[new_idx_minus_one - 1]
 
                 if len(new_feature_bins) <= new_idx_minus_one:
-                    new_high = new_maxes[feature_idx]
+                    new_high = new_bounds[feature_idx, 1]
                     # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
                 else:
                     new_high = new_feature_bins[new_idx_minus_one]
 
 
                 if old_idx == 1:
-                    old_low = old_mins[feature_idx]
+                    old_low = old_bounds[feature_idx, 0]
                     # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
                 else:
                     old_low = old_feature_bins[old_idx - 2]
 
                 if len(old_feature_bins) < old_idx:
-                    old_high = old_maxes[feature_idx]
+                    old_high = old_bounds[feature_idx, 1]
                     # TODO: if nan OR out of bounds from the cuts, estimate it.  If -inf or +inf, change it to min/max for float
                 else:
                     old_high = old_feature_bins[old_idx - 1]
@@ -376,27 +374,21 @@ class EBMUtils:
             ebm.max_target_ = max(model.max_target_ for model in models)
             n_classes = -1
 
-        min_vals = [model.min_vals_ for model in models if getattr(model, 'min_vals_', None) is not None]
-        max_vals = [model.max_vals_ for model in models if getattr(model, 'max_vals_', None) is not None]
+        if any(ebm.n_features_in_ != model.feature_bounds_.shape[0] for model in models if getattr(model, 'feature_bounds_', None) is not None):  # pragma: no cover
+            raise Exception("All feature_bounds_ should have the same length as the number of features.")
 
-        if any(ebm.n_features_in_ != len(model_mins) for model_mins in min_vals):  # pragma: no cover
-            raise Exception("All min_vals_ should have the same length as the number of features.")
-
-        if any(ebm.n_features_in_ != len(model_maxes) for model_maxes in max_vals):  # pragma: no cover
-            raise Exception("All max_vals_ should have the same length as the number of features.")
+        min_vals = [model.feature_bounds_[:, 0] for model in models if getattr(model, 'feature_bounds_', None) is not None]
+        max_vals = [model.feature_bounds_[:, 1] for model in models if getattr(model, 'feature_bounds_', None) is not None]
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
 
-            if hasattr(ebm, 'min_vals_'):
-                del ebm.min_vals_
-            if 0 < len(min_vals):
-                ebm.min_vals_ = np.nanmin(min_vals, axis=0)
-
-            if hasattr(ebm, 'max_vals_'):
-                del ebm.max_vals_
-            if 0 < len(max_vals):
-                ebm.max_vals_ = np.nanmax(max_vals, axis=0)
+            if hasattr(ebm, 'feature_bounds_'):
+                del ebm.feature_bounds_
+            if 0 < len(min_vals): # max_vals has the same len
+                min_vals = np.nanmin(min_vals, axis=0)
+                max_vals = np.nanmax(max_vals, axis=0)
+                ebm.feature_bounds_ = np.array(list(zip(min_vals, max_vals)), np.float64)
 
         if hasattr(ebm, 'breakpoint_iteration_'):
             del ebm.breakpoint_iteration_
@@ -490,12 +482,10 @@ class EBMUtils:
                     fixed_tensor = _harmonize_tensor(
                         sorted_fg,
                         ebm.bins_, 
-                        ebm.min_vals_,
-                        ebm.max_vals_,
+                        ebm.feature_bounds_,
                         model.feature_groups_[feature_group_idx], 
                         model.bins_,
-                        model.min_vals_,
-                        model.max_vals_,
+                        model.feature_bounds_,
                         model.bin_weights_[feature_group_idx], 
                         True
                     )
@@ -526,12 +516,10 @@ class EBMUtils:
                     harmonized_bin_weights = _harmonize_tensor(
                         sorted_fg,
                         ebm.bins_, 
-                        ebm.min_vals_,
-                        ebm.max_vals_,
+                        ebm.feature_bounds_,
                         model.feature_groups_[feature_group_idx], 
                         model.bins_,
-                        model.min_vals_,
-                        model.max_vals_,
+                        model.feature_bounds_,
                         model.bin_weights_[feature_group_idx], 
                         True
                     )
@@ -540,12 +528,10 @@ class EBMUtils:
                         harmonized_bagged_additive_terms = _harmonize_tensor(
                             sorted_fg,
                             ebm.bins_, 
-                            ebm.min_vals_,
-                            ebm.max_vals_,
+                            ebm.feature_bounds_,
                             model.feature_groups_[feature_group_idx], 
                             model.bins_,
-                            model.min_vals_,
-                            model.max_vals_,
+                            model.feature_bounds_,
                             model.bagged_additive_terms_[feature_group_idx][bag_idx], 
                             False
                         )

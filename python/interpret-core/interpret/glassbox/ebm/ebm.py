@@ -338,12 +338,11 @@ class BaseEBM(BaseEstimator):
         feature_types_in = binning_result[1]
         bins = binning_result[2]
         term_bin_weights = binning_result[3]
-        min_vals = binning_result[4]
-        max_vals = binning_result[5]
-        histogram_cuts = binning_result[6]
-        histogram_counts = binning_result[7]
-        unique_counts = binning_result[8]
-        zero_counts = binning_result[9]
+        feature_bounds = binning_result[4]
+        histogram_cuts = binning_result[5]
+        histogram_counts = binning_result[6]
+        unique_counts = binning_result[7]
+        zero_counts = binning_result[8]
 
         n_features_in = len(feature_names_in)
 
@@ -652,8 +651,7 @@ class BaseEBM(BaseEstimator):
         self.feature_names_in_ = feature_names_in # scikit-learn specified name
         self.feature_types_in_ = feature_types_in
         self.bins_ = bins
-        self.min_vals_ = min_vals
-        self.max_vals_ = max_vals
+        self.feature_bounds_ = feature_bounds
 
         # per-feature group
         self.feature_groups_ = feature_groups
@@ -694,10 +692,14 @@ class BaseEBM(BaseEstimator):
                 for bins in self.bins_[i]:
                     cuts.append(bins.tolist())
                 feature['cuts'] = cuts
-                if hasattr(self, 'min_vals_') and not math.isnan(self.min_vals_[i]):
-                    feature['min'] = EBMUtils.jsonify_item(self.min_vals_[i])
-                if hasattr(self, 'max_vals_') and not math.isnan(self.max_vals_[i]):
-                    feature['max'] = EBMUtils.jsonify_item(self.max_vals_[i])
+                feature_bounds = getattr(self, 'feature_bounds_', None)
+                if feature_bounds is not None:
+                    feature_min = feature_bounds[i, 0]
+                    if not math.isnan(feature_min):
+                        feature['min'] = EBMUtils.jsonify_item(feature_min)
+                    feature_max = feature_bounds[i, 1]
+                    if not math.isnan(feature_max):
+                        feature['max'] = EBMUtils.jsonify_item(feature_max)
                 if hasattr(self, 'histogram_cuts_') and self.histogram_cuts_[i] is not None:
                     feature['histogram_cuts'] = self.histogram_cuts_[i].tolist()
                 if hasattr(self, 'histogram_counts_') and self.histogram_counts_[i] is not None:
@@ -829,8 +831,12 @@ class BaseEBM(BaseEstimator):
                     densities = list(mod_counts[feature_group_index])
                 else:
                     # continuous
-                    min_val = self.min_vals_[feature_index0]
-                    max_val = self.max_vals_[feature_index0]
+                    min_val = np.nan
+                    max_val = np.nan
+                    feature_bounds = getattr(self, 'feature_bounds_', None)
+                    if feature_bounds is not None:
+                        min_val = feature_bounds[feature_index0, 0]
+                        max_val = feature_bounds[feature_index0, 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
                     min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
@@ -895,8 +901,12 @@ class BaseEBM(BaseEstimator):
                         bin_labels.append('DPOther')
                 else:
                     # continuous
-                    min_val = self.min_vals_[feature_indexes[0]]
-                    max_val = self.max_vals_[feature_indexes[0]]
+                    min_val = np.nan
+                    max_val = np.nan
+                    feature_bounds = getattr(self, 'feature_bounds_', None)
+                    if feature_bounds is not None:
+                        min_val = feature_bounds[feature_indexes[0], 0]
+                        max_val = feature_bounds[feature_indexes[0], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
                     min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
@@ -914,8 +924,12 @@ class BaseEBM(BaseEstimator):
                         bin_labels.append('DPOther')
                 else:
                     # continuous
-                    min_val = self.min_vals_[feature_indexes[1]]
-                    max_val = self.max_vals_[feature_indexes[1]]
+                    min_val = np.nan
+                    max_val = np.nan
+                    feature_bounds = getattr(self, 'feature_bounds_', None)
+                    if feature_bounds is not None:
+                        min_val = feature_bounds[feature_indexes[1], 0]
+                        max_val = feature_bounds[feature_indexes[1], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
                     min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
