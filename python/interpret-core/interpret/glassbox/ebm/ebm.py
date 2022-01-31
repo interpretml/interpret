@@ -15,7 +15,6 @@ from ...api.templates import FeatureValueExplanation
 from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_global_selector2, gen_local_selector
 
-import gc
 import json
 import math
 
@@ -244,10 +243,6 @@ class BaseEBM(BaseEstimator):
             Itself.
         """
 
-        # sometimes building EBMs takes a lot of memory, and sometimes the OS terminates big memory programs without
-        # warning, so clear away as much previous cruft as possible before we allocate big chunks of memory
-        gc.collect()
-
         X, n_samples = clean_X(X)
         if n_samples == 0:
             msg = "X has 0 samples"
@@ -434,13 +429,11 @@ class BaseEBM(BaseEstimator):
                 )
             )
 
-        gc.collect() # clean up before starting/forking new processes
         results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
 
-        # let the garbage collector claim the dataset
+        # let python reclaim the dataset memory via reference counting
         del parallel_args # parallel_args holds referecnes to dataset, so must be deleted
         del dataset
-        gc.collect()
 
         breakpoint_iteration = [[]]
         models = []
@@ -506,10 +499,10 @@ class BaseEBM(BaseEstimator):
                 # TODO: for now we're using only 1 job because FAST isn't memory optimized.  After
                 # the native code is done with compression of the data we can go back to using self.n_jobs
                 provider2 = JobLibProvider(n_jobs=1) 
-                gc.collect() # clean up before starting/forking new processes
                 bagged_interaction_indices = provider2.parallel(EBMUtils.get_interactions, parallel_args)
 
-                del parallel_args # this holds references to dataset, bags, and scores_bags which we want to gc later
+                # this holds references to dataset, bags, and scores_bags which we want python to reclaim later
+                del parallel_args 
 
                 # Select merged pairs
                 pair_ranks = {}
@@ -575,15 +568,13 @@ class BaseEBM(BaseEstimator):
                     )
                 )
 
-            gc.collect() # clean up before starting/forking new processes
             results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
 
-            # allow the garbage collector to reclaim these big memory items
+            # allow python to reclaim these big memory items via reference counting
             del parallel_args # this holds references to dataset, scores_bags, and bags
             del dataset
             del scores_bags
             del bags
-            gc.collect()
 
             breakpoint_iteration.append([])
             for idx in range(self.outer_bags):
