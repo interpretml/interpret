@@ -281,13 +281,25 @@ class Native:
             raise Native._get_native_exception(n_bytes, "SizeDataSetHeader")
         return n_bytes
 
-    def fill_dataset_header(self, n_features, n_weights, n_targets, n_bytes, shared_data):
+    def fill_dataset_header(self, n_features, n_weights, n_targets, dataset):
+        if not isinstance(dataset, np.ndarray):  # pragma: no cover
+            raise ValueError("dataset should be an ndarray")
+
+        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
+            raise ValueError("dataset should be an ndarray of np.ubyte")
+
+        if not dataset.flags.c_contiguous:  # pragma: no cover
+            raise ValueError("dataset should be a contiguous ndarray")
+
+        if dataset.ndim != 1:  # pragma: no cover
+            raise ValueError("dataset should have 1 dimension")
+
         return_code = self._unsafe.FillDataSetHeader(
             n_features, 
             n_weights, 
             n_targets, 
-            n_bytes, 
-            shared_data.ctypes.data, 
+            dataset.nbytes,
+            dataset.ctypes.data, 
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
@@ -298,7 +310,19 @@ class Native:
             raise Native._get_native_exception(n_bytes, "SizeFeature")
         return n_bytes
 
-    def fill_feature(self, n_bins, missing, unknown, nominal, binned_data, n_bytes, shared_data):
+    def fill_feature(self, n_bins, missing, unknown, nominal, binned_data, dataset):
+        if not isinstance(dataset, np.ndarray):  # pragma: no cover
+            raise ValueError("dataset should be an ndarray")
+
+        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
+            raise ValueError("dataset should be an ndarray of np.ubyte")
+
+        if not dataset.flags.c_contiguous:  # pragma: no cover
+            raise ValueError("dataset should be a contiguous ndarray")
+
+        if dataset.ndim != 1:  # pragma: no cover
+            raise ValueError("dataset should have 1 dimension")
+
         return_code = self._unsafe.FillFeature(
             n_bins, 
             missing, 
@@ -306,8 +330,8 @@ class Native:
             nominal, 
             len(binned_data), 
             binned_data, 
-            n_bytes, 
-            shared_data.ctypes.data,
+            dataset.nbytes, 
+            dataset.ctypes.data,
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillFeature")
@@ -318,12 +342,24 @@ class Native:
             raise Native._get_native_exception(n_bytes, "SizeWeight")
         return n_bytes
 
-    def fill_weight(self, weights, n_bytes, shared_data):
+    def fill_weight(self, weights, dataset):
+        if not isinstance(dataset, np.ndarray):  # pragma: no cover
+            raise ValueError("dataset should be an ndarray")
+
+        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
+            raise ValueError("dataset should be an ndarray of np.ubyte")
+
+        if not dataset.flags.c_contiguous:  # pragma: no cover
+            raise ValueError("dataset should be a contiguous ndarray")
+
+        if dataset.ndim != 1:  # pragma: no cover
+            raise ValueError("dataset should have 1 dimension")
+
         return_code = self._unsafe.FillWeight(
             len(weights), 
             weights, 
-            n_bytes, 
-            shared_data.ctypes.data, 
+            dataset.nbytes, 
+            dataset.ctypes.data, 
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillWeight")
@@ -334,13 +370,25 @@ class Native:
             raise Native._get_native_exception(n_bytes, "SizeClassificationTarget")
         return n_bytes
 
-    def fill_classification_target(self, n_classes, targets, n_bytes, shared_data):
+    def fill_classification_target(self, n_classes, targets, dataset):
+        if not isinstance(dataset, np.ndarray):  # pragma: no cover
+            raise ValueError("dataset should be an ndarray")
+
+        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
+            raise ValueError("dataset should be an ndarray of np.ubyte")
+
+        if not dataset.flags.c_contiguous:  # pragma: no cover
+            raise ValueError("dataset should be a contiguous ndarray")
+
+        if dataset.ndim != 1:  # pragma: no cover
+            raise ValueError("dataset should have 1 dimension")
+
         return_code = self._unsafe.FillClassificationTarget(
             n_classes, 
             len(targets), 
             targets, 
-            n_bytes, 
-            shared_data.ctypes.data,
+            dataset.nbytes, 
+            dataset.ctypes.data,
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillClassificationTarget")
@@ -351,17 +399,41 @@ class Native:
             raise Native._get_native_exception(n_bytes, "SizeRegressionTarget")
         return n_bytes
 
-    def fill_regression_target(self, targets, n_bytes, shared_data):
+    def fill_regression_target(self, targets, dataset):
+        if not isinstance(dataset, np.ndarray):  # pragma: no cover
+            raise ValueError("dataset should be an ndarray")
+
+        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
+            raise ValueError("dataset should be an ndarray of np.ubyte")
+
+        if not dataset.flags.c_contiguous:  # pragma: no cover
+            raise ValueError("dataset should be a contiguous ndarray")
+
+        if dataset.ndim != 1:  # pragma: no cover
+            raise ValueError("dataset should have 1 dimension")
+
         return_code = self._unsafe.FillRegressionTarget(
             len(targets), 
             targets, 
-            n_bytes, 
-            shared_data.ctypes.data, 
+            dataset.nbytes, 
+            dataset.ctypes.data, 
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillRegressionTarget")
 
     def extract_dataset_header(self, dataset):
+        if not isinstance(dataset, np.ndarray):  # pragma: no cover
+            raise ValueError("dataset should be an ndarray")
+
+        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
+            raise ValueError("dataset should be an ndarray of np.ubyte")
+
+        if not dataset.flags.c_contiguous:  # pragma: no cover
+            raise ValueError("dataset should be a contiguous ndarray")
+
+        if dataset.ndim != 1:  # pragma: no cover
+            raise ValueError("dataset should have 1 dimension")
+
         n_samples = ct.c_int64(-1)
         n_features = ct.c_int64(-1)
         n_weights = ct.c_int64(-1)
@@ -380,6 +452,18 @@ class Native:
         return n_samples.value, n_features.value, n_weights.value, n_targets.value
 
     def extract_bin_counts(self, dataset, n_features):
+        if not isinstance(dataset, np.ndarray):  # pragma: no cover
+            raise ValueError("dataset should be an ndarray")
+
+        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
+            raise ValueError("dataset should be an ndarray of np.ubyte")
+
+        if not dataset.flags.c_contiguous:  # pragma: no cover
+            raise ValueError("dataset should be a contiguous ndarray")
+
+        if dataset.ndim != 1:  # pragma: no cover
+            raise ValueError("dataset should have 1 dimension")
+
         bin_counts = np.empty(n_features, dtype=np.int64, order="C")
 
         return_code = self._unsafe.ExtractBinCounts(
@@ -393,6 +477,18 @@ class Native:
         return bin_counts
 
     def extract_target_classes(self, dataset, n_targets):
+        if not isinstance(dataset, np.ndarray):  # pragma: no cover
+            raise ValueError("dataset should be an ndarray")
+
+        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
+            raise ValueError("dataset should be an ndarray of np.ubyte")
+
+        if not dataset.flags.c_contiguous:  # pragma: no cover
+            raise ValueError("dataset should be a contiguous ndarray")
+
+        if dataset.ndim != 1:  # pragma: no cover
+            raise ValueError("dataset should have 1 dimension")
+
         class_counts = np.empty(n_targets, dtype=np.int64, order="C")
 
         return_code = self._unsafe.ExtractTargetClasses(

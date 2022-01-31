@@ -1910,9 +1910,9 @@ def bin_native(
     else:
         n_bytes += native.size_regression_target(y)
 
-    shared_dataset = np.empty(n_bytes, np.ubyte) # joblib loky doesn't support RawArray
+    dataset = np.empty(n_bytes, np.ubyte) # joblib loky doesn't support RawArray
 
-    native.fill_dataset_header(len(requests), n_weights, 1, n_bytes, shared_dataset)
+    native.fill_dataset_header(len(requests), n_weights, 1, dataset)
 
     for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
@@ -1945,19 +1945,18 @@ def bin_native(
             bad is not None, 
             feature_types_in[feature_idx] == 'nominal', 
             X_col, 
-            n_bytes, 
-            shared_dataset
+            dataset
         )
 
     if sample_weight is not None:
-        native.fill_weight(sample_weight, n_bytes, shared_dataset)
+        native.fill_weight(sample_weight, dataset)
 
     if 0 <= n_classes:
-        native.fill_classification_target(n_classes, y, n_bytes, shared_dataset)
+        native.fill_classification_target(n_classes, y, dataset)
     else:
-        native.fill_regression_target(y, n_bytes, shared_dataset)
+        native.fill_regression_target(y, dataset)
 
-    return shared_dataset
+    return dataset
 
 def bin_native_by_dimension(
     n_classes,
