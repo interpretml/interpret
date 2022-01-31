@@ -902,7 +902,7 @@ class Booster(AbstractContextManager):
         dataset,
         bag,
         scores,
-        feature_groups,
+        term_features,
         n_inner_bags,
         random_state,
         optional_temp_params,
@@ -917,8 +917,7 @@ class Booster(AbstractContextManager):
                 that this class will boost on top of.  For regression
                 there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
-            feature_groups: List of feature groups represented as
-                a dictionary of keys ("features")
+            term_features: List of term feature indexes
             n_inner_bags: number of inner bags.
             random_state: Random seed as integer.
             optional_temp_params: unused data that can be passed into the native layer for debugging
@@ -927,22 +926,22 @@ class Booster(AbstractContextManager):
         self.dataset = dataset
         self.bag = bag
         self.scores = scores
-        self.feature_groups = feature_groups
+        self.term_features = term_features
         self.n_inner_bags = n_inner_bags
         self.random_state = random_state
         self.optional_temp_params = optional_temp_params
 
-        # start off with an invalid _feature_group_index
-        self._feature_group_index = -1
+        # start off with an invalid _term_idx
+        self._term_idx = -1
 
     def __enter__(self):
         log.info("Booster allocation start")
 
-        feature_counts = np.empty(len(self.feature_groups), ct.c_int64)
+        feature_counts = np.empty(len(self.term_features), ct.c_int64)
         feature_indexes = []
-        for idx, feature_group in enumerate(self.feature_groups):
-            feature_counts.itemset(idx, len(feature_group))
-            feature_indexes.extend(feature_group)
+        for term_idx, feature_idxs in enumerate(self.term_features):
+            feature_counts.itemset(term_idx, len(feature_idxs))
+            feature_indexes.extend(feature_idxs)
         feature_indexes = np.array(feature_indexes, ct.c_int64)
 
         native = Native.get_native_singleton()
@@ -958,19 +957,19 @@ class Booster(AbstractContextManager):
         class_counts = native.extract_target_classes(self.dataset, n_targets)
         n_class_scores = sum((Native.get_count_scores_c(n_classes) for n_classes in class_counts))
 
-        self._feature_group_shapes = None
+        self._term_shapes = None
         if 0 < n_class_scores:
             bin_counts = native.extract_bin_counts(self.dataset, n_features)
-            self._feature_group_shapes = []
-            for feature_group in self.feature_groups:
-                dimensions = [bin_counts[feature_idx] for feature_idx in feature_group]
-                dimensions = list(reversed(dimensions))
+            self._term_shapes = []
+            for feature_idxs in self.term_features:
+                dimensions = [bin_counts[feature_idx] for feature_idx in feature_idxs]
+                dimensions.reverse()
 
                 # Array returned for multiclass is one higher dimension
                 if n_class_scores > 1:
                     dimensions.append(n_class_scores)
 
-                self._feature_group_shapes.append(tuple(dimensions))
+                self._term_shapes.append(tuple(dimensions))
 
         n_scores = n_samples
         bag = self.bag
@@ -1072,9 +1071,9 @@ class Booster(AbstractContextManager):
 
         log.info("Deallocation boosting end")
 
-    def generate_model_update(
+    def generate_term_update(
         self, 
-        feature_group_index, 
+        term_idx, 
         generate_update_options, 
         learning_rate, 
         min_samples_leaf, 
@@ -1085,7 +1084,7 @@ class Booster(AbstractContextManager):
             by growing a shallow decision tree.
 
         Args:
-            feature_group_index: The index for the feature group to generate the update for
+            term_idx: The index for the term to generate the update for
             generate_update_options: C interface options
             learning_rate: Learning rate as a float.
             min_samples_leaf: Min observations required to split.
@@ -1097,17 +1096,17 @@ class Booster(AbstractContextManager):
 
         # log.debug("Boosting step start")
 
-        self._feature_group_index = -1
+        self._term_idx = -1
 
         native = Native.get_native_singleton()
 
         gain = ct.c_double(0.0)
-        n_features = len(self.feature_groups[feature_group_index])
+        n_features = len(self.term_features[term_idx])
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
         return_code = native._unsafe.GenerateModelUpdate(
             self._booster_handle, 
-            feature_group_index,
+            term_idx,
             generate_update_options,
             learning_rate,
             min_samples_leaf,
@@ -1117,12 +1116,12 @@ class Booster(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GenerateModelUpdate")
             
-        self._feature_group_index = feature_group_index
+        self._term_idx = term_idx
 
         # log.debug("Boosting step end")
         return gain.value
 
-    def apply_model_update(self):
+    def apply_term_update(self):
 
         """ Updates the interal C state with the last model update
 
@@ -1133,7 +1132,7 @@ class Booster(AbstractContextManager):
         """
         # log.debug("Boosting step start")
 
-        self._feature_group_index = -1
+        self._term_idx = -1
 
         native = Native.get_native_singleton()
 
@@ -1150,47 +1149,45 @@ class Booster(AbstractContextManager):
 
     def get_best_model(self):
         model = []
-        for index in range(len(self.feature_groups)):
-            model_feature_group = self._get_best_model_feature_group(index)
-            model.append(model_feature_group)
+        for term_idx in range(len(self.term_features)):
+            model_term = self._get_best_term(term_idx)
+            model.append(model_term)
 
         return model
 
     # TODO: Needs test.
     def get_current_model(self):
         model = []
-        for index in range(len(self.feature_groups)):
-            model_feature_group = self._get_current_model_feature_group(
-                index
-            )
-            model.append(model_feature_group)
+        for term_idx in range(len(self.term_features)):
+            model_term = self._get_current_term(term_idx)
+            model.append(model_term)
 
         return model
 
-    def get_model_update_splits(self):
-        if self._feature_group_index < 0:  # pragma: no cover
-            raise RuntimeError("invalid internal self._feature_group_index")
+    def get_term_update_splits(self):
+        if self._term_idx < 0:  # pragma: no cover
+            raise RuntimeError("invalid internal self._term_idx")
 
         splits = []
-        feature_indexes = self.feature_groups[self._feature_group_index]
-        for dimension_idx in range(len(feature_indexes)):
-            splits_dimension = self._get_model_update_splits_dimension(dimension_idx)
+        feature_idxs = self.term_features[self._term_idx]
+        for dimension_idx in range(len(feature_idxs)):
+            splits_dimension = self._get_term_update_splits_dimension(dimension_idx)
             splits.append(splits_dimension)
 
         return splits
 
-    def _get_best_model_feature_group(self, feature_group_index):
+    def _get_best_term(self, term_idx):
         """ Returns best model/function according to validation set
             for a given feature group.
 
         Args:
-            feature_group_index: The index for the feature group.
+            term_idx: The index for the feature group.
 
         Returns:
             An ndarray that represents the model.
         """
 
-        if self._feature_group_shapes is None:  # pragma: no cover
+        if self._term_shapes is None:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1198,34 +1195,34 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
-        shape = self._feature_group_shapes[feature_group_index]
-        model_feature_group = np.empty(shape, dtype=np.float64, order="C")
+        shape = self._term_shapes[term_idx]
+        model_term = np.empty(shape, dtype=np.float64, order="C")
 
         return_code = native._unsafe.GetBestModelFeatureGroup(
-            self._booster_handle, feature_group_index, model_feature_group
+            self._booster_handle, term_idx, model_term
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetBestModelFeatureGroup")
 
-        n_dimensions = len(self.feature_groups[feature_group_index])
+        n_dimensions = len(self.term_features[term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, tuple(temp_transpose)))
-        return model_feature_group
+        model_term = np.ascontiguousarray(np.transpose(model_term, tuple(temp_transpose)))
+        return model_term
 
-    def _get_current_model_feature_group(self, feature_group_index):
+    def _get_current_term(self, term_idx):
         """ Returns current model/function according to validation set
             for a given feature group.
 
         Args:
-            feature_group_index: The index for the feature group.
+            term_idx: The index for the feature group.
 
         Returns:
             An ndarray that represents the model.
         """
 
-        if self._feature_group_shapes is None:  # pragma: no cover
+        if self._term_shapes is None:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1233,24 +1230,24 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
-        shape = self._feature_group_shapes[feature_group_index]
-        model_feature_group = np.empty(shape, dtype=np.float64, order="C")
+        shape = self._term_shapes[term_idx]
+        model_term = np.empty(shape, dtype=np.float64, order="C")
 
         return_code = native._unsafe.GetCurrentModelFeatureGroup(
-            self._booster_handle, feature_group_index, model_feature_group
+            self._booster_handle, term_idx, model_term
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetCurrentModelFeatureGroup")
 
-        n_dimensions = len(self.feature_groups[feature_group_index])
+        n_dimensions = len(self.term_features[term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        model_feature_group = np.ascontiguousarray(np.transpose(model_feature_group, tuple(temp_transpose)))
-        return model_feature_group
+        model_term = np.ascontiguousarray(np.transpose(model_term, tuple(temp_transpose)))
+        return model_term
 
-    def _get_model_update_splits_dimension(self, dimension_index):
-        if self._feature_group_shapes is None:  # pragma: no cover
+    def _get_term_update_splits_dimension(self, dimension_index):
+        if self._term_shapes is None:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1258,7 +1255,7 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
-        n_bins = self._feature_group_shapes[self._feature_group_index][dimension_index]
+        n_bins = self._term_shapes[self._term_idx][dimension_index]
 
         count_splits = n_bins - 1
         splits = np.empty(count_splits, dtype=np.int64, order="C")
@@ -1276,11 +1273,11 @@ class Booster(AbstractContextManager):
         splits = splits[:count_splits.value]
         return splits
 
-    def get_model_update_expanded(self):
-        if self._feature_group_index < 0:  # pragma: no cover
-            raise RuntimeError("invalid internal self._feature_group_index")
+    def get_term_update_expanded(self):
+        if self._term_idx < 0:  # pragma: no cover
+            raise RuntimeError("invalid internal self._term_idx")
 
-        if self._feature_group_shapes is None:  # pragma: no cover
+        if self._term_shapes is None:  # pragma: no cover
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our model has no information since we always predict
             # the only output
@@ -1288,48 +1285,48 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
-        shape = self._feature_group_shapes[self._feature_group_index]
-        model_update = np.empty(shape, dtype=np.float64, order="C")
+        shape = self._term_shapes[self._term_idx]
+        term_update = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = native._unsafe.GetModelUpdateExpanded(self._booster_handle, model_update)
+        return_code = native._unsafe.GetModelUpdateExpanded(self._booster_handle, term_update)
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetModelUpdateExpanded")
 
-        n_dimensions = len(self.feature_groups[self._feature_group_index])
+        n_dimensions = len(self.term_features[self._term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        model_update = np.ascontiguousarray(np.transpose(model_update, tuple(temp_transpose)))
-        return model_update
+        term_update = np.ascontiguousarray(np.transpose(term_update, tuple(temp_transpose)))
+        return term_update
 
-    def set_model_update_expanded(self, feature_group_index, model_update):
-        self._feature_group_index = -1
+    def set_term_update_expanded(self, term_idx, term_update):
+        self._term_idx = -1
 
-        if self._feature_group_shapes is None:  # pragma: no cover
-            if model_update is None:  # pragma: no cover
-                self._feature_group_index = feature_group_index
+        if self._term_shapes is None:  # pragma: no cover
+            if term_update is None:  # pragma: no cover
+                self._term_idx = term_idx
                 return
             raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
 
-        shape = self._feature_group_shapes[feature_group_index]
+        shape = self._term_shapes[term_idx]
 
-        n_dimensions = len(self.feature_groups[feature_group_index])
+        n_dimensions = len(self.term_features[term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        model_update = np.ascontiguousarray(np.transpose(model_update, tuple(temp_transpose)))
+        term_update = np.ascontiguousarray(np.transpose(term_update, tuple(temp_transpose)))
 
-        if shape != model_update.shape:  # pragma: no cover
-            raise ValueError("incorrect tensor shape in call to set_model_update_expanded")
+        if shape != term_update.shape:  # pragma: no cover
+            raise ValueError("incorrect tensor shape in call to set_term_update_expanded")
 
         native = Native.get_native_singleton()
         return_code = native._unsafe.SetModelUpdateExpanded(
-            self._booster_handle, feature_group_index, model_update
+            self._booster_handle, term_idx, term_update
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "SetModelUpdateExpanded")
 
-        self._feature_group_index = feature_group_index
+        self._term_idx = term_idx
 
         return
 
@@ -1475,7 +1472,7 @@ class InteractionDetector(AbstractContextManager):
         
         log.info("Deallocation interaction end")
 
-    def get_interaction_score(self, feature_index_tuple, min_samples_leaf):
+    def get_interaction_score(self, feature_idxs, min_samples_leaf):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
 
@@ -1484,8 +1481,8 @@ class InteractionDetector(AbstractContextManager):
         score = ct.c_double(0.0)
         return_code = native._unsafe.CalculateInteractionScore(
             self._interaction_handle,
-            len(feature_index_tuple),
-            np.array(feature_index_tuple, dtype=ct.c_int64),
+            len(feature_idxs),
+            np.array(feature_idxs, dtype=ct.c_int64),
             min_samples_leaf,
             ct.byref(score),
         )

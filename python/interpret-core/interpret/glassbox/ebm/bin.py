@@ -1989,7 +1989,7 @@ def bin_native_by_dimension(
         feature_types_in, 
     )
 
-def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_groups):
+def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
     # called under: predict
 
     # prior to calling this function, call deduplicate_bins which will eliminate extra work in this function
@@ -2004,11 +2004,10 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_g
 
     requests = []
     waiting = dict()
-    for feature_group_idx, feature_idxs in enumerate(feature_groups):
-        # the last position holds the feature_group_idx object
+    for term_idx, feature_idxs in enumerate(term_features):
         # the first len(feature_idxs) items hold the binned data that we get back as it arrives
         requirements = _none_list * (len(feature_idxs) + 1)
-        requirements[-1] = feature_group_idx
+        requirements[-1] = term_idx
         for feature_idx in feature_idxs:
             bin_levels = bins[feature_idx]
             feature_bins = bin_levels[min(len(bin_levels), len(feature_idxs)) - 1]
@@ -2051,8 +2050,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_g
             bin_levels = bins[column_feature_idx]
             for requirements in waiting[column_feature_idx]:
                 if len(requirements) != 0:
-                    feature_group_idx = requirements[-1]
-                    feature_idxs = feature_groups[feature_group_idx]
+                    term_idx = requirements[-1]
+                    feature_idxs = term_features[term_idx]
                     is_done = True
                     for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                         if term_feature_idx == column_feature_idx:
@@ -2073,7 +2072,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_g
                         binned_data = requirements[:-1]
                         # clear references so that the garbage collector can free them
                         requirements.clear()
-                        yield feature_group_idx, binned_data
+                        yield term_idx, binned_data
         else:
             # categorical feature
 
@@ -2083,8 +2082,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_g
 
             for requirements in waiting[(column_feature_idx, id(column_categories))]:
                 if len(requirements) != 0:
-                    feature_group_idx = requirements[-1]
-                    feature_idxs = feature_groups[feature_group_idx]
+                    term_idx = requirements[-1]
+                    feature_idxs = term_features[term_idx]
                     is_done = True
                     for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                         if term_feature_idx == column_feature_idx:
@@ -2100,7 +2099,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_g
                         binned_data = requirements[:-1]
                         # clear references so that the garbage collector can free them
                         requirements.clear()
-                        yield feature_group_idx, binned_data
+                        yield term_idx, binned_data
 
 def ebm_decision_function(
     X, 
@@ -2110,7 +2109,7 @@ def ebm_decision_function(
     bins, 
     intercept, 
     additive_terms, 
-    feature_groups
+    term_features
 ):
     if type(intercept) is float or len(intercept) == 1:
         scores = np.full(n_samples, intercept, dtype=np.float64)
@@ -2118,8 +2117,8 @@ def ebm_decision_function(
         scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
 
     if 0 < n_samples:
-        for feature_group_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_groups):
-            scores += additive_terms[feature_group_idx][tuple(binned_data)]
+        for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
+            scores += additive_terms[term_idx][tuple(binned_data)]
 
     return scores
 
@@ -2131,30 +2130,30 @@ def ebm_decision_function_and_explain(
     bins, 
     intercept, 
     additive_terms, 
-    feature_groups
+    term_features
 ):
     if type(intercept) is float or len(intercept) == 1:
         scores = np.full(n_samples, intercept, dtype=np.float64)
-        explanations = np.empty((n_samples, len(feature_groups)), dtype=np.float64)
+        explanations = np.empty((n_samples, len(term_features)), dtype=np.float64)
     else:
         # TODO: add a test for multiclass calls to ebm_decision_function_and_explain
         scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
-        explanations = np.empty((n_samples, len(feature_groups), len(intercept)), dtype=np.float64)
+        explanations = np.empty((n_samples, len(term_features), len(intercept)), dtype=np.float64)
 
     if 0 < n_samples:
-        for feature_group_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_groups):
-            term_scores = additive_terms[feature_group_idx][tuple(binned_data)]
+        for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
+            term_scores = additive_terms[term_idx][tuple(binned_data)]
             scores += term_scores
-            explanations[:, feature_group_idx] = term_scores
+            explanations[:, term_idx] = term_scores
 
     return scores, explanations
 
-def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, feature_groups):
-    bin_counts = _none_list * len(feature_groups)
-    bin_weights = _none_list * len(feature_groups)
+def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features):
+    bin_counts = _none_list * len(term_features)
+    bin_weights = _none_list * len(term_features)
 
-    for feature_group_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, feature_groups):
-        features = feature_groups[feature_group_idx]
+    for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
+        features = term_features[term_idx]
         multiple = 1
         dimensions = []
         for dimension_idx in range(len(features) - 1, -1, -1):
@@ -2182,7 +2181,7 @@ def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, featur
         term_bin_counts = term_bin_counts.astype(np.int64, copy=False)
         term_bin_counts = term_bin_counts.reshape(dimensions)
 
-        bin_counts[feature_group_idx] = term_bin_counts
+        bin_counts[term_idx] = term_bin_counts
 
         if sample_weight is None:
             term_bin_weights = term_bin_counts.astype(np.float64)
@@ -2191,7 +2190,7 @@ def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, featur
             term_bin_weights = term_bin_weights.astype(np.float64, copy=False)
             term_bin_weights = term_bin_weights.reshape(dimensions)
         
-        bin_weights[feature_group_idx] = term_bin_weights
+        bin_weights[term_idx] = term_bin_weights
 
     return bin_counts, bin_weights
 
@@ -2299,16 +2298,16 @@ def make_boosting_weights(term_bin_weights):
             bin_data_weights.append(term_weights)
     return bin_data_weights
 
-def after_boosting(feature_groups, tensors, feature_bin_weights):
+def after_boosting(term_features, tensors, feature_bin_weights):
     # TODO: this isn't a problem today since any unnamed categories in the mains and the pairs are the same
     #       (they don't exist in the pairs today at all since DP-EBMs aren't pair enabled yet and we haven't
     #       made the option for them in regular EBMs), but when we eventually go that way then we'll
     #       need to examine the tensored term based bin weights to see what to do.  Alternatively, we could
     #       obtain this information from bin_native which would be cleaner since we only need it during boosting
     new_tensors=[]
-    for feature_group_idx, feature_group in enumerate(feature_groups):
-        higher = [feature_bin_weights[feature_idx][-1] == 0 for feature_idx in feature_group]
-        new_tensors.append(append_tensor(tensors[feature_group_idx], None, higher))
+    for term_idx, feature_idxs in enumerate(term_features):
+        higher = [feature_bin_weights[feature_idx][-1] == 0 for feature_idx in feature_idxs]
+        new_tensors.append(append_tensor(tensors[term_idx], None, higher))
     return new_tensors
 
 def remove_last2(tensors, term_bin_weights):

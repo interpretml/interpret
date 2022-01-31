@@ -182,8 +182,8 @@ def test_prefit_ebm():
     clf = ExplainableBoostingClassifier(n_jobs=1, interactions=0, max_rounds=0)
     clf.fit(X, y)
 
-    for _, model_feature_group in enumerate(clf.additive_terms_):
-        has_non_zero = np.any(model_feature_group)
+    for additive_term in clf.additive_terms_:
+        has_non_zero = np.any(additive_term)
         assert not has_non_zero
 
 
@@ -200,10 +200,10 @@ def test_ebm_synthetic_regression():
 
 
 def valid_ebm(ebm):
-    assert ebm.feature_groups_[0] == (0,)
+    assert ebm.term_features_[0] == (0,)
 
-    for _, model_feature_group in enumerate(ebm.additive_terms_):
-        all_finite = np.isfinite(model_feature_group).all()
+    for additive_term in ebm.additive_terms_:
+        all_finite = np.isfinite(additive_term).all()
         assert all_finite
 
 

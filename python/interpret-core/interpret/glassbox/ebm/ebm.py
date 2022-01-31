@@ -387,9 +387,9 @@ class BaseEBM(BaseEstimator):
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         if isinstance(self.mains, str) and self.mains == "all":
-            feature_groups = [(x,) for x in range(n_features_in)]
+            term_features = [(x,) for x in range(n_features_in)]
         else:
-            feature_groups = [(int(x),) for x in self.mains]
+            term_features = [(int(x),) for x in self.mains]
               
         # Train main effects
         if is_private(self):
@@ -418,7 +418,7 @@ class BaseEBM(BaseEstimator):
                     dataset,
                     bags[idx],
                     None,
-                    feature_groups,
+                    term_features,
                     inner_bags,
                     update,
                     self.learning_rate,
@@ -446,7 +446,7 @@ class BaseEBM(BaseEstimator):
         models = []
         for model, bag_breakpoint_iteration in results:
             breakpoint_iteration[-1].append(bag_breakpoint_iteration)
-            models.append(after_boosting(feature_groups, model, term_bin_weights))
+            models.append(after_boosting(term_features, model, term_bin_weights))
 
         interactions = 0 if is_private(self) else self.interactions
         if n_classes > 2:
@@ -472,7 +472,7 @@ class BaseEBM(BaseEstimator):
                     bins, 
                     initial_intercept, 
                     model, 
-                    feature_groups
+                    term_features
                 ))
 
             dataset = bin_native_by_dimension(
@@ -532,15 +532,15 @@ class BaseEBM(BaseEstimator):
                 boost_groups = []
                 max_dimensions = 0
 
-                for feature_group in interactions:
-                    # clean these up since we expose them publically inside self.feature_groups_ 
-                    feature_group = tuple([int(feature_idx) for feature_idx in feature_group])
+                for feature_idxs in interactions:
+                    # clean these up since we expose them publically inside self.term_features_ 
+                    feature_idxs = tuple([int(feature_idx) for feature_idx in feature_idxs])
 
-                    max_dimensions = max(max_dimensions, len(feature_group))
-                    sorted_tuple = tuple(sorted(feature_group))
+                    max_dimensions = max(max_dimensions, len(feature_idxs))
+                    sorted_tuple = tuple(sorted(feature_idxs))
                     if sorted_tuple not in uniquifier:
                         uniquifier.add(sorted_tuple)
-                        boost_groups.append(feature_group)
+                        boost_groups.append(feature_idxs)
 
                 # Warn the users that we have made change to the interactions list
                 if len(boost_groups) != len(interactions):
@@ -590,20 +590,20 @@ class BaseEBM(BaseEstimator):
                 breakpoint_iteration[-1].append(results[idx][1])
                 models[idx].extend(after_boosting(boost_groups, results[idx][0], term_bin_weights))
 
-            feature_groups.extend(boost_groups)
+            term_features.extend(boost_groups)
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
-        bagged_additive_terms = (np.array([model[idx] for model in models]) for idx in range(len(feature_groups)))
+        bagged_additive_terms = (np.array([model[idx] for model in models]) for idx in range(len(term_features)))
 
-        keys = ([len(feature_group)] + sorted(feature_group) for feature_group in feature_groups)
-        sorted_items = sorted(zip(keys, feature_groups, bagged_additive_terms))
-        feature_groups = [x[1] for x in sorted_items]
+        keys = ([len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in term_features)
+        sorted_items = sorted(zip(keys, term_features, bagged_additive_terms))
+        term_features = [x[1] for x in sorted_items]
         bagged_additive_terms = [x[2] for x in sorted_items]
 
         if is_private(self):
             # for now we only support mains for DP models
-            bin_weights = [term_bin_weights[feature_group[0]] for feature_group in feature_groups]
+            bin_weights = [term_bin_weights[feature_idxs[0]] for feature_idxs in term_features]
         else:
             bin_counts, bin_weights = get_counts_and_weights(
                 X, 
@@ -612,7 +612,7 @@ class BaseEBM(BaseEstimator):
                 feature_names_in, 
                 feature_types_in, 
                 bins, 
-                feature_groups
+                term_features
             )
 
         additive_terms, term_standard_deviations, intercept = process_terms(
@@ -654,7 +654,7 @@ class BaseEBM(BaseEstimator):
         self.feature_bounds_ = feature_bounds
 
         # per-feature group
-        self.feature_groups_ = feature_groups
+        self.term_features_ = term_features
         self.bin_weights_ = bin_weights
         self.bagged_additive_terms_ = bagged_additive_terms
         self.additive_terms_ = additive_terms
@@ -725,13 +725,13 @@ class BaseEBM(BaseEstimator):
         j['intercept'] = EBMUtils.jsonify_item(self.intercept_) if type(self.intercept_) is float else EBMUtils.jsonify_lists(self.intercept_.tolist())
 
         terms = []
-        for i in range(len(self.feature_groups_)):
+        for term_idx in range(len(self.term_features_)):
             term = {}
-            term['features'] = [self.feature_names_in_[feature_idx] for feature_idx in self.feature_groups_[i]]
-            term['scores'] = EBMUtils.jsonify_lists(self.additive_terms_[i].tolist())
-            if hasattr(self, 'bin_counts_') and self.bin_counts_[i] is not None:
-                term['bin_counts'] = self.bin_counts_[i].tolist()
-            term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[i].tolist())
+            term['features'] = [self.feature_names_in_[feature_idx] for feature_idx in self.term_features_[term_idx]]
+            term['scores'] = EBMUtils.jsonify_lists(self.additive_terms_[term_idx].tolist())
+            if hasattr(self, 'bin_counts_') and self.bin_counts_[term_idx] is not None:
+                term['bin_counts'] = self.bin_counts_[term_idx].tolist()
+            term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[term_idx].tolist())
             
             terms.append(term)
         j['terms'] = terms
@@ -759,7 +759,7 @@ class BaseEBM(BaseEstimator):
             self.bins_, 
             self.intercept_, 
             self.additive_terms_, 
-            self.feature_groups_
+            self.term_features_
         )
 
     def explain_global(self, name=None):
@@ -780,18 +780,15 @@ class BaseEBM(BaseEstimator):
         mod_counts = remove_last2(getattr(self, 'bin_counts_', self.bin_weights_), self.bin_weights_)
         mod_additive_terms = remove_last2(self.additive_terms_, self.bin_weights_)
         mod_term_standard_deviations = remove_last2(self.term_standard_deviations_, self.bin_weights_)
-        for feature_group_idx, feature_group in enumerate(self.feature_groups_):
-            mod_additive_terms[feature_group_idx] = trim_tensor(mod_additive_terms[feature_group_idx], trim_low=[True] * len(feature_group))
-            mod_term_standard_deviations[feature_group_idx] = trim_tensor(mod_term_standard_deviations[feature_group_idx], trim_low=[True] * len(feature_group))
-            mod_counts[feature_group_idx] = trim_tensor(mod_counts[feature_group_idx], trim_low=[True] * len(feature_group))
+        for term_idx, feature_idxs in enumerate(self.term_features_):
+            mod_additive_terms[term_idx] = trim_tensor(mod_additive_terms[term_idx], trim_low=[True] * len(feature_idxs))
+            mod_term_standard_deviations[term_idx] = trim_tensor(mod_term_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs))
+            mod_counts[term_idx] = trim_tensor(mod_counts[term_idx], trim_low=[True] * len(feature_idxs))
 
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for feature_group_index, _ in enumerate(self.feature_groups_):
-            errors = mod_term_standard_deviations[feature_group_index]
-            scores = mod_additive_terms[feature_group_index]
-
+        for errors, scores in zip(mod_term_standard_deviations, mod_additive_terms):
             lower_bound = min(lower_bound, np.min(scores - errors))
             upper_bound = max(upper_bound, np.max(scores + errors))
 
@@ -807,18 +804,16 @@ class BaseEBM(BaseEstimator):
         feature_list = []
         density_list = []
         keep_idxs = []
-        for feature_group_index, feature_indexes in enumerate(
-            self.feature_groups_
-        ):
-            model_graph = mod_additive_terms[feature_group_index]
+        for term_idx, feature_idxs in enumerate(self.term_features_):
+            model_graph = mod_additive_terms[term_idx]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
-            errors = mod_term_standard_deviations[feature_group_index]
+            errors = mod_term_standard_deviations[term_idx]
 
-            if len(feature_indexes) == 1:
-                keep_idxs.append(feature_group_index)
+            if len(feature_idxs) == 1:
+                keep_idxs.append(term_idx)
 
-                feature_index0 = feature_indexes[0]
+                feature_index0 = feature_idxs[0]
 
                 feature_bins = self.bins_[feature_index0][0]
                 if isinstance(feature_bins, dict):
@@ -828,7 +823,7 @@ class BaseEBM(BaseEstimator):
                         bin_labels.append('DPOther')
 
                     names=bin_labels
-                    densities = list(mod_counts[feature_group_index])
+                    densities = list(mod_counts[term_idx])
                 else:
                     # continuous
                     min_val = np.nan
@@ -848,7 +843,7 @@ class BaseEBM(BaseEstimator):
                         densities = list(self.histogram_counts_[feature_index0][1:-1])
                     else:
                         names = feature_bins
-                        densities = list(mod_counts[feature_group_index])
+                        densities = list(mod_counts[term_idx])
 
                     names = list(np.concatenate(([min_val], names, [max_val])))
 
@@ -889,11 +884,11 @@ class BaseEBM(BaseEstimator):
                     }
 
                 data_dicts.append(data_dict)
-            elif len(feature_indexes) == 2:
-                keep_idxs.append(feature_group_index)
+            elif len(feature_idxs) == 2:
+                keep_idxs.append(term_idx)
 
-                bin_levels = self.bins_[feature_indexes[0]]
-                feature_bins = bin_levels[1] if 1 < len(bin_levels) else bin_levels[0]
+                bin_levels = self.bins_[feature_idxs[0]]
+                feature_bins = bin_levels[min(len(feature_idxs), len(bin_levels)) - 1]
                 if isinstance(feature_bins, dict):
                     # categorical
                     bin_labels = list(feature_bins.keys())
@@ -905,8 +900,8 @@ class BaseEBM(BaseEstimator):
                     max_val = np.nan
                     feature_bounds = getattr(self, 'feature_bounds_', None)
                     if feature_bounds is not None:
-                        min_val = feature_bounds[feature_indexes[0], 0]
-                        max_val = feature_bounds[feature_indexes[0], 1]
+                        min_val = feature_bounds[feature_idxs[0], 0]
+                        max_val = feature_bounds[feature_idxs[0], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
                     min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
@@ -915,8 +910,8 @@ class BaseEBM(BaseEstimator):
                 bin_labels_left = bin_labels
 
 
-                bin_levels = self.bins_[feature_indexes[1]]
-                feature_bins = bin_levels[1] if 1 < len(bin_levels) else bin_levels[0]
+                bin_levels = self.bins_[feature_idxs[1]]
+                feature_bins = bin_levels[min(len(feature_idxs), len(bin_levels)) - 1]
                 if isinstance(feature_bins, dict):
                     # categorical
                     bin_labels = list(feature_bins.keys())
@@ -928,8 +923,8 @@ class BaseEBM(BaseEstimator):
                     max_val = np.nan
                     feature_bounds = getattr(self, 'feature_bounds_', None)
                     if feature_bounds is not None:
-                        min_val = feature_bounds[feature_indexes[1], 0]
-                        max_val = feature_bounds[feature_indexes[1], 1]
+                        min_val = feature_bounds[feature_idxs[1], 0]
+                        max_val = feature_bounds[feature_idxs[1], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
                     min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
@@ -957,7 +952,7 @@ class BaseEBM(BaseEstimator):
                 }
                 data_dicts.append(data_dict)
             else:  # pragma: no cover
-                warn(f"Dropping feature {term_names[feature_group_index]} from explanation since we can't graph more than 2 dimensions.")
+                warn(f"Dropping feature {term_names[term_idx]} from explanation since we can't graph more than 2 dimensions.")
 
         importances = self.get_importances()
 
@@ -1037,9 +1032,9 @@ class BaseEBM(BaseEstimator):
             for _ in range(n_samples):
                 data_dict = {
                     "type": "univariate",
-                    "names": [None] * len(self.feature_groups_),
-                    "scores": [None] * len(self.feature_groups_),
-                    "values": [None] * len(self.feature_groups_),
+                    "names": [None] * len(self.term_features_),
+                    "scores": [None] * len(self.term_features_),
+                    "values": [None] * len(self.term_features_),
                     "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
                 }
                 if is_classifier(self):
@@ -1048,17 +1043,17 @@ class BaseEBM(BaseEstimator):
                     }
                 data_dicts.append(data_dict)
 
-            for set_idx, binned_data in eval_terms(X, n_samples, self.feature_names_in_, self.feature_types_in_, self.bins_, self.feature_groups_):
-                scores = self.additive_terms_[set_idx][tuple(binned_data)]
-                feature_group = self.feature_groups_[set_idx]
+            for term_idx, binned_data in eval_terms(X, n_samples, self.feature_names_in_, self.feature_types_in_, self.bins_, self.term_features_):
+                scores = self.additive_terms_[term_idx][tuple(binned_data)]
+                feature_idxs = self.term_features_[term_idx]
                 for row_idx in range(n_samples):
-                    feature_name = term_names[set_idx]
-                    data_dicts[row_idx]["names"][set_idx] = feature_name
-                    data_dicts[row_idx]["scores"][set_idx] = scores[row_idx]
-                    if len(feature_group) == 1:
-                        data_dicts[row_idx]["values"][set_idx] = X_unified[row_idx, feature_group[0]]
+                    term_name = term_names[term_idx]
+                    data_dicts[row_idx]["names"][term_idx] = term_name
+                    data_dicts[row_idx]["scores"][term_idx] = scores[row_idx]
+                    if len(feature_idxs) == 1:
+                        data_dicts[row_idx]["values"][term_idx] = X_unified[row_idx, feature_idxs[0]]
                     else:
-                        data_dicts[row_idx]["values"][set_idx] = ""
+                        data_dicts[row_idx]["values"][term_idx] = ""
 
             scores = ebm_decision_function(
                 X, 
@@ -1068,7 +1063,7 @@ class BaseEBM(BaseEstimator):
                 self.bins_, 
                 self.intercept_, 
                 self.additive_terms_, 
-                self.feature_groups_
+                self.term_features_
             )
 
             if is_classifier(self):
@@ -1087,8 +1082,8 @@ class BaseEBM(BaseEstimator):
         selector = gen_local_selector(data_dicts, is_classification=is_classifier(self))
 
         additive_terms = remove_last2(self.additive_terms_, self.bin_weights_)
-        for feature_group_idx, feature_group in enumerate(self.feature_groups_):
-            additive_terms[feature_group_idx] = trim_tensor(additive_terms[feature_group_idx], trim_low=[True] * len(feature_group))
+        for term_idx, feature_idxs in enumerate(self.term_features_):
+            additive_terms[term_idx] = trim_tensor(additive_terms[term_idx], trim_low=[True] * len(feature_idxs))
 
         internal_obj = {
             "overall": None,
@@ -1122,24 +1117,24 @@ class BaseEBM(BaseEstimator):
 
     def get_importances(self, style='avg_weight'):
         if style == 'avg_weight':
-            feature_importances = np.empty(len(self.feature_groups_), np.float64)
-            for i in range(len(self.feature_groups_)):
+            importances = np.empty(len(self.term_features_), np.float64)
+            for i in range(len(self.term_features_)):
                 mean_abs_score = np.abs(self.additive_terms_[i])
                 if is_classifier(self) and 2 < len(self.classes_):
                     mean_abs_score = np.average(mean_abs_score, axis=mean_abs_score.ndim - 1)
                 mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
-                feature_importances.itemset(i, mean_abs_score)
-            return feature_importances
+                importances.itemset(i, mean_abs_score)
+            return importances
         elif style == 'max':
             return np.array([np.max(np.abs(tensor)) for tensor in self.additive_terms_], np.float64)
         else:
             raise ValueError(f"Unrecognized style: {style}")
 
     def get_feature_names_out(self):
-        return [" x ".join(self.feature_names_in_[i] for i in grp) for grp in self.feature_groups_]
+        return [" x ".join(self.feature_names_in_[i] for i in grp) for grp in self.term_features_]
     
     def get_feature_types_out(self):
-        return [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.feature_groups_]
+        return [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.term_features_]
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
@@ -1251,7 +1246,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.bins_, 
             self.intercept_, 
             self.additive_terms_, 
-            self.feature_groups_
+            self.term_features_
         )
 
         # Handle binary classification case -- softmax only works with 0s appended
@@ -1281,7 +1276,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.bins_, 
             self.intercept_, 
             self.additive_terms_, 
-            self.feature_groups_
+            self.term_features_
         )
 
         # Handle binary classification case -- softmax only works with 0s appended
@@ -1319,7 +1314,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.bins_, 
             self.intercept_, 
             self.additive_terms_, 
-            self.feature_groups_
+            self.term_features_
         )
 
         if output == 'probabilities':
@@ -1444,7 +1439,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             self.bins_, 
             self.intercept_, 
             self.additive_terms_, 
-            self.feature_groups_
+            self.term_features_
         )
 
     def predict_and_contrib(self, X):
@@ -1469,7 +1464,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             self.bins_, 
             self.intercept_, 
             self.additive_terms_, 
-            self.feature_groups_
+            self.term_features_
         )
 
 
@@ -1588,7 +1583,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.bins_, 
             self.intercept_, 
             self.additive_terms_, 
-            self.feature_groups_
+            self.term_features_
         )
 
         # Handle binary classification case -- softmax only works with 0s appended
@@ -1618,7 +1613,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.bins_, 
             self.intercept_, 
             self.additive_terms_, 
-            self.feature_groups_
+            self.term_features_
         )
 
         # Handle binary classification case -- softmax only works with 0s appended
@@ -1744,6 +1739,6 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             self.bins_, 
             self.intercept_, 
             self.additive_terms_, 
-            self.feature_groups_
+            self.term_features_
         )
 

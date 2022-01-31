@@ -120,21 +120,21 @@ def deduplicate_bins(bins):
         del bin_levels[highest_idx + 1:]
 
 def _harmonize_tensor(
-    new_feature_group, 
+    new_feature_idxs, 
     new_bins, 
     new_bounds, 
-    old_feature_group, 
+    old_feature_idxs, 
     old_bins, 
     old_bounds, 
     old_tensor, 
     is_proportional
 ):
-    old_feature_group = list(old_feature_group)
+    old_feature_idxs = list(old_feature_idxs)
 
     axes = []
-    for feature_idx in new_feature_group:
-        old_idx = old_feature_group.index(feature_idx)
-        old_feature_group[old_idx] = -1 # in case we have duplicate feature idxs
+    for feature_idx in new_feature_idxs:
+        old_idx = old_feature_idxs.index(feature_idx)
+        old_feature_idxs[old_idx] = -1 # in case we have duplicate feature idxs
         axes.append(old_idx)
 
 
@@ -146,12 +146,12 @@ def _harmonize_tensor(
 
     lookups = []
     percentages = []
-    for feature_idx in new_feature_group:
+    for feature_idx in new_feature_idxs:
         old_bin_levels = old_bins[feature_idx]
-        old_feature_bins = old_bin_levels[min(len(old_bin_levels), len(old_feature_group)) - 1]
+        old_feature_bins = old_bin_levels[min(len(old_bin_levels), len(old_feature_idxs)) - 1]
 
         new_bin_levels = new_bins[feature_idx]
-        new_feature_bins = new_bin_levels[min(len(new_bin_levels), len(new_feature_group)) - 1]
+        new_feature_bins = new_bin_levels[min(len(new_bin_levels), len(new_feature_idxs)) - 1]
 
 
         if isinstance(old_feature_bins, dict):
@@ -454,17 +454,17 @@ class EBMUtils:
         fg_dicts = []
         all_fg = set()
         for model in models:
-            fg_sorted = [tuple(sorted(feature_group)) for feature_group in model.feature_groups_]
+            fg_sorted = [tuple(sorted(feature_idxs)) for feature_idxs in model.term_features_]
             fg_dicts.append(dict(zip(fg_sorted, count(0))))
             all_fg.update(fg_sorted)
 
         all_fg = list(all_fg)
-        keys = ([len(feature_group)] + sorted(feature_group) for feature_group in all_fg)
+        keys = ([len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in all_fg)
         sorted_items = sorted(zip(keys, all_fg))
         sorted_fgs = [x[1] for x in sorted_items]
         # TODO: in the future we might at this point try and figure out the most 
         #       common feature ordering within the feature groups
-        ebm.feature_groups_ = sorted_fgs
+        ebm.term_features_ = sorted_fgs
 
 
         ebm.bin_weights_ = []
@@ -477,16 +477,16 @@ class EBMUtils:
 
             bin_weight_percentages = []
             for model, fg_dict, model_weight in zip(models, fg_dicts, model_weights):
-                feature_group_idx = fg_dict.get(sorted_fg)
-                if feature_group_idx is not None:
+                term_idx = fg_dict.get(sorted_fg)
+                if term_idx is not None:
                     fixed_tensor = _harmonize_tensor(
                         sorted_fg,
                         ebm.bins_, 
                         ebm.feature_bounds_,
-                        model.feature_groups_[feature_group_idx], 
+                        model.term_features_[term_idx], 
                         model.bins_,
                         model.feature_bounds_,
-                        model.bin_weights_[feature_group_idx], 
+                        model.bin_weights_[term_idx], 
                         True
                     )
                     bin_weight_percentages.append(fixed_tensor * model_weight)
@@ -508,8 +508,8 @@ class EBMUtils:
                     if 0 < len(model.bagged_additive_terms_):
                         n_outer_bags = len(model.bagged_additive_terms_[0])
 
-                feature_group_idx = fg_dict.get(sorted_fg)
-                if feature_group_idx is None:
+                term_idx = fg_dict.get(sorted_fg)
+                if term_idx is None:
                     new_bin_weights.append(model_weight * bin_weight_percentages)
                     new_bagged_additive_terms.extend(n_outer_bags * [np.zeros(additive_shape, np.float64)])
                 else:
@@ -517,10 +517,10 @@ class EBMUtils:
                         sorted_fg,
                         ebm.bins_, 
                         ebm.feature_bounds_,
-                        model.feature_groups_[feature_group_idx], 
+                        model.term_features_[term_idx], 
                         model.bins_,
                         model.feature_bounds_,
-                        model.bin_weights_[feature_group_idx], 
+                        model.bin_weights_[term_idx], 
                         True
                     )
                     new_bin_weights.append(harmonized_bin_weights)
@@ -529,10 +529,10 @@ class EBMUtils:
                             sorted_fg,
                             ebm.bins_, 
                             ebm.feature_bounds_,
-                            model.feature_groups_[feature_group_idx], 
+                            model.term_features_[term_idx], 
                             model.bins_,
                             model.feature_bounds_,
-                            model.bagged_additive_terms_[feature_group_idx][bag_idx], 
+                            model.bagged_additive_terms_[term_idx][bag_idx], 
                             False
                         )
                         new_bagged_additive_terms.append(harmonized_bagged_additive_terms)
@@ -699,7 +699,7 @@ class EBMUtils:
         dataset,
         bag,
         scores,
-        feature_groups,
+        term_features,
         n_inner_bags,
         generate_update_options,
         learning_rate,
@@ -719,7 +719,7 @@ class EBMUtils:
             dataset,
             bag,
             scores,
-            feature_groups,
+            term_features,
             n_inner_bags,
             random_state,
             optional_temp_params,
@@ -732,9 +732,9 @@ class EBMUtils:
                     log.debug("Sweep Index {0}".format(episode_index))
                     log.debug("Metric: {0}".format(min_metric))
 
-                for feature_group_index in range(len(feature_groups)):
-                    gain = booster.generate_model_update(
-                        feature_group_index=feature_group_index,
+                for term_idx in range(len(term_features)):
+                    gain = booster.generate_term_update(
+                        term_idx=term_idx,
                         generate_update_options=generate_update_options,
                         learning_rate=learning_rate,
                         min_samples_leaf=min_samples_leaf,
@@ -742,30 +742,30 @@ class EBMUtils:
                     )
 
                     if noise_scale: # Differentially private updates
-                        splits = booster.get_model_update_splits()[0]
+                        splits = booster.get_term_update_splits()[0]
 
-                        model_update_tensor = booster.get_model_update_expanded()
-                        noisy_update_tensor = model_update_tensor.copy()
+                        term_update_tensor = booster.get_term_update_expanded()
+                        noisy_update_tensor = term_update_tensor.copy()
 
-                        splits_iter = [0] + list(splits + 1) + [len(model_update_tensor)] # Make splits iteration friendly
+                        splits_iter = [0] + list(splits + 1) + [len(term_update_tensor)] # Make splits iteration friendly
                         # Loop through all random splits and add noise before updating
                         for f, s in zip(splits_iter[:-1], splits_iter[1:]):
                             if s == 1: 
                                 continue # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
 
                             noise = np.random.normal(0.0, noise_scale)
-                            noisy_update_tensor[f:s] = model_update_tensor[f:s] + noise
+                            noisy_update_tensor[f:s] = term_update_tensor[f:s] + noise
 
                             # Native code will be returning sums of residuals in slices, not averages.
                             # Compute noisy average by dividing noisy sum by noisy bin weights
-                            instance_weight = np.sum(bin_weights[feature_group_index][f:s])
+                            instance_weight = np.sum(bin_weights[term_idx][f:s])
                             noisy_update_tensor[f:s] = noisy_update_tensor[f:s] / instance_weight
 
                         noisy_update_tensor = noisy_update_tensor * -1 # Invert gradients before updates
-                        booster.set_model_update_expanded(feature_group_index, noisy_update_tensor)
+                        booster.set_term_update_expanded(term_idx, noisy_update_tensor)
 
 
-                    curr_metric = booster.apply_model_update()
+                    curr_metric = booster.apply_term_update()
 
                     min_metric = min(curr_metric, min_metric)
 
@@ -810,17 +810,17 @@ class EBMUtils:
         dataset,
         bag,
         scores,
-        iter_feature_groups,
+        iter_term_features,
         min_samples_leaf,
         optional_temp_params=None,
     ):
         interaction_scores = []
         with InteractionDetector(dataset, bag, scores, optional_temp_params) as interaction_detector:
-            for feature_group in iter_feature_groups:
+            for feature_idxs in iter_term_features:
                 score = interaction_detector.get_interaction_score(
-                    feature_group, min_samples_leaf,
+                    feature_idxs, min_samples_leaf,
                 )
-                interaction_scores.append((feature_group, score))
+                interaction_scores.append((feature_idxs, score))
 
         ranked_scores = list(
             sorted(interaction_scores, key=lambda x: x[1], reverse=True)

@@ -16,7 +16,7 @@ def test_booster_internals():
         n_classes=2,
         features_categorical=np.array([0], dtype=ct.c_int64, order="C"), 
         features_bin_count=np.array([2], dtype=ct.c_int64, order="C"),
-        feature_groups=[[0]],
+        term_features=[[0]],
         X_train=np.array([[0]], dtype=ct.c_int64, order="C"),
         y_train=np.array([0], dtype=ct.c_int64, order="C"),
         w_train=np.array([1], dtype=np.float64, order="C"),
@@ -29,8 +29,8 @@ def test_booster_internals():
         random_state=42,
         optional_temp_params=None,
     ) as booster:
-        gain = booster.generate_model_update(
-            feature_group_index=0,
+        gain = booster.generate_term_update(
+            term_idx=0,
             generate_update_options=Native.GenerateUpdateOptions_Default,
             learning_rate=0.01,
             min_samples_leaf=2,
@@ -38,18 +38,18 @@ def test_booster_internals():
         )
         assert gain == 0
 
-        splits = booster.get_model_update_splits()
+        splits = booster.get_term_update_splits()
         assert len(splits) == 1
         assert len(splits[0]) == 0
 
-        model_update = booster.get_model_update_expanded()
-        assert len(model_update.shape) == 1
-        assert model_update.shape[0] == 2
-        assert model_update[0] < 0
+        term_update = booster.get_term_update_expanded()
+        assert len(term_update.shape) == 1
+        assert term_update.shape[0] == 2
+        assert term_update[0] < 0
 
-        booster.set_model_update_expanded(0, model_update)
+        booster.set_term_update_expanded(0, term_update)
 
-        metric = booster.apply_model_update()
+        metric = booster.apply_term_update()
         assert 0 < metric
 
         model = booster.get_best_model()
@@ -66,7 +66,7 @@ def test_one_class():
         n_classes=1,
         features_categorical=np.array([0], dtype=ct.c_int64, order="C"), 
         features_bin_count=np.array([2], dtype=ct.c_int64, order="C"),
-        feature_groups=[[0]],
+        term_features=[[0]],
         X_train=np.array([[0, 1, 0]], dtype=ct.c_int64, order="C"),
         y_train=np.array([0, 0, 0], dtype=ct.c_int64, order="C"),
         w_train=np.array([1, 1, 1], dtype=np.float64, order="C"),
@@ -79,8 +79,8 @@ def test_one_class():
         random_state=42,
         optional_temp_params=None,
     ) as booster:
-        gain = booster.generate_model_update(
-            feature_group_index=0,
+        gain = booster.generate_term_update(
+            term_idx=0,
             generate_update_options=Native.GenerateUpdateOptions_Default,
             learning_rate=0.01,
             min_samples_leaf=2,
@@ -88,16 +88,16 @@ def test_one_class():
         )
         assert gain == 0
 
-        splits = booster.get_model_update_splits()
+        splits = booster.get_term_update_splits()
         assert len(splits) == 1
         assert len(splits[0]) == 0
 
-        model_update = booster.get_model_update_expanded()
-        assert model_update is None
+        term_update = booster.get_term_update_expanded()
+        assert term_update is None
 
-        booster.set_model_update_expanded(0, model_update)
+        booster.set_term_update_expanded(0, term_update)
 
-        metric = booster.apply_model_update()
+        metric = booster.apply_term_update()
         assert metric == 0
 
         model = booster.get_best_model()
