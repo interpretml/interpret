@@ -4,7 +4,6 @@
 # TODO: Add unit tests for internal EBM interfacing
 from sys import platform
 import ctypes as ct
-from numpy.ctypeslib import ndpointer
 import numpy as np
 import os
 import struct
@@ -45,6 +44,30 @@ class Native:
             native._initialize(is_debug=is_debug)
             Native._native = native
         return Native._native
+
+    @staticmethod
+    def _make_pointer(array, dtype, ndim=1, is_null_allowed=False):
+        # using ndpointer creates cyclic garbage references which could clog up
+        # our memory and require extra garbage collections.  This function avoids that
+
+        if array is None:
+            if not is_null_allowed:  # pragma: no cover
+                raise ValueError("array cannot be None")
+            return None
+
+        if not isinstance(array, np.ndarray):  # pragma: no cover
+            raise ValueError("array should be an ndarray")
+
+        if array.dtype.type is not dtype:  # pragma: no cover
+            raise ValueError(f"array should be an ndarray of type {dtype}")
+
+        if not array.flags.c_contiguous:  # pragma: no cover
+            raise ValueError("array should be a contiguous ndarray")
+
+        if array.ndim != ndim:  # pragma: no cover
+            raise ValueError(f"array should have {ndim} dimensions")
+
+        return array.ctypes.data
 
     @staticmethod
     def _get_native_exception(error_code, native_function):  # pragma: no cover
@@ -155,7 +178,7 @@ class Native:
             random_seed,
             count_training_samples,
             count_validation_samples,
-            sample_counts_out
+            Native._make_pointer(sample_counts_out, np.int8),
         )
 
         return sample_counts_out
@@ -185,8 +208,8 @@ class Native:
             count_target_classes,
             count_training_samples,
             count_validation_samples,
-            targets,
-            sample_counts_out
+            Native._make_pointer(targets, np.int64),
+            Native._make_pointer(sample_counts_out, np.int8),
         )
 
         if return_code:  # pragma: no cover
@@ -197,7 +220,7 @@ class Native:
     def get_histogram_cut_count(self, col_data, strategy=None):
         n_cuts = self._unsafe.GetHistogramCutCount(
             col_data.shape[0],
-            col_data, 
+            Native._make_pointer(col_data, np.float64),
             0
         )
         return n_cuts
@@ -207,11 +230,11 @@ class Native:
         count_cuts = ct.c_int64(max_cuts)
         return_code = self._unsafe.CutQuantile(
             col_data.shape[0],
-            col_data, 
+            Native._make_pointer(col_data, np.float64),
             min_samples_bin,
             is_humanized,
             ct.byref(count_cuts),
-            cuts
+            Native._make_pointer(cuts, np.float64),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "CutQuantile")
@@ -223,9 +246,9 @@ class Native:
         count_cuts = ct.c_int64(max_cuts)
         self._unsafe.CutUniform(
             col_data.shape[0],
-            col_data, 
+            Native._make_pointer(col_data, np.float64),
             ct.byref(count_cuts),
-            cuts
+            Native._make_pointer(cuts, np.float64),
         )
         return cuts[:count_cuts.value]
 
@@ -234,9 +257,9 @@ class Native:
         count_cuts = ct.c_int64(max_cuts)
         return_code = self._unsafe.CutWinsorized(
             col_data.shape[0],
-            col_data, 
+            Native._make_pointer(col_data, np.float64),
             ct.byref(count_cuts),
-            cuts
+            Native._make_pointer(cuts, np.float64),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "CutWinsorized")
@@ -264,10 +287,10 @@ class Native:
         discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")
         return_code = self._unsafe.Discretize(
             col_data.shape[0],
-            col_data,
+            Native._make_pointer(col_data, np.float64),
             cuts.shape[0],
-            cuts,
-            discretized
+            Native._make_pointer(cuts, np.float64),
+            Native._make_pointer(discretized, np.int64),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "Discretize")
@@ -282,165 +305,110 @@ class Native:
         return n_bytes
 
     def fill_dataset_header(self, n_features, n_weights, n_targets, dataset):
-        if not isinstance(dataset, np.ndarray):  # pragma: no cover
-            raise ValueError("dataset should be an ndarray")
-
-        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
-            raise ValueError("dataset should be an ndarray of np.ubyte")
-
-        if not dataset.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("dataset should be a contiguous ndarray")
-
-        if dataset.ndim != 1:  # pragma: no cover
-            raise ValueError("dataset should have 1 dimension")
-
         return_code = self._unsafe.FillDataSetHeader(
             n_features, 
             n_weights, 
             n_targets, 
             dataset.nbytes,
-            dataset.ctypes.data, 
+            Native._make_pointer(dataset, np.ubyte),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
     def size_feature(self, n_bins, missing, unknown, nominal, binned_data):
-        n_bytes = self._unsafe.SizeFeature(n_bins, missing, unknown, nominal, len(binned_data), binned_data)
+        n_bytes = self._unsafe.SizeFeature(
+            n_bins, 
+            missing, 
+            unknown, 
+            nominal, 
+            len(binned_data), 
+            Native._make_pointer(binned_data, np.int64),
+        )
         if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(n_bytes, "SizeFeature")
         return n_bytes
 
     def fill_feature(self, n_bins, missing, unknown, nominal, binned_data, dataset):
-        if not isinstance(dataset, np.ndarray):  # pragma: no cover
-            raise ValueError("dataset should be an ndarray")
-
-        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
-            raise ValueError("dataset should be an ndarray of np.ubyte")
-
-        if not dataset.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("dataset should be a contiguous ndarray")
-
-        if dataset.ndim != 1:  # pragma: no cover
-            raise ValueError("dataset should have 1 dimension")
-
         return_code = self._unsafe.FillFeature(
             n_bins, 
             missing, 
             unknown, 
             nominal, 
             len(binned_data), 
-            binned_data, 
+            Native._make_pointer(binned_data, np.int64),
             dataset.nbytes, 
-            dataset.ctypes.data,
+            Native._make_pointer(dataset, np.ubyte),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillFeature")
 
     def size_weight(self, weights):
-        n_bytes = self._unsafe.SizeWeight(len(weights), weights)
+        n_bytes = self._unsafe.SizeWeight(
+            len(weights), 
+            Native._make_pointer(weights, np.float64),
+        )
         if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(n_bytes, "SizeWeight")
         return n_bytes
 
     def fill_weight(self, weights, dataset):
-        if not isinstance(dataset, np.ndarray):  # pragma: no cover
-            raise ValueError("dataset should be an ndarray")
-
-        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
-            raise ValueError("dataset should be an ndarray of np.ubyte")
-
-        if not dataset.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("dataset should be a contiguous ndarray")
-
-        if dataset.ndim != 1:  # pragma: no cover
-            raise ValueError("dataset should have 1 dimension")
-
         return_code = self._unsafe.FillWeight(
             len(weights), 
-            weights, 
+            Native._make_pointer(weights, np.float64),
             dataset.nbytes, 
-            dataset.ctypes.data, 
+            Native._make_pointer(dataset, np.ubyte),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillWeight")
 
     def size_classification_target(self, n_classes, targets):
-        n_bytes = self._unsafe.SizeClassificationTarget(n_classes, len(targets), targets)
+        n_bytes = self._unsafe.SizeClassificationTarget(
+            n_classes, 
+            len(targets), 
+            Native._make_pointer(targets, np.int64),
+        )
         if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(n_bytes, "SizeClassificationTarget")
         return n_bytes
 
     def fill_classification_target(self, n_classes, targets, dataset):
-        if not isinstance(dataset, np.ndarray):  # pragma: no cover
-            raise ValueError("dataset should be an ndarray")
-
-        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
-            raise ValueError("dataset should be an ndarray of np.ubyte")
-
-        if not dataset.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("dataset should be a contiguous ndarray")
-
-        if dataset.ndim != 1:  # pragma: no cover
-            raise ValueError("dataset should have 1 dimension")
-
         return_code = self._unsafe.FillClassificationTarget(
             n_classes, 
             len(targets), 
-            targets, 
+            Native._make_pointer(targets, np.int64),
             dataset.nbytes, 
-            dataset.ctypes.data,
+            Native._make_pointer(dataset, np.ubyte),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillClassificationTarget")
 
     def size_regression_target(self, targets):
-        n_bytes = self._unsafe.SizeRegressionTarget(len(targets), targets)
+        n_bytes = self._unsafe.SizeRegressionTarget(
+            len(targets), 
+            Native._make_pointer(targets, np.float64),
+        )
         if n_bytes < 0:  # pragma: no cover
             raise Native._get_native_exception(n_bytes, "SizeRegressionTarget")
         return n_bytes
 
     def fill_regression_target(self, targets, dataset):
-        if not isinstance(dataset, np.ndarray):  # pragma: no cover
-            raise ValueError("dataset should be an ndarray")
-
-        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
-            raise ValueError("dataset should be an ndarray of np.ubyte")
-
-        if not dataset.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("dataset should be a contiguous ndarray")
-
-        if dataset.ndim != 1:  # pragma: no cover
-            raise ValueError("dataset should have 1 dimension")
-
         return_code = self._unsafe.FillRegressionTarget(
             len(targets), 
-            targets, 
+            Native._make_pointer(targets, np.float64),
             dataset.nbytes, 
-            dataset.ctypes.data, 
+            Native._make_pointer(dataset, np.ubyte),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "FillRegressionTarget")
 
     def extract_dataset_header(self, dataset):
-        if not isinstance(dataset, np.ndarray):  # pragma: no cover
-            raise ValueError("dataset should be an ndarray")
-
-        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
-            raise ValueError("dataset should be an ndarray of np.ubyte")
-
-        if not dataset.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("dataset should be a contiguous ndarray")
-
-        if dataset.ndim != 1:  # pragma: no cover
-            raise ValueError("dataset should have 1 dimension")
-
         n_samples = ct.c_int64(-1)
         n_features = ct.c_int64(-1)
         n_weights = ct.c_int64(-1)
         n_targets = ct.c_int64(-1)
 
         return_code = self._unsafe.ExtractDataSetHeader(
-            dataset.ctypes.data, 
+            Native._make_pointer(dataset, np.ubyte),
             ct.byref(n_samples),
             ct.byref(n_features),
             ct.byref(n_weights),
@@ -452,24 +420,12 @@ class Native:
         return n_samples.value, n_features.value, n_weights.value, n_targets.value
 
     def extract_bin_counts(self, dataset, n_features):
-        if not isinstance(dataset, np.ndarray):  # pragma: no cover
-            raise ValueError("dataset should be an ndarray")
-
-        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
-            raise ValueError("dataset should be an ndarray of np.ubyte")
-
-        if not dataset.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("dataset should be a contiguous ndarray")
-
-        if dataset.ndim != 1:  # pragma: no cover
-            raise ValueError("dataset should have 1 dimension")
-
         bin_counts = np.empty(n_features, dtype=np.int64, order="C")
 
         return_code = self._unsafe.ExtractBinCounts(
-            dataset.ctypes.data, 
+            Native._make_pointer(dataset, np.ubyte),
             n_features, 
-            bin_counts, 
+            Native._make_pointer(bin_counts, np.int64),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "ExtractBinCounts")
@@ -477,24 +433,12 @@ class Native:
         return bin_counts
 
     def extract_target_classes(self, dataset, n_targets):
-        if not isinstance(dataset, np.ndarray):  # pragma: no cover
-            raise ValueError("dataset should be an ndarray")
-
-        if dataset.dtype.type is not np.ubyte:  # pragma: no cover
-            raise ValueError("dataset should be an ndarray of np.ubyte")
-
-        if not dataset.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("dataset should be a contiguous ndarray")
-
-        if dataset.ndim != 1:  # pragma: no cover
-            raise ValueError("dataset should have 1 dimension")
-
         class_counts = np.empty(n_targets, dtype=np.int64, order="C")
 
         return_code = self._unsafe.ExtractTargetClasses(
-            dataset.ctypes.data, 
+            Native._make_pointer(dataset, np.ubyte),
             n_targets, 
-            class_counts, 
+            Native._make_pointer(class_counts, np.int64),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "ExtractTargetClasses")
@@ -571,7 +515,7 @@ class Native:
             # int64_t countValidationSamples
             ct.c_int64,
             # int8_t * sampleCountsOut
-            ndpointer(dtype=ct.c_int8, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.SampleWithoutReplacement.restype = None
 
@@ -585,9 +529,9 @@ class Native:
             # int64_t countValidationSamples
             ct.c_int64,
             # int64_t * targets
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int8_t * sampleCountsOut
-            ndpointer(dtype=ct.c_int8, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.StratifiedSamplingWithoutReplacement.restype = ct.c_int32
 
@@ -595,7 +539,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t strategy
             ct.c_int64,
         ]
@@ -605,7 +549,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t countSamplesPerBinMin
             ct.c_int64,
             # int64_t isHumanized
@@ -613,7 +557,7 @@ class Native:
             # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),
             # double * cutsLowerBoundInclusiveOut
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.CutQuantile.restype = ct.c_int32
 
@@ -621,11 +565,11 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),
             # double * cutsLowerBoundInclusiveOut
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.CutUniform.restype = None
 
@@ -633,11 +577,11 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),
             # double * cutsLowerBoundInclusiveOut
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.CutWinsorized.restype = ct.c_int32
 
@@ -665,13 +609,13 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # double * featureValues
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t countCuts
             ct.c_int64,
             # double * cutsLowerBoundInclusive
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t * discretizedOut
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.Discretize.restype = ct.c_int32
 
@@ -712,7 +656,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binnedData
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.SizeFeature.restype = ct.c_int64
 
@@ -728,7 +672,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # int64_t * binnedData
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
@@ -740,7 +684,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * weights
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.SizeWeight.restype = ct.c_int64
 
@@ -748,7 +692,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * weights
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
@@ -762,7 +706,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # int64_t * targets
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.SizeClassificationTarget.restype = ct.c_int64
 
@@ -772,7 +716,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # int64_t * targets
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
@@ -784,7 +728,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * targets
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.SizeRegressionTarget.restype = ct.c_int64
 
@@ -792,7 +736,7 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # FloatEbmType * targets
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t countBytesAllocated
             ct.c_int64,
             # void * fillMem
@@ -820,7 +764,7 @@ class Native:
             # int64_t countFeaturesVerify
             ct.c_int64,
             # int64_t * binCountsOut
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.ExtractBinCounts.restype = ct.c_int32
 
@@ -830,7 +774,7 @@ class Native:
             # int64_t countTargetsVerify
             ct.c_int64,
             # int64_t * classCountsOut
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.ExtractTargetClasses.restype = ct.c_int32
 
@@ -841,9 +785,9 @@ class Native:
             # int64_t countSamples
             ct.c_int64,
             # double * logits
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # double * probabilitiesOut
-            ndpointer(dtype=ct.c_double, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.Softmax.restype = ct.c_int32
 
@@ -860,9 +804,9 @@ class Native:
             # int64_t countFeatureGroups
             ct.c_int64,
             # int64_t * dimensionCounts
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t * featureIndexes
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t countInnerBags
             ct.c_int64,
             # double * optionalTempParams
@@ -884,7 +828,7 @@ class Native:
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_int64,
             # int64_t * leavesMax
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # double * gainOut
             ct.POINTER(ct.c_double),
         ]
@@ -898,7 +842,7 @@ class Native:
             # int64_t * countSplitsInOut
             ct.POINTER(ct.c_int64),
             # int64_t * splitIndexesOut
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.GetModelUpdateSplits.restype = ct.c_int32
 
@@ -906,7 +850,7 @@ class Native:
             # void * boosterHandle
             ct.c_void_p,
             # double * modelFeatureGroupUpdateTensorOut
-            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.GetModelUpdateExpanded.restype = ct.c_int32
 
@@ -916,7 +860,7 @@ class Native:
             # int64_t indexFeatureGroup
             ct.c_int64,
             # double * modelFeatureGroupUpdateTensor
-            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.SetModelUpdateExpanded.restype = ct.c_int32
 
@@ -934,7 +878,7 @@ class Native:
             # int64_t indexFeatureGroup
             ct.c_int64,
             # double * modelFeatureGroupTensorOut
-            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.GetBestModelFeatureGroup.restype = ct.c_int32
 
@@ -944,7 +888,7 @@ class Native:
             # int64_t indexFeatureGroup
             ct.c_int64,
             # double * modelFeatureGroupTensorOut
-            ndpointer(dtype=ct.c_double, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
         ]
         self._unsafe.GetCurrentModelFeatureGroup.restype = ct.c_int32
 
@@ -975,7 +919,7 @@ class Native:
             # int64_t countDimensions
             ct.c_int64,
             # int64_t * featureIndexes
-            ndpointer(dtype=ct.c_int64, ndim=1, flags="C_CONTIGUOUS"),
+            ct.c_void_p,
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_int64,
             # double * interactionScoreOut
@@ -1068,78 +1012,31 @@ class Booster(AbstractContextManager):
                 self._term_shapes.append(tuple(dimensions))
 
         n_scores = n_samples
-        bag = self.bag
-        if bag is not None:
-            if not isinstance(bag, np.ndarray):  # pragma: no cover
-                raise ValueError("bag should be an ndarray")
-
-            if bag.dtype.type is not np.int8:  # pragma: no cover
-                raise ValueError("bag should be an ndarray of np.int8")
-
-            if not bag.flags.c_contiguous:  # pragma: no cover
-                raise ValueError("bag should be a contiguous ndarray")
-
-            if bag.ndim != 1:  # pragma: no cover
-                raise ValueError("bag should be single dimensional")
-
-            if bag.shape[0] != n_samples:  # pragma: no cover
+        if self.bag is not None:
+            if self.bag.shape[0] != n_samples:  # pragma: no cover
                 raise ValueError("bag should be len(n_samples)")
+            n_scores = np.count_nonzero(self.bag)
 
-            n_scores = np.count_nonzero(bag)
-
-            bag = bag.ctypes.data
-
-        scores = self.scores
-        if scores is not None:
-            if not isinstance(scores, np.ndarray):  # pragma: no cover
-                raise ValueError("scores should be an ndarray")
-
-            if scores.dtype.type is not np.float64:  # pragma: no cover
-                raise ValueError("scores should be an ndarray of np.float64")
-
-            if not scores.flags.c_contiguous:  # pragma: no cover
-                raise ValueError("scores should be a contiguous ndarray")
-
+        if self.scores is not None:
             if n_class_scores > 1:
-                if scores.ndim != 2:  # pragma: no cover
-                    raise ValueError("scores should have 2 dimensions for multiclass or multitarget")
-
-                if scores.shape[1] != n_class_scores:  # pragma: no cover
+                if self.scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"scores should have {n_class_scores} scores")
-            else:
-                if scores.ndim != 1:  # pragma: no cover
-                    raise ValueError("scores should have 1 dimension for non-multiclass and non-multitarget")
 
-            if scores.shape[0] != n_scores:  # pragma: no cover
+            if self.scores.shape[0] != n_scores:  # pragma: no cover
                 raise ValueError("scores should have the same length as the number of non-zero bag entries")
-
-            scores = scores.ctypes.data
-
-        optional_temp_params = self.optional_temp_params
-        if optional_temp_params is not None:  # pragma: no cover
-            if not isinstance(optional_temp_params, np.ndarray):  # pragma: no cover
-                raise ValueError("optional_temp_params should be an ndarray")
-
-            if optional_temp_params.dtype.type is not np.float64:  # pragma: no cover
-                raise ValueError("optional_temp_params should be an ndarray of np.float64")
-
-            if not optional_temp_params.flags.c_contiguous:  # pragma: no cover
-                raise ValueError("optional_temp_params should be a contiguous ndarray")
-
-            optional_temp_params = optional_temp_params.ctypes.data
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
             self.random_state,
-            self.dataset.ctypes.data,
-            bag,
-            scores,
+            Native._make_pointer(self.dataset, np.ubyte),
+            Native._make_pointer(self.bag, np.int8, 1, True),
+            Native._make_pointer(self.scores, np.float64, 2 if n_class_scores > 1 else 1, True),
             len(feature_counts),
-            feature_counts,
-            feature_indexes,
+            Native._make_pointer(feature_counts, np.int64),
+            Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
-            optional_temp_params,
+            Native._make_pointer(self.optional_temp_params, np.float64, 1, True),
             ct.byref(booster_handle),
         )
         if return_code:  # pragma: no cover
@@ -1206,7 +1103,7 @@ class Booster(AbstractContextManager):
             generate_update_options,
             learning_rate,
             min_samples_leaf,
-            max_leaves_arr,
+            Native._make_pointer(max_leaves_arr, np.int64),
             ct.byref(gain),
         )
         if return_code:  # pragma: no cover
@@ -1295,7 +1192,9 @@ class Booster(AbstractContextManager):
         model_term = np.empty(shape, dtype=np.float64, order="C")
 
         return_code = native._unsafe.GetBestModelFeatureGroup(
-            self._booster_handle, term_idx, model_term
+            self._booster_handle, 
+            term_idx, 
+            Native._make_pointer(model_term, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetBestModelFeatureGroup")
@@ -1330,7 +1229,9 @@ class Booster(AbstractContextManager):
         model_term = np.empty(shape, dtype=np.float64, order="C")
 
         return_code = native._unsafe.GetCurrentModelFeatureGroup(
-            self._booster_handle, term_idx, model_term
+            self._booster_handle, 
+            term_idx, 
+            Native._make_pointer(model_term, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetCurrentModelFeatureGroup")
@@ -1361,7 +1262,7 @@ class Booster(AbstractContextManager):
             self._booster_handle, 
             dimension_index, 
             ct.byref(count_splits), 
-            splits
+            Native._make_pointer(splits, np.int64),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetModelUpdateSplits")
@@ -1384,7 +1285,10 @@ class Booster(AbstractContextManager):
         shape = self._term_shapes[self._term_idx]
         term_update = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = native._unsafe.GetModelUpdateExpanded(self._booster_handle, term_update)
+        return_code = native._unsafe.GetModelUpdateExpanded(
+            self._booster_handle, 
+            Native._make_pointer(term_update, np.float64, len(shape)),
+        )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetModelUpdateExpanded")
 
@@ -1417,7 +1321,9 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
         return_code = native._unsafe.SetModelUpdateExpanded(
-            self._booster_handle, term_idx, term_update
+            self._booster_handle, 
+            term_idx, 
+            Native._make_pointer(term_update, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "SetModelUpdateExpanded")
@@ -1474,73 +1380,26 @@ class InteractionDetector(AbstractContextManager):
         n_class_scores = sum((Native.get_count_scores_c(n_classes) for n_classes in class_counts))
 
         n_scores = n_samples
-        bag = self.bag
-        if bag is not None:
-            if not isinstance(bag, np.ndarray):  # pragma: no cover
-                raise ValueError("bag should be an ndarray")
-
-            if bag.dtype.type is not np.int8:  # pragma: no cover
-                raise ValueError("bag should be an ndarray of np.int8")
-
-            if not bag.flags.c_contiguous:  # pragma: no cover
-                raise ValueError("bag should be a contiguous ndarray")
-
-            if bag.ndim != 1:  # pragma: no cover
-                raise ValueError("bag should be single dimensional")
-
-            if bag.shape[0] != n_samples:  # pragma: no cover
+        if self.bag is not None:
+            if self.bag.shape[0] != n_samples:  # pragma: no cover
                 raise ValueError("bag should be len(n_samples)")
+            n_scores = np.count_nonzero(self.bag)
 
-            n_scores = np.count_nonzero(bag)
-
-            bag = bag.ctypes.data
-
-        scores = self.scores
-        if scores is not None:
-            if not isinstance(scores, np.ndarray):  # pragma: no cover
-                raise ValueError("scores should be an ndarray")
-
-            if scores.dtype.type is not np.float64:  # pragma: no cover
-                raise ValueError("scores should be an ndarray of np.float64")
-
-            if not scores.flags.c_contiguous:  # pragma: no cover
-                raise ValueError("scores should be a contiguous ndarray")
-
+        if self.scores is not None:
             if n_class_scores > 1:
-                if scores.ndim != 2:  # pragma: no cover
-                    raise ValueError("scores should have 2 dimensions for multiclass or multitarget")
-
-                if scores.shape[1] != n_class_scores:  # pragma: no cover
+                if self.scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"scores should have {n_class_scores} scores")
-            else:
-                if scores.ndim != 1:  # pragma: no cover
-                    raise ValueError("scores should have 1 dimension for non-multiclass and non-multitarget")
 
-            if scores.shape[0] != n_scores:  # pragma: no cover
+            if self.scores.shape[0] != n_scores:  # pragma: no cover
                 raise ValueError("scores should have the same length as the number of non-zero bag entries")
-
-            scores = scores.ctypes.data
-
-        optional_temp_params = self.optional_temp_params
-        if optional_temp_params is not None:  # pragma: no cover
-            if not isinstance(optional_temp_params, np.ndarray):  # pragma: no cover
-                raise ValueError("optional_temp_params should be an ndarray")
-
-            if optional_temp_params.dtype.type is not np.float64:  # pragma: no cover
-                raise ValueError("optional_temp_params should be an ndarray of np.float64")
-
-            if not optional_temp_params.flags.c_contiguous:  # pragma: no cover
-                raise ValueError("optional_temp_params should be a contiguous ndarray")
-
-            optional_temp_params = optional_temp_params.ctypes.data
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateInteractionDetector(
-            self.dataset.ctypes.data,
-            bag,
-            scores,
-            optional_temp_params,
+            Native._make_pointer(self.dataset, np.ubyte),
+            Native._make_pointer(self.bag, np.int8, 1, True),
+            Native._make_pointer(self.scores, np.float64, 2 if n_class_scores > 1 else 1, True),
+            Native._make_pointer(self.optional_temp_params, np.float64, 1, True),
             ct.byref(interaction_handle),
         )
         if return_code:  # pragma: no cover
@@ -1578,7 +1437,7 @@ class InteractionDetector(AbstractContextManager):
         return_code = native._unsafe.CalculateInteractionScore(
             self._interaction_handle,
             len(feature_idxs),
-            np.array(feature_idxs, dtype=ct.c_int64),
+            Native._make_pointer(np.array(feature_idxs, np.int64), np.int64),
             min_samples_leaf,
             ct.byref(score),
         )
