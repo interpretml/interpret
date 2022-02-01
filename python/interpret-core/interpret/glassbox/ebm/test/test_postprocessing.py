@@ -18,7 +18,7 @@ from sklearn.model_selection import (
     train_test_split,
 )
 from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier
-from ..utils import EBMUtils
+from ..utils import EBMUtils, merge_ebms
 
 import numpy as np
 
@@ -70,7 +70,7 @@ def _smoke_test_explanations(global_exp, local_exp, port):
 
     shutdown_show_server()
 
-def test_merge_models():
+def test_merge_ebms():
     
     data = adult_classification()
     X = data["full"]["X"]
@@ -93,7 +93,7 @@ def test_merge_models():
     ebm3 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=4, interactions=[(12, 7), (2, 8)])
     ebm3.fit(X_train, y_train) 
         
-    merged_ebm1 = EBMUtils.merge_models([ebm1, ebm2 , ebm3])
+    merged_ebm1 = merge_ebms([ebm1, ebm2 , ebm3])
     valid_ebm(merged_ebm1)
     global_exp = merged_ebm1.explain_global()
     local_exp = merged_ebm1.explain_local(X_te[:5, :], y_te[:5])
@@ -104,7 +104,7 @@ def test_merge_models():
     ebm4 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=8, interactions=2)
     ebm4.fit(X_train, y_train) 
         
-    merged_ebm2 = EBMUtils.merge_models([merged_ebm1, ebm4])
+    merged_ebm2 = merge_ebms([merged_ebm1, ebm4])
     valid_ebm(merged_ebm2)
     global_exp = merged_ebm2.explain_global()
     local_exp = merged_ebm2.explain_local(X_te[:5, :], y_te[:5])
@@ -115,7 +115,7 @@ def test_merge_models():
     ebm5 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=8, interactions=2)
     ebm5.fit(X_train, y_train) 
         
-    merged_ebm3 = EBMUtils.merge_models([ebm5, merged_ebm2])
+    merged_ebm3 = merge_ebms([ebm5, merged_ebm2])
     valid_ebm(merged_ebm3)
     global_exp = merged_ebm3.explain_global()
     local_exp = merged_ebm3.explain_local(X_te[:5, :], y_te[:5])

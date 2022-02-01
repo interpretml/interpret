@@ -30,7 +30,7 @@ except ImportError:
     _scipy_installed = False
 
 from .internal import Native
-from .utils import DPUtils, deduplicate_bins
+from .utils import DPUtils, _deduplicate_bins
 
 # BIG TODO LIST:
 #- review this entire bin.py file
@@ -1839,7 +1839,7 @@ def construct_bins(
             for bin_levels, feature_bins in zip(bins, preprocessor.bins_):
                 bin_levels.append(feature_bins)
 
-    deduplicate_bins(bins)
+    _deduplicate_bins(bins)
     return feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_cuts, histogram_counts, unique_counts, zero_counts
 
 
@@ -1995,7 +1995,7 @@ def bin_native_by_dimension(
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
     # called under: predict
 
-    # prior to calling this function, call deduplicate_bins which will eliminate extra work in this function
+    # prior to calling this function, call _deduplicate_bins which will eliminate extra work in this function
 
     # this generator function returns data in whatever order it thinks is most efficient.  Normally for 
     # mains it returns them in order, but pairs will be returned as their data completes and they can

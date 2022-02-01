@@ -6,7 +6,7 @@ from typing import DefaultDict
 
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
-from .utils import DPUtils, EBMUtils, process_terms
+from .utils import DPUtils, EBMUtils, _process_terms
 from .bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
 from .internal import Native
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -606,7 +606,7 @@ class BaseEBM(BaseEstimator):
                 term_features
             )
 
-        additive_terms, term_standard_deviations, intercept = process_terms(
+        additive_terms, term_standard_deviations, intercept = _process_terms(
             n_classes, 
             n_samples, 
             bagged_additive_terms, 

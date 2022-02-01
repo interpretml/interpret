@@ -11,7 +11,7 @@ import math
 from itertools import repeat, chain
 
 from ..bin import *
-from ..bin import _process_column_initial, _encode_categorical_existing, _process_continuous
+from ..bin import _process_column_initial, _encode_categorical_existing, _process_continuous, _deduplicate_bins
 
 class StringHolder:
     def __init__(self, internal_str):
@@ -2314,7 +2314,7 @@ def test_deduplicate_bins():
         [np.array([1, 2, 3], dtype=np.float64), np.array([1, 3, 2], dtype=np.float64), np.array([1, 2, 3], dtype=np.float64)]
     ]
 
-    deduplicate_bins(bins)
+    _deduplicate_bins(bins)
 
     assert(len(bins[0]) == 3)
     assert(id(bins[0][0]) != id(bins[0][1]))
