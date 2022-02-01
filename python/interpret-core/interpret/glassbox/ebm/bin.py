@@ -1027,11 +1027,15 @@ def unify_columns(X, requests, feature_names_in, feature_types=None, min_unique_
                     names_dict.remove(name)
 
         if feature_types is None:
-            if any(feature_name_in not in names_dict for feature_name_in in feature_names_in):
-               names_dict = None
+            for feature_name_in in feature_names_in:
+                if feature_name_in not in names_dict:
+                    names_dict = None
+                    break
         else:
-            if any(feature_name_in not in names_dict for feature_name_in, feature_type in zip(feature_names_in, feature_types) if feature_type != 'ignore'):
-               names_dict = None
+            for feature_name_in, feature_type in zip(feature_names_in, feature_types):
+                if feature_type != 'ignore' and feature_name_in not in names_dict:
+                    names_dict = None
+                    break
 
         if names_dict is None:
             if n_cols == len(feature_names_in):
@@ -2045,8 +2049,9 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 # which requires contiguous memory
                 X_col = X_col.copy()
 
-            cuts_completed = dict()
             bin_levels = bins[column_feature_idx]
+            max_level = len(bin_levels)
+            cuts_completed = _none_list * max_level
             for requirements in waiting[column_feature_idx]:
                 if len(requirements) != 0:
                     term_idx = requirements[-1]
@@ -2054,24 +2059,22 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     is_done = True
                     for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                         if term_feature_idx == column_feature_idx:
-                            cuts = bin_levels[min(len(bin_levels), len(feature_idxs)) - 1]
-                            discretized = cuts_completed.get(id(cuts), None)
+                            level_idx = min(max_level, len(feature_idxs)) - 1
+                            discretized = cuts_completed[level_idx]
                             if discretized is None:
+                                cuts = bin_levels[level_idx]
                                 discretized = native.discretize(X_col, cuts)
                                 if bad is not None:
                                     discretized[bad] = -1
-
-                                cuts_completed[id(cuts)] = discretized
+                                cuts_completed[level_idx] = discretized
                             requirements[dimension_idx] = discretized
                         elif requirements[dimension_idx] is None:
                             is_done = False
 
                     if is_done:
-                        # the requirements can contain features with both categoricals or continuous
-                        binned_data = requirements[:-1]
+                        yield term_idx, requirements[:-1]
                         # clear references so that the garbage collector can free them
                         requirements.clear()
-                        yield term_idx, binned_data
         else:
             # categorical feature
 
@@ -2094,11 +2097,9 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                             is_done = False
 
                     if is_done:
-                        # the requirements can contain features with both categoricals or continuous
-                        binned_data = requirements[:-1]
+                        yield term_idx, requirements[:-1]
                         # clear references so that the garbage collector can free them
                         requirements.clear()
-                        yield term_idx, binned_data
 
 def ebm_decision_function(
     X, 
@@ -2152,13 +2153,13 @@ def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, featur
     bin_weights = _none_list * len(term_features)
 
     for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-        features = term_features[term_idx]
+        feature_idxs = term_features[term_idx]
         multiple = 1
         dimensions = []
-        for dimension_idx in range(len(features) - 1, -1, -1):
-            feature_idx = features[dimension_idx]
+        for dimension_idx in range(len(feature_idxs) - 1, -1, -1):
+            feature_idx = feature_idxs[dimension_idx]
             bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[min(len(bin_levels), len(features)) - 1]
+            feature_bins = bin_levels[min(len(bin_levels), len(feature_idxs)) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
                 n_bins = 2 if len(feature_bins) == 0 else max(feature_bins.values()) + 2
@@ -2213,7 +2214,7 @@ def unify_data2(X, n_samples, feature_names=None, feature_types=None, missing_da
     # fragmentation for continuous values which generates a lot of garbage to collect later
     X_unified = np.empty((n_samples, len(feature_names_in)), dtype=np.object_, order='F')
 
-    for feature_idx, (feature_type_in, X_col, categories, bad) in zip(count(), unify_columns(X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in, feature_types, min_unique_continuous, False)):
+    for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(unify_columns(X, zip(range(len(feature_names_in)), repeat(None)), feature_names_in, feature_types, min_unique_continuous, False)):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)

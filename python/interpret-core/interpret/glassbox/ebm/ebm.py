@@ -527,7 +527,7 @@ class BaseEBM(BaseEstimator):
 
                 for feature_idxs in interactions:
                     # clean these up since we expose them publically inside self.term_features_ 
-                    feature_idxs = tuple([int(feature_idx) for feature_idx in feature_idxs])
+                    feature_idxs = tuple(map(int, feature_idxs))
 
                     max_dimensions = max(max_dimensions, len(feature_idxs))
                     sorted_tuple = tuple(sorted(feature_idxs))
@@ -585,7 +585,7 @@ class BaseEBM(BaseEstimator):
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
-        bagged_additive_terms = (np.array([model[idx] for model in models]) for idx in range(len(term_features)))
+        bagged_additive_terms = (np.array([model[idx] for model in models], np.float64) for idx in range(len(term_features)))
 
         keys = ([len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in term_features)
         sorted_items = sorted(zip(keys, term_features, bagged_additive_terms))

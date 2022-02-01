@@ -14,6 +14,7 @@ import numbers
 import numpy as np
 import warnings
 import copy
+import operator
 
 from scipy.stats import norm
 from scipy.optimize import root_scalar, brentq
@@ -820,17 +821,10 @@ class EBMUtils:
                 score = interaction_detector.get_interaction_score(
                     feature_idxs, min_samples_leaf,
                 )
-                interaction_scores.append((feature_idxs, score))
+                interaction_scores.append((score, feature_idxs))
 
-        ranked_scores = list(
-            sorted(interaction_scores, key=lambda x: x[1], reverse=True)
-        )
-        final_ranked_scores = ranked_scores
-
-        final_indices = [x[0] for x in final_ranked_scores]
-        final_scores = [x[1] for x in final_ranked_scores]
-
-        return final_indices
+        interaction_scores.sort(reverse=True)
+        return list(map(operator.itemgetter(1), interaction_scores))
 
 
 class DPUtils:
