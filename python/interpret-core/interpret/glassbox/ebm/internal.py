@@ -226,6 +226,9 @@ class Native:
         return n_cuts
 
     def cut_quantile(self, col_data, min_samples_bin, is_humanized, max_cuts):
+        if max_cuts < 0:
+            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
         return_code = self._unsafe.CutQuantile(
@@ -242,6 +245,9 @@ class Native:
         return cuts[:count_cuts.value]
 
     def cut_uniform(self, col_data, max_cuts):
+        if max_cuts < 0:
+            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
         self._unsafe.CutUniform(
@@ -253,6 +259,9 @@ class Native:
         return cuts[:count_cuts.value]
 
     def cut_winsorized(self, col_data, max_cuts):
+        if max_cuts < 0:
+            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
         return_code = self._unsafe.CutWinsorized(

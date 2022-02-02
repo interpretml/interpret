@@ -334,10 +334,9 @@ class BaseEBM(BaseEstimator):
         bins = binning_result[2]
         term_bin_weights = binning_result[3]
         feature_bounds = binning_result[4]
-        histogram_cuts = binning_result[5]
-        histogram_counts = binning_result[6]
-        unique_counts = binning_result[7]
-        zero_counts = binning_result[8]
+        histogram_counts = binning_result[5]
+        unique_counts = binning_result[6]
+        zero_counts = binning_result[7]
 
         n_features_in = len(feature_names_in)
 
@@ -622,7 +621,6 @@ class BaseEBM(BaseEstimator):
             self.n_samples_ = n_samples
 
             # per-feature
-            self.histogram_cuts_ = histogram_cuts
             self.histogram_counts_ = histogram_counts
             self.unique_counts_ = unique_counts
             self.zero_counts_ = zero_counts
@@ -691,8 +689,6 @@ class BaseEBM(BaseEstimator):
                     feature_max = feature_bounds[i, 1]
                     if not math.isnan(feature_max):
                         feature['max'] = EBMUtils.jsonify_item(feature_max)
-                if hasattr(self, 'histogram_cuts_') and self.histogram_cuts_[i] is not None:
-                    feature['histogram_cuts'] = self.histogram_cuts_[i].tolist()
                 if hasattr(self, 'histogram_counts_') and self.histogram_counts_[i] is not None:
                     feature['histogram_counts'] = self.histogram_counts_[i].tolist()
             else:
@@ -825,18 +821,20 @@ class BaseEBM(BaseEstimator):
                         max_val = feature_bounds[feature_index0, 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+                    min_val_fixed, max_val_fixed = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+                    bin_labels = list(np.concatenate(([min_val_fixed], feature_bins, [max_val_fixed])))
 
-                    bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
-
-                    if hasattr(self, 'histogram_cuts_') and hasattr(self, 'histogram_counts_'):
-                        names = self.histogram_cuts_[feature_index0]
+                    if not math.isnan(min_val) and not math.isnan(max_val) \
+                        and hasattr(self, 'histogram_counts_') \
+                        and self.histogram_counts_[feature_index0] is not None:
+                        
+                        n_cuts = len(self.histogram_counts_[feature_index0]) - 3
+                        names = native.cut_uniform(np.array([min_val, max_val], np.float64), n_cuts)
+                        names = list(np.concatenate(([min_val], names, [max_val])))
                         densities = list(self.histogram_counts_[feature_index0][1:-1])
                     else:
-                        names = feature_bins
                         densities = list(mod_counts[term_idx])
-
-                    names = list(np.concatenate(([min_val], names, [max_val])))
+                        names = bin_labels
 
                 scores = list(model_graph)
                 upper_bounds = list(model_graph + errors)

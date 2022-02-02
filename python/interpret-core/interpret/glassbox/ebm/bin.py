@@ -1573,7 +1573,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         bins = _none_list * n_features
         bin_weights = _none_list * n_features
         feature_bounds = np.full((n_features, 2), np.nan, dtype=np.float64)
-        histogram_cuts = _none_list * n_features
         histogram_counts = _none_list * n_features
         unique_counts = np.full(n_features, 0, dtype=np.int64)
         zero_counts = np.full(n_features, 0, dtype=np.int64)
@@ -1636,12 +1635,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     feature_bin_weights = feature_bin_weights.astype(np.float64, copy=False)
 
                     n_cuts = native.get_histogram_cut_count(X_col)
-                    feature_histogram_cuts = native.cut_uniform(X_col, n_cuts)
-                    discretized = native.discretize(X_col, feature_histogram_cuts)
-                    feature_histogram_counts = np.bincount(discretized, minlength=len(feature_histogram_cuts) + 3)
+                    histogram_cuts = native.cut_uniform(X_col, n_cuts)
+                    discretized = native.discretize(X_col, histogram_cuts)
+                    feature_histogram_counts = np.bincount(discretized, minlength=len(histogram_cuts) + 3)
                     feature_histogram_counts = feature_histogram_counts.astype(np.int64, copy=False)
 
-                    histogram_cuts[feature_idx] = feature_histogram_cuts
                     histogram_counts[feature_idx] = feature_histogram_counts
 
                     X_col = X_col[~np.isnan(X_col)]
@@ -1726,7 +1724,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.bin_weights_ = bin_weights
         self.noise_scale_ = noise_scale
         self.feature_bounds_ = feature_bounds
-        self.histogram_cuts_ = histogram_cuts
         self.histogram_counts_ = histogram_counts
         self.unique_counts_ = unique_counts
         self.zero_counts_ = zero_counts
@@ -1826,7 +1823,6 @@ def construct_bins(
             feature_types_in = preprocessor.feature_types_in_
             bin_weights = preprocessor.bin_weights_
             feature_bounds = preprocessor.feature_bounds_
-            histogram_cuts = preprocessor.histogram_cuts_
             histogram_counts = preprocessor.histogram_counts_
             unique_counts = preprocessor.unique_counts_
             zero_counts = preprocessor.zero_counts_
@@ -1840,7 +1836,7 @@ def construct_bins(
                 bin_levels.append(feature_bins)
 
     _deduplicate_bins(bins)
-    return feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_cuts, histogram_counts, unique_counts, zero_counts
+    return feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, unique_counts, zero_counts
 
 
 def bin_native(
