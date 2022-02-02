@@ -125,6 +125,11 @@ def _deduplicate_bins(bins):
                 highest_idx = level_idx
         del bin_levels[highest_idx + 1:]
 
+def make_histogram_edges(min_val, max_val, histogram_counts):
+    native = Native.get_native_singleton()
+    cuts = native.cut_uniform(np.array([min_val, max_val], np.float64), len(histogram_counts) - 3)
+    return np.concatenate(([min_val], cuts, [max_val]))
+
 def _harmonize_tensor(
     new_feature_idxs, 
     new_bins, 
@@ -330,24 +335,58 @@ def merge_ebms(models):
 
     ebm = ebm_type.__new__(ebm_type)
 
-    ebm.has_fitted_ = True
     if any(not getattr(model, 'has_fitted_', False) for model in models):  # pragma: no cover
         raise Exception("All models must be fitted.")
+    ebm.has_fitted_ = True
 
-    ebm.feature_names_in_ = models[0].feature_names_in_.copy()
-    ebm.feature_types_in_ = models[0].feature_types_in_.copy()
-    if len(ebm.feature_names_in_) != len(ebm.feature_types_in_):  # pragma: no cover
-        raise Exception("Invalid ebm number of features.")
-    ebm.n_features_in_ = len(ebm.feature_types_in_)
+    # self.bins_ is the only feature based attribute that we absolutely require
+    n_features = len(models[0].bins_)
 
-    if any(ebm.feature_names_in_ != model.feature_names_in_ for model in models):  # pragma: no cover
+    for model in models:
+        if n_features != len(model.bins_):  # pragma: no cover
+            raise Exception("Inconsistent numbers of features in the models.")
+
+        feature_names = getattr(model, 'feature_names_in_', None)
+        if feature_names is not None:
+            if n_features != len(feature_names):  # pragma: no cover
+                raise Exception("Inconsistent numbers of features in the models.")
+
+        feature_types = getattr(model, 'feature_types_in_', None)
+        if feature_types is not None:
+            if n_features != len(feature_types):  # pragma: no cover
+                raise Exception("Inconsistent numbers of features in the models.")
+
+        feature_bounds = getattr(model, 'feature_bounds_', None)
+        if feature_bounds is not None:
+            if n_features != feature_bounds.shape[0]:  # pragma: no cover
+                raise Exception("Inconsistent numbers of features in the models.")
+
+        histogram_counts = getattr(model, 'histogram_counts_', None)
+        if histogram_counts is not None:
+            if n_features != len(histogram_counts):  # pragma: no cover
+                raise Exception("Inconsistent numbers of features in the models.")
+
+        unique_counts = getattr(model, 'unique_counts_', None)
+        if unique_counts is not None:
+            if n_features != len(unique_counts):  # pragma: no cover
+                raise Exception("Inconsistent numbers of features in the models.")
+
+        zero_counts = getattr(model, 'zero_counts_', None)
+        if zero_counts is not None:
+            if n_features != len(zero_counts):  # pragma: no cover
+                raise Exception("Inconsistent numbers of features in the models.")
+
+    feature_names_in = getattr(models[0], 'feature_names_in_', None)
+    if any(feature_names_in != getattr(model, 'feature_names_in_', None) for model in models):  # pragma: no cover
         raise Exception("All models should have the same feature names.")
+    if feature_names_in is not None:
+        ebm.feature_names_in_ = feature_names_in.copy()
 
-    if any(ebm.feature_types_in_ != model.feature_types_in_ for model in models):  # pragma: no cover
+    feature_types_in = getattr(models[0], 'feature_types_in_', None)
+    if any(feature_types_in != getattr(model, 'feature_types_in_', None) for model in models):  # pragma: no cover
         raise Exception("All models should have the same feature types.")
-
-    if any(ebm.n_features_in_ != model.feature_bounds_.shape[0] for model in models if getattr(model, 'feature_bounds_', None) is not None):  # pragma: no cover
-        raise Exception("All feature_bounds_ should have the same length as the number of features.")
+    if feature_types_in is not None:
+        ebm.feature_types_in_ = feature_types_in.copy()
 
     min_vals = [model.feature_bounds_[:, 0] for model in models if getattr(model, 'feature_bounds_', None) is not None]
     max_vals = [model.feature_bounds_[:, 1] for model in models if getattr(model, 'feature_bounds_', None) is not None]
@@ -357,7 +396,6 @@ def merge_ebms(models):
 
             min_vals = np.nanmin(min_vals, axis=0)
             max_vals = np.nanmax(max_vals, axis=0)
-
             if any(not isnan(val) for val in min_vals) or any(not isnan(val) for val in max_vals):
                 ebm.feature_bounds_ = np.array(list(zip(min_vals, max_vals)), np.float64)
 
@@ -395,11 +433,8 @@ def merge_ebms(models):
             ebm.max_target_ = max(model.max_target_ for model in models if hasattr(model, 'max_target_'))
         n_classes = -1
 
-    if any(ebm.n_features_in_ != len(model.bins_) for model in models):  # pragma: no cover
-        raise Exception("All bins_ should have the same length as the number of features.")
-
     new_bins = []
-    for idx in range(ebm.n_features_in_):
+    for idx in range(n_features):
         level_end = max(len(model.bins_[idx]) for model in models)
         new_leveled_bins = []
         for level_idx in range(level_end):

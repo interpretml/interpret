@@ -6,7 +6,7 @@ from typing import DefaultDict
 
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
-from .utils import DPUtils, EBMUtils, _process_terms
+from .utils import DPUtils, EBMUtils, _process_terms, make_histogram_edges
 from .bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
 from .internal import Native
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -634,10 +634,9 @@ class BaseEBM(BaseEstimator):
             self.max_target_ = max_target
 
         # per-feature
-        self.n_features_in_ = n_features_in # required by scikit-learn
+        self.bins_ = bins
         self.feature_names_in_ = feature_names_in # scikit-learn specified name
         self.feature_types_in_ = feature_types_in
-        self.bins_ = bins
         self.feature_bounds_ = feature_bounds
 
         # per-feature group
@@ -819,20 +818,16 @@ class BaseEBM(BaseEstimator):
                         max_val = feature_bounds[feature_index0, 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val_fixed, max_val_fixed = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
-                    bin_labels = list(np.concatenate(([min_val_fixed], feature_bins, [max_val_fixed])))
+                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val, max_val)
+                    bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
 
-                    if not math.isnan(min_val) and not math.isnan(max_val) \
-                        and hasattr(self, 'histogram_counts_') \
-                        and self.histogram_counts_[feature_index0] is not None:
-                        
-                        n_cuts = len(self.histogram_counts_[feature_index0]) - 3
-                        names = native.cut_uniform(np.array([min_val, max_val], np.float64), n_cuts)
-                        names = list(np.concatenate(([min_val], names, [max_val])))
+                    histogram_edges = self.get_histogram_edges(feature_index0)
+                    if histogram_edges is not None:
+                        names = list(histogram_edges)
                         densities = list(self.histogram_counts_[feature_index0][1:-1])
                     else:
-                        densities = list(mod_counts[term_idx])
                         names = bin_labels
+                        densities = list(mod_counts[term_idx])
 
                 scores = list(model_graph)
                 upper_bounds = list(model_graph + errors)
@@ -891,11 +886,10 @@ class BaseEBM(BaseEstimator):
                         max_val = feature_bounds[feature_idxs[0], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val, max_val)
 
                     bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
                 bin_labels_left = bin_labels
-
 
                 bin_levels = self.bins_[feature_idxs[1]]
                 feature_bins = bin_levels[min(len(feature_idxs), len(bin_levels)) - 1]
@@ -914,7 +908,7 @@ class BaseEBM(BaseEstimator):
                         max_val = feature_bounds[feature_idxs[1], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val=min_val, max_val=max_val)
+                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val, max_val)
 
                     bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
                 bin_labels_right = bin_labels
@@ -1102,6 +1096,19 @@ class BaseEBM(BaseEstimator):
             selector=selector,
         )
 
+    def get_histogram_edges(self, feature_idx):
+        feature_bounds = getattr(self, 'feature_bounds_', None)
+        if feature_bounds is not None:
+            min_val = feature_bounds[feature_idx, 0]
+            max_val = feature_bounds[feature_idx, 1]
+            if not math.isnan(min_val) and not math.isnan(max_val):
+                histogram_counts = getattr(self, 'histogram_counts_', None)
+                if histogram_counts is not None:
+                    histogram_bin_counts = histogram_counts[feature_idx]
+                    if histogram_bin_counts is not None:
+                        return make_histogram_edges(min_val, max_val, histogram_bin_counts)
+        return None
+
     def get_importances(self, style='avg_weight'):
         if style == 'avg_weight':
             importances = np.empty(len(self.term_features_), np.float64)
@@ -1116,6 +1123,11 @@ class BaseEBM(BaseEstimator):
             return np.array([np.max(np.abs(tensor)) for tensor in self.additive_terms_], np.float64)
         else:
             raise ValueError(f"Unrecognized style: {style}")
+
+    @property
+    def n_features_in_(self): # self.n_features_in_ is required by scikit-learn
+        # self.bins_ is the only feature based attribute that we absolutely require
+        return len(self.bins_)
 
     def get_feature_names_out(self):
         return [" x ".join(self.feature_names_in_[i] for i in grp) for grp in self.term_features_]
