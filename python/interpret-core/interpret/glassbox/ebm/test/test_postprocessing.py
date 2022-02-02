@@ -80,17 +80,17 @@ def test_merge_ebms():
     
     seed =1
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=seed)
-    ebm1 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=2, interactions=[(8,7)])
+    ebm1 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=3, interactions=[(8,7)])
     ebm1.fit(X_train, y_train)  
 
     seed +=10
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.40, random_state=seed)
-    ebm2 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=3, interactions=[(8, 2), (10, 11), (12, 7)])
+    ebm2 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=4, interactions=[(8, 2), (10, 11), (12, 7)])
     ebm2.fit(X_train, y_train)  
 
     seed +=10
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.60, random_state=seed)
-    ebm3 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=4, interactions=[(12, 7), (2, 8)])
+    ebm3 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=5, interactions=[(12, 7), (2, 8)])
     ebm3.fit(X_train, y_train) 
         
     merged_ebm1 = merge_ebms([ebm1, ebm2 , ebm3])

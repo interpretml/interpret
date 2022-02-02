@@ -309,11 +309,9 @@ class BaseEBM(BaseEstimator):
             training_delta_ = self.delta / 2
             composition=self.composition
 
-            # TODO: remove the + 1 for max_bins and max_interaction_bins.  It's just here to compare to the previous results!
-            bin_levels = [self.max_bins + 1]
+            bin_levels = [self.max_bins]
         else:
-            # TODO: remove the + 1 for max_bins and max_interaction_bins.  It's just here to compare to the previous results!
-            bin_levels = [self.max_bins + 1, self.max_interaction_bins + 1]
+            bin_levels = [self.max_bins, self.max_interaction_bins]
 
         binning_result = construct_bins(
             X=X,

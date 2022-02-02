@@ -293,30 +293,52 @@ def merge_ebms(models):
         An EBM model with averaged mean and standard deviation of input models.
     """
 
-
-    # TODO: We're not currently moving over any of the __init__ parameters, but we should do that
-
     if len(models) < 2:  # pragma: no cover
         raise Exception("At least two models are required to merge.")
 
-    if len(set(type(model) for model in models)) != 1:  # pragma: no cover
-        # TODO: we might be able to relax this and merge for instance a DP classification model with a non-DP one
-        raise Exception("All models should be the same type.")
+    model_types = list(set(map(type, models)))
+    if len(model_types) == 2:
+        type_names = [model_type.__name__ for model_type in model_types]
+        if 'ExplainableBoostingClassifier' in type_names and 'DPExplainableBoostingClassifier' in type_names:
+            ebm_type = model_types[type_names.index('ExplainableBoostingClassifier')]
+            is_classifier = True
+            is_private = False
+        elif 'ExplainableBoostingRegressor' in type_names and 'DPExplainableBoostingRegressor' in type_names:
+            ebm_type = model_types[type_names.index('ExplainableBoostingRegressor')]
+            is_classifier = False
+            is_private = False
+        else:
+            raise Exception("Inconsistent model types attempting to be merged.")
+    elif len(model_types) == 1:
+        ebm_type = model_types[0]
+        if ebm_type.__name__ == 'ExplainableBoostingClassifier':
+            is_classifier = True
+            is_private = False
+        elif ebm_type.__name__ == 'DPExplainableBoostingClassifier':
+            is_classifier = True
+            is_private = True
+        elif ebm_type.__name__ == 'ExplainableBoostingRegressor':
+            is_classifier = False
+            is_private = False
+        elif ebm_type.__name__ == 'DPExplainableBoostingRegressor':
+            is_classifier = False
+            is_private = True
+        else:
+            raise Exception(f"Invalid EBM model type {ebm_type.__name__} attempting to be merged.")
+    else:
+        raise Exception("Inconsistent model types being merged.")
 
-    ebm = copy.deepcopy(models[0])
+    ebm = ebm_type.__new__(ebm_type)
 
-    type_name = type(ebm).__name__
-    if type_name not in {'ExplainableBoostingClassifier', 'DPExplainableBoostingClassifier', 'ExplainableBoostingRegressor', 'DPExplainableBoostingRegressor'}:
-        raise Exception(f"Unknown EBM model type {type_name}.")
-
-    is_classifier = type_name == 'ExplainableBoostingClassifier' or type_name == 'DPExplainableBoostingClassifier'
-    is_private = type_name == 'DPExplainableBoostingClassifier' or type_name == 'DPExplainableBoostingRegressor'
-
+    ebm.has_fitted_ = True
     if any(not getattr(model, 'has_fitted_', False) for model in models):  # pragma: no cover
         raise Exception("All models must be fitted.")
 
-    if any(ebm.n_features_in_ != model.n_features_in_ for model in models):  # pragma: no cover
-        raise Exception("All models should have the same number of features.")
+    ebm.feature_names_in_ = models[0].feature_names_in_.copy()
+    ebm.feature_types_in_ = models[0].feature_types_in_.copy()
+    if len(ebm.feature_names_in_) != len(ebm.feature_types_in_):  # pragma: no cover
+        raise Exception("Invalid ebm number of features.")
+    ebm.n_features_in_ = len(ebm.feature_types_in_)
 
     if any(ebm.feature_names_in_ != model.feature_names_in_ for model in models):  # pragma: no cover
         raise Exception("All models should have the same feature names.")
@@ -324,64 +346,54 @@ def merge_ebms(models):
     if any(ebm.feature_types_in_ != model.feature_types_in_ for model in models):  # pragma: no cover
         raise Exception("All models should have the same feature types.")
 
-    if ebm.n_features_in_ != len(ebm.feature_names_in_ ):  # pragma: no cover
-        raise Exception("Bad model format.  Number of features doesn't match feature names.")
+    if any(ebm.n_features_in_ != model.feature_bounds_.shape[0] for model in models if getattr(model, 'feature_bounds_', None) is not None):  # pragma: no cover
+        raise Exception("All feature_bounds_ should have the same length as the number of features.")
 
-    if ebm.n_features_in_ != len(ebm.feature_types_in_ ):  # pragma: no cover
-        raise Exception("Bad model format.  Number of features doesn't match feature types.")
+    min_vals = [model.feature_bounds_[:, 0] for model in models if getattr(model, 'feature_bounds_', None) is not None]
+    max_vals = [model.feature_bounds_[:, 1] for model in models if getattr(model, 'feature_bounds_', None) is not None]
+    if 0 < len(min_vals): # max_vals has the same len
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
 
-    if is_private:
-        if hasattr(ebm, 'noise_scale_'):
-            del ebm.noise_scale_ # TODO ask Harsha if we can/should estimate this
-    else:
-        ebm.n_samples_ = sum(model.n_samples_ for model in models)
+            min_vals = np.nanmin(min_vals, axis=0)
+            max_vals = np.nanmax(max_vals, axis=0)
 
-        # TODO: we could probably use the overall min/max to construct new bins (using the max number of histogram bins), 
-        # and then approximate the counts by proportioning them
-        if hasattr(ebm, 'histogram_cuts_'):
-            del ebm.histogram_cuts_
-        if hasattr(ebm, 'histogram_counts_'):
-            del ebm.histogram_counts_
+            if any(not isnan(val) for val in min_vals) or any(not isnan(val) for val in max_vals):
+                ebm.feature_bounds_ = np.array(list(zip(min_vals, max_vals)), np.float64)
 
-        if hasattr(ebm, 'unique_counts_'):
-            del ebm.unique_counts_
+    if not is_private:
+        if all(hasattr(model, 'n_samples_') for model in models):
+            ebm.n_samples_ = sum(model.n_samples_ for model in models)
 
-        ebm.zero_counts_ = sum(model.zero_counts_ for model in models)
+        if all(hasattr(model, 'histogram_counts_') and hasattr(model, 'feature_bounds_') for model in models):
+            if hasattr(ebm, 'feature_bounds_'):
+                # TODO: estimate the histogram bin counts by taking the min of the mins and the max of the maxes
+                # and re-apportioning the counts based on the distributions of the previous histograms
+                pass
 
-        # TODO: we could probably estimate these like we do with weights but with the added step
-        # of afterwards re-integerizing the counts by putting residuals into the most likely bins
-        if hasattr(ebm, 'bin_counts_'):
-            del ebm.bin_counts_
+        if all(hasattr(model, 'zero_counts_') for model in models):
+            ebm.zero_counts_ = np.sum([model.zero_counts_ for model in models], axis=0)
+
+        if all(hasattr(model, 'bin_counts_') for model in models):
+            # TODO: IF all models have bin counts then we should try and estimate the bin counts for
+            # every term_feature, even though we won't have information on some of them.  At least we know
+            # accurate bin counts.  If we're given a DP model then we shouldn't try and estimate them since
+            # we didn't have it in the original model, so we should just use weights like in DP
+            pass
 
     if is_classifier:
+        ebm.classes_ = models[0].classes_.copy()
         if any(not np.array_equal(ebm.classes_, model.classes_) for model in models):  # pragma: no cover
             raise Exception("The target classes should be identical.")
 
         ebm._class_idx_ = {x: index for index, x in enumerate(ebm.classes_)}
         n_classes = len(ebm.classes_)
     else:
-        ebm.min_target_ = min(model.min_target_ for model in models)
-        ebm.max_target_ = max(model.max_target_ for model in models)
+        if any(hasattr(model, 'min_target_') for model in models):
+            ebm.min_target_ = min(model.min_target_ for model in models if hasattr(model, 'min_target_'))
+        if any(hasattr(model, 'max_target_') for model in models):
+            ebm.max_target_ = max(model.max_target_ for model in models if hasattr(model, 'max_target_'))
         n_classes = -1
-
-    if any(ebm.n_features_in_ != model.feature_bounds_.shape[0] for model in models if getattr(model, 'feature_bounds_', None) is not None):  # pragma: no cover
-        raise Exception("All feature_bounds_ should have the same length as the number of features.")
-
-    min_vals = [model.feature_bounds_[:, 0] for model in models if getattr(model, 'feature_bounds_', None) is not None]
-    max_vals = [model.feature_bounds_[:, 1] for model in models if getattr(model, 'feature_bounds_', None) is not None]
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-
-        if hasattr(ebm, 'feature_bounds_'):
-            del ebm.feature_bounds_
-        if 0 < len(min_vals): # max_vals has the same len
-            min_vals = np.nanmin(min_vals, axis=0)
-            max_vals = np.nanmax(max_vals, axis=0)
-            ebm.feature_bounds_ = np.array(list(zip(min_vals, max_vals)), np.float64)
-
-    if hasattr(ebm, 'breakpoint_iteration_'):
-        del ebm.breakpoint_iteration_
 
     if any(ebm.n_features_in_ != len(model.bins_) for model in models):  # pragma: no cover
         raise Exception("All bins_ should have the same length as the number of features.")
