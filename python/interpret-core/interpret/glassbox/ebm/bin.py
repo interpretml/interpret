@@ -453,6 +453,28 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
 
             return floats, None
 
+    # TODO: we need to move this re-ordering functionality to EBMPreprocessor.fit(...) and return a
+    # np.unicode_ array here.  There are two issues with keeping it here
+    #   1) If the user wants 'nominal_prevalence' in a DP model, then we need to order the prevalence
+    #      by the publically visible noisy weights rather than the private non-noisy prevalences, 
+    #      but we don't have access to the noisy weights here.  We haven't documented 'nominal_prevalence'
+    #      yet, so nobody should be using it yet, but before we make it public we need to solve this issue
+    #   2) If we someday want to have an 'eval_set' that has a separate X_eval, then we'll need
+    #      two iterators that operate on different X's.  If that happens then the categories dictionary
+    #      needs to be synchronized, so we need access to all the possible categories which is not available
+    #      here
+    # Since we only really care about speed during predict time, and at predict time we already have a 
+    # categories dictionary, moving this to EBMPreprocessor.fit(...) won't cause any performance issues
+    # but it's a bit more complicated.  Also, we need to think through how we handle categoricals from
+    # pandas.  We can't return an np.unicode_ array there since then we'd loose the ordering that pandas
+    # gives us, which at a minimum is required for ordinals, and is nice to preserve for nominals because
+    # it gives the user an easy way to order the nominals on the graph and in the models (for model editing).
+    #
+    # Alternatively, if we decide to expose the integer bag definitions instead of having an eval_set then
+    # we could probably just keep the ordering here and then re-order them again in 
+    # EBMPreprocessor.fit(...) for DP models.  If we destroy the information about prevalence and resort
+    # by noisy prevalence then that would be ok.
+
     # TODO: add a callback function option here that allows the caller to sort, remove, combine
     if processing == 'nominal_prevalence':
         if floats is None:
@@ -1871,9 +1893,6 @@ def bin_native(
     n_bytes = native.size_dataset_header(len(requests), n_weights, 1)
     for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
-            # re-check that that number of samples is identical since iterators can be used up by looking at them
-            # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
-            # unexpected number of items and thus a buffer overrun on the second pass through the data
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
             raise ValueError(msg)
@@ -1916,9 +1935,6 @@ def bin_native(
 
     for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(responses, unify_columns(X, requests, feature_names_in, feature_types_in, None, False)):
         if n_samples != len(X_col):
-            # re-check that that number of samples is identical since iterators can be used up by looking at them
-            # this also protects us from badly behaved iterators from causing a segfault in C++ by returning an
-            # unexpected number of items and thus a buffer overrun on the second pass through the data
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
             raise ValueError(msg)

@@ -3,7 +3,7 @@
 
 # TODO: Test EBMUtils
 
-from math import ceil, isnan
+from math import ceil, isnan, isinf, exp, log
 from .internal import Native, Booster, InteractionDetector
 
 # from scipy.special import expit
@@ -25,7 +25,7 @@ from itertools import count, chain
 
 import logging
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 def _zero_tensor(tensor, zero_low=None, zero_high=None):
     entire_tensor = [slice(None) for _ in range(tensor.ndim)]
@@ -62,6 +62,144 @@ def _weighted_std(a, axis, weights):
     average = np.average(a, axis , weights)
     variance = np.average((a - average)**2, axis , weights)
     return np.sqrt(variance)
+
+def _convert_categorical_to_continuous(categories):
+    # we do automagic detection of feature types by default, and sometimes a feature which
+    # was really continuous might have most of it's data as one or two values.  An example would
+    # be a feature that we have "0" and "1" in the training data, but "-0.1" and "3.1" are also
+    # possible.  If during prediction we see a "3.1" we can magically convert our categories
+    # into a continuous range with a cut point at 0.5.  Now "-0.1" goes into the [-inf, 0.5) bin
+    # and 3.1 goes into the [0.5, +inf] bin.
+    #
+    # We can't convert a continuous feature that has cuts back into categoricals
+    # since the categorical value could have been anything between the cuts that we know about.
+
+    clusters = dict()
+    non_float_idxs = set()
+
+    old_min = np.nan
+    old_max = np.nan
+    for category, idx in categories.items():
+        try:
+            # this strips leading and trailing spaces
+            val = float(category)
+        except ValueError:
+            non_float_idxs.add(idx)
+            continue
+
+        if isnan(val) or isinf(val):
+            continue
+
+        if isnan(old_min) or val < old_min:
+            old_min = val
+        if isnan(old_max) or old_max < val:
+            old_max = val
+
+        cluster_list = clusters.get(idx)
+        if cluster_list is None:
+            clusters[idx] = [val]
+        else:
+            cluster_list.append(val)
+
+    # there's a super fringe case where two category strings map to the same bin, but 
+    # one of them is a float and the other is a non-float.  Normally, we'd include the
+    # non-float categorical in the unknowns, but in this case we'd need to include 
+    # a part of a bin.  Handling this just adds too much complexity for the benefit
+    # and you could argue that the evidence from the other models is indicating that
+    # the string should be closer to zero of the weight from the floating point bin
+    # so we take the simple route of putting all the weight into the float and none on the
+    # non-float.  We still need to remove any indexes though that map to both a float
+    # and a non-float, so this line handles that
+    non_float_idxs = [idx for idx in non_float_idxs if idx not in clusters]
+    non_float_idxs.append(max(categories.values()) + 1)
+
+    if len(clusters) <= 1:
+        return np.empty(0, np.float64)
+
+    cluster_bounds = []
+    for cluster_list in clusters.values():
+        cluster_list.sort()
+        cluster_bounds.append((cluster_list[0], cluster_list[-1]))
+
+    # TODO: move everything below here into C++ to ensure cross language compatibility
+
+    cluster_bounds.sort()
+
+    cuts = []
+    cluster_iter = iter(cluster_bounds)
+    low = next(cluster_iter)[-1]
+    for cluster in cluster_iter:
+        high = cluster[0]
+        if low < high:
+            # if they are equal or if low is higher then we can't separate one cluster
+            # from another, so we keep joining them until we can get clean separations
+
+            half_diff = (high - low) / 2
+            if isinf(half_diff):
+                # first try to subtract then divide since that's more accurate but some float64
+                # values will fail eg (max_float - min_float == +inf) so we need to try
+                # a less accurate way of dividing first if we detect this.  Dividing
+                # first will always succeed, even with the most extreme possible values of
+                # max_float / 2 - min_float / 2
+                half_diff = high / 2 - low / 2
+
+            # floats have more precision the smaller they are, 
+            # so use the smaller number as the anchor
+            if abs(low) <= abs(high):
+                mid = low + half_diff
+            else:
+                mid = high - half_diff
+
+            if mid <= low:
+                # this can happen with very small half_diffs that underflow the add/subtract operation
+                # if this happens the numbers must be very close together on the order of a float tick.
+                # We use lower bound inclusive for our cut discretization, so make the mid == high
+                mid = high
+
+            cuts.append(mid)
+        low = max(low, cluster[-1])
+    cuts = np.array(cuts, np.float64)
+
+    mapping = [[] for _ in range(len(cuts) + 3)]
+    for old_idx, cluster_list in clusters.items():
+        # all the items in a cluster should be binned into the same bins
+        new_idx = np.searchsorted(cuts, cluster_list[:1], side='right')[0] + 1
+        mapping[new_idx].append(old_idx)
+
+    mapping[0].append(0)
+    mapping[-1] = non_float_idxs
+
+    return cuts, mapping, old_min, old_max
+
+def _create_proportional_tensor(axis_weights):
+    # take the per-feature weights and distribute them proportionally to each cell in a tensor
+
+    axis_sums = [weights.sum() for weights in axis_weights]
+
+    # Normally you'd expect each axis to sum to the total weight from the model,
+    # so normally they should be identical.  We encourage model editing though, so they may
+    # not be identical under some edits.  Also, if the model is a DP model then the weights are
+    # probably different due to the noise contribution.  Let's take the geometic mean to compensate.
+    total_weight = exp(sum(log(axis_sum) for axis_sum in axis_sums) / len(axis_sums))
+    axis_percentages = [weights / axis_sum for weights, axis_sum in zip(axis_weights, axis_sums)]
+
+    shape = tuple(map(len, axis_percentages))
+    n_cells = np.prod(shape)
+    tensor = np.empty(n_cells, np.float64)
+
+    # the last index items are next together in flat memory layout
+    axis_percentages.reverse() 
+
+    for cell_idx in range(n_cells):
+        remainder = cell_idx
+        frac = 1
+        for percentages in axis_percentages:
+            bin_idx = remainder % len(percentages)
+            remainder //= len(percentages)
+            frac *= percentages[bin_idx]
+        val = frac * total_weight
+        tensor.itemset(cell_idx, val)
+    return tensor.reshape(shape)
 
 def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag_weights=None):
     additive_terms = []
@@ -132,13 +270,14 @@ def make_histogram_edges(min_val, max_val, histogram_counts):
 
 def _harmonize_tensor(
     new_feature_idxs, 
-    new_bins, 
     new_bounds, 
+    new_bins, 
     old_feature_idxs, 
-    old_bins, 
     old_bounds, 
+    old_bins, 
+    old_mapping, 
     old_tensor, 
-    is_proportional
+    bin_evidence_weight
 ):
     old_feature_idxs = list(old_feature_idxs)
 
@@ -148,24 +287,31 @@ def _harmonize_tensor(
         old_feature_idxs[old_idx] = -1 # in case we have duplicate feature idxs
         axes.append(old_idx)
 
-
     if len(axes) != old_tensor.ndim:
         # multiclass. The last dimension always stays put
         axes.append(len(axes))
 
     old_tensor = old_tensor.transpose(tuple(axes))
+    if bin_evidence_weight is not None:
+        bin_evidence_weight = bin_evidence_weight.transpose(tuple(axes))
 
+    mapping = []
     lookups = []
     percentages = []
     for feature_idx in new_feature_idxs:
         old_bin_levels = old_bins[feature_idx]
         old_feature_bins = old_bin_levels[min(len(old_bin_levels), len(old_feature_idxs)) - 1]
 
+        mapping_levels = old_mapping[feature_idx]
+        old_feature_mapping = mapping_levels[min(len(mapping_levels), len(old_feature_idxs)) - 1]
+        if old_feature_mapping is None:
+            old_feature_mapping = list((x,) for x in range(len(old_feature_bins) + (2 if isinstance(old_feature_bins, dict) else 3)))
+        mapping.append(old_feature_mapping)
+
         new_bin_levels = new_bins[feature_idx]
         new_feature_bins = new_bin_levels[min(len(new_bin_levels), len(new_feature_idxs)) - 1]
 
-
-        if isinstance(old_feature_bins, dict):
+        if isinstance(new_feature_bins, dict):
             # categorical feature
 
             old_reversed = dict()
@@ -195,16 +341,16 @@ def _harmonize_tensor(
                 if 0 <= old_bin_idx:
                     percentage.append(len(new_categories) / len(old_reversed[old_bin_idx]))
                 else:
-                    percentage.append(np.nan)
-                    if not is_proportional:
-                        old_bin_idx = len(old_reversed) + 1 # use the unknown value for scores
+                    # map to the unknown bin for scores, but take no percentage of the weight
+                    percentage.append(0.0)
+                    old_bin_idx = len(old_reversed) + 1 # use the unknown value for scores
                 lookup.append(old_bin_idx)
             percentage.append(1.0)
             lookup.append(len(old_reversed) + 1)
         else:
             # continuous feature
 
-            lookup = list(np.searchsorted(old_feature_bins, new_feature_bins) + 1)
+            lookup = list(np.searchsorted(old_feature_bins, new_feature_bins, side='left') + 1)
             lookup.append(len(old_feature_bins) + 1)
 
             percentage = [1.0]
@@ -238,7 +384,7 @@ def _harmonize_tensor(
                     # if there are bins in the area above where the old data extended, then 
                     # we'll have zero contribution in the old data where these new bins are
                     # located
-                    percentage.append(0)
+                    percentage.append(0.0)
                 else:
                     if new_low < old_low:
                         # this can't happen except at the lowest bin where the new min can be
@@ -266,13 +412,14 @@ def _harmonize_tensor(
 
     lookups.reverse()
     percentages.reverse()
+    mapping.reverse()
 
     # now we need to inflate it
     new_tensor = np.empty(n_cells, np.float64)
     for cell_idx in range(n_cells):
         remainder = cell_idx
         old_reversed_bin_idxs = []
-        frac = 1
+        frac = 1.0
         for lookup, percentage in zip(lookups, percentages):
             n_bins = len(lookup)
             new_bin_idx = remainder % n_bins
@@ -280,12 +427,37 @@ def _harmonize_tensor(
             old_reversed_bin_idxs.append(lookup[new_bin_idx])
             frac *= percentage[new_bin_idx]
 
-        if any(bin_idx < 0 for bin_idx in old_reversed_bin_idxs):
-            val = 0 # categorical that exists in the new tensor but not the old one
-        else:
-            val = old_tensor[tuple(reversed(old_reversed_bin_idxs))]
-            if is_proportional:
-                val *= frac
+        cell_map = [map_bins[bin_idx] for map_bins, bin_idx in zip(mapping, old_reversed_bin_idxs)]
+        n_cells2 = np.prod([len(x) for x in cell_map])
+        val = 0
+        total_weight = 0
+        for cell2_idx in range(n_cells2):
+            remainder2 = cell2_idx
+            old_reversed_bin2_idxs = []
+            for lookup2 in cell_map:
+                n_bins2 = len(lookup2)
+                new_bin2_idx = remainder2 % n_bins2
+                remainder2 //= n_bins2
+                old_reversed_bin2_idxs.append(lookup2[new_bin2_idx])
+            update = old_tensor[tuple(reversed(old_reversed_bin2_idxs))]
+            if n_cells2 == 1:
+                # if there's just one cell, which is typical, don't 
+                # incur the floating point loss in precision
+                val = update
+            else:
+                if bin_evidence_weight is not None:
+                    evidence_weight = bin_evidence_weight[tuple(reversed(old_reversed_bin2_idxs))]
+                    update *= evidence_weight
+                    total_weight += evidence_weight
+                val += update
+        if bin_evidence_weight is None:
+            # we're doing a bin weight and NOT a score tensor
+            val *= frac
+        elif total_weight != 0.0:
+            # we're doing scores and we need to take a weighted average
+            # but if the total_weight is zero then val should be zero and
+            # our update should still be zero, which it already is
+            val = val / total_weight
         new_tensor.itemset(cell_idx, val)
     new_tensor = new_tensor.reshape(new_shape)
     return new_tensor
@@ -298,8 +470,8 @@ def merge_ebms(models):
         An EBM model with averaged mean and standard deviation of input models.
     """
 
-    if len(models) < 2:  # pragma: no cover
-        raise Exception("At least two models are required to merge.")
+    if len(models) == 0:  # pragma: no cover
+        raise Exception("0 models to merge.")
 
     model_types = list(set(map(type, models)))
     if len(model_types) == 2:
@@ -346,14 +518,14 @@ def merge_ebms(models):
         if n_features != len(model.bins_):  # pragma: no cover
             raise Exception("Inconsistent numbers of features in the models.")
 
-        feature_names = getattr(model, 'feature_names_in_', None)
-        if feature_names is not None:
-            if n_features != len(feature_names):  # pragma: no cover
+        feature_names_in = getattr(model, 'feature_names_in_', None)
+        if feature_names_in is not None:
+            if n_features != len(feature_names_in):  # pragma: no cover
                 raise Exception("Inconsistent numbers of features in the models.")
 
-        feature_types = getattr(model, 'feature_types_in_', None)
-        if feature_types is not None:
-            if n_features != len(feature_types):  # pragma: no cover
+        feature_types_in = getattr(model, 'feature_types_in_', None)
+        if feature_types_in is not None:
+            if n_features != len(feature_types_in):  # pragma: no cover
                 raise Exception("Inconsistent numbers of features in the models.")
 
         feature_bounds = getattr(model, 'feature_bounds_', None)
@@ -376,20 +548,117 @@ def merge_ebms(models):
             if n_features != len(zero_counts):  # pragma: no cover
                 raise Exception("Inconsistent numbers of features in the models.")
 
-    feature_names_in = getattr(models[0], 'feature_names_in_', None)
-    if any(feature_names_in != getattr(model, 'feature_names_in_', None) for model in models):  # pragma: no cover
-        raise Exception("All models should have the same feature names.")
-    if feature_names_in is not None:
-        ebm.feature_names_in_ = feature_names_in.copy()
+    old_bounds = []
+    old_mapping = []
+    old_bins = []
+    for model in models:
+        if any(len(set(map(type, bin_levels))) != 1 for bin_levels in model.bins_):
+            raise Exception("Inconsistent bin types within a model.")
 
-    feature_types_in = getattr(models[0], 'feature_types_in_', None)
-    if any(feature_types_in != getattr(model, 'feature_types_in_', None) for model in models):  # pragma: no cover
-        raise Exception("All models should have the same feature types.")
-    if feature_types_in is not None:
-        ebm.feature_types_in_ = feature_types_in.copy()
+        feature_bounds = getattr(model, 'feature_bounds_', None)
+        if feature_bounds is None:
+            old_bounds.append(None)
+        else:
+            old_bounds.append(feature_bounds.copy())
 
-    min_vals = [model.feature_bounds_[:, 0] for model in models if getattr(model, 'feature_bounds_', None) is not None]
-    max_vals = [model.feature_bounds_[:, 1] for model in models if getattr(model, 'feature_bounds_', None) is not None]
+        old_mapping.append([[] for _ in range(n_features)])
+        old_bins.append([[] for _ in range(n_features)])
+    
+    new_feature_types = []
+    new_bins = []
+    for feature_idx in range(n_features):
+        bin_types = set(type(model.bins_[feature_idx][0]) for model in models)
+
+        if len(bin_types) == 1 and next(iter(bin_types)) is dict:
+            # categorical
+            new_feature_type = None
+            for model in models:
+                feature_types_in = getattr(model, 'feature_types_in_', None)
+                if feature_types_in is not None:
+                    feature_type = feature_types_in[feature_idx]
+                    if feature_type == 'nominal':
+                        new_feature_type = 'nominal'
+                    elif feature_type == 'ordinal' and new_feature_type is None:
+                        new_feature_type = 'ordinal'
+            if new_feature_type is None:
+                new_feature_type = 'nominal'
+        else:
+            # continuous
+            if any(bin_type not in {dict, np.ndarray} for bin_type in bin_types):
+                raise Exception("Invalid bin type.")
+            new_feature_type = 'continuous'
+        new_feature_types.append(new_feature_type)
+            
+        level_end = max(len(model.bins_[feature_idx]) for model in models)
+        new_leveled_bins = []
+        for level_idx in range(level_end):
+            model_bins = []
+            for model_idx, model in enumerate(models):
+                bin_levels = model.bins_[feature_idx]
+                bin_level = bin_levels[min(level_idx, len(bin_levels) - 1)]
+                model_bins.append(bin_level)
+
+                old_mapping[model_idx][feature_idx].append(None)
+                old_bins[model_idx][feature_idx].append(bin_level)
+
+            if len(bin_types) == 1 and next(iter(bin_types)) is dict:
+                # categorical
+                merged_keys = sorted(set(chain.from_iterable(bin.keys() for bin in model_bins)))
+                # TODO: for now we just support alphabetical ordering in merged models, but
+                # we could do all sort of special processing like trying to figure out if the original
+                # ordering was by prevalence or alphabetical and then attempting to preserve that
+                # order and also handling merged categories (where two categories map to a single score)
+                merged_bins = dict(zip(merged_keys, count(1)))
+            else:
+                # continuous
+
+                if 1 != len(bin_types):
+                    # We have both categorical and continuous.  We can't convert continuous
+                    # to categorical since we lack the original labels, but we can convert
+                    # categoricals to continuous.  If the feature flavors are similar, which
+                    # needs to be the case for model merging, one of the models only found
+                    # float64 in their data, so there shouldn't be a lot of non-float values
+                    # in the other models.
+
+                    for model_idx, bins_in_model in enumerate(model_bins):
+                        if isinstance(bins_in_model, dict):
+                            converted_bins, mapping, converted_min, converted_max = _convert_categorical_to_continuous(bins_in_model)
+                            model_bins[model_idx] = converted_bins
+
+                            old_min = old_bounds[model_idx][feature_idx][0]
+                            if isnan(old_min) or converted_min < old_min:
+                                old_bounds[model_idx][feature_idx][0] = converted_min
+
+                            old_max = old_bounds[model_idx][feature_idx][1]
+                            if isnan(old_max) or old_max < converted_max:
+                                old_bounds[model_idx][feature_idx][1] = converted_max
+
+                            old_bins[model_idx][feature_idx][level_idx] = converted_bins
+                            old_mapping[model_idx][feature_idx][level_idx] = mapping
+                
+                merged_bins = np.array(sorted(set(chain.from_iterable(model_bins))), np.float64)
+            new_leveled_bins.append(merged_bins)
+        new_bins.append(new_leveled_bins)
+    ebm.feature_types_in_ = new_feature_types
+    _deduplicate_bins(new_bins)
+    ebm.bins_ = new_bins
+
+    feature_names_merged = [None] * n_features
+    for model in models:
+        feature_names_in = getattr(model, 'feature_names_in_', None)
+        if feature_names_in is not None:
+            for feature_idx, feature_name in enumerate(feature_names_in):
+                if feature_name is not None:
+                    feature_name_merged = feature_names_merged[feature_idx]
+                    if feature_name_merged is None:
+                        feature_names_merged[feature_idx] = feature_name
+                    elif feature_name != feature_name_merged:
+                        raise Exception("All models should have the same feature names.")
+    if any(feature_name is not None for feature_name in feature_names_merged):
+        ebm.feature_names_in_ = feature_names_merged
+    
+    min_vals = [bounds[:, 0] for bounds in old_bounds if bounds is not None]
+    max_vals = [bounds[:, 1] for bounds in old_bounds if bounds is not None]
     if 0 < len(min_vals): # max_vals has the same len
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -433,34 +702,6 @@ def merge_ebms(models):
             ebm.max_target_ = max(model.max_target_ for model in models if hasattr(model, 'max_target_'))
         n_classes = -1
 
-    new_bins = []
-    for idx in range(n_features):
-        level_end = max(len(model.bins_[idx]) for model in models)
-        new_leveled_bins = []
-        for level_idx in range(level_end):
-            bagged_bins = []
-            for model in models:
-                bin_levels = model.bins_[idx]
-                bagged_bins.append(bin_levels[min(level_idx, len(bin_levels) - 1)])
-
-            if len(set(type(bins) for bins in bagged_bins)) != 1:  # pragma: no cover
-                raise Exception("All models should have the same feature types.")
-
-            if isinstance(bagged_bins[0], dict):
-                # categorical
-                merged_keys = sorted(set(chain.from_iterable(bin.keys() for bin in bagged_bins)))
-                # TODO: for now we just support alphabetical ordering in merged models, but
-                # we could do all sort of special processing like trying to figure out if the original
-                # ordering was by prevalence or alphabetical and then attempting to preserve that
-                # order and also handling merged categories (where two categories map to a single score)
-                merged_bins = dict(zip(merged_keys, count(1)))
-            else:
-                # continuous
-                merged_bins = np.array(sorted(set(chain.from_iterable(bagged_bins))), np.float64)
-            new_leveled_bins.append(merged_bins)
-        new_bins.append(new_leveled_bins)
-    _deduplicate_bins(new_bins)
-    ebm.bins_ = new_bins
 
     bag_weights = []
     model_weights = []
@@ -507,24 +748,52 @@ def merge_ebms(models):
     ebm.bin_weights_ = []
     ebm.bagged_additive_terms_ = []
     for sorted_fg in sorted_fgs:
-        # many times we'll have interaction mismatches where an interaction will be in one
-        # model, but not the other.  We need to estimate the bin_weight_ tensors that would have been, 
-        # so we'll use the feature groups that we do have to estimate the distribution of weight
-        # and then scale it by the weights in each bag
+        # since interactions are often automatically generated, we'll often always have 
+        # interaction mismatches where an interaction will be in one model, but not the other.  
+        # We need to estimate the bin_weight_ tensors that would have existed in this case.
+        # We'll use the interaction terms that we do have in other models to estimate the 
+        # distribution in the essense of the data, which should be roughly consistent or you
+        # shouldn't be attempting to merge the models in the first place.  We'll then scale
+        # the percentage distribution by the total weight of the model that we're fillin in the
+        # details for.
+
+        # TODO: this algorithm has some problems.  The estimated tensor that we get by taking the
+        # model weight and distributing it by a per-cell percentage measure means that we get
+        # inconsistent weight distibutions along the axis.  We can take our resulting weight tensor
+        # and sum the columns/rows to get the weights on each individual feature axis.  Our model
+        # however comes with a known set of weights on each feature, and the result of our operation
+        # will not match the existing distribution in almost all cases.  I think there might be
+        # some algorithm where we start with the per-feature weights and use the distribution hints
+        # from the other models to inform where we place our exact weights that we know about in our
+        # model from each axis.  The problem is that the sums in both axies need to agree, and each
+        # change we make influences both.  I'm not sure we can even guarantee that there is an answer
+        # and if there was one I'm not sure how we'd go about generating it.  I'm going to leave
+        # this problem for YOU: a future person who is smarter than me and has more time to solve this.
+        # One hint: I think a possible place to start would be an iterative algorithm that's similar
+        # to purification where you randomly select a row/column and try to get closer at each step
+        # to the rigth answer.  Good luck!
+        #
+        # Oh, there's also another deeper problem.. let's say you had a crazy 5 way interaction in the
+        # model eg: (0,1,2,3,4) and you had 2 and 3 way interactions that either overlap or not.
+        # Eg: (0,1), and either (1,2,3) or (2,3,4).  The ideal solution would take the 5 way interaction
+        # and look for all the possible combinations of interactions for further information it could
+        # use and then it would make something that is consistent across all of these disparate sources
+        # of information.  Hopefully, the user hasn't edited the model in a way that creates no solution.
 
         bin_weight_percentages = []
-        for model, fg_dict, model_weight in zip(models, fg_dicts, model_weights):
+        for model_idx, model, fg_dict, model_weight in zip(count(), models, fg_dicts, model_weights):
             term_idx = fg_dict.get(sorted_fg)
             if term_idx is not None:
                 fixed_tensor = _harmonize_tensor(
                     sorted_fg,
-                    ebm.bins_, 
                     ebm.feature_bounds_,
+                    ebm.bins_, 
                     model.term_features_[term_idx], 
-                    model.bins_,
-                    model.feature_bounds_,
+                    old_bounds[model_idx],
+                    old_bins[model_idx],
+                    old_mapping[model_idx],
                     model.bin_weights_[term_idx], 
-                    True
+                    None
                 )
                 bin_weight_percentages.append(fixed_tensor * model_weight)
 
@@ -539,7 +808,7 @@ def merge_ebms(models):
 
         new_bin_weights = []
         new_bagged_additive_terms = []
-        for model, fg_dict, model_weight in zip(models, fg_dicts, model_weights):
+        for model_idx, model, fg_dict, model_weight in zip(count(), models, fg_dicts, model_weights):
             n_outer_bags = -1
             if hasattr(model, 'bagged_additive_terms_'):
                 if 0 < len(model.bagged_additive_terms_):
@@ -552,25 +821,27 @@ def merge_ebms(models):
             else:
                 harmonized_bin_weights = _harmonize_tensor(
                     sorted_fg,
-                    ebm.bins_, 
                     ebm.feature_bounds_,
+                    ebm.bins_, 
                     model.term_features_[term_idx], 
-                    model.bins_,
-                    model.feature_bounds_,
+                    old_bounds[model_idx],
+                    old_bins[model_idx],
+                    old_mapping[model_idx],
                     model.bin_weights_[term_idx], 
-                    True
+                    None
                 )
                 new_bin_weights.append(harmonized_bin_weights)
                 for bag_idx in range(n_outer_bags):
                     harmonized_bagged_additive_terms = _harmonize_tensor(
                         sorted_fg,
-                        ebm.bins_, 
                         ebm.feature_bounds_,
+                        ebm.bins_, 
                         model.term_features_[term_idx], 
-                        model.bins_,
-                        model.feature_bounds_,
+                        old_bounds[model_idx],
+                        old_bins[model_idx],
+                        old_mapping[model_idx],
                         model.bagged_additive_terms_[term_idx][bag_idx], 
-                        False
+                        model.bin_weights_[term_idx] # we use these to weigh distribution of scores for mulple bins
                     )
                     new_bagged_additive_terms.append(harmonized_bagged_additive_terms)
         ebm.bin_weights_.append(np.sum(new_bin_weights, axis=0))
@@ -766,11 +1037,11 @@ class EBMUtils:
         ) as booster:
             no_change_run_length = 0
             bp_metric = np.inf
-            log.info("Start boosting")
+            _log.info("Start boosting")
             for episode_index in range(max_rounds):
                 if episode_index % 10 == 0:
-                    log.debug("Sweep Index {0}".format(episode_index))
-                    log.debug("Metric: {0}".format(min_metric))
+                    _log.debug("Sweep Index {0}".format(episode_index))
+                    _log.debug("Metric: {0}".format(min_metric))
 
                 for term_idx in range(len(term_features)):
                     gain = booster.generate_term_update(
@@ -829,7 +1100,7 @@ class EBMUtils:
                 ):
                     break
 
-            log.info(
+            _log.info(
                 "End boosting, Best Metric: {0}, Num Rounds: {1}".format(
                     min_metric, episode_index
                 )

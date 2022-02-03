@@ -80,7 +80,14 @@ def test_merge_ebms():
     
     seed =1
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=seed)
-    ebm1 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=3, interactions=[(8,7)])
+    X_train[:, 4] = "-7"
+    X_train[0, 4] = "8"
+    X_train[1, 4] = "5.0"
+    X_train[2, 4] = "+5"
+    # make this categorical to merge with the continuous feature in the other ebms
+    X_train[3, 4] = "me" 
+    X_train[4, 4] = "you"
+    ebm1 = ExplainableBoostingClassifier(random_state=seed, n_jobs=-1, max_interaction_bins=3, interactions=[(8,4,0)])
     ebm1.fit(X_train, y_train)  
 
     seed +=10
