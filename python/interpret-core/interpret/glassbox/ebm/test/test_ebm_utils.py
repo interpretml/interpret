@@ -104,22 +104,31 @@ def test_make_bag_classification():
             or val_class_counts[label] == ideal_val_count)
 
 def test_convert_categorical_to_continuous_easy():
-    cuts = _convert_categorical_to_continuous({"10": 1, "20": 2, "30": 3})
+    cuts, mapping, old_min, old_max = _convert_categorical_to_continuous({"10": 1, "20": 2, "30": 3})
     assert len(cuts) == 2
     assert cuts[0] == 15
     assert cuts[1] == 25
+    assert(mapping == [[0], [1], [2], [3], [4]])
+    assert old_min == 10
+    assert old_max == 30
 
 def test_convert_categorical_to_continuous_overlap():
-    cuts = _convert_categorical_to_continuous({"10": 1, "+5": 1, "40": 4, "abc": 2, "20": 2, "25": 1, "30": 3, "35": 3})
+    cuts, mapping, old_min, old_max = _convert_categorical_to_continuous({"10": 1, "+5": 1, "40": 4, "abc": 2, "20": 2, "25": 1, "30": 3, "35": 3})
     assert len(cuts) == 2
     assert cuts[0] == 27.5
     assert cuts[1] == 37.5
+    assert(mapping == [[0], [1, 2], [3], [4], [5]])
+    assert old_min == 5
+    assert old_max == 40
 
 def test_convert_categorical_to_continuous_identical():
-    cuts = _convert_categorical_to_continuous({"10": 1, "+20": 2, "  20  ": 3, "30": 4})
+    cuts, mapping, old_min, old_max = _convert_categorical_to_continuous({"10": 1, "+20": 2, "  20  ": 3, "30": 4})
     assert len(cuts) == 2
     assert cuts[0] == 15
     assert cuts[1] == 25
+    assert(mapping == [[0], [1], [2, 3], [4], [5]])
+    assert old_min == 10
+    assert old_max == 30
 
 def test_create_proportional_tensor():
     axis_weights = [np.array([1, 2], np.float64), np.array([5, 15, 7], np.float64)]

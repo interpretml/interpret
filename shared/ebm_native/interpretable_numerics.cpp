@@ -886,6 +886,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Suggest
    FloatEbmType * lowGraphBoundOut,
    FloatEbmType * highGraphBoundOut
 ) {
+   // lowGraphBoundOut and highGraphBoundOut will never legally return NaN
+   // lowGraphBoundOut can be -inf if minValue was -inf, or if our bounds get pushed into -inf
+   // lowGraphBoundOut can be +inf if there are no cuts, and both minValue and maxValue are +inf (if all data is +inf)
+   // highGraphBoundOut can also be any of these values
+
+   // TODO: review these comments below now that things have changed:
    // There are a lot of complexities in choosing the graphing bounds.  Let's start from the beginning:
    // - cuts occur on floating point values.  We need to make a choice whether features that are the exact value 
    //   of the cut point go into the upper or lower bounds
@@ -1086,87 +1092,59 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Suggest
    if(maxValue < minValue) {
       // silly caller, these should be reversed.  If either or both are NaN this won't execute, which is good
       LOG_0(TraceLevelError, "ERROR SuggestGraphBounds maxValue < minValue");
-      *lowGraphBoundOut = 0;
-      *highGraphBoundOut = 0;
+      *lowGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
+      *highGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
       return Error_IllegalParamValue;
    }
 
    if(countCuts <= IntEbmType { 0 }) {
       if(countCuts < IntEbmType { 0 }) {
          LOG_0(TraceLevelError, "ERROR SuggestGraphBounds countCuts < IntEbmType { 0 }");
-         *lowGraphBoundOut = 0;
-         *highGraphBoundOut = 0;
+         *lowGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
+         *highGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
          return Error_IllegalParamValue;
       }
+
       // countCuts was zero, so the only information we have to go on are the minValue and maxValue..
       if(std::isnan(minValue)) {
          if(std::isnan(maxValue)) {
-            // no cuts and min and max are both unknown, let's return 0 -> 0 since 
-            // going from lowest_float -> max_float leads to overflows when you subtract and makes graphing hard
-            // and most people don't know what lowest_float and max_float are anyways, and the range also changes
-            // depending on if you're using floats or doubles
+            // we can't avoid the scenario where min = float.lowest() and max = float.max.  In that case
+            // the range of max - min would overflow to +inf, so the graphing code needs to handle this.
+            // So, we might as well allow +inf and -inf as legal min/max returns.  If we have no
+            // information at all, we might as well return those to cover the entire range
+            // and force the caller to handle these weird conditions.  The alternative is to return NaNs
+            // but that has it's own issues, and returning +-inf at least removes the requirement to handle
+            // NaN returns
 
-            *lowGraphBoundOut = 0;
-            *highGraphBoundOut = 0;
+            *lowGraphBoundOut = -std::numeric_limits<FloatEbmType>::infinity();
+            *highGraphBoundOut = +std::numeric_limits<FloatEbmType>::infinity();
             return Error_None;
-         } 
-
-         // no min value, but we do have a max value?? Ok, well, since we only have one value let's return that
-         if(std::isinf(maxValue)) {
-            // you can't graph +inf, so return 0 -> 0
-            *lowGraphBoundOut = 0;
-            *highGraphBoundOut = 0;
-            return Error_None;
-         }
-
-         *lowGraphBoundOut = maxValue;
-         *highGraphBoundOut = maxValue;
-         return Error_None;
-      } else if(std::isnan(maxValue)) {
-         // no max value, but we do have a min value?? Ok, well, since we only have one value let's return that
-         if(std::isinf(minValue)) {
-            // you can't graph -inf, so return 0 -> 0
-            *lowGraphBoundOut = 0;
-            *highGraphBoundOut = 0;
+         } else {
+            // no min, but we do have a max?!  Ok..
+            *lowGraphBoundOut = maxValue;
+            *highGraphBoundOut = maxValue;
             return Error_None;
          }
-
-         *lowGraphBoundOut = minValue;
-         *highGraphBoundOut = minValue;
-         return Error_None;
+      } else {
+         if(std::isnan(maxValue)) {
+            // no max, but we do have a min?!  Ok..
+            *lowGraphBoundOut = minValue;
+            *highGraphBoundOut = minValue;
+            return Error_None;
+         } else {
+            // the danger here is that this allows both low & high to be either +-infinity, which makes sense
+            // if all the data is +inf or -inf, but then when we go to subtract it to get a range you'd get NaN
+            *lowGraphBoundOut = minValue;
+            *highGraphBoundOut = maxValue;
+            return Error_None;
+         }
       }
-
-      // great, both the min and max are known.  We still don't want to use +-inf values if they are present
-      // for the graph bounds.  Normally we woudn't return +-inf, but this is a field which the user might
-      // modify, so let's handle +inf or -inf values
-
-      if(std::isinf(minValue)) {
-         if(std::isinf(maxValue)) {
-            // both are inf values.  You can't graph +-inf, so return 0 -> 0
-            *lowGraphBoundOut = 0;
-            *highGraphBoundOut = 0;
-            return Error_None;
-         }
-         // minValue is an infinity but maxValue isn't, so let's return that
-         *lowGraphBoundOut = maxValue;
-         *highGraphBoundOut = maxValue;
-         return Error_None;
-      } else if(std::isinf(maxValue)) {
-         // maxValue is an infinity but minValue isn't, so let's return that
-         *lowGraphBoundOut = minValue;
-         *highGraphBoundOut = minValue;
-         return Error_None;
-      }
-
-      *lowGraphBoundOut = minValue;
-      *highGraphBoundOut = maxValue;
-      return Error_None;
    }
 
    if(std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)) {
       LOG_0(TraceLevelError, "ERROR SuggestGraphBounds std::isnan(lowestCut) || std::isinf(lowestCut) || std::isnan(highestCut) || std::isinf(highestCut)");
-      *lowGraphBoundOut = 0;
-      *highGraphBoundOut = 0;
+      *lowGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
+      *highGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
       return Error_IllegalParamValue;
    }
 
@@ -1175,142 +1153,108 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Suggest
       if(lowestCut != highestCut) {
          LOG_0(TraceLevelError,
             "ERROR SuggestGraphBounds when 1 == countCuts, then lowestCut and highestCut should be identical");
-         *lowGraphBoundOut = 0;
-         *highGraphBoundOut = 0;
+         *lowGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
+         *highGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
          return Error_IllegalParamValue;
       }
    } else {
       if(highestCut <= lowestCut) {
          LOG_0(TraceLevelError,
             "ERROR SuggestGraphBounds highestCut <= lowestCut");
-         *lowGraphBoundOut = 0;
-         *highGraphBoundOut = 0;
+         *lowGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
+         *highGraphBoundOut = std::numeric_limits<FloatEbmType>::quiet_NaN();
          return Error_IllegalParamValue;
       }
    }
 
-   bool bExpandLower;
-   FloatEbmType lowGraphBound;
+   bool bExpandLower = false;
    if(std::isnan(minValue)) {
       // the user removed the min value from the model so we need to use the available info, which is the lowestCut
-      lowGraphBound = lowestCut;
+      minValue = lowestCut;
       bExpandLower = true;
-   } else if(-std::numeric_limits<FloatEbmType>::infinity() == minValue) {
-      // we can't graph -inf, and don't use lowest since that can lead to graph issues too
-      lowGraphBound = lowestCut;
+   } else if(lowestCut < minValue) {
+      // the model has been edited or supplied with non-data derived cut points OR lowestCut == minValue which is legal
+      // our automatic binning code will never put a cut on the exact min value even if the two lowest cuts
+      // are separated by a floating point epsilon, but we'll accept it here since then we're symetric
+      // with the upper bound handling which can have a max on the highest cut
+      minValue = lowestCut;
       bExpandLower = true;
-   } else {
-      if(lowestCut <= minValue) {
-         // the model has been edited or supplied with non-data derived cut points
-         // our automatic binning code should disallow cuts on the exact min value
-         // if equal and we don't expand lower, then there won't be any place on the graph to see the lowest bin score
-         lowGraphBound = lowestCut;
-         bExpandLower = true;
-      } else {
-         lowGraphBound = minValue;
-         bExpandLower = false;
-      }
    }
-   EBM_ASSERT(!std::isnan(lowGraphBound));
-   EBM_ASSERT(!std::isinf(lowGraphBound));
 
-   bool bExpandHigher;
-   FloatEbmType highGraphBound;
+   bool bExpandHigher = false;
    if(std::isnan(maxValue)) {
       // the user removed the max value from the model so we need to use the available info, which is the highestCut
-      highGraphBound = highestCut;
+      maxValue = highestCut;
       bExpandHigher = true;
-   } else if(std::numeric_limits<FloatEbmType>::infinity() == maxValue) {
-      highGraphBound = highestCut;
+   } else if(maxValue < highestCut) {
+      // the model has been edited or supplied with non-data derived cut points
+      maxValue = highestCut;
       bExpandHigher = true;
-   } else {
-      if(maxValue <= highestCut) {
-         // the model has been edited or supplied with non-data derived cut points
-         // our automatic binning code should disallow cuts on the exact max value
-         // if equal and we don't expand higher, then there won't be any place on the graph to see the highest bin score
-         highGraphBound = highestCut;
-         bExpandHigher = true;
-      } else {
-         highGraphBound = maxValue;
-         bExpandHigher = false;
-      }
    }
-   EBM_ASSERT(!std::isnan(highGraphBound));
-   EBM_ASSERT(!std::isinf(highGraphBound));
 
-   if(lowGraphBound == highGraphBound) {
+   if(minValue == maxValue) {
       // we handled zero cuts above, and if there were two cuts they'd have to have unique increasing values
       // so the only way we can have the low and high graph bounds the same is if we have one cut and both the
-      // minValue and maxValue are the same as that cut (otherwise we'd create some space), or they are missing (NaN)
+      // minValue and maxValue are the same as that cut, or they are illegal, or they are missing (NaN)
       EBM_ASSERT(IntEbmType { 1 } == countCuts);
-      EBM_ASSERT(std::isnan(minValue) || minValue == highGraphBound);
-      EBM_ASSERT(std::isnan(maxValue) || maxValue == lowGraphBound);
 
       // if the regular binning code was kept and the min/max value wasn't removed from the model, then we should
       // not be able to get here, since minValue == maxValue can only happen if there is only one value, and if there
       // is only one value we would never create cut points, so the cut points or min/max have been user edited
-      // we can therefore put our bounds outside of the original min/max values.  We'll create a visible bin on the
-      // lower side and higher side
 
-      // it's possible that this creates zero sized regions for Slicer if lowGraphBound/highGraphBound was lowest_float
-      // or max_float, but as we've covered above, zero width regions should be legal for user defined binning
-      *lowGraphBoundOut = std::nextafter(lowGraphBound, std::numeric_limits<FloatEbmType>::lowest());
-      *highGraphBoundOut = std::nextafter(highGraphBound, std::numeric_limits<FloatEbmType>::max());
+      *lowGraphBoundOut = minValue;
+      *highGraphBoundOut = maxValue;
       return Error_None;
    }
-
-   EBM_ASSERT(lowGraphBound < highGraphBound);
-
-   const FloatEbmType scaleMin = highGraphBound - lowGraphBound;
-   // scaleMin can be +infinity if highestCut is max and lowestCut is lowest.  We can handle it.
-   EBM_ASSERT(!std::isnan(scaleMin));
-   // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
-   EBM_ASSERT(FloatEbmType { 0 } < scaleMin);
 
    // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
    // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
    // 1.5% on the right)
-
-   const size_t cCutsLimited = static_cast<size_t>(IntEbmType { 32 } < countCuts ? IntEbmType { 32 } : countCuts);
-
+   const size_t cCutsLimited = static_cast<size_t>(EbmMin(IntEbmType { 32 }, countCuts));
    EBM_ASSERT(size_t { 1 } <= cCutsLimited);
    const size_t denominator = cCutsLimited << 1;
    EBM_ASSERT(size_t { 2 } <= denominator);
-   const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
-   // movementFromEnds can be +infinity if scaleMin is infinity. We can handle it.  It could also underflow to zero
+   const FloatEbmType denominatorFloat = static_cast<FloatEbmType>(denominator);
+
+   EBM_ASSERT(minValue < maxValue);
+   FloatEbmType movementFromEnds = maxValue - minValue;
+   EBM_ASSERT(!std::isnan(movementFromEnds)); // since maxValue != minValue, they can't be both be +inf or both be -inf
+   // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
+   EBM_ASSERT(FloatEbmType { 0 } < movementFromEnds);
+   if(std::isinf(movementFromEnds)) {
+      // movementFromEnds can be +infinity if highestCut is max and lowestCut is lowest or either is +-inf.  Try again
+      // but divide first since we might find that we're in the legal range by dividing first
+      movementFromEnds = maxValue / denominatorFloat - minValue / denominatorFloat;
+   } else { 
+      movementFromEnds /= denominatorFloat;
+   }
+
+   // movementFromEnds can be +infinity.  It could also underflow to zero
    EBM_ASSERT(!std::isnan(movementFromEnds));
    EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds);
 
    if(bExpandLower) {
-      lowGraphBound = lowGraphBound - movementFromEnds;
-      // lowGraphBound can be -infinity if movementFromEnds is +infinity.  We can handle it.
-      EBM_ASSERT(!std::isnan(lowGraphBound));
-      EBM_ASSERT(lowGraphBound <= std::numeric_limits<FloatEbmType>::max());
-      // GetInterpretableEndpoint can accept -infinity, but it'll return -infinity in that case
-      lowGraphBound = GetInterpretableEndpoint(lowGraphBound, movementFromEnds);
-      // lowGraphBound can legally be -infinity and we handle this scenario below
-      if(-std::numeric_limits<FloatEbmType>::infinity() == lowGraphBound) {
-         // in this case the real data has huge magnitudes, so returning lowest is the best solution
-         lowGraphBound = std::numeric_limits<FloatEbmType>::lowest();
-      }
+      // minValue must be lower than maxValue so it can't be +inf
+      EBM_ASSERT(minValue <= std::numeric_limits<FloatEbmType>::max());
+
+      minValue -= movementFromEnds;
+      EBM_ASSERT(!std::isnan(minValue));
+      EBM_ASSERT(minValue <= std::numeric_limits<FloatEbmType>::max());
+      // minValue can be -inf
    }
 
    if(bExpandHigher) {
-      highGraphBound = highGraphBound + movementFromEnds;
-      // highGraphBound can be +infinity if movementFromEnds is +infinity.  We can handle it.
-      EBM_ASSERT(!std::isnan(highGraphBound));
-      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() <= highGraphBound);
-      // GetInterpretableEndpoint can accept infinity, but it'll return infinity in that case
-      highGraphBound = GetInterpretableEndpoint(highGraphBound, movementFromEnds);
-      // highGraphBound can legally be +infinity and we handle this scenario below
-      if(std::numeric_limits<FloatEbmType>::infinity() == highGraphBound) {
-         // in this case the real data has huge magnitudes, so returning max_float is the best solution
-         highGraphBound = std::numeric_limits<FloatEbmType>::max();
-      }
+      // maxValue must be higher than minValue so it can't be -inf
+      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() <= maxValue);
+
+      maxValue += movementFromEnds;
+      EBM_ASSERT(!std::isnan(maxValue));
+      EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() <= maxValue);
+      // maxValue can be +inf
    }
 
-   *lowGraphBoundOut = lowGraphBound;
-   *highGraphBoundOut = highGraphBound;
+   *lowGraphBoundOut = minValue;
+   *highGraphBoundOut = maxValue;
    return Error_None;
 }
 

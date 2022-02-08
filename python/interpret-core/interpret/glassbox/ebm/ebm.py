@@ -16,7 +16,7 @@ from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_global_selector2, gen_local_selector
 
 import json
-import math
+from math import isnan
 
 import numpy as np
 from warnings import warn
@@ -660,9 +660,9 @@ class BaseEBM(BaseEstimator):
             j['classes'] = self.classes_.tolist()
         else:
             j['model_type'] = "regression"
-            if hasattr(self, 'min_target_') and not math.isnan(self.min_target_):
+            if hasattr(self, 'min_target_') and not isnan(self.min_target_):
                 j['min_target'] = EBMUtils.jsonify_item(self.min_target_)
-            if hasattr(self, 'max_target_') and not math.isnan(self.max_target_):
+            if hasattr(self, 'max_target_') and not isnan(self.max_target_):
                 j['max_target'] = EBMUtils.jsonify_item(self.max_target_)
 
         features = []
@@ -681,10 +681,10 @@ class BaseEBM(BaseEstimator):
                 feature_bounds = getattr(self, 'feature_bounds_', None)
                 if feature_bounds is not None:
                     feature_min = feature_bounds[i, 0]
-                    if not math.isnan(feature_min):
+                    if not isnan(feature_min):
                         feature['min'] = EBMUtils.jsonify_item(feature_min)
                     feature_max = feature_bounds[i, 1]
-                    if not math.isnan(feature_max):
+                    if not isnan(feature_max):
                         feature['max'] = EBMUtils.jsonify_item(feature_max)
                 if hasattr(self, 'histogram_counts_') and self.histogram_counts_[i] is not None:
                     feature['histogram_counts'] = self.histogram_counts_[i].tolist()
@@ -818,8 +818,8 @@ class BaseEBM(BaseEstimator):
                         max_val = feature_bounds[feature_index0, 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val, max_val)
-                    bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
+                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_val, max_val)
+                    bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
                     histogram_edges = self.get_histogram_edges(feature_index0)
                     if histogram_edges is not None:
@@ -886,9 +886,9 @@ class BaseEBM(BaseEstimator):
                         max_val = feature_bounds[feature_idxs[0], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val, max_val)
+                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_val, max_val)
+                    bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
-                    bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
                 bin_labels_left = bin_labels
 
                 bin_levels = self.bins_[feature_idxs[1]]
@@ -908,9 +908,9 @@ class BaseEBM(BaseEstimator):
                         max_val = feature_bounds[feature_idxs[1], 1]
 
                     # this will have no effect in normal models, but will handle inconsistent editied models
-                    min_val, max_val = native.suggest_graph_bounds(feature_bins, min_val, max_val)
+                    min_graph, max_graph = native.suggest_graph_bounds(feature_bins, min_val, max_val)
+                    bin_labels = list(np.concatenate(([min_graph], feature_bins, [max_graph])))
 
-                    bin_labels = list(np.concatenate(([min_val], feature_bins, [max_val])))
                 bin_labels_right = bin_labels
 
 
@@ -1101,7 +1101,7 @@ class BaseEBM(BaseEstimator):
         if feature_bounds is not None:
             min_val = feature_bounds[feature_idx, 0]
             max_val = feature_bounds[feature_idx, 1]
-            if not math.isnan(min_val) and not math.isnan(max_val):
+            if not isnan(min_val) and not isnan(max_val):
                 histogram_counts = getattr(self, 'histogram_counts_', None)
                 if histogram_counts is not None:
                     histogram_bin_counts = histogram_counts[feature_idx]

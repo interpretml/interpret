@@ -276,21 +276,34 @@ class Native:
         return cuts[:count_cuts.value]
 
     def suggest_graph_bounds(self, cuts, min_val=np.nan, max_val=np.nan):
-        low_graph_bound = ct.c_double(0)
-        high_graph_bound = ct.c_double(0)
+        # This function will never return NaN values for min_graph or max_graph
+        # It can however return -inf values for min_graph and +inf for max_graph
+        # if the min_val or max_val are +-inf or if there's an overflow when
+        # extending the bounds.
+        # A possible dangerous return value of -inf or +inf for both min_graph and max_graph
+        # can occur if one of the min/max values is missing (NaN), or if the dataset consists
+        # entirely of +inf or -inf values which makes both min_val and max_val the same
+        # extreme value.  In this case the caller should probably check if min_graph == max_graph
+        # to avoid subtracting them, which would lead to a NaN value for the difference.
+        # Also max_graph - min_graph can be +inf even if both min_graph and max_graph are 
+        # normal numbers.  An example of this occuring would be if min was the lowest float
+        # and max was the highest float.
+
+        min_graph = ct.c_double(np.nan)
+        max_graph = ct.c_double(np.nan)
         return_code = self._unsafe.SuggestGraphBounds(
             len(cuts),
             cuts[0] if 0 < len(cuts) else np.nan,
             cuts[-1] if 0 < len(cuts) else np.nan,
             min_val,
             max_val,
-            ct.byref(low_graph_bound),
-            ct.byref(high_graph_bound),
+            ct.byref(min_graph),
+            ct.byref(max_graph),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "SuggestGraphBounds")
 
-        return low_graph_bound.value, high_graph_bound.value
+        return min_graph.value, max_graph.value
 
     def discretize(self, col_data, cuts):
         discretized = np.empty(col_data.shape[0], dtype=np.int64, order="C")

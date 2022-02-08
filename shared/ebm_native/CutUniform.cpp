@@ -211,6 +211,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CutUniform(
                const size_t cBins = cCuts + size_t { 1 };
 
                const FloatEbmType cBinsFloat = static_cast<FloatEbmType>(cBins);
+
+               // TODO: we can get more accurate results here if we keep the full maxValue - minValue range
+               // and multiply it with (iCut / cCuts) * (maxValue - minValue)
+               // TODO: we can also get more accurate results if we select the bound that has the absolute
+               // value that is smallest and always move from there.
+
                FloatEbmType stepValue = (maxValue - minValue) / cBinsFloat;
                if(std::isinf(stepValue)) {
                   stepValue = maxValue / cBinsFloat - minValue / cBinsFloat;

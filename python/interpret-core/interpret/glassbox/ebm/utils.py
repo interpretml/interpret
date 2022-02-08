@@ -192,7 +192,7 @@ def _create_proportional_tensor(axis_weights):
 
     for cell_idx in range(n_cells):
         remainder = cell_idx
-        frac = 1
+        frac = 1.0
         for percentages in axis_percentages:
             bin_idx = remainder % len(percentages)
             remainder //= len(percentages)
@@ -343,10 +343,9 @@ def _harmonize_tensor(
                 else:
                     # map to the unknown bin for scores, but take no percentage of the weight
                     percentage.append(0.0)
-                    old_bin_idx = len(old_reversed) + 1 # use the unknown value for scores
                 lookup.append(old_bin_idx)
             percentage.append(1.0)
-            lookup.append(len(old_reversed) + 1)
+            lookup.append(-1)
         else:
             # continuous feature
 
@@ -402,7 +401,7 @@ def _harmonize_tensor(
 
             percentage.append(1.0)
             lookup.insert(0, 0)
-            lookup.append(len(old_feature_bins) + 2)
+            lookup.append(-1)
 
         lookups.append(lookup)
         percentages.append(percentage)
@@ -429,8 +428,8 @@ def _harmonize_tensor(
 
         cell_map = [map_bins[bin_idx] for map_bins, bin_idx in zip(mapping, old_reversed_bin_idxs)]
         n_cells2 = np.prod([len(x) for x in cell_map])
-        val = 0
-        total_weight = 0
+        val = 0.0
+        total_weight = 0.0
         for cell2_idx in range(n_cells2):
             remainder2 = cell2_idx
             old_reversed_bin2_idxs = []

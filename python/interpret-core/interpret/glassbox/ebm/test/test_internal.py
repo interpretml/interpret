@@ -145,8 +145,8 @@ def test_suggest_graph_bound():
     native = Native.get_native_singleton()
     cuts=[25, 50, 75]
     (low_graph_bound, high_graph_bound) = native.suggest_graph_bounds(cuts, 24, 76)
-    assert low_graph_bound < 25
-    assert 75 < high_graph_bound
+    assert low_graph_bound == 24
+    assert high_graph_bound == 76
 
 def test_suggest_graph_bound_no_min_max():
     native = Native.get_native_singleton()
@@ -159,8 +159,5 @@ def test_suggest_graph_bound_no_cuts():
     native = Native.get_native_singleton()
     cuts=[]
     (low_graph_bound, high_graph_bound) = native.suggest_graph_bounds(cuts, 24, 76)
-    assert low_graph_bound <= 24
-    assert 76 <= high_graph_bound
-
-
-
+    assert low_graph_bound == 24
+    assert high_graph_bound == 76
