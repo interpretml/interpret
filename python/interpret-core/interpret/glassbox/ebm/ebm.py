@@ -396,10 +396,24 @@ class BaseEBM(BaseEstimator):
         early_stopping_tolerance = -1 if is_private(self) else self.early_stopping_tolerance
 
         bags = []
+        bag_weights = []
         bagged_seed = init_seed
         for _ in range(self.outer_bags):
             bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
-            bags.append(EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self)))
+            bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
+            bags.append(bag)
+            if bag is None:
+                if sample_weight is None:
+                    bag_weights.append(n_samples)
+                else:
+                    bag_weights.append(sample_weight.sum())
+            else:
+                keep = 0 < bag
+                if sample_weight is None:
+                    bag_weights.append(bag[keep].sum())
+                else:
+                    bag_weights.append((bag[keep] * sample_weight[keep]).sum())
+        bag_weights = np.array(bag_weights, np.float64)
 
         parallel_args = []
         bagged_seed = init_seed
@@ -607,7 +621,8 @@ class BaseEBM(BaseEstimator):
             n_classes, 
             n_samples, 
             bagged_additive_terms, 
-            bin_weights
+            bin_weights,
+            bag_weights
         )
 
         if is_private(self):
@@ -648,6 +663,7 @@ class BaseEBM(BaseEstimator):
 
         # general
         self.intercept_ = intercept
+        self.bag_weights_ = bag_weights
         self.breakpoint_iteration_ = breakpoint_iteration
         self.has_fitted_ = True
         return self

@@ -201,14 +201,15 @@ def _create_proportional_tensor(axis_weights):
         tensor.itemset(cell_idx, val)
     return tensor.reshape(shape)
 
-def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag_weights=None):
+def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag_weights):
     additive_terms = []
     term_standard_deviations = []
     for score_tensors in bagged_additive_terms:
         # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
         # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
 
-        if bag_weights is None:
+        if (bag_weights == bag_weights[0]).all():
+            # avoid numeracy issues if possible and ignore the weights if they are all equal
             additive_terms.append(np.average(score_tensors, axis=0))
             term_standard_deviations.append(np.std(score_tensors, axis=0))
         else:
@@ -279,6 +280,33 @@ def _harmonize_tensor(
     old_tensor, 
     bin_evidence_weight
 ):
+    # TODO: don't pass in new_bound and old_bounds.  We use the bounds to proportion
+    # weights at the tail ends of the graphs, but the problem with that is that
+    # you can have outliers that'll stretch the weight very thin.  If you have an
+    # old_min of -10000000 but the lowest old cut is at 0.  If you have a new cut
+    # at -100, it'll put very very close to 0 weight in the region from -100 to 0.
+    # Instead of using the min/max to proportionate, we should start from the
+    # lowest new_bins cut and then find all the other models that have that exact
+    # same lowest cut (averaging their results). There must be at least 1 model with that cut.  After we
+    # find that other model, we can use the weights in existing bin_weights to 
+    # proportionate the regions from the new lowest bin cut to the old lowest bin cut.
+    # Do the same for the highest bin cut.  One issue is that the model(s) that have
+    # the exact lowest bin cut are unlikely to share the lowest old cut, so we
+    # proportionate the bin in the other model to the other model's next cut that is
+    # greater than the old model's lowest cut.
+    # eg:  new:      |    |            |   |    |
+    #      old:                        |        |
+    #   other1:      |    |   proprotion   |
+    #   other2:      |        proportion        |
+    # One wrinkle is that for pairs, we'll be using the pair cuts and we need to
+    # one-dimensionalize any existing pair weights onto their respective 1D axies
+    # before proportionating them.  Annother issue is that we might not even have
+    # another term_feature that uses some particular feature that we use in our model
+    # so we don't have any weights.  We can solve that issue by dropping any feature's
+    # bins for terms that we have no information for.  After we do this we'll have
+    # guaranteed that we only have new bin cuts for feature axies that we have inside
+    # the bin level that we're handling!
+
     old_feature_idxs = list(old_feature_idxs)
 
     axes = []
@@ -562,6 +590,13 @@ def merge_ebms(models):
 
         old_mapping.append([[] for _ in range(n_features)])
         old_bins.append([[] for _ in range(n_features)])
+
+    # TODO: every time we merge models we fragment the bins more and more and this is undesirable
+    # especially for pairs.  When we build models, we store the feature bin cuts for pairs even
+    # if we have no pairs that use that paritcular feature as a pair.  We can eliminate these useless
+    # pair feature cuts before merging the bins and that'll give us less resulting cuts.  Having less
+    # cuts reduces the number of estimates that we need to make and reduces the complexity of the
+    # tensors, so it's good to have this reduction.
     
     new_feature_types = []
     new_bins = []
@@ -607,6 +642,10 @@ def merge_ebms(models):
                 # we could do all sort of special processing like trying to figure out if the original
                 # ordering was by prevalence or alphabetical and then attempting to preserve that
                 # order and also handling merged categories (where two categories map to a single score)
+                # We should first try to progress in order along each set of keys and see if we can
+                # establish the perfect order which might work if there are isolated missing categories
+                # and if we can't get a unique guaranteed sorted order that way then examime all the
+                # different known sort order and figure out if any of the possible orderings match
                 merged_bins = dict(zip(merged_keys, count(1)))
             else:
                 # continuous
@@ -674,7 +713,9 @@ def merge_ebms(models):
         if all(hasattr(model, 'histogram_counts_') and hasattr(model, 'feature_bounds_') for model in models):
             if hasattr(ebm, 'feature_bounds_'):
                 # TODO: estimate the histogram bin counts by taking the min of the mins and the max of the maxes
-                # and re-apportioning the counts based on the distributions of the previous histograms
+                # and re-apportioning the counts based on the distributions of the previous histograms.  Proprotion
+                # them to the floor of their counts and then assign any remaining integers based on how much
+                # they reduce the RMSE of the integer counts from the ideal floating point counts.
                 pass
 
         if all(hasattr(model, 'zero_counts_') for model in models):
@@ -740,7 +781,9 @@ def merge_ebms(models):
     sorted_items = sorted(zip(keys, all_fg))
     sorted_fgs = [x[1] for x in sorted_items]
     # TODO: in the future we might at this point try and figure out the most 
-    #       common feature ordering within the feature groups
+    #       common feature ordering within the feature groups.  Take the mode first
+    #       and amonst the orderings that tie, choose the one that's best sorted by
+    #       feature indexes
     ebm.term_features_ = sorted_fgs
 
 
