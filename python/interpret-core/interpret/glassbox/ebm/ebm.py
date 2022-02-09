@@ -638,7 +638,7 @@ class BaseEBM(BaseEstimator):
             self.unique_counts_ = unique_counts
             self.zero_counts_ = zero_counts
 
-            # per-feature group
+            # per-term
             self.bin_counts_ = bin_counts # use bin_weights_ instead for DP models
         
         if 0 <= n_classes:
@@ -654,7 +654,7 @@ class BaseEBM(BaseEstimator):
         self.feature_types_in_ = feature_types_in
         self.feature_bounds_ = feature_bounds
 
-        # per-feature group
+        # per-term
         self.term_features_ = term_features
         self.bin_weights_ = bin_weights
         self.bagged_additive_terms_ = bagged_additive_terms
@@ -993,7 +993,7 @@ class BaseEBM(BaseEstimator):
         """
 
         # Produce feature value pairs for each sample.
-        # Values are the model graph score per respective feature group.
+        # Values are the model graph score per respective term.
 
         check_is_fitted(self, "has_fitted_")
 
@@ -1113,6 +1113,15 @@ class BaseEBM(BaseEstimator):
         )
 
     def get_histogram_edges(self, feature_idx):
+        """ Provides the histogram edges used in the model
+
+        Args:
+            feature_idx: index of the feature to generate the histogram edges for
+
+        Returns:
+            An array of histogram edges
+        """
+
         feature_bounds = getattr(self, 'feature_bounds_', None)
         if feature_bounds is not None:
             min_val = feature_bounds[feature_idx, 0]
@@ -1126,6 +1135,15 @@ class BaseEBM(BaseEstimator):
         return None
 
     def get_importances(self, style='avg_weight'):
+        """ Provides the term importances
+
+        Args:
+            style: the type of term importance requested
+
+        Returns:
+            An array term importances with one importance per additive term
+        """
+
         if style == 'avg_weight':
             importances = np.empty(len(self.term_features_), np.float64)
             for i in range(len(self.term_features_)):
@@ -1146,9 +1164,25 @@ class BaseEBM(BaseEstimator):
         return len(self.bins_)
 
     def get_feature_names_out(self):
+        """ Provides the term names in the format "feature_name_1 X feature_name_2"
+
+        Args:
+
+        Returns:
+            A list of per-term names
+        """
+
         return [" x ".join(self.feature_names_in_[i] for i in grp) for grp in self.term_features_]
     
     def get_feature_types_out(self):
+        """ Provides the term types.  For non-interactions these are the feature_types, and "interactions" for interactions.
+
+        Args:
+
+        Returns:
+            A list of per-term names
+        """
+
         return [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.term_features_]
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
