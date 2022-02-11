@@ -450,13 +450,21 @@ public:
       FloatEbmType gain = FloatEbmType { 0 };
 
 
+      const FeatureGroupEntry * pFeatureGroupEntry4 = pFeatureGroup->GetFeatureGroupEntries();
+      size_t iDimensionWrite = size_t { 0 } - size_t { 1 };
+      size_t cBinsWrite;
+      do {
+         cBinsWrite = pFeatureGroupEntry4->m_pFeature->GetCountBins();
+         ++iDimensionWrite;
+         ++pFeatureGroupEntry4;
+      } while(cBinsWrite <= size_t { 1 });
 
       const size_t * const pcBytesInSliceLast = pcBytesInSliceEnd - size_t { 1 };
       EBM_ASSERT(acItemsInNextSliceOrBytesInCurrentSlice <= pcBytesInSliceLast);
       const size_t cFirstSplits = pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice;
       // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 splits and 
       // one last item to indicate the termination point
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, cFirstSplits);
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimensionWrite, cFirstSplits);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          free(pBuffer);
@@ -464,7 +472,7 @@ public:
       }
       const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       if(LIKELY(size_t { 0 } != cFirstSplits)) {
-         ActiveDataType * pSplitFirst = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0);
+         ActiveDataType * pSplitFirst = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimensionWrite);
          // converting negative to positive number is defined behavior in C++ and uses twos compliment
          size_t iSplitFirst = static_cast<size_t>(ptrdiff_t { -1 });
          do {
@@ -481,20 +489,24 @@ public:
 
       RandomSplitState * pState = randomSplitState;
       if(PREDICTABLE(pStateInit != pState)) {
-         size_t iSplit1 = 0;
          do {
-            ++iSplit1;
+            do {
+               cBinsWrite = pFeatureGroupEntry4->m_pFeature->GetCountBins();
+               ++iDimensionWrite;
+               ++pFeatureGroupEntry4;
+            } while(cBinsWrite <= size_t { 1 });
+
             ++pcBytesInSlice2; // we have one less split than we have slices, so move to the next one
 
             const size_t * pcItemsInNextSliceLast = pState->m_pcItemsInNextSliceEnd - size_t { 1 };
-            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iSplit1, pcItemsInNextSliceLast - pcBytesInSlice2);
+            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimensionWrite, pcItemsInNextSliceLast - pcBytesInSlice2);
             if(Error_None != error) {
                // already logged
                free(pBuffer);
                return error;
             }
             if(pcItemsInNextSliceLast != pcBytesInSlice2) {
-               ActiveDataType * pSplit = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iSplit1);
+               ActiveDataType * pSplit = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimensionWrite);
                size_t iSplit2 = *pcItemsInNextSliceLast - size_t { 1 };
                *pSplit = iSplit2;
                --pcItemsInNextSliceLast;

@@ -282,37 +282,33 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
 
    LOG_COUNTED_0(pInteractionCore->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered CalculateInteractionScore");
 
-   if(countDimensions < 0) {
+   if(countDimensions <= IntEbmType { 0 }) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countDimensions must be positive");
-      return Error_IllegalParamValue;
+      if(IntEbmType { 0 } == countDimensions) {
+         LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore empty feature group");
+         return Error_None;
+      } else {
+         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countDimensions must be positive");
+         return Error_IllegalParamValue;
+      }
    }
-   if(0 != countDimensions && nullptr == featureIndexes) {
+   if(nullptr == featureIndexes) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes cannot be nullptr if 0 < countDimensions");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<size_t>(countDimensions)) {
+   if(IntEbmType { k_cDimensionsMax } < countDimensions) {
       if(LIKELY(nullptr != interactionScoreOut)) {
          *interactionScoreOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countDimensions too large to index");
-      return Error_IllegalParamValue;
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore countDimensions too large and would cause out of memory condition");
+      return Error_OutOfMemory;
    }
    size_t cDimensions = static_cast<size_t>(countDimensions);
-   if(0 == cDimensions) {
-      LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore empty feature group");
-      if(nullptr != interactionScoreOut) {
-         // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 
-         // caler be smarter about this condition
-         *interactionScoreOut = FloatEbmType { 0 };
-      }
-      return Error_None;
-   }
    if(0 == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore zero samples");
@@ -376,12 +372,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
       }
       ++pFeatureIndexes;
    } while(pFeatureIndexesEnd != pFeatureIndexes);
-
-   if(k_cDimensionsMax < cDimensions) {
-      // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore k_cDimensionsMax < cDimensions");
-      return Error_OutOfMemory;
-   }
 
    // TODO: instead of putting the FeatureGroup into a character buffer, consider putting k_cDimensionsMax
    //       items in the array by default and dynamically allocate less if we need less, or use a template that

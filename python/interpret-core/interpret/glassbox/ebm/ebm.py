@@ -443,7 +443,7 @@ class BaseEBM(BaseEstimator):
         results = provider.parallel(EBMUtils.cyclic_gradient_boost, parallel_args)
 
         # let python reclaim the dataset memory via reference counting
-        del parallel_args # parallel_args holds referecnes to dataset, so must be deleted
+        del parallel_args # parallel_args holds references to dataset, so must be deleted
         del dataset
 
         breakpoint_iteration = [[]]

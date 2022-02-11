@@ -294,21 +294,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits indexDimension must be positive");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<size_t>(indexDimension)) {
-      *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits indexDimension is too high to index");
-      return Error_IllegalParamValue;
-   }
-   const size_t iAllDimension = static_cast<size_t>(indexDimension);
-   if(pFeatureGroup->GetCountDimensions() <= iAllDimension) {
+   if(static_cast<IntEbmType>(pFeatureGroup->GetCountDimensions()) <= indexDimension) {
       *countSplitsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits indexDimension above the number of dimensions that we have");
       return Error_IllegalParamValue;
    }
-
-   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iAllDimension].m_pFeature->GetCountBins();
+   const size_t iDimension = static_cast<size_t>(indexDimension);
+   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
    if(cBins <= size_t { 1 }) {
-      // we have 1 bin, or 0, so this dimension will be stripped from the CompressibleTensor.  Let's return the empty result now
+      // we have 1 bin, or 0, so there can't be any splits
       *countSplitsInOut = IntEbmType { 0 };
       return Error_None;
    }
@@ -326,28 +320,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       return Error_IllegalParamValue;
    }
 
-   size_t iSignficantDimension = 0;
-   if(0 != iAllDimension) {
-      // each time we extract a dimension we iterate this loop so technically it's N^2, but dimensions shouldn't 
-      // realistically be more than 2-3, and tensors with 64 dimensions consume all memory on a 64 bit machine, so
-      // even under unrealistic conditions this loop should be fine.  Only if we get a tensor with dimensions having
-      // 1 bin each and thousands of dimensions could this become an issue, but that would need to be an adversarial
-      // dataset, and adversaries can consume CPU in other ways like asking for 32 dimension tensor splitting, so 
-      // the caller will need to filter out unreasonable dimension requests if necessary.  We don't need to handle it.
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[iAllDimension];
-      do {
-         if(size_t { 1 } < pFeatureGroupEntry->m_pFeature->GetCountBins()) {
-            ++iSignficantDimension;
-         }
-         ++pFeatureGroupEntry;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
-   }
-
-   const size_t cSplits = pBoosterShell->GetAccumulatedModelUpdate()->GetCountSplits(iSignficantDimension);
+   const size_t cSplits = pBoosterShell->GetAccumulatedModelUpdate()->GetCountSplits(iDimension);
    EBM_ASSERT(cSplits < cBins);
    if(0 != cSplits) {
-      const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetAccumulatedModelUpdate()->GetSplitPointer(iSignficantDimension);
+      const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetAccumulatedModelUpdate()->GetSplitPointer(iDimension);
       IntEbmType * pSplitIndexesTo = splitIndexesOut;
       IntEbmType * pSplitIndexesToEnd = splitIndexesOut + cSplits;
       do {

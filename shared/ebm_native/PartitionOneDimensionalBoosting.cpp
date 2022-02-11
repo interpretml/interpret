@@ -456,6 +456,7 @@ public:
       const size_t cHistogramBuckets,
       const size_t cSamplesTotal,
       const FloatEbmType weightTotal,
+      const size_t iDimension,
       const size_t cSamplesRequiredForChildSplitMin,
       const size_t cLeavesMax,
       FloatEbmType * const pTotalGain
@@ -551,7 +552,7 @@ public:
          cSamplesRequiredForChildSplitMin
       )) {
          // there will be no splits at all
-         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 0);
+         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension, 0);
          if(UNLIKELY(Error_None != error)) {
             // already logged
             return error;
@@ -605,13 +606,13 @@ public:
                )->IsSplittable()
          );
 
-         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 1);
+         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension, 1);
          if(UNLIKELY(Error_None != error)) {
             // already logged
             return error;
          }
 
-         ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0);
+         ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension);
          pSplits[0] = pRootTreeNode->AFTER_GetSplitValue();
 
          // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
@@ -852,7 +853,7 @@ public:
          return Error_UnexpectedInternal;
       }
 
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, cLeaves - size_t { 1 });
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension, cLeaves - size_t { 1 });
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
@@ -866,15 +867,15 @@ public:
          // already logged
          return error;
       }
-      ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0);
+      ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension);
       FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
 
       LOG_0(TraceLevelVerbose, "Entered Flatten");
       Flatten<bClassification>(pRootTreeNode, &pSplits, &pValues, cVectorLength);
       LOG_0(TraceLevelVerbose, "Exited Flatten");
 
-      EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0) <= pSplits);
-      EBM_ASSERT(static_cast<size_t>(pSplits - pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)) == cLeaves - 1);
+      EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension) <= pSplits);
+      EBM_ASSERT(static_cast<size_t>(pSplits - pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension)) == cLeaves - 1);
       EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer() < pValues);
       EBM_ASSERT(static_cast<size_t>(pValues - pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()) == cVectorLength * cLeaves);
 
@@ -887,6 +888,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
    const FloatEbmType weightTotal,
+   const size_t iDimension,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
    FloatEbmType * const pTotalGain
@@ -905,6 +907,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
             cHistogramBuckets,
             cSamplesTotal,
             weightTotal,
+            iDimension,
             cSamplesRequiredForChildSplitMin,
             cLeavesMax,
             pTotalGain
@@ -915,6 +918,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
             cHistogramBuckets,
             cSamplesTotal,
             weightTotal,
+            iDimension,
             cSamplesRequiredForChildSplitMin,
             cLeavesMax,
             pTotalGain
@@ -927,6 +931,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
          cHistogramBuckets,
          cSamplesTotal,
          weightTotal,
+         iDimension,
          cSamplesRequiredForChildSplitMin,
          cLeavesMax,
          pTotalGain

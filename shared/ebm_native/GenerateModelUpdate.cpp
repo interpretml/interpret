@@ -30,8 +30,6 @@
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 
-#include "TensorTotalsSum.hpp"
-
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
@@ -52,11 +50,23 @@ extern void SumHistogramBuckets(
 #endif // NDEBUG
 );
 
+extern void TensorTotalsBuild(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const FeatureGroup * const pFeatureGroup,
+   HistogramBucketBase * pBucketAuxiliaryBuildZone,
+   HistogramBucketBase * const aHistogramBuckets
+#ifndef NDEBUG
+   , HistogramBucketBase * const aHistogramBucketsDebugCopy
+   , const unsigned char * const aHistogramBucketsEndDebug
+#endif // NDEBUG
+);
+
 extern ErrorEbmType PartitionOneDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
    const FloatEbmType weightTotal,
+   const size_t iDimension,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
    FloatEbmType * const pTotalGain
@@ -191,6 +201,7 @@ static ErrorEbmType BoostSingleDimensional(
    const FeatureGroup * const pFeatureGroup,
    const size_t cHistogramBuckets,
    const SamplingSet * const pTrainingSet,
+   const size_t iDimension,
    const size_t cSamplesRequiredForChildSplitMin,
    const IntEbmType countLeavesMax,
    FloatEbmType * const pTotalGain
@@ -289,6 +300,7 @@ static ErrorEbmType BoostSingleDimensional(
       cHistogramBuckets,
       cSamplesTotal,
       weightTotal,
+      iDimension,
       cSamplesRequiredForChildSplitMin,
       cLeavesMax, 
       pTotalGain
@@ -702,25 +714,29 @@ static ErrorEbmType GenerateModelUpdateInternal(
    const size_t cSamplingSetsAfterZero = (0 == pBoosterCore->GetCountSamplingSets()) ? 1 : pBoosterCore->GetCountSamplingSets();
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
    const size_t cSignificantDimensions = pFeatureGroup->GetCountSignificantDimensions();
+   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
 
    IntEbmType lastDimensionLeavesMax = IntEbmType { 0 };
    // this initialization isn't required, but this variable ends up touching a lot of downstream state
    // and g++ seems to warn about all of that usage, even in other downstream functions!
    size_t cSignificantBinCount = size_t { 0 };
+   size_t iDimensionImportant = 0;
    if(nullptr == aLeavesMax) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal aLeavesMax was null, so there won't be any splits");
    } else {
       if(0 != cSignificantDimensions) {
+         size_t iDimensionInit = 0;
          const IntEbmType * pLeavesMax = aLeavesMax;
          const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-         EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
-         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
+         EBM_ASSERT(1 <= cDimensions);
+         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + cDimensions;
          do {
             const Feature * pFeature = pFeatureGroupEntry->m_pFeature;
             const size_t cBins = pFeature->GetCountBins();
             if(size_t { 1 } < cBins) {
                EBM_ASSERT(size_t { 2 } <= cSignificantDimensions || IntEbmType { 0 } == lastDimensionLeavesMax);
 
+               iDimensionImportant = iDimensionInit;
                cSignificantBinCount = cBins;
                EBM_ASSERT(nullptr != pLeavesMax);
                const IntEbmType countLeavesMax = *pLeavesMax;
@@ -731,6 +747,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                   lastDimensionLeavesMax = countLeavesMax;
                }
             }
+            ++iDimensionInit;
             ++pLeavesMax;
             ++pFeatureGroupEntry;
          } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
@@ -739,7 +756,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
       }
    }
 
-   pBoosterShell->GetAccumulatedModelUpdate()->SetCountDimensions(cSignificantDimensions);
+   pBoosterShell->GetAccumulatedModelUpdate()->SetCountDimensions(cDimensions);
    pBoosterShell->GetAccumulatedModelUpdate()->Reset();
 
    // if pBoosterCore->m_apSamplingSets is nullptr, then we should have zero training samples
@@ -747,7 +764,11 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
    FloatEbmType totalGain = FloatEbmType { 0 };
    if(nullptr != pBoosterCore->GetSamplingSets()) {
-      pBoosterShell->GetOverwritableModelUpdate()->SetCountDimensions(cSignificantDimensions);
+      pBoosterShell->GetOverwritableModelUpdate()->SetCountDimensions(cDimensions);
+      // if we have ignored dimensions, set the splits count to zero!
+      // we only need to do this once instead of per-loop since any dimensions with 1 bin 
+      // are going to remain having 0 splits.
+      pBoosterShell->GetOverwritableModelUpdate()->Reset();
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain;
@@ -794,6 +815,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                pFeatureGroup,
                cSignificantBinCount,
                pBoosterCore->GetSamplingSets()[iSamplingSet],
+               iDimensionImportant,
                cSamplesRequiredForChildSplitMin,
                lastDimensionLeavesMax,
                &gain
@@ -890,7 +912,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
          UNLIKELY(totalGain <= std::numeric_limits<FloatEbmType>::lowest()) ||
          UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= totalGain)
       )) {
-         pBoosterShell->GetAccumulatedModelUpdate()->SetCountDimensions(cSignificantDimensions);
+         pBoosterShell->GetAccumulatedModelUpdate()->SetCountDimensions(cDimensions);
          pBoosterShell->GetAccumulatedModelUpdate()->Reset();
          // declare there is no gain, so that our caller will think there is no benefit in splitting us, which there isn't since we're zeroed.
          totalGain = FloatEbmType { 0 };

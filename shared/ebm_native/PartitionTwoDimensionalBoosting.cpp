@@ -231,6 +231,9 @@ public:
       FloatEbmType splittingScore;
 
       EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions());
+      size_t iDimensionLoop = 0;
+      size_t iDimension1 = 0;
+      size_t iDimension2 = 0;
       size_t cBinsDimension1 = 0;
       size_t cBinsDimension2 = 0;
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
@@ -241,11 +244,15 @@ public:
          if(size_t { 1 } < cBins) {
             EBM_ASSERT(0 == cBinsDimension2);
             if(0 == cBinsDimension1) {
+               iDimension1 = iDimensionLoop;
                cBinsDimension1 = cBins;
             } else {
+               EBM_ASSERT(0 == cBinsDimension2);
+               iDimension2 = iDimensionLoop;
                cBinsDimension2 = cBins;
             }
          }
+         ++iDimensionLoop;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
       EBM_ASSERT(2 <= cBinsDimension1);
@@ -503,14 +510,14 @@ public:
 #ifndef NDEBUG
          const ErrorEbmType errorDebug1 =
 #endif // NDEBUG
-         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 0);
+         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 0);
          // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
          EBM_ASSERT(Error_None == errorDebug1);
 
 #ifndef NDEBUG
          const ErrorEbmType errorDebug2 =
 #endif // NDEBUG
-         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 0);
+         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 0);
          // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
          EBM_ASSERT(Error_None == errorDebug2);
 
@@ -554,12 +561,12 @@ public:
          EBM_ASSERT(k_illegalGain != bestSplittingScore);
          if(bSplitFirst2) {
             // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero splits
-            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 1);
+            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 1);
             if(Error_None != error) {
                // already logged
                return error;
             }
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = splitFirst2Best;
+            pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst2Best;
 
             if(splitFirst2LowBest < splitFirst2HighBest) {
                error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
@@ -567,28 +574,28 @@ public:
                   // already logged
                   return error;
                }
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 2);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 2);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = splitFirst2LowBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[1] = splitFirst2HighBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[1] = splitFirst2HighBest;
             } else if(splitFirst2HighBest < splitFirst2LowBest) {
                error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 2);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 2);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = splitFirst2HighBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[1] = splitFirst2LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2HighBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[1] = splitFirst2LowBest;
             } else {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 1);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 1);
                if(Error_None != error) {
                   // already logged
                   return error;
@@ -599,7 +606,7 @@ public:
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = splitFirst2LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
             }
 
             HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowLowBest =
@@ -699,12 +706,12 @@ public:
                }
             }
          } else {
-            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 1);
+            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 1);
             if(Error_None != error) {
                // already logged
                return error;
             }
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = splitFirst1Best;
+            pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst1Best;
 
             if(splitFirst1LowBest < splitFirst1HighBest) {
                error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
@@ -713,13 +720,13 @@ public:
                   return error;
                }
 
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 2);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 2);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = splitFirst1LowBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[1] = splitFirst1HighBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[1] = splitFirst1HighBest;
             } else if(splitFirst1HighBest < splitFirst1LowBest) {
                error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
                if(Error_None != error) {
@@ -727,15 +734,15 @@ public:
                   return error;
                }
 
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 2);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 2);
                if(Error_None != error) {
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = splitFirst1HighBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[1] = splitFirst1LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1HighBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[1] = splitFirst1LowBest;
             } else {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 1);
+               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 1);
                if(Error_None != error) {
                   // already logged
                   return error;
@@ -745,7 +752,7 @@ public:
                   // already logged
                   return error;
                }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = splitFirst1LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
             }
 
             HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowLowBest =

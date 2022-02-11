@@ -116,7 +116,7 @@ ErrorEbmType BoosterCore::InitializeCompressibleTensors(
    for(size_t iFeatureGroup = 0; iFeatureGroup < cFeatureGroups; ++iFeatureGroup) {
       const FeatureGroup * const pFeatureGroup = apFeatureGroups[iFeatureGroup];
       CompressibleTensor * const pCompressibleTensors = 
-         CompressibleTensor::Allocate(pFeatureGroup->GetCountSignificantDimensions(), cVectorLength);
+         CompressibleTensor::Allocate(pFeatureGroup->GetCountDimensions(), cVectorLength);
       if(UNLIKELY(nullptr == pCompressibleTensors)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeCompressibleTensors nullptr == pCompressibleTensors");
          return Error_OutOfMemory;
@@ -330,17 +330,13 @@ ErrorEbmType BoosterCore::Create(
       size_t iFeatureGroup = 0;
       do {
          const IntEbmType countDimensions = aFeatureGroupsDimensionCounts[iFeatureGroup];
-         if(countDimensions < 0) {
+         if(countDimensions < IntEbmType { 0 }) {
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countDimensions cannot be negative");
             return Error_IllegalParamValue;
          }
-         if(IsConvertError<size_t>(countDimensions)) {
-            // if countDimensions exceeds the size of size_t, then we wouldn't be able to find it
-            // in the array passed to us
-            LOG_0(TraceLevelError, "ERROR BoosterCore::Create countDimensions is too high to index");
-            // you can't really have more than size_t countDimensions since each dimension is a feature
-            // in a feature group, and our caller can't really have more than size_t of those
-            return Error_IllegalParamValue;
+         if(IntEbmType { k_cDimensionsMax } < countDimensions) {
+            LOG_0(TraceLevelError, "WARNING BoosterCore::Create countDimensions too large and would cause out of memory condition");
+            return Error_OutOfMemory;
          }
          const size_t cDimensions = static_cast<size_t>(countDimensions);
          FeatureGroup * const pFeatureGroup = FeatureGroup::Allocate(cDimensions, iFeatureGroup);
@@ -409,12 +405,6 @@ ErrorEbmType BoosterCore::Create(
 
             if(LIKELY(0 != cSignificantDimensions)) {
                EBM_ASSERT(1 < cTensorBins);
-
-               if(k_cDimensionsMax < cSignificantDimensions) {
-                  // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
-                  LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create k_cDimensionsMax < cSignificantDimensions");
-                  return Error_OutOfMemory;
-               }
 
                size_t cBytesArrayEquivalentSplit;
                if(1 == cSignificantDimensions) {

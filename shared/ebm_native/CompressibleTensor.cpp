@@ -278,32 +278,26 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
          EBM_ASSERT(!IsMultiplyError(cNewValues, cBins));
          cNewValues *= cBins;
 
-         if(size_t { 1 } < cBins) {
-            // strip any dimensions which have 1 bin since the tensor shape doesn't change and we 
-            // have limited stack memory to store dimension information
+         const size_t cSplits1 = pDimensionFirst1->m_cSplits;
 
-            const size_t cSplits1 = pDimensionFirst1->m_cSplits;
+         EBM_ASSERT(!IsMultiplyError(cValues1, cSplits1 + 1)); // this is accessing existing memory, so it can't overflow
+         cValues1 *= cSplits1 + 1;
 
-            EBM_ASSERT(!IsMultiplyError(cValues1, cSplits1 + 1)); // this is accessing existing memory, so it can't overflow
-            cValues1 *= cSplits1 + 1;
+         pDimensionInfoStackFirst->m_pSplit1 = &pDimensionFirst1->m_aSplits[cSplits1];
 
-            pDimensionInfoStackFirst->m_pSplit1 = &pDimensionFirst1->m_aSplits[cSplits1];
+         const size_t cSplits = cBins - size_t { 1 };
+         pDimensionInfoStackFirst->m_iSplit2 = cSplits;
+         pDimensionInfoStackFirst->m_cNewSplits = cSplits;
 
-            const size_t cSplits = cBins - size_t { 1 };
-            pDimensionInfoStackFirst->m_iSplit2 = cSplits;
-            pDimensionInfoStackFirst->m_cNewSplits = cSplits;
-
-            ++pDimensionFirst1;
-            ++pDimensionInfoStackFirst;
-         }
+         ++pDimensionFirst1;
+         ++pDimensionInfoStackFirst;
          ++pFeatureGroupEntry1;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry1);
       
       if(size_t { 0 } == cNewValues) {
          // there's a really degenerate case where we have zero training and zero validation samples, and the user 
          // specifies zero bins which is legal since there are no bins in the training or validation, in this case
-         // the tensor has zero bins in one dimension, so there are zero bins in the entire tensor.  In this case
-         // the dimension is still stripped from our view, but we should not expand
+         // the tensor has zero bins in one dimension, so there are zero bins in the entire tensor.
          LOG_0(TraceLevelWarning, "WARNING Expand Zero sized tensor");
       } else {
          if(IsMultiplyError(m_cVectorLength, cNewValues)) {
@@ -412,27 +406,25 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
             const size_t cBins = pFeatureGroupEntry2->m_pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
             const size_t cSplits = cBins - size_t { 1 };
-            if(size_t { 0 } < cSplits) {
-               // strip any dimensions which have 1 bin since the tensor shape doesn't change and we 
-               // have limited stack memory to store dimension information
-
-               const DimensionInfo * const pDimension = &aDimension1[iDimension];
-               if(cSplits != pDimension->m_cSplits) {
-                  error = SetCountSplits(iDimension, cSplits);
-                  if(UNLIKELY(Error_None != error)) {
-                     // already logged
-                     return error;
-                  }
-
-                  ActiveDataType * const aSplit = pDimension->m_aSplits;
-                  size_t iSplit = 0;
-                  do {
-                     aSplit[iSplit] = iSplit;
-                     ++iSplit;
-                  } while(cSplits != iSplit);
+            const DimensionInfo * const pDimension = &aDimension1[iDimension];
+            if(cSplits != pDimension->m_cSplits) {
+               error = SetCountSplits(iDimension, cSplits);
+               if(UNLIKELY(Error_None != error)) {
+                  // already logged
+                  return error;
                }
-               ++iDimension;
+
+               // if cSplits is zero then pDimension->m_cSplits must be zero and we'd be filtered out above
+               EBM_ASSERT(size_t { 1 } <= cSplits);
+
+               ActiveDataType * const aSplit = pDimension->m_aSplits;
+               size_t iSplit = 0;
+               do {
+                  aSplit[iSplit] = iSplit;
+                  ++iSplit;
+               } while(cSplits != iSplit);
             }
+            ++iDimension;
             ++pFeatureGroupEntry2;
          } while(pFeatureGroupEntryEnd != pFeatureGroupEntry2);
       }
