@@ -345,21 +345,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value cannot be negative");
          return Error_IllegalParamValue;
       }
-      if(IsConvertError<size_t>(indexFeatureInterop)) {
-         if(LIKELY(nullptr != interactionScoreOut)) {
-            *interactionScoreOut = FloatEbmType { 0 };
-         }
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value too big to reference memory");
-         return Error_IllegalParamValue;
-      }
-      const size_t iFeature = static_cast<size_t>(indexFeatureInterop);
-      if(pInteractionCore->GetCountFeatures() <= iFeature) {
+      if(static_cast<IntEbmType>(pInteractionCore->GetCountFeatures()) <= indexFeatureInterop) {
          if(LIKELY(nullptr != interactionScoreOut)) {
             *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value must be less than the number of features");
          return Error_IllegalParamValue;
       }
+      const size_t iFeature = static_cast<size_t>(indexFeatureInterop);
       const Feature * const pFeature = &aFeatures[iFeature];
       if(pFeature->GetCountBins() <= size_t { 1 }) {
          if(nullptr != interactionScoreOut) {

@@ -247,7 +247,6 @@ public:
                iDimension1 = iDimensionLoop;
                cBinsDimension1 = cBins;
             } else {
-               EBM_ASSERT(0 == cBinsDimension2);
                iDimension2 = iDimensionLoop;
                cBinsDimension2 = cBins;
             }

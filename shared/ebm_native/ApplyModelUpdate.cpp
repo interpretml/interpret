@@ -300,19 +300,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       return Error_IllegalParamValue;
    }
    const size_t iDimension = static_cast<size_t>(indexDimension);
+
    const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
-   if(cBins <= size_t { 1 }) {
-      // we have 1 bin, or 0, so there can't be any splits
-      *countSplitsInOut = IntEbmType { 0 };
-      return Error_None;
-   }
-
-   if(nullptr == splitIndexesOut) {
-      *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits splitIndexesOut cannot be nullptr");
-      return Error_IllegalParamValue;
-   }
-
    // cBins started from IntEbmType, so we should be able to convert back safely
    if(*countSplitsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
       *countSplitsInOut = IntEbmType { 0 };
@@ -323,6 +312,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    const size_t cSplits = pBoosterShell->GetAccumulatedModelUpdate()->GetCountSplits(iDimension);
    EBM_ASSERT(cSplits < cBins);
    if(0 != cSplits) {
+      if(nullptr == splitIndexesOut) {
+         *countSplitsInOut = IntEbmType { 0 };
+         LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits splitIndexesOut cannot be nullptr");
+         return Error_IllegalParamValue;
+      }
+
       const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetAccumulatedModelUpdate()->GetSplitPointer(iDimension);
       IntEbmType * pSplitIndexesTo = splitIndexesOut;
       IntEbmType * pSplitIndexesToEnd = splitIndexesOut + cSplits;

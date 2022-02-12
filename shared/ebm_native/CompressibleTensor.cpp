@@ -355,6 +355,7 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
 
                ActiveDataType * const aSplits1 = pDimensionSecond1->m_aSplits;
 
+               EBM_ASSERT(static_cast<size_t>(pSplit1 - aSplits1) <= iSplit2);
                if(UNPREDICTABLE(aSplits1 < pSplit1)) {
                   EBM_ASSERT(0 < iSplit2);
 
@@ -474,8 +475,6 @@ void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatEbmType * 
    } while(pToValueEnd != pToValue);
 }
 
-// TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops 
-//   without needing to super-optimize it
 ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
    ErrorEbmType error;
 

@@ -716,6 +716,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
    const size_t cSignificantDimensions = pFeatureGroup->GetCountSignificantDimensions();
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
 
+   // TODO: we can probably eliminate lastDimensionLeavesMax and cSignificantBinCount and just fetch them from iDimensionImportant afterwards
    IntEbmType lastDimensionLeavesMax = IntEbmType { 0 };
    // this initialization isn't required, but this variable ends up touching a lot of downstream state
    // and g++ seems to warn about all of that usage, even in other downstream functions!

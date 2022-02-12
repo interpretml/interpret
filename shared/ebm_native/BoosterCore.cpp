@@ -294,8 +294,8 @@ ErrorEbmType BoosterCore::Create(
             // features would require a value, even if it was 0.
             LOG_0(TraceLevelInfo, "INFO BoosterCore::Create feature with 0 values");
          } else if(1 == cBins) {
-            // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on. 
-            // Dimensions with 1 bin don't contribute anything since they always have the same value.
+            // Dimensions with 1 bin don't contribute anything to the model since they always have the same value, but 
+            // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
             LOG_0(TraceLevelInfo, "INFO BoosterCore::Create feature with 1 value");
          }
          pBoosterCore->m_aFeatures[iFeatureInitialize].Initialize(iFeatureInitialize, cBins, bMissing, bUnknown, bNominal);
