@@ -1229,7 +1229,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
-            binning: Method to bin values for pre-processing. Choose "uniform", "quantile" or "quantile_humanized".
+            binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
@@ -1423,7 +1423,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage on main effects.
             max_interaction_bins: Max number of bins per feature for pre-processing stage on interaction terms. Only used if interactions is non-zero.
-            binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "quantile_humanized".
+            binning: Method to bin values for pre-processing. Choose "uniform", "quantile", or "rounded_quantile". 'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.

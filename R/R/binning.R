@@ -5,19 +5,19 @@
 cut_quantile <- function(
    feature_values, 
    count_samples_per_bin_min, 
-   is_humanized, 
+   is_rounded, 
    count_cuts
 ) {
    feature_values <- as.double(feature_values)
    count_samples_per_bin_min <- as.double(count_samples_per_bin_min)
-   is_humanized <- as.logical(is_humanized)
+   is_rounded <- as.logical(is_rounded)
    count_cuts <- as.double(count_cuts)
 
    cuts_lower_bound_inclusive <- .Call(
       CutQuantile_R, 
       feature_values, 
       count_samples_per_bin_min, 
-      is_humanized, 
+      is_rounded, 
       count_cuts
    )
    if(is.null(cuts_lower_bound_inclusive)) {

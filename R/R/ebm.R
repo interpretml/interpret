@@ -54,7 +54,7 @@ ebm_classify <- function(
    random_state = 42
 ) {
    min_samples_bin <- 5
-   humanized <- FALSE # TODO this should be it's own binning type 'quantile_humanized' eventually
+   rounded <- FALSE # TODO this should be it's own binning type 'rounded_quantile' eventually
 
    stopifnot(nrow(X) == length(y))
    stopifnot(!any(is.na(X)))
@@ -82,7 +82,7 @@ ebm_classify <- function(
       feature_cuts <- cut_quantile(
          X_feature, 
          min_samples_bin, 
-         humanized, 
+         rounded, 
          max_bins
       )
       col_name <- col_names[i_feature]

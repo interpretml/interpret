@@ -309,7 +309,7 @@ static bool FloatToFullString(const FloatEbmType val, char * const str) noexcept
 // float64 values, so we need to output that.  We should get 100% reproducibility by turning float32 scores
 // into float64, then text, then back to float64, then back to float32, so this is fine.  The only thing
 // we loose is a bit of simplicity since our JSON scores will have more digits, but we don't have the equivalent
-// of humanized cuts anyways, so the scores will have as many decimals as we get via boosting anywyas
+// of rounded cuts anyways, so the scores will have as many decimals as we get via boosting anywyas
 
 // lastly, since there are no integers in JSON (everything is a double), we should eliminate the difference
 // between float64 and integers when numbers can be represented as unique integers.  WE should convert the float

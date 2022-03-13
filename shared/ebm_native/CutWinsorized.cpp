@@ -307,7 +307,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                      } else {
                         // move one up from the highVal since if we put a cut exactly there the high-low value will
                         // be included in the highest bin, and we don't want that
-                        // winsorized binning doesn't have the ability to create humanized cut numbers, so going one tick up
+                        // winsorized binning doesn't have the ability to create rounded cut numbers, so going one tick up
                         // isn't a big deal here, and even if the high value is an integer like 5, one up from that will
                         // basically round to 5 in the UI but we'll get a number here that's just slighly higher
 

@@ -289,12 +289,12 @@ SEXP GenerateRandomNumber_R(
 SEXP CutQuantile_R(
    SEXP featureValues,
    SEXP countSamplesPerBinMin,
-   SEXP isHumanized,
+   SEXP isRounded,
    SEXP countCuts
 ) {
    EBM_ASSERT(nullptr != featureValues);
    EBM_ASSERT(nullptr != countSamplesPerBinMin);
-   EBM_ASSERT(nullptr != isHumanized);
+   EBM_ASSERT(nullptr != isRounded);
    EBM_ASSERT(nullptr != countCuts);
 
    ErrorEbmType error;
@@ -318,17 +318,17 @@ SEXP CutQuantile_R(
    }
    const IntEbmType countSamplesPerBinMinIntEbmType = static_cast<IntEbmType>(countSamplesPerBinMinDouble);
 
-   if(!IsSingleBoolVector(isHumanized)) {
-      LOG_0(TraceLevelError, "ERROR CutQuantile_R !IsSingleBoolVector(isHumanized)");
+   if(!IsSingleBoolVector(isRounded)) {
+      LOG_0(TraceLevelError, "ERROR CutQuantile_R !IsSingleBoolVector(isRounded)");
       return R_NilValue;
    }
 
-   const Rboolean isHumanizedR = static_cast<Rboolean>(LOGICAL(isHumanized)[0]);
-   if(Rboolean::FALSE != isHumanizedR && Rboolean::TRUE != isHumanizedR) {
-      LOG_0(TraceLevelError, "ERROR CutQuantile_R Rboolean::FALSE != isHumanizedR && Rboolean::TRUE != isHumanizedR");
+   const Rboolean isRoundedR = static_cast<Rboolean>(LOGICAL(isRounded)[0]);
+   if(Rboolean::FALSE != isRoundedR && Rboolean::TRUE != isRoundedR) {
+      LOG_0(TraceLevelError, "ERROR CutQuantile_R Rboolean::FALSE != isRoundedR && Rboolean::TRUE != isRoundedR");
       return R_NilValue;
    }
-   const bool bHumanized = Rboolean::FALSE != isHumanizedR;
+   const bool bRounded = Rboolean::FALSE != isRoundedR;
 
    if(!IsSingleDoubleVector(countCuts)) {
       LOG_0(TraceLevelError, "ERROR CutQuantile_R !IsSingleDoubleVector(countCuts)");
@@ -350,7 +350,7 @@ SEXP CutQuantile_R(
       static_cast<IntEbmType>(cFeatureValues),
       aFeatureValues,
       countSamplesPerBinMinIntEbmType,
-      bHumanized ? EBM_TRUE : EBM_FALSE,
+      bRounded ? EBM_TRUE : EBM_FALSE,
       &countCutsIntEbmType,
       aCutsLowerBoundInclusive,
       nullptr,

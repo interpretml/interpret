@@ -225,7 +225,7 @@ class Native:
         )
         return n_cuts
 
-    def cut_quantile(self, col_data, min_samples_bin, is_humanized, max_cuts):
+    def cut_quantile(self, col_data, min_samples_bin, is_rounded, max_cuts):
         if max_cuts < 0:
             raise Exception(f"max_cuts can't be negative: {max_cuts}.")
 
@@ -235,7 +235,7 @@ class Native:
             col_data.shape[0],
             Native._make_pointer(col_data, np.float64),
             min_samples_bin,
-            is_humanized,
+            is_rounded,
             ct.byref(count_cuts),
             Native._make_pointer(cuts, np.float64),
         )
@@ -574,7 +574,7 @@ class Native:
             ct.c_void_p,
             # int64_t countSamplesPerBinMin
             ct.c_int64,
-            # int64_t isHumanized
+            # int64_t isRounded
             ct.c_int64,
             # int64_t * countCutsInOut
             ct.POINTER(ct.c_int64),

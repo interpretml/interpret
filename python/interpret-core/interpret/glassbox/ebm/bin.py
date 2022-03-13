@@ -741,7 +741,7 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
         # called under: fit
         X_col, categories = _process_column_initial(X_col, nonmissings, processing, None)
         return 'nominal', X_col, categories, None
-    elif processing == 'quantile' or processing == 'quantile_humanized' or processing == 'uniform' or processing == 'winsorized':
+    elif processing == 'quantile' or processing == 'rounded_quantile' or processing == 'uniform' or processing == 'winsorized':
         # called under: fit
         X_col, bad = _process_continuous(X_col, nonmissings)
         return 'continuous', X_col, None, bad
@@ -1475,7 +1475,7 @@ def clean_X(X):
 def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bin):
     # called under: fit
       
-    if processing != 'quantile' and processing != 'quantile_humanized' and processing != 'uniform' and processing != 'winsorized' and not isinstance(processing, list) and not isinstance(processing, np.ndarray):
+    if processing != 'quantile' and processing != 'rounded_quantile' and processing != 'uniform' and processing != 'winsorized' and not isinstance(processing, list) and not isinstance(processing, np.ndarray):
         if isinstance(binning, list) or isinstance(binning, np.ndarray):
             msg = f"illegal binning type {binning}"
             _log.error(msg)
@@ -1485,7 +1485,7 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
     if processing == 'quantile':
         # one bin for missing, one bin for unknown, and # of cuts is one less again
         cuts = native.cut_quantile(X_col, min_samples_bin, 0, max_bins - 3)
-    elif processing == 'quantile_humanized':
+    elif processing == 'rounded_quantile':
         # one bin for missing, one bin for unknown, and # of cuts is one less again
         cuts = native.cut_quantile(X_col, min_samples_bin, 1, max_bins - 3)
     elif processing == 'uniform':
@@ -1518,8 +1518,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             feature_names: Feature names as list.
             feature_types: Feature types as list, for example "continuous" or "nominal".
             max_bins: Max number of bins to process numeric features.
-            binning: Strategy to compute bins: "quantile", "quantile_humanized", "uniform", or "private". 
-            min_samples_bin: minimum number of samples to put into a quantile or quantile_humanized bin
+            binning: Strategy to compute bins: "quantile", "rounded_quantile", "uniform", or "private". 
+            min_samples_bin: minimum number of samples to put into a quantile or rounded_quantile bin
             min_unique_continuous: number of unique numbers required before a feature is considered continuous
             epsilon: Privacy budget parameter. Only applicable when binning is "private".
             delta: Privacy budget parameter. Only applicable when binning is "private".

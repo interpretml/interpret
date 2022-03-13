@@ -2457,7 +2457,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
-   BoolEbmType isHumanized,
+   BoolEbmType isRounded,
    IntEbmType * countCutsInOut,
    FloatEbmType * cutsLowerBoundInclusiveOut
 ) {
@@ -2475,14 +2475,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
-      "isHumanized=%s, "
+      "isRounded=%s, "
       "countCutsInOut=%p, "
       "cutsLowerBoundInclusiveOut=%p"
       ,
       countSamples,
       static_cast<const void *>(featureValues),
       countSamplesPerBinMin,
-      ObtainTruth(isHumanized),
+      ObtainTruth(isRounded),
       static_cast<void *>(countCutsInOut),
       static_cast<void *>(cutsLowerBoundInclusiveOut)
    );
@@ -3025,7 +3025,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             FloatEbmType * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
             const FloatEbmType * const * ppValueCutTop2 = apValueCutTops;
 
-            if(EBM_FALSE == isHumanized) {
+            if(EBM_FALSE == isRounded) {
                do {
                   const FloatEbmType * const pCut = *ppValueCutTop2;
                   EBM_ASSERT(aFeatureValues < pCut);

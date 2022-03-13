@@ -250,7 +250,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQ
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
-   BoolEbmType isHumanized,
+   BoolEbmType isRounded,
    IntEbmType * countCutsInOut,
    FloatEbmType * cutsLowerBoundInclusiveOut
 );
