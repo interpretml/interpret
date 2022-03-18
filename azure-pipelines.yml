@@ -33,10 +33,10 @@ jobs:
       scriptSource: 'inline'
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
   - script: |
-      # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      set CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
-      # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
+      REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
+      SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
+      REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       .\build.bat
     condition: startsWith(variables['image.name'], 'windows')
@@ -112,19 +112,19 @@ jobs:
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'Testing ebm_native code (Linux) Schedule'
   - script: |
-      # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      set CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
-      # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
+      REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
+      SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
+      REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline
     condition: and(startsWith(variables['image.name'], 'windows'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: 'Testing ebm_native code (Windows) CI'
   - script: |
-      # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      set CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
-      # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
+      REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
+      SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
+      REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -pipeline -analysis
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))

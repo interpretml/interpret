@@ -21,28 +21,32 @@ for %%x in (%*) do (
    )
 )
 
+REM "IF ERRORLEVEL 1" checks for error levels 1 OR MORE!
+REM %ERRORLEVEL% seems to be unreliable with MSBuild.exe
+REM https://devblogs.microsoft.com/oldnewthing/20080926-00
+
 IF %build_64_bit% EQU 1 (
    MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Release /p:Platform=x64 %extra_analysis%
-   IF %ERRORLEVEL% NEQ 0 (
-      ECHO MSBuild for Release x64 returned error code %ERRORLEVEL%
-      EXIT /B %ERRORLEVEL%
+   IF ERRORLEVEL 1 (
+      ECHO MSBuild for Release x64 FAILED
+      EXIT /B 101
    )
    MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Debug /p:Platform=x64 %extra_analysis%
-   IF %ERRORLEVEL% NEQ 0 (
-      ECHO MSBuild for Debug x64 returned error code %ERRORLEVEL%
-      EXIT /B %ERRORLEVEL%
+   IF ERRORLEVEL 1 (
+      ECHO MSBuild for Debug x64 FAILED
+      EXIT /B 102
    )
 )
 IF %build_32_bit% EQU 1 (
    MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Release /p:Platform=Win32 %extra_analysis%
-   IF %ERRORLEVEL% NEQ 0 (
-      ECHO MSBuild for Release x86 returned error code %ERRORLEVEL%
-      EXIT /B %ERRORLEVEL%
+   IF ERRORLEVEL 1 (
+      ECHO MSBuild for Release x86 FAILED
+      EXIT /B 103
    )
    MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Debug /p:Platform=Win32 %extra_analysis%
-   IF %ERRORLEVEL% NEQ 0 (
-      ECHO MSBuild for Debug x86 returned error code %ERRORLEVEL%
-      EXIT /B %ERRORLEVEL%
+   IF ERRORLEVEL 1 (
+      ECHO MSBuild for Debug x86 FAILED
+      EXIT /B 104
    )
 )
 
