@@ -836,4 +836,4 @@ def plot_ebm_multiple_booleans(feat_names, ebm_global, mpl_style=False, figname=
             'lower_bounds': lower_bounds,
             'density': densities_dict,
             }
-        plot_bar(data_dict)
+        return plot_bar(data_dict)
