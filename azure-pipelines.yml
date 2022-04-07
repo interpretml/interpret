@@ -243,6 +243,14 @@ jobs:
     condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/lib_ebm_native_*_arm*'
+      targetFolder: 'python/interpret-core/interpret/lib'
+      flattenFolders: true
+    displayName: 'Move binary to Python layer'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
