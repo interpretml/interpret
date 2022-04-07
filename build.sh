@@ -22,17 +22,6 @@ check_install() {
    if [ ! -f "$l1_tmp_path_unsanitized/$l1_package.chk" ]; then
       printf "%s\n" "Installing $l1_package"
 
-      if [ "$g_is_updated" -eq 0 ]; then 
-
-         sudo apt-get -y update
-         l1_ret_code=$?
-         if [ $l1_ret_code -ne 0 ]; then 
-            exit $l1_ret_code
-         fi
-
-         g_is_updated=1
-      fi
-
       sudo apt-get -y install "$l1_package"
       l1_ret_code=$?
       if [ $l1_ret_code -ne 0 ]; then 
@@ -243,8 +232,6 @@ copy_asm_files() {
 }
 
 
-g_is_updated=0
-
 release_64=1
 debug_64=1
 release_32=0
@@ -311,7 +298,6 @@ both_args="$both_args -Wshadow"
 both_args="$both_args -Wformat=2"
 both_args="$both_args -fvisibility=hidden"
 both_args="$both_args -fno-math-errno -fno-trapping-math"
-both_args="$both_args -march=core2"
 # TODO: once we have highly efficient tightly looped code, try no -fpic and see if that makes better code.  The compiler can save a register in this case. See https://akkadia.org/drepper/dsohowto.pdf
 both_args="$both_args -fpic"
 both_args="$both_args -pthread"
@@ -356,6 +342,7 @@ if [ "$os_type" = "Linux" ]; then
 
    # try moving some of these g++ specific warnings into both_args if clang eventually supports them
    both_args="$both_args -Wlogical-op"
+   both_args="$both_args -march=core2"
 
    # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
    link_args="$link_args -Wl,--version-script=$src_path_sanitized/ebm_native_exports.txt"
@@ -503,6 +490,10 @@ if [ "$os_type" = "Linux" ]; then
 elif [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
 
+   # TODO: make these real options instead of forcing them to the same as x64
+   release_arm=$release_64
+   debug_arm=$debug_64
+
    # try moving some of these clang specific warnings into both_args if g++ eventually supports them
    c_compiler=clang
    cpp_compiler=clang++
@@ -532,7 +523,7 @@ elif [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64.dylib"
       g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_release_mac_x64_build_log.txt"
-      both_args_extra="-m64 -DNDEBUG -O3"
+      both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -DNDEBUG -O3"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
@@ -562,7 +553,7 @@ elif [ "$os_type" = "Darwin" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/x64/ebm_native"
       bin_file="lib_ebm_native_mac_x64_debug.dylib"
       g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_debug_mac_x64_build_log.txt"
-      both_args_extra="-m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      both_args_extra="-march=core2 -target x86_64-apple-macos10.12 -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
       c_args_specific="$c_args $both_args $both_args_extra"
       cpp_args_specific="$cpp_args $both_args $both_args_extra"
       # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
@@ -577,6 +568,63 @@ elif [ "$os_type" = "Darwin" ]; then
       compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "main"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
       compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "avx512"
+      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+   fi
+
+   if [ $release_arm -eq 1 ]; then
+      ########################## macOS release|arm
+
+      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for macOS release|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/arm/ebm_native"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/release/mac/arm/ebm_native"
+      bin_file="lib_ebm_native_mac_arm.dylib"
+      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_release_mac_arm_build_log.txt"
+      both_args_extra="-target arm64-apple-macos11 -m64 -DNDEBUG -O3"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
+      link_args_specific="-install_name @rpath/$bin_file $link_args $cpp_args_specific"
+   
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "main"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
+      link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$python_lib_unsanitized" "$staging_path_unsanitized"
+      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_arm" "$is_asm"
+   fi
+
+   if [ $debug_arm -eq 1 ]; then
+      ########################## macOS debug|arm
+
+      printf "%s\n" "Compiling ebm_native with $c_compiler/$cpp_compiler for macOS debug|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/debug/mac/arm/ebm_native"
+      bin_path_unsanitized="$tmp_path_unsanitized/clang/bin/debug/mac/arm/ebm_native"
+      bin_file="lib_ebm_native_mac_arm_debug.dylib"
+      g_log_file_unsanitized="$obj_path_unsanitized/ebm_native_debug_mac_arm_build_log.txt"
+      both_args_extra="-target arm64-apple-macos11 -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer"
+      c_args_specific="$c_args $both_args $both_args_extra"
+      cpp_args_specific="$cpp_args $both_args $both_args_extra"
+      # the linker wants to have the most dependent .o/.so/.dylib files listed FIRST
+      link_args_specific="-install_name @rpath/$bin_file $link_args $cpp_args_specific"
+   
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory_c "$c_compiler" "$c_args_specific $common_args" "$src_path_unsanitized/common_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_c "$c_compiler" "$c_args_specific $bridge_args" "$src_path_unsanitized/bridge_c" "$obj_path_unsanitized" "$is_asm" "C"
+      compile_directory_cpp "$cpp_compiler" "$cpp_args_specific $main_args -DZONE_main" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "main"
+      compile_compute "$cpp_compiler" "$cpp_args_specific $compute_args" "$src_path_sanitized" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm" "cpu"
       link_file "$cpp_compiler" "$link_args_specific" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"

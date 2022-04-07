@@ -62,8 +62,15 @@ jobs:
     continueOnError: true
     inputs:
       pathtoPublish: tmp/staging_asm_release_64
-      artifactName: asm-$(image.name)
-    displayName: 'Publish assembly'
+      artifactName: asm-x64-$(image.name)
+    displayName: 'Publish assembly x64'
+  - task: PublishBuildArtifacts@1
+    condition: startsWith(variables['image.name'], 'macOS')
+    continueOnError: true
+    inputs:
+      pathtoPublish: tmp/staging_asm_release_arm
+      artifactName: asm-arm-$(image.name)
+    displayName: 'Publish assembly arm'
 
 - job: 'Test_ebm_native'
   dependsOn: 'Build_ebm_native'

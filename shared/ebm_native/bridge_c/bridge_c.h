@@ -23,6 +23,9 @@ typedef size_t StorageDataType;
 typedef UIntEbmType ActiveDataType;
 
 struct Registrable {
+   // TODO: empty structures are not compliant in all C compilers, so we need to move this to a C++ only place and not this bridge
+   //       use a void pointer in the wrapper below
+   // https://stackoverflow.com/questions/755305/empty-structure-in-c?rq=1
 };
 
 struct ApplyTrainingData {

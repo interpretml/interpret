@@ -4,6 +4,8 @@
 
 #include "precompiled_header_cpp.hpp"
 
+#if (defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)) && defined(__x86_64__) || defined(_MSC_VER)
+
 #include <cmath>
 #include <immintrin.h> // SIMD.  Do not include in precompiled_header_cpp.hpp!
 
@@ -150,3 +152,5 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbmType CreateMetric_Sse_32(
 }
 
 } // DEFINED_ZONE_NAME
+
+#endif // architecture SSE2

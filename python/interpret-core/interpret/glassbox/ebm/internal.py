@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 # TODO: Add unit tests for internal EBM interfacing
-from sys import platform
+import platform
 import ctypes as ct
 import numpy as np
 import os
@@ -482,22 +482,26 @@ class Native:
         package_path = os.path.join(script_path, "..", "..")
 
         debug_str = "_debug" if debug else ""
-        log.info("Loading native on {0} | debug = {1}".format(platform, debug))
-        if platform == "linux" or platform == "linux2" and is_64_bit:  # pragma: no cover
+        log.info("Loading native on {0} | debug = {1}".format(platform.system(), debug))
+        if platform.system() == "Linux" and platform.machine() == 'x86_64' and is_64_bit:  # pragma: no cover
             return os.path.join(
                 package_path, "lib", "lib_ebm_native_linux_x64{0}.so".format(debug_str)
             )
-        elif platform == "win32" and is_64_bit:  # pragma: no cover
+        elif platform.system() == "Windows" and platform.machine() == 'AMD64' and is_64_bit:  # pragma: no cover
             return os.path.join(
                 package_path, "lib", "lib_ebm_native_win_x64{0}.dll".format(debug_str)
             )
-        elif platform == "darwin" and is_64_bit:  # pragma: no cover
+        elif platform.system() == "Darwin" and platform.machine() == 'x86_64' and is_64_bit:  # pragma: no cover
             return os.path.join(
                 package_path, "lib", "lib_ebm_native_mac_x64{0}.dylib".format(debug_str)
             )
+        elif platform.system() == "Darwin" and platform.machine() == 'arm64' and is_64_bit:  # pragma: no cover
+            return os.path.join(
+                package_path, "lib", "lib_ebm_native_mac_arm{0}.dylib".format(debug_str)
+            )
         else:  # pragma: no cover
-            msg = "Platform {0} at {1} bit not supported for EBM".format(
-                platform, bitsize
+            msg = "System {0}, platform {1}, bitsize {2} not supported for EBM".format(
+                platform.system(), platform.machine(), bitsize
             )
             log.error(msg)
             raise Exception(msg)
