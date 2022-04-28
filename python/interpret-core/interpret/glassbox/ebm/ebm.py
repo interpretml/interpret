@@ -1149,7 +1149,7 @@ class BaseEBM(BaseEstimator):
             for i in range(len(self.term_features_)):
                 mean_abs_score = np.abs(self.additive_terms_[i])
                 if is_classifier(self) and 2 < len(self.classes_):
-                    mean_abs_score = np.average(mean_abs_score, axis=mean_abs_score.ndim - 1)
+                    mean_abs_score = np.average(mean_abs_score, axis=-1)
                 mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
                 importances.itemset(i, mean_abs_score)
             return importances

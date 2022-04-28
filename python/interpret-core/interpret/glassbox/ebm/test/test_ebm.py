@@ -173,6 +173,20 @@ def test_ebm_synthetic_pairwise():
     assert clf_global.data(2)["scores"][1][1] > 5
 
 
+def test_ebm_tripple():
+    data = iris_classification()
+    X_train = data["train"]["X"]
+    y_train = data["train"]["y"]
+
+    X_test = data["test"]["X"]
+    y_test = data["test"]["y"]
+
+    # iris is multiclass, but for now pretend this is a regression problem
+    clf = ExplainableBoostingRegressor(interactions=[(0,1,2), (0,1,3), (1,2,3), (0, 1)])
+    clf.fit(X_train, y_train)
+    scores = clf.predict(X_test)
+    valid_ebm(clf)
+
 @pytest.mark.slow
 def test_prefit_ebm():
     data = synthetic_classification()
