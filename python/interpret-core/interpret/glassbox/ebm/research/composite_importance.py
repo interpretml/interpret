@@ -7,13 +7,9 @@ the importances of composites and append them to Global Explanations.
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 from sklearn.base import is_classifier
-import logging
-
-logging.basicConfig(level=logging.WARNING, format="[%(levelname)s] %(message)s")
-log = logging.getLogger(__name__)
 
 def compute_composite_importance(composite_terms, ebm, X, contributions=None):
-    """Computes the importance of the composite terms.
+    """Computes the importance of the composite_terms.
 
     Args:
         composite_terms: A list of term names or term indices
@@ -79,28 +75,56 @@ def _get_composite_name(composite_terms, ebm_term_names):
             raise ValueError("Term '{}' is not a string or a valid integer.".format(term))
     return name
 
-def append_composite_importance(composite_terms, ebm, global_exp, X, composite_name=None, contributions=None):
-    """Computes the composite importance for composite_terms and returns a global explanation containing it
-    
-    The composite importance will only be displayed in the "Summary" Graph.
+def append_composite_importance(composite_terms, ebm, X, global_exp_name=None, composite_name=None, contributions=None):
+    """Computes the importance of the composite_terms and returns a global explanation containing it.
+
+    The composite importance will only be displayed in the Summary graph.
 
     Args:
         composite_terms: A list of term names or term indices
         ebm: A fitted EBM
-        global_exp: An EBM Global Explanation
-        X (numpy array): Samples used to compute the composite feature importance
-        composite_name (str, optional): Name to be appended to the global explanation
-        contributions (numpy array, optional): Contributions of all features per X's row
+        X (numpy array): Samples used to compute the composite importance
+        global_exp_name (str, optional): User-defined global explanation name
+        composite_name (str, optional): User-defined composite Name
+        contributions (numpy array, optional): Contributions of all terms per X's row
+
+    Returns:
+        EBMExplanation: A global explanation with the composite importance appended to it
     """
     check_is_fitted(ebm, "has_fitted_")
+    global_explanation = ebm.explain_global(global_exp_name)
 
-    if global_exp.explanation_type != "global":
-        raise ValueError("The provided explanation is {} but a global explanation is expected.".format(global_exp.explanation_type))
-    elif global_exp._internal_obj is None or global_exp._internal_obj["overall"] is None:
-        raise ValueError("The global explanation object is incomplete.")
-    else:
-        if composite_name is None:
-            composite_name = _get_composite_name(composite_terms, ebm.get_feature_names_out())
-        composite_importance = compute_composite_importance(composite_terms, ebm, X, contributions)
-        global_exp._internal_obj["overall"]["names"].append(composite_name)
-        global_exp._internal_obj["overall"]["scores"].append(composite_importance)
+    if composite_name is None:
+        composite_name = _get_composite_name(composite_terms, ebm.get_feature_names_out())
+    composite_importance = compute_composite_importance(composite_terms, ebm, X, contributions)
+
+    global_explanation._internal_obj["overall"]["names"].append(composite_name)
+    global_explanation._internal_obj["overall"]["scores"].append(composite_importance)
+
+    return global_explanation
+
+def get_composite_and_individual_terms(composite_terms, ebm, X):
+    """Returns a dict containing the importance of the composite_terms as well as
+        all other terms in the EBM
+
+    The dict will de sorted in descending order w.r.t. the importances
+
+    Args:
+        composite_terms: A list of term names or term indices
+        ebm: A fitted EBM
+        X (numpy array): Samples used to compute the composite importance
+
+    Returns:
+       a dict where each entry is in the form 'term_name: term_importance'
+    """
+    _, contributions = ebm.predict_and_contrib(X)
+    dict = {}
+
+    for term in ebm.get_feature_names_out():
+         dict[term] = compute_composite_importance([term], ebm, X, contributions)
+
+    composite_name = _get_composite_name(composite_terms, ebm.get_feature_names_out())
+    dict[composite_name] = compute_composite_importance(composite_terms, ebm, X, contributions)
+
+    sorted_dict = {k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)}
+    return sorted_dict

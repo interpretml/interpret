@@ -8,7 +8,8 @@ from .....test.utils import synthetic_multiclass, synthetic_classification, synt
 from ..composite_importance import (
     compute_composite_importance,
     _get_composite_name,
-    append_composite_importance
+    append_composite_importance,
+    get_composite_and_individual_terms
 )
 
 def test_composite_name():
@@ -35,34 +36,37 @@ def test_append_composite_importance():
 
     ebm = ExplainableBoostingRegressor()
     ebm.fit(X, y)
-    global_explanation = ebm.explain_global()
-    local_explanation = ebm.explain_local(X)
 
     # An exception should be raised when the EBM is not fitted
     non_fitted_ebm = ExplainableBoostingRegressor()
     with pytest.raises(NotFittedError):
-        append_composite_importance(composite_names, non_fitted_ebm, global_explanation, X)
-
-    # An exception should be raised when the explanation is not valid
-    with pytest.raises(ValueError):
-        append_composite_importance(composite_names, ebm, local_explanation, X)
-
-    wrong_global_exp = ebm.explain_global()
-    wrong_global_exp._internal_obj = None
-    with pytest.raises(ValueError):
-        append_composite_importance(composite_names, ebm, wrong_global_exp, X)
+        append_composite_importance(composite_names, non_fitted_ebm, X)
 
     # An exception should be raised when none of the input terms is valid
     with pytest.raises(ValueError):
-        append_composite_importance(["Z", -1, 20], ebm, global_explanation, X)
+        append_composite_importance(["Z", -1, 20], ebm, X)
 
-    append_composite_importance(composite_names, ebm, global_explanation, X)
+    global_explanation = append_composite_importance(composite_names, ebm, X)
     assert "A & B" in global_explanation._internal_obj["overall"]["names"]
     assert compute_composite_importance(composite_names, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
 
-    append_composite_importance(composite_names, ebm, global_explanation, X, composite_name="Comp 1")
+    global_explanation = append_composite_importance(composite_names, ebm, X, composite_name="Comp 1")
     assert "Comp 1" in global_explanation._internal_obj["overall"]["names"]
     assert compute_composite_importance(composite_names, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
+
+def test_composite_and_individual_terms():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+    composite_names = ["A", "B"]
+
+    ebm = ExplainableBoostingRegressor()
+    ebm.fit(X, y)
+    dict = get_composite_and_individual_terms(composite_names, ebm, X)
+
+    assert dict["A"] == compute_composite_importance(["A"], ebm, X)
+    assert dict["B"] == compute_composite_importance(["B"], ebm, X)
+    assert dict["A & B"] == compute_composite_importance(composite_names, ebm, X)
 
 def _check_composite_importance(X, y, ebm):
     composite_names = ["A", "B"]
