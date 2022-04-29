@@ -99,7 +99,7 @@ show([logistic_regression_global, decision_tree_global])
 
 <br/>
 
-If you need to keep your data private, we also support Differentially Private EBMs (see [DP-EBMs](http://proceedings.mlr.press/v139/nori21a/nori21a.pdf))
+If you need to keep your data private, use Differentially Private EBMs (see [DP-EBMs](http://proceedings.mlr.press/v139/nori21a/nori21a.pdf))
 
 ```python
 from interpret.privacy import DPExplainableBoostingClassifier, DPExplainableBoostingRegressor
