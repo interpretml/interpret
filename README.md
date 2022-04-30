@@ -596,6 +596,7 @@ We also build on top of many great packages. Please check them out!
 
 - [EBM to Onnx converter by SoftAtHome](https://github.com/interpretml/ebm2onnx)
 - [GAM Changer](https://github.com/interpretml/gam-changer)
+- [ML 2 SQL (experimental)](https://github.com/kaspersgit/ml_2_sql)
 
 # Contact us
 
