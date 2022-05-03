@@ -42,6 +42,11 @@ def test_append_composite_importance():
     with pytest.raises(NotFittedError):
         append_composite_importance(composite_names, non_fitted_ebm, X)
 
+    # An exception should be raised when the explanation is not local
+    local_exp = ebm.explain_local(X[:2])
+    with pytest.raises(ValueError):
+        append_composite_importance(composite_names, ebm, X, global_exp=local_exp)
+
     # An exception should be raised when none of the input terms is valid
     with pytest.raises(ValueError):
         append_composite_importance(["Z", -1, 20], ebm, X)
@@ -54,19 +59,46 @@ def test_append_composite_importance():
     assert "Comp 1" in global_explanation._internal_obj["overall"]["names"]
     assert compute_composite_importance(composite_names, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
 
+def test_append_multiple_composite_importances():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+    composite_terms_1 = ["A", "B"]
+    composite_terms_2 = ["C", "D"]
+
+    ebm = ExplainableBoostingRegressor()
+    ebm.fit(X, y)
+
+    global_explanation = append_composite_importance(composite_terms_1, ebm, X)
+    global_explanation = append_composite_importance(composite_terms_2, ebm, X, global_exp=global_explanation)
+    assert "A & B" in global_explanation._internal_obj["overall"]["names"]
+    assert "C & D" in global_explanation._internal_obj["overall"]["names"]
+    assert compute_composite_importance(composite_terms_1, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
+    assert compute_composite_importance(composite_terms_2, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
+
 def test_composite_and_individual_terms():
     data = synthetic_regression()
     X = data["full"]["X"]
     y = data["full"]["y"]
-    composite_names = ["A", "B"]
+    composite_terms_1 = ["A", "B"]
+    composite_terms_2 = ["C", "D"]
 
     ebm = ExplainableBoostingRegressor()
     ebm.fit(X, y)
-    dict = get_composite_and_individual_terms(composite_names, ebm, X)
 
+    dict = get_composite_and_individual_terms(composite_terms_1, ebm, X)
     assert dict["A"] == compute_composite_importance(["A"], ebm, X)
     assert dict["B"] == compute_composite_importance(["B"], ebm, X)
-    assert dict["A & B"] == compute_composite_importance(composite_names, ebm, X)
+    assert dict["A & B"] == compute_composite_importance(composite_terms_1, ebm, X)
+
+    dict = get_composite_and_individual_terms([composite_terms_1], ebm, X)
+    assert dict["A"] == compute_composite_importance(["A"], ebm, X)
+    assert dict["B"] == compute_composite_importance(["B"], ebm, X)
+    assert dict["A & B"] == compute_composite_importance(composite_terms_1, ebm, X)
+
+    dict = get_composite_and_individual_terms([composite_terms_1, composite_terms_2], ebm, X)
+    assert dict["A & B"] == compute_composite_importance(composite_terms_1, ebm, X)
+    assert dict["C & D"] == compute_composite_importance(composite_terms_2, ebm, X)
 
 def _check_composite_importance(X, y, ebm):
     composite_names = ["A", "B"]
