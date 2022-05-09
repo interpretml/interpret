@@ -897,6 +897,10 @@ def merge_ebms(models):
         ebm.bag_weights_
     )
 
+    # dependent attributes (can be re-derrived after serialization)
+    ebm.n_features_in_ = len(ebm.bins_) # scikit-learn specified name
+    ebm.term_names_out_ = [" x ".join(ebm.feature_names_in_[i] for i in grp) for grp in ebm.term_features_]
+
     return ebm
 
 # TODO: Clean up
