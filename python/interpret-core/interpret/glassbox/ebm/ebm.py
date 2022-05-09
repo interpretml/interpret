@@ -249,6 +249,8 @@ class BaseEBM(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
+        is_differential_privacy = is_private(self)
+
         if is_classifier(self):
             y = clean_vector(y, True, "y")
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
@@ -257,7 +259,7 @@ class BaseEBM(BaseEstimator):
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
             if n_classes > 2:  # pragma: no cover
-                if is_private(self):
+                if is_differential_privacy:
                     raise ValueError("multiclass not supported in Differentially private EBMs")
 
                 warn("Multiclass is still experimental. Subject to change per release.")
@@ -286,7 +288,7 @@ class BaseEBM(BaseEstimator):
         bin_eps_ = None
         bin_delta_ = None
         composition=None
-        if is_private(self):
+        if is_differential_privacy:
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
 
             if not is_classifier(self):
@@ -336,9 +338,9 @@ class BaseEBM(BaseEstimator):
         unique_counts = binning_result[6]
         zero_counts = binning_result[7]
 
-        n_features_in = len(feature_names_in)
+        n_features_in = len(bins)
 
-        if is_private(self):
+        if is_differential_privacy:
              # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             domain_size = 1 if is_classifier(self) else max_target - min_target
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
@@ -371,7 +373,7 @@ class BaseEBM(BaseEstimator):
         )
 
         bin_data_weights = None
-        if is_private(self):
+        if is_differential_privacy:
             bin_data_weights = make_boosting_weights(term_bin_weights)
 
         native = Native.get_native_singleton()
@@ -384,16 +386,16 @@ class BaseEBM(BaseEstimator):
             term_features = [(int(x),) for x in self.mains]
               
         # Train main effects
-        if is_private(self):
+        if is_differential_privacy:
             update = Native.GenerateUpdateOptions_GradientSums | Native.GenerateUpdateOptions_RandomSplits
         else:
             update = Native.GenerateUpdateOptions_Default
 
         init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
 
-        inner_bags = 0 if is_private(self) else self.inner_bags
-        early_stopping_rounds = -1 if is_private(self) else self.early_stopping_rounds
-        early_stopping_tolerance = -1 if is_private(self) else self.early_stopping_tolerance
+        inner_bags = 0 if is_differential_privacy else self.inner_bags
+        early_stopping_rounds = -1 if is_differential_privacy else self.early_stopping_rounds
+        early_stopping_tolerance = -1 if is_differential_privacy else self.early_stopping_tolerance
 
         bags = []
         bag_weights = []
@@ -452,7 +454,7 @@ class BaseEBM(BaseEstimator):
             breakpoint_iteration[-1].append(bag_breakpoint_iteration)
             models.append(after_boosting(term_features, model, term_bin_weights))
 
-        interactions = 0 if is_private(self) else self.interactions
+        interactions = 0 if is_differential_privacy else self.interactions
         if n_classes > 2:
             if isinstance(interactions, int):
                if interactions != 0:
@@ -603,7 +605,7 @@ class BaseEBM(BaseEstimator):
         term_features = [x[1] for x in sorted_items]
         bagged_additive_terms = [x[2] for x in sorted_items]
 
-        if is_private(self):
+        if is_differential_privacy:
             # for now we only support mains for DP models
             bin_weights = [term_bin_weights[feature_idxs[0]] for feature_idxs in term_features]
         else:
@@ -625,7 +627,13 @@ class BaseEBM(BaseEstimator):
             bag_weights
         )
 
-        if is_private(self):
+        term_names_out = [" x ".join(feature_names_in[i] for i in grp) for grp in term_features]
+
+        # dependent attributes (can be re-derrived after serialization)
+        self.n_features_in_ = n_features_in # scikit-learn specified name
+        self.term_names_out_ = term_names_out
+
+        if is_differential_privacy:
             self.noise_scale_ = noise_scale
         else:
             # differentially private models would need to pay additional privacy budget to make
@@ -666,6 +674,7 @@ class BaseEBM(BaseEstimator):
         self.bag_weights_ = bag_weights
         self.breakpoint_iteration_ = breakpoint_iteration
         self.has_fitted_ = True
+
         return self
 
     def _to_json(self):
@@ -794,8 +803,8 @@ class BaseEBM(BaseEstimator):
 
         bounds = (lower_bound, upper_bound)
 
-        term_names = self.get_feature_names_out()
-        term_types = self.get_feature_types_out()
+        term_names = self.term_names_out_
+        term_types = [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.term_features_]
 
         native = Native.get_native_singleton()
 
@@ -1011,8 +1020,8 @@ class BaseEBM(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
-        term_names = self.get_feature_names_out()
-        term_types = self.get_feature_types_out()
+        term_names = self.term_names_out_
+        term_types = [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.term_features_]
 
         data_dicts = []
         perf_list = []
@@ -1157,33 +1166,6 @@ class BaseEBM(BaseEstimator):
             return np.array([np.max(np.abs(tensor)) for tensor in self.additive_terms_], np.float64)
         else:
             raise ValueError(f"Unrecognized style: {style}")
-
-    @property
-    def n_features_in_(self): # self.n_features_in_ is required by scikit-learn
-        # self.bins_ is the only feature based attribute that we absolutely require
-        return len(self.bins_)
-
-    def get_feature_names_out(self):
-        """ Provides the term names in the format "feature_name_1 X feature_name_2"
-
-        Args:
-
-        Returns:
-            A list of per-term names
-        """
-
-        return [" x ".join(self.feature_names_in_[i] for i in grp) for grp in self.term_features_]
-    
-    def get_feature_types_out(self):
-        """ Provides the term types.  For non-interactions these are the feature_types, and "interactions" for interactions.
-
-        Args:
-
-        Returns:
-            A list of per-term names
-        """
-
-        return [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.term_features_]
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """

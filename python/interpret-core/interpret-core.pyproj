@@ -65,6 +65,12 @@
     <Compile Include="interpret\glassbox\ebm\ebm.py" />
     <Compile Include="interpret\glassbox\ebm\internal.py" />
     <Compile Include="interpret\glassbox\ebm\postprocessing.py" />
+    <Compile Include="interpret\glassbox\ebm\research\composite_importance.py" />
+    <Compile Include="interpret\glassbox\ebm\research\purify.py" />
+    <Compile Include="interpret\glassbox\ebm\research\test\test_composite_importance.py" />
+    <Compile Include="interpret\glassbox\ebm\research\test\test_purify.py" />
+    <Compile Include="interpret\glassbox\ebm\research\test\__init__.py" />
+    <Compile Include="interpret\glassbox\ebm\research\__init__.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_bin.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_ebm.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_ebm_utils.py" />
@@ -140,6 +146,8 @@
     <Folder Include="interpret\ext\test" />
     <Folder Include="interpret\glassbox" />
     <Folder Include="interpret\glassbox\ebm" />
+    <Folder Include="interpret\glassbox\ebm\research\" />
+    <Folder Include="interpret\glassbox\ebm\research\test\" />
     <Folder Include="interpret\glassbox\ebm\test" />
     <Folder Include="interpret\glassbox\test" />
     <Folder Include="interpret\greybox" />
