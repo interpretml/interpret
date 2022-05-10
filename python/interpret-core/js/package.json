@@ -12,6 +12,11 @@
     "build-prod": "webpack --mode production",
     "start": "webpack-dev-server --hot --mode development"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/interpretml/interpret.git",
+    "directory":"python/interpret-core/js"
+  },
   "dependencies": {
     "cytoscape": "^3.20.0",
     "plotly.js": "^2.8.3",
