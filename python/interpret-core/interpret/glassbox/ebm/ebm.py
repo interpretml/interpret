@@ -1162,8 +1162,8 @@ class BaseEBM(BaseEstimator):
                 mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
                 importances.itemset(i, mean_abs_score)
             return importances
-        elif style == 'max':
-            return np.array([np.max(np.abs(tensor)) for tensor in self.additive_terms_], np.float64)
+        elif style == 'min_max':
+            return np.array([np.max(tensor) - np.min(tensor) for tensor in self.additive_terms_], np.float64)
         else:
             raise ValueError(f"Unrecognized style: {style}")
 
