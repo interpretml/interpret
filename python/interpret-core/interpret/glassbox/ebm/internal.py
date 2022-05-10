@@ -1093,7 +1093,7 @@ class Booster(AbstractContextManager):
     def generate_term_update(
         self, 
         term_idx, 
-        generate_update_options, 
+        boosting_flags, 
         learning_rate, 
         min_samples_leaf, 
         max_leaves, 
@@ -1104,7 +1104,7 @@ class Booster(AbstractContextManager):
 
         Args:
             term_idx: The index for the term to generate the update for
-            generate_update_options: C interface options
+            boosting_flags: C interface options
             learning_rate: Learning rate as a float.
             min_samples_leaf: Min observations required to split.
             max_leaves: Max leaf nodes on feature step.
@@ -1126,7 +1126,7 @@ class Booster(AbstractContextManager):
         return_code = native._unsafe.GenerateModelUpdate(
             self._booster_handle, 
             term_idx,
-            generate_update_options,
+            boosting_flags,
             learning_rate,
             min_samples_leaf,
             Native._make_pointer(max_leaves_arr, np.int64),

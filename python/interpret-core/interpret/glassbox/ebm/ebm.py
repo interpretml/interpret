@@ -249,8 +249,6 @@ class BaseEBM(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        is_differential_privacy = is_private(self)
-
         if is_classifier(self):
             y = clean_vector(y, True, "y")
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
@@ -258,12 +256,6 @@ class BaseEBM(BaseEstimator):
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
-            if n_classes > 2:  # pragma: no cover
-                if is_differential_privacy:
-                    raise ValueError("multiclass not supported in Differentially private EBMs")
-
-                warn("Multiclass is still experimental. Subject to change per release.")
-
             class_idx = {x: index for index, x in enumerate(classes)}
         else:
             y = clean_vector(y, False, "y")
@@ -284,14 +276,14 @@ class BaseEBM(BaseEstimator):
                 raise ValueError(msg)
 
         # Privacy calculations
-        noise_scale = None
-        bin_eps_ = None
-        bin_delta_ = None
-        composition=None
+        is_differential_privacy = is_private(self)
         if is_differential_privacy:
             DPUtils.validate_eps_delta(self.epsilon, self.delta)
 
-            if not is_classifier(self):
+            if is_classifier(self):
+                if n_classes > 2:  # pragma: no cover
+                    raise ValueError("multiclass not supported in Differentially private EBMs.")
+            else:
                 bounds = None if self.privacy_schema is None else self.privacy_schema.get('target', None)
                 if bounds is None:
                     warn("Possible privacy violation: assuming min/max values for target are public info."
@@ -305,14 +297,18 @@ class BaseEBM(BaseEstimator):
                     y = np.clip(y, min_target, max_target)
 
             # Split epsilon, delta budget for binning and learning
-            bin_eps_ = self.epsilon * self.bin_budget_frac
-            training_eps_ = self.epsilon - bin_eps_
-            bin_delta_ = self.delta / 2
-            training_delta_ = self.delta / 2
-            composition=self.composition
+            bin_eps = self.epsilon * self.bin_budget_frac
+            bin_delta = self.delta / 2
+            composition = self.composition
+            privacy_schema = self.privacy_schema
 
             bin_levels = [self.max_bins]
         else:
+            bin_eps = None
+            bin_delta = None
+            composition = None
+            privacy_schema = None
+
             bin_levels = [self.max_bins, self.max_interaction_bins]
 
         binning_result = construct_bins(
@@ -324,15 +320,15 @@ class BaseEBM(BaseEstimator):
             binning=self.binning, 
             min_samples_bin=1, 
             min_unique_continuous=3, 
-            epsilon=bin_eps_, 
-            delta=bin_delta_, 
+            epsilon=bin_eps, 
+            delta=bin_delta, 
             composition=composition,
-            privacy_schema=getattr(self, 'privacy_schema', None)
+            privacy_schema=privacy_schema,
         )
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
         bins = binning_result[2]
-        term_bin_weights = binning_result[3]
+        main_bin_weights = binning_result[3]
         feature_bounds = binning_result[4]
         histogram_counts = binning_result[5]
         unique_counts = binning_result[6]
@@ -340,68 +336,58 @@ class BaseEBM(BaseEstimator):
 
         n_features_in = len(bins)
 
-        if is_differential_privacy:
-             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
-            domain_size = 1 if is_classifier(self) else max_target - min_target
-            max_weight = 1 if sample_weight is None else np.max(sample_weight)
-            if self.composition == 'classic':
-                noise_scale = DPUtils.calc_classic_noise_multi(
-                    total_queries = self.max_rounds * n_features_in * self.outer_bags, 
-                    target_epsilon = training_eps_, 
-                    delta = training_delta_, 
-                    sensitivity = domain_size * self.learning_rate * max_weight
-                )
-            elif self.composition == 'gdp':
-                noise_scale = DPUtils.calc_gdp_noise_multi(
-                    total_queries = self.max_rounds * n_features_in * self.outer_bags, 
-                    target_epsilon = training_eps_, 
-                    delta = training_delta_
-                )
-                noise_scale = noise_scale * domain_size * self.learning_rate * max_weight # Alg Line 17
-            else:
-                raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
-
-        dataset = bin_native_by_dimension(
-            n_classes, 
-            1,
-            bins,
-            X, 
-            y, 
-            sample_weight, 
-            feature_names_in, 
-            feature_types_in, 
-        )
-
-        bin_data_weights = None
-        if is_differential_privacy:
-            bin_data_weights = make_boosting_weights(term_bin_weights)
-
-        native = Native.get_native_singleton()
-
-        provider = JobLibProvider(n_jobs=self.n_jobs)
-
         if isinstance(self.mains, str) and self.mains == "all":
             term_features = [(x,) for x in range(n_features_in)]
         else:
             term_features = [(int(x),) for x in self.mains]
-              
-        # Train main effects
+
         if is_differential_privacy:
-            update = Native.GenerateUpdateOptions_GradientSums | Native.GenerateUpdateOptions_RandomSplits
+             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
+            domain_size = 1 if is_classifier(self) else max_target - min_target
+            max_weight = 1 if sample_weight is None else np.max(sample_weight)
+            training_eps = self.epsilon - bin_eps
+            training_delta = self.delta / 2
+            if self.composition == 'classic':
+                noise_scale = DPUtils.calc_classic_noise_multi(
+                    total_queries = self.max_rounds * len(term_features) * self.outer_bags, 
+                    target_epsilon = training_eps, 
+                    delta = training_delta, 
+                    sensitivity = domain_size * self.learning_rate * max_weight
+                )
+            elif self.composition == 'gdp':
+                noise_scale = DPUtils.calc_gdp_noise_multi(
+                    total_queries = self.max_rounds * len(term_features) * self.outer_bags, 
+                    target_epsilon = training_eps, 
+                    delta = training_delta
+                )
+                noise_scale *= domain_size * self.learning_rate * max_weight # Alg Line 17
+            else:
+                raise NotImplementedError(f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'.")
+
+            bin_data_weights = make_boosting_weights(main_bin_weights)
+            boosting_flags = Native.GenerateUpdateOptions_GradientSums | Native.GenerateUpdateOptions_RandomSplits
+            inner_bags = 0
+            early_stopping_rounds = -1
+            early_stopping_tolerance = -1
+            interactions = 0
         else:
-            update = Native.GenerateUpdateOptions_Default
+            noise_scale = None
+
+            bin_data_weights = None
+            boosting_flags = Native.GenerateUpdateOptions_Default
+            inner_bags = self.inner_bags
+            early_stopping_rounds = self.early_stopping_rounds
+            early_stopping_tolerance = self.early_stopping_tolerance
+            interactions = self.interactions
 
         init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
 
-        inner_bags = 0 if is_differential_privacy else self.inner_bags
-        early_stopping_rounds = -1 if is_differential_privacy else self.early_stopping_rounds
-        early_stopping_tolerance = -1 if is_differential_privacy else self.early_stopping_tolerance
-
-        bags = []
-        bag_weights = []
+        native = Native.get_native_singleton()
         bagged_seed = init_seed
+        bag_weights = []
+        bags = []
         for _ in range(self.outer_bags):
-            bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+            bagged_seed = native.generate_random_number(bagged_seed, 1416147523)
             bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
             bags.append(bag)
             if bag is None:
@@ -417,10 +403,23 @@ class BaseEBM(BaseEstimator):
                     bag_weights.append((bag[keep] * sample_weight[keep]).sum())
         bag_weights = np.array(bag_weights, np.float64)
 
-        parallel_args = []
+        provider = JobLibProvider(n_jobs=self.n_jobs)
+
+        dataset = bin_native_by_dimension(
+            n_classes, 
+            1,
+            bins,
+            X, 
+            y, 
+            sample_weight, 
+            feature_names_in, 
+            feature_types_in, 
+        )
+
         bagged_seed = init_seed
+        parallel_args = []
         for idx in range(self.outer_bags):
-            bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+            bagged_seed = native.generate_random_number(bagged_seed, 1416147523)
             parallel_args.append(
                 (
                     dataset,
@@ -428,7 +427,7 @@ class BaseEBM(BaseEstimator):
                     None,
                     term_features,
                     inner_bags,
-                    update,
+                    boosting_flags,
                     self.learning_rate,
                     self.min_samples_leaf,
                     self.max_leaves,
@@ -452,20 +451,18 @@ class BaseEBM(BaseEstimator):
         models = []
         for model, bag_breakpoint_iteration in results:
             breakpoint_iteration[-1].append(bag_breakpoint_iteration)
-            models.append(after_boosting(term_features, model, term_bin_weights))
+            models.append(after_boosting(term_features, model, main_bin_weights))
 
-        interactions = 0 if is_differential_privacy else self.interactions
         if n_classes > 2:
             if isinstance(interactions, int):
                if interactions != 0:
-                    warn("Detected multiclass problem: forcing interactions to 0")
+                    warn("Detected multiclass problem. Forcing interactions to 0. Multiclass interactions work except for global visualizations, so the line below setting interactions to zero can be disabled if you know what you are doing.")
                     interactions = 0
             elif len(interactions) != 0:
-                raise ValueError("interactions are not supported for multiclass")
+                raise ValueError("Interactions are not supported for multiclass. Multiclass interactions work except for global visualizations, so this exception can be disabled if you know what you are doing.")
 
         if isinstance(interactions, int) and 0 < interactions or not isinstance(interactions, int) and 0 < len(interactions):
             initial_intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
-
             scores_bags = []
             for model in models:
                 # TODO: instead of going back to the original data in X, we 
@@ -498,6 +495,7 @@ class BaseEBM(BaseEstimator):
 
                 parallel_args = []
                 for idx in range(self.outer_bags):
+                    # TODO: the combinations below should be selected from the non-excluded features 
                     parallel_args.append(
                         (
                             dataset,
@@ -556,10 +554,10 @@ class BaseEBM(BaseEstimator):
                     warn("Interactions with 3 or more terms are not graphed in global explanations. Local explanations are still available and exact.")
 
 
-            parallel_args = []
             bagged_seed = init_seed
+            parallel_args = []
             for idx in range(self.outer_bags):
-                bagged_seed=native.generate_random_number(bagged_seed, 1416147523)
+                bagged_seed = native.generate_random_number(bagged_seed, 1416147523)
                 parallel_args.append(
                     (
                         dataset,
@@ -567,7 +565,7 @@ class BaseEBM(BaseEstimator):
                         scores_bags[idx],
                         boost_groups,
                         inner_bags,
-                        update,
+                        boosting_flags,
                         self.learning_rate,
                         self.min_samples_leaf,
                         self.max_leaves,
@@ -587,12 +585,11 @@ class BaseEBM(BaseEstimator):
             del parallel_args # this holds references to dataset, scores_bags, and bags
             del dataset
             del scores_bags
-            del bags
 
             breakpoint_iteration.append([])
             for idx in range(self.outer_bags):
                 breakpoint_iteration[-1].append(results[idx][1])
-                models[idx].extend(after_boosting(boost_groups, results[idx][0], term_bin_weights))
+                models[idx].extend(after_boosting(boost_groups, results[idx][0], main_bin_weights))
 
             term_features.extend(boost_groups)
 
@@ -607,7 +604,7 @@ class BaseEBM(BaseEstimator):
 
         if is_differential_privacy:
             # for now we only support mains for DP models
-            bin_weights = [term_bin_weights[feature_idxs[0]] for feature_idxs in term_features]
+            bin_weights = [main_bin_weights[feature_idxs[0]] for feature_idxs in term_features]
         else:
             bin_counts, bin_weights = get_counts_and_weights(
                 X, 

@@ -1058,7 +1058,7 @@ class EBMUtils:
         scores,
         term_features,
         n_inner_bags,
-        generate_update_options,
+        boosting_flags,
         learning_rate,
         min_samples_leaf,
         max_leaves,
@@ -1092,7 +1092,7 @@ class EBMUtils:
                 for term_idx in range(len(term_features)):
                     gain = booster.generate_term_update(
                         term_idx=term_idx,
-                        generate_update_options=generate_update_options,
+                        boosting_flags=boosting_flags,
                         learning_rate=learning_rate,
                         min_samples_leaf=min_samples_leaf,
                         max_leaves=max_leaves,
