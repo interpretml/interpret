@@ -7,7 +7,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <vector>
-#include <functional>
+#include <functional> // std::function
 #include <memory>
 
 #include "ebm_native.h"

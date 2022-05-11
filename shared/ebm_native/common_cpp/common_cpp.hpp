@@ -342,21 +342,18 @@ static_assert(CountBitsRequiredPositiveMax<int64_t>() == 63, "automated test wit
 
 constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 
-// It's impossible for us to have tensors with more than k_cDimensionsMax dimensions.  Even if we had the minimum 
-// number of bins per feature (two), then we would have 2^N memory spaces at our binning step, and 
-// that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 
-// 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that 
-// the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra 
-// bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
-//
-// We strip out features with only 1 value since they provide no learning value and they break this nice property
-// of having a maximum number of dimensions.
-//
-// TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see 
-//        how many would fit into memory.
-constexpr static size_t k_cDimensionsMax = k_cBitsForSizeT - 1;
+// It is impossible for us to have tensors with more than k_cDimensionsMax dimensions.  
+// Our public C interface passes tensors back and forth with our caller with each dimension having
+// a minimum of two bins, which only occurs for categoricals with just a missing and unknown bin.
+// This should only occur for nominal cateogricals with only missing values.  Other feature types
+// will have more bins, and thus will be restricted to even less dimensions. If all dimensions had the minimum 
+// of two bins, we would need 2^N cells stored in the tensor.  If the tensor contained cells
+// of 1 byte and filled all memory on a 64 bit machine, then we could not have more than 64 dimensions.
+// On a real system, we can't fill all memory, and our interface requires tensors of FloatEbmType, so we  
+// can subtract bits for the # of bytes used in a FloatEbmType and subtract 1 more because we cannot use all memory.
+constexpr static size_t k_cDimensionsMax = 
+   k_cBitsForSizeT - CountBitsRequired(sizeof(FloatEbmType) / sizeof(uint8_t) - 1) - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-
 
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO

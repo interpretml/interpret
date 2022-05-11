@@ -13,13 +13,15 @@ static const TestPriority k_filePriority = TestPriority::CutQuantile;
 class CompareFloatWithNan final {
 public:
    inline bool operator() (const FloatEbmType & lhs, const FloatEbmType & rhs) const noexcept {
+      // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+      // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
+
       if(std::isnan(lhs)) {
          return false;
       } else {
          if(std::isnan(rhs)) {
             return true;
          } else {
-            // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
             return lhs < rhs;
          }
       }

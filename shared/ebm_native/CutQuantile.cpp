@@ -181,13 +181,12 @@ static_assert(std::is_pod<CuttingRange>::value,
 class CompareCuttingRange final {
 public:
    INLINE_ALWAYS bool operator() (const CuttingRange * const & lhs, const CuttingRange * const & rhs) const noexcept {
+      // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+      // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
+
       if(UNLIKELY(rhs->m_avgCuttableRangeWidthAfterAddingOneCut == lhs->m_avgCuttableRangeWidthAfterAddingOneCut)) {
-         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
-         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
          return UNPREDICTABLE(rhs->m_uniqueTiebreaker < lhs->m_uniqueTiebreaker);
       } else {
-         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
-         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
          return UNPREDICTABLE(rhs->m_avgCuttableRangeWidthAfterAddingOneCut < lhs->m_avgCuttableRangeWidthAfterAddingOneCut);
       }
    }
@@ -195,15 +194,13 @@ public:
 
 class CompareCutPoint final {
 public:
-   // TODO : check how efficient this is.  Is there a faster way to to this
    INLINE_ALWAYS bool operator() (const CutPoint * const & lhs, const CutPoint * const & rhs) const noexcept {
+      // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+      // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
+
       if(UNLIKELY(rhs->m_priority == lhs->m_priority)) {
-         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
-         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
          return UNPREDICTABLE(rhs->m_uniqueTiebreaker < lhs->m_uniqueTiebreaker);
       } else {
-         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
-         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
          return UNPREDICTABLE(rhs->m_priority < lhs->m_priority);
       }
    }
