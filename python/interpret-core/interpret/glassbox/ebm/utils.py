@@ -248,7 +248,9 @@ def _generate_term_types(feature_types, term_features):
 def _order_terms(term_features, *args):
     keys = ([len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in term_features)
     sorted_items = sorted(zip(keys, term_features, *args))
-    return tuple(list(x) for x in islice(zip(*sorted_items), 1, None))
+    ret = tuple(list(x) for x in islice(zip(*sorted_items), 1, None))
+    # in Python if only 1 item exists then the item is returned and not a tuple
+    return ret if 2 <= len(ret) else ret[0]
 
 def _deduplicate_bins(bins):
     # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
