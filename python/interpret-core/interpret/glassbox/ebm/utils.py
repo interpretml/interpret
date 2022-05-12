@@ -15,6 +15,7 @@ import numpy as np
 import warnings
 import copy
 import operator
+from itertools import islice
 
 from scipy.stats import norm
 from scipy.optimize import root_scalar, brentq
@@ -238,6 +239,16 @@ def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag
 
     return additive_terms, term_standard_deviations, intercept
 
+def _generate_term_names(feature_names, term_features):
+    return [" x ".join(feature_names[i] for i in grp) for grp in term_features]
+
+def _generate_term_types(feature_types, term_features):
+    return [feature_types[grp[0]] if len(grp) == 1 else "interaction" for grp in term_features]
+
+def _order_terms(term_features, *args):
+    keys = ([len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in term_features)
+    sorted_items = sorted(zip(keys, term_features, *args))
+    return tuple(list(x) for x in islice(zip(*sorted_items), 1, None))
 
 def _deduplicate_bins(bins):
     # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
@@ -776,10 +787,8 @@ def merge_ebms(models):
         fg_dicts.append(dict(zip(fg_sorted, count(0))))
         all_fg.update(fg_sorted)
 
-    all_fg = list(all_fg)
-    keys = ([len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in all_fg)
-    sorted_items = sorted(zip(keys, all_fg))
-    sorted_fgs = [x[1] for x in sorted_items]
+    sorted_fgs = _order_terms(list(all_fg))
+
     # TODO: in the future we might at this point try and figure out the most 
     #       common feature ordering within the feature groups.  Take the mode first
     #       and amonst the orderings that tie, choose the one that's best sorted by
@@ -899,7 +908,7 @@ def merge_ebms(models):
 
     # dependent attributes (can be re-derrived after serialization)
     ebm.n_features_in_ = len(ebm.bins_) # scikit-learn specified name
-    ebm.term_names_out_ = [" x ".join(ebm.feature_names_in_[i] for i in grp) for grp in ebm.term_features_]
+    ebm.term_names_out_ = _generate_term_names(ebm.feature_names_in_, ebm.term_features_)
 
     return ebm
 

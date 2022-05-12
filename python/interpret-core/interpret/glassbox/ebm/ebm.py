@@ -6,7 +6,8 @@ from typing import DefaultDict
 
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
-from .utils import DPUtils, EBMUtils, _process_terms, make_histogram_edges
+from .utils import DPUtils, EBMUtils
+from .utils import _process_terms, make_histogram_edges, _order_terms, _generate_term_names, _generate_term_types
 from .bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
 from .internal import Native
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -597,10 +598,7 @@ class BaseEBM(BaseEstimator):
 
         bagged_additive_terms = (np.array([model[idx] for model in models], np.float64) for idx in range(len(term_features)))
 
-        keys = ([len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in term_features)
-        sorted_items = sorted(zip(keys, term_features, bagged_additive_terms))
-        term_features = [x[1] for x in sorted_items]
-        bagged_additive_terms = [x[2] for x in sorted_items]
+        term_features, bagged_additive_terms = _order_terms(term_features, bagged_additive_terms)
 
         if is_differential_privacy:
             # for now we only support mains for DP models
@@ -624,7 +622,7 @@ class BaseEBM(BaseEstimator):
             bag_weights
         )
 
-        term_names_out = [" x ".join(feature_names_in[i] for i in grp) for grp in term_features]
+        term_names_out = _generate_term_names(feature_names_in, term_features)
 
         # dependent attributes (can be re-derrived after serialization)
         self.n_features_in_ = n_features_in # scikit-learn specified name
@@ -801,7 +799,7 @@ class BaseEBM(BaseEstimator):
         bounds = (lower_bound, upper_bound)
 
         term_names = self.term_names_out_
-        term_types = [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.term_features_]
+        term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
 
         native = Native.get_native_singleton()
 
@@ -1018,7 +1016,7 @@ class BaseEBM(BaseEstimator):
                 raise ValueError(msg)
 
         term_names = self.term_names_out_
-        term_types = [self.feature_types_in_[grp[0]] if len(grp) == 1 else "interaction" for grp in self.term_features_]
+        term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
 
         data_dicts = []
         perf_list = []
