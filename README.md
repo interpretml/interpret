@@ -570,7 +570,7 @@ We also build on top of many great packages. Please check them out!
 
 - [GAM(E) CHANGER OR NOT? AN EVALUATION OF INTERPRETABLE MACHINE LEARNING MODELS](https://arxiv.org/pdf/2204.09123.pdf)
 - [Revealing the Galaxy-Halo Connection Through Machine Learning](https://arxiv.org/pdf/2204.10332.pdf)
-- [Explainable Artificial Intelligence for COVID-19 Diagnosis Through Blood Test Variables](https://link.springer.com/article/10.1007/s40313-021-00858-y)
+- [Explainable Artificial Intelligence for COVID-19 Diagnosis Through Blood Test Variables](https://link.springer.com/content/pdf/10.1007/s40313-021-00858-y.pdf)
 - [Using Explainable Boosting Machines (EBMs) to Detect Common Flaws in Data](https://link.springer.com/chapter/10.1007/978-3-030-93736-2_40)
 - [Explainable Boosting Machines for Slope Failure Spatial Predictive Modeling](https://www.mdpi.com/2072-4292/13/24/4991/htm)
 - [Micromodels for Efficient, Explainable, and Reusable Systems: A Case Study on Mental Health](https://arxiv.org/pdf/2109.13770.pdf)
@@ -579,10 +579,14 @@ We also build on top of many great packages. Please check them out!
 - [NODE-GAM: Neural Generalized Additive Model for Interpretable Deep Learning](https://arxiv.org/pdf/2106.01613.pdf)
 - [Integrating Co-Clustering and Interpretable Machine Learning for the Prediction of Intravenous Immunoglobulin Resistance in Kawasaki Disease](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9097874)
 - [GAMI-Net: An Explainable Neural Network based on Generalized Additive Models with Structured Interactions](https://arxiv.org/pdf/2003.07132v1.pdf)
+- [Analyzing the Differences between Professional and Amateur Esports through Win Probability](https://dl.acm.org/doi/pdf/10.1145/3485447.3512277)
 - [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
 - [Extending the Tsetlin Machine with Integer-Weighted Clauses for Increased Interpretability](https://arxiv.org/pdf/2005.05131.pdf)
 - [In Pursuit of Interpretable, Fair and Accurate Machine Learning for Criminal Recidivism Prediction](https://arxiv.org/pdf/2005.04176.pdf)
 - [Development and Validation of an Interpretable 3-day Intensive Care Unit Readmission Prediction Model Using Explainable Boosting Machines](https://www.medrxiv.org/content/10.1101/2021.11.01.21265700v1.full.pdf)
+- [Death by Round Numbers and Sharp Thresholds: How to Avoid Dangerous AI EHR Recommendations](https://www.medrxiv.org/content/10.1101/2022.04.30.22274520v1.full.pdf)
+- [Building a predictive model to identify clinical indicators for COVID-19 using machine learning method](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9037972/pdf/11517_2022_Article_2568.pdf)
+- [Using Innovative Machine Learning Methods to Screen and Identify Predictors of Congenital Heart Diseases](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8777022/pdf/fcvm-08-797002.pdf)
 - [Explainable Boosting Machine for Predicting Alzheimer’s Disease from MRI Hippocampal Subfields](https://link.springer.com/chapter/10.1007/978-3-030-86993-9_31)
 - [Impact of Accuracy on Model Interpretations](https://arxiv.org/pdf/2011.09903.pdf)
 
