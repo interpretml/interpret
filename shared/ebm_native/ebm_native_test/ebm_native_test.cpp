@@ -1105,6 +1105,7 @@ FloatEbmType TestApi::InteractionScore(
       m_interactionHandle,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
+      InteractionOptions_Default,
       countSamplesRequiredForChildSplitMin,
       &interactionScoreOut
    );

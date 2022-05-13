@@ -1179,6 +1179,7 @@ class EBMUtils:
         bag,
         scores,
         iter_term_features,
+        interaction_options, 
         min_samples_leaf,
         optional_temp_params=None,
     ):
@@ -1186,7 +1187,7 @@ class EBMUtils:
         with InteractionDetector(dataset, bag, scores, optional_temp_params) as interaction_detector:
             for feature_idxs in iter_term_features:
                 score = interaction_detector.get_interaction_score(
-                    feature_idxs, min_samples_leaf,
+                    feature_idxs, interaction_options, min_samples_leaf,
                 )
                 interaction_scores.append((score, feature_idxs))
 

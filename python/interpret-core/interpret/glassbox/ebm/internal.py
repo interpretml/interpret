@@ -21,6 +21,10 @@ class Native:
     GenerateUpdateOptions_GradientSums          = 0x0000000000000004
     GenerateUpdateOptions_RandomSplits          = 0x0000000000000008
 
+    # InteractionOptionsType
+    InteractionOptions_Default                  = 0x0000000000000000
+    InteractionOptions_Pure                     = 0x0000000000000001
+
     # TraceLevel
     _TraceLevelOff = 0
     _TraceLevelError = 1
@@ -946,6 +950,8 @@ class Native:
             ct.c_int64,
             # int64_t * featureIndexes
             ct.c_void_p,
+            # InteractionOptionsType options 
+            ct.c_int64,
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_int64,
             # double * interactionScoreOut
@@ -1453,7 +1459,7 @@ class InteractionDetector(AbstractContextManager):
         
         log.info("Deallocation interaction end")
 
-    def get_interaction_score(self, feature_idxs, min_samples_leaf):
+    def get_interaction_score(self, feature_idxs, interaction_options, min_samples_leaf):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
 
@@ -1464,6 +1470,7 @@ class InteractionDetector(AbstractContextManager):
             self._interaction_handle,
             len(feature_idxs),
             Native._make_pointer(np.array(feature_idxs, np.int64), np.int64),
+            interaction_options, 
             min_samples_leaf,
             ct.byref(score),
         )

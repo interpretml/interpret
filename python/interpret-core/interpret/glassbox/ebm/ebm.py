@@ -503,6 +503,7 @@ class BaseEBM(BaseEstimator):
                             bags[idx],
                             scores_bags[idx],
                             combinations(range(n_features_in), 2),
+                            Native.InteractionOptions_Default, 
                             self.min_samples_leaf,
                             None,
                         )

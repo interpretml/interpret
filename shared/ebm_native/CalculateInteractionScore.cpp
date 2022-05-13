@@ -41,6 +41,7 @@ extern void BinInteraction(
 extern FloatEbmType PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
+   const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
    HistogramBucketBase * const aHistogramBuckets
@@ -54,6 +55,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
    InteractionShell * const pInteractionShell,
    InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
+   const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
    FloatEbmType * const pInteractionScoreReturn
 ) {
@@ -194,6 +196,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
       FloatEbmType bestSplittingScore = PartitionTwoDimensionalInteraction(
          pInteractionCore,
          pFeatureGroup,
+         options,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          aHistogramBuckets
@@ -203,26 +206,37 @@ static ErrorEbmType CalculateInteractionScoreInternal(
 #endif // NDEBUG
       );
 
-      LOG_0(TraceLevelVerbose, "CalculateInteractionScoreInternal Done bin sweep loop");
-
       if(nullptr != pInteractionScoreReturn) {
-         // we started our score at zero, and didn't replace with anything lower, so it can't be below zero
-         // if we collected a NaN value, then we kept it
-         EBM_ASSERT(std::isnan(bestSplittingScore) || FloatEbmType { 0 } <= bestSplittingScore);
-         EBM_ASSERT((!bClassification) || !std::isinf(bestSplittingScore));
+         if(UNLIKELY(bestSplittingScore < FloatEbmType { 0 })) {
+            // gain can't mathematically be legally negative, but it can be here in the following situations:
+            //   1) for impure interaction gain we subtract the base RSS, and there can be floating point
+            //      noise that makes this slightly negative
+            //   2) for impure interaction gain we subtract the base RSS, and if the total RSS happened to
+            //      reach -inf, but the positive RSS for the other bins was slightly less than +inf
+            //      then we'd reach -inf due to floating point instability issues.  In this case the
+            //      mathematical gain should have been zero, so we make it zero here.
+            //   3) for impure interaction gain we subtract the base RSS, but if there were no legal cuts
+            //      then the RSS before subtracting the base RSS was zero and we then get a substantially
+            //      negative value.  In this case we shouldn't have subtracted the base RSS since we had never
+            //      even calculated the 4 quadrant RSS, but we handle this scenario here instead on in the
+            //      templated function.  We do ASSERT on this condition inside the templated function
 
-         // if bestSplittingScore was NaN we make it zero so that it's not included.  If infinity, also don't include it since we overloaded something
-         // even though bestSplittingScore shouldn't be +-infinity for classification, we check it for +-infinity 
-         // here since it's most efficient to check that the exponential is all ones, which is the case only for +-infinity and NaN, but not others
-
-         // comparing to max is a good way to check for +infinity without using infinity, which can be problematic on
-         // some compilers with some compiler settings.  Using <= helps avoid optimization away because the compiler
-         // might assume that nothing is larger than max if it thinks there's no +infinity
-
-         if(UNLIKELY(UNLIKELY(std::isnan(bestSplittingScore)) || 
-            UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= bestSplittingScore))) {
+            EBM_ASSERT(!std::isnan(bestSplittingScore));
             bestSplittingScore = FloatEbmType { 0 };
+         } else if(UNLIKELY(/* NaN */ !LIKELY(bestSplittingScore < std::numeric_limits<FloatEbmType>::infinity()))) {
+            // this also checks for NaN since NaN < anything is FALSE
+
+            // If we get back infinity then there was an overflow and we don't really know what the final result
+            // should be since we subtract terms in the interaction calculation.  The result can also be NaN
+            // which also indicates an overflow.  We simplify our caller's handling by returning -inf as our error
+            // indicator.  -inf will sort to being the least important item, which is good, but it also indicates
+            // an error so the caller can know there was an overflow.  It also does not have the weirness of NaNs.
+
+            bestSplittingScore = -std::numeric_limits<FloatEbmType>::infinity();
+         } else {
+            EBM_ASSERT(!std::isnan(bestSplittingScore));
          }
+
          *pInteractionScoreReturn = bestSplittingScore;
       }
    } else {
@@ -231,8 +245,9 @@ static ErrorEbmType CalculateInteractionScoreInternal(
 
       // TODO: handle this better
       if(nullptr != pInteractionScoreReturn) {
-         // for now, just return any interactions that have other than 2 dimensions as zero, which means they won't be considered
-         *pInteractionScoreReturn = FloatEbmType { 0 };
+         // for now, just return any interactions that have other than 2 dimensions as -inf, 
+         // which means they won't be considered but indicates they were not handled
+         *pInteractionScoreReturn = -std::numeric_limits<FloatEbmType>::infinity();
       }
    }
 
@@ -253,6 +268,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
    InteractionHandle interactionHandle,
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
+   InteractionOptionsType options,
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 ) {
@@ -260,10 +276,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
       &g_cLogCalculateInteractionScoreParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "CalculateInteractionScore parameters: interactionHandle=%p, countDimensions=%" IntEbmTypePrintf ", featureIndexes=%p, countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
+      "CalculateInteractionScore parameters: interactionHandle=%p, countDimensions=%" IntEbmTypePrintf ", featureIndexes=%p, options=0x%" UInteractionOptionsTypePrintf ", countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
       static_cast<void *>(interactionHandle),
       countDimensions,
       static_cast<const void *>(featureIndexes),
+      static_cast<UInteractionOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
       countSamplesRequiredForChildSplitMin,
       static_cast<void *>(interactionScoreOut)
    );
@@ -319,6 +336,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
       }
       return Error_None;
    }
+
+   // TODO : test if our InteractionOptionsType options flags only include flags that we use
 
    size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
    if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
@@ -410,6 +429,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
       pInteractionShell,
       pInteractionCore,
       pFeatureGroup,
+      options,
       cSamplesRequiredForChildSplitMin,
       interactionScoreOut
    );

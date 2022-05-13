@@ -25,6 +25,7 @@ extern "C" {
 #define EBM_ERROR_CAST(EBM_VAL)                    (STATIC_CAST(ErrorEbmType, (EBM_VAL)))
 #define EBM_TRACE_CAST(EBM_VAL)                    (STATIC_CAST(TraceEbmType, (EBM_VAL)))
 #define EBM_GENERATE_UPDATE_OPTIONS_CAST(EBM_VAL)  (STATIC_CAST(GenerateUpdateOptionsType, (EBM_VAL)))
+#define EBM_INTERACTION_OPTIONS_CAST(EBM_VAL)      (STATIC_CAST(InteractionOptionsType, (EBM_VAL)))
 
 //#define EXPAND_BINARY_LOGITS
 // TODO: implement REDUCE_MULTICLASS_LOGITS
@@ -176,6 +177,10 @@ typedef int64_t GenerateUpdateOptionsType;
 // technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
 typedef uint64_t UGenerateUpdateOptionsType;
 #define UGenerateUpdateOptionsTypePrintf PRIx64
+typedef int64_t InteractionOptionsType;
+// technically printf hexidecimals are unsigned, so convert it first to unsigned before calling printf
+typedef uint64_t UInteractionOptionsType;
+#define UInteractionOptionsTypePrintf PRIx64
 
 #define EBM_FALSE          (EBM_BOOL_CAST(0))
 #define EBM_TRUE           (EBM_BOOL_CAST(1))
@@ -205,6 +210,9 @@ typedef uint64_t UGenerateUpdateOptionsType;
 #define GenerateUpdateOptions_DisableNewtonUpdate  (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000002))
 #define GenerateUpdateOptions_GradientSums         (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000004))
 #define GenerateUpdateOptions_RandomSplits         (EBM_GENERATE_UPDATE_OPTIONS_CAST(0x0000000000000008))
+
+#define InteractionOptions_Default                 (EBM_INTERACTION_OPTIONS_CAST(0x0000000000000000))
+#define InteractionOptions_Pure                    (EBM_INTERACTION_OPTIONS_CAST(0x0000000000000001))
 
  // no messages will be output
 #define TraceLevelOff      (EBM_TRACE_CAST(0))
@@ -465,6 +473,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calc
    InteractionHandle interactionHandle, 
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
+   InteractionOptionsType options,
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreOut
 );
