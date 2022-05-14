@@ -320,3 +320,79 @@ TEST_CASE("weights totals equivalence, interaction, multiclass") {
 
    CHECK_APPROX(metricReturn1, metricReturn2);
 }
+
+TEST_CASE("purified interaction score with completely impure input, interaction, regression") {
+   TestApi test1 = TestApi(k_learningTypeRegression);
+   test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
+   test1.AddInteractionSamples({
+      TestSample({ 0, 0 }, 1),
+      TestSample({ 0, 0 }, 1),
+      TestSample({ 0, 0 }, 1),
+      TestSample({ 0, 1 }, 1),
+      TestSample({ 0, 1 }, 1),
+      TestSample({ 0, 1 }, 1),
+      TestSample({ 1, 0 }, 1),
+      TestSample({ 1, 0 }, 1),
+      TestSample({ 1, 0 }, 1),
+      TestSample({ 1, 1 }, 1),
+      TestSample({ 1, 1 }, 1),
+      TestSample({ 1, 1 }, 1),
+      });
+   test1.InitializeInteraction();
+   FloatEbmType metricReturn = test1.InteractionScore({ 0, 1 }, InteractionOptions_Pure);
+
+   CHECK_APPROX(metricReturn, 0.0);
+}
+
+TEST_CASE("purified interaction score with purified input, interaction, regression") {
+   TestApi test1 = TestApi(k_learningTypeRegression);
+   test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
+   test1.AddInteractionSamples({
+      TestSample({ 0, 0 }, 1),
+      TestSample({ 0, 0 }, 1),
+      TestSample({ 0, 0 }, 1),
+      TestSample({ 0, 1 }, -1),
+      TestSample({ 0, 1 }, -1),
+      TestSample({ 0, 1 }, -1),
+      TestSample({ 1, 0 }, -1),
+      TestSample({ 1, 0 }, -1),
+      TestSample({ 1, 0 }, -1),
+      TestSample({ 1, 1 }, 1),
+      TestSample({ 1, 1 }, 1),
+      TestSample({ 1, 1 }, 1),
+      });
+   test1.InitializeInteraction();
+   FloatEbmType metricReturn = test1.InteractionScore({ 0, 1 }, InteractionOptions_Pure);
+
+   CHECK_APPROX(metricReturn, 1.0);
+}
+
+TEST_CASE("purified interaction score with purified and impure input, interaction, regression") {
+
+   // to the pure input we add on one   axis: 3, 5
+   // to the pure input we add on other axis: 7, 11
+   // these should be purified away leaving only the base pure 
+
+   TestApi test1 = TestApi(k_learningTypeRegression);
+   test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
+   test1.AddInteractionSamples({
+      TestSample({ 0, 0 }, 1 + 3 + 11),
+      TestSample({ 0, 0 }, 1 + 3 + 11),
+      TestSample({ 0, 0 }, 1 + 3 + 11),
+      TestSample({ 0, 1 }, -1 + 3 + 7),
+      TestSample({ 0, 1 }, -1 + 3 + 7),
+      TestSample({ 0, 1 }, -1 + 3 + 7),
+      TestSample({ 1, 0 }, -1 + 5 + 11),
+      TestSample({ 1, 0 }, -1 + 5 + 11),
+      TestSample({ 1, 0 }, -1 + 5 + 11),
+      TestSample({ 1, 1 }, 1 + 5 + 7),
+      TestSample({ 1, 1 }, 1 + 5 + 7),
+      TestSample({ 1, 1 }, 1 + 5 + 7),
+      });
+   test1.InitializeInteraction();
+   FloatEbmType metricReturn = test1.InteractionScore({ 0, 1 }, InteractionOptions_Pure);
+
+   CHECK_APPROX(metricReturn, 1.0);
+}
+
+

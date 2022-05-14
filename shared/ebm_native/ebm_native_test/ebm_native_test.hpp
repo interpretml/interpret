@@ -362,6 +362,7 @@ public:
 
    FloatEbmType InteractionScore(
       const std::vector<IntEbmType> featuresInGroup, 
+      const InteractionOptionsType options = InteractionOptions_Default,
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault
    ) const;
 };

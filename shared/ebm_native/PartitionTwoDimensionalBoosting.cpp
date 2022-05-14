@@ -86,7 +86,7 @@ static FloatEbmType SweepMultiDimensional(
 
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
-   FloatEbmType bestSplit = k_illegalGain;
+   FloatEbmType bestGain = k_illegalGain;
    size_t iBin = 0;
    do {
       *piBin = iBin;
@@ -119,7 +119,7 @@ static FloatEbmType SweepMultiDimensional(
 #endif // NDEBUG
          );
          if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHigh->GetCountSamplesInBucket())) {
-            FloatEbmType splittingScore = FloatEbmType { 0 };
+            FloatEbmType gain = FloatEbmType { 0 };
             EBM_ASSERT(0 < pTotalsLow->GetCountSamplesInBucket());
             EBM_ASSERT(0 < pTotalsHigh->GetCountSamplesInBucket());
 
@@ -133,26 +133,26 @@ static FloatEbmType SweepMultiDimensional(
                pTotalsHigh->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
+               // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
-               const FloatEbmType splittingScoreUpdate1 = EbmStats::ComputeSinglePartitionGain(
+               const FloatEbmType gain1 = EbmStats::CalcPartialGain(
                   pHistogramTargetEntryLow[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryLow[iVector].GetSumHessians() : cLowWeightInBucket);
-               EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
-               splittingScore += splittingScoreUpdate1;
-               const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeSinglePartitionGain(
+               EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+               gain += gain1;
+               const FloatEbmType gain2 = EbmStats::CalcPartialGain(
                   pHistogramTargetEntryHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryHigh[iVector].GetSumHessians() : cHighWeightInBucket);
-               EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
-               splittingScore += splittingScoreUpdate2;
+               EBM_ASSERT(std::isnan(gain2) || FloatEbmType { 0 } <= gain2);
+               gain += gain2;
             }
-            EBM_ASSERT(std::isnan(splittingScore) || FloatEbmType { 0 } <= splittingScore); // sumation of positive numbers should be positive
+            EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain); // sumation of positive numbers should be positive
 
-            // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
+            // if we get a NaN result, we'd like to propagate it by making bestGain NaN.  The rules for NaN values say that non equality comparisons are 
             // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
             // no big deal.  NaN values will get us soon and shut down boosting.
-            if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(splittingScore <= bestSplit))) {
-               bestSplit = splittingScore;
+            if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(gain <= bestGain))) {
+               bestGain = gain;
                iBestSplit = iBin;
 
                ASSERT_BINNED_BUCKET_OK(
@@ -167,7 +167,7 @@ static FloatEbmType SweepMultiDimensional(
                );
                memcpy(pHistogramBucketBestAndTemp, pTotalsLow, cBytesPerTwoHistogramBuckets); // this copies both pTotalsLow and pTotalsHigh
             } else {
-               EBM_ASSERT(!std::isnan(splittingScore));
+               EBM_ASSERT(!std::isnan(gain));
             }
          }
       }
@@ -175,8 +175,8 @@ static FloatEbmType SweepMultiDimensional(
    } while(iBin < cSweepBins - 1);
    *piBestSplit = iBestSplit;
 
-   EBM_ASSERT(std::isnan(bestSplit) || bestSplit == k_illegalGain || FloatEbmType { 0 } <= bestSplit); // sumation of positive numbers should be positive
-   return bestSplit;
+   EBM_ASSERT(std::isnan(bestGain) || bestGain == k_illegalGain || FloatEbmType { 0 } <= bestGain); // sumation of positive numbers should be positive
+   return bestGain;
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
@@ -228,8 +228,6 @@ public:
 
       size_t aiStart[k_cDimensionsMax];
 
-      FloatEbmType splittingScore;
-
       EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions());
       size_t iDimensionLoop = 0;
       size_t iDimension1 = 0;
@@ -257,7 +255,7 @@ public:
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
-      FloatEbmType bestSplittingScore = k_illegalGain;
+      FloatEbmType bestGain = k_illegalGain;
 
       size_t splitFirst1Best;
       size_t splitFirst1LowBest;
@@ -276,7 +274,7 @@ public:
 
       EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
-      FloatEbmType splittingScoreParent = FloatEbmType { 0 };
+      FloatEbmType parentGain = FloatEbmType { 0 };
       EBM_ASSERT(0 < pTotal->GetCountSamplesInBucket());
       const FloatEbmType cWeightInParentBucket = pTotal->GetWeightInBucket();
 
@@ -284,32 +282,30 @@ public:
          pTotal->GetHistogramTargetEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         // TODO : we can make this faster by doing the division in ComputeSinglePartitionGainParent after we add all the numerators 
+         // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
          // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
          constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
-         const FloatEbmType splittingScoreParentUpdate = EbmStats::ComputeSinglePartitionGain(
+         const FloatEbmType gain1 = EbmStats::CalcPartialGain(
             pHistogramTargetEntryTotal[iVector].m_sumGradients,
             bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : cWeightInParentBucket
          );
-         EBM_ASSERT(std::isnan(splittingScoreParentUpdate) || FloatEbmType { 0 } <= splittingScoreParentUpdate);
-         splittingScoreParent += splittingScoreParentUpdate;
+         EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+         parentGain += gain1;
       }
-      EBM_ASSERT(std::isnan(splittingScoreParent) || FloatEbmType { 0 } <= splittingScoreParent); // sumation of positive numbers should be positive
+      EBM_ASSERT(std::isnan(parentGain) || FloatEbmType { 0 } <= parentGain); // sumation of positive numbers should be positive
 
       LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
       do {
          aiStart[0] = iBin1;
 
-         splittingScore = FloatEbmType { 0 };
-
          size_t splitSecond1LowBest;
          HistogramBucket<bClassification> * pTotals2LowLowBest =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
          HistogramBucket<bClassification> * pTotals2LowHighBest =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
-         const FloatEbmType splittingScoreNew1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+         const FloatEbmType gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
             pFeatureGroup,
             aiStart,
@@ -329,16 +325,15 @@ public:
          // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all
          // false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  
          // NaN values will get us soon and shut down boosting.
-         if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew1))) {
-            EBM_ASSERT(std::isnan(splittingScoreNew1) || FloatEbmType { 0 } <= splittingScoreNew1);
-            splittingScore += splittingScoreNew1;
+         if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == gain1))) {
+            EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
 
             size_t splitSecond1HighBest;
             HistogramBucket<bClassification> * pTotals2HighLowBest =
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
             HistogramBucket<bClassification> * pTotals2HighHighBest =
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
-            const FloatEbmType splittingScoreNew2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+            const FloatEbmType gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
                pFeatureGroup,
                aiStart,
@@ -358,16 +353,17 @@ public:
             // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
             // no big deal.  NaN values will get us soon and shut down boosting.
             if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/
-               !(k_illegalGain == splittingScoreNew2))) {
-               EBM_ASSERT(std::isnan(splittingScoreNew2) || FloatEbmType { 0 } <= splittingScoreNew2);
-               splittingScore += splittingScoreNew2;
+               !(k_illegalGain == gain2))) {
+               EBM_ASSERT(std::isnan(gain2) || FloatEbmType { 0 } <= gain2);
+
+               const FloatEbmType gain = gain1 + gain2;
 
                // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons 
                // are all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
                // no big deal.  NaN values will get us soon and shut down boosting.
                if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/
-                  !(splittingScore <= bestSplittingScore))) {
-                  bestSplittingScore = splittingScore;
+                  !(gain <= bestGain))) {
+                  bestGain = gain;
                   splitFirst1Best = iBin1;
                   splitFirst1LowBest = splitSecond1LowBest;
                   splitFirst1HighBest = splitSecond1HighBest;
@@ -377,15 +373,15 @@ public:
                   pTotals1HighLowBest->Copy(*pTotals2HighLowBest, cVectorLength);
                   pTotals1HighHighBest->Copy(*pTotals2HighHighBest, cVectorLength);
                } else {
-                  EBM_ASSERT(!std::isnan(splittingScore));
+                  EBM_ASSERT(!std::isnan(gain));
                }
             } else {
-               EBM_ASSERT(!std::isnan(splittingScoreNew2));
-               EBM_ASSERT(k_illegalGain == splittingScoreNew2);
+               EBM_ASSERT(!std::isnan(gain2));
+               EBM_ASSERT(k_illegalGain == gain2);
             }
          } else {
-            EBM_ASSERT(!std::isnan(splittingScoreNew1));
-            EBM_ASSERT(k_illegalGain == splittingScoreNew1);
+            EBM_ASSERT(!std::isnan(gain1));
+            EBM_ASSERT(k_illegalGain == gain1);
          }
          ++iBin1;
       } while(iBin1 < cBinsDimension1 - 1);
@@ -410,14 +406,12 @@ public:
       do {
          aiStart[1] = iBin2;
 
-         splittingScore = FloatEbmType { 0 };
-
          size_t splitSecond2LowBest;
          HistogramBucket<bClassification> * pTotals1LowLowBestInner =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
          HistogramBucket<bClassification> * pTotals1LowHighBestInner =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
-         const FloatEbmType splittingScoreNew1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+         const FloatEbmType gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
             pFeatureGroup,
             aiStart,
@@ -437,16 +431,15 @@ public:
          // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
          // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.
          // NaN values will get us soon and shut down boosting.
-         if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew1))) {
-            EBM_ASSERT(std::isnan(splittingScoreNew1) || FloatEbmType { 0 } <= splittingScoreNew1);
-            splittingScore += splittingScoreNew1;
+         if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == gain1))) {
+            EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
 
             size_t splitSecond2HighBest;
             HistogramBucket<bClassification> * pTotals1HighLowBestInner =
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
             HistogramBucket<bClassification> * pTotals1HighHighBestInner =
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
-            const FloatEbmType splittingScoreNew2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+            const FloatEbmType gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
                pFeatureGroup,
                aiStart,
@@ -466,15 +459,17 @@ public:
             // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
             // no big deal.  NaN values will get us soon and shut down boosting.
             if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/
-               !(k_illegalGain == splittingScoreNew2))) {
-               EBM_ASSERT(std::isnan(splittingScoreNew2) || FloatEbmType { 0 } <= splittingScoreNew2);
-               splittingScore += splittingScoreNew2;
+               !(k_illegalGain == gain2))) {
+               EBM_ASSERT(std::isnan(gain2) || FloatEbmType { 0 } <= gain2);
+
+               const FloatEbmType gain = gain1 + gain2;
+
                // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons 
                // are all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
                // no big deal.  NaN values will get us soon and shut down boosting.
                if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/
-                  !(splittingScore <= bestSplittingScore))) {
-                  bestSplittingScore = splittingScore;
+                  !(gain <= bestGain))) {
+                  bestGain = gain;
                   splitFirst2Best = iBin2;
                   splitFirst2LowBest = splitSecond2LowBest;
                   splitFirst2HighBest = splitSecond2HighBest;
@@ -486,25 +481,24 @@ public:
 
                   bSplitFirst2 = true;
                } else {
-                  EBM_ASSERT(!std::isnan(splittingScore));
+                  EBM_ASSERT(!std::isnan(gain));
                }
             } else {
-               EBM_ASSERT(!std::isnan(splittingScoreNew2));
-               EBM_ASSERT(k_illegalGain == splittingScoreNew2);
+               EBM_ASSERT(!std::isnan(gain2));
+               EBM_ASSERT(k_illegalGain == gain2);
             }
          } else {
-            EBM_ASSERT(!std::isnan(splittingScoreNew1));
-            EBM_ASSERT(k_illegalGain == splittingScoreNew1);
+            EBM_ASSERT(!std::isnan(gain1));
+            EBM_ASSERT(k_illegalGain == gain1);
          }
          ++iBin2;
       } while(iBin2 < cBinsDimension2 - 1);
       LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Done sweep loops");
 
-      FloatEbmType gain;
-      // if we get a NaN result for bestSplittingScore, we might as well do less work and just create a zero split update right now.  The rules 
+      // if we get a NaN result for bestGain, we might as well do less work and just create a zero split update right now.  The rules 
       // for NaN values say that non equality comparisons are all false so, let's flip this comparison such that it should be true for NaN values.  
       // If the compiler violates NaN comparions rules, no big deal.  NaN values will get us soon and shut down boosting.
-      if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain != bestSplittingScore))) {
+      if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain != bestGain))) {
          // there were no good splits found, or we hit a NaN value
 #ifndef NDEBUG
          const ErrorEbmType errorDebug1 =
@@ -554,10 +548,10 @@ public:
 
             pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[iVector] = update;
          }
-         gain = FloatEbmType { 0 }; // no splits means no gain
+         bestGain = FloatEbmType { 0 }; // no splits means no gain
       } else {
-         EBM_ASSERT(!std::isnan(bestSplittingScore));
-         EBM_ASSERT(k_illegalGain != bestSplittingScore);
+         EBM_ASSERT(!std::isnan(bestGain));
+         EBM_ASSERT(k_illegalGain != bestGain);
          if(bSplitFirst2) {
             // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero splits
             error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 1);
@@ -850,16 +844,16 @@ public:
                }
             }
          }
-         // for regression, bestSplittingScore and splittingScoreParent can be infinity.  There is a super-super-super-rare case where we can have 
-         // splittingScoreParent overflow to +infinity due to numeric issues, but not bestSplittingScore, and then the subtration causes the result 
+         // for regression, bestGain and parentGain can be infinity.  There is a super-super-super-rare case where we can have 
+         // parentGain overflow to +infinity due to numeric issues, but not bestGain, and then the subtration causes the result 
          // to be -infinity.  The universe will probably die of heat death before we get a -infinity value, but perhaps an adversarial dataset could 
          // trigger it, and we don't want someone giving us data to use a vulnerability in our system, so check for it!
-         gain = bestSplittingScore - splittingScoreParent;
+         bestGain -= parentGain;
       }
 
       // TODO: this gain value is untested.  We should build a new test that compares the single feature gains to the multi-dimensional gains by
       // making a pair where one of the dimensions duplicates values in the 0 and 1 bin.  Then the gain should be identical, if there is only 1 split allowed
-      *pTotalGain = gain;
+      *pTotalGain = bestGain;
       return Error_None;
    }
    WARNING_POP

@@ -455,7 +455,7 @@ public:
       return hessian;
    }
 
-   INLINE_ALWAYS static FloatEbmType ComputeSinglePartitionGain(const FloatEbmType sumGradient, const FloatEbmType sumHessian) {
+   INLINE_ALWAYS static FloatEbmType CalcPartialGain(const FloatEbmType sumGradient, const FloatEbmType sumHessian) {
       // this function can SOMETIMES be performance critical as it's called on every histogram bin
       // it will only be performance critical for truely continous numerical features that we're not binning, or for interactions where dimensionality
       // creates many bins
@@ -506,7 +506,7 @@ public:
       // sumHessian can be zero if all the weights are zero, even if all splits are prevented using restrictions, 
       // so we need to check the denominator for 0 regardless.
       EBM_ASSERT(FloatEbmType { 0 } <= sumHessian);
-      const FloatEbmType singlePartitionGain = FloatEbmType { 0 } == sumHessian ? FloatEbmType { 0 } : sumGradient / sumHessian * sumGradient;
+      const FloatEbmType partialGain = FloatEbmType { 0 } == sumHessian ? FloatEbmType { 0 } : sumGradient / sumHessian * sumGradient;
 
       // for both classification and regression, we're squaring sumGradient, and sumHessian is positive.  No reasonable floating point implementation 
       // should turn this negative
@@ -518,8 +518,21 @@ public:
 
       // for regression, the output can be any positive number from zero to +infinity
 
-      EBM_ASSERT(std::isnan(sumGradient) || FloatEbmType { 0 } <= singlePartitionGain);
-      return singlePartitionGain;
+      EBM_ASSERT(std::isnan(sumGradient) || FloatEbmType { 0 } <= partialGain);
+      return partialGain;
+   }
+
+   INLINE_ALWAYS static FloatEbmType CalcPartialGainFromUpdate(const FloatEbmType update, const FloatEbmType sumHessian) {
+      // the update is: sum_gradient / sum_hessian
+      // For gain we want sum_gradient * sum_gradient / sum_hessian
+      // we can get there by doing: update * update * sum_hessian
+      // which can be simplified as: (sum_gradient / sum_hessian) * (sum_gradient / sum_hessian) * sum_hessian
+      // and then: (sum_gradient / sum_hessian) * sum_gradient
+      // finally: sum_gradient * sum_gradient / sum_hessian
+
+      const FloatEbmType partialGain = update * update * sumHessian;
+      EBM_ASSERT(std::isnan(partialGain) || FloatEbmType { 0 } <= partialGain);
+      return partialGain;
    }
 
    WARNING_PUSH

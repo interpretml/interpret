@@ -445,8 +445,8 @@ public:
       //      Then, before exiting, on the last one we collapse the collapsed tensor even more into just a single
       //      bin from which we can calculate the parent and subtract the best child from the parent.
       
-      //FloatEbmType splittingScore;
-      //FloatEbmType splittingScoreParent = FloatEbmType { 0 };
+      //FloatEbmType gain;
+      //FloatEbmType gainParent = FloatEbmType { 0 };
       FloatEbmType gain = FloatEbmType { 0 };
 
 

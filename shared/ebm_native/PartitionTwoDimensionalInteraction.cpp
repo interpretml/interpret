@@ -49,7 +49,7 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAuxiliaryBucketZone =
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pAuxiliaryBucketZone =
          pAuxiliaryBucketZoneBase->GetHistogramBucket<bClassification>();
 
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets =
@@ -68,13 +68,13 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-      HistogramBucket<bClassification> * pTotalsLowLow =
+      HistogramBucket<bClassification> * const pTotals00 =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
-      HistogramBucket<bClassification> * pTotalsLowHigh =
+      HistogramBucket<bClassification> * const pTotals01 =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
-      HistogramBucket<bClassification> * pTotalsHighLow =
+      HistogramBucket<bClassification> * const pTotals10 =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
-      HistogramBucket<bClassification> * pTotalsHighHigh =
+      HistogramBucket<bClassification> * const pTotals11 =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
       // for interactions we return an interaction score of 0 if any of the dimensions are useless
@@ -92,8 +92,12 @@ public:
 
       EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
+#ifndef NDEBUG
+      bool bAnySplits = false;
+#endif // NDEBUG
+
       // if a negative value were to occur, then it would be due to numeric instability, so clip it to zero here
-      FloatEbmType bestSplittingScore = FloatEbmType { 0 };
+      FloatEbmType bestGain = FloatEbmType { 0 };
 
       size_t aiStart[k_cDimensionsMax];
 
@@ -113,13 +117,13 @@ public:
                aHistogramBuckets,
                aiStart,
                0x00,
-               pTotalsLowLow
+               pTotals00
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
-            if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLowLow->GetCountSamplesInBucket())) {
+            if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals00->GetCountSamplesInBucket())) {
                EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                   learningTypeOrCountTargetClasses,
@@ -127,13 +131,13 @@ public:
                   aHistogramBuckets,
                   aiStart,
                   0x02,
-                  pTotalsLowHigh
+                  pTotals01
 #ifndef NDEBUG
                   , aHistogramBucketsDebugCopy
                   , aHistogramBucketsEndDebug
 #endif // NDEBUG
                   );
-               if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLowHigh->GetCountSamplesInBucket())) {
+               if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals01->GetCountSamplesInBucket())) {
                   EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                   TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                      learningTypeOrCountTargetClasses,
@@ -141,13 +145,13 @@ public:
                      aHistogramBuckets,
                      aiStart,
                      0x01,
-                     pTotalsHighLow
+                     pTotals10
 #ifndef NDEBUG
                      , aHistogramBucketsDebugCopy
                      , aHistogramBucketsEndDebug
 #endif // NDEBUG
                      );
-                  if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHighLow->GetCountSamplesInBucket())) {
+                  if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals10->GetCountSamplesInBucket())) {
                      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                         learningTypeOrCountTargetClasses,
@@ -155,145 +159,185 @@ public:
                         aHistogramBuckets,
                         aiStart,
                         0x03,
-                        pTotalsHighHigh
+                        pTotals11
 #ifndef NDEBUG
                         , aHistogramBucketsDebugCopy
                         , aHistogramBucketsEndDebug
 #endif // NDEBUG
                         );
-                     if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHighHigh->GetCountSamplesInBucket())) {
-                        FloatEbmType splittingScore = 0;
+                     if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals11->GetCountSamplesInBucket())) {
+#ifndef NDEBUG
+                        bAnySplits = true;
+#endif // NDEBUG
+                        FloatEbmType gain = 0;
 
-                        FloatEbmType cLowLowWeightInBucket = pTotalsLowLow->GetWeightInBucket();
-                        FloatEbmType cLowHighWeightInBucket = pTotalsLowHigh->GetWeightInBucket();
-                        FloatEbmType cHighLowWeightInBucket = pTotalsHighLow->GetWeightInBucket();
-                        FloatEbmType cHighHighWeightInBucket = pTotalsHighHigh->GetWeightInBucket();
+                        FloatEbmType weight00 = pTotals00->GetWeightInBucket();
+                        FloatEbmType weight01 = pTotals01->GetWeightInBucket();
+                        FloatEbmType weight10 = pTotals10->GetWeightInBucket();
+                        FloatEbmType weight11 = pTotals11->GetWeightInBucket();
 
-                        HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotalsLowLow =
-                           pTotalsLowLow->GetHistogramTargetEntry();
-                        HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotalsLowHigh =
-                           pTotalsLowHigh->GetHistogramTargetEntry();
-                        HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotalsHighLow =
-                           pTotalsHighLow->GetHistogramTargetEntry();
-                        HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotalsHighHigh =
-                           pTotalsHighHigh->GetHistogramTargetEntry();
+                        HistogramTargetEntry<bClassification> * const pHistogramEntry00 =
+                           pTotals00->GetHistogramTargetEntry();
+                        HistogramTargetEntry<bClassification> * const pHistogramEntry01 =
+                           pTotals01->GetHistogramTargetEntry();
+                        HistogramTargetEntry<bClassification> * const pHistogramEntry10 =
+                           pTotals10->GetHistogramTargetEntry();
+                        HistogramTargetEntry<bClassification> * const pHistogramEntry11 =
+                           pTotals11->GetHistogramTargetEntry();
 
                         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                           // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
+                           // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                            constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
 
-                           // use l = low, h = high, n = numerator, d = denominator
+                           // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
-                           const FloatEbmType lln = pHistogramTargetEntryTotalsLowLow[iVector].m_sumGradients;
-                           const FloatEbmType lld = bUseLogitBoost ?
-                              pHistogramTargetEntryTotalsLowLow[iVector].GetSumHessians() : cLowLowWeightInBucket;
+                           const FloatEbmType n00 = pHistogramEntry00[iVector].m_sumGradients;
+                           const FloatEbmType d00 = bUseLogitBoost ?
+                              pHistogramEntry00[iVector].GetSumHessians() : weight00;
 
-                           const FloatEbmType lhn = pHistogramTargetEntryTotalsLowHigh[iVector].m_sumGradients;
-                           const FloatEbmType lhd = bUseLogitBoost ?
-                              pHistogramTargetEntryTotalsLowHigh[iVector].GetSumHessians() : cLowHighWeightInBucket;
+                           const FloatEbmType n01 = pHistogramEntry01[iVector].m_sumGradients;
+                           const FloatEbmType d01 = bUseLogitBoost ?
+                              pHistogramEntry01[iVector].GetSumHessians() : weight01;
 
-                           const FloatEbmType hln = pHistogramTargetEntryTotalsHighLow[iVector].m_sumGradients;
-                           const FloatEbmType hld = bUseLogitBoost ?
-                              pHistogramTargetEntryTotalsHighLow[iVector].GetSumHessians() : cHighLowWeightInBucket;
+                           const FloatEbmType n10 = pHistogramEntry10[iVector].m_sumGradients;
+                           const FloatEbmType d10 = bUseLogitBoost ?
+                              pHistogramEntry10[iVector].GetSumHessians() : weight10;
 
-                           const FloatEbmType hhn = pHistogramTargetEntryTotalsHighHigh[iVector].m_sumGradients;
-                           const FloatEbmType hhd = bUseLogitBoost ?
-                              pHistogramTargetEntryTotalsHighHigh[iVector].GetSumHessians() : cHighHighWeightInBucket;
+                           const FloatEbmType n11 = pHistogramEntry11[iVector].m_sumGradients;
+                           const FloatEbmType d11 = bUseLogitBoost ?
+                              pHistogramEntry11[iVector].GetSumHessians() : weight11;
 
                            if(0 != (InteractionOptions_Pure & options)) {
                               // purified gain
 
-                              // if any of the denominators (weights) are zero then the purified gain tends 
-                              // towards zero.  Handle it here to avoid division by zero
-                              if(FloatEbmType { 0 } != lld && FloatEbmType { 0 } != lhd && 
-                                 FloatEbmType { 0 } != hld && FloatEbmType { 0 } != hhd) {
+                              // If we have a 2x2 matrix of updates, we can purify the updates using an equation
+                              // -------------------
+                              // |update00|update01|
+                              // |-----------------|
+                              // |update10|update11|
+                              // -------------------
+                              //
+                              // The update in each cell consists of a main update from feature0, 
+                              // a main update from feature1, and a purified update:
+                              //   update00 = main0_0 + main1_0 + pure00
+                              //   update01 = main0_1 + main1_0 + pure01
+                              //   update10 = main0_0 + main1_1 + pure10
+                              //   update11 = main0_1 + main1_1 + pure11
+                              // We can add and subtract these to remove the main contributions:
+                              //   update00 - update01 - update10 + update11 = 
+                              //        main0_0 + main1_0 + pure00 
+                              //      - main0_1 - main1_0 - pure01 
+                              //      - main0_0 - main1_1 - pure10
+                              //      + main0_1 + main1_1 + pure11
+                              // Which simplifies to:
+                              //   update00 - update01 - update10 + update11 = pure00 - pure01 - pure10 + pure11
+                              // Purification means the pure update multiplied by the count must sum to zero
+                              // across all rows/columns:
+                              //   pure00 * count00 + pure01 * count01 = 0
+                              //   pure01 * count01 + pure11 * count11 = 0
+                              //   pure11 * count11 + pure10 * count10 = 0
+                              //   pure10 * count10 + pure00 * count00 = 0
+                              // So:
+                              //   pure01 = -pure00 * count00 / count01
+                              //   pure10 = -pure00 * count00 / count10
+                              // And we can relate pure00 to pure11 by adding/subtracting the above:
+                              //     pure00 * count00 + pure01 * count01 
+                              //   - pure01 * count01 - pure11 * count11 
+                              //   - pure11 * count11 - pure10 * count10 
+                              //   + pure10 * count10 + pure00 * count00 = 0
+                              // which simplifies to:
+                              //   2 * pure00 * count00 - 2 * pure11 * count11 = 0
+                              // and then:
+                              //   pure11 = pure00 * count00 / count11
+                              // From the above:
+                              //   update00 - update01 - update10 + update11 = pure00 - pure01 - pure10 + pure11
+                              // we can substitute to get: 
+                              //   update00 - update01 - update10 + update11 = 
+                              //      pure00 
+                              //      + pure00 * count00 / count01 
+                              //      + pure00 * count00 / count10 
+                              //      + pure00 * count00 / count11
+                              // Which simplifies to:
+                              //   pure00 = (update00 - update01 - update10 + update11) /
+                              //     (1 + count00 / count01 + count00 / count10 + count00 / count11)
+                              // The other pure effects can be derived the same way.
+
+                              // if any of the denominators (weights) are zero then the purified gain will be
+                              // zero.  Handle it here to avoid division by zero
+                              if(FloatEbmType { 0 } != d00 && FloatEbmType { 0 } != d01 && 
+                                 FloatEbmType { 0 } != d10 && FloatEbmType { 0 } != d11) {
 
                                  // TODO: instead of checking the denominators for zero above, can we do it earlier?
                                  // If we're using hessians then we'd need it here, but we aren't using them yet
 
                                  // calculate what the full updates would be for non-purified:
                                  // u = update (non-purified)
-                                 const FloatEbmType llu = lln / lld;
-                                 const FloatEbmType lhu = lhn / lhd;
-                                 const FloatEbmType hlu = hln / hld;
-                                 const FloatEbmType hhu = hhn / hhd;
+                                 const FloatEbmType u00 = n00 / d00;
+                                 const FloatEbmType u01 = n01 / d01;
+                                 const FloatEbmType u10 = n10 / d10;
+                                 const FloatEbmType u11 = n11 / d11;
 
-                                 // purified numerator (positive for ll & hh equations, negative for lh and hl)
-                                 const FloatEbmType n = llu - lhu - hlu + hhu;
+                                 // common part of equations (positive for 00 & 11 equations, negative for 01 and 10)
+                                 const FloatEbmType common = u00 - u01 - u10 + u11;
 
                                  // p = purified update
-                                 const FloatEbmType llp = n / (FloatEbmType { 1 } + lld / lhd + lld / hld + lld / hhd);
-                                 const FloatEbmType lhp = n / (FloatEbmType { -1 } - lhd / lld - lhd / hld - lhd / hhd);
-                                 const FloatEbmType hlp = n / (FloatEbmType { -1 } - hld / lld - hld / lhd - hld / hhd);
-                                 const FloatEbmType hhp = n / (FloatEbmType { 1 } + hhd / lld + hhd / lhd + hhd / hld);
+                                 const FloatEbmType p00 = common / (FloatEbmType { 1 } + d00 / d01 + d00 / d10 + d00 / d11);
+                                 const FloatEbmType p01 = common / (FloatEbmType { -1 } - d01 / d00 - d01 / d10 - d01 / d11);
+                                 const FloatEbmType p10 = common / (FloatEbmType { -1 } - d10 / d00 - d10 / d01 - d10 / d11);
+                                 const FloatEbmType p11 = common / (FloatEbmType { 1 } + d11 / d00 + d11 / d01 + d11 / d10);
+
+                                 // g = gain
+                                 const FloatEbmType g00 = EbmStats::CalcPartialGainFromUpdate(p00, d00);
+                                 const FloatEbmType g01 = EbmStats::CalcPartialGainFromUpdate(p01, d01);
+                                 const FloatEbmType g10 = EbmStats::CalcPartialGainFromUpdate(p10, d10);
+                                 const FloatEbmType g11 = EbmStats::CalcPartialGainFromUpdate(p11, d11);
 
 #ifndef NDEBUG
-                                 // r = reconsituted gradient sum (after purification)
-                                 const FloatEbmType llr = llp * lld;
-                                 const FloatEbmType lhr = lhp * lhd;
-                                 const FloatEbmType hlr = hlp * hld;
-                                 const FloatEbmType hhr = hhp * hhd;
+                                 // r = reconsituted numerator (after purification)
+                                 const FloatEbmType r00 = p00 * d00;
+                                 const FloatEbmType r01 = p01 * d01;
+                                 const FloatEbmType r10 = p10 * d10;
+                                 const FloatEbmType r11 = p11 * d11;
 
                                  // purification means summing any direction gives us zero
-                                 EBM_ASSERT(std::abs(llr + lhr) < 0.001);
-                                 EBM_ASSERT(std::abs(lhr + hhr) < 0.001);
-                                 EBM_ASSERT(std::abs(hhr + hlr) < 0.001);
-                                 EBM_ASSERT(std::abs(hlr + llr) < 0.001);
+                                 EBM_ASSERT(std::abs(r00 + r01) < 0.001);
+                                 EBM_ASSERT(std::abs(r01 + r11) < 0.001);
+                                 EBM_ASSERT(std::abs(r11 + r10) < 0.001);
+                                 EBM_ASSERT(std::abs(r10 + r00) < 0.001);
 
-                                 // if all of these are zero, then the sum of all of them should be zero,
-                                 // which means our RSS of the combined bin should be zero, which means we do not
-                                 // need to subtract the parent RSS to get our gain.
-                                 EBM_ASSERT(std::abs(llr + lhr + hlr + hhr) < 0.001);
+                                 // if all of these added together are zero, then the parent partial gain should also 
+                                 // be zero, which means we can avoid calculating the parent partial gain.
+                                 EBM_ASSERT(std::abs(r00 + r01 + r10 + r11) < 0.001);
+
+                                 EBM_ASSERT(std::abs(g00 - EbmStats::CalcPartialGain(r00, d00)) < 0.001);
+                                 EBM_ASSERT(std::abs(g01 - EbmStats::CalcPartialGain(r01, d01)) < 0.001);
+                                 EBM_ASSERT(std::abs(g11 - EbmStats::CalcPartialGain(r10, d10)) < 0.001);
+                                 EBM_ASSERT(std::abs(g10 - EbmStats::CalcPartialGain(r11, d11)) < 0.001);
 #endif // NDEBUG
-
-                                 // this is another way to calculate our variance gain
-                                 // g = gain (normally gain would require subtacting from the parent RSS, but that's zero)
-                                 const FloatEbmType llg = llp * llp * lld;
-                                 const FloatEbmType lhg = lhp * lhp * lhd;
-                                 const FloatEbmType hlg = hlp * hlp * hld;
-                                 const FloatEbmType hhg = hhp * hhp * hhd;
-
-                                 EBM_ASSERT(std::isnan(llg) || FloatEbmType { 0 } <= llg);
-                                 EBM_ASSERT(std::isnan(lhg) || FloatEbmType { 0 } <= lhg);
-                                 EBM_ASSERT(std::isnan(hlg) || FloatEbmType { 0 } <= hlg);
-                                 EBM_ASSERT(std::isnan(hhg) || FloatEbmType { 0 } <= hhg);
-
-                                 splittingScore += llg;
-                                 splittingScore += lhg;
-                                 splittingScore += hlg;
-                                 splittingScore += hhg;
+                                 gain += g00;
+                                 gain += g01;
+                                 gain += g10;
+                                 gain += g11;
                               }
                            } else {
                               // non-purified gain
-
-                              const FloatEbmType splittingScoreUpdate1 = EbmStats::ComputeSinglePartitionGain(lln, lld);
-                              EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
-                              splittingScore += splittingScoreUpdate1;
-
-                              const FloatEbmType splittingScoreUpdate2 = EbmStats::ComputeSinglePartitionGain(lhn, lhd);
-                              EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
-                              splittingScore += splittingScoreUpdate2;
-
-                              const FloatEbmType splittingScoreUpdate3 = EbmStats::ComputeSinglePartitionGain(hln, hld);
-                              EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
-                              splittingScore += splittingScoreUpdate3;
-
-                              const FloatEbmType splittingScoreUpdate4 = EbmStats::ComputeSinglePartitionGain(hhn, hhd);
-                              EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
-                              splittingScore += splittingScoreUpdate4;
+                              gain += EbmStats::CalcPartialGain(n00, d00);
+                              gain += EbmStats::CalcPartialGain(n01, d01);
+                              gain += EbmStats::CalcPartialGain(n10, d10);
+                              gain += EbmStats::CalcPartialGain(n11, d11);
                            }
                         }
-                        EBM_ASSERT(std::isnan(splittingScore) || FloatEbmType { 0 } <= splittingScore); // sumations of positive numbers should be positive
+                        EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain); // sumations of positive numbers should be positive
 
-                        // If we get a NaN result, we'd like to propagate it by making bestSplittingScore NaN.  
+                        // If we get a NaN result, we'd like to propagate it by making bestGain NaN.  
                         // The rules for NaN values say that non equality comparisons are all false so, 
                         // let's flip this comparison such that it should be true for NaN values.
-                        if(UNLIKELY(! /* NaN */ LIKELY(splittingScore <= bestSplittingScore))) {
-                           bestSplittingScore = splittingScore;
+                        if(UNLIKELY(! /* NaN */ LIKELY(gain <= bestGain))) {
+                           bestGain = gain;
                         } else {
-                           EBM_ASSERT(!std::isnan(splittingScore));
+                           EBM_ASSERT(!std::isnan(gain));
                         }
                      }
                   }
@@ -304,8 +348,8 @@ public:
          ++iBin1;
       } while(iBin1 < cBinsDimension1 - 1);
 
-      // we start from zero, so bestSplittingScore can't be negative here
-      EBM_ASSERT(std::isnan(bestSplittingScore) || FloatEbmType { 0 } <= bestSplittingScore);
+      // we start from zero, so bestGain can't be negative here
+      EBM_ASSERT(std::isnan(bestGain) || FloatEbmType { 0 } <= bestGain);
 
       if(0 == (InteractionOptions_Pure & options)) {
          // if we are detecting impure interaction then so far we've only calculated the first part of the RSS 
@@ -313,58 +357,54 @@ public:
          // gain. All the splits we've analyzed so far though had the same non-split RSS, so we subtract it here
          // instead of inside the loop.
 
-#ifndef NDEBUG
-         // if no legal splits were found, then bestSplittingScore will be zero.  In theory we should
-         // therefore not subtract the base RSS, but doing so does no harm since we later set any
-         // negative interaction score to zero in the caller of this function.  Due to that we don't
-         // need to check here, since any value we subtract from zero will lead to a negative number and
-         // then will be zeroed by our caller
-         // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative gain.
-         bool isOriginallyZero = FloatEbmType { 0 } == bestSplittingScore;
-#endif // NDEBUG
-
          // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
          // which contains the totals of all buckets
          const HistogramBucket<bClassification> * const pTotal =
             reinterpret_cast<const HistogramBucket<bClassification> *>(
                reinterpret_cast<const char *>(pAuxiliaryBucketZoneBase) - cBytesPerHistogramBucket);
 
-         const FloatEbmType cTotalWeightInBucket = pTotal->GetWeightInBucket();
+         const FloatEbmType weightAll = pTotal->GetWeightInBucket();
 
-         const HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotal =
+         const HistogramTargetEntry<bClassification> * const pHistogramEntryTotal =
             pTotal->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
+            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
             constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
-            const FloatEbmType splittingScoreUpdate = EbmStats::ComputeSinglePartitionGain(
-               pHistogramTargetEntryTotal[iVector].m_sumGradients,
-               bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : cTotalWeightInBucket
+            bestGain -= EbmStats::CalcPartialGain(
+               pHistogramEntryTotal[iVector].m_sumGradients,
+               bUseLogitBoost ? pHistogramEntryTotal[iVector].GetSumHessians() : weightAll
             );
-            EBM_ASSERT(std::isnan(splittingScoreUpdate) || FloatEbmType { 0 } <= splittingScoreUpdate);
-            bestSplittingScore -= splittingScoreUpdate;
          }
 
          // gain should be positive, or NaN, BUT it can be slightly negative due to floating point noise
          // it could also be -inf if the total bucket overflows, but the parts did not.  In that case we've
          // reached -inf due to numeric instability, but we should eventually return zero in this case.
          // We fix this up though in our caller.
-         // bestSplittingScore can also be substantially negative if we didn't find any legal cuts and 
+         // bestGain can also be substantially negative if we didn't find any legal cuts and 
          // then we subtracted the base RSS here from zero
-         EBM_ASSERT(std::isnan(bestSplittingScore) ||
-            isOriginallyZero ||
-            -std::numeric_limits<FloatEbmType>::infinity() == bestSplittingScore ||
-            k_epsilonNegativeGainAllowed <= bestSplittingScore);
+
+         // if no legal splits were found, then bestGain will be zero.  In theory we should
+         // therefore not subtract the base RSS, but doing so does no harm since we later set any
+         // negative interaction score to zero in the caller of this function.  Due to that we don't
+         // need to check here, since any value we subtract from zero will lead to a negative number and
+         // then will be zeroed by our caller
+         // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative gain.
+
+         EBM_ASSERT(std::isnan(bestGain) ||
+            !bAnySplits ||
+            -std::numeric_limits<FloatEbmType>::infinity() == bestGain ||
+            k_epsilonNegativeGainAllowed <= bestGain);
       }
 
-      // we clean up bestSplittingScore in the caller, since this function is templated and created many times
+      // we clean up bestGain in the caller, since this function is templated and created many times
 
       const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
       EBM_ASSERT(nullptr != pDataSet);
       EBM_ASSERT(FloatEbmType { 0 } < pDataSet->GetWeightTotal()); // if all are zeros we assume there are no weights and use the count
-      return bestSplittingScore / pDataSet->GetWeightTotal();
+      return bestGain / pDataSet->GetWeightTotal();
    }
 };
 

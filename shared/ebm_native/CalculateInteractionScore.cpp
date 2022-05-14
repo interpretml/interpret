@@ -193,7 +193,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
    if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
       LOG_0(TraceLevelVerbose, "CalculateInteractionScoreInternal Starting bin sweep loop");
 
-      FloatEbmType bestSplittingScore = PartitionTwoDimensionalInteraction(
+      FloatEbmType bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
          pFeatureGroup,
          options,
@@ -207,7 +207,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
       );
 
       if(nullptr != pInteractionScoreReturn) {
-         if(UNLIKELY(bestSplittingScore < FloatEbmType { 0 })) {
+         if(UNLIKELY(bestGain < FloatEbmType { 0 })) {
             // gain can't mathematically be legally negative, but it can be here in the following situations:
             //   1) for impure interaction gain we subtract the base RSS, and there can be floating point
             //      noise that makes this slightly negative
@@ -221,9 +221,9 @@ static ErrorEbmType CalculateInteractionScoreInternal(
             //      even calculated the 4 quadrant RSS, but we handle this scenario here instead on in the
             //      templated function.  We do ASSERT on this condition inside the templated function
 
-            EBM_ASSERT(!std::isnan(bestSplittingScore));
-            bestSplittingScore = FloatEbmType { 0 };
-         } else if(UNLIKELY(/* NaN */ !LIKELY(bestSplittingScore < std::numeric_limits<FloatEbmType>::infinity()))) {
+            EBM_ASSERT(!std::isnan(bestGain));
+            bestGain = FloatEbmType { 0 };
+         } else if(UNLIKELY(/* NaN */ !LIKELY(bestGain < std::numeric_limits<FloatEbmType>::infinity()))) {
             // this also checks for NaN since NaN < anything is FALSE
 
             // If we get back infinity then there was an overflow and we don't really know what the final result
@@ -232,12 +232,12 @@ static ErrorEbmType CalculateInteractionScoreInternal(
             // indicator.  -inf will sort to being the least important item, which is good, but it also indicates
             // an error so the caller can know there was an overflow.  It also does not have the weirness of NaNs.
 
-            bestSplittingScore = -std::numeric_limits<FloatEbmType>::infinity();
+            bestGain = -std::numeric_limits<FloatEbmType>::infinity();
          } else {
-            EBM_ASSERT(!std::isnan(bestSplittingScore));
+            EBM_ASSERT(!std::isnan(bestGain));
          }
 
-         *pInteractionScoreReturn = bestSplittingScore;
+         *pInteractionScoreReturn = bestGain;
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently

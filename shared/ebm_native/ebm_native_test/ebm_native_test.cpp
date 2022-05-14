@@ -1084,6 +1084,7 @@ void TestApi::InitializeInteraction() {
 
 FloatEbmType TestApi::InteractionScore(
    const std::vector<IntEbmType> featuresInGroup, 
+   const InteractionOptionsType options,
    const IntEbmType countSamplesRequiredForChildSplitMin
 ) const {
    ErrorEbmType error;
@@ -1105,7 +1106,7 @@ FloatEbmType TestApi::InteractionScore(
       m_interactionHandle,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
-      InteractionOptions_Default,
+      options,
       countSamplesRequiredForChildSplitMin,
       &interactionScoreOut
    );

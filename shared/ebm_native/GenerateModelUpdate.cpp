@@ -566,7 +566,10 @@ static ErrorEbmType BoostMultiDimensional(
       }
 
       // gain can be -infinity for regression in a super-super-super-rare condition.  
-      // See notes above regarding "gain = bestSplittingScore - splittingScoreParent"
+      // See notes above regarding "gain = bestGain - gainParent"
+
+      // TODO: we should probably normalize the gain by dividing by the total weight inside the inner bag.  We
+      // do this when calculating the interactions score, and I think XGBoost/LightGBM do the same thing for gain
 
       // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
       EBM_ASSERT(std::isnan(*pTotalGain) || (!bClassification) && std::isinf(*pTotalGain) ||
@@ -681,7 +684,10 @@ static ErrorEbmType BoostRandom(
    }
 
    // gain can be -infinity for regression in a super-super-super-rare condition.  
-   // See notes above regarding "gain = bestSplittingScore - splittingScoreParent"
+   // See notes above regarding "gain = bestGain - gainParent"
+
+   // TODO: we should probably normalize the gain by dividing by the total weight inside the inner bag.  We
+   // do this when calculating the interactions score, and I think XGBoost/LightGBM do the same thing for gain
 
    // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
    EBM_ASSERT(std::isnan(*pTotalGain) || (!bClassification) && std::isinf(*pTotalGain) ||

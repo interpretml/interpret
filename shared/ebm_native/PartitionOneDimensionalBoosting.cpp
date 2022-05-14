@@ -186,7 +186,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    FloatEbmType weightRight = pTreeNode->GetWeight();
    FloatEbmType weightLeft = 0;
 
-   FloatEbmType BEST_nodeSplittingScore = k_illegalGain;
+   FloatEbmType BEST_gain = k_illegalGain;
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
    EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
    do {
@@ -213,7 +213,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
          FloatEbmType sumHessiansRight = weightRight;
          FloatEbmType sumHessiansLeft = weightLeft;
-         FloatEbmType nodeSplittingScore = 0;
+         FloatEbmType gain = 0;
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatEbmType CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
@@ -233,25 +233,25 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
                }
             }
 
-            // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
+            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType nodeSplittingScoreRight = EbmStats::ComputeSinglePartitionGain(sumGradientsRight, sumHessiansRight);
-            EBM_ASSERT(std::isnan(nodeSplittingScoreRight) || FloatEbmType { 0 } <= nodeSplittingScoreRight);
-            nodeSplittingScore += nodeSplittingScoreRight;
+            const FloatEbmType gainRight = EbmStats::CalcPartialGain(sumGradientsRight, sumHessiansRight);
+            EBM_ASSERT(std::isnan(gainRight) || FloatEbmType { 0 } <= gainRight);
+            gain += gainRight;
 
-            // TODO : we can make this faster by doing the division in ComputeSinglePartitionGain after we add all the numerators 
+            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType nodeSplittingScoreLeft = EbmStats::ComputeSinglePartitionGain(sumGradientsLeft, sumHessiansLeft);
-            EBM_ASSERT(std::isnan(nodeSplittingScoreLeft) || FloatEbmType { 0 } <= nodeSplittingScoreLeft);
-            nodeSplittingScore += nodeSplittingScoreLeft;
+            const FloatEbmType gainLeft = EbmStats::CalcPartialGain(sumGradientsLeft, sumHessiansLeft);
+            EBM_ASSERT(std::isnan(gainLeft) || FloatEbmType { 0 } <= gainLeft);
+            gain += gainLeft;
          }
-         EBM_ASSERT(std::isnan(nodeSplittingScore) || FloatEbmType { 0 } <= nodeSplittingScore);
+         EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain);
 
          // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
          // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.
          // NaN values will get us soon and shut down boosting.
          if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/
-            !(nodeSplittingScore < BEST_nodeSplittingScore))) {
+            !(gain < BEST_gain))) {
             // it's very possible that we have bins with zero samples in them, in which case we could easily be presented with equally favorable splits
             // or it's even possible for two different possible unrelated sections of bins, or individual bins to have exactly the same gain 
             // (think low count symetric data) we want to avoid any bias of always choosing the higher or lower value to split on, so what we should 
@@ -272,12 +272,12 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             // TODO : implement the randomized splitting described for interaction effect, which can be done the same although we might want to 
             //   include near matches since there is floating point noise there due to the way we sum interaction effect region totals
 
-            // if nodeSplittingScore becomes NaN, the first time we come through here we're comparing the non-NaN value in BEST_nodeSplittingScore 
-            // with nodeSplittingScore, which is false.  Next time we come through here, both BEST_nodeSplittingScore and nodeSplittingScore, 
+            // if gain becomes NaN, the first time we come through here we're comparing the non-NaN value in BEST_gain 
+            // with gain, which is false.  Next time we come through here, both BEST_gain and gain, 
             // and that has a special case of being false!  So, we always choose pTreeSweepStart, which is great because we don't waste 
             // or fill memory unnessarily
-            pTreeSweepCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pTreeSweepCur : pTreeSweepStart;
-            BEST_nodeSplittingScore = nodeSplittingScore;
+            pTreeSweepCur = UNPREDICTABLE(BEST_gain == gain) ? pTreeSweepCur : pTreeSweepStart;
+            BEST_gain = gain;
 
             pTreeSweepCur->SetBestHistogramBucketEntry(pHistogramBucketEntryCur);
             pTreeSweepCur->SetCountBestSamplesLeft(cSamplesLeft);
@@ -306,16 +306,16 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       pHistogramBucketEntryCur = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
    } while(pHistogramBucketEntryLast != pHistogramBucketEntryCur);
 
-   // handle the case where BEST_nodeSplittingScore is +infinity 
+   // handle the case where BEST_gain is +infinity 
    // don't use std::inf because with some compiler flags on some compilers that isn't reliable
    // if we include a case that was equal to max, then ok, no harm done.
-   if(UNLIKELY(UNLIKELY(pTreeSweepStart == pTreeSweepCur) || UNLIKELY(std::isnan(BEST_nodeSplittingScore)) ||
-      UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= BEST_nodeSplittingScore))) {
+   if(UNLIKELY(UNLIKELY(pTreeSweepStart == pTreeSweepCur) || UNLIKELY(std::isnan(BEST_gain)) ||
+      UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= BEST_gain))) {
 
       // we didn't find any valid splits, or we hit an overflow
       return true;
    }
-   EBM_ASSERT(FloatEbmType { 0 } <= BEST_nodeSplittingScore);
+   EBM_ASSERT(FloatEbmType { 0 } <= BEST_gain);
 
    RandomStream * const pRandomStream = pBoosterCore->GetRandomStream();
 
@@ -367,7 +367,6 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       pTreeSweepStart->GetBestHistogramTargetEntry();
 
    // TODO: usually we've done this calculation for the parent already.  Why not keep the result arround to avoid extra work?
-   FloatEbmType originalParentScore = 0;
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       const FloatEbmType BEST_sumGradientsLeft = pHistogramTargetEntrySweep[iVector].m_sumGradients;
       pHistogramTargetEntryLeftChild[iVector].m_sumGradients = BEST_sumGradientsLeft;
@@ -384,11 +383,11 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          }
       }
 
-      const FloatEbmType originalParentScoreUpdate = EbmStats::ComputeSinglePartitionGain(sumGradientsParent, sumHessiansParent);
-      EBM_ASSERT(std::isnan(originalParentScoreUpdate) || FloatEbmType { 0 } <= originalParentScoreUpdate);
-      originalParentScore += originalParentScoreUpdate;
+      const FloatEbmType gain1 = EbmStats::CalcPartialGain(sumGradientsParent, sumHessiansParent);
+      EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+      BEST_gain -= gain1;
    }
-   EBM_ASSERT(std::isnan(originalParentScore) || FloatEbmType { 0 } <= originalParentScore);
+   EBM_ASSERT(std::isnan(BEST_gain) || (!bClassification) && std::isinf(BEST_gain) || k_epsilonNegativeGainAllowed <= BEST_gain);
 
 
    // IMPORTANT!! : we need to finish all our calls that use this->m_UNION.m_beforeExaminationForPossibleSplitting BEFORE setting anything in 
@@ -400,17 +399,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
 
    pTreeNode->AFTER_SetTreeNodeChildren(pTreeNodeChildrenAvailableStorageSpaceCur);
-   const FloatEbmType splitGain = BEST_nodeSplittingScore - originalParentScore;
-   // mathematically BEST_nodeSplittingScore should be bigger than originalParentScore, and the result positive, but these are numbers that are calculated
-   //   from sumation, so they are inaccurate, and we could get a slighly negative number outcome
-
-   // for regression, BEST_nodeSplittingScore and originalParentScore can be infinity.  There is a super-super-super-rare case where we can have 
-   // originalParentScore overflow to +infinity due to numeric issues, but not BEST_nodeSplittingScore, and then the subtration causes the 
-   // result to be -infinity. The universe will probably die of heat death before we get a -infinity value, but perhaps an adversarial dataset 
-   // could trigger it, and we don't want someone giving us data to use a vulnerability in our system, so check for it!
-   // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
-   EBM_ASSERT(std::isnan(splitGain) || (!bClassification) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
-   pTreeNode->AFTER_SetSplitGain(splitGain);
+   pTreeNode->AFTER_SetSplitGain(BEST_gain);
 
    HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
    const HistogramBucket<bClassification> * const aHistogramBucket =
@@ -423,7 +412,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    LOG_N(
       TraceLevelVerbose,
-      "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitValue=%zu, nodeSplittingScore=%" FloatEbmTypePrintf,
+      "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitValue=%zu, gain=%" FloatEbmTypePrintf,
       static_cast<size_t>(pTreeNode->AFTER_GetSplitValue()),
       pTreeNode->AFTER_GetSplitGain()
    );
@@ -827,7 +816,7 @@ public:
             ++cLeaves;
          } while(cLeaves < cLeavesMax && UNLIKELY(!bestTreeNodeToSplit.empty()));
          // we DON'T need to call SetLeafAfterDone() on any items that remain in the bestTreeNodeToSplit queue because everything in that queue has set 
-         // a non-NaN nodeSplittingScore value
+         // a non-NaN gain value
 
          // regression can be -infinity or slightly negative in extremely rare circumstances.
          // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
