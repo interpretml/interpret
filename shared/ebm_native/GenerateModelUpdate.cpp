@@ -77,7 +77,6 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
-   HistogramBucketBase * const pTotal,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
    , const HistogramBucketBase * const aHistogramBucketsDebugCopy
@@ -538,18 +537,11 @@ static ErrorEbmType BoostMultiDimensional(
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
    if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
-      HistogramBucketBase * const pTotal = GetHistogramBucketByIndex(
-         cBytesPerHistogramBucket,
-         aHistogramBuckets,
-         cTotalBucketsMainSpace - 1
-      );
-
       error = PartitionTwoDimensionalBoosting(
          pBoosterShell,
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
-         pTotal,
          pTotalGain
 #ifndef NDEBUG
          , aHistogramBucketsDebugCopy

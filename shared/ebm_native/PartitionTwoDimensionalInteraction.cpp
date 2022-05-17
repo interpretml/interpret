@@ -130,7 +130,7 @@ public:
                   pFeatureGroup,
                   aHistogramBuckets,
                   aiStart,
-                  0x02,
+                  0x01,
                   pTotals01
 #ifndef NDEBUG
                   , aHistogramBucketsDebugCopy
@@ -144,7 +144,7 @@ public:
                      pFeatureGroup,
                      aHistogramBuckets,
                      aiStart,
-                     0x01,
+                     0x02,
                      pTotals10
 #ifndef NDEBUG
                      , aHistogramBucketsDebugCopy

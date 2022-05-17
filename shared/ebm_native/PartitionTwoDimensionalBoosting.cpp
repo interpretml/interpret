@@ -193,7 +193,6 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
-      HistogramBucketBase * const pTotalBase,
       FloatEbmType * const pTotalGain
 #ifndef NDEBUG
       , const HistogramBucketBase * const aHistogramBucketsDebugCopyBase
@@ -219,7 +218,6 @@ public:
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAuxiliaryBucketZone = pAuxiliaryBucketZoneBase->GetHistogramBucket<bClassification>();
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTotal = pTotalBase->GetHistogramBucket<bClassification>();
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<bClassification>();
 
 #ifndef NDEBUG
@@ -270,30 +268,7 @@ public:
       HistogramBucket<bClassification> * pTotals1HighHighBest =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, pBoosterShell->GetHistogramBucketsEndDebug());
-
       EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
-
-      FloatEbmType parentGain = FloatEbmType { 0 };
-      EBM_ASSERT(0 < pTotal->GetCountSamplesInBucket());
-      const FloatEbmType cWeightInParentBucket = pTotal->GetWeightInBucket();
-
-      HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotal =
-         pTotal->GetHistogramTargetEntry();
-
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
-         // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-
-         constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
-         const FloatEbmType gain1 = EbmStats::CalcPartialGain(
-            pHistogramTargetEntryTotal[iVector].m_sumGradients,
-            bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : cWeightInParentBucket
-         );
-         EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
-         parentGain += gain1;
-      }
-      EBM_ASSERT(std::isnan(parentGain) || FloatEbmType { 0 } <= parentGain); // sumation of positive numbers should be positive
 
       LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
@@ -495,6 +470,21 @@ public:
       } while(iBin2 < cBinsDimension2 - 1);
       LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Done sweep loops");
 
+
+      // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
+      // which contains the totals of all buckets
+      const HistogramBucket<bClassification> * const pTotal =
+         reinterpret_cast<const HistogramBucket<bClassification> *>(
+            reinterpret_cast<const char *>(pAuxiliaryBucketZoneBase) - cBytesPerHistogramBucket);
+
+      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, pBoosterShell->GetHistogramBucketsEndDebug());
+
+      const HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotal =
+         pTotal->GetHistogramTargetEntry();
+
+      const FloatEbmType weightAll = pTotal->GetWeightInBucket();
+      EBM_ASSERT(0 < weightAll);
+
       // if we get a NaN result for bestGain, we might as well do less work and just create a zero split update right now.  The rules 
       // for NaN values say that non equality comparisons are all false so, let's flip this comparison such that it should be true for NaN values.  
       // If the compiler violates NaN comparions rules, no big deal.  NaN values will get us soon and shut down boosting.
@@ -542,7 +532,7 @@ public:
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                update = EbmStats::ComputeSinglePartitionUpdate(
                   pHistogramTargetEntryTotal[iVector].m_sumGradients,
-                  cWeightInParentBucket
+                  weightAll
                );
             }
 
@@ -552,6 +542,27 @@ public:
       } else {
          EBM_ASSERT(!std::isnan(bestGain));
          EBM_ASSERT(k_illegalGain != bestGain);
+
+         // now subtract the parent partial gain
+
+         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
+            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
+
+            constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+            const FloatEbmType gain1 = EbmStats::CalcPartialGain(
+               pHistogramTargetEntryTotal[iVector].m_sumGradients,
+               bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : weightAll
+            );
+            EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+            bestGain -= gain1;
+         }
+
+         // for regression, bestGain and parentGain can be infinity.  There is a super-super-super-rare case where we can have 
+         // parentGain overflow to +infinity due to numeric issues, but not bestGain, and then the subtration causes the result 
+         // to be -infinity.  The universe will probably die of heat death before we get a -infinity value, but perhaps an adversarial dataset could 
+         // trigger it, and we don't want someone giving us data to use a vulnerability in our system, so check for it!
+
          if(bSplitFirst2) {
             // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero splits
             error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 1);
@@ -844,15 +855,8 @@ public:
                }
             }
          }
-         // for regression, bestGain and parentGain can be infinity.  There is a super-super-super-rare case where we can have 
-         // parentGain overflow to +infinity due to numeric issues, but not bestGain, and then the subtration causes the result 
-         // to be -infinity.  The universe will probably die of heat death before we get a -infinity value, but perhaps an adversarial dataset could 
-         // trigger it, and we don't want someone giving us data to use a vulnerability in our system, so check for it!
-         bestGain -= parentGain;
       }
 
-      // TODO: this gain value is untested.  We should build a new test that compares the single feature gains to the multi-dimensional gains by
-      // making a pair where one of the dimensions duplicates values in the 0 and 1 bin.  Then the gain should be identical, if there is only 1 split allowed
       *pTotalGain = bestGain;
       return Error_None;
    }
@@ -870,7 +874,6 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
-      HistogramBucketBase * const pTotal,
       FloatEbmType * const pTotalGain
 #ifndef NDEBUG
       , const HistogramBucketBase * const aHistogramBucketsDebugCopy
@@ -890,7 +893,6 @@ public:
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
-            pTotal,
             pTotalGain
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy
@@ -902,7 +904,6 @@ public:
             pFeatureGroup,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
-            pTotal,
             pTotalGain
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy
@@ -923,7 +924,6 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
-      HistogramBucketBase * const pTotal,
       FloatEbmType * const pTotalGain
 #ifndef NDEBUG
       , const HistogramBucketBase * const aHistogramBucketsDebugCopy
@@ -939,7 +939,6 @@ public:
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
-         pTotal,
          pTotalGain
 #ifndef NDEBUG
          , aHistogramBucketsDebugCopy
@@ -953,7 +952,6 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
-   HistogramBucketBase * const pTotal,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
    , const HistogramBucketBase * const aHistogramBucketsDebugCopy
@@ -968,7 +966,6 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
-         pTotal,
          pTotalGain
 #ifndef NDEBUG
          , aHistogramBucketsDebugCopy
@@ -981,7 +978,6 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
          pFeatureGroup,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
-         pTotal,
          pTotalGain
 #ifndef NDEBUG
          , aHistogramBucketsDebugCopy
