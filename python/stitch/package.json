@@ -1,0 +1,94 @@
+{
+  "name": "stitch",
+  "version": "0.1.0",
+  "description": "Widget that handles bi-directional communication between user-defined JavaScript and the Jupyter kernel via a sandboxed iframe and postMessage.",
+  "keywords": [
+    "jupyter",
+    "jupyterlab",
+    "jupyterlab-extension",
+    "widgets"
+  ],
+  "files": [
+    "lib/**/*.js",
+    "dist/*.js",
+    "css/*.css"
+  ],
+  "homepage": "https://github.com/interpretml/stitch",
+  "bugs": {
+    "url": "https://github.com/interpretml/stitch/issues"
+  },
+  "license": "BSD-3-Clause",
+  "author": {
+    "name": "InterpretML",
+    "email": "interpret@microsoft.com"
+  },
+  "main": "lib/index.js",
+  "types": "./lib/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/interpretml/stitch"
+  },
+  "scripts": {
+    "build": "yarn run build:lib && yarn run build:nbextension && yarn run build:labextension:dev",
+    "build:prod": "yarn run build:lib && yarn run build:nbextension && yarn run build:labextension",
+    "build:labextension": "jupyter labextension build .",
+    "build:labextension:dev": "jupyter labextension build --development True .",
+    "build:lib": "tsc",
+    "build:nbextension": "webpack",
+    "clean": "yarn run clean:lib && yarn run clean:nbextension && yarn run clean:labextension",
+    "clean:lib": "rimraf lib",
+    "clean:labextension": "rimraf stitch/labextension",
+    "clean:nbextension": "rimraf stitch/nbextension/static/index.js",
+    "lint": "eslint . --ext .ts,.tsx --fix",
+    "lint:check": "eslint . --ext .ts,.tsx",
+    "prepack": "yarn run build:lib",
+    "test": "jest",
+    "watch": "npm-run-all -p watch:*",
+    "watch:lib": "tsc -w",
+    "watch:nbextension": "webpack --watch --mode=development",
+    "watch:labextension": "jupyter labextension watch ."
+  },
+  "dependencies": {
+    "@jupyter-widgets/base": "^1.1.10 || ^2.0.0 || ^3.0.0 || ^4.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.17.10",
+    "@babel/preset-env": "^7.17.10",
+    "@jupyterlab/builder": "^3.4.1",
+    "@phosphor/application": "^1.7.3",
+    "@phosphor/widgets": "^1.9.3",
+    "@types/jest": "^27.5.1",
+    "@types/webpack-env": "^1.16.4",
+    "@typescript-eslint/eslint-plugin": "^5.23.0",
+    "@typescript-eslint/parser": "^5.23.0",
+    "acorn": "^8.7.1",
+    "css-loader": "^6.7.1",
+    "eslint": "^8.15.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "fs-extra": "^10.1.0",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^28.1.0",
+    "mkdirp": "^1.0.4",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.6.2",
+    "rimraf": "^3.0.2",
+    "source-map-loader": "^3.0.1",
+    "style-loader": "^3.3.1",
+    "ts-jest": "^28.0.2",
+    "ts-loader": "^9.3.0",
+    "typescript": "~4.6.4",
+    "webpack": "^5.72.1",
+    "webpack-cli": "^4.9.2"
+  },
+  "jupyterlab": {
+    "extension": "lib/plugin",
+    "outputDir": "stitch/labextension/",
+    "sharedPackages": {
+      "@jupyter-widgets/base": {
+        "bundled": false,
+        "singleton": true
+      }
+    }
+  }
+}
