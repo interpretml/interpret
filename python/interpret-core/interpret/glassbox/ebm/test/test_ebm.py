@@ -535,14 +535,14 @@ def test_dp_ebm_adult():
     w_tr = np.ones_like(y_tr)
     w_tr[-1] = 2
 
-    clf = DPExplainableBoostingClassifier(binning='private-quantile', epsilon=1)
+    clf = DPExplainableBoostingClassifier(epsilon=1)
     n_splits = 3
     ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
     res = cross_validate(
         clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
     )
 
-    clf = DPExplainableBoostingClassifier(binning='private', epsilon=1)
+    clf = DPExplainableBoostingClassifier(epsilon=1)
     clf.fit(X_tr, y_tr, w_tr)
 
     prob_scores = clf.predict_proba(X_te)

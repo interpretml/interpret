@@ -1538,7 +1538,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
-            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            binning: Method to bin values for pre-processing. 'private' is the only legal option currently for DP.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
@@ -1694,7 +1694,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             max_bins: Max number of bins per feature for pre-processing stage.
-            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            binning: Method to bin values for pre-processing. 'private' is the only legal option currently for DP.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             outer_bags: Number of outer bags.
             learning_rate: Learning rate for boosting.
