@@ -250,6 +250,11 @@ static const std::vector<IntEbmType> k_leavesMaxDefault = {
    IntEbmType { k_leavesMaxFillDefault }
 };
 
+struct BoostRet {
+   FloatEbmType gain;
+   FloatEbmType validationMetric;
+};
+
 class TestApi {
    enum class Stage {
       Beginning, 
@@ -332,7 +337,7 @@ public:
    void AddValidationSamples(const std::vector<TestSample> samples);
    void InitializeBoosting(const IntEbmType countInnerBags = k_countInnerBagsDefault);
    
-   FloatEbmType Boost(
+   BoostRet Boost(
       const IntEbmType indexFeatureGroup,
       const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
       const FloatEbmType learningRate = k_learningRateDefault,

@@ -692,7 +692,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    m_stage = Stage::InitializedBoosting;
 }
 
-FloatEbmType TestApi::Boost(
+BoostRet TestApi::Boost(
    const IntEbmType indexFeatureGroup,
    const GenerateUpdateOptionsType options,
    const FloatEbmType learningRate,
@@ -720,7 +720,8 @@ FloatEbmType TestApi::Boost(
       exit(1);
    }
 
-   FloatEbmType validationMetricOut = FloatEbmType { 0 };
+   FloatEbmType gain = std::numeric_limits<FloatEbmType>::quiet_NaN();
+   FloatEbmType validationMetric = std::numeric_limits<FloatEbmType>::quiet_NaN();
 
    error = GenerateModelUpdate(
       m_boosterHandle,
@@ -729,7 +730,7 @@ FloatEbmType TestApi::Boost(
       learningRate,
       countSamplesRequiredForChildSplitMin,
       0 == leavesMax.size() ? nullptr : &leavesMax[0],
-      nullptr
+      &gain
    );
    if(Error_None != error) {
       exit(1);
@@ -762,13 +763,13 @@ FloatEbmType TestApi::Boost(
    }
    error = ApplyModelUpdate(
       m_boosterHandle,
-      &validationMetricOut
+      &validationMetric
    );
 
    if(Error_None != error) {
       exit(1);
    }
-   return validationMetricOut;
+   return BoostRet { gain, validationMetric };
 }
 
 FloatEbmType TestApi::GetBestModelPredictorScore(

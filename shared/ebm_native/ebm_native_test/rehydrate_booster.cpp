@@ -30,8 +30,8 @@ TEST_CASE("Test Rehydration, boosting, regression") {
       testRestart.AddValidationSamples({ TestSample({}, 12, 1, { model0 }) });
       testRestart.InitializeBoosting();
 
-      validationMetricRestart = testRestart.Boost(0);
-      validationMetricContinuous = testContinuous.Boost(0);
+      validationMetricRestart = testRestart.Boost(0).validationMetric;
+      validationMetricContinuous = testContinuous.Boost(0).validationMetric;
       CHECK_APPROX(validationMetricContinuous, validationMetricRestart);
 
       modelValueContinuous = testContinuous.GetCurrentModelPredictorScore(0, {}, 0);
@@ -62,8 +62,8 @@ TEST_CASE("Test Rehydration, boosting, binary") {
       testRestart.AddValidationSamples({ TestSample({}, 0, 1, { model0, model1 }) });
       testRestart.InitializeBoosting();
 
-      validationMetricRestart = testRestart.Boost(0);
-      validationMetricContinuous = testContinuous.Boost(0);
+      validationMetricRestart = testRestart.Boost(0).validationMetric;
+      validationMetricContinuous = testContinuous.Boost(0).validationMetric;
       CHECK_APPROX(validationMetricContinuous, validationMetricRestart);
 
       modelValueContinuous = testContinuous.GetCurrentModelPredictorScore(0, {}, 0);
@@ -99,8 +99,8 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
       testRestart.AddValidationSamples({ TestSample({}, 0, 1, { model0, model1, model2 }) });
       testRestart.InitializeBoosting();
 
-      validationMetricRestart = testRestart.Boost(0);
-      validationMetricContinuous = testContinuous.Boost(0);
+      validationMetricRestart = testRestart.Boost(0).validationMetric;
+      validationMetricContinuous = testContinuous.Boost(0).validationMetric;
       CHECK_APPROX(validationMetricContinuous, validationMetricRestart);
 
       modelValueContinuous = testContinuous.GetCurrentModelPredictorScore(0, {}, 0);
