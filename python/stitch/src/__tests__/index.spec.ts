@@ -34,11 +34,3 @@ describe('Stitch', () => {
     });
   });
 });
-
-// assert w.kernelmsg == ''
-// assert w.clientmsg == ''
-// assert w.srcdoc == '<p>srcdoc should be defined by the user</p>'
-// assert w.initial_height == '1px'
-// assert w.initial_width == '1px'
-// assert w.initial_border == '0'
-// 
