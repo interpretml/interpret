@@ -762,63 +762,22 @@ static ErrorEbmType GenerateModelUpdateInternal(
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
    FloatEbmType totalGain = FloatEbmType { 0 };
-   if(nullptr != pBoosterCore->GetSamplingSets()) {
+   const SamplingSet * const * ppSamplingSet = pBoosterCore->GetSamplingSets();
+   if(nullptr != ppSamplingSet) {
       pBoosterShell->GetOverwritableModelUpdate()->SetCountDimensions(cDimensions);
       // if we have ignored dimensions, set the splits count to zero!
       // we only need to do this once instead of per-loop since any dimensions with 1 bin 
       // are going to remain having 0 splits.
       pBoosterShell->GetOverwritableModelUpdate()->Reset();
 
-      for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
-         FloatEbmType gain;
+      EBM_ASSERT(1 <= cSamplingSetsAfterZero);
+      const SamplingSet * const * const ppSamplingSetEnd = &ppSamplingSet[cSamplingSetsAfterZero];
+      const FloatEbmType invertedSampleCount = FloatEbmType { 1 } / cSamplingSetsAfterZero;
+      do {
+         const SamplingSet * const pSamplingSet = *ppSamplingSet;
          if(UNLIKELY(IntEbmType { 0 } == lastDimensionLeavesMax)) {
             LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal boosting zero dimensional");
-            error =
-               BoostZeroDimensional(pBoosterShell, pBoosterCore->GetSamplingSets()[iSamplingSet], options);
-            if(Error_None != error) {
-               if(LIKELY(nullptr != pGainReturn)) {
-                  *pGainReturn = FloatEbmType { 0 };
-               }
-               return error;
-            }
-            gain = FloatEbmType { 0 };
-         } else if(0 != (GenerateUpdateOptions_RandomSplits & options) || 2 < cSignificantDimensions) {
-            if(size_t { 1 } != cSamplesRequiredForChildSplitMin) {
-               LOG_0(TraceLevelWarning, 
-                  "WARNING GenerateModelUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"
-               );
-            }
-            // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
-
-            error = BoostRandom(
-               pBoosterShell,
-               pFeatureGroup,
-               pBoosterCore->GetSamplingSets()[iSamplingSet],
-               options,
-               aLeavesMax,
-               &gain
-            );
-            if(Error_None != error) {
-               if(LIKELY(nullptr != pGainReturn)) {
-                  *pGainReturn = FloatEbmType { 0 };
-               }
-               return error;
-            }
-         } else if(1 == cSignificantDimensions) {
-            EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
-            EBM_ASSERT(IntEbmType { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
-            EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
-
-            error = BoostSingleDimensional(
-               pBoosterShell,
-               pFeatureGroup,
-               cSignificantBinCount,
-               pBoosterCore->GetSamplingSets()[iSamplingSet],
-               iDimensionImportant,
-               cSamplesRequiredForChildSplitMin,
-               lastDimensionLeavesMax,
-               &gain
-            );
+            error = BoostZeroDimensional(pBoosterShell, pSamplingSet, options);
             if(Error_None != error) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -826,24 +785,72 @@ static ErrorEbmType GenerateModelUpdateInternal(
                return error;
             }
          } else {
-            error = BoostMultiDimensional(
-               pBoosterShell,
-               pFeatureGroup,
-               pBoosterCore->GetSamplingSets()[iSamplingSet],
-               cSamplesRequiredForChildSplitMin,
-               &gain
-            );
-            if(Error_None != error) {
-               if(LIKELY(nullptr != pGainReturn)) {
-                  *pGainReturn = FloatEbmType { 0 };
+            FloatEbmType gain;
+            if(0 != (GenerateUpdateOptions_RandomSplits & options) || 2 < cSignificantDimensions) {
+               if(size_t { 1 } != cSamplesRequiredForChildSplitMin) {
+                  LOG_0(TraceLevelWarning,
+                     "WARNING GenerateModelUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"
+                  );
                }
-               return error;
+               // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
+
+               error = BoostRandom(
+                  pBoosterShell,
+                  pFeatureGroup,
+                  pSamplingSet,
+                  options,
+                  aLeavesMax,
+                  &gain
+               );
+               if(Error_None != error) {
+                  if(LIKELY(nullptr != pGainReturn)) {
+                     *pGainReturn = FloatEbmType { 0 };
+                  }
+                  return error;
+               }
+            } else if(1 == cSignificantDimensions) {
+               EBM_ASSERT(nullptr != aLeavesMax); // otherwise we'd use BoostZeroDimensional above
+               EBM_ASSERT(IntEbmType { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
+               EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
+
+               error = BoostSingleDimensional(
+                  pBoosterShell,
+                  pFeatureGroup,
+                  cSignificantBinCount,
+                  pSamplingSet,
+                  iDimensionImportant,
+                  cSamplesRequiredForChildSplitMin,
+                  lastDimensionLeavesMax,
+                  &gain
+               );
+               if(Error_None != error) {
+                  if(LIKELY(nullptr != pGainReturn)) {
+                     *pGainReturn = FloatEbmType { 0 };
+                  }
+                  return error;
+               }
+            } else {
+               error = BoostMultiDimensional(
+                  pBoosterShell,
+                  pFeatureGroup,
+                  pSamplingSet,
+                  cSamplesRequiredForChildSplitMin,
+                  &gain
+               );
+               if(Error_None != error) {
+                  if(LIKELY(nullptr != pGainReturn)) {
+                     *pGainReturn = FloatEbmType { 0 };
+                  }
+                  return error;
+               }
             }
+            // regression can be -infinity or slightly negative in extremely rare circumstances.  
+            // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
+            EBM_ASSERT(std::isnan(gain) || (!bClassification) && std::isinf(gain) || k_epsilonNegativeGainAllowed <= gain); // we previously normalized to 0
+            gain = gain * invertedSampleCount;
+            totalGain += gain;
          }
-         // regression can be -infinity or slightly negative in extremely rare circumstances.  
-         // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
-         EBM_ASSERT(std::isnan(gain) || (!bClassification) && std::isinf(gain) || k_epsilonNegativeGainAllowed <= gain); // we previously normalized to 0
-         totalGain += gain;
+
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
          // others are working, so there should be no blocking and our final result won't require adding by the main thread
          error = pBoosterShell->GetAccumulatedModelUpdate()->Add(*pBoosterShell->GetOverwritableModelUpdate());
@@ -853,8 +860,9 @@ static ErrorEbmType GenerateModelUpdateInternal(
             }
             return error;
          }
-      }
-      totalGain /= static_cast<FloatEbmType>(cSamplingSetsAfterZero);
+         ++ppSamplingSet;
+      } while(ppSamplingSetEnd != ppSamplingSet);
+
       // regression can be -infinity or slightly negative in extremely rare circumstances.  
       // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
       EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
@@ -878,14 +886,14 @@ static ErrorEbmType GenerateModelUpdateInternal(
          //       pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses here to keep learning rates as equivalent as possible..  
          //       Actually, I think the real solution here is that 
          //   pBoosterCore->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(
-         //      learningRate / cSamplingSetsAfterZero * (pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses - 1) / 
+         //      learningRate * invertedSampleCount * (pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses - 1) / 
          //      pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses
          //   );
          //} else {
          //   // TODO : for classification, is our learning rate essentially being inflated as 
          //        pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses goes up?  If so, maybe we should divide by 
          //        pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses here to keep learning rates equivalent as possible
-         //   pBoosterCore->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
+         //   pBoosterCore->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate * invertedSampleCount);
          //}
 
          // TODO: When NewtonBoosting is enabled, we need to multiply our rate by (K - 1)/K (see above), per:
@@ -895,19 +903,19 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
          const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
          if(bDividing) {
-            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
+            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount * 0.5);
          } else {
-            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount);
          }
       } else {
-         bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+         bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount);
       }
 
       // handle the case where totalGain is either +infinity or -infinity (very rare, see above), or NaN
       // don't use std::inf because with some compiler flags on some compilers that isn't reliable
       if(UNLIKELY(
-         UNLIKELY(bBad) || 
-         UNLIKELY(std::isnan(totalGain)) || 
+         UNLIKELY(bBad) ||
+         UNLIKELY(std::isnan(totalGain)) ||
          UNLIKELY(totalGain <= std::numeric_limits<FloatEbmType>::lowest()) ||
          UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= totalGain)
       )) {

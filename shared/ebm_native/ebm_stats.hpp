@@ -39,6 +39,9 @@ static_assert(
    "We can't even guarantee that infinity exists as a concept."
 );
 
+constexpr FloatEbmType k_hessianMin = std::numeric_limits<FloatEbmType>::denorm_min();
+constexpr FloatEbmType k_gainMin = FloatEbmType { 0 };
+
 // HANDLING SPECIAL FLOATING POINT VALUES (NaN/infinities/denormals/-0):
 // - it should be virtually impossible to get NaN values anywhere in this code without being given an 
 //   adversarial dataset or adversarial input parameters [see notes below], but they are possible so we need to
@@ -456,82 +459,36 @@ public:
    }
 
    INLINE_ALWAYS static FloatEbmType CalcPartialGain(const FloatEbmType sumGradient, const FloatEbmType sumHessian) {
-      // this function can SOMETIMES be performance critical as it's called on every histogram bin
-      // it will only be performance critical for truely continous numerical features that we're not binning, or for interactions where dimensionality
-      // creates many bins
+      // typically this is not performance critical, unless the caller has a very large number of bins
 
-      // for MART, sumHessian will just be the count of samples
+      // This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which 
+      // can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
 
-      // for classification, sumGradient can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
-      //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
-      //   logit, and InverseLinkFunctionThenCalculateGradientBinaryClassification will return a NaN value. Getting both sumGradient and sumHessian to zero is hard.  
-      //   sumGradient can always be zero since it's a sum of positive and negative values sumHessian is harder to get to zero, 
-      //   since it's a sum of positive numbers.  The sumHessian is the sum of values returned from CalculateHessianFromGradientBinaryClassification.  gradient 
-      //   must be -1, 0, or +1 to make the hessian zero.  -1 and +1 are hard, but not impossible to get to with really bad inputs, 
-      //   since boosting tends to push errors towards 0.  An error of 0 is most likely when the denominator term in either
-      //   InverseLinkFunctionThenCalculateGradientBinaryClassification or TransformScoreToGradientMulticlass becomes close to epsilon.  Once that happens
-      //   for InverseLinkFunctionThenCalculateGradientBinaryClassification the 1 + epsilon = 1, then we have 1/1, which is exactly 1, then we subtract 1 from 1.
-      //   This can happen after as little as 3604 rounds of boosting, if learningRate is 0.01, and every boosting round we update by the limit of
-      //   0.01 [see notes at top of EbmStats.h].  It might happen for a single sample even faster if multiple variables boost the logit
-      //   upwards.  We just terminate boosting after that many rounds if this occurs.
+      EBM_ASSERT(FloatEbmType { 0 } < k_hessianMin);
+      const FloatEbmType partialGain = UNLIKELY(sumHessian < k_hessianMin) ? 
+         FloatEbmType { 0 } : sumGradient / sumHessian * sumGradient;
 
-      // for regression, gradient can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
-      //   +-std::numeric_limits<FloatEbmType>::max(), the sumGradient can reach +-infinity since they are a sum.
-      //   After sumGradient reaches +-infinity, we'll get a graph update with a +infinity, and some samples with +-infinity scores
-      //   Then, on the next feature that we boost on, we'll calculate a model update for some samples  
-      //   inside ComputeSinglePartitionUpdate as +-infinity/sumHessian, which will be +-infinity (of the same sign). 
-      //   Then, when we go to calculate our new sample scores, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), 
-      //   which will result in NaN.  After that, everything melts down to NaN.  The user just needs to not give us such high regression targets.
-      //   If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value 
-      //   (of 7.2e+134)
+      // This function should not create new NaN values, but if either sumGradient or sumHessian is a NaN then the 
+      // result will be a NaN.  This could happen for instance if large value samples added to +inf in one bin and -inf 
+      // in another bin, and then the two bins are added together. That would lead to NaN even without NaN samples.
 
-      // for classification, sumGradient CANNOT be +-infinity-> even with an +-infinity logit, see InverseLinkFunctionThenCalculateGradientBinaryClassification and 
-      //   TransformScoreToGradientMulticlass also, since -cSamples <= sumGradient && sumGradient <= cSamples, and since cSamples must be 64 bits 
-      //   or lower, we cann't overflow to infinity when taking the sum
-
-      // for classification -cSamples <= sumGradient && sumGradient <= cSamples
-      
-      // for regression sumGradient can be any legal value, including +infinity or -infinity
-
-      // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the 
-      //   derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
-
-      // TODO: we're using this node splitting score for both classification and regression.  It is designed to minimize MSE, so should we also then use 
-      //    it for classification?  What about the possibility of using Newton-Raphson step in the gain?
-      // TODO: we should also add an option to optimize for mean absolute error
-
-      EBM_ASSERT(!std::isnan(sumHessian)); // this starts as an integer
-      // sumHessian can reach inf with big weights
-
-      // sumHessian can be zero if all the weights are zero, even if all splits are prevented using restrictions, 
-      // so we need to check the denominator for 0 regardless.
-      EBM_ASSERT(FloatEbmType { 0 } <= sumHessian);
-      const FloatEbmType partialGain = FloatEbmType { 0 } == sumHessian ? FloatEbmType { 0 } : sumGradient / sumHessian * sumGradient;
-
-      // for both classification and regression, we're squaring sumGradient, and sumHessian is positive.  No reasonable floating point implementation 
-      // should turn this negative
-
-      // for both classification and regression, we shouldn't generate a new NaN value from our calculation since sumHessian can't be zero or inifinity, 
-      //   but we might need to propagage a NaN sumGradient value
-
-      // for classification, 0 <= singlePartitionGain && singlePartitionGain <= cSamples + some_epsilon, since sumGradient can't be infinity or have absolute values above cSamples
-
-      // for regression, the output can be any positive number from zero to +infinity
-
-      EBM_ASSERT(std::isnan(sumGradient) || FloatEbmType { 0 } <= partialGain);
+      EBM_ASSERT(std::isnan(sumGradient) || std::isnan(sumHessian) || FloatEbmType { 0 } <= partialGain);
       return partialGain;
    }
 
    INLINE_ALWAYS static FloatEbmType CalcPartialGainFromUpdate(const FloatEbmType update, const FloatEbmType sumHessian) {
-      // the update is: sum_gradient / sum_hessian
-      // For gain we want sum_gradient * sum_gradient / sum_hessian
-      // we can get there by doing: update * update * sum_hessian
-      // which can be simplified as: (sum_gradient / sum_hessian) * (sum_gradient / sum_hessian) * sum_hessian
-      // and then: (sum_gradient / sum_hessian) * sum_gradient
-      // finally: sum_gradient * sum_gradient / sum_hessian
+      // the update is: sumGradient / sumHessian
+      // For gain we want sumGradient * sumGradient / sumHessian
+      // we can get there by doing: update * update * sumHessian
+      // which can be simplified as: (sumGradient / sumHessian) * (sumGradient / sumHessian) * sumHessian
+      // and then: (sumGradient / sumHessian) * sumGradient
+      // finally: sumGradient * sumGradient / sumHessian
 
-      const FloatEbmType partialGain = update * update * sumHessian;
-      EBM_ASSERT(std::isnan(partialGain) || FloatEbmType { 0 } <= partialGain);
+      EBM_ASSERT(FloatEbmType { 0 } < k_hessianMin);
+      const FloatEbmType partialGain = UNLIKELY(sumHessian < k_hessianMin) ?
+         FloatEbmType { 0 } : update * update * sumHessian;
+
+      EBM_ASSERT(std::isnan(update) || std::isnan(sumHessian) || FloatEbmType { 0 } <= partialGain);
       return partialGain;
    }
 

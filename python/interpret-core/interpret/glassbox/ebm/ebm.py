@@ -1143,7 +1143,7 @@ class BaseEBM(BaseEstimator):
         """ Provides the term importances
 
         Args:
-            style: the type of term importance requested
+            style: the type of term importance requested ('avg_weight', 'min_max')
 
         Returns:
             An array term importances with one importance per additive term

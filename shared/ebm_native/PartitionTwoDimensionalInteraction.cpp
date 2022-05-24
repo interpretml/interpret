@@ -313,8 +313,8 @@ public:
 
                                  EBM_ASSERT(std::abs(g00 - EbmStats::CalcPartialGain(r00, d00)) < 0.001);
                                  EBM_ASSERT(std::abs(g01 - EbmStats::CalcPartialGain(r01, d01)) < 0.001);
-                                 EBM_ASSERT(std::abs(g11 - EbmStats::CalcPartialGain(r10, d10)) < 0.001);
-                                 EBM_ASSERT(std::abs(g10 - EbmStats::CalcPartialGain(r11, d11)) < 0.001);
+                                 EBM_ASSERT(std::abs(g10 - EbmStats::CalcPartialGain(r10, d10)) < 0.001);
+                                 EBM_ASSERT(std::abs(g11 - EbmStats::CalcPartialGain(r11, d11)) < 0.001);
 #endif // NDEBUG
                                  gain += g00;
                                  gain += g01;
@@ -334,7 +334,7 @@ public:
                         // If we get a NaN result, we'd like to propagate it by making bestGain NaN.  
                         // The rules for NaN values say that non equality comparisons are all false so, 
                         // let's flip this comparison such that it should be true for NaN values.
-                        if(UNLIKELY(! /* NaN */ LIKELY(gain <= bestGain))) {
+                        if(UNLIKELY(/* NaN */ !LIKELY(gain <= bestGain))) {
                            bestGain = gain;
                         } else {
                            EBM_ASSERT(!std::isnan(gain));
@@ -352,9 +352,9 @@ public:
       EBM_ASSERT(std::isnan(bestGain) || FloatEbmType { 0 } <= bestGain);
 
       if(0 == (InteractionOptions_Pure & options)) {
-         // if we are detecting impure interaction then so far we've only calculated the first part of the RSS 
-         // calculation but we still need to subtract the RSS of the non-split case and subtract it to have
-         // gain. All the splits we've analyzed so far though had the same non-split RSS, so we subtract it here
+         // if we are detecting impure interaction then so far we have only calculated the children partial gain 
+         // but we still need to subtract the partial gain of the parent to have
+         // gain. All the splits we've analyzed so far though had the same non-split partial gain, so we subtract it here
          // instead of inside the loop.
 
          // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
@@ -384,19 +384,18 @@ public:
          // reached -inf due to numeric instability, but we should eventually return zero in this case.
          // We fix this up though in our caller.
          // bestGain can also be substantially negative if we didn't find any legal cuts and 
-         // then we subtracted the base RSS here from zero
+         // then we subtracted the base partial gain here from zero
 
          // if no legal splits were found, then bestGain will be zero.  In theory we should
-         // therefore not subtract the base RSS, but doing so does no harm since we later set any
+         // therefore not subtract the parent partial gain, but doing so does no harm since we later set any
          // negative interaction score to zero in the caller of this function.  Due to that we don't
          // need to check here, since any value we subtract from zero will lead to a negative number and
          // then will be zeroed by our caller
          // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative gain.
 
          EBM_ASSERT(std::isnan(bestGain) ||
-            !bAnySplits ||
             -std::numeric_limits<FloatEbmType>::infinity() == bestGain ||
-            k_epsilonNegativeGainAllowed <= bestGain);
+            k_epsilonNegativeGainAllowed <= bestGain || !bAnySplits);
       }
 
       // we clean up bestGain in the caller, since this function is templated and created many times

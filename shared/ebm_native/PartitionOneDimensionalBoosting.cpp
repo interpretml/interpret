@@ -99,7 +99,7 @@ static void Flatten(
 //   Probably 1 split isn't very good since with 2 splits we can localize a region of high gain in the center somewhere
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
+static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    BoosterShell * const pBoosterShell,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -247,11 +247,9 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          }
          EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain);
 
-         // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
-         // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.
-         // NaN values will get us soon and shut down boosting.
-         if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/
-            !(gain < BEST_gain))) {
+         if(UNLIKELY(/* NaN */ !LIKELY(gain < BEST_gain))) {
+            // propagate NaN values since we stop boosting when we see them
+
             // it's very possible that we have bins with zero samples in them, in which case we could easily be presented with equally favorable splits
             // or it's even possible for two different possible unrelated sections of bins, or individual bins to have exactly the same gain 
             // (think low count symetric data) we want to avoid any bias of always choosing the higher or lower value to split on, so what we should 
@@ -288,6 +286,8 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             );
 
             pTreeSweepCur = AddBytesTreeSweep(pTreeSweepCur, cBytesPerTreeSweep);
+         } else {
+            EBM_ASSERT(!std::isnan(gain));
          }
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -313,9 +313,26 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= BEST_gain))) {
 
       // we didn't find any valid splits, or we hit an overflow
-      return true;
+      return 1;
    }
    EBM_ASSERT(FloatEbmType { 0 } <= BEST_gain);
+
+   FloatEbmType sumHessiansOverwrite = pTreeNode->GetWeight();
+   const HistogramTargetEntry<bClassification> * pHistEntryParent = pTreeNode->GetHistogramTargetEntry();
+
+   for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+      const FloatEbmType sumGradientsParent = pHistEntryParent[iVector].m_sumGradients;
+      if(bClassification) {
+         if(bUseLogitBoost) {
+            sumHessiansOverwrite = pHistEntryParent[iVector].GetSumHessians();
+         }
+      }
+      const FloatEbmType gain1 = EbmStats::CalcPartialGain(sumGradientsParent, sumHessiansOverwrite);
+      EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+      BEST_gain -= gain1;
+   }
+
+   EBM_ASSERT(std::isnan(BEST_gain) || (!bClassification) && std::isinf(BEST_gain) || k_epsilonNegativeGainAllowed <= BEST_gain);
 
    RandomStream * const pRandomStream = pBoosterCore->GetRandomStream();
 
@@ -325,7 +342,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       pTreeSweepStart = AddBytesTreeSweep(pTreeSweepStart, cBytesPerTreeSweep * iRandom);
    }
 
-   TreeNode<bClassification> * const pLeftChild =
+   TreeNode<bClassification> * const pLeftChild = 
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
    const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pTreeSweepStart->GetBestHistogramBucketEntry();
@@ -344,15 +361,13 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    pRightChild->BEFORE_SetHistogramBucketEntryFirst(BEST_pHistogramBucketEntryNext);
    const size_t cSamplesParent = pTreeNode->AMBIGUOUS_GetCountSamples();
+   // if there were zero samples in the entire dataset then we shouldn't have found a split worth making and we 
+   // should have handled the empty dataset earlier
+   EBM_ASSERT(0 < cSamplesParent);
    pRightChild->AMBIGUOUS_SetCountSamples(cSamplesParent - BEST_cSamplesLeft);
 
-   FloatEbmType sumHessiansParent = pTreeNode->GetWeight();
-   pRightChild->SetWeight(sumHessiansParent - BEST_weightLeft);
-
-   // if the total samples is 0 then we should be using our specialty handling of that case
-   // if the total samples if not 0, then our splitting code should never split any node that has zero on either the left or right, so no new 
-   // parent should ever have zero samples
-   EBM_ASSERT(0 < cSamplesParent);
+   const FloatEbmType weightParent = pTreeNode->GetWeight();
+   pRightChild->SetWeight(weightParent - BEST_weightLeft);
 
    HistogramTargetEntry<bClassification> * pHistogramTargetEntryLeftChild =
       pLeftChild->GetHistogramTargetEntry();
@@ -366,7 +381,6 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const HistogramTargetEntry<bClassification> * pHistogramTargetEntrySweep =
       pTreeSweepStart->GetBestHistogramTargetEntry();
 
-   // TODO: usually we've done this calculation for the parent already.  Why not keep the result arround to avoid extra work?
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       const FloatEbmType BEST_sumGradientsLeft = pHistogramTargetEntrySweep[iVector].m_sumGradients;
       pHistogramTargetEntryLeftChild[iVector].m_sumGradients = BEST_sumGradientsLeft;
@@ -376,19 +390,10 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       if(bClassification) {
          const FloatEbmType BEST_sumHessiansLeft = pHistogramTargetEntrySweep[iVector].GetSumHessians();
          pHistogramTargetEntryLeftChild[iVector].SetSumHessians(BEST_sumHessiansLeft);
-         const FloatEbmType newSumHessiansParent = pHistogramTargetEntryTreeNode[iVector].GetSumHessians();
-         pHistogramTargetEntryRightChild[iVector].SetSumHessians(newSumHessiansParent - BEST_sumHessiansLeft);
-         if(bUseLogitBoost) {
-            sumHessiansParent = newSumHessiansParent;
-         }
+         const FloatEbmType sumHessiansParent = pHistogramTargetEntryTreeNode[iVector].GetSumHessians();
+         pHistogramTargetEntryRightChild[iVector].SetSumHessians(sumHessiansParent - BEST_sumHessiansLeft);
       }
-
-      const FloatEbmType gain1 = EbmStats::CalcPartialGain(sumGradientsParent, sumHessiansParent);
-      EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
-      BEST_gain -= gain1;
    }
-   EBM_ASSERT(std::isnan(BEST_gain) || (!bClassification) && std::isinf(BEST_gain) || k_epsilonNegativeGainAllowed <= BEST_gain);
-
 
    // IMPORTANT!! : we need to finish all our calls that use this->m_UNION.m_beforeExaminationForPossibleSplitting BEFORE setting anything in 
    // m_UNION.m_afterExaminationForPossibleSplitting as we do below this comment!  The call above to this->GetSamples() needs to be done above 
@@ -417,7 +422,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       pTreeNode->AFTER_GetSplitGain()
    );
 
-   return false;
+   return 0;
 }
 
 template<bool bClassification>
@@ -530,12 +535,13 @@ public:
          pBoosterShell->GetOverwritableModelUpdate();
 
       size_t cLeaves;
-      if(ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
+      const int retExamine = ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
          pBoosterShell,
          pRootTreeNode,
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
          cSamplesRequiredForChildSplitMin
-      )) {
+      );
+      if(UNLIKELY(0 != retExamine)) {
          // there will be no splits at all
          error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension, 0);
          if(UNLIKELY(Error_None != error)) {
@@ -744,7 +750,7 @@ public:
                }
                // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED
                // because splitting sets splitGain to a non-illegalGain value
-               if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
+               if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
                   pBoosterShell,
                   pLeftChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
@@ -788,7 +794,7 @@ public:
                }
                // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED 
                // because splitting sets splitGain to a non-NaN value
-               if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
+               if(0 == ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
                   pBoosterShell,
                   pRightChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
