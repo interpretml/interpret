@@ -557,15 +557,8 @@ static ErrorEbmType BoostMultiDimensional(
          return error;
       }
 
-      // gain can be -infinity for regression in a super-super-super-rare condition.  
-      // See notes above regarding "gain = bestGain - gainParent"
-
-      // TODO: we should probably normalize the gain by dividing by the total weight inside the inner bag.  We
-      // do this when calculating the interactions score, and I think XGBoost/LightGBM do the same thing for gain
-
-      // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
-      EBM_ASSERT(std::isnan(*pTotalGain) || (!bClassification) && std::isinf(*pTotalGain) ||
-         k_epsilonNegativeGainAllowed <= *pTotalGain);
+      EBM_ASSERT(!std::isnan(*pTotalGain));
+      EBM_ASSERT(FloatEbmType { 0 } <= *pTotalGain);
    } else {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional 2 != pFeatureGroup->GetCountSignificantFeatures()");
 
@@ -675,15 +668,8 @@ static ErrorEbmType BoostRandom(
       return error;
    }
 
-   // gain can be -infinity for regression in a super-super-super-rare condition.  
-   // See notes above regarding "gain = bestGain - gainParent"
-
-   // TODO: we should probably normalize the gain by dividing by the total weight inside the inner bag.  We
-   // do this when calculating the interactions score, and I think XGBoost/LightGBM do the same thing for gain
-
-   // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
-   EBM_ASSERT(std::isnan(*pTotalGain) || (!bClassification) && std::isinf(*pTotalGain) ||
-      k_epsilonNegativeGainAllowed <= *pTotalGain);
+   EBM_ASSERT(!std::isnan(*pTotalGain));
+   EBM_ASSERT(FloatEbmType { 0 } <= *pTotalGain);
 
    LOG_0(TraceLevelVerbose, "Exited BoostRandom");
    return Error_None;
@@ -844,11 +830,16 @@ static ErrorEbmType GenerateModelUpdateInternal(
                   return error;
                }
             }
-            // regression can be -infinity or slightly negative in extremely rare circumstances.  
-            // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
-            EBM_ASSERT(std::isnan(gain) || (!bClassification) && std::isinf(gain) || k_epsilonNegativeGainAllowed <= gain); // we previously normalized to 0
+
+            // gain should be +inf if there was an overflow in our callees
+            EBM_ASSERT(!std::isnan(gain));
+            EBM_ASSERT(FloatEbmType { 0 } <= gain);
+
+            EBM_ASSERT(invertedSampleCount <= FloatEbmType { 1 });
             gain = gain * invertedSampleCount;
             totalGain += gain;
+            EBM_ASSERT(!std::isnan(totalGain));
+            EBM_ASSERT(FloatEbmType { 0 } <= totalGain);
          }
 
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
@@ -863,9 +854,28 @@ static ErrorEbmType GenerateModelUpdateInternal(
          ++ppSamplingSet;
       } while(ppSamplingSetEnd != ppSamplingSet);
 
-      // regression can be -infinity or slightly negative in extremely rare circumstances.  
-      // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
-      EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
+      // totalGain is +inf on overflow. It cannot be NaN, but check for that anyways since it's free
+      EBM_ASSERT(!std::isnan(totalGain));
+      EBM_ASSERT(FloatEbmType { 0 } <= totalGain);
+
+      if(UNLIKELY(/* NaN */ !LIKELY(totalGain <= std::numeric_limits<FloatEbmType>::max()))) {
+         // this also checks for NaN since NaN < anything is FALSE
+
+         // indicate an error/overflow with -inf similar to interaction strength.
+         // Making it -inf gives it the worst ranking possible and avoids the weirdness of NaN
+
+         // it is possible that some of our inner bags overflowed but others did not
+         // in some boosting we allow both an update and an overflow.  We indicate the overflow
+         // to the caller via a negative gain, but we pass through any update and let the caller
+         // decide if they want to stop boosting at that point or continue.
+         // So, if there is an update do not reset it here
+
+         totalGain = k_illegalGain;
+      } else {
+         EBM_ASSERT(!std::isnan(totalGain));
+         EBM_ASSERT(!std::isinf(totalGain));
+         EBM_ASSERT(FloatEbmType { 0 } <= totalGain);
+      }
 
       LOG_0(TraceLevelVerbose, "GenerateModelUpdatePerTargetClasses done sampling set loop");
 
@@ -911,24 +921,22 @@ static ErrorEbmType GenerateModelUpdateInternal(
          bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount);
       }
 
-      // handle the case where totalGain is either +infinity or -infinity (very rare, see above), or NaN
-      // don't use std::inf because with some compiler flags on some compilers that isn't reliable
-      if(UNLIKELY(
-         UNLIKELY(bBad) ||
-         UNLIKELY(std::isnan(totalGain)) ||
-         UNLIKELY(totalGain <= std::numeric_limits<FloatEbmType>::lowest()) ||
-         UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= totalGain)
-      )) {
+      if(UNLIKELY(bBad)) {
+         // our update contains a NaN or -inf or +inf and we cannot tollerate a model that does this, so destroy it
+
          pBoosterShell->GetAccumulatedModelUpdate()->SetCountDimensions(cDimensions);
          pBoosterShell->GetAccumulatedModelUpdate()->Reset();
-         // declare there is no gain, so that our caller will think there is no benefit in splitting us, which there isn't since we're zeroed.
-         totalGain = FloatEbmType { 0 };
-      } else if(UNLIKELY(totalGain < FloatEbmType { 0 })) {
-         totalGain = FloatEbmType { 0 };
+
+         // also, signal to our caller that an overflow occured with a negative gain
+         totalGain = k_illegalGain;
       }
    }
 
    pBoosterShell->SetFeatureGroupIndex(iFeatureGroup);
+
+   EBM_ASSERT(!std::isnan(totalGain));
+   EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != totalGain);
+   EBM_ASSERT(k_illegalGain == totalGain || FloatEbmType { 0 } <= totalGain);
 
    if(nullptr != pGainReturn) {
       *pGainReturn = totalGain;

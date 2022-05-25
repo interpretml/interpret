@@ -296,7 +296,7 @@ public:
 #endif // NDEBUG
             );
 
-         if(LIKELY(/* NaN */ !(k_illegalGain == gain1))) {
+         if(LIKELY(/* NaN */ !UNLIKELY(gain1 < FloatEbmType { 0 }))) {
             EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
 
             size_t splitSecond1HighBest;
@@ -321,13 +321,15 @@ public:
 #endif // NDEBUG
                );
 
-            if(LIKELY(/* NaN */ !(k_illegalGain == gain2))) {
+            if(LIKELY(/* NaN */ !UNLIKELY(gain2 < FloatEbmType { 0 }))) {
                EBM_ASSERT(std::isnan(gain2) || FloatEbmType { 0 } <= gain2);
 
                const FloatEbmType gain = gain1 + gain2;
                if(UNLIKELY(/* NaN */ !LIKELY(gain <= bestGain))) {
                   // propagate NaNs
-                  
+
+                  EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain);
+
                   bestGain = gain;
                   splitFirst1Best = iBin1;
                   splitFirst1LowBest = splitSecond1LowBest;
@@ -393,7 +395,7 @@ public:
 #endif // NDEBUG
             );
 
-         if(LIKELY(/* NaN */ !(k_illegalGain == gain1))) {
+         if(LIKELY(/* NaN */ !UNLIKELY(gain1 < FloatEbmType { 0 }))) {
             EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
 
             size_t splitSecond2HighBest;
@@ -418,12 +420,14 @@ public:
 #endif // NDEBUG
                );
 
-            if(LIKELY(/* NaN */ !(k_illegalGain == gain2))) {
+            if(LIKELY(/* NaN */ !UNLIKELY(gain2 < FloatEbmType { 0 }))) {
                EBM_ASSERT(std::isnan(gain2) || FloatEbmType { 0 } <= gain2);
 
                const FloatEbmType gain = gain1 + gain2;
                if(UNLIKELY(/* NaN */ !LIKELY(gain <= bestGain))) {
                   // propagate NaNs
+
+                  EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain);
 
                   bestGain = gain;
                   splitFirst2Best = iBin2;
@@ -451,6 +455,7 @@ public:
       } while(iBin2 < cBinsDimension2 - 1);
       LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Done sweep loops");
 
+      EBM_ASSERT(std::isnan(bestGain) || k_illegalGain == bestGain || FloatEbmType { 0 } <= bestGain);
 
       // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
       // which contains the totals of all buckets
@@ -466,330 +471,348 @@ public:
       const FloatEbmType weightAll = pTotal->GetWeightInBucket();
       EBM_ASSERT(0 < weightAll);
 
-      // if we get a NaN result for bestGain, we might as well do less work and just create a zero split update right now.  The rules 
-      // for NaN values say that non equality comparisons are all false so, let's flip this comparison such that it should be true for NaN values.  
-      // If the compiler violates NaN comparions rules, no big deal.  NaN values will get us soon and shut down boosting.
-      if(LIKELY(k_illegalGain != bestGain)) {
-         EBM_ASSERT(!std::isnan(bestGain));
-         EBM_ASSERT(k_illegalGain != bestGain);
+      *pTotalGain = FloatEbmType { 0 };
+      EBM_ASSERT(0 <= k_gainMin);
+      if(LIKELY(/* NaN */ !UNLIKELY(bestGain < k_gainMin))) {
+         EBM_ASSERT(std::isnan(bestGain) || FloatEbmType { 0 } <= bestGain);
 
-         // now subtract the parent partial gain
+         // signal that we've hit an overflow.  Use +inf here since our caller likes that and will flip to -inf
+         *pTotalGain = std::numeric_limits<FloatEbmType>::infinity();
+         if(LIKELY(/* NaN */ bestGain <= std::numeric_limits<FloatEbmType>::max())) {
+            EBM_ASSERT(!std::isnan(bestGain));
+            EBM_ASSERT(FloatEbmType { 0 } <= bestGain);
+            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != bestGain);
 
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
-            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-
-            constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
-            const FloatEbmType gain1 = EbmStats::CalcPartialGain(
-               pHistogramTargetEntryTotal[iVector].m_sumGradients,
-               bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : weightAll
-            );
-            EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
-            bestGain -= gain1;
-         }
-
-         // for regression, bestGain and parentGain can be infinity.  There is a super-super-super-rare case where we can have 
-         // parentGain overflow to +infinity due to numeric issues, but not bestGain, and then the subtration causes the result 
-         // to be -infinity.  The universe will probably die of heat death before we get a -infinity value, but perhaps an adversarial dataset could 
-         // trigger it, and we don't want someone giving us data to use a vulnerability in our system, so check for it!
-
-         if(bSplitFirst2) {
-            // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero splits
-            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 1);
-            if(Error_None != error) {
-               // already logged
-               return error;
-            }
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst2Best;
-
-            if(splitFirst2LowBest < splitFirst2HighBest) {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 2);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[1] = splitFirst2HighBest;
-            } else if(splitFirst2HighBest < splitFirst2LowBest) {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 2);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2HighBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[1] = splitFirst2LowBest;
-            } else {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 1);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
-            }
-
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowLowBest =
-               pTotals2LowLowBest->GetHistogramTargetEntry();
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowHighBest =
-               pTotals2LowHighBest->GetHistogramTargetEntry();
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2HighLowBest =
-               pTotals2HighLowBest->GetHistogramTargetEntry();
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2HighHighBest =
-               pTotals2HighHighBest->GetHistogramTargetEntry();
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            FloatEbmType zeroLogit0 = FloatEbmType { 0 };
-            FloatEbmType zeroLogit1 = FloatEbmType { 0 };
-            FloatEbmType zeroLogit2 = FloatEbmType { 0 };
-            FloatEbmType zeroLogit3 = FloatEbmType { 0 };
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
+            // now subtract the parent partial gain
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType predictionLowLow;
-               FloatEbmType predictionLowHigh;
-               FloatEbmType predictionHighLow;
-               FloatEbmType predictionHighHigh;
+               // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
+               // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-               if(bClassification) {
-                  predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals2LowLowBest[iVector].m_sumGradients,
-                     pHistogramTargetEntryTotals2LowLowBest[iVector].GetSumHessians()
-                  );
-                  predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals2LowHighBest[iVector].m_sumGradients,
-                     pHistogramTargetEntryTotals2LowHighBest[iVector].GetSumHessians()
-                  );
-                  predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals2HighLowBest[iVector].m_sumGradients,
-                     pHistogramTargetEntryTotals2HighLowBest[iVector].GetSumHessians()
-                  );
-                  predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumGradients,
-                     pHistogramTargetEntryTotals2HighHighBest[iVector].GetSumHessians()
-                  );
+               constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
+               const FloatEbmType gain1 = EbmStats::CalcPartialGain(
+                  pHistogramTargetEntryTotal[iVector].m_sumGradients,
+                  bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : weightAll
+               );
+               EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+               bestGain -= gain1;
+            }
+
+            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != bestGain);
+            EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatEbmType>::infinity() == bestGain ||
+               k_epsilonNegativeGainAllowed <= bestGain);
+
+            if(LIKELY(/* NaN */ std::numeric_limits<FloatEbmType>::lowest() <= bestGain)) {
+               EBM_ASSERT(!std::isnan(bestGain));
+               EBM_ASSERT(!std::isinf(bestGain));
+               EBM_ASSERT(k_epsilonNegativeGainAllowed <= bestGain);
+
+               *pTotalGain = FloatEbmType { 0 };
+               if(LIKELY(k_gainMin <= bestGain)) {
+                  *pTotalGain = bestGain;
+                  if(bSplitFirst2) {
+                     // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero splits
+                     error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 1);
+                     if(Error_None != error) {
+                        // already logged
+                        return error;
+                     }
+                     pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst2Best;
+
+                     if(splitFirst2LowBest < splitFirst2HighBest) {
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 2);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[1] = splitFirst2HighBest;
+                     } else if(splitFirst2HighBest < splitFirst2LowBest) {
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 2);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2HighBest;
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[1] = splitFirst2LowBest;
+                     } else {
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 1);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
+                     }
+
+                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowLowBest =
+                        pTotals2LowLowBest->GetHistogramTargetEntry();
+                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowHighBest =
+                        pTotals2LowHighBest->GetHistogramTargetEntry();
+                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2HighLowBest =
+                        pTotals2HighLowBest->GetHistogramTargetEntry();
+                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2HighHighBest =
+                        pTotals2HighHighBest->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                  if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-                     if(size_t { 0 } == iVector) {
-                        zeroLogit0 = predictionLowLow;
-                        zeroLogit1 = predictionLowHigh;
-                        zeroLogit2 = predictionHighLow;
-                        zeroLogit3 = predictionHighHigh;
-                     }
-                     predictionLowLow -= zeroLogit0;
-                     predictionLowHigh -= zeroLogit1;
-                     predictionHighLow -= zeroLogit2;
-                     predictionHighHigh -= zeroLogit3;
-                  }
+                     FloatEbmType zeroLogit0 = FloatEbmType { 0 };
+                     FloatEbmType zeroLogit1 = FloatEbmType { 0 };
+                     FloatEbmType zeroLogit2 = FloatEbmType { 0 };
+                     FloatEbmType zeroLogit3 = FloatEbmType { 0 };
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               } else {
-                  EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                  predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals2LowLowBest[iVector].m_sumGradients,
-                     pTotals2LowLowBest->GetWeightInBucket()
-                  );
-                  predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals2LowHighBest[iVector].m_sumGradients,
-                     pTotals2LowHighBest->GetWeightInBucket()
-                  );
-                  predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals2HighLowBest[iVector].m_sumGradients,
-                     pTotals2HighLowBest->GetWeightInBucket()
-                  );
-                  predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumGradients,
-                     pTotals2HighHighBest->GetWeightInBucket()
-                  );
-               }
+                     for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+                        FloatEbmType predictionLowLow;
+                        FloatEbmType predictionLowHigh;
+                        FloatEbmType predictionHighLow;
+                        FloatEbmType predictionHighHigh;
 
-               if(splitFirst2LowBest < splitFirst2HighBest) {
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionHighLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
-               } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionHighHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
-               } else {
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionHighLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
+                        if(bClassification) {
+                           predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals2LowLowBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals2LowLowBest[iVector].GetSumHessians()
+                           );
+                           predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals2LowHighBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals2LowHighBest[iVector].GetSumHessians()
+                           );
+                           predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals2HighLowBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals2HighLowBest[iVector].GetSumHessians()
+                           );
+                           predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals2HighHighBest[iVector].GetSumHessians()
+                           );
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+                           if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                              if(size_t { 0 } == iVector) {
+                                 zeroLogit0 = predictionLowLow;
+                                 zeroLogit1 = predictionLowHigh;
+                                 zeroLogit2 = predictionHighLow;
+                                 zeroLogit3 = predictionHighHigh;
+                              }
+                              predictionLowLow -= zeroLogit0;
+                              predictionLowHigh -= zeroLogit1;
+                              predictionHighLow -= zeroLogit2;
+                              predictionHighHigh -= zeroLogit3;
+                           }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
+                        } else {
+                           EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+                           predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals2LowLowBest[iVector].m_sumGradients,
+                              pTotals2LowLowBest->GetWeightInBucket()
+                           );
+                           predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals2LowHighBest[iVector].m_sumGradients,
+                              pTotals2LowHighBest->GetWeightInBucket()
+                           );
+                           predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals2HighLowBest[iVector].m_sumGradients,
+                              pTotals2HighLowBest->GetWeightInBucket()
+                           );
+                           predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumGradients,
+                              pTotals2HighHighBest->GetWeightInBucket()
+                           );
+                        }
+
+                        if(splitFirst2LowBest < splitFirst2HighBest) {
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionHighLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+                        } else if(splitFirst2HighBest < splitFirst2LowBest) {
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionHighHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+                        } else {
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionHighLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
+                        }
+                     }
+                  } else {
+                     error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 1);
+                     if(Error_None != error) {
+                        // already logged
+                        return error;
+                     }
+                     pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst1Best;
+
+                     if(splitFirst1LowBest < splitFirst1HighBest) {
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 2);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[1] = splitFirst1HighBest;
+                     } else if(splitFirst1HighBest < splitFirst1LowBest) {
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 2);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1HighBest;
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[1] = splitFirst1LowBest;
+                     } else {
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 1);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
+                        if(Error_None != error) {
+                           // already logged
+                           return error;
+                        }
+                        pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
+                     }
+
+                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowLowBest =
+                        pTotals1LowLowBest->GetHistogramTargetEntry();
+                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowHighBest =
+                        pTotals1LowHighBest->GetHistogramTargetEntry();
+                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1HighLowBest =
+                        pTotals1HighLowBest->GetHistogramTargetEntry();
+                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1HighHighBest =
+                        pTotals1HighHighBest->GetHistogramTargetEntry();
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+                     FloatEbmType zeroLogit0 = FloatEbmType { 0 };
+                     FloatEbmType zeroLogit1 = FloatEbmType { 0 };
+                     FloatEbmType zeroLogit2 = FloatEbmType { 0 };
+                     FloatEbmType zeroLogit3 = FloatEbmType { 0 };
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+
+                     for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+                        FloatEbmType predictionLowLow;
+                        FloatEbmType predictionLowHigh;
+                        FloatEbmType predictionHighLow;
+                        FloatEbmType predictionHighHigh;
+
+                        if(bClassification) {
+                           predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals1LowLowBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals1LowLowBest[iVector].GetSumHessians()
+                           );
+                           predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals1LowHighBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals1LowHighBest[iVector].GetSumHessians()
+                           );
+                           predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals1HighLowBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals1HighLowBest[iVector].GetSumHessians()
+                           );
+                           predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals1HighHighBest[iVector].GetSumHessians()
+                           );
+
+#ifdef ZERO_FIRST_MULTICLASS_LOGIT
+                           if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
+                              if(size_t { 0 } == iVector) {
+                                 zeroLogit0 = predictionLowLow;
+                                 zeroLogit1 = predictionLowHigh;
+                                 zeroLogit2 = predictionHighLow;
+                                 zeroLogit3 = predictionHighHigh;
+                              }
+                              predictionLowLow -= zeroLogit0;
+                              predictionLowHigh -= zeroLogit1;
+                              predictionHighLow -= zeroLogit2;
+                              predictionHighHigh -= zeroLogit3;
+                           }
+#endif // ZERO_FIRST_MULTICLASS_LOGIT
+                        } else {
+                           EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+                           predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals1LowLowBest[iVector].m_sumGradients,
+                              pTotals1LowLowBest->GetWeightInBucket()
+                           );
+                           predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals1LowHighBest[iVector].m_sumGradients,
+                              pTotals1LowHighBest->GetWeightInBucket()
+                           );
+                           predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals1HighLowBest[iVector].m_sumGradients,
+                              pTotals1HighLowBest->GetWeightInBucket()
+                           );
+                           predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
+                              pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumGradients,
+                              pTotals1HighHighBest->GetWeightInBucket()
+                           );
+                        }
+                        if(splitFirst1LowBest < splitFirst1HighBest) {
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+                        } else if(splitFirst1HighBest < splitFirst1LowBest) {
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+                        } else {
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
+                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
+                        }
+                     }
+                  }
+                  return Error_None;
                }
+            } else {
+               EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatEbmType>::infinity() == bestGain);
             }
          } else {
-            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension1, 1);
-            if(Error_None != error) {
-               // already logged
-               return error;
-            }
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst1Best;
-
-            if(splitFirst1LowBest < splitFirst1HighBest) {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 2);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[1] = splitFirst1HighBest;
-            } else if(splitFirst1HighBest < splitFirst1LowBest) {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 2);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1HighBest;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[1] = splitFirst1LowBest;
-            } else {
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 1);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-               error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
-               if(Error_None != error) {
-                  // already logged
-                  return error;
-               }
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
-            }
-
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowLowBest =
-               pTotals1LowLowBest->GetHistogramTargetEntry();
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowHighBest =
-               pTotals1LowHighBest->GetHistogramTargetEntry();
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1HighLowBest =
-               pTotals1HighLowBest->GetHistogramTargetEntry();
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1HighHighBest =
-               pTotals1HighHighBest->GetHistogramTargetEntry();
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            FloatEbmType zeroLogit0 = FloatEbmType { 0 };
-            FloatEbmType zeroLogit1 = FloatEbmType { 0 };
-            FloatEbmType zeroLogit2 = FloatEbmType { 0 };
-            FloatEbmType zeroLogit3 = FloatEbmType { 0 };
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType predictionLowLow;
-               FloatEbmType predictionLowHigh;
-               FloatEbmType predictionHighLow;
-               FloatEbmType predictionHighHigh;
-
-               if(bClassification) {
-                  predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals1LowLowBest[iVector].m_sumGradients,
-                     pHistogramTargetEntryTotals1LowLowBest[iVector].GetSumHessians()
-                  );
-                  predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals1LowHighBest[iVector].m_sumGradients,
-                     pHistogramTargetEntryTotals1LowHighBest[iVector].GetSumHessians()
-                  );
-                  predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals1HighLowBest[iVector].m_sumGradients,
-                     pHistogramTargetEntryTotals1HighLowBest[iVector].GetSumHessians()
-                  );
-                  predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumGradients,
-                     pHistogramTargetEntryTotals1HighHighBest[iVector].GetSumHessians()
-                  );
-
-#ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                  if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-                     if(size_t { 0 } == iVector) {
-                        zeroLogit0 = predictionLowLow;
-                        zeroLogit1 = predictionLowHigh;
-                        zeroLogit2 = predictionHighLow;
-                        zeroLogit3 = predictionHighHigh;
-                     }
-                     predictionLowLow -= zeroLogit0;
-                     predictionLowHigh -= zeroLogit1;
-                     predictionHighLow -= zeroLogit2;
-                     predictionHighHigh -= zeroLogit3;
-                  }
-#endif // ZERO_FIRST_MULTICLASS_LOGIT
-
-               } else {
-                  EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                  predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals1LowLowBest[iVector].m_sumGradients,
-                     pTotals1LowLowBest->GetWeightInBucket()
-                  );
-                  predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals1LowHighBest[iVector].m_sumGradients,
-                     pTotals1LowHighBest->GetWeightInBucket()
-                  );
-                  predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals1HighLowBest[iVector].m_sumGradients,
-                     pTotals1HighLowBest->GetWeightInBucket()
-                  );
-                  predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                     pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumGradients,
-                     pTotals1HighHighBest->GetWeightInBucket()
-                  );
-               }
-               if(splitFirst1LowBest < splitFirst1HighBest) {
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
-               } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
-               } else {
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
-               }
-            }
+            EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<FloatEbmType>::infinity() == bestGain);
          }
-         *pTotalGain = bestGain;
-         return Error_None;
+      } else {
+         EBM_ASSERT(!std::isnan(bestGain));
       }
 
-      // there were no good splits found, or we hit a NaN value
+      // there were no good splits found
 #ifndef NDEBUG
       const ErrorEbmType errorDebug1 =
 #endif // NDEBUG
@@ -838,7 +861,6 @@ public:
 
          pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[iVector] = update;
       }
-      *pTotalGain = FloatEbmType { 0 }; // no splits means no gain
       return Error_None;
    }
    WARNING_POP

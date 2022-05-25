@@ -417,8 +417,11 @@ public:
       // if there is a difference in the number of bits between these two (some floating point processors store more bits)
       // then we could get a negative number, even if mathematically it can't be less than zero
       const FloatEbmType splitGain = this->AFTER_GetSplitGain();
+      // our priority queue cannot handle NaN values so we filter them out before adding them
+      EBM_ASSERT(!std::isnan(splitGain));
+      EBM_ASSERT(!std::isinf(splitGain));
       // in ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint we can get a -infinity gain as a special extremely unlikely case for regression
-      EBM_ASSERT(std::isnan(splitGain) || (!bClassification) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
+      EBM_ASSERT(FloatEbmType { 0 } <= splitGain);
       return splitGain;
    }
 

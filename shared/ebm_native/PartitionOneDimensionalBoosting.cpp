@@ -186,7 +186,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    FloatEbmType weightRight = pTreeNode->GetWeight();
    FloatEbmType weightLeft = 0;
 
-   FloatEbmType BEST_gain = k_illegalGain;
+   EBM_ASSERT(FloatEbmType { 0 } <= k_gainMin);
+   FloatEbmType BEST_gain = k_gainMin; // it must at least be this, and maybe it needs to be more
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
    EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
    do {
@@ -306,16 +307,21 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       pHistogramBucketEntryCur = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
    } while(pHistogramBucketEntryLast != pHistogramBucketEntryCur);
 
-   // handle the case where BEST_gain is +infinity 
-   // don't use std::inf because with some compiler flags on some compilers that isn't reliable
-   // if we include a case that was equal to max, then ok, no harm done.
-   if(UNLIKELY(UNLIKELY(pTreeSweepStart == pTreeSweepCur) || UNLIKELY(std::isnan(BEST_gain)) ||
-      UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= BEST_gain))) {
-
-      // we didn't find any valid splits, or we hit an overflow
+   if(UNLIKELY(pTreeSweepStart == pTreeSweepCur)) {
+      // no valid splits found
+      EBM_ASSERT(k_gainMin == BEST_gain);
       return 1;
    }
-   EBM_ASSERT(FloatEbmType { 0 } <= BEST_gain);
+   EBM_ASSERT(std::isnan(BEST_gain) || FloatEbmType { 0 } <= BEST_gain);
+
+   if(UNLIKELY(/* NaN */ !LIKELY(BEST_gain <= std::numeric_limits<FloatEbmType>::max()))) {
+      // this tests for NaN and +inf
+
+      // we need this test since the priority queue in the function that calls us cannot accept a NaN value
+      // since we would break weak ordering with non-ordered NaN comparisons, thus create undefined behavior
+
+      return -1; // exit boosting with overflow
+   }
 
    FloatEbmType sumHessiansOverwrite = pTreeNode->GetWeight();
    const HistogramTargetEntry<bClassification> * pHistEntryParent = pTreeNode->GetHistogramTargetEntry();
@@ -332,7 +338,22 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       BEST_gain -= gain1;
    }
 
-   EBM_ASSERT(std::isnan(BEST_gain) || (!bClassification) && std::isinf(BEST_gain) || k_epsilonNegativeGainAllowed <= BEST_gain);
+   // BEST_gain could be -inf if the partial gain on the children reached a number close to +inf and then
+   // the children were -inf due to floating point noise.  
+   EBM_ASSERT(std::isnan(BEST_gain) || -std::numeric_limits<FloatEbmType>::infinity() == BEST_gain || k_epsilonNegativeGainAllowed <= BEST_gain);
+   EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != BEST_gain);
+
+   EBM_ASSERT(FloatEbmType { 0 } <= k_gainMin);
+   if(UNLIKELY(/* NaN */ !LIKELY(k_gainMin <= BEST_gain))) {
+      // do not allow splits on gains that are too small
+      // also filter out slightly negative numbers that can arrise from floating point noise
+
+      // but if the parent partial gain overflowed to +inf and thus we got a -inf gain, then handle as an overflow
+      return /* NaN */ std::numeric_limits<FloatEbmType>::lowest() <= BEST_gain ? 1 : -1;
+   }
+   EBM_ASSERT(!std::isnan(BEST_gain));
+   EBM_ASSERT(!std::isinf(BEST_gain));
+   EBM_ASSERT(FloatEbmType { 0 } <= BEST_gain);
 
    RandomStream * const pRandomStream = pBoosterCore->GetRandomStream();
 
@@ -543,6 +564,10 @@ public:
       );
       if(UNLIKELY(0 != retExamine)) {
          // there will be no splits at all
+
+         // any negative gain means there was an overflow.  Let the caller decide if they want to ignore it
+         *pTotalGain = UNLIKELY(retExamine < 0) ? std::numeric_limits<FloatEbmType>::infinity() : FloatEbmType { 0 };
+
          error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension, 0);
          if(UNLIKELY(Error_None != error)) {
             // already logged
@@ -582,9 +607,13 @@ public:
             pValues[0] = smallChangeToModel;
          }
 
-         *pTotalGain = FloatEbmType { 0 };
          return Error_None;
       }
+
+      // our priority queue comparison function cannot handle NaN gains so we filter out before
+      EBM_ASSERT(!std::isnan(pRootTreeNode->AFTER_GetSplitGain()));
+      EBM_ASSERT(!std::isinf(pRootTreeNode->AFTER_GetSplitGain()));
+      EBM_ASSERT(FloatEbmType { 0 } <= pRootTreeNode->AFTER_GetSplitGain());
 
       if(UNPREDICTABLE(PREDICTABLE(2 == cLeavesMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
          // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
@@ -669,8 +698,9 @@ public:
          }
 
          const FloatEbmType totalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
-         EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
-         // don't normalize totalGain here, because we normalize the average outside of this function!
+         EBM_ASSERT(!std::isnan(totalGain));
+         EBM_ASSERT(!std::isinf(totalGain));
+         EBM_ASSERT(FloatEbmType { 0 } <= totalGain);
          *pTotalGain = totalGain;
          return Error_None;
       }
@@ -725,8 +755,9 @@ public:
 
             // ONLY AFTER WE'VE POPPED pParentTreeNode OFF the priority queue is it considered to have been split.  Calling SPLIT_THIS_NODE makes it formal
             const FloatEbmType totalGainUpdate = pParentTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
-            EBM_ASSERT(std::isnan(totalGainUpdate) || (!bClassification) && std::isinf(totalGainUpdate) ||
-               k_epsilonNegativeGainAllowed <= totalGainUpdate);
+            EBM_ASSERT(!std::isnan(totalGainUpdate));
+            EBM_ASSERT(!std::isinf(totalGainUpdate));
+            EBM_ASSERT(FloatEbmType { 0 } <= totalGainUpdate);
             totalGain += totalGainUpdate;
 
             pParentTreeNode->SPLIT_THIS_NODE();
@@ -757,16 +788,26 @@ public:
                   cSamplesRequiredForChildSplitMin
                )) {
                   pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
+                  // our priority queue comparison function cannot handle NaN gains so we filter out before
+                  EBM_ASSERT(!std::isnan(pLeftChild->AFTER_GetSplitGain()));
+                  EBM_ASSERT(!std::isinf(pLeftChild->AFTER_GetSplitGain()));
+                  EBM_ASSERT(FloatEbmType { 0 } <= pLeftChild->AFTER_GetSplitGain());
                   bestTreeNodeToSplit.push(pLeftChild);
                } else {
+                  // if ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint returned -1 to indicate an 
+                  // overflow ignore it here. We successfully made a root node split, so we might as well continue 
+                  // with the successful tree that we have which can make progress in boosting down the residuals
+
                   goto no_left_split;
                }
             } else {
             no_left_split:;
-               // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with 
-               // garbage that could be k_illegalGain (meaning the node was a branch) we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED 
-               // before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets 
-               // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are 
+               // we aren't going to split this TreeNode because we can't. We need to set the splitGain value 
+               // here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch) 
+               // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode 
+               // because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets 
+               // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the 
+               // m_UNION.m_beforeExaminationForPossibleSplitting values are 
                // needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
 
 #ifndef NDEBUG
@@ -801,17 +842,27 @@ public:
                   cSamplesRequiredForChildSplitMin
                )) {
                   pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
+                  // our priority queue comparison function cannot handle NaN gains so we filter out before
+                  EBM_ASSERT(!std::isnan(pRightChild->AFTER_GetSplitGain()));
+                  EBM_ASSERT(!std::isinf(pRightChild->AFTER_GetSplitGain()));
+                  EBM_ASSERT(FloatEbmType { 0 } <= pRightChild->AFTER_GetSplitGain());
                   bestTreeNodeToSplit.push(pRightChild);
                } else {
+                  // if ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint returned -1 to indicate an 
+                  // overflow ignore it here. We successfully made a root node split, so we might as well continue 
+                  // with the successful tree that we have which can make progress in boosting down the residuals
+
                   goto no_right_split;
                }
             } else {
             no_right_split:;
-               // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with 
-               // garbage that could be k_illegalGain (meaning the node was a branch) we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED 
-               // before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets 
-               // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are needed 
-               // if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
+               // we aren't going to split this TreeNode because we can't. We need to set the splitGain value 
+               // here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch) 
+               // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode 
+               // because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets 
+               // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the 
+               // m_UNION.m_beforeExaminationForPossibleSplitting values are 
+               // needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
 
 #ifndef NDEBUG
                pRightChild->SetExaminedForPossibleSplitting(true);
@@ -824,12 +875,10 @@ public:
          // we DON'T need to call SetLeafAfterDone() on any items that remain in the bestTreeNodeToSplit queue because everything in that queue has set 
          // a non-NaN gain value
 
-         // regression can be -infinity or slightly negative in extremely rare circumstances.
-         // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
-         EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) ||
-            k_epsilonNegativeGainAllowed <= totalGain);
-         // we might as well dump this value out to our pointer, even if later fail the function below.  If the function is failed, we make no guarantees 
-         // about what we did with the value pointed to at *pTotalGain don't normalize totalGain here, because we normalize the average outside of this function!
+
+         EBM_ASSERT(!std::isnan(totalGain));
+         EBM_ASSERT(FloatEbmType { 0 } <= totalGain);
+
          *pTotalGain = totalGain;
          EBM_ASSERT(
             static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2
