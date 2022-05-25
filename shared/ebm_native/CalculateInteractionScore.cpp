@@ -214,10 +214,11 @@ static ErrorEbmType CalculateInteractionScoreInternal(
          EBM_ASSERT(FloatEbmType { 0 } < totalWeight); // if all are zeros we assume there are no weights and use the count
          bestGain /= totalWeight;
 
-         if(UNLIKELY(std::isnan(bestGain)) || UNLIKELY(std::isinf(bestGain))) {
-            // We simplify our caller's handling by returning -inf as our error indicator. -inf will sort to being the
+         if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<FloatEbmType>::max()))) {
+            // We simplify our caller's handling by returning -lowest as our error indicator. -lowest will sort to being the
             // least important item, which is good, but it also signals an overflow without the weirness of NaNs.
-            bestGain = k_overflowGain;
+            EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<FloatEbmType>::infinity() == bestGain);
+            bestGain = k_illegalGain;
          } else if(UNLIKELY(bestGain < FloatEbmType { 0 })) {
             // gain can't mathematically be legally negative, but it can be here in the following situations:
             //   1) for impure interaction gain we subtract the parent partial gain, and there can be floating point
@@ -229,8 +230,8 @@ static ErrorEbmType CalculateInteractionScoreInternal(
             //      here instead of inside the templated function.
 
             EBM_ASSERT(!std::isnan(bestGain));
-            EBM_ASSERT(!std::isinf(bestGain));
-            bestGain = FloatEbmType { 0 };
+            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != bestGain);
+            bestGain = std::numeric_limits<FloatEbmType>::lowest() <= bestGain ? FloatEbmType { 0 } : k_illegalGain;
          } else {
             EBM_ASSERT(!std::isnan(bestGain));
             EBM_ASSERT(!std::isinf(bestGain));
@@ -245,7 +246,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
       if(nullptr != pInteractionScoreReturn) {
          // for now, just return any interactions that have other than 2 dimensions as -inf, 
          // which means they won't be considered but indicates they were not handled
-         *pInteractionScoreReturn = k_overflowGain;
+         *pInteractionScoreReturn = k_illegalGain;
       }
    }
 
