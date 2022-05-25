@@ -379,10 +379,8 @@ public:
             );
          }
 
-         // gain should be positive, or NaN, BUT it can be slightly negative due to floating point noise
-         // it could also be -inf if the total bucket overflows, but the parts did not.  In that case we've
-         // reached -inf due to numeric instability, but we should eventually return zero in this case.
-         // We fix this up though in our caller.
+         // bestGain should be positive, or NaN, BUT it can be slightly negative due to floating point noise
+         // it could also be -inf if the parent/total bucket overflows, but the children parts did not.
          // bestGain can also be substantially negative if we didn't find any legal cuts and 
          // then we subtracted the base partial gain here from zero
 
@@ -399,11 +397,7 @@ public:
       }
 
       // we clean up bestGain in the caller, since this function is templated and created many times
-
-      const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
-      EBM_ASSERT(nullptr != pDataSet);
-      EBM_ASSERT(FloatEbmType { 0 } < pDataSet->GetWeightTotal()); // if all are zeros we assume there are no weights and use the count
-      return bestGain / pDataSet->GetWeightTotal();
+      return bestGain;
    }
 };
 

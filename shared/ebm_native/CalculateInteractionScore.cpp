@@ -207,36 +207,34 @@ static ErrorEbmType CalculateInteractionScoreInternal(
       );
 
       if(nullptr != pInteractionScoreReturn) {
-         if(UNLIKELY(bestGain < FloatEbmType { 0 })) {
+         // if totalWeight < 1 then bestGain could overflow to +inf, so do the division first
+         const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
+         EBM_ASSERT(nullptr != pDataSet);
+         const FloatEbmType totalWeight = pDataSet->GetWeightTotal();
+         EBM_ASSERT(FloatEbmType { 0 } < totalWeight); // if all are zeros we assume there are no weights and use the count
+         bestGain /= totalWeight;
+
+         if(UNLIKELY(std::isnan(bestGain)) || UNLIKELY(std::isinf(bestGain))) {
+            // We simplify our caller's handling by returning -inf as our error indicator. -inf will sort to being the
+            // least important item, which is good, but it also signals an overflow without the weirness of NaNs.
+            bestGain = k_overflowGain;
+         } else if(UNLIKELY(bestGain < FloatEbmType { 0 })) {
             // gain can't mathematically be legally negative, but it can be here in the following situations:
-            //   1) for impure interaction gain we subtract the base RSS, and there can be floating point
+            //   1) for impure interaction gain we subtract the parent partial gain, and there can be floating point
             //      noise that makes this slightly negative
-            //   2) for impure interaction gain we subtract the base RSS, and if the total RSS happened to
-            //      reach -inf, but the positive RSS for the other bins was slightly less than +inf
-            //      then we'd reach -inf due to floating point instability issues.  In this case the
-            //      mathematical gain should have been zero, so we make it zero here.
-            //   3) for impure interaction gain we subtract the base RSS, but if there were no legal cuts
-            //      then the RSS before subtracting the base RSS was zero and we then get a substantially
-            //      negative value.  In this case we shouldn't have subtracted the base RSS since we had never
-            //      even calculated the 4 quadrant RSS, but we handle this scenario here instead on in the
-            //      templated function.  We do ASSERT on this condition inside the templated function
+            //   2) for impure interaction gain we subtract the parent partial gain, but if there were no legal cuts
+            //      then the partial gain before subtracting the parent partial gain was zero and we then get a 
+            //      substantially negative value.  In this case we should not have subtracted the parent partial gain
+            //      since we had never even calculated the 4 quadrant partial gain, but we handle this scenario 
+            //      here instead of inside the templated function.
 
             EBM_ASSERT(!std::isnan(bestGain));
+            EBM_ASSERT(!std::isinf(bestGain));
             bestGain = FloatEbmType { 0 };
-         } else if(UNLIKELY(/* NaN */ !LIKELY(bestGain < std::numeric_limits<FloatEbmType>::infinity()))) {
-            // this also checks for NaN since NaN < anything is FALSE
-
-            // If we get back infinity then there was an overflow and we don't really know what the final result
-            // should be since we subtract terms in the interaction calculation.  The result can also be NaN
-            // which also indicates an overflow.  We simplify our caller's handling by returning -inf as our error
-            // indicator.  -inf will sort to being the least important item, which is good, but it also indicates
-            // an error so the caller can know there was an overflow.  It also does not have the weirness of NaNs.
-
-            bestGain = -std::numeric_limits<FloatEbmType>::infinity();
          } else {
             EBM_ASSERT(!std::isnan(bestGain));
+            EBM_ASSERT(!std::isinf(bestGain));
          }
-
          *pInteractionScoreReturn = bestGain;
       }
    } else {
@@ -247,7 +245,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
       if(nullptr != pInteractionScoreReturn) {
          // for now, just return any interactions that have other than 2 dimensions as -inf, 
          // which means they won't be considered but indicates they were not handled
-         *pInteractionScoreReturn = -std::numeric_limits<FloatEbmType>::infinity();
+         *pInteractionScoreReturn = k_overflowGain;
       }
    }
 

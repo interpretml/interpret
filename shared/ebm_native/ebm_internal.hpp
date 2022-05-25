@@ -40,6 +40,7 @@ namespace DEFINED_ZONE_NAME {
 // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small 
 // negative values close to zero that might occur due to numeric instability
 constexpr static FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest();
+constexpr static FloatEbmType k_overflowGain = -std::numeric_limits<FloatEbmType>::infinity();
 constexpr static FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
 constexpr static FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
 constexpr static FloatEbmType k_epsilonGradient = 1e-7;
