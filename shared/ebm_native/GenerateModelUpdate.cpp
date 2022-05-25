@@ -835,8 +835,13 @@ static ErrorEbmType GenerateModelUpdateInternal(
             EBM_ASSERT(!std::isnan(gain));
             EBM_ASSERT(FloatEbmType { 0 } <= gain);
 
+            const FloatEbmType weightTotal = pSamplingSet->GetWeightTotal();
+            EBM_ASSERT(FloatEbmType { 0 } < weightTotal); // if all are zeros we assume there are no weights and use the count
+
+            // this could re-promote gain to be +inf again if weightTotal < 1.0
+            // do the sample count inversion here in case adding all the avgeraged gains pushes us into +inf
             EBM_ASSERT(invertedSampleCount <= FloatEbmType { 1 });
-            gain = gain * invertedSampleCount;
+            gain = gain * invertedSampleCount / weightTotal;
             totalGain += gain;
             EBM_ASSERT(!std::isnan(totalGain));
             EBM_ASSERT(FloatEbmType { 0 } <= totalGain);

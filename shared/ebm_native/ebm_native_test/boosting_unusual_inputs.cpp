@@ -1540,3 +1540,56 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
    // we're generating updates from gradient sums, which isn't good, so we expect a bad result
    CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
 }
+
+TEST_CASE("zero gain, boosting, regression") {
+   // construct a case where there should be zero gain and test that we get zero.
+
+   // we start with a singular bin that has 5 cases, and split it to two bins with 2 and 3 cases respectively.
+   // We can arbitrarily set the gradient totals to 4 and 7, and then calculate what the 
+
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddFeatures({ FeatureTest(2) });
+   test.AddFeatureGroups({ { 0 } });
+   test.AddTrainingSamples({
+      TestSample({ 0 }, 10.75, 1.5),
+      TestSample({ 1 }, 10.75, 2.25),
+      });
+   test.AddValidationSamples({ });
+   test.InitializeBoosting();
+
+   FloatEbmType gain = test.Boost(0, GenerateUpdateOptions_Default, k_learningRateDefault, 0).gain;
+   CHECK(0 <= gain && gain < 0.0000001);
+}
+
+TEST_CASE("pair and main gain identical, boosting, regression") {
+   // if we have a scenario where boosting has gain in the split in one dimension, but the gain
+   // for the split on both sides into the pair are zero, then the gain from the pair boosting
+   // should be identical to the gain from the main if we were to combine the pairs into mains
+
+   TestApi test1 = TestApi(k_learningTypeRegression);
+   test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
+   test1.AddFeatureGroups({ { 0, 1 } });
+   test1.AddTrainingSamples({
+      TestSample({ 0, 0 }, 10.75, 1.5),
+      TestSample({ 0, 1 }, 10.75, 2.25),
+      TestSample({ 1, 0 }, 11.25, 3.25),
+      TestSample({ 1, 1 }, 11.25, 4.5),
+      });
+   test1.AddValidationSamples({});
+   test1.InitializeBoosting(0);
+   const FloatEbmType gain1 = test1.Boost(0).gain;
+
+   TestApi test2 = TestApi(k_learningTypeRegression);
+   test2.AddFeatures({ FeatureTest(2) });
+   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTrainingSamples({
+      TestSample({ 0 }, 10.75, 1.5 + 2.25),
+      TestSample({ 1 }, 11.25, 3.25 + 4.5),
+      });
+   test2.AddValidationSamples({});
+   test2.InitializeBoosting();
+
+   FloatEbmType gain2 = test2.Boost(0).gain;
+
+   CHECK_APPROX(gain1, gain2);
+}

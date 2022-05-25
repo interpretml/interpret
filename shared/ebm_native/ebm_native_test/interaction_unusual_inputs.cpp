@@ -321,78 +321,117 @@ TEST_CASE("weights totals equivalence, interaction, multiclass") {
    CHECK_APPROX(metricReturn1, metricReturn2);
 }
 
-TEST_CASE("purified interaction score with completely impure input, interaction, regression") {
+TEST_CASE("purified interaction strength with impure inputs should be zero, interaction, regression") {
+   // impure:
+   // feature1 = 3, 5
+   // feature2 = 11, 7
+
+   // impure:
+   // 3 + 11   3 + 7
+   // 5 + 11   5 + 7
+
+   // or:
+   // 14  10
+   // 16  12
+
+   // we can use any random weights for impure inputs, so stress test this!
+
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
-      TestSample({ 0, 0 }, 1),
-      TestSample({ 0, 0 }, 1),
-      TestSample({ 0, 0 }, 1),
-      TestSample({ 0, 1 }, 1),
-      TestSample({ 0, 1 }, 1),
-      TestSample({ 0, 1 }, 1),
-      TestSample({ 1, 0 }, 1),
-      TestSample({ 1, 0 }, 1),
-      TestSample({ 1, 0 }, 1),
-      TestSample({ 1, 1 }, 1),
-      TestSample({ 1, 1 }, 1),
-      TestSample({ 1, 1 }, 1),
+      TestSample({ 0, 0 }, (3.0 + 11.0), 24.25),
+      TestSample({ 0, 1 }, (3.0 + 7.0), 21.5),
+      TestSample({ 1, 0 }, (5.0 + 11.0), 8.125),
+      TestSample({ 1, 1 }, (5.0 + 7.0), 11.625),
       });
+
    test1.InitializeInteraction();
    FloatEbmType metricReturn = test1.InteractionScore({ 0, 1 }, InteractionOptions_Pure);
 
-   CHECK_APPROX(metricReturn, 0.0);
+   CHECK(0 <= metricReturn && metricReturn < 0.0000001);
 }
 
-TEST_CASE("purified interaction score with purified input, interaction, regression") {
+TEST_CASE("purified interaction strength same as pre-purified strength, interaction, regression") {
+   // let us construct a matrix that consists of impure effect and pure effect and compare that to the 
+   // interaction strength of the purified matrix.  They should be the same.
+
+   // Start by creating a pure interaction and getting the interaction strength:
+   // 
+   // counts:
+   // 2.5  20
+   // 1.25 5
+   //
+   // pure:
+   // -16  2
+   //  32 -8
+
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
-      TestSample({ 0, 0 }, 1),
-      TestSample({ 0, 0 }, 1),
-      TestSample({ 0, 0 }, 1),
-      TestSample({ 0, 1 }, -1),
-      TestSample({ 0, 1 }, -1),
-      TestSample({ 0, 1 }, -1),
-      TestSample({ 1, 0 }, -1),
-      TestSample({ 1, 0 }, -1),
-      TestSample({ 1, 0 }, -1),
-      TestSample({ 1, 1 }, 1),
-      TestSample({ 1, 1 }, 1),
-      TestSample({ 1, 1 }, 1),
+      TestSample({ 0, 0 }, -16.0, 2.5),
+      TestSample({ 0, 1 }, 2.0, 20),
+      TestSample({ 1, 0 }, 32.0, 1.25),
+      TestSample({ 1, 1 }, -8.0, 5),
       });
    test1.InitializeInteraction();
-   FloatEbmType metricReturn = test1.InteractionScore({ 0, 1 }, InteractionOptions_Pure);
-
-   CHECK_APPROX(metricReturn, 1.0);
-}
-
-TEST_CASE("purified interaction score with purified and impure input, interaction, regression") {
+   FloatEbmType metricReturn1 = test1.InteractionScore({ 0, 1 }, InteractionOptions_Pure);
 
    // to the pure input we add on one   axis: 3, 5
    // to the pure input we add on other axis: 7, 11
    // these should be purified away leaving only the base pure 
+   //
+   // impure:
+   // 3 + 11   3 + 7
+   // 5 + 11   5 + 7
+
+   // or:
+   // 14  10
+   // 16  12
+
+   TestApi test2 = TestApi(k_learningTypeRegression);
+   test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
+   test2.AddInteractionSamples({
+      TestSample({ 0, 0 }, -16.0 + (3.0 + 11.0), 2.5),
+      TestSample({ 0, 1 }, 2.0 + (3.0 + 7.0), 20),
+      TestSample({ 1, 0 }, 32.0 + (5.0 + 11.0), 1.25),
+      TestSample({ 1, 1 }, -8.0 + (5.0 + 7.0), 5),
+      });
+   test2.InitializeInteraction();
+   FloatEbmType metricReturn2 = test2.InteractionScore({ 0, 1 }, InteractionOptions_Pure);
+
+   CHECK_APPROX(metricReturn1, metricReturn2);
+}
+
+TEST_CASE("compare boosting gain to interaction strength, which should be identical") {
+   // we use the same algorithm to calculate interaction strength (gain) and during boosting (gain again)
+   // so we would expect them to generate the same response
 
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
-      TestSample({ 0, 0 }, 1 + 3 + 11),
-      TestSample({ 0, 0 }, 1 + 3 + 11),
-      TestSample({ 0, 0 }, 1 + 3 + 11),
-      TestSample({ 0, 1 }, -1 + 3 + 7),
-      TestSample({ 0, 1 }, -1 + 3 + 7),
-      TestSample({ 0, 1 }, -1 + 3 + 7),
-      TestSample({ 1, 0 }, -1 + 5 + 11),
-      TestSample({ 1, 0 }, -1 + 5 + 11),
-      TestSample({ 1, 0 }, -1 + 5 + 11),
-      TestSample({ 1, 1 }, 1 + 5 + 7),
-      TestSample({ 1, 1 }, 1 + 5 + 7),
-      TestSample({ 1, 1 }, 1 + 5 + 7),
+      TestSample({ 0, 0 }, 3, 232.24),
+      TestSample({ 0, 1 }, 11, 12.124),
+      TestSample({ 1, 0 }, 5, 85.1254),
+      TestSample({ 1, 1 }, 7, 1.355),
       });
    test1.InitializeInteraction();
-   FloatEbmType metricReturn = test1.InteractionScore({ 0, 1 }, InteractionOptions_Pure);
+   const FloatEbmType interactionStrength = test1.InteractionScore({ 0, 1 });
 
-   CHECK_APPROX(metricReturn, 1.0);
+   // we have a 2x2 matrix for boosting, which means there is only 1 cut point and it is known
+   // so the gain should be from going from a singularity to the 4 quadrants
+
+   TestApi test2 = TestApi(k_learningTypeRegression);
+   test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
+   test2.AddFeatureGroups({ { 0, 1 } });
+   test2.AddTrainingSamples({
+      TestSample({ 0, 0 }, 3, 232.24),
+      TestSample({ 0, 1 }, 11, 12.124),
+      TestSample({ 1, 0 }, 5, 85.1254),
+      TestSample({ 1, 1 }, 7, 1.355),
+      });
+   test2.AddValidationSamples({});
+   test2.InitializeBoosting(0);
+   const FloatEbmType gain = test2.Boost(0).gain;
+
+   CHECK_APPROX(interactionStrength, gain);
 }
-
-
