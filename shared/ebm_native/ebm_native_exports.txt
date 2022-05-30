@@ -27,7 +27,7 @@
       GetCurrentModelFeatureGroup;
       FreeBooster;
       CreateInteractionDetector;
-      CalculateInteractionScore;
+      CalcInteractionStrength;
       FreeInteractionDetector;
       GetHistogramCutCount;
       CutQuantile;

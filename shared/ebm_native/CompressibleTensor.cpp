@@ -274,7 +274,7 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
          const size_t cBins = pFeatureGroupEntry1->m_pFeature->GetCountBins();
 
          // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack 
-         // featureGroupsFeatureIndexes and in CalculateInteractionScore for interactions
+         // featureGroupsFeatureIndexes and in CalcInteractionStrength for interactions
          EBM_ASSERT(!IsMultiplyError(cNewValues, cBins));
          cNewValues *= cBins;
 
@@ -559,7 +559,7 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
       }
       pDimensionInfoStackFirst->m_cNewSplits = cNewSingleDimensionSplits;
       // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes and in 
-      // CalculateInteractionScore for interactions
+      // CalcInteractionStrength for interactions
       EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionSplits + 1));
       cNewValues *= cNewSingleDimensionSplits + 1;
 

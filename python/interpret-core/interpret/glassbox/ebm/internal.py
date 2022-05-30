@@ -943,7 +943,7 @@ class Native:
         ]
         self._unsafe.CreateInteractionDetector.restype = ct.c_int32
 
-        self._unsafe.CalculateInteractionScore.argtypes = [
+        self._unsafe.CalcInteractionStrength.argtypes = [
             # void * interactionHandle
             ct.c_void_p,
             # int64_t countDimensions
@@ -954,10 +954,10 @@ class Native:
             ct.c_int64,
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_int64,
-            # double * interactionScoreOut
+            # double * avgInteractionStrengthOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.CalculateInteractionScore.restype = ct.c_int32
+        self._unsafe.CalcInteractionStrength.restype = ct.c_int32
 
         self._unsafe.FreeInteractionDetector.argtypes = [
             # void * interactionHandle
@@ -1459,23 +1459,23 @@ class InteractionDetector(AbstractContextManager):
         
         log.info("Deallocation interaction end")
 
-    def get_interaction_score(self, feature_idxs, interaction_options, min_samples_leaf):
-        """ Provides score for an feature interaction. Higher is better."""
-        log.info("Fast interaction score start")
+    def calc_interaction_strength(self, feature_idxs, interaction_options, min_samples_leaf):
+        """ Provides strength for an feature interaction. Higher is better."""
+        log.info("Fast interaction strength start")
 
         native = Native.get_native_singleton()
 
-        score = ct.c_double(0.0)
-        return_code = native._unsafe.CalculateInteractionScore(
+        strength = ct.c_double(0.0)
+        return_code = native._unsafe.CalcInteractionStrength(
             self._interaction_handle,
             len(feature_idxs),
             Native._make_pointer(np.array(feature_idxs, np.int64), np.int64),
             interaction_options, 
             min_samples_leaf,
-            ct.byref(score),
+            ct.byref(strength),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "CalculateInteractionScore")
+            raise Native._get_native_exception(return_code, "CalcInteractionStrength")
 
-        log.info("Fast interaction score end")
-        return score.value
+        log.info("Fast interaction strength end")
+        return strength.value

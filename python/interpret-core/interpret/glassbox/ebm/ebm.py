@@ -512,7 +512,7 @@ class BaseEBM(BaseEstimator):
                 # TODO: for now we're using only 1 job because FAST isn't memory optimized.  After
                 # the native code is done with compression of the data we can go back to using self.n_jobs
                 provider2 = JobLibProvider(n_jobs=1) 
-                bagged_interaction_indices = provider2.parallel(EBMUtils.get_interactions, parallel_args)
+                bagged_interaction_indices = provider2.parallel(EBMUtils.calc_interaction_order, parallel_args)
 
                 # this holds references to dataset, bags, and scores_bags which we want python to reclaim later
                 del parallel_args 

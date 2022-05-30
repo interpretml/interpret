@@ -1083,7 +1083,7 @@ void TestApi::InitializeInteraction() {
    m_stage = Stage::InitializedInteraction;
 }
 
-FloatEbmType TestApi::InteractionScore(
+FloatEbmType TestApi::TestCalcInteractionStrength(
    const std::vector<IntEbmType> featuresInGroup, 
    const InteractionOptionsType options,
    const IntEbmType countSamplesRequiredForChildSplitMin
@@ -1102,19 +1102,19 @@ FloatEbmType TestApi::InteractionScore(
       }
    }
 
-   FloatEbmType interactionScoreOut = FloatEbmType { 0 };
-   error = CalculateInteractionScore(
+   FloatEbmType avgInteractionStrength = FloatEbmType { 0 };
+   error = CalcInteractionStrength(
       m_interactionHandle,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
       options,
       countSamplesRequiredForChildSplitMin,
-      &interactionScoreOut
+      &avgInteractionStrength
    );
    if(Error_None != error) {
       exit(1);
    }
-   return interactionScoreOut;
+   return avgInteractionStrength;
 }
 
 extern void DisplayCuts(

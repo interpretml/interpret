@@ -51,13 +51,13 @@ extern FloatEbmType PartitionTwoDimensionalInteraction(
 #endif // NDEBUG
 );
 
-static ErrorEbmType CalculateInteractionScoreInternal(
+static ErrorEbmType CalcInteractionStrengthInternal(
    InteractionShell * const pInteractionShell,
    InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
-   FloatEbmType * const pInteractionScoreReturn
+   FloatEbmType * const pInteractionStrengthAvgOut
 ) {
    // TODO : we NEVER use the hessian term (currently) in HistogramTargetEntry when calculating interaction scores, but we're spending time calculating 
    // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
@@ -66,7 +66,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
-   LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScoreInternal");
+   LOG_0(TraceLevelVerbose, "Entered CalcInteractionStrengthInternal");
 
    // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
    EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
@@ -94,7 +94,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
          // unlike in the boosting code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what group of features our caller will give us for calculating the interaction scores,
          // so we need to check if our caller gave us a tensor that overflows multiplication
-         LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cTotalBucketsMainSpace, cBins)");
+         LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cTotalBucketsMainSpace, cBins)");
          return Error_OutOfMemory;
       }
       cTotalBucketsMainSpace *= cBins;
@@ -108,7 +108,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
    const size_t cAuxillaryBuckets =
       cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
    if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
       return Error_OutOfMemory;
    }
    const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
@@ -118,13 +118,13 @@ static ErrorEbmType CalculateInteractionScoreInternal(
    if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
       LOG_0(
          TraceLevelWarning,
-         "WARNING CalculateInteractionScoreInternal GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
+         "WARNING CalcInteractionStrengthInternal GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
       );
       return Error_OutOfMemory;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
       return Error_OutOfMemory;
    }
    const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
@@ -191,7 +191,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
    );
 
    if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
-      LOG_0(TraceLevelVerbose, "CalculateInteractionScoreInternal Starting bin sweep loop");
+      LOG_0(TraceLevelVerbose, "CalcInteractionStrengthInternal Starting bin sweep loop");
 
       FloatEbmType bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
@@ -206,7 +206,7 @@ static ErrorEbmType CalculateInteractionScoreInternal(
 #endif // NDEBUG
       );
 
-      if(nullptr != pInteractionScoreReturn) {
+      if(nullptr != pInteractionStrengthAvgOut) {
          // if totalWeight < 1 then bestGain could overflow to +inf, so do the division first
          const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
          EBM_ASSERT(nullptr != pDataSet);
@@ -236,17 +236,17 @@ static ErrorEbmType CalculateInteractionScoreInternal(
             EBM_ASSERT(!std::isnan(bestGain));
             EBM_ASSERT(!std::isinf(bestGain));
          }
-         *pInteractionScoreReturn = bestGain;
+         *pInteractionStrengthAvgOut = bestGain;
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal 2 != pFeatureGroup->GetCountSignificantDimensions()");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal 2 != pFeatureGroup->GetCountSignificantDimensions()");
 
       // TODO: handle this better
-      if(nullptr != pInteractionScoreReturn) {
+      if(nullptr != pInteractionStrengthAvgOut) {
          // for now, just return any interactions that have other than 2 dimensions as -inf, 
          // which means they won't be considered but indicates they were not handled
-         *pInteractionScoreReturn = k_illegalGain;
+         *pInteractionStrengthAvgOut = k_illegalGain;
       }
    }
 
@@ -254,84 +254,84 @@ static ErrorEbmType CalculateInteractionScoreInternal(
    free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
 
-   LOG_0(TraceLevelVerbose, "Exited CalculateInteractionScoreInternal");
+   LOG_0(TraceLevelVerbose, "Exited CalcInteractionStrengthInternal");
    return Error_None;
 }
 
 // we made this a global because if we had put this variable inside the InteractionCore object, then we would need to dereference that before getting 
 // the count.  By making this global we can send a log message incase a bad InteractionCore object is sent into us we only decrease the count if the 
 // count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
-static int g_cLogCalculateInteractionScoreParametersMessages = 10;
+static int g_cLogCalcInteractionStrengthParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle,
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
    InteractionOptionsType options,
    IntEbmType countSamplesRequiredForChildSplitMin,
-   FloatEbmType * interactionScoreOut
+   FloatEbmType * avgInteractionStrengthOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogCalculateInteractionScoreParametersMessages,
+      &g_cLogCalcInteractionStrengthParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "CalculateInteractionScore parameters: interactionHandle=%p, countDimensions=%" IntEbmTypePrintf ", featureIndexes=%p, options=0x%" UInteractionOptionsTypePrintf ", countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
+      "CalcInteractionStrength parameters: interactionHandle=%p, countDimensions=%" IntEbmTypePrintf ", featureIndexes=%p, options=0x%" UInteractionOptionsTypePrintf ", countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", avgInteractionStrengthOut=%p",
       static_cast<void *>(interactionHandle),
       countDimensions,
       static_cast<const void *>(featureIndexes),
       static_cast<UInteractionOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
       countSamplesRequiredForChildSplitMin,
-      static_cast<void *>(interactionScoreOut)
+      static_cast<void *>(avgInteractionStrengthOut)
    );
 
    ErrorEbmType error;
 
    InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromInteractionHandle(interactionHandle);
    if(nullptr == pInteractionShell) {
-      if(LIKELY(nullptr != interactionScoreOut)) {
-         *interactionScoreOut = FloatEbmType { 0 };
+      if(LIKELY(nullptr != avgInteractionStrengthOut)) {
+         *avgInteractionStrengthOut = FloatEbmType { 0 };
       }
       // already logged
       return Error_IllegalParamValue;
    }
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
 
-   LOG_COUNTED_0(pInteractionCore->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered CalculateInteractionScore");
+   LOG_COUNTED_0(pInteractionCore->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered CalcInteractionStrength");
 
    if(countDimensions <= IntEbmType { 0 }) {
-      if(LIKELY(nullptr != interactionScoreOut)) {
-         *interactionScoreOut = FloatEbmType { 0 };
+      if(LIKELY(nullptr != avgInteractionStrengthOut)) {
+         *avgInteractionStrengthOut = FloatEbmType { 0 };
       }
       if(IntEbmType { 0 } == countDimensions) {
-         LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore empty feature group");
+         LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength empty feature group");
          return Error_None;
       } else {
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countDimensions must be positive");
+         LOG_0(TraceLevelError, "ERROR CalcInteractionStrength countDimensions must be positive");
          return Error_IllegalParamValue;
       }
    }
    if(nullptr == featureIndexes) {
-      if(LIKELY(nullptr != interactionScoreOut)) {
-         *interactionScoreOut = FloatEbmType { 0 };
+      if(LIKELY(nullptr != avgInteractionStrengthOut)) {
+         *avgInteractionStrengthOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes cannot be nullptr if 0 < countDimensions");
+      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes cannot be nullptr if 0 < countDimensions");
       return Error_IllegalParamValue;
    }
    if(IntEbmType { k_cDimensionsMax } < countDimensions) {
-      if(LIKELY(nullptr != interactionScoreOut)) {
-         *interactionScoreOut = FloatEbmType { 0 };
+      if(LIKELY(nullptr != avgInteractionStrengthOut)) {
+         *avgInteractionStrengthOut = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore countDimensions too large and would cause out of memory condition");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength countDimensions too large and would cause out of memory condition");
       return Error_OutOfMemory;
    }
    size_t cDimensions = static_cast<size_t>(countDimensions);
    if(0 == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
-      LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore zero samples");
-      if(nullptr != interactionScoreOut) {
+      LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength zero samples");
+      if(nullptr != avgInteractionStrengthOut) {
          // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 
          // caler be smarter about this condition
-         *interactionScoreOut = 0;
+         *avgInteractionStrengthOut = 0;
       }
       return Error_None;
    }
@@ -347,7 +347,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
          cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
    const Feature * const aFeatures = pInteractionCore->GetFeatures();
@@ -357,28 +357,28 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
    do {
       const IntEbmType indexFeatureInterop = *pFeatureIndexes;
       if(indexFeatureInterop < 0) {
-         if(LIKELY(nullptr != interactionScoreOut)) {
-            *interactionScoreOut = FloatEbmType { 0 };
+         if(LIKELY(nullptr != avgInteractionStrengthOut)) {
+            *avgInteractionStrengthOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value cannot be negative");
+         LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes value cannot be negative");
          return Error_IllegalParamValue;
       }
       if(static_cast<IntEbmType>(pInteractionCore->GetCountFeatures()) <= indexFeatureInterop) {
-         if(LIKELY(nullptr != interactionScoreOut)) {
-            *interactionScoreOut = FloatEbmType { 0 };
+         if(LIKELY(nullptr != avgInteractionStrengthOut)) {
+            *avgInteractionStrengthOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value must be less than the number of features");
+         LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes value must be less than the number of features");
          return Error_IllegalParamValue;
       }
       const size_t iFeature = static_cast<size_t>(indexFeatureInterop);
       const Feature * const pFeature = &aFeatures[iFeature];
       if(pFeature->GetCountBins() <= size_t { 1 }) {
-         if(nullptr != interactionScoreOut) {
+         if(nullptr != avgInteractionStrengthOut) {
             // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
             // our caler be smarter about this condition
-            *interactionScoreOut = FloatEbmType { 0 };
+            *avgInteractionStrengthOut = FloatEbmType { 0 };
          }
-         LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore feature group contains a feature with only 1 bin");
+         LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength feature group contains a feature with only 1 bin");
          return Error_None;
       }
       ++pFeatureIndexes;
@@ -414,39 +414,39 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calcula
    } while(pFeatureIndexesEnd != pFeatureIndexes);
 
    if(ptrdiff_t { 0 } == pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
-      LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore target with 0/1 classes");
-      if(nullptr != interactionScoreOut) {
+      LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength target with 0/1 classes");
+      if(nullptr != avgInteractionStrengthOut) {
          // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or 
          // interactions or anything else.  We return 0 since interactions have no benefit
-         *interactionScoreOut = FloatEbmType { 0 };
+         *avgInteractionStrengthOut = FloatEbmType { 0 };
       }
       return Error_None;
    }
 
    // TODO: remove the pInteractionCore object here.  pInteractionShell contains pInteractionCore
-   error = CalculateInteractionScoreInternal(
+   error = CalcInteractionStrengthInternal(
       pInteractionShell,
       pInteractionCore,
       pFeatureGroup,
       options,
       cSamplesRequiredForChildSplitMin,
-      interactionScoreOut
+      avgInteractionStrengthOut
    );
    if(Error_None != error) {
-      LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" ErrorEbmTypePrintf, error);
+      LOG_N(TraceLevelWarning, "WARNING CalcInteractionStrength returned %" ErrorEbmTypePrintf, error);
    }
 
-   if(nullptr != interactionScoreOut) {
-      // if *interactionScoreOut was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
-      EBM_ASSERT(FloatEbmType { 0 } <= *interactionScoreOut);
+   if(nullptr != avgInteractionStrengthOut) {
+      // if *avgInteractionStrengthOut was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
+      EBM_ASSERT(FloatEbmType { 0 } <= *avgInteractionStrengthOut);
       LOG_COUNTED_N(
          pInteractionCore->GetPointerCountLogExitMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited CalculateInteractionScore %" FloatEbmTypePrintf, *interactionScoreOut
+         "Exited CalcInteractionStrength %" FloatEbmTypePrintf, *avgInteractionStrengthOut
       );
    } else {
-      LOG_COUNTED_0(pInteractionCore->GetPointerCountLogExitMessages(), TraceLevelInfo, TraceLevelVerbose, "Exited CalculateInteractionScore");
+      LOG_COUNTED_0(pInteractionCore->GetPointerCountLogExitMessages(), TraceLevelInfo, TraceLevelVerbose, "Exited CalcInteractionStrength");
    }
    return error;
 }

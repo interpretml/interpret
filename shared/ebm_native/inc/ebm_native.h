@@ -469,15 +469,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Crea
    const FloatEbmType * optionalTempParams,
    InteractionHandle * interactionHandleOut
 );
-// TODO: rename to CalcInteractionStrength, since we use "score" for a different meaning elsewhere
-// and we don't want to use "gain" since we might someday want to use something other than gain
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle, 
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
    InteractionOptionsType options,
    IntEbmType countSamplesRequiredForChildSplitMin,
-   FloatEbmType * interactionScoreOut
+   FloatEbmType * avgInteractionStrengthOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
    InteractionHandle interactionHandle

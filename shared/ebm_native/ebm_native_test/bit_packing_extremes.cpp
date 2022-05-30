@@ -96,7 +96,7 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
             test.AddInteractionSamples(samples);
             test.InitializeInteraction();
 
-            FloatEbmType metric = test.InteractionScore({ 0, 1 });
+            FloatEbmType metric = test.TestCalcInteractionStrength({ 0, 1 });
             CHECK_APPROX(metric, 0);
          }
       }
@@ -122,7 +122,7 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
             test.AddInteractionSamples(samples);
             test.InitializeInteraction();
 
-            FloatEbmType metric = test.InteractionScore({ 0, 1 });
+            FloatEbmType metric = test.TestCalcInteractionStrength({ 0, 1 });
 
             CHECK_APPROX(metric, 0);
          }

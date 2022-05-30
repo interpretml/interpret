@@ -1174,7 +1174,7 @@ class EBMUtils:
         return model_update, episode_index
 
     @staticmethod
-    def get_interactions(
+    def calc_interaction_order(
         dataset,
         bag,
         scores,
@@ -1183,16 +1183,16 @@ class EBMUtils:
         min_samples_leaf,
         optional_temp_params=None,
     ):
-        interaction_scores = []
+        interaction_strengths = []
         with InteractionDetector(dataset, bag, scores, optional_temp_params) as interaction_detector:
             for feature_idxs in iter_term_features:
-                score = interaction_detector.get_interaction_score(
+                strength = interaction_detector.calc_interaction_strength(
                     feature_idxs, interaction_options, min_samples_leaf,
                 )
-                interaction_scores.append((score, feature_idxs))
+                interaction_strengths.append((strength, feature_idxs))
 
-        interaction_scores.sort(reverse=True)
-        return list(map(operator.itemgetter(1), interaction_scores))
+        interaction_strengths.sort(reverse=True)
+        return list(map(operator.itemgetter(1), interaction_strengths))
 
 
 class DPUtils:

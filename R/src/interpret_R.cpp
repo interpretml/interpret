@@ -1134,7 +1134,7 @@ SEXP GenerateModelUpdate_R(
       return R_NilValue;
    }
 
-   FloatEbmType avgGainOut;
+   FloatEbmType avgGain;
 
    error = GenerateModelUpdate(
       boosterHandle,
@@ -1143,7 +1143,7 @@ SEXP GenerateModelUpdate_R(
       learningRateLocal,
       countEbmSamplesRequiredForChildSplitMin,
       aLeavesMax,
-      &avgGainOut
+      &avgGain
    );
    if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate_R BoostingStep returned error code");
@@ -1151,7 +1151,7 @@ SEXP GenerateModelUpdate_R(
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(avgGainOut);
+   REAL(ret)[0] = static_cast<double>(avgGain);
    UNPROTECT(1);
    return ret;
 }
@@ -1584,7 +1584,7 @@ SEXP CreateRegressionInteractionDetector_R(
    return interactionHandleWrapped;
 }
 
-SEXP CalculateInteractionScore_R(
+SEXP CalcInteractionStrength_R(
    SEXP interactionHandleWrapped,
    SEXP featureIndexes,
    SEXP countSamplesRequiredForChildSplitMin
@@ -1594,12 +1594,12 @@ SEXP CalculateInteractionScore_R(
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
 
    if(EXTPTRSXP != TYPEOF(interactionHandleWrapped)) {
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R EXTPTRSXP != TYPEOF(interactionHandleWrapped)");
+      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength_R EXTPTRSXP != TYPEOF(interactionHandleWrapped)");
       return R_NilValue;
    }
    const InteractionHandle interactionHandle = static_cast<InteractionHandle>(R_ExternalPtrAddr(interactionHandleWrapped));
    if(nullptr == interactionHandle) {
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R nullptr == interactionHandle");
+      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength_R nullptr == interactionHandle");
       return R_NilValue;
    }
 
@@ -1612,7 +1612,7 @@ SEXP CalculateInteractionScore_R(
    const IntEbmType countDimensions = static_cast<IntEbmType>(cDimensions);
 
    if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
+      LOG_0(TraceLevelError, "ERROR CalcInteractionStrength_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
    }
    double doubleCountSamplesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
@@ -1621,23 +1621,23 @@ SEXP CalculateInteractionScore_R(
    if(std::isnan(doubleCountSamplesRequiredForChildSplitMin) ||
       static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountSamplesRequiredForChildSplitMin
    ) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R countSamplesRequiredForChildSplitMin overflow");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength_R countSamplesRequiredForChildSplitMin overflow");
       countEbmSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
    } else if(doubleCountSamplesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R countSamplesRequiredForChildSplitMin underflow");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength_R countSamplesRequiredForChildSplitMin underflow");
       countEbmSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
       countEbmSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
    }
 
-   FloatEbmType interactionScoreOut;
-   if(Error_None != CalculateInteractionScore(interactionHandle, countDimensions, aFeatureIndexes, countEbmSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R CalculateInteractionScore returned error code");
+   FloatEbmType avgInteractionStrength;
+   if(Error_None != CalcInteractionStrength(interactionHandle, countDimensions, aFeatureIndexes, countEbmSamplesRequiredForChildSplitMin, &avgInteractionStrength)) {
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength_R CalcInteractionStrength returned error code");
       return R_NilValue;
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(interactionScoreOut);
+   REAL(ret)[0] = static_cast<double>(avgInteractionStrength);
    UNPROTECT(1);
    return ret;
 }
@@ -1663,7 +1663,7 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "FreeBooster_R", (DL_FUNC)& FreeBooster_R, 1 },
    { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 7 },
    { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 6 },
-   { "CalculateInteractionScore_R", (DL_FUNC)&CalculateInteractionScore_R, 3 },
+   { "CalcInteractionStrength_R", (DL_FUNC)&CalcInteractionStrength_R, 3 },
    { "FreeInteractionDetector_R", (DL_FUNC)&FreeInteractionDetector_R, 1 },
    { NULL, NULL, 0 }
 };

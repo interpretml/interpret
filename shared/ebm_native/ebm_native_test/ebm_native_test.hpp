@@ -365,7 +365,7 @@ public:
 
    void InitializeInteraction();
 
-   FloatEbmType InteractionScore(
+   FloatEbmType TestCalcInteractionStrength(
       const std::vector<IntEbmType> featuresInGroup, 
       const InteractionOptionsType options = InteractionOptions_Default,
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault

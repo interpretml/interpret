@@ -73,19 +73,19 @@ create_regression_interaction_detector <- function(
    return(interaction_handle)
 }
 
-calculate_interaction_score <- function(interaction_handle, feature_indexes, count_samples_required_for_child_split_min) {
+calc_interaction_strength <- function(interaction_handle, feature_indexes, count_samples_required_for_child_split_min) {
    stopifnot(class(interaction_handle) == "externalptr")
    feature_indexes <- as.double(feature_indexes)
    count_samples_required_for_child_split_min <- as.double(count_samples_required_for_child_split_min)
 
-   interaction_score <- .Call(
-      CalculateInteractionScore_R, 
+   interaction_strength <- .Call(
+      CalcInteractionStrength_R, 
       interaction_handle, 
       feature_indexes, 
       count_samples_required_for_child_split_min
    )
-   if(is.null(interaction_score)) {
-      stop("error in CalculateInteractionScore_R")
+   if(is.null(interaction_strength)) {
+      stop("error in CalcInteractionStrength_R")
    }
-   return(interaction_score)
+   return(interaction_strength)
 }
