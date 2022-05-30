@@ -910,7 +910,7 @@ def merge_ebms(models):
 
     # dependent attributes (can be re-derrived after serialization)
     ebm.n_features_in_ = len(ebm.bins_) # scikit-learn specified name
-    ebm.term_names_out_ = _generate_term_names(ebm.feature_names_in_, ebm.term_features_)
+    ebm.term_names_ = _generate_term_names(ebm.feature_names_in_, ebm.term_features_)
 
     return ebm
 

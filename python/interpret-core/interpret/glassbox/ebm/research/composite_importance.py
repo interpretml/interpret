@@ -23,7 +23,7 @@ def compute_composite_importance(composite_terms, ebm, X, contributions=None):
 
     if contributions is None:
         _, contributions = ebm.predict_and_contrib(X)
-    ebm_term_names = ebm.term_names_out_
+    ebm_term_names = ebm.term_names_
     composite_term_indices = []
 
     for term in composite_terms:
@@ -107,7 +107,7 @@ def append_composite_importance(composite_terms, ebm, X, composite_name=None, gl
         global_explanation = ebm.explain_global(global_exp_name)
 
     if composite_name is None:
-        composite_name = _get_composite_name(composite_terms, ebm.term_names_out_)
+        composite_name = _get_composite_name(composite_terms, ebm.term_names_)
     composite_importance = compute_composite_importance(composite_terms, ebm, X, contributions)
 
     global_explanation._internal_obj["overall"]["names"].append(composite_name)
@@ -138,16 +138,16 @@ def get_composite_and_individual_terms(composite_terms_list, ebm, X):
     _, contributions = ebm.predict_and_contrib(X)
     dict = {}
 
-    for term in ebm.term_names_out_:
+    for term in ebm.term_names_:
          dict[term] = compute_composite_importance([term], ebm, X, contributions)
 
     # If it's not a list of lists, we assume it's one composite term only (e.g. list of strings or ints)
     if type(composite_terms_list[0]) is not list:
-        composite_name = _get_composite_name(composite_terms_list, ebm.term_names_out_)
+        composite_name = _get_composite_name(composite_terms_list, ebm.term_names_)
         dict[composite_name] = compute_composite_importance(composite_terms_list, ebm, X, contributions)
     else:
         for composite_terms in composite_terms_list:
-            composite_name = _get_composite_name(composite_terms, ebm.term_names_out_)
+            composite_name = _get_composite_name(composite_terms, ebm.term_names_)
             dict[composite_name] = compute_composite_importance(composite_terms, ebm, X, contributions)
 
     sorted_dict = {k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)}

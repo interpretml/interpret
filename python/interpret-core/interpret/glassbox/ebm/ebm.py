@@ -142,7 +142,7 @@ def is_private(estimator):
     return isinstance(estimator, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor))
 
 class BaseEBM(BaseEstimator):
-    """Client facing SK EBM."""
+    """Base class for all EBMs"""
 
     # Interface modeled after:
     # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingClassifier.html
@@ -623,11 +623,11 @@ class BaseEBM(BaseEstimator):
             bag_weights
         )
 
-        term_names_out = _generate_term_names(feature_names_in, term_features)
+        term_names = _generate_term_names(feature_names_in, term_features)
 
         # dependent attributes (can be re-derrived after serialization)
         self.n_features_in_ = n_features_in # scikit-learn specified name
-        self.term_names_out_ = term_names_out
+        self.term_names_ = term_names
 
         if is_differential_privacy:
             self.noise_scale_ = noise_scale
@@ -799,7 +799,7 @@ class BaseEBM(BaseEstimator):
 
         bounds = (lower_bound, upper_bound)
 
-        term_names = self.term_names_out_
+        term_names = self.term_names_
         term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
 
         native = Native.get_native_singleton()
@@ -1016,7 +1016,7 @@ class BaseEBM(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
-        term_names = self.term_names_out_
+        term_names = self.term_names_
         term_types = _generate_term_types(self.feature_types_in_, self.term_features_)
 
         data_dicts = []
