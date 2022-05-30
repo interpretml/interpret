@@ -1557,8 +1557,8 @@ TEST_CASE("zero gain, boosting, regression") {
    test.AddValidationSamples({ });
    test.InitializeBoosting();
 
-   FloatEbmType gain = test.Boost(0, GenerateUpdateOptions_Default, k_learningRateDefault, 0).gain;
-   CHECK(0 <= gain && gain < 0.0000001);
+   FloatEbmType gainAvg = test.Boost(0, GenerateUpdateOptions_Default, k_learningRateDefault, 0).gainAvg;
+   CHECK(0 <= gainAvg && gainAvg < 0.0000001);
 }
 
 TEST_CASE("pair and main gain identical, boosting, regression") {
@@ -1577,7 +1577,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
       });
    test1.AddValidationSamples({});
    test1.InitializeBoosting(0);
-   const FloatEbmType gain1 = test1.Boost(0).gain;
+   const FloatEbmType gainAvg1 = test1.Boost(0).gainAvg;
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2) });
@@ -1589,7 +1589,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
    test2.AddValidationSamples({});
    test2.InitializeBoosting();
 
-   FloatEbmType gain2 = test2.Boost(0).gain;
+   FloatEbmType gainAvg2 = test2.Boost(0).gainAvg;
 
-   CHECK_APPROX(gain1, gain2);
+   CHECK_APPROX(gainAvg1, gainAvg2);
 }

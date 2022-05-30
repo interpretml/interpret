@@ -431,7 +431,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
       });
    test2.AddValidationSamples({});
    test2.InitializeBoosting(0);
-   const FloatEbmType gain = test2.Boost(0).gain;
+   const FloatEbmType gainAvg = test2.Boost(0).gainAvg;
 
-   CHECK_APPROX(interactionStrength, gain);
+   CHECK_APPROX(interactionStrength, gainAvg);
 }

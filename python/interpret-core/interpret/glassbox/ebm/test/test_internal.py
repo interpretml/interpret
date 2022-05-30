@@ -29,14 +29,14 @@ def test_booster_internals():
         random_state=42,
         optional_temp_params=None,
     ) as booster:
-        gain = booster.generate_term_update(
+        avg_gain = booster.generate_term_update(
             term_idx=0,
             generate_update_options=Native.GenerateUpdateOptions_Default,
             learning_rate=0.01,
             min_samples_leaf=2,
             max_leaves=np.array([2], dtype=ct.c_int64, order="C"),
         )
-        assert gain == 0
+        assert avg_gain == 0
 
         splits = booster.get_term_update_splits()
         assert len(splits) == 1
@@ -79,14 +79,14 @@ def test_one_class():
         random_state=42,
         optional_temp_params=None,
     ) as booster:
-        gain = booster.generate_term_update(
+        avg_gain = booster.generate_term_update(
             term_idx=0,
             generate_update_options=Native.GenerateUpdateOptions_Default,
             learning_rate=0.01,
             min_samples_leaf=2,
             max_leaves=np.array([2], dtype=ct.c_int64, order="C"),
         )
-        assert gain == 0
+        assert avg_gain == 0
 
         splits = booster.get_term_update_splits()
         assert len(splits) == 1

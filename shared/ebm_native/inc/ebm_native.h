@@ -427,7 +427,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Gene
    FloatEbmType learningRate, 
    IntEbmType countSamplesRequiredForChildSplitMin, 
    const IntEbmType * leavesMax, 
-   FloatEbmType * gainOut
+   FloatEbmType * avgGainOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateSplits(
    BoosterHandle boosterHandle,

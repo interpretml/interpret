@@ -720,7 +720,7 @@ BoostRet TestApi::Boost(
       exit(1);
    }
 
-   FloatEbmType gain = std::numeric_limits<FloatEbmType>::quiet_NaN();
+   FloatEbmType gainAvg = std::numeric_limits<FloatEbmType>::quiet_NaN();
    FloatEbmType validationMetric = std::numeric_limits<FloatEbmType>::quiet_NaN();
 
    error = GenerateModelUpdate(
@@ -730,7 +730,7 @@ BoostRet TestApi::Boost(
       learningRate,
       countSamplesRequiredForChildSplitMin,
       0 == leavesMax.size() ? nullptr : &leavesMax[0],
-      &gain
+      &gainAvg
    );
    if(Error_None != error) {
       exit(1);
@@ -769,7 +769,7 @@ BoostRet TestApi::Boost(
    if(Error_None != error) {
       exit(1);
    }
-   return BoostRet { gain, validationMetric };
+   return BoostRet { gainAvg, validationMetric };
 }
 
 FloatEbmType TestApi::GetBestModelPredictorScore(

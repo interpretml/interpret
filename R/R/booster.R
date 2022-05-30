@@ -165,7 +165,7 @@ generate_model_update <- function(
    count_samples_required_for_child_split_min <- as.double(count_samples_required_for_child_split_min)
    max_leaves <- as.double(max_leaves)
 
-   gain <- .Call(
+   avg_gain <- .Call(
       GenerateModelUpdate_R, 
       booster_handle, 
       index_feature_group, 
@@ -173,10 +173,10 @@ generate_model_update <- function(
       count_samples_required_for_child_split_min, 
       max_leaves
    )
-   if(is.null(gain)) {
+   if(is.null(avg_gain)) {
       stop("error in GenerateModelUpdate_R")
    }
-   return(gain)
+   return(avg_gain)
 }
 
 apply_model_update <- function(
@@ -353,7 +353,7 @@ cyclic_gradient_boost <- function(
 
       for(episode_index in 1:max_rounds) {
          for(feature_group_index in seq_along(feature_groups)) {
-            gain <- generate_model_update(
+            avg_gain <- generate_model_update(
                ebm_booster$booster_handle, 
                feature_group_index - 1, 
                learning_rate, 

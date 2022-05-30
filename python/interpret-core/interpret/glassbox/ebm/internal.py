@@ -859,7 +859,7 @@ class Native:
             ct.c_int64,
             # int64_t * leavesMax
             ct.c_void_p,
-            # double * gainOut
+            # double * avgGainOut
             ct.POINTER(ct.c_double),
         ]
         self._unsafe.GenerateModelUpdate.restype = ct.c_int32
@@ -1125,7 +1125,7 @@ class Booster(AbstractContextManager):
 
         native = Native.get_native_singleton()
 
-        gain = ct.c_double(0.0)
+        avg_gain = ct.c_double(0.0)
         n_features = len(self.term_features[term_idx])
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
@@ -1136,7 +1136,7 @@ class Booster(AbstractContextManager):
             learning_rate,
             min_samples_leaf,
             Native._make_pointer(max_leaves_arr, np.int64),
-            ct.byref(gain),
+            ct.byref(avg_gain),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GenerateModelUpdate")
@@ -1144,7 +1144,7 @@ class Booster(AbstractContextManager):
         self._term_idx = term_idx
 
         # log.debug("Boosting step end")
-        return gain.value
+        return avg_gain.value
 
     def apply_term_update(self):
 

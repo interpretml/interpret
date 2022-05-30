@@ -1134,7 +1134,7 @@ SEXP GenerateModelUpdate_R(
       return R_NilValue;
    }
 
-   FloatEbmType gainOut;
+   FloatEbmType avgGainOut;
 
    error = GenerateModelUpdate(
       boosterHandle,
@@ -1143,7 +1143,7 @@ SEXP GenerateModelUpdate_R(
       learningRateLocal,
       countEbmSamplesRequiredForChildSplitMin,
       aLeavesMax,
-      &gainOut
+      &avgGainOut
    );
    if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate_R BoostingStep returned error code");
@@ -1151,7 +1151,7 @@ SEXP GenerateModelUpdate_R(
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = static_cast<double>(gainOut);
+   REAL(ret)[0] = static_cast<double>(avgGainOut);
    UNPROTECT(1);
    return ret;
 }

@@ -251,7 +251,7 @@ static const std::vector<IntEbmType> k_leavesMaxDefault = {
 };
 
 struct BoostRet {
-   FloatEbmType gain;
+   FloatEbmType gainAvg;
    FloatEbmType validationMetric;
 };
 

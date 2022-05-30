@@ -1101,7 +1101,7 @@ class EBMUtils:
                     _log.debug("Metric: {0}".format(min_metric))
 
                 for term_idx in range(len(term_features)):
-                    gain = booster.generate_term_update(
+                    avg_gain = booster.generate_term_update(
                         term_idx=term_idx,
                         boosting_flags=boosting_flags,
                         learning_rate=learning_rate,
