@@ -54,7 +54,7 @@ class BoosterCore final {
    size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
    FloatEbmType m_validationWeightTotal;
-   const FloatEbmType * m_aValidationWeights;
+   FloatEbmType * m_aValidationWeights;
 
    CompressibleTensor ** m_apCurrentModel;
    CompressibleTensor ** m_apBestModel;
@@ -63,6 +63,7 @@ class BoosterCore final {
 
    size_t m_cBytesArrayEquivalentSplitMax;
 
+   // TODO: this needs to be moved to the shell since we modify it during update building
    RandomStream m_randomStream;
 
    DataSetBoosting m_trainingSet;
@@ -84,7 +85,7 @@ class BoosterCore final {
       m_validationSet.Destruct();
 
       SamplingSet::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
-      free(const_cast<FloatEbmType *>(m_aValidationWeights));
+      free(m_aValidationWeights);
 
       FeatureGroup::FreeFeatureGroups(m_cFeatureGroups, m_apFeatureGroups);
 
@@ -112,8 +113,8 @@ class BoosterCore final {
       m_bestModelMetric(0),
       m_cBytesArrayEquivalentSplitMax(0)
    {
-      m_trainingSet.InitializeZero();
-      m_validationSet.InitializeZero();
+      m_trainingSet.InitializeUnfailing();
+      m_validationSet.InitializeUnfailing();
    }
    WARNING_POP
 

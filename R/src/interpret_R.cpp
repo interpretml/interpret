@@ -1077,7 +1077,7 @@ SEXP GenerateModelUpdate_R(
       return R_NilValue;
    }
    const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return R_NilValue;
@@ -1197,7 +1197,7 @@ SEXP GetBestModelFeatureGroup_R(
       return R_NilValue;
    }
    const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return R_NilValue;
@@ -1264,7 +1264,7 @@ SEXP GetCurrentModelFeatureGroup_R(
       return R_NilValue;
    }
    const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return R_NilValue;

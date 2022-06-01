@@ -141,6 +141,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
 // times than desired, but we can live with that
 static int g_cLogApplyModelUpdateParametersMessages = 10;
 
+// TODO: validationMetricOut should be an average
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
    BoosterHandle boosterHandle,
    FloatEbmType * validationMetricOut
@@ -159,7 +160,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
 
    ErrorEbmType error;
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = FloatEbmType { 0 };
@@ -200,7 +201,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
          pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelUpdate from runtimeLearningTypeOrCountTargetClasses <= 1"
+         "Exited ApplyModelUpdate. runtimeLearningTypeOrCountTargetClasses <= 1"
       );
       return Error_None;
    }
@@ -209,11 +210,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
       pBoosterShell,
       validationMetricOut
    );
-   if(Error_None != error) {
-      LOG_N(TraceLevelWarning, "WARNING ApplyModelUpdate returned %" ErrorEbmTypePrintf, error);
-   }
 
    pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
+
+   if(Error_None != error) {
+      LOG_N(TraceLevelWarning, "WARNING ApplyModelUpdate: return=%" ErrorEbmTypePrintf, error);
+   }
 
    if(nullptr != validationMetricOut) {
       EBM_ASSERT(!std::isnan(*validationMetricOut)); // NaNs can happen, but we should have edited those before here
@@ -224,14 +226,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
          pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelUpdate %" FloatEbmTypePrintf, *validationMetricOut
+         "Exited ApplyModelUpdate: "
+         "*validationMetricOut=%" FloatEbmTypePrintf
+         , 
+         *validationMetricOut
       );
    } else {
       LOG_COUNTED_0(
          pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelUpdate.  No validation pointer."
+         "Exited ApplyModelUpdate"
       );
    }
    return error;
@@ -270,7 +275,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       return Error_IllegalParamValue;
    }
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       *countSplitsInOut = IntEbmType { 0 };
       // already logged
@@ -354,14 +359,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
       TraceLevelVerbose,
       "GetModelUpdateExpanded: "
       "boosterHandle=%p, "
-      "modelFeatureGroupUpdateTensorOut=%p",
+      "modelFeatureGroupUpdateTensorOut=%p"
+      ,
       static_cast<void *>(boosterHandle),
       static_cast<void *>(modelFeatureGroupUpdateTensorOut)
    );
 
    ErrorEbmType error;
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return Error_IllegalParamValue;
@@ -425,7 +431,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
       "SetModelUpdateExpanded: "
       "boosterHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
-      "modelFeatureGroupUpdateTensor=%p",
+      "modelFeatureGroupUpdateTensor=%p"
+      ,
       static_cast<void *>(boosterHandle),
       indexFeatureGroup,
       static_cast<void *>(modelFeatureGroupUpdateTensor)
@@ -433,7 +440,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
 
    ErrorEbmType error;
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return Error_IllegalParamValue;

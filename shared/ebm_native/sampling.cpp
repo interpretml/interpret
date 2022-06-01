@@ -542,7 +542,7 @@ extern ErrorEbmType ExtractWeights(
    const size_t cAllSamples,
    const BagEbmType * const aBag,
    const size_t cSetSamples,
-   const FloatEbmType ** ppWeightsOut
+   FloatEbmType ** ppWeightsOut
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);

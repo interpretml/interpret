@@ -32,6 +32,9 @@ class InteractionShell final {
    HistogramBucketBase * m_aThreadByteBuffer1;
    size_t m_cThreadByteBufferCapacity1;
 
+   int m_cLogEnterMessages;
+   int m_cLogExitMessages;
+
 public:
 
    InteractionShell() = default; // preserve our POD status
@@ -39,22 +42,25 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void InitializeZero() {
+   INLINE_ALWAYS void InitializeUnfailing() {
       m_handleVerification = k_handleVerificationOk;
       m_pInteractionCore = nullptr;
 
       m_aThreadByteBuffer1 = nullptr;
       m_cThreadByteBufferCapacity1 = 0;
+
+      m_cLogEnterMessages = 1000;
+      m_cLogExitMessages = 1000;
    }
 
    static void Free(InteractionShell * const pInteractionShell);
    static InteractionShell * Create();
 
-   static INLINE_ALWAYS InteractionShell * GetInteractionShellFromInteractionHandle(
+   static INLINE_ALWAYS InteractionShell * GetInteractionShellFromHandle(
       const InteractionHandle interactionHandle
    ) {
       if(nullptr == interactionHandle) {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle null interactionHandle");
+         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromHandle null interactionHandle");
          return nullptr;
       }
       InteractionShell * const pInteractionShell = reinterpret_cast<InteractionShell *>(interactionHandle);
@@ -62,9 +68,9 @@ public:
          return pInteractionShell;
       }
       if(k_handleVerificationFreed == pInteractionShell->m_handleVerification) {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle attempt to use freed InteractionHandle");
+         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromHandle attempt to use freed InteractionHandle");
       } else {
-         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromInteractionHandle attempt to use invalid InteractionHandle");
+         LOG_0(TraceLevelError, "ERROR GetInteractionShellFromHandle attempt to use invalid InteractionHandle");
       }
       return nullptr;
    }
@@ -81,6 +87,14 @@ public:
       EBM_ASSERT(nullptr != pInteractionCore);
       EBM_ASSERT(nullptr == m_pInteractionCore); // only set it once
       m_pInteractionCore = pInteractionCore;
+   }
+
+   INLINE_ALWAYS int * GetPointerCountLogEnterMessages() {
+      return &m_cLogEnterMessages;
+   }
+
+   INLINE_ALWAYS int * GetPointerCountLogExitMessages() {
+      return &m_cLogExitMessages;
    }
 
    HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);

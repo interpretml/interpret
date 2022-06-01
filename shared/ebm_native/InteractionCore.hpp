@@ -42,9 +42,6 @@ class InteractionCore final {
    size_t m_cFeatures;
    Feature * m_aFeatures;
 
-   int m_cLogEnterMessages;
-   int m_cLogExitMessages;
-   
    DataSetInteraction m_dataFrame;
 
    INLINE_ALWAYS ~InteractionCore() {
@@ -58,12 +55,9 @@ class InteractionCore final {
       m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
       m_runtimeLearningTypeOrCountTargetClasses(0),
       m_cFeatures(0),
-      m_aFeatures(nullptr),
-
-      m_cLogEnterMessages(0),
-      m_cLogExitMessages(0)
+      m_aFeatures(nullptr)
    {
-      m_dataFrame.InitializeZero();
+      m_dataFrame.InitializeUnfailing();
    }
 
 public:
@@ -77,14 +71,6 @@ public:
 
    INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() {
       return m_runtimeLearningTypeOrCountTargetClasses;
-   }
-
-   INLINE_ALWAYS int * GetPointerCountLogEnterMessages() {
-      return &m_cLogEnterMessages;
-   }
-
-   INLINE_ALWAYS int * GetPointerCountLogExitMessages() {
-      return &m_cLogExitMessages;
    }
 
    INLINE_ALWAYS const DataSetInteraction * GetDataSetInteraction() const {

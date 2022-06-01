@@ -181,8 +181,6 @@ ErrorEbmType InteractionCore::Create(
    LOG_0(TraceLevelInfo, "InteractionCore::Allocate done feature processing");
 
    pRet->m_runtimeLearningTypeOrCountTargetClasses = runtimeLearningTypeOrCountTargetClasses;
-   pRet->m_cLogEnterMessages = 1000;
-   pRet->m_cLogExitMessages = 1000;
 
    error = pRet->m_dataFrame.Initialize(
       IsClassification(runtimeLearningTypeOrCountTargetClasses),

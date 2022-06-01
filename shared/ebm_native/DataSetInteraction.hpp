@@ -26,7 +26,7 @@ class DataSetInteraction final {
    size_t m_cSamples;
    size_t m_cFeatures;
 
-   const FloatEbmType * m_aWeights;
+   FloatEbmType * m_aWeights;
    FloatEbmType m_weightTotal;
 
 public:
@@ -38,7 +38,7 @@ public:
 
    void Destruct();
 
-   INLINE_ALWAYS void InitializeZero() {
+   INLINE_ALWAYS void InitializeUnfailing() {
       m_aGradientsAndHessians = nullptr;
       m_aaInputData = nullptr;
       m_cSamples = 0;

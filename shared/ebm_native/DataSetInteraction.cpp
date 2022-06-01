@@ -41,7 +41,7 @@ extern ErrorEbmType ExtractWeights(
    const size_t cAllSamples,
    const BagEbmType * const aBag,
    const size_t cSetSamples,
-   const FloatEbmType ** ppWeightsOut
+   FloatEbmType ** ppWeightsOut
 );
 
 INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
@@ -205,7 +205,7 @@ void DataSetInteraction::Destruct() {
    LOG_0(TraceLevelInfo, "Entered DataSetInteraction::Destruct");
 
    free(m_aGradientsAndHessians);
-   free(const_cast<FloatEbmType *>(m_aWeights));
+   free(m_aWeights);
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(1 <= m_cFeatures);
       StorageDataType ** paInputData = m_aaInputData;

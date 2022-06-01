@@ -62,7 +62,7 @@ extern ErrorEbmType ExtractWeights(
    const size_t cAllSamples,
    const BagEbmType * const aBag,
    const size_t cSetSamples,
-   const FloatEbmType ** ppWeightsOut
+   FloatEbmType ** ppWeightsOut
 );
 
 INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
@@ -492,7 +492,7 @@ ErrorEbmType BoosterCore::Create(
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apSamplingSets);
    if(0 != cTrainingSamples) {
-      const FloatEbmType * aWeights = nullptr;
+      FloatEbmType * aWeights = nullptr;
       if(0 != cWeights) {
          error = ExtractWeights(
             pDataSetShared,
@@ -510,11 +510,11 @@ ErrorEbmType BoosterCore::Create(
       pBoosterCore->m_cSamplingSets = cSamplingSets;
       // TODO: we could steal the aWeights in GenerateSamplingSets for flat sampling sets
       pBoosterCore->m_apSamplingSets = SamplingSet::GenerateSamplingSets(&pBoosterCore->m_randomStream, &pBoosterCore->m_trainingSet, aWeights, cSamplingSets);
+      free(aWeights);
       if(UNLIKELY(nullptr == pBoosterCore->m_apSamplingSets)) {
          LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apSamplingSets");
          return Error_OutOfMemory;
       }
-      free(const_cast<FloatEbmType *>(aWeights));
    }
 
    EBM_ASSERT(nullptr == pBoosterCore->m_aValidationWeights);

@@ -37,7 +37,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == pRet");
       return nullptr;
    }
-   pRet->InitZero();
+   pRet->InitializeUnfailing();
 
    const size_t cSamples = pOriginDataSet->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
@@ -117,7 +117,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == pRet");
       return nullptr;
    }
-   pRet->InitZero();
+   pRet->InitializeUnfailing();
 
    const size_t cSamples = pOriginDataSet->GetCountSamples();
    EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
@@ -174,7 +174,7 @@ void SamplingSet::Free() {
    free(this);
 }
 
-void SamplingSet::InitZero() {
+void SamplingSet::InitializeUnfailing() {
    m_aCountOccurrences = nullptr;
    m_aWeights = nullptr;
 }

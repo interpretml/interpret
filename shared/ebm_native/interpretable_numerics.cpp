@@ -1421,7 +1421,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistog
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited GetHistogramCutCount: "
-      "ret=%" IntEbmTypePrintf
+      "return=%" IntEbmTypePrintf
       ,
       ret
    );

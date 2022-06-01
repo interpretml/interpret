@@ -47,7 +47,7 @@ class SamplingSet final {
       const FloatEbmType * const aWeights
    );
    void Free();
-   void InitZero();
+   void InitializeUnfailing();
 
 public:
 

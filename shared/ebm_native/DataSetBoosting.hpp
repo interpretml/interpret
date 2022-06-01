@@ -36,7 +36,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS void InitializeZero() {
+   INLINE_ALWAYS void InitializeUnfailing() {
       m_aGradientsAndHessians = nullptr;
       m_aPredictorScores = nullptr;
       m_aTargetData = nullptr;

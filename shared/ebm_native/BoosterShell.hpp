@@ -63,7 +63,7 @@ public:
 
    constexpr static size_t k_illegalFeatureGroupIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
 
-   INLINE_ALWAYS void InitializeZero() {
+   INLINE_ALWAYS void InitializeUnfailing() {
       m_handleVerification = k_handleVerificationOk;
       m_pBoosterCore = nullptr;
       m_iFeatureGroup = k_illegalFeatureGroupIndex;
@@ -84,9 +84,9 @@ public:
    static BoosterShell * Create();
    ErrorEbmType FillAllocations();
 
-   static INLINE_ALWAYS BoosterShell * GetBoosterShellFromBoosterHandle(const BoosterHandle boosterHandle) {
+   static INLINE_ALWAYS BoosterShell * GetBoosterShellFromHandle(const BoosterHandle boosterHandle) {
       if(nullptr == boosterHandle) {
-         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromBoosterHandle null boosterHandle");
+         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromHandle null boosterHandle");
          return nullptr;
       }
       BoosterShell * const pBoosterShell = reinterpret_cast<BoosterShell *>(boosterHandle);
@@ -94,9 +94,9 @@ public:
          return pBoosterShell;
       }
       if(k_handleVerificationFreed == pBoosterShell->m_handleVerification) {
-         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromBoosterHandle attempt to use freed BoosterHandle");
+         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromHandle attempt to use freed BoosterHandle");
       } else {
-         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromBoosterHandle attempt to use invalid BoosterHandle");
+         LOG_0(TraceLevelError, "ERROR GetBoosterShellFromHandle attempt to use invalid BoosterHandle");
       }
       return nullptr;
    }

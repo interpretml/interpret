@@ -1009,7 +1009,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
 
    ErrorEbmType error;
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = FloatEbmType { 0 };
@@ -1110,6 +1110,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       leavesMax,
       avgGainOut
    );
+   if(Error_None != error) {
+      LOG_N(TraceLevelWarning, "WARNING GenerateModelUpdate: return=%" ErrorEbmTypePrintf, error);
+      if(LIKELY(nullptr != avgGainOut)) {
+         *avgGainOut = FloatEbmType { 0 };
+      }
+      return error;
+   }
 
    if(nullptr != avgGainOut) {
       EBM_ASSERT(!std::isnan(*avgGainOut)); // NaNs can happen, but we should have edited those before here
@@ -1120,7 +1127,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
          pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited GenerateModelUpdate %" FloatEbmTypePrintf,
+         "Exited GenerateModelUpdate: "
+         "*avgGainOut=%" FloatEbmTypePrintf
+         ,
          *avgGainOut
       );
    } else {
@@ -1128,10 +1137,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
          pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited GenerateModelUpdate no gain"
+         "Exited GenerateModelUpdate"
       );
    }
-   return error;
+   return Error_None;
 }
 
 } // DEFINED_ZONE_NAME

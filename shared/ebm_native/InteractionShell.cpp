@@ -42,7 +42,7 @@ InteractionShell * InteractionShell::Create() {
 
    InteractionShell * const pNew = EbmMalloc<InteractionShell>();
    if(nullptr != pNew) {
-      pNew->InitializeZero();
+      pNew->InitializeUnfailing();
    }
 
    LOG_0(TraceLevelInfo, "Exited InteractionShell::Create");
@@ -132,7 +132,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteraction
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeInteractionDetector: interactionHandle=%p", static_cast<void *>(interactionHandle));
 
-   InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromInteractionHandle(interactionHandle);
+   InteractionShell * const pInteractionShell = InteractionShell::GetInteractionShellFromHandle(interactionHandle);
    // if the conversion above doesn't work, it'll return null, and our free will not in fact free any memory,
    // but it will not crash. We'll leak memory, but at least we'll log that.
 

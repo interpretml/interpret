@@ -51,7 +51,7 @@ class FeatureGroup final {
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   FeatureGroupEntry m_FeatureGroupEntry[1];
+   FeatureGroupEntry m_FeatureGroupEntry[k_cDimensionsMax];
 
 public:
 
@@ -61,7 +61,7 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS static constexpr size_t GetFeatureGroupCountBytes(const size_t cFeatures) noexcept {
-      return sizeof(FeatureGroup) - sizeof(FeatureGroupEntry) + sizeof(FeatureGroupEntry) * cFeatures;
+      return sizeof(FeatureGroup) - sizeof(FeatureGroup::m_FeatureGroupEntry) + sizeof(FeatureGroupEntry) * cFeatures;
    }
 
    INLINE_ALWAYS static void Free(FeatureGroup * const pFeatureGroup) noexcept {

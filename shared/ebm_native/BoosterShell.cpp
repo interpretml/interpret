@@ -54,7 +54,7 @@ BoosterShell * BoosterShell::Create() {
 
    BoosterShell * const pNew = EbmMalloc<BoosterShell>();
    if(LIKELY(nullptr != pNew)) {
-      pNew->InitializeZero();
+      pNew->InitializeUnfailing();
    }
 
    LOG_0(TraceLevelInfo, "Exited BoosterShell::Create");
@@ -298,7 +298,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    }
    *boosterHandleViewOut = nullptr; // set this as soon as possible so our caller doesn't end up freeing garbage
 
-   BoosterShell * const pBoosterShellOriginal = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShellOriginal = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShellOriginal) {
       // already logged
       return Error_IllegalParamValue;
@@ -344,7 +344,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       static_cast<void *>(modelFeatureGroupTensorOut)
    );
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return Error_IllegalParamValue;
@@ -435,7 +435,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       static_cast<void *>(modelFeatureGroupTensorOut)
    );
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return Error_IllegalParamValue;
@@ -514,7 +514,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeBooster: boosterHandle=%p", static_cast<void *>(boosterHandle));
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromBoosterHandle(boosterHandle);
+   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    // if the conversion above doesn't work, it'll return null, and our free will not in fact free any memory,
    // but it will not crash. We'll leak memory, but at least we'll log that.
 
