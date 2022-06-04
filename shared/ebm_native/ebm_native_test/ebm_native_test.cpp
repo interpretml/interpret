@@ -633,7 +633,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       size += SizeRegressionTarget(allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
    }
 
-   void * pDataSet = malloc(size);
+   void * pDataSet = malloc(static_cast<size_t>(size));
 
    error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
 
@@ -1042,7 +1042,7 @@ void TestApi::InitializeInteraction() {
       size += SizeRegressionTarget(cSamples, 0 == cSamples ? nullptr : &m_interactionRegressionTargets[0]);
    }
 
-   void * pDataSet = malloc(size);
+   void * pDataSet = malloc(static_cast<size_t>(size));
 
    error = FillDataSetHeader(cFeatures, 1, 1, size, pDataSet);
 

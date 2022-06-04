@@ -168,7 +168,7 @@ public:
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
       const IntEbmType * pLeavesMax2 = aLeavesMax;
-      RandomStream * const pRandomStream = pBoosterCore->GetRandomStream();
+      RandomStream * const pRandomStream = pBoosterShell->GetRandomStream();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
       do {
@@ -451,7 +451,7 @@ public:
 
 
       const FeatureGroupEntry * pFeatureGroupEntry4 = pFeatureGroup->GetFeatureGroupEntries();
-      size_t iDimensionWrite = size_t { 0 } - size_t { 1 };
+      size_t iDimensionWrite = ~size_t { 0 }; // this is -1, but without the compiler warning
       size_t cBinsWrite;
       do {
          cBinsWrite = pFeatureGroupEntry4->m_pFeature->GetCountBins();

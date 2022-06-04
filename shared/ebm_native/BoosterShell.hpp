@@ -14,6 +14,7 @@
 
 #include "ebm_internal.hpp"
 
+#include "RandomStream.hpp"
 #include "HistogramTargetEntry.hpp"
 
 namespace DEFINED_ZONE_NAME {
@@ -34,6 +35,8 @@ class BoosterShell final {
 
    CompressibleTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
    CompressibleTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
+
+   RandomStream m_randomStream;
 
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
@@ -129,6 +132,10 @@ public:
 
    INLINE_ALWAYS CompressibleTensor * GetOverwritableModelUpdate() {
       return m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   }
+
+   INLINE_ALWAYS RandomStream * GetRandomStream() {
+      return &m_randomStream;
    }
 
    HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);

@@ -167,7 +167,6 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
 
 ErrorEbmType BoosterCore::Create(
    BoosterShell * const pBoosterShell,
-   const SeedEbmType randomSeed,
    const size_t cFeatureGroups,
    const size_t cSamplingSets,
    const FloatEbmType * const optionalTempParams,
@@ -488,8 +487,6 @@ ErrorEbmType BoosterCore::Create(
       return error;
    }
 
-   pBoosterCore->m_randomStream.InitializeUnsigned(randomSeed, k_boosterRandomizationMix);
-
    EBM_ASSERT(nullptr == pBoosterCore->m_apSamplingSets);
    if(0 != cTrainingSamples) {
       FloatEbmType * aWeights = nullptr;
@@ -509,7 +506,12 @@ ErrorEbmType BoosterCore::Create(
       }
       pBoosterCore->m_cSamplingSets = cSamplingSets;
       // TODO: we could steal the aWeights in GenerateSamplingSets for flat sampling sets
-      pBoosterCore->m_apSamplingSets = SamplingSet::GenerateSamplingSets(&pBoosterCore->m_randomStream, &pBoosterCore->m_trainingSet, aWeights, cSamplingSets);
+      pBoosterCore->m_apSamplingSets = SamplingSet::GenerateSamplingSets(
+         pBoosterShell->GetRandomStream(), 
+         &pBoosterCore->m_trainingSet, 
+         aWeights, 
+         cSamplingSets
+      );
       free(aWeights);
       if(UNLIKELY(nullptr == pBoosterCore->m_apSamplingSets)) {
          LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apSamplingSets");

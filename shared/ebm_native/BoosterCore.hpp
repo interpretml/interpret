@@ -16,7 +16,6 @@
 
 #include "ebm_internal.hpp"
 
-#include "RandomStream.hpp"
 #include "CompressibleTensor.hpp"
 // feature includes
 #include "Feature.hpp"
@@ -62,9 +61,6 @@ class BoosterCore final {
    FloatEbmType m_bestModelMetric;
 
    size_t m_cBytesArrayEquivalentSplitMax;
-
-   // TODO: this needs to be moved to the shell since we modify it during update building
-   RandomStream m_randomStream;
 
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
@@ -183,15 +179,10 @@ public:
       m_bestModelMetric = bestModelMetric;
    }
 
-   INLINE_ALWAYS RandomStream * GetRandomStream() {
-      return &m_randomStream;
-   }
-
    static void Free(BoosterCore * const pBoosterCore);
 
    static ErrorEbmType Create(
       BoosterShell * const pBoosterShell,
-      const SeedEbmType randomSeed,
       const size_t cFeatureGroups,
       const size_t cSamplingSets,
       const FloatEbmType * const optionalTempParams,
