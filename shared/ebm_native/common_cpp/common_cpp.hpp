@@ -18,6 +18,25 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+// using inlining makes it much harder to debug inline functions (stepping and breakpoints don't work).  
+// In debug builds we don't care as much about speed, but we do care about debugability, so we generally 
+// want to turn off inlining in debug mode.  BUT, when I make everything non-inlined some trivial wrapper
+// functions cause a big slowdown, so we'd rather have two classes of inlining.  The INLINE_ALWAYS
+// version that inlines in debug mode, and the INLINE_RELEASE version that only inlines for release builds.  
+// BUT, unfortunately, inline functions need to be in headers generally, but if you remove the inline, 
+// then you get name collisions on the functions.  Using static is one possible solution, but it can create 
+// duplicate copies of the function inside each module that the header is inlucded within if the linker 
+// isn't smart.  Another option is to use a dummy template, which forces the compiler to allow 
+// definition in a header but combines them afterwards. Lastly, using the non-forced inline works in most 
+// cases since the compiler will not inline complicated functions by default.
+#ifdef NDEBUG
+#define INLINE_RELEASE_UNTEMPLATED INLINE_ALWAYS
+#define INLINE_RELEASE_TEMPLATED INLINE_ALWAYS
+#else //NDEBUG
+#define INLINE_RELEASE_UNTEMPLATED template<bool bUnusedInline = false>
+#define INLINE_RELEASE_TEMPLATED
+#endif //NDEBUG
+
 // The C++ standard makes it undefined behavior to access memory past the end of an array with a declared length.
 // So, without mitigation, the struct hack would be undefined behavior.  We can however formally turn an array 
 // into a pointer, thus making our modified struct hack completely legal in C++.  So, for instance, the following
@@ -97,7 +116,7 @@ INLINE_ALWAYS constexpr static bool IsConvertError(const TFrom number) noexcept 
    static_assert(std::numeric_limits<TFrom>::lowest() < 0, "TFrom::lowest must be negative");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom::max must be positive");
 
-   static_assert(std::is_same<const TFrom, decltype(number)>::value, 
+   static_assert(std::is_same<const TFrom, decltype(number)>::value,
       "this is a stupid check to access the number variable to avoid a compiler warning");
 
    return false;

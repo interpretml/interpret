@@ -102,7 +102,7 @@ ErrorEbmType Loss::CreateLoss(
          LOG_0(TraceLevelWarning, "WARNING Loss::CreateLoss internal error, unknown exception");
          error = Error_UnexpectedInternal;
       }
-      free(const_cast<Registrable *>(pLossWrapperOut->m_pLoss)); // this is legal if pLossWrapper->m_pLoss is nullptr
+      free(pLossWrapperOut->m_pLoss); // this is legal if pLossWrapper->m_pLoss is nullptr
       pLossWrapperOut->m_pLoss = nullptr;
 
       free(pLossWrapperOut->m_pFunctionPointersCpp); // this is legal if pLossWrapper->m_pFunctionPointersCpp is nullptr

@@ -8,6 +8,7 @@
 #include <stdlib.h> // free
 
 #include "ebm_native.h"
+#include "logging.h"
 #include "common_c.h"
 
 #ifdef __cplusplus
@@ -21,12 +22,6 @@ extern "C" {
 
 typedef size_t StorageDataType;
 typedef UIntEbmType ActiveDataType;
-
-struct Registrable {
-   // TODO: empty structures are not compliant in all C compilers, so we need to move this to a C++ only place and not this bridge
-   //       use a void pointer in the wrapper below
-   // https://stackoverflow.com/questions/755305/empty-structure-in-c?rq=1
-};
 
 struct ApplyTrainingData {
    ptrdiff_t m_cRuntimeScores;
@@ -51,7 +46,12 @@ struct LossWrapper {
    APPLY_TRAINING_C m_pApplyTrainingC;
    APPLY_VALIDATION_C m_pApplyValidationC;
    // everything below here the C++ *Loss specific class needs to fill out
-   const Registrable * m_pLoss;
+
+   // this needs to be void since our Registrable object is C++ visible and we cannot define it initially 
+   // here in this C file since our object needs to be a POD and thus can't inherit data
+   // and it cannot be empty either since empty structures are not compliant in all C compilers
+   // https://stackoverflow.com/questions/755305/empty-structure-in-c?rq=1
+   void * m_pLoss;
    FloatEbmType m_updateMultiple;
    BoolEbmType m_bLossHasHessian;
    BoolEbmType m_bSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies;
@@ -59,11 +59,14 @@ struct LossWrapper {
    void * m_pFunctionPointersCpp;
 };
 
-INLINE_ALWAYS static void FreeLossWrapperInternals(LossWrapper * const pLossWrapper) {
-   free(const_cast<Registrable *>(pLossWrapper->m_pLoss));
+INLINE_ALWAYS static void InitializeLossWrapperUnfailing(LossWrapper * const pLossWrapper) {
    pLossWrapper->m_pLoss = NULL;
-   free(pLossWrapper->m_pFunctionPointersCpp);
    pLossWrapper->m_pFunctionPointersCpp = NULL;
+}
+
+INLINE_ALWAYS static void FreeLossWrapperInternals(LossWrapper * const pLossWrapper) {
+   free(pLossWrapper->m_pLoss);
+   free(pLossWrapper->m_pFunctionPointersCpp);
 }
 
 struct Config {

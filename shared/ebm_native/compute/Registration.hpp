@@ -26,6 +26,9 @@ namespace DEFINED_ZONE_NAME {
 class ParamBase {
    const char * const m_sParamName;
 
+   void * operator new(std::size_t) = delete; // no virtual destructor so disallow pointer delete
+   void operator delete (void *) = delete; // no virtual destructor so disallow pointer delete
+
 protected:
 
    ParamBase(const char * const sParamName);
@@ -39,6 +42,9 @@ public:
 
 class FloatParam final : public ParamBase {
    const double m_defaultValue;
+
+   void * operator new(std::size_t) = delete; // no virtual destructor so disallow pointer delete
+   void operator delete (void *) = delete; // no virtual destructor so disallow pointer delete
 
 public:
 
@@ -56,6 +62,9 @@ public:
 
 class BoolParam final : public ParamBase {
    const bool m_defaultValue;
+
+   void * operator new(std::size_t) = delete; // no virtual destructor so disallow pointer delete
+   void operator delete (void *) = delete; // no virtual destructor so disallow pointer delete
 
 public:
 
@@ -219,14 +228,17 @@ class RegistrationPack final : public Registration {
       FinalCheckParameters(sRegistration, sRegistrationEnd, cUsedParams);
 
       // use malloc so that we can use the C free function on the main zone side.
+      // it is legal for the destructor to not be called on a placement new object when the destructor is trivial
+      // or the caller does not rely on any side effects of the destructor
+      // https://stackoverflow.com/questions/41385355/is-it-ok-not-to-call-the-destructor-on-placement-new-allocated-objects
       void * const pRegistrableMemory = malloc(sizeof(TRegistrable<TFloat>));
       if(nullptr != pRegistrableMemory) {
          try {
             static_assert(std::is_standard_layout<TRegistrable<TFloat>>::value,
                "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 #if !(defined(__GNUC__) && __GNUC__ < 5)
-            static_assert(std::is_trivially_copyable<TRegistrable<TFloat>>::value,
-               "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+         static_assert(std::is_trivially_copyable<TRegistrable<TFloat>>::value,
+            "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 #endif // !(defined(__GNUC__) && __GNUC__ < 5)
 
             // use the in-place constructor to constrct our specialized Loss/Metric function in our pre-reserved memory
@@ -238,22 +250,22 @@ class RegistrationPack final : public Registration {
             pRegistrable->FillWrapper(pWrapperOut);
             return false;
          } catch(const SkipRegistrationException &) {
-            free(const_cast<void *>(pRegistrableMemory));
+            free(pRegistrableMemory);
             return true;
          } catch(const ParamValueOutOfRangeException &) {
-            free(const_cast<void *>(pRegistrableMemory));
+            free(pRegistrableMemory);
             throw;
          } catch(const ParamMismatchWithConfigException &) {
-            free(const_cast<void *>(pRegistrableMemory));
+            free(pRegistrableMemory);
             throw;
          } catch(const std::bad_alloc &) {
             // it's possible in theory that the constructor allocates some temporary memory, so pass this through
-            free(const_cast<void *>(pRegistrableMemory));
+            free(pRegistrableMemory);
             throw;
          } catch(...) {
             // our client Registration functions should only ever throw a limited range of exceptions listed above, 
             // but check anyways
-            free(const_cast<void *>(pRegistrableMemory));
+            free(pRegistrableMemory);
             throw RegistrationConstructorException();
          }
       }

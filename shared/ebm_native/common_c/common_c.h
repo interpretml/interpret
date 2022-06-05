@@ -134,25 +134,6 @@ extern "C" {
 #error compiler not recognized
 #endif // compiler type
 
-// using inlining makes it much harder to debug inline functions (stepping and breakpoints don't work).  
-// In debug builds we don't care as much about speed, but we do care about debugability, so we generally 
-// want to turn off inlining in debug mode.  BUT, when I make everything non-inlined some trivial wrapper
-// functions cause a big slowdown, so we'd rather have two classes of inlining.  The INLINE_ALWAYS
-// version that inlines in debug mode, and the INLINE_RELEASE version that only inlines for release builds.  
-// BUT, unfortunately, inline functions need to be in headers generally, but if you remove the inline, 
-// then you get name collisions on the functions.  Using static is one possible solution, but it can create 
-// duplicate copies of the function inside each module that the header is inlucded within if the linker 
-// isn't smart.  Another option is to use a dummy template, which forces the compiler to allow 
-// definition in a header but combines them afterwards. Lastly, using the non-forced inline works in most 
-// cases since the compiler will not inline complicated functions by default.
-#ifdef NDEBUG
-#define INLINE_RELEASE_UNTEMPLATED INLINE_ALWAYS
-#define INLINE_RELEASE_TEMPLATED INLINE_ALWAYS
-#else //NDEBUG
-#define INLINE_RELEASE_UNTEMPLATED template<bool bUnusedInline = false>
-#define INLINE_RELEASE_TEMPLATED
-#endif //NDEBUG
-
 INLINE_ALWAYS static void StopClangAnalysis() EBM_NOEXCEPT ANALYZER_NORETURN {
 }
 

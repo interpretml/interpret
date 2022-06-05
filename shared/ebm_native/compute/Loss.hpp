@@ -69,6 +69,13 @@ GPU_GLOBAL static void ExecuteApplyValidation(
    );
 }
 
+struct Registrable {
+   // TODO: move this into its own file once we create Metric classes that are also Registrable
+protected:
+   Registrable() = default;
+   ~Registrable() = default;
+};
+
 struct Loss : public Registrable {
    // Welcome to the demented hall of mirrors.. a prison for your mind
    // And no, I did not make this to purposely torment you
@@ -434,7 +441,7 @@ protected:
    INLINE_RELEASE_TEMPLATED void LossFillWrapper(
       const FloatEbmType updateMultiple,
       void * const pWrapperOut
-   ) const noexcept {
+   ) noexcept {
       EBM_ASSERT(nullptr != pWrapperOut);
       LossWrapper * const pLossWrapperOut = static_cast<LossWrapper *>(pWrapperOut);
       FunctionPointersCpp * const pFunctionPointers =
@@ -452,6 +459,7 @@ protected:
    }
 
    Loss() = default;
+   ~Loss() = default;
 
 public:
 
@@ -503,11 +511,13 @@ static_assert(std::is_trivially_copyable<Loss>::value,
 struct SingletaskLoss : public Loss {
 protected:
    SingletaskLoss() = default;
+   ~SingletaskLoss() = default;
 };
 
 struct BinaryLoss : public SingletaskLoss {
 protected:
    BinaryLoss() = default;
+   ~BinaryLoss() = default;
 public:
    static constexpr bool IsMultiScore = false;
 };
@@ -515,6 +525,7 @@ public:
 struct MulticlassLoss : public SingletaskLoss {
 protected:
    MulticlassLoss() = default;
+   ~MulticlassLoss() = default;
 public:
    static constexpr bool IsMultiScore = true;
 };
@@ -522,6 +533,7 @@ public:
 struct RegressionLoss : public SingletaskLoss {
 protected:
    RegressionLoss() = default;
+   ~RegressionLoss() = default;
 public:
    static constexpr bool IsMultiScore = false;
 };
@@ -529,6 +541,7 @@ public:
 struct MultitaskLoss : public Loss {
 protected:
    MultitaskLoss() = default;
+   ~MultitaskLoss() = default;
 public:
    static constexpr bool IsMultiScore = true;
 };
@@ -536,16 +549,19 @@ public:
 struct BinaryMultitaskLoss : public MultitaskLoss {
 protected:
    BinaryMultitaskLoss() = default;
+   ~BinaryMultitaskLoss() = default;
 };
 
 struct MulticlassMultitaskLoss : public MultitaskLoss {
 protected:
    MulticlassMultitaskLoss() = default;
+   ~MulticlassMultitaskLoss() = default;
 };
 
 struct RegressionMultitaskLoss : public MultitaskLoss {
 protected:
    RegressionMultitaskLoss() = default;
+   ~RegressionMultitaskLoss() = default;
 };
 
 
@@ -580,9 +596,9 @@ protected:
       static ErrorEbmType ApplyValidation(const Loss * const pThis, ApplyValidationData * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->LossApplyValidation<const __EBM_TYPE<TFloat>>(pData); \
       } \
-      void FillWrapper(void * const pWrapperOut) const noexcept { \
+      void FillWrapper(void * const pWrapperOut) noexcept { \
          static_assert( \
-            std::is_same<const __EBM_TYPE<TFloat>, typename std::remove_pointer<decltype(this)>::type>::value, \
+            std::is_same<__EBM_TYPE<TFloat>, typename std::remove_pointer<decltype(this)>::type>::value, \
             "*Loss types mismatch"); \
          LossFillWrapper<typename std::remove_pointer<decltype(this)>::type>( \
             static_cast<FloatEbmType>(__updateMultiple), \
