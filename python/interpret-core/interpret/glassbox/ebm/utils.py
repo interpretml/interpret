@@ -252,6 +252,18 @@ def _order_terms(term_features, *args):
     # in Python if only 1 item exists then the item is returned and not a tuple
     return ret if 2 <= len(ret) else ret[0]
 
+def _remove_unused_higher_bins(term_features, bins):
+    # many features are not used in pairs, so we can simplify the model 
+    # by removing the extra higher interaction level bins
+
+    highest_levels = [0] * len(bins)
+    for feature_idxs in term_features:
+        for feature_idx in feature_idxs:
+            highest_levels[feature_idx] = max(highest_levels[feature_idx], len(feature_idxs))
+
+    for bin_levels, max_level in zip(bins, highest_levels):
+        del bin_levels[max_level:]
+
 def _deduplicate_bins(bins):
     # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
     # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we 
@@ -907,6 +919,13 @@ def merge_ebms(models):
         ebm.bin_weights_,
         ebm.bag_weights_
     )
+
+
+    # TODO: we might be able to do these operations earlier
+    _remove_unused_higher_bins(ebm.term_features_, ebm.bins_)
+    # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
+    _deduplicate_bins(ebm.bins_)
+
 
     # dependent attributes (can be re-derrived after serialization)
     ebm.n_features_in_ = len(ebm.bins_) # scikit-learn specified name

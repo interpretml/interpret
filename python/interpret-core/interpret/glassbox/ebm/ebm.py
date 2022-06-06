@@ -7,7 +7,7 @@ from typing import DefaultDict
 from interpret.provider.visualize import PreserveProvider
 from ...utils import gen_perf_dicts
 from .utils import DPUtils, EBMUtils
-from .utils import _process_terms, make_histogram_edges, _order_terms, _generate_term_names, _generate_term_types
+from .utils import _process_terms, make_histogram_edges, _order_terms, _remove_unused_higher_bins, _deduplicate_bins, _generate_term_names, _generate_term_types
 from .bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension, ebm_decision_function, ebm_decision_function_and_explain, make_boosting_weights, after_boosting, remove_last2, get_counts_and_weights, trim_tensor, unify_data2, eval_terms
 from .internal import Native
 from ...utils import unify_data, autogen_schema, unify_vector
@@ -596,6 +596,10 @@ class BaseEBM(BaseEstimator):
             term_features.extend(boost_groups)
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
+
+        _remove_unused_higher_bins(term_features, bins)
+        # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
+        _deduplicate_bins(bins)
 
         bagged_additive_terms = (np.array([model[idx] for model in models], np.float64) for idx in range(len(term_features)))
 

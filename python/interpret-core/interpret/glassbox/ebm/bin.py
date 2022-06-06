@@ -1858,14 +1858,6 @@ def construct_bins(
             for bin_levels, feature_bins in zip(bins, preprocessor.bins_):
                 bin_levels.append(feature_bins)
 
-    # TODO: in addition to calling, _deduplicate_bins we can eliminate any bin levels that are not used
-    # So, if we only have 10 interactions and thousands of features, it stands to reason that most of the
-    # pair bins are not going to be needed in the final model.  After we've run FAST and know what term features
-    # we're going to use, strip away anything that's not needed.  The pair cuts/bins would really only be
-    # needed for model editing and/or merging.  For model merging we actually want to strip the unused bin cuts
-    # in order to reduce the number of cuts that grow on each model merge, and for editing we can initially
-    # use the lower level feature cuts/bins and then allow the user to edit the bins, since they editing anyways.
-
     _deduplicate_bins(bins)
     return feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, unique_counts, zero_counts
 
