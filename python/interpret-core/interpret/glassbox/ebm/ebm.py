@@ -619,7 +619,7 @@ class BaseEBM(BaseEstimator):
                 term_features
             )
 
-        additive_terms, term_standard_deviations, intercept = _process_terms(
+        additive_terms, term_standard_deviations, intercept, bagged_additive_terms = _process_terms(
             n_classes, 
             n_samples, 
             bagged_additive_terms, 

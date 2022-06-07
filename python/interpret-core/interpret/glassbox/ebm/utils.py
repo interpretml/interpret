@@ -43,25 +43,24 @@ def _zero_tensor(tensor, zero_low=None, zero_high=None):
                 dim_slices[dimension_idx] = -1
                 tensor[tuple(dim_slices)] = 0
 
-def _restore_missing_value_zeros2(tensors, term_bin_weights):
-    for tensor, weights in zip(tensors, term_bin_weights):
-        n_dimensions = weights.ndim
-        entire_tensor = [slice(None)] * n_dimensions
-        lower = []
-        higher = []
-        for dimension_idx in range(n_dimensions):
-            dim_slices = entire_tensor.copy()
-            dim_slices[dimension_idx] = 0
-            total_sum = np.sum(weights[tuple(dim_slices)])
-            lower.append(True if total_sum == 0 else False)
-            dim_slices[dimension_idx] = -1
-            total_sum = np.sum(weights[tuple(dim_slices)])
-            higher.append(True if total_sum == 0 else False)
-        _zero_tensor(tensor, lower, higher)
+def _restore_missing_value_zeros2(tensor, weights):
+    n_dimensions = weights.ndim
+    entire_tensor = [slice(None)] * n_dimensions
+    lower = []
+    higher = []
+    for dimension_idx in range(n_dimensions):
+        dim_slices = entire_tensor.copy()
+        dim_slices[dimension_idx] = 0
+        total_sum = np.sum(weights[tuple(dim_slices)])
+        lower.append(True if total_sum == 0 else False)
+        dim_slices[dimension_idx] = -1
+        total_sum = np.sum(weights[tuple(dim_slices)])
+        higher.append(True if total_sum == 0 else False)
+    _zero_tensor(tensor, lower, higher)
 
 def _weighted_std(a, axis, weights):
-    average = np.average(a, axis , weights)
-    variance = np.average((a - average)**2, axis , weights)
+    average = np.average(a, axis, weights)
+    variance = np.average((a - average)**2, axis, weights)
     return np.sqrt(variance)
 
 def _convert_categorical_to_continuous(categories):
@@ -205,12 +204,24 @@ def _create_proportional_tensor(axis_weights):
 def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag_weights):
     additive_terms = []
     term_standard_deviations = []
-    for score_tensors in bagged_additive_terms:
+    new_bagged_additive_terms = []
+    for score_tensors, weights in zip(bagged_additive_terms, bin_weights):
+        # if the missing/unknown bin has zero weight then whatever number was generated via boosting is 
+        # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons 
+        tensor_bags = []
+        for tensor in score_tensors:
+            tensor_copy = tensor.copy()
+            _restore_missing_value_zeros2(tensor_copy, weights)
+            tensor_bags.append(tensor_copy)
+        score_tensors = np.array(tensor_bags, np.float64) # replace it to get stddev of 0 for weight of 0
+        new_bagged_additive_terms.append(score_tensors)
+
         # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
         # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
 
         if (bag_weights == bag_weights[0]).all():
-            # avoid numeracy issues if possible and ignore the weights if they are all equal
+            # if all the bags have the same total weight we can avoid some numeracy issues
+            # by using a non-weighted standard deviation
             additive_terms.append(np.average(score_tensors, axis=0))
             term_standard_deviations.append(np.std(score_tensors, axis=0))
         else:
@@ -220,9 +231,9 @@ def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag
     intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
 
     if n_classes <= 2:
-        for idx in range(len(bagged_additive_terms)):
-            score_mean = np.average(additive_terms[idx], weights=bin_weights[idx])
-            additive_terms[idx] = (additive_terms[idx] - score_mean)
+        for scores, weights in zip(additive_terms, bin_weights):
+            score_mean = np.average(scores, weights=weights)
+            scores -= score_mean
 
             # Add mean center adjustment back to intercept
             intercept += score_mean
@@ -230,14 +241,15 @@ def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag
         # Postprocess model graphs for multiclass
         multiclass_postprocess2(n_classes, n_samples, additive_terms, intercept, bin_weights)
 
-    _restore_missing_value_zeros2(additive_terms, bin_weights)
-    _restore_missing_value_zeros2(term_standard_deviations, bin_weights)
+    for scores, weights in zip(additive_terms, bin_weights):
+        # set these to zero again since zero-centering them causes the missing/unknown to shift away from zero
+        _restore_missing_value_zeros2(scores, weights)
 
     if n_classes < 0:
         # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
         intercept = float(intercept)
 
-    return additive_terms, term_standard_deviations, intercept
+    return additive_terms, term_standard_deviations, intercept, new_bagged_additive_terms
 
 def _generate_term_names(feature_names, term_features):
     return [" x ".join(feature_names[i] for i in grp) for grp in term_features]
@@ -912,7 +924,7 @@ def merge_ebms(models):
         ebm.bin_weights_.append(np.sum(new_bin_weights, axis=0))
         ebm.bagged_additive_terms_.append(np.array(new_bagged_additive_terms, np.float64))
 
-    ebm.additive_terms_, ebm.term_standard_deviations_, ebm.intercept_ = _process_terms(
+    ebm.additive_terms_, ebm.term_standard_deviations_, ebm.intercept_, ebm.bagged_additive_terms_ = _process_terms(
         n_classes, 
         ebm.n_samples_, 
         ebm.bagged_additive_terms_, 
