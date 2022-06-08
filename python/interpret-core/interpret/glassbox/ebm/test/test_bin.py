@@ -2180,7 +2180,7 @@ def test_bin_native():
 
     sample_weight = clean_vector(sample_weight, False, "sample_weight")
 
-    feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, unique_counts, zero_counts = construct_bins(
+    feature_names_in, feature_types_in, bins, bin_weights, feature_bounds, histogram_counts, unique_val_counts, zero_val_counts = construct_bins(
         X,
         sample_weight,
         feature_names_given, 
@@ -2193,8 +2193,8 @@ def test_bin_native():
     assert(bin_weights is not None)
     assert(feature_bounds is not None)
     assert(histogram_counts is not None)
-    assert(unique_counts is not None)
-    assert(zero_counts is not None)
+    assert(unique_val_counts is not None)
+    assert(zero_val_counts is not None)
     
     feature_idxs_origin = range(len(feature_names_given)) if feature_types_given is None else [feature_idx for feature_idx, feature_type in zip(count(), feature_types_given) if feature_type != 'ignore']
     feature_idxs = []

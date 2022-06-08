@@ -34,6 +34,31 @@ def warn(*args, **kwargs):
 
 warnings.warn = warn
 
+def valid_ebm(ebm):
+    assert ebm.term_features_[0] == (0,)
+
+    for additive_term in ebm.additive_terms_:
+        all_finite = np.isfinite(additive_term).all()
+        assert all_finite
+
+def _smoke_test_explanations(global_exp, local_exp, port):
+    from .... import preserve, show, shutdown_show_server, set_show_addr
+
+    set_show_addr(("127.0.0.1", port))
+
+    # Smoke test: should run without crashing.
+    preserve(global_exp)
+    preserve(local_exp)
+    show(global_exp)
+    show(local_exp)
+
+    # Check all features for global (including interactions).
+    for selector_key in global_exp.selector[global_exp.selector.columns[0]]:
+        preserve(global_exp, selector_key)
+
+    shutdown_show_server()
+
+
 @pytest.mark.slow
 def test_unknown_multiclass_category():
     data = iris_classification()
@@ -212,15 +237,6 @@ def test_ebm_synthetic_regression():
 
     valid_ebm(clf)
 
-
-def valid_ebm(ebm):
-    assert ebm.term_features_[0] == (0,)
-
-    for additive_term in ebm.additive_terms_:
-        all_finite = np.isfinite(additive_term).all()
-        assert all_finite
-
-
 def test_ebm_synthetic_classification():
     data = synthetic_classification()
     X = data["full"]["X"]
@@ -235,23 +251,6 @@ def test_ebm_synthetic_classification():
 
     valid_ebm(clf)
 
-
-def _smoke_test_explanations(global_exp, local_exp, port):
-    from .... import preserve, show, shutdown_show_server, set_show_addr
-
-    set_show_addr(("127.0.0.1", port))
-
-    # Smoke test: should run without crashing.
-    preserve(global_exp)
-    preserve(local_exp)
-    show(global_exp)
-    show(local_exp)
-
-    # Check all features for global (including interactions).
-    for selector_key in global_exp.selector[global_exp.selector.columns[0]]:
-        preserve(global_exp, selector_key)
-
-    shutdown_show_server()
 
 
 
@@ -725,14 +724,30 @@ def test_json_classification():
     data = synthetic_classification()
     X = data["full"]["X"]
     y = data["full"]["y"]
-    feature_types = ['continuous'] * X.shape[1]
-    feature_types[0] = 'nominal'
-    clf = ExplainableBoostingClassifier(max_bins=10, max_interaction_bins=4, feature_types=feature_types, interactions=[(1,2), (2,3)])
+
+    X["A"] = pd.cut(X["A"], [-np.inf, -1, -0.5, 0.5, 1, np.inf], labels=["apples", "oranges", "0", "almonds", "peanuts"], ordered=False)
+    X["B"] = pd.cut(X["B"], [-np.inf, -0.5, 0.5, np.inf], labels=["low", "medium", "high"], ordered=True)
+    X["C"] = X["C"].mask(X['C'] < 0, 0)
+
+    clf = ExplainableBoostingClassifier(outer_bags=3, max_bins=10, max_interaction_bins=4, interactions=[(1,2), (2, 0)])
     clf.fit(X, y)
-    clf.additive_terms_[0][0] = np.nan
-    clf.additive_terms_[0][1] = np.inf
-    clf.additive_terms_[0][2] = -np.inf
-    json_text = clf._to_json()
+
+    # combine the last two bins into one bin
+    max_val = max(clf.bins_[0][0].values())
+    clf.bins_[0][0] = { key: value if value != max_val else max_val - 1 for key, value in clf.bins_[0][0].items() }
+
+    clf.additive_terms_[0] = np.delete(clf.additive_terms_[0], 1)
+    clf.additive_terms_[0][1] = -np.inf
+    clf.additive_terms_[0][2] = np.inf
+    clf.additive_terms_[0][3] = np.nan
+
+    clf.term_standard_deviations_[0] = np.delete(clf.term_standard_deviations_[0], 1)
+    clf.bagged_additive_terms_[0] = np.array([np.delete(clf.bagged_additive_terms_[0][0], 1), np.delete(clf.bagged_additive_terms_[0][1], 1), np.delete(clf.bagged_additive_terms_[0][2], 1)])
+
+    clf.bin_counts_[0] = np.delete(clf.bin_counts_[0], 1)
+    clf.bin_weights_[0] = np.delete(clf.bin_weights_[0], 1)
+
+    json_text = clf._to_json(properties='all')
 
 def test_json_multiclass():
     data = synthetic_multiclass()
@@ -742,7 +757,7 @@ def test_json_multiclass():
     feature_types[0] = 'nominal'
     clf = ExplainableBoostingClassifier(max_bins=10, feature_types=feature_types, interactions=0)
     clf.fit(X, y)
-    json_text = clf._to_json()
+    json_text = clf._to_json(properties='all')
 
 def test_json_regression():
     data = synthetic_regression()
@@ -752,7 +767,7 @@ def test_json_regression():
     feature_types[0] = 'nominal'
     clf = ExplainableBoostingRegressor(max_bins=5, max_interaction_bins=4, feature_types=feature_types, interactions=[(1,2), (2,3)])
     clf.fit(X, y)
-    json_text = clf._to_json()
+    json_text = clf._to_json(properties='all')
 
 def test_json_dp_classification():
     data = synthetic_classification()
@@ -765,7 +780,7 @@ def test_json_dp_classification():
     clf.additive_terms_[0][0] = np.nan
     clf.additive_terms_[0][1] = np.inf
     clf.additive_terms_[0][2] = -np.inf
-    json_text = clf._to_json()
+    json_text = clf._to_json(properties='all')
 
 def test_json_dp_regression():
     data = synthetic_regression()
@@ -775,4 +790,4 @@ def test_json_dp_regression():
     feature_types[0] = 'nominal'
     clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
     clf.fit(X, y)
-    json_text = clf._to_json()
+    json_text = clf._to_json(properties='all')

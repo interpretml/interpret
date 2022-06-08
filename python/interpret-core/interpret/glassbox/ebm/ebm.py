@@ -332,8 +332,8 @@ class BaseEBM(BaseEstimator):
         main_bin_weights = binning_result[3]
         feature_bounds = binning_result[4]
         histogram_counts = binning_result[5]
-        unique_counts = binning_result[6]
-        zero_counts = binning_result[7]
+        unique_val_counts = binning_result[6]
+        zero_val_counts = binning_result[7]
 
         n_features_in = len(bins)
 
@@ -643,8 +643,8 @@ class BaseEBM(BaseEstimator):
 
             # per-feature
             self.histogram_counts_ = histogram_counts
-            self.unique_counts_ = unique_counts
-            self.zero_counts_ = zero_counts
+            self.unique_val_counts_ = unique_val_counts
+            self.zero_val_counts_ = zero_val_counts
 
             # per-term
             self.bin_counts_ = bin_counts # use bin_weights_ instead for DP models
@@ -677,42 +677,113 @@ class BaseEBM(BaseEstimator):
 
         return self
 
-    def _to_json(self):
+    def _to_json(self, properties='interpretable'):
+        """ Converts the model to a JSON representation.
+
+        Args:
+            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+
+        Returns:
+            JSON string
+        """
+
+        if properties == 'minimal':
+            level = 0
+        elif properties == 'interpretable':
+            level = 1
+        elif properties == 'mergeable':
+            level = 2
+        elif properties == 'all':
+            level = 3
+        else:
+            msg = f"unrecognized export properties: {properties}"
+            _log.error(msg)
+            raise ValueError(msg)
+
         j = {}
+
+        j['version'] = "1.0"
 
         if is_classifier(self):
             j['model_type'] = "classification"
             j['classes'] = self.classes_.tolist()
+            j['link_function'] = 'logit' # logistic is the inverse link function for logit
         else:
             j['model_type'] = "regression"
-            if hasattr(self, 'min_target_') and not isnan(self.min_target_):
-                j['min_target'] = EBMUtils.jsonify_item(self.min_target_)
-            if hasattr(self, 'max_target_') and not isnan(self.max_target_):
-                j['max_target'] = EBMUtils.jsonify_item(self.max_target_)
+            if 3 <= level:
+                min_target = getattr(self, 'min_target_', None)
+                if min_target is not None and not isnan(min_target):
+                    j['min_target'] = EBMUtils.jsonify_item(min_target)
+                max_target = getattr(self, 'max_target_', None)
+                if max_target is not None and not isnan(max_target):
+                    j['max_target'] = EBMUtils.jsonify_item(max_target)
+            j['link_function'] = 'identity'
+
+        if type(self.intercept_) is float:
+            j['intercept'] = EBMUtils.jsonify_item(self.intercept_)
+        else:
+            j['intercept'] = EBMUtils.jsonify_lists(self.intercept_.tolist())
+
+        if 3 <= level:
+            noise_scale = getattr(self, 'noise_scale_', None)
+            if noise_scale is not None:
+                j['noise_scale'] = EBMUtils.jsonify_item(noise_scale)
+        if 1 <= level:
+            n_samples = getattr(self, 'n_samples_', None)
+            if n_samples is not None:
+                j['num_samples'] = n_samples
+        if 2 <= level:
+            bag_weights = getattr(self, 'bag_weights_', None)
+            if bag_weights is not None:
+                j['bag_weights'] = EBMUtils.jsonify_lists(bag_weights.tolist())
+        if 3 <= level:
+            breakpoint_iteration = getattr(self, 'breakpoint_iteration_', None)
+            if breakpoint_iteration is not None:
+                j['breakpoint_iteration'] = breakpoint_iteration.tolist()
+
+        if 3 <= level:
+            j['implementation'] = 'python'
+            params = {}
+            # TODO: add our __init__ params here or anything else that isn't meant to be re-loaded in
+            # a different implementation
+            j['implementation_params'] = params
+
+        unique_val_counts = getattr(self, 'unique_val_counts_', None)
+        zero_val_counts = getattr(self, 'zero_val_counts_', None)
+        feature_bounds = getattr(self, 'feature_bounds_', None)
+        histogram_counts = getattr(self, 'histogram_counts_', None)
 
         features = []
-        for i in range(self.n_features_in_):
+        for i in range(len(self.bins_)):
             feature = {}
 
             feature['name'] = self.feature_names_in_[i]
             feature_type = self.feature_types_in_[i]
             feature['type'] = feature_type
 
+            if 1 <= level:
+                if unique_val_counts is not None:
+                    feature['num_unique_vals'] = int(unique_val_counts[i])
+                if zero_val_counts is not None:
+                    feature['num_zero_vals'] = int(zero_val_counts[i])
+
             if feature_type == 'continuous':
                 cuts = []
                 for bins in self.bins_[i]:
                     cuts.append(bins.tolist())
                 feature['cuts'] = cuts
-                feature_bounds = getattr(self, 'feature_bounds_', None)
-                if feature_bounds is not None:
-                    feature_min = feature_bounds[i, 0]
-                    if not isnan(feature_min):
-                        feature['min'] = EBMUtils.jsonify_item(feature_min)
-                    feature_max = feature_bounds[i, 1]
-                    if not isnan(feature_max):
-                        feature['max'] = EBMUtils.jsonify_item(feature_max)
-                if hasattr(self, 'histogram_counts_') and self.histogram_counts_[i] is not None:
-                    feature['histogram_counts'] = self.histogram_counts_[i].tolist()
+                if 1 <= level:
+                    if feature_bounds is not None:
+                        feature_min = feature_bounds[i, 0]
+                        if not isnan(feature_min):
+                            feature['min'] = EBMUtils.jsonify_item(feature_min)
+                        feature_max = feature_bounds[i, 1]
+                        if not isnan(feature_max):
+                            feature['max'] = EBMUtils.jsonify_item(feature_max)
+                    if histogram_counts is not None:
+                        feature_histogram_counts = histogram_counts[i]
+                        if feature_histogram_counts is not None:
+                            feature['histogram_counts'] = feature_histogram_counts.tolist()
             else:
                 categories = []
                 for bins in self.bins_[i]:
@@ -731,16 +802,32 @@ class BaseEBM(BaseEstimator):
             features.append(feature)
         j['features'] = features
 
-        j['intercept'] = EBMUtils.jsonify_item(self.intercept_) if type(self.intercept_) is float else EBMUtils.jsonify_lists(self.intercept_.tolist())
+        standard_deviations = getattr(self, 'term_standard_deviations_', None)
+        bagged_additive_terms = getattr(self, 'bagged_additive_terms_', None)
+        bin_counts = getattr(self, 'bin_counts_', None)
 
         terms = []
         for term_idx in range(len(self.term_features_)):
             term = {}
-            term['features'] = [self.feature_names_in_[feature_idx] for feature_idx in self.term_features_[term_idx]]
+            term['term_features'] = [self.feature_names_in_[feature_idx] for feature_idx in self.term_features_[term_idx]]
             term['scores'] = EBMUtils.jsonify_lists(self.additive_terms_[term_idx].tolist())
-            if hasattr(self, 'bin_counts_') and self.bin_counts_[term_idx] is not None:
-                term['bin_counts'] = self.bin_counts_[term_idx].tolist()
-            term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[term_idx].tolist())
+            if 1 <= level:
+                if standard_deviations is not None:
+                   term_standard_deviations = standard_deviations[term_idx] 
+                   if term_standard_deviations is not None:
+                        term['standard_deviations'] = EBMUtils.jsonify_lists(term_standard_deviations.tolist())
+            if 2 <= level:
+                if bagged_additive_terms is not None:
+                   term_bagged_additive_terms = bagged_additive_terms[term_idx] 
+                   if term_bagged_additive_terms is not None:
+                        term['bagged_scores'] = EBMUtils.jsonify_lists(term_bagged_additive_terms.tolist())
+            if 3 <= level:
+                if bin_counts is not None:
+                   term_bin_counts = bin_counts[term_idx] 
+                   if term_bin_counts is not None:
+                        term['bin_counts'] = term_bin_counts.tolist()
+            if 1 <= level:
+                term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[term_idx].tolist())
             
             terms.append(term)
         j['terms'] = terms
@@ -985,7 +1072,7 @@ class BaseEBM(BaseEstimator):
             feature_names=[term_names[i] for i in keep_idxs],
             feature_types=['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [term_types[i] for i in keep_idxs]],
             name=name,
-            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, [term_names[i] for i in keep_idxs], ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [term_types[i] for i in keep_idxs]], getattr(self, 'unique_counts_', None), getattr(self, 'zero_counts_', None)),
+            selector=gen_global_selector2(getattr(self, 'n_samples_', None), self.n_features_in_, [term_names[i] for i in keep_idxs], ['categorical' if x == 'nominal' or x == 'ordinal' else x for x in [term_types[i] for i in keep_idxs]], getattr(self, 'unique_val_counts_', None), getattr(self, 'zero_val_counts_', None)),
         )
 
     def explain_local(self, X, y=None, name=None):

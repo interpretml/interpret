@@ -21,6 +21,21 @@
 #include "zoned_bridge_cpp_functions.hpp"
 #include "registration_exceptions.hpp"
 
+// Nomenclature used in this package:
+// - objective: We can use any metric for early stopping, so our list of objectives is identical to the
+//   list of metrics that we provide internally. Not all objectives are differentiable though, so for
+//   some objectives we need to choose a reasonable differentiable loss function that we can optimize via 
+//   gradient boosting. As an example, someone could request an 'auc' objective which uses a 
+//   'log_loss' loss since 'auc' is not a differentiable function. This follows the catboost approach:
+//   https://catboost.ai/en/docs/concepts/loss-functions
+// - loss function: A differentiable cost/error function that we can use for optimization via gradient boosting
+// - link function: For prediction we need the reverse/inverse link function, sometimes also known as 
+//   the mean/activation(in NN) function. Multiple loss functions can share a single link function, so for 
+//   simplicity we record the appropriate link function in our model since the original loss function 
+//   and objectives are extraneous information when using the model to make predictions.  
+// - In this package the choice of objective determines the loss function, which determines the link function.
+//   If more flexibility is needed, custom objectives can be used.
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined

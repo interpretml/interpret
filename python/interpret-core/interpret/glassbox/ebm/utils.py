@@ -602,14 +602,14 @@ def merge_ebms(models):
             if n_features != len(histogram_counts):  # pragma: no cover
                 raise Exception("Inconsistent numbers of features in the models.")
 
-        unique_counts = getattr(model, 'unique_counts_', None)
-        if unique_counts is not None:
-            if n_features != len(unique_counts):  # pragma: no cover
+        unique_val_counts = getattr(model, 'unique_val_counts_', None)
+        if unique_val_counts is not None:
+            if n_features != len(unique_val_counts):  # pragma: no cover
                 raise Exception("Inconsistent numbers of features in the models.")
 
-        zero_counts = getattr(model, 'zero_counts_', None)
-        if zero_counts is not None:
-            if n_features != len(zero_counts):  # pragma: no cover
+        zero_val_counts = getattr(model, 'zero_val_counts_', None)
+        if zero_val_counts is not None:
+            if n_features != len(zero_val_counts):  # pragma: no cover
                 raise Exception("Inconsistent numbers of features in the models.")
 
     old_bounds = []
@@ -755,8 +755,8 @@ def merge_ebms(models):
                 # they reduce the RMSE of the integer counts from the ideal floating point counts.
                 pass
 
-        if all(hasattr(model, 'zero_counts_') for model in models):
-            ebm.zero_counts_ = np.sum([model.zero_counts_ for model in models], axis=0)
+        if all(hasattr(model, 'zero_val_counts_') for model in models):
+            ebm.zero_val_counts_ = np.sum([model.zero_val_counts_ for model in models], axis=0)
 
         if all(hasattr(model, 'bin_counts_') for model in models):
             # TODO: IF all models have bin counts then we should try and estimate the bin counts for
