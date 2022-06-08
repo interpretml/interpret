@@ -753,8 +753,80 @@ class BaseEBM(BaseEstimator):
         if 3 <= level:
             j['implementation'] = 'python'
             params = {}
-            # TODO: add our __init__ params here or anything else that isn't meant to be re-loaded in
-            # a different implementation
+
+            # TODO: we need to clean up and validate our input parameters before putting them into JSON
+            # if we were pass a numpy array instead of a list or a numpy type these would fail
+            # for now we can just require that anything numpy as input is illegal
+
+            if hasattr(self, 'feature_names'):
+                params['feature_names'] = self.feature_names
+
+            if hasattr(self, 'feature_types'):
+                params['feature_types'] = self.feature_types
+
+            if hasattr(self, 'outer_bags'):
+                params['outer_bags'] = self.outer_bags
+
+            if hasattr(self, 'inner_bags'):
+                params['inner_bags'] = self.inner_bags
+
+            if hasattr(self, 'mains'):
+                params['mains'] = self.mains
+
+            if hasattr(self, 'interactions'):
+                params['interactions'] = self.interactions
+
+            if hasattr(self, 'validation_size'):
+                params['validation_size'] = self.validation_size
+
+            if hasattr(self, 'max_rounds'):
+                params['max_rounds'] = self.max_rounds
+
+            if hasattr(self, 'early_stopping_tolerance'):
+                params['early_stopping_tolerance'] = self.early_stopping_tolerance
+
+            if hasattr(self, 'early_stopping_rounds'):
+                params['early_stopping_rounds'] = self.early_stopping_rounds
+
+            if hasattr(self, 'learning_rate'):
+                params['learning_rate'] = self.learning_rate
+
+            if hasattr(self, 'min_samples_leaf'):
+                params['min_samples_leaf'] = self.min_samples_leaf
+
+            if hasattr(self, 'max_leaves'):
+                params['max_leaves'] = self.max_leaves
+
+            if hasattr(self, 'n_jobs'):
+                params['n_jobs'] = self.n_jobs
+
+            if hasattr(self, 'random_state'):
+                params['random_state'] = self.random_state
+
+            if hasattr(self, 'binning'):
+                params['binning'] = self.binning
+
+            if hasattr(self, 'max_bins'):
+                params['max_bins'] = self.max_bins
+
+            if hasattr(self, 'max_interaction_bins'):
+                params['max_interaction_bins'] = self.max_interaction_bins
+
+            if hasattr(self, 'epsilon'):
+                params['epsilon'] = self.epsilon
+
+            if hasattr(self, 'delta'):
+                params['delta'] = self.delta
+
+            if hasattr(self, 'composition'):
+                params['composition'] = self.composition
+
+            if hasattr(self, 'bin_budget_frac'):
+                params['bin_budget_frac'] = self.bin_budget_frac
+
+            if hasattr(self, 'privacy_schema'):
+                params['privacy_schema'] = self.privacy_schema
+
             j['implementation_params'] = params
 
         unique_val_counts = getattr(self, 'unique_val_counts_', None)
