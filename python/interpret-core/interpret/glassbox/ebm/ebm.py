@@ -704,23 +704,32 @@ class BaseEBM(BaseEstimator):
 
         j['version'] = "1.0"
 
+        # future-proof support for multi-output models
+        outputs = []
+        output = {}
         if is_classifier(self):
-            j['model_type'] = "classification"
-            j['classes'] = self.classes_.tolist()
-            j['link_function'] = 'logit' # logistic is the inverse link function for logit
+            output['output_type'] = "classification"
+            output['classes'] = self.classes_.tolist()
+            output['link_function'] = 'logit' # logistic is the inverse link function for logit
         else:
-            j['model_type'] = "regression"
+            output['output_type'] = "regression"
             if 3 <= level:
                 min_target = getattr(self, 'min_target_', None)
                 if min_target is not None and not isnan(min_target):
-                    j['min_target'] = EBMUtils.jsonify_item(min_target)
+                    output['min_target'] = EBMUtils.jsonify_item(min_target)
                 max_target = getattr(self, 'max_target_', None)
                 if max_target is not None and not isnan(max_target):
-                    j['max_target'] = EBMUtils.jsonify_item(max_target)
-            j['link_function'] = 'identity'
+                    output['max_target'] = EBMUtils.jsonify_item(max_target)
+            output['link_function'] = 'identity'
+        outputs.append(output)
+        j['outputs'] = outputs
 
         if type(self.intercept_) is float:
-            j['intercept'] = EBMUtils.jsonify_item(self.intercept_)
+            # scikit-learn requires that we have a single float value as our intercept for compatibility with 
+            # RegressorMixin, but in other scenarios where we want to support things like mulit-output it would be 
+            # easier if the regression intercept were handled identically to classification, so put it in an array
+            # for our JSON format to harmonize the cross-language representation
+            j['intercept'] = [EBMUtils.jsonify_item(self.intercept_)]
         else:
             j['intercept'] = EBMUtils.jsonify_lists(self.intercept_.tolist())
 
