@@ -252,7 +252,7 @@ def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag
     return additive_terms, term_standard_deviations, intercept, new_bagged_additive_terms
 
 def _generate_term_names(feature_names, term_features):
-    return [" x ".join(feature_names[i] for i in grp) for grp in term_features]
+    return [" & ".join(feature_names[i] for i in grp) for grp in term_features]
 
 def _generate_term_types(feature_types, term_features):
     return [feature_types[grp[0]] if len(grp) == 1 else "interaction" for grp in term_features]

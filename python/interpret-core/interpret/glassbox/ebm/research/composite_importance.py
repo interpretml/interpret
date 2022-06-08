@@ -55,7 +55,7 @@ def compute_composite_importance(composite_terms, ebm, X, contributions=None):
     return np.average(abs_sum_per_row)
 
 def _get_composite_name(composite_terms, ebm_term_names):
-    """Returns the composite name in the format "term_name_1 & term_name_2 & ..."
+    """Returns the composite name in the format "term_name_1, term_name_2, ..."
 
     Args:
         composite_terms: A list of term names or term indices
@@ -67,9 +67,9 @@ def _get_composite_name(composite_terms, ebm_term_names):
     name = ""
     for term in composite_terms:
         if isinstance(term, str) and term in ebm_term_names:
-            name += term if len(name) == 0 else " & " + term
+            name += term if len(name) == 0 else ", " + term
         elif isinstance(term, int) and 0 <= term < len(ebm_term_names):
-            name += ebm_term_names[term] if len(name) == 0 else " & " + ebm_term_names[term]
+            name += ebm_term_names[term] if len(name) == 0 else ", " + ebm_term_names[term]
         else:
             raise ValueError("Term '{}' is not a string or a valid integer.".format(term))
     return name

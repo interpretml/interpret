@@ -154,8 +154,8 @@ class FeatureValueExplanation(ExplanationMixin):
             return plot_bar(data_dict, title=title)
         elif feature_type == "interaction":
             # TODO: Generalize this out.
-            xtitle = title.split(" x ")[0]
-            ytitle = title.split(" x ")[1]
+            xtitle = title.split(" & ")[0]
+            ytitle = title.split(" & ")[1]
             return plot_pairwise_heatmap(
                 data_dict, title=title, xtitle=xtitle, ytitle=ytitle
             )
