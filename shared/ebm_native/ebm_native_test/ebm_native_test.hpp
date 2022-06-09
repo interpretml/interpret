@@ -21,6 +21,71 @@ enum class TestPriority {
    Discretize
 };
 
+
+// TODO: use these instead of nextafter everywhere we can use them
+inline static FloatEbmType TickHigherTest(const FloatEbmType v) noexcept {
+   // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
+
+   assert(!std::isnan(v));
+   assert(!std::isinf(v));
+
+   if(std::numeric_limits<FloatEbmType>::min() <= v || v < -std::numeric_limits<FloatEbmType>::min()) {
+#if NEVER
+
+      // this version can be used when porting to another programming language that doesn't have nextafter
+
+      FloatEbmType tick = std::numeric_limits<FloatEbmType>::min();
+      FloatEbmType ret;
+      do {
+         ret = v + tick;
+         tick *= FloatEbmType { 2.0 };
+      } while(v == ret);
+      return ret;
+
+#else  // NEVER
+
+      // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
+      return std::nextafter(v, std::numeric_limits<FloatEbmType>::max());
+
+#endif // NEVER
+   } else if(-std::numeric_limits<FloatEbmType>::min() == v) {
+      return FloatEbmType { 0 };
+   } else {
+      return std::numeric_limits<FloatEbmType>::min();
+   }
+}
+inline static FloatEbmType TickLowerTest(const FloatEbmType v) noexcept {
+   // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
+
+   assert(!std::isnan(v));
+   assert(!std::isinf(v));
+
+   if(v <= -std::numeric_limits<FloatEbmType>::min() || std::numeric_limits<FloatEbmType>::min() < v) {
+#if NEVER
+
+      // this version can be used when porting to another programming language that doesn't have nextafter
+
+      FloatEbmType tick = std::numeric_limits<FloatEbmType>::min();
+      FloatEbmType ret;
+      do {
+         ret = v - tick;
+         tick *= FloatEbmType { 2.0 };
+      } while(v == ret);
+      return ret;
+
+#else  // NEVER
+
+      // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
+      return std::nextafter(v, std::numeric_limits<FloatEbmType>::lowest());
+
+#endif // NEVER
+   } else if(std::numeric_limits<FloatEbmType>::min() == v) {
+      return FloatEbmType { 0 };
+   } else {
+      return -std::numeric_limits<FloatEbmType>::min();
+   }
+}
+
 class TestCaseHidden;
 typedef void (*TestFunctionHidden)(TestCaseHidden & testCaseHidden);
 

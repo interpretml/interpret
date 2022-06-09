@@ -7,6 +7,7 @@
 
 #include <limits> // numeric_limits
 #include <type_traits> // std::is_standard_layout, std::is_integral
+#include <cmath> // std::nextafter
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -84,6 +85,74 @@ INLINE_ALWAYS constexpr static T EbmMin(T v1, T v2) noexcept {
 template<typename T>
 INLINE_ALWAYS constexpr static T EbmMax(T v1, T v2) noexcept {
    return UNPREDICTABLE(v1 < v2) ? v2 : v1;
+}
+
+// TODO: use these instead of nextafter everywhere we can use them
+INLINE_ALWAYS static FloatEbmType TickHigher(const FloatEbmType v) noexcept {
+   // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
+
+   EBM_ASSERT(!std::isnan(v));
+   EBM_ASSERT(!std::isinf(v));
+
+   if(LIKELY(std::numeric_limits<FloatEbmType>::min() <= v || v < -std::numeric_limits<FloatEbmType>::min())) {
+#if NEVER
+
+      // this version can be used when porting to another programming language that doesn't have nextafter
+
+      FloatEbmType tick = std::numeric_limits<FloatEbmType>::min();
+      FloatEbmType ret;
+      do {
+         ret = v + tick;
+         tick *= FloatEbmType { 2.0 };
+      } while(v == ret);
+      return ret;
+
+#else  // NEVER
+
+      // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
+      return std::nextafter(v, std::numeric_limits<FloatEbmType>::max());
+
+#endif // NEVER
+   } else if(-std::numeric_limits<FloatEbmType>::min() == v) {
+      return FloatEbmType { 0 };
+   } else {
+      return std::numeric_limits<FloatEbmType>::min();
+   }
+}
+INLINE_ALWAYS static FloatEbmType TickLower(const FloatEbmType v) noexcept {
+   // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
+
+   EBM_ASSERT(!std::isnan(v));
+   EBM_ASSERT(!std::isinf(v));
+
+   if(LIKELY(v <= -std::numeric_limits<FloatEbmType>::min() || std::numeric_limits<FloatEbmType>::min() < v)) {
+#if NEVER
+
+      // this version can be used when porting to another programming language that doesn't have nextafter
+
+      FloatEbmType tick = std::numeric_limits<FloatEbmType>::min();
+      FloatEbmType ret;
+      do {
+         ret = v - tick;
+         tick *= FloatEbmType { 2.0 };
+      } while(v == ret);
+      return ret;
+
+#else  // NEVER
+
+      // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
+      return std::nextafter(v, std::numeric_limits<FloatEbmType>::lowest());
+
+#endif // NEVER
+   } else if(std::numeric_limits<FloatEbmType>::min() == v) {
+      return FloatEbmType { 0 };
+   } else {
+      return -std::numeric_limits<FloatEbmType>::min();
+   }
+}
+INLINE_ALWAYS static FloatEbmType Denormalize(const FloatEbmType v) noexcept {
+   return v <= -std::numeric_limits<FloatEbmType>::min() || 
+      std::numeric_limits<FloatEbmType>::min() <= v ? v : FloatEbmType { 0 };
 }
 
 // use SFINAE to compile time specialize IsConvertError

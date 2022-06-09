@@ -303,7 +303,10 @@ def _deduplicate_bins(bins):
 
 def make_histogram_edges(min_val, max_val, histogram_counts):
     native = Native.get_native_singleton()
-    cuts = native.cut_uniform(np.array([min_val, max_val], np.float64), len(histogram_counts) - 3)
+    n_cuts = len(histogram_counts) - 3
+    cuts = native.cut_uniform(np.array([min_val, max_val], np.float64), n_cuts)
+    if len(cuts) != n_cuts:
+        raise Exception(f'There are insufficient floating point values between min_val={min_val} to max_val={max_val} to make {n_cuts} cuts')
     return np.concatenate(([min_val], cuts, [max_val]))
 
 def _harmonize_tensor(

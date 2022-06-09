@@ -696,23 +696,29 @@ class BaseEBM(BaseEstimator):
         elif properties == 'all':
             level = 3
         else:
-            msg = f"unrecognized export properties: {properties}"
+            msg = f"Unrecognized export properties: {properties}"
             _log.error(msg)
             raise ValueError(msg)
 
         j = {}
 
-        j['version'] = "1.0"
+        j['version'] = '1.0'
 
         # future-proof support for multi-output models
         outputs = []
         output = {}
         if is_classifier(self):
-            output['output_type'] = "classification"
+            if len(self.classes_) <= 2:
+                # include 1 class classification in the binary classification category and use -inf in the intercept
+                output['output_type'] = 'binary_classification'
+            else:
+                # distinquish from binary classification so that we can support ordinal classification someday
+                # https://en.wikipedia.org/wiki/Ordinal_regression
+                output['output_type'] = 'multinomial_classification'
             output['classes'] = self.classes_.tolist()
             output['link_function'] = 'logit' # logistic is the inverse link function for logit
         else:
-            output['output_type'] = "regression"
+            output['output_type'] = 'regression'
             if 3 <= level:
                 min_target = getattr(self, 'min_target_', None)
                 if min_target is not None and not isnan(min_target):

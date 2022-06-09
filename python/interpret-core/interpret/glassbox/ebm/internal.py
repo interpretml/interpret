@@ -253,14 +253,13 @@ class Native:
             raise Exception(f"max_cuts can't be negative: {max_cuts}.")
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
-        count_cuts = ct.c_int64(max_cuts)
-        self._unsafe.CutUniform(
+        count_cuts = self._unsafe.CutUniform(
             col_data.shape[0],
             Native._make_pointer(col_data, np.float64),
-            ct.byref(count_cuts),
+            max_cuts,
             Native._make_pointer(cuts, np.float64),
         )
-        return cuts[:count_cuts.value]
+        return cuts[:count_cuts]
 
     def cut_winsorized(self, col_data, max_cuts):
         if max_cuts < 0:
@@ -596,12 +595,12 @@ class Native:
             ct.c_int64,
             # double * featureValues
             ct.c_void_p,
-            # int64_t * countCutsInOut
-            ct.POINTER(ct.c_int64),
+            # int64_t countDesiredCuts
+            ct.c_int64,
             # double * cutsLowerBoundInclusiveOut
             ct.c_void_p,
         ]
-        self._unsafe.CutUniform.restype = None
+        self._unsafe.CutUniform.restype = ct.c_int64
 
         self._unsafe.CutWinsorized.argtypes = [
             # int64_t countSamples

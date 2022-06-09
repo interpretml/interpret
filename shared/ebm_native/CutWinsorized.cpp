@@ -14,6 +14,8 @@
 
 #include "ebm_internal.hpp"
 
+// TODO: check this file for how we handle subnormal numbers.  NEVER RETURN SUBNORMALS!
+
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
