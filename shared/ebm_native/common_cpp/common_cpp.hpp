@@ -7,7 +7,7 @@
 
 #include <limits> // numeric_limits
 #include <type_traits> // std::is_standard_layout, std::is_integral
-#include <cmath> // std::nextafter
+#include <math.h> // std::nextafter
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -88,71 +88,103 @@ INLINE_ALWAYS constexpr static T EbmMax(T v1, T v2) noexcept {
 }
 
 // TODO: use these instead of nextafter everywhere we can use them
-INLINE_ALWAYS static FloatEbmType TickHigher(const FloatEbmType v) noexcept {
+INLINE_ALWAYS static double TickHigher(double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
 
-   EBM_ASSERT(!std::isnan(v));
-   EBM_ASSERT(!std::isinf(v));
+   EBM_ASSERT(!isnan(v));
+   EBM_ASSERT(!isinf(v));
+   EBM_ASSERT(std::numeric_limits<double>::max() != v);
 
-   if(LIKELY(std::numeric_limits<FloatEbmType>::min() <= v || v < -std::numeric_limits<FloatEbmType>::min())) {
+   if(LIKELY(std::numeric_limits<double>::min() <= v || v < -std::numeric_limits<double>::min())) {
 #if NEVER
 
       // this version can be used when porting to another programming language that doesn't have nextafter
 
-      FloatEbmType tick = std::numeric_limits<FloatEbmType>::min();
-      FloatEbmType ret;
-      do {
-         ret = v + tick;
-         tick *= FloatEbmType { 2.0 };
-      } while(v == ret);
-      return ret;
+      constexpr double k_denormToNorm = 4503599627370496.0;
+      static_assert(k_denormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
+         "bad min to denorm_min ratio");
+      // go to twice as high because otherwise rounding can come into play in the last bit after the addition
+      if(fabs(v) < 2 * k_denormToNorm * std::numeric_limits<double>::min()) {
+         v *= k_denormToNorm;
+         double tick = std::numeric_limits<double>::min();
+         double ret;
+         do {
+            ret = v + tick;
+            tick *= double { 2.0 };
+         } while(v == ret);
+         return ret / k_denormToNorm;
+      } else {
+         double tick = std::numeric_limits<double>::min();
+         double ret;
+         do {
+            ret = v + tick;
+            tick *= double { 2.0 };
+         } while(v == ret);
+         return ret;
+      }
 
 #else  // NEVER
 
       // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
-      return std::nextafter(v, std::numeric_limits<FloatEbmType>::max());
+      return ::nextafter(v, std::numeric_limits<double>::max());
 
 #endif // NEVER
-   } else if(-std::numeric_limits<FloatEbmType>::min() == v) {
-      return FloatEbmType { 0 };
+   } else if(-std::numeric_limits<double>::min() == v) {
+      return double { 0 };
    } else {
-      return std::numeric_limits<FloatEbmType>::min();
+      return std::numeric_limits<double>::min();
    }
 }
-INLINE_ALWAYS static FloatEbmType TickLower(const FloatEbmType v) noexcept {
+INLINE_ALWAYS static double TickLower(double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
 
-   EBM_ASSERT(!std::isnan(v));
-   EBM_ASSERT(!std::isinf(v));
+   EBM_ASSERT(!isnan(v));
+   EBM_ASSERT(!isinf(v));
+   EBM_ASSERT(std::numeric_limits<double>::lowest() != v);
 
-   if(LIKELY(v <= -std::numeric_limits<FloatEbmType>::min() || std::numeric_limits<FloatEbmType>::min() < v)) {
+   if(LIKELY(v <= -std::numeric_limits<double>::min() || std::numeric_limits<double>::min() < v)) {
 #if NEVER
 
       // this version can be used when porting to another programming language that doesn't have nextafter
 
-      FloatEbmType tick = std::numeric_limits<FloatEbmType>::min();
-      FloatEbmType ret;
-      do {
-         ret = v - tick;
-         tick *= FloatEbmType { 2.0 };
-      } while(v == ret);
-      return ret;
+      constexpr double k_denormToNorm = 4503599627370496.0;
+      static_assert(k_denormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
+         "bad min to denorm_min ratio");
+      // go to twice as high because otherwise rounding can come into play in the last bit after the subtraction
+      if(fabs(v) < 2 * k_denormToNorm * std::numeric_limits<double>::min()) {
+         v *= k_denormToNorm;
+         double tick = std::numeric_limits<double>::min();
+         double ret;
+         do {
+            ret = v - tick;
+            tick *= double { 2.0 };
+         } while(v == ret);
+         return ret / k_denormToNorm;
+      } else {
+         double tick = std::numeric_limits<double>::min();
+         double ret;
+         do {
+            ret = v - tick;
+            tick *= double { 2.0 };
+         } while(v == ret);
+         return ret;
+      }
 
 #else  // NEVER
 
       // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
-      return std::nextafter(v, std::numeric_limits<FloatEbmType>::lowest());
+      return ::nextafter(v, std::numeric_limits<double>::lowest());
 
 #endif // NEVER
-   } else if(std::numeric_limits<FloatEbmType>::min() == v) {
-      return FloatEbmType { 0 };
+   } else if(std::numeric_limits<double>::min() == v) {
+      return double { 0 };
    } else {
-      return -std::numeric_limits<FloatEbmType>::min();
+      return -std::numeric_limits<double>::min();
    }
 }
-INLINE_ALWAYS static FloatEbmType Denormalize(const FloatEbmType v) noexcept {
-   return v <= -std::numeric_limits<FloatEbmType>::min() || 
-      std::numeric_limits<FloatEbmType>::min() <= v ? v : FloatEbmType { 0 };
+INLINE_ALWAYS static double Denormalize(const double v) noexcept {
+   return v <= -std::numeric_limits<double>::min() ||
+      std::numeric_limits<double>::min() <= v ? v : double { 0 };
 }
 
 // use SFINAE to compile time specialize IsConvertError

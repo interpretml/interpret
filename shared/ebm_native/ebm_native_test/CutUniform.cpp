@@ -4,6 +4,8 @@
 
 #include "precompiled_header_test.hpp"
 
+#include <random>
+
 #include "ebm_native.h"
 #include "ebm_native_test.hpp"
 
@@ -248,7 +250,6 @@ TEST_CASE("CutUniform, low start, hit float resolution before end") {
    CHECK(cuts.size() == static_cast<size_t>(countCuts));
 }
 
-
 TEST_CASE("CutUniform, high start, hit float resolution before end") {
    std::vector<FloatEbmType> featureValues;
 
@@ -271,5 +272,107 @@ TEST_CASE("CutUniform, high start, hit float resolution before end") {
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
    CHECK(cuts.size() == static_cast<size_t>(countCuts));
+}
+
+TEST_CASE("CutUniform, stress test reproducible") {
+   constexpr double k_denormToNorm = 4503599627370496.0;
+   static_assert(k_denormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
+      "bad min to denorm_min ratio");
+
+   std::vector<FloatEbmType> featureValues { 0, 0 };
+
+   double interestingValues[] = {
+      std::numeric_limits<FloatEbmType>::lowest(),
+      -2 * k_denormToNorm * std::numeric_limits<double>::min(),
+      -k_denormToNorm * std::numeric_limits<double>::min(),
+      -std::numeric_limits<FloatEbmType>::min(),
+      std::numeric_limits<FloatEbmType>::min(),
+      k_denormToNorm * std::numeric_limits<double>::min(),
+      2 * k_denormToNorm * std::numeric_limits<double>::min(),
+      std::numeric_limits<FloatEbmType>::max(),
+   };
+   const size_t cInteresting = static_cast<int>(sizeof(interestingValues) / sizeof(interestingValues[0]));
+
+   // 97 is prime
+   std::vector<FloatEbmType> cuts(97, illegalVal);
+
+   double result = 0.0;
+
+   std::mt19937 randomize(42);
+   for(int i = 0; i < 10000; ++i) {
+      size_t val = static_cast<size_t>(randomize());
+      bool isPositiveLow = static_cast<bool>(0x1 & val);
+      val >>= 1;
+      bool isPositiveHigh = static_cast<bool>(0x1 & val);
+      val >>= 1;
+      size_t shiftLow = static_cast<size_t>(0x7 & val); // 0-3 shift
+      val >>= 3;
+      size_t shiftHigh = static_cast<size_t>(0x7 & val); // 0-3 shift
+      val >>= 3;
+      size_t iInterestingLow = val % cInteresting;
+      val /= cInteresting;
+      size_t iInterestingHigh = val % cInteresting;
+      val /= cInteresting;
+
+      double low = DenormalizeTest(interestingValues[iInterestingLow]);
+      double high = DenormalizeTest(interestingValues[iInterestingHigh]);
+
+      if(isPositiveLow) {
+         for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
+            if(low != std::numeric_limits<FloatEbmType>::lowest()) {
+               low = TickLowerTest(low);
+            }
+         }
+      } else {
+         for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
+            if(low != std::numeric_limits<FloatEbmType>::max()) {
+               low = TickHigherTest(low);
+            }
+         }
+      }
+
+      if(isPositiveHigh) {
+         for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
+            if(high != std::numeric_limits<FloatEbmType>::lowest()) {
+               high = TickLowerTest(high);
+            }
+         }
+      } else {
+         for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
+            if(high != std::numeric_limits<FloatEbmType>::max()) {
+               high = TickHigherTest(high);
+            }
+         }
+      }
+
+      featureValues[0] = low;
+      featureValues[1] = high;
+
+      IntEbmType iCuts = static_cast<IntEbmType>(val % cuts.size());
+      IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], iCuts, &cuts[0]);
+
+      size_t cCuts = static_cast<size_t>(countCuts);
+      for(size_t iCut = 0; iCut < cCuts; ++iCut) {
+         double oneCut = cuts[iCut];
+         if(0.0 != oneCut) {
+            if(std::abs(oneCut) < 1.0) {
+               do {
+                  oneCut *= 2.0;
+               } while(std::abs(oneCut) < 1.0);
+            } else {
+               do {
+                  oneCut *= 0.5;
+               } while(1.0 < std::abs(oneCut));
+            }
+         }
+         if(result < 0.0 && 0.0 < oneCut || 0.0 < result && oneCut < 0.0) {
+            result += oneCut;
+         } else {
+            result -= oneCut;
+         }
+      }
+   }
+
+   CHECK(-0.65942253092906411 == result);
 }
 

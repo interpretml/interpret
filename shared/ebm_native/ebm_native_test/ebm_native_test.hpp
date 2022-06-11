@@ -28,26 +28,11 @@ inline static FloatEbmType TickHigherTest(const FloatEbmType v) noexcept {
 
    assert(!std::isnan(v));
    assert(!std::isinf(v));
+   assert(std::numeric_limits<double>::max() != v);
 
    if(std::numeric_limits<FloatEbmType>::min() <= v || v < -std::numeric_limits<FloatEbmType>::min()) {
-#if NEVER
-
-      // this version can be used when porting to another programming language that doesn't have nextafter
-
-      FloatEbmType tick = std::numeric_limits<FloatEbmType>::min();
-      FloatEbmType ret;
-      do {
-         ret = v + tick;
-         tick *= FloatEbmType { 2.0 };
-      } while(v == ret);
-      return ret;
-
-#else  // NEVER
-
       // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
       return std::nextafter(v, std::numeric_limits<FloatEbmType>::max());
-
-#endif // NEVER
    } else if(-std::numeric_limits<FloatEbmType>::min() == v) {
       return FloatEbmType { 0 };
    } else {
@@ -59,31 +44,20 @@ inline static FloatEbmType TickLowerTest(const FloatEbmType v) noexcept {
 
    assert(!std::isnan(v));
    assert(!std::isinf(v));
+   assert(std::numeric_limits<double>::lowest() != v);
 
    if(v <= -std::numeric_limits<FloatEbmType>::min() || std::numeric_limits<FloatEbmType>::min() < v) {
-#if NEVER
-
-      // this version can be used when porting to another programming language that doesn't have nextafter
-
-      FloatEbmType tick = std::numeric_limits<FloatEbmType>::min();
-      FloatEbmType ret;
-      do {
-         ret = v - tick;
-         tick *= FloatEbmType { 2.0 };
-      } while(v == ret);
-      return ret;
-
-#else  // NEVER
-
       // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
       return std::nextafter(v, std::numeric_limits<FloatEbmType>::lowest());
-
-#endif // NEVER
    } else if(std::numeric_limits<FloatEbmType>::min() == v) {
       return FloatEbmType { 0 };
    } else {
       return -std::numeric_limits<FloatEbmType>::min();
    }
+}
+inline static double DenormalizeTest(const double v) noexcept {
+   return v <= -std::numeric_limits<double>::min() ||
+      std::numeric_limits<double>::min() <= v ? v : double { 0 };
 }
 
 class TestCaseHidden;

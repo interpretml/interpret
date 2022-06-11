@@ -37,6 +37,7 @@ EXPORTS
   Discretize
   Softmax
   SuggestGraphBounds
+  FlushSubnormalsToZero
   GenerateRandomNumber
   SampleWithoutReplacement
   StratifiedSamplingWithoutReplacement

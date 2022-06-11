@@ -307,6 +307,13 @@ def make_histogram_edges(min_val, max_val, histogram_counts):
     cuts = native.cut_uniform(np.array([min_val, max_val], np.float64), n_cuts)
     if len(cuts) != n_cuts:
         raise Exception(f'There are insufficient floating point values between min_val={min_val} to max_val={max_val} to make {n_cuts} cuts')
+
+    # our EBM model spec disallows subnormal values since they can be problems in computation 
+    # and serialization. We only use the min_value and max_value in the histogram edges as information 
+    # so this won't affect binning or reporting other than potentially visualization where subnormals can be ignored
+    min_val = native.flush_subnormals_to_zero(min_val)
+    max_val = native.flush_subnormals_to_zero(max_val)
+
     return np.concatenate(([min_val], cuts, [max_val]))
 
 def _harmonize_tensor(

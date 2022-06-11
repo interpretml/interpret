@@ -243,6 +243,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetT
 //       in the waiting function).  We would drop anything that exceeds the circular buffer.  This allows us to have
 //       threaded code inside non-threaded languages.
 
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE double EBM_NATIVE_CALLING_CONVENTION FlushSubnormalsToZero(double value);
+
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix

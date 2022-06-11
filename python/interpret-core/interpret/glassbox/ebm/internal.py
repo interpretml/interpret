@@ -162,6 +162,9 @@ class Native:
 
         self._unsafe.SetTraceLevel(trace_level)
 
+    def flush_subnormals_to_zero(self, val):
+        return self._unsafe.FlushSubnormalsToZero(val)
+
     def generate_random_number(self, random_seed, stage_randomization_mix):
         return self._unsafe.GenerateRandomNumber(random_seed, stage_randomization_mix)
 
@@ -527,6 +530,12 @@ class Native:
         ]
         self._unsafe.SetTraceLevel.restype = None
 
+
+        self._unsafe.FlushSubnormalsToZero.argtypes = [
+            # double value
+            ct.c_double,
+        ]
+        self._unsafe.FlushSubnormalsToZero.restype = ct.c_double
 
         self._unsafe.GenerateRandomNumber.argtypes = [
             # int32_t randomSeed

@@ -243,23 +243,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
    const size_t cBins = cCuts + size_t { 1 };
    const FloatEbmType cBinsFloat = static_cast<FloatEbmType>(cBins);
 
-   // TODO: if the numbers are really really small in the 10e-308 range then we can have one of our cuts land
-   // in the subnormal range which is a really huge gap if we disallow denormals, which we certainly want to do,
-   // There's no perfect solution, although our solution below to potentially bunch up many of the cuts on one side
-   // is not the best solution.  We could potentially try to figure out how many cuts should go on either side
-   // of the subnormal gap and then allocate them proportionally with cuts at -min and +min to wrap the gap, but
-   // that's a lot of complicated code to handle what should be an exceedingly rare scenario.
-
-   const FloatEbmType diff = maxValue - minValue;
+   FloatEbmType diff = maxValue - minValue;
    if(UNLIKELY(std::numeric_limits<FloatEbmType>::infinity() == diff)) {
       EBM_ASSERT(2.0 <= cBinsFloat);
-      const FloatEbmType stepValue = maxValue / cBinsFloat - minValue / cBinsFloat;
+      FloatEbmType stepValue = maxValue / cBinsFloat - minValue / cBinsFloat;
 
-      // +inf the the highest non-NaN value, and it has the least significant bit set. The max float has zero
-      // in the least significant bit, so if we divide by 2.0, then we don't need to round.  If cBinsFloat is 3.0 or 
-      // above then we won't overflow, so in all conditions, even if IEEE-754 rounding is set to something weird like
-      // roundTiesToAway we won't overflow when computing the stepValue.  This behavior was tested as well.
+      // if maxValue is max_float and minValue is min_float those values are represented with mantissas of all
+      // 1s and exponents one shy of all 1s.  Dividing by 2.0 reduces the exponent, but keeps all the mantissa bits.
+      // Then subtracting the two equally negated results is identical to multiplying by 2.0, which gives back the 
+      // original values.  No rounding was required, so it doesn't matter which IEEE-754 rounding mode is enabled
+      // We never overflow to +inf.
       EBM_ASSERT(!std::isinf(stepValue));
+      // stepValue cannot be a subnormal since the range of a float64 is larger than an int64
+      EBM_ASSERT(std::numeric_limits<FloatEbmType>::min() <= stepValue);
 
       // the first cut should always succeed, since we subtract from maxValue, so even if 
       // the subtraction is zero we succeed in having a cut at maxValue, which is legal for us
@@ -268,17 +264,31 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       do {
          FloatEbmType cut;
          const size_t iReversed = cBins - iCut;
-         
+
+         // the stepValue multiple cannot be subnormal since stepValue cannot be subnormal, 
+         // but call Denormalize anyways to guarantee that fused multiply add instructions are not used
+
          // if we go beyond the mid-point index, then (i * stepValue) can overflow, so we need to swap our anchor
          if(PREDICTABLE(iCut < iReversed)) {
             // always subtract from maxValue on the first iteration so that
             // cutPrev has a guarantee that it's maxValue or lower
             EBM_ASSERT(2 <= iReversed);
-            cut = minValue + static_cast<FloatEbmType>(iCut) * stepValue;
+
+            FloatEbmType shift = static_cast<FloatEbmType>(iCut) * stepValue;
+            shift = Denormalize(shift);
+            cut = minValue + shift;
          } else {
-            cut = maxValue - static_cast<FloatEbmType>(iReversed) * stepValue;
+            FloatEbmType shift = static_cast<FloatEbmType>(iReversed) * stepValue;
+            shift = Denormalize(shift);
+            cut = maxValue - shift;
          }
-         EBM_ASSERT(!std::isinf(cut));
+         if(std::isinf(cut)) {
+            // this can occur very rarely if min is lowest float, max is maximum float, at the mid-point when 
+            // iReversed is half the value of cBins, we're multiplying the step value by just enough to reach
+            // the max float, but then we round upwards.  In that case we overflow to +inf, although it was just
+            // by one float tick.  In this case adjust down one tick to the max float value
+            cut = std::numeric_limits<FloatEbmType>::max();
+         }
 
          cut = Denormalize(cut);
 
@@ -298,76 +308,165 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
          cutPrev = cut;
          --iCut;
       } while(LIKELY(size_t { 0 } != iCut));
-   } else if(PREDICTABLE(std::abs(minValue) < std::abs(maxValue))) {
-      // minValue has more precision, so anchor to that point
-
-      // We're going to fill the cut buffer upwards from the minValue to the maxValue.  If we find that 
-      // we hit the boundary where the rest of the cuts need to be in tick increments then we want 
-      // it to be in the less precise range near the maxValue, so let's re-fill our buffer again starting 
-      // from the maxValue and work downwards by ticks so that we can bail with valid results if needed
-
-      EBM_ASSERT(cCuts == iCut);
-      walkValue = maxValue;
-      do {
-         EBM_ASSERT(minValue < walkValue);
-         cutsLowerBoundInclusiveOut[iCut - 1] = walkValue;
-         walkValue = TickLower(walkValue);
-         --iCut;
-      } while(LIKELY(size_t { 0 } != iCut));
-
-      // if they are equal then we should have exited above when filling the buffer initially
-      EBM_ASSERT(minValue < walkValue);
-
-      FloatEbmType cutPrev = minValue;
-      EBM_ASSERT(0 == iCut);
-      do {
-         ++iCut;
-
-         FloatEbmType cut = minValue + static_cast<FloatEbmType>(iCut) / cBinsFloat * diff;
-         cut = Denormalize(cut);
-
-         if(UNLIKELY(cut <= cutPrev)) {
-            // if we didn't advance, then don't put the same cut into the result, advance by one tick
-            cut = TickHigher(cutPrev);
-         }
-
-         if(UNLIKELY(cutsLowerBoundInclusiveOut[iCut - 1] <= cut)) {
-            // if this happens, the rest of our cuts will be at tick increments, which we've already filled in
-            break;
-         }
-         cutsLowerBoundInclusiveOut[iCut - 1] = cut;
-
-         cutPrev = cut;
-      } while(LIKELY(cCuts != iCut));
    } else {
-      // maxValue has more precision, so anchor to that point
+      // This algorithm has some not as nice properties around subnormal numbers.  Specifically, when a cut
+      // lands in the large subnormal space we flush it to zero, and our ticks are limited to non-subnormal numbers
+      // too.  This can lead to bunching on float tick increment boundaries where we have more ability to preserve
+      // float resolution.  We might be able to make this situation better through difficult manipulation, but this
+      // "spec" algorithm is already complicated enough, and we want it to be portable accross implementations without
+      // being even more complicated, so our solution here is simply to accept the undesirable bunching around
+      // subnormal numbers. We cannot fundamentally have good uniform cuts near subnormals anyways since the big
+      // subnormal gap does exists and we can't avoid that while disallowing subnormals as cuts.  The real solution
+      // is for the user to avoid spans in the range of 10e-308.  These should be quite rare in any case.
+      // This algorithm as constructed has the benefit of being reproducible in any environment that is IEEE-754
+      // compliant, minus subnormal compliance.
 
-      // the first cut should always succeed, since we subtract from maxValue, so even if 
-      // the subtraction is zero we succeed in having a cut at maxValue, which is legal for us
-      FloatEbmType cutPrev = std::numeric_limits<FloatEbmType>::infinity();
-      EBM_ASSERT(cCuts == iCut);
+
+      // our shift value below can enter the subnormal range which can cause problems in some environments
+      // we can solve these issues by shifting upwards to the highest numbers that do not overflow
+
+      double multipleCur;
+      double maxValueCur;
+      double minValueCur;
+      double diffCur;
+
+      double multipleNext = 1.0;
+      double maxValueNext = maxValue;
+      double minValueNext = minValue;
+      double diffNext = Denormalize(diff);
+
       do {
-         const size_t iReversed = cBins - iCut;
+         multipleCur = multipleNext;
+         maxValueCur = maxValueNext;
+         minValueCur = minValueNext;
+         diffCur = diffNext;
 
-         FloatEbmType cut = maxValue - static_cast<FloatEbmType>(iReversed) / cBinsFloat * diff;
-         cut = Denormalize(cut);
+         multipleNext = multipleCur * 2.0;
 
-         if(UNLIKELY(cutPrev <= cut)) {
-            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != cutPrev);
-
-            // if we didn't advance, then don't put the same cut into the result, advance by one tick
-            cut = TickLower(cutPrev);
-         }
-
-         if(UNLIKELY(cut <= cutsLowerBoundInclusiveOut[iCut - 1])) {
-            // if this happens, the rest of our cuts will be at tick increments, which we've already filled in
+         maxValueNext = maxValue * multipleNext;
+         if(std::isinf(maxValueNext)) {
             break;
          }
-         cutsLowerBoundInclusiveOut[iCut - 1] = cut;
+         minValueNext = minValue * multipleNext;
+         if(std::isinf(minValueNext)) {
+            break;
+         }
+         diffNext = maxValueNext - minValueNext;
+      } while(!std::isinf(diffNext));
+      
+      if(PREDICTABLE(std::abs(minValue) < std::abs(maxValue))) {
+         // minValue has more precision, so anchor to that point
 
-         cutPrev = cut;
-         --iCut;
-      } while(LIKELY(size_t { 0 } != iCut));
+         // We're going to fill the cut buffer upwards from the minValue to the maxValue.  If we find that 
+         // we hit the boundary where the rest of the cuts need to be in tick increments then we want 
+         // it to be in the less precise range near the maxValue, so let's re-fill our buffer again starting 
+         // from the maxValue and work downwards by ticks so that we can bail with valid results if needed
+
+         EBM_ASSERT(cCuts == iCut);
+         walkValue = maxValue;
+         do {
+            EBM_ASSERT(minValue < walkValue);
+            cutsLowerBoundInclusiveOut[iCut - 1] = walkValue;
+            walkValue = TickLower(walkValue);
+            --iCut;
+         } while(LIKELY(size_t { 0 } != iCut));
+
+         // if they are equal then we should have exited above when filling the buffer initially
+         EBM_ASSERT(minValue < walkValue);
+
+         FloatEbmType cutPrev = minValue;
+         EBM_ASSERT(0 == iCut);
+
+         do {
+            ++iCut;
+
+            // we need to de-subnormalize the shift to get cross machine compatibility since some machines
+            // flush subnormals to zero, although this introduces bunching around the start point if
+            // that's a very small number close to the denormals, but I'm not sure there is a solution there
+            FloatEbmType shift = static_cast<FloatEbmType>(iCut) / cBinsFloat * diffCur;
+            shift = Denormalize(shift);
+            FloatEbmType cut = minValueCur + shift;
+            cut /= multipleCur;
+            cut = Denormalize(cut);
+
+            // TODO: do the algorithm below
+            //if(0.0 == cut) {
+            //   if(0.0 == Denormalize(diffCur / multipleCur / cBinsFloat)) {
+            //      // if our individual steps are less than float_min then we know that -min, 0, and +min are all
+            //      // going to be cut points provided we're crossing the 0 band gap.  If the steps are greater than
+            //      // float_min then we can trust float rounding to decide which of the -min, 0, or +min values
+            //      // will be included.  The underflow condition is harder though because we originally spaced
+            //      // our ticks believing there wouldn't be a big gap (in the subnormal space), so we need
+            //      // to reconsider this.  We can no longer really provide a uniform set of cuts, so the best
+            //      // we can do now is put cuts at -min, 0, and +min and then fill in the cuts on each side of the gap.
+            //      return HandleSubnormalGap(...);
+            //   }
+            //}
+
+            if(UNLIKELY(cut <= cutPrev)) {
+               // if we didn't advance, then don't put the same cut into the result, advance by one tick
+               cut = TickHigher(cutPrev);
+            }
+
+            if(UNLIKELY(cutsLowerBoundInclusiveOut[iCut - 1] <= cut)) {
+               // if this happens, the rest of our cuts will be at tick increments, which we've already filled in
+               break;
+            }
+            cutsLowerBoundInclusiveOut[iCut - 1] = cut;
+
+            cutPrev = cut;
+         } while(LIKELY(cCuts != iCut));
+      } else {
+         // maxValue has more precision, so anchor to that point
+
+         // the first cut should always succeed, since we subtract from maxValue, so even if 
+         // the subtraction is zero we succeed in having a cut at maxValue, which is legal for us
+         FloatEbmType cutPrev = std::numeric_limits<FloatEbmType>::infinity();
+         EBM_ASSERT(cCuts == iCut);
+
+         do {
+            const size_t iReversed = cBins - iCut;
+
+            // we need to de-subnormalize the shift to get cross machine compatibility since some machines
+            // flush subnormals to zero, although this introduces bunching around the start point if
+            // that's a very small number close to the denormals, but I'm not sure there is a solution there
+            FloatEbmType shift = static_cast<FloatEbmType>(iReversed) / cBinsFloat * diffCur;
+            shift = Denormalize(shift);
+            FloatEbmType cut = maxValueCur - shift;
+            cut /= multipleCur;
+            cut = Denormalize(cut);
+
+            // TODO: do the algorithm below
+            //if(0.0 == cut) {
+            //   if(0.0 == Denormalize(diffCur / multipleCur / cBinsFloat)) {
+            //      // if our individual steps are less than float_min then we know that -min, 0, and +min are all
+            //      // going to be cut points provided we're crossing the 0 band gap.  If the steps are greater than
+            //      // float_min then we can trust float rounding to decide which of the -min, 0, or +min values
+            //      // will be included.  The underflow condition is harder though because we originally spaced
+            //      // our ticks believing there wouldn't be a big gap (in the subnormal space), so we need
+            //      // to reconsider this.  We can no longer really provide a uniform set of cuts, so the best
+            //      // we can do now is put cuts at -min, 0, and +min and then fill in the cuts on each side of the gap.
+            //      return HandleSubnormalGap(...);
+            //   }
+            //}
+
+            if(UNLIKELY(cutPrev <= cut)) {
+               EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != cutPrev);
+
+               // if we didn't advance, then don't put the same cut into the result, advance by one tick
+               cut = TickLower(cutPrev);
+            }
+
+            if(UNLIKELY(cut <= cutsLowerBoundInclusiveOut[iCut - 1])) {
+               // if this happens, the rest of our cuts will be at tick increments, which we've already filled in
+               break;
+            }
+            cutsLowerBoundInclusiveOut[iCut - 1] = cut;
+
+            cutPrev = cut;
+            --iCut;
+         } while(LIKELY(size_t { 0 } != iCut));
+      }
    }
 
    LOG_COUNTED_N(
