@@ -283,18 +283,21 @@ TEST_CASE("CutUniform, stress test reproducible") {
 
    double interestingValues[] = {
       std::numeric_limits<FloatEbmType>::lowest(),
+      -1.0
       -2 * k_denormToNorm * std::numeric_limits<double>::min(),
       -k_denormToNorm * std::numeric_limits<double>::min(),
       -std::numeric_limits<FloatEbmType>::min(),
+      0,
       std::numeric_limits<FloatEbmType>::min(),
       k_denormToNorm * std::numeric_limits<double>::min(),
       2 * k_denormToNorm * std::numeric_limits<double>::min(),
+      1.0,
       std::numeric_limits<FloatEbmType>::max(),
    };
    const size_t cInteresting = static_cast<int>(sizeof(interestingValues) / sizeof(interestingValues[0]));
 
-   // 97 is prime
-   std::vector<FloatEbmType> cuts(97, illegalVal);
+   // 31 is prime
+   std::vector<FloatEbmType> cuts(31, illegalVal);
 
    double result = 0.0;
 
@@ -305,10 +308,10 @@ TEST_CASE("CutUniform, stress test reproducible") {
       val >>= 1;
       bool isPositiveHigh = static_cast<bool>(0x1 & val);
       val >>= 1;
-      size_t shiftLow = static_cast<size_t>(0x7 & val); // 0-3 shift
-      val >>= 3;
-      size_t shiftHigh = static_cast<size_t>(0x7 & val); // 0-3 shift
-      val >>= 3;
+      size_t shiftLow = static_cast<size_t>(0xF & val); // 0-15 shift
+      val >>= 4;
+      size_t shiftHigh = static_cast<size_t>(0xF & val); // 0-15 shift
+      val >>= 4;
       size_t iInterestingLow = val % cInteresting;
       val /= cInteresting;
       size_t iInterestingHigh = val % cInteresting;
@@ -373,6 +376,6 @@ TEST_CASE("CutUniform, stress test reproducible") {
       }
    }
 
-   CHECK(-0.65942253092906411 == result);
+   CHECK(0.37728699762447393 == result);
 }
 
