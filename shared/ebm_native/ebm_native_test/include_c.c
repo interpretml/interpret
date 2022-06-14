@@ -24,9 +24,6 @@ extern void TestCHeaderConstructs() {
    InteractionHandle interactionHandle = NULL;
    snprintf(buffer, cBytesBuffer, "%p\n", interactionHandle);
 
-   FloatEbmType testFloat = -123.456;
-   snprintf(buffer, cBytesBuffer, "%" FloatEbmTypePrintf "\n", testFloat);
-
    IntEbmType testInt = -123;
    snprintf(buffer, cBytesBuffer, "%" IntEbmTypePrintf "\n", testInt);
 

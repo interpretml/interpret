@@ -24,9 +24,9 @@ static int g_cLogExitCutUniformParametersMessages = 25;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUniform(
    IntEbmType countSamples,
-   const FloatEbmType * featureValues,
+   const double * featureValues,
    IntEbmType countDesiredCuts,
-   FloatEbmType * cutsLowerBoundInclusiveOut
+   double * cutsLowerBoundInclusiveOut
 ) {
    // DO NOT CHANGE THIS FUNCTION'S ALGORITHM.  IT IS PART OF THE EBM HISTOGRAM SPEC
    //
@@ -128,13 +128,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       return IntEbmType { 0 };
    }
 
-   FloatEbmType minValue = std::numeric_limits<FloatEbmType>::infinity();
-   FloatEbmType maxValue = -std::numeric_limits<FloatEbmType>::infinity();
+   double minValue = std::numeric_limits<double>::infinity();
+   double maxValue = -std::numeric_limits<double>::infinity();
 
-   const FloatEbmType * pValue = featureValues;
-   const FloatEbmType * const pValuesEnd = featureValues + cSamples;
+   const double * pValue = featureValues;
+   const double * const pValuesEnd = featureValues + cSamples;
    do {
-      const FloatEbmType val = *pValue;
+      const double val = *pValue;
       maxValue = UNPREDICTABLE(maxValue < val) ? val : maxValue; // this works for NaN values which evals to false
       minValue = UNPREDICTABLE(val < minValue) ? val : minValue; // this works for NaN values which evals to false
       ++pValue;
@@ -143,8 +143,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
    EBM_ASSERT(!std::isnan(minValue));
    EBM_ASSERT(!std::isnan(maxValue));
 
-   if(UNLIKELY(std::numeric_limits<FloatEbmType>::infinity() == minValue)) {
-      if(PREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == maxValue)) {
+   if(UNLIKELY(std::numeric_limits<double>::infinity() == minValue)) {
+      if(PREDICTABLE(-std::numeric_limits<double>::infinity() == maxValue)) {
          LOG_COUNTED_0(
             &g_cLogExitCutUniformParametersMessages,
             TraceLevelInfo,
@@ -152,7 +152,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
             "Exited CutUniform: countCuts=0 due to all feature values being missing"
          );
       } else {
-         EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() == maxValue);
+         EBM_ASSERT(std::numeric_limits<double>::infinity() == maxValue);
          LOG_COUNTED_0(
             &g_cLogExitCutUniformParametersMessages,
             TraceLevelInfo,
@@ -163,8 +163,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       return IntEbmType { 0 };
    }
 
-   if(UNLIKELY(-std::numeric_limits<FloatEbmType>::infinity() == maxValue)) {
-      EBM_ASSERT(-std::numeric_limits<FloatEbmType>::infinity() == minValue);
+   if(UNLIKELY(-std::numeric_limits<double>::infinity() == maxValue)) {
+      EBM_ASSERT(-std::numeric_limits<double>::infinity() == minValue);
 
       LOG_COUNTED_0(
          &g_cLogExitCutUniformParametersMessages,
@@ -175,12 +175,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       return IntEbmType { 0 };
    }
 
-   if(PREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == minValue)) {
-      minValue = std::numeric_limits<FloatEbmType>::lowest();
+   if(PREDICTABLE(-std::numeric_limits<double>::infinity() == minValue)) {
+      minValue = std::numeric_limits<double>::lowest();
    }
 
-   if(PREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == maxValue)) {
-      maxValue = std::numeric_limits<FloatEbmType>::max();
+   if(PREDICTABLE(std::numeric_limits<double>::infinity() == maxValue)) {
+      maxValue = std::numeric_limits<double>::max();
    }
 
    // make it zero if our caller gave us a subnormal
@@ -204,7 +204,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       return IntEbmType { 0 };
    }
 
-   FloatEbmType walkValue = minValue;
+   double walkValue = minValue;
    size_t iCut = 0;
    do {
       EBM_ASSERT(walkValue < maxValue);
@@ -241,12 +241,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
    EBM_ASSERT(!IsAddError(size_t { 1 }, cCuts));
    // don't take the reciprocal here because dividing below will be more accurate when rounding
    const size_t cBins = cCuts + size_t { 1 };
-   const FloatEbmType cBinsFloat = static_cast<FloatEbmType>(cBins);
+   const double cBinsFloat = static_cast<double>(cBins);
 
-   FloatEbmType diff = maxValue - minValue;
-   if(UNLIKELY(std::numeric_limits<FloatEbmType>::infinity() == diff)) {
+   double diff = maxValue - minValue;
+   if(UNLIKELY(std::numeric_limits<double>::infinity() == diff)) {
       EBM_ASSERT(2.0 <= cBinsFloat);
-      FloatEbmType stepValue = maxValue / cBinsFloat - minValue / cBinsFloat;
+      double stepValue = maxValue / cBinsFloat - minValue / cBinsFloat;
 
       // if maxValue is max_float and minValue is min_float those values are represented with mantissas of all
       // 1s and exponents one shy of all 1s.  Dividing by 2.0 reduces the exponent, but keeps all the mantissa bits.
@@ -255,14 +255,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       // We never overflow to +inf.
       EBM_ASSERT(!std::isinf(stepValue));
       // stepValue cannot be a subnormal since the range of a float64 is larger than an int64
-      EBM_ASSERT(std::numeric_limits<FloatEbmType>::min() <= stepValue);
+      EBM_ASSERT(std::numeric_limits<double>::min() <= stepValue);
 
       // the first cut should always succeed, since we subtract from maxValue, so even if 
       // the subtraction is zero we succeed in having a cut at maxValue, which is legal for us
-      FloatEbmType cutPrev = std::numeric_limits<FloatEbmType>::infinity();
+      double cutPrev = std::numeric_limits<double>::infinity();
       EBM_ASSERT(cCuts == iCut);
       do {
-         FloatEbmType cut;
+         double cut;
          const size_t iReversed = cBins - iCut;
 
          // the stepValue multiple cannot be subnormal since stepValue cannot be subnormal, 
@@ -274,11 +274,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
             // cutPrev has a guarantee that it's maxValue or lower
             EBM_ASSERT(2 <= iReversed);
 
-            FloatEbmType shift = static_cast<FloatEbmType>(iCut) * stepValue;
+            double shift = static_cast<double>(iCut) * stepValue;
             shift = Denormalize(shift);
             cut = minValue + shift;
          } else {
-            FloatEbmType shift = static_cast<FloatEbmType>(iReversed) * stepValue;
+            double shift = static_cast<double>(iReversed) * stepValue;
             shift = Denormalize(shift);
             cut = maxValue - shift;
          }
@@ -287,13 +287,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
             // iReversed is half the value of cBins, we're multiplying the step value by just enough to reach
             // the max float, but then we round upwards.  In that case we overflow to +inf, although it was just
             // by one float tick.  In this case adjust down one tick to the max float value
-            cut = std::numeric_limits<FloatEbmType>::max();
+            cut = std::numeric_limits<double>::max();
          }
 
          cut = Denormalize(cut);
 
          if(UNLIKELY(cutPrev <= cut)) {
-            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != cutPrev);
+            EBM_ASSERT(std::numeric_limits<double>::infinity() != cutPrev);
 
             // if we didn't advance, then don't put the same cut into the result, advance by one tick
             cut = TickLower(cutPrev);
@@ -374,7 +374,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
          // if they are equal then we should have exited above when filling the buffer initially
          EBM_ASSERT(minValue < walkValue);
 
-         FloatEbmType cutPrev = minValue;
+         double cutPrev = minValue;
          EBM_ASSERT(0 == iCut);
 
          do {
@@ -383,9 +383,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
             // we need to de-subnormalize the shift to get cross machine compatibility since some machines
             // flush subnormals to zero, although this introduces bunching around the start point if
             // that's a very small number close to the denormals, but I'm not sure there is a solution there
-            FloatEbmType shift = static_cast<FloatEbmType>(iCut) / cBinsFloat * diffCur;
+            double shift = static_cast<double>(iCut) / cBinsFloat * diffCur;
             shift = Denormalize(shift);
-            FloatEbmType cut = minValueCur + shift;
+            double cut = minValueCur + shift;
             cut /= multipleCur;
             cut = Denormalize(cut);
 
@@ -421,7 +421,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
 
          // the first cut should always succeed, since we subtract from maxValue, so even if 
          // the subtraction is zero we succeed in having a cut at maxValue, which is legal for us
-         FloatEbmType cutPrev = std::numeric_limits<FloatEbmType>::infinity();
+         double cutPrev = std::numeric_limits<double>::infinity();
          EBM_ASSERT(cCuts == iCut);
 
          do {
@@ -430,9 +430,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
             // we need to de-subnormalize the shift to get cross machine compatibility since some machines
             // flush subnormals to zero, although this introduces bunching around the start point if
             // that's a very small number close to the denormals, but I'm not sure there is a solution there
-            FloatEbmType shift = static_cast<FloatEbmType>(iReversed) / cBinsFloat * diffCur;
+            double shift = static_cast<double>(iReversed) / cBinsFloat * diffCur;
             shift = Denormalize(shift);
-            FloatEbmType cut = maxValueCur - shift;
+            double cut = maxValueCur - shift;
             cut /= multipleCur;
             cut = Denormalize(cut);
 
@@ -451,7 +451,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
             //}
 
             if(UNLIKELY(cutPrev <= cut)) {
-               EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != cutPrev);
+               EBM_ASSERT(std::numeric_limits<double>::infinity() != cutPrev);
 
                // if we didn't advance, then don't put the same cut into the result, advance by one tick
                cut = TickLower(cutPrev);

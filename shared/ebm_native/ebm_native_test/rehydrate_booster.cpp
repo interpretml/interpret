@@ -17,11 +17,11 @@ TEST_CASE("Test Rehydration, boosting, regression") {
    testContinuous.AddValidationSamples({ TestSample({}, 12) });
    testContinuous.InitializeBoosting();
 
-   FloatEbmType model0 = 0;
+   double model0 = 0;
 
-   FloatEbmType validationMetricContinuous;
-   FloatEbmType modelValueContinuous;
-   FloatEbmType validationMetricRestart;
+   double validationMetricContinuous;
+   double modelValueContinuous;
+   double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(k_learningTypeRegression);
       testRestart.AddFeatures({});
@@ -48,12 +48,12 @@ TEST_CASE("Test Rehydration, boosting, binary") {
    testContinuous.AddValidationSamples({ TestSample({}, 0) });
    testContinuous.InitializeBoosting();
 
-   FloatEbmType model0 = 0;
-   FloatEbmType model1 = 0;
+   double model0 = 0;
+   double model1 = 0;
 
-   FloatEbmType validationMetricContinuous;
-   FloatEbmType modelValueContinuous;
-   FloatEbmType validationMetricRestart;
+   double validationMetricContinuous;
+   double modelValueContinuous;
+   double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(2, 0);
       testRestart.AddFeatures({});
@@ -84,13 +84,13 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
    testContinuous.AddValidationSamples({ TestSample({}, 0) });
    testContinuous.InitializeBoosting();
 
-   FloatEbmType model0 = 0;
-   FloatEbmType model1 = 0;
-   FloatEbmType model2 = 0;
+   double model0 = 0;
+   double model1 = 0;
+   double model2 = 0;
 
-   FloatEbmType validationMetricContinuous;
-   FloatEbmType modelValueContinuous;
-   FloatEbmType validationMetricRestart;
+   double validationMetricContinuous;
+   double modelValueContinuous;
+   double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(3);
       testRestart.AddFeatures({});

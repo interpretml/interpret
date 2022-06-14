@@ -23,36 +23,36 @@ enum class TestPriority {
 
 
 // TODO: use these instead of nextafter everywhere we can use them
-inline static FloatEbmType TickHigherTest(const FloatEbmType v) noexcept {
+inline static double TickHigherTest(const double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
 
    assert(!std::isnan(v));
    assert(!std::isinf(v));
    assert(std::numeric_limits<double>::max() != v);
 
-   if(std::numeric_limits<FloatEbmType>::min() <= v || v < -std::numeric_limits<FloatEbmType>::min()) {
+   if(std::numeric_limits<double>::min() <= v || v < -std::numeric_limits<double>::min()) {
       // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
-      return std::nextafter(v, std::numeric_limits<FloatEbmType>::max());
-   } else if(-std::numeric_limits<FloatEbmType>::min() == v) {
-      return FloatEbmType { 0 };
+      return std::nextafter(v, std::numeric_limits<double>::max());
+   } else if(-std::numeric_limits<double>::min() == v) {
+      return double { 0 };
    } else {
-      return std::numeric_limits<FloatEbmType>::min();
+      return std::numeric_limits<double>::min();
    }
 }
-inline static FloatEbmType TickLowerTest(const FloatEbmType v) noexcept {
+inline static double TickLowerTest(const double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
 
    assert(!std::isnan(v));
    assert(!std::isinf(v));
    assert(std::numeric_limits<double>::lowest() != v);
 
-   if(v <= -std::numeric_limits<FloatEbmType>::min() || std::numeric_limits<FloatEbmType>::min() < v) {
+   if(v <= -std::numeric_limits<double>::min() || std::numeric_limits<double>::min() < v) {
       // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
-      return std::nextafter(v, std::numeric_limits<FloatEbmType>::lowest());
-   } else if(std::numeric_limits<FloatEbmType>::min() == v) {
-      return FloatEbmType { 0 };
+      return std::nextafter(v, std::numeric_limits<double>::lowest());
+   } else if(std::numeric_limits<double>::min() == v) {
+      return double { 0 };
    } else {
-      return -std::numeric_limits<FloatEbmType>::min();
+      return -std::numeric_limits<double>::min();
    }
 }
 inline static double DenormalizeTest(const double v) noexcept {
@@ -189,12 +189,12 @@ public:
 class TestSample final {
 public:
    const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
-   const FloatEbmType m_target;
+   const double m_target;
    const bool m_bNullWeight;
-   const FloatEbmType m_weight;
-   const std::vector<FloatEbmType> m_priorScore;
+   const double m_weight;
+   const std::vector<double> m_priorScore;
 
-   inline TestSample(const std::vector<IntEbmType> binnedDataPerFeatureArray, const FloatEbmType target) :
+   inline TestSample(const std::vector<IntEbmType> binnedDataPerFeatureArray, const double target) :
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_target(target),
       m_bNullWeight(true),
@@ -203,9 +203,9 @@ public:
 
    inline TestSample(
       const std::vector<IntEbmType> binnedDataPerFeatureArray, 
-      const FloatEbmType target,
-      const FloatEbmType weight,
-      const std::vector<FloatEbmType> priorScore = {}
+      const double target,
+      const double weight,
+      const std::vector<double> priorScore = {}
    ) :
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_target(target),
@@ -217,7 +217,7 @@ public:
 
 static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
 static constexpr IntEbmType k_countInnerBagsDefault = IntEbmType { 0 };
-static constexpr FloatEbmType k_learningRateDefault = FloatEbmType { 0.01 };
+static constexpr double k_learningRateDefault = double { 0.01 };
 static constexpr IntEbmType k_countSamplesRequiredForChildSplitMinDefault = IntEbmType { 1 };
 
 static constexpr IntEbmType k_leavesMaxFillDefault = 5;
@@ -290,8 +290,8 @@ static const std::vector<IntEbmType> k_leavesMaxDefault = {
 };
 
 struct BoostRet {
-   FloatEbmType gainAvg;
-   FloatEbmType validationMetric;
+   double gainAvg;
+   double validationMetric;
 };
 
 class TestApi {
@@ -317,43 +317,43 @@ class TestApi {
 
    std::vector<std::vector<size_t>> m_countBinsByFeatureGroup;
 
-   std::vector<FloatEbmType> m_trainingRegressionTargets;
+   std::vector<double> m_trainingRegressionTargets;
    std::vector<IntEbmType> m_trainingClassificationTargets;
    std::vector<IntEbmType> m_trainingBinnedData;
-   std::vector<FloatEbmType> m_trainingWeights;
-   std::vector<FloatEbmType> m_trainingPredictionScores;
+   std::vector<double> m_trainingWeights;
+   std::vector<double> m_trainingPredictionScores;
    bool m_bNullTrainingWeights;
    bool m_bNullTrainingPredictionScores;
 
-   std::vector<FloatEbmType> m_validationRegressionTargets;
+   std::vector<double> m_validationRegressionTargets;
    std::vector<IntEbmType> m_validationClassificationTargets;
    std::vector<IntEbmType> m_validationBinnedData;
-   std::vector<FloatEbmType> m_validationWeights;
-   std::vector<FloatEbmType> m_validationPredictionScores;
+   std::vector<double> m_validationWeights;
+   std::vector<double> m_validationPredictionScores;
    bool m_bNullValidationWeights;
    bool m_bNullValidationPredictionScores;
 
    BoosterHandle m_boosterHandle;
 
-   std::vector<FloatEbmType> m_interactionRegressionTargets;
+   std::vector<double> m_interactionRegressionTargets;
    std::vector<IntEbmType> m_interactionClassificationTargets;
    std::vector<IntEbmType> m_interactionBinnedData;
-   std::vector<FloatEbmType> m_interactionWeights;
-   std::vector<FloatEbmType> m_interactionPredictionScores;
+   std::vector<double> m_interactionWeights;
+   std::vector<double> m_interactionPredictionScores;
    bool m_bNullInteractionWeights;
    bool m_bNullInteractionPredictionScores;
 
    InteractionHandle m_interactionHandle;
 
-   const FloatEbmType * GetPredictorScores(
+   const double * GetPredictorScores(
       const size_t iFeatureGroup,
-      const FloatEbmType * const pModelFeatureGroup,
+      const double * const pModelFeatureGroup,
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures)
       const;
 
-   FloatEbmType GetPredictorScore(
+   double GetPredictorScore(
       const size_t iFeatureGroup,
-      const FloatEbmType * const pModelFeatureGroup,
+      const double * const pModelFeatureGroup,
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
       const size_t iTargetClassOrZero)
       const;
@@ -379,32 +379,32 @@ public:
    BoostRet Boost(
       const IntEbmType indexFeatureGroup,
       const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
-      const FloatEbmType learningRate = k_learningRateDefault,
+      const double learningRate = k_learningRateDefault,
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault,
       const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
    );
 
-   FloatEbmType GetBestModelPredictorScore(
+   double GetBestModelPredictorScore(
       const size_t iFeatureGroup, 
       const std::vector<size_t> indexes, 
       const size_t iScore
    ) const;
    
-   void GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
+   void GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, double * const aModelValues) const;
 
-   FloatEbmType GetCurrentModelPredictorScore(
+   double GetCurrentModelPredictorScore(
       const size_t iFeatureGroup,
       const std::vector<size_t> indexes,
       const size_t iScore
    ) const;
 
-   void GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const;
+   void GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, double * const aModelValues) const;
 
    void AddInteractionSamples(const std::vector<TestSample> samples);
 
    void InitializeInteraction();
 
-   FloatEbmType TestCalcInteractionStrength(
+   double TestCalcInteractionStrength(
       const std::vector<IntEbmType> featuresInGroup, 
       const InteractionOptionsType options = InteractionOptions_Default,
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault
@@ -413,14 +413,14 @@ public:
 
 void DisplayCuts(
    IntEbmType countSamples,
-   FloatEbmType * featureValues,
+   double * featureValues,
    IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
    IntEbmType countCuts,
-   FloatEbmType * cutsLowerBoundInclusive,
+   double * cutsLowerBoundInclusive,
    IntEbmType isMissingPresent,
-   FloatEbmType minValue,
-   FloatEbmType maxValue
+   double minValue,
+   double maxValue
 );
 
 #endif // EBM_NATIVE_TEST_HPP

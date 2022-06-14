@@ -11,8 +11,8 @@
 
 static const TestPriority k_filePriority = TestPriority::CutUniform;
 
-constexpr FloatEbmType illegalVal = FloatEbmType { -888.88 };
-static FloatEbmType * const pIllegal = reinterpret_cast<FloatEbmType *>(1);
+constexpr double illegalVal = double { -888.88 };
+static double * const pIllegal = reinterpret_cast<double *>(1);
 
 TEST_CASE("CutUniform, zero cuts") {
    IntEbmType countCuts = CutUniform(100, pIllegal, 0, pIllegal);
@@ -30,51 +30,51 @@ TEST_CASE("CutUniform, 1 sample") {
 }
 
 TEST_CASE("CutUniform, only missing") {
-   std::vector<FloatEbmType> featureValues { 
-      std::numeric_limits<FloatEbmType>::quiet_NaN(), 
-      std::numeric_limits<FloatEbmType>::quiet_NaN(),
+   std::vector<double> featureValues { 
+      std::numeric_limits<double>::quiet_NaN(), 
+      std::numeric_limits<double>::quiet_NaN(),
    };
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], 3, pIllegal);
    CHECK(0 == countCuts);
 }
 
 TEST_CASE("CutUniform, only -inf") {
-   std::vector<FloatEbmType> featureValues {
-      -std::numeric_limits<FloatEbmType>::infinity(),
-      -std::numeric_limits<FloatEbmType>::infinity(),
+   std::vector<double> featureValues {
+      -std::numeric_limits<double>::infinity(),
+      -std::numeric_limits<double>::infinity(),
    };
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], 3, pIllegal);
    CHECK(0 == countCuts);
 }
 
 TEST_CASE("CutUniform, only +inf") {
-   std::vector<FloatEbmType> featureValues {
-      std::numeric_limits<FloatEbmType>::infinity(),
-      std::numeric_limits<FloatEbmType>::infinity(),
+   std::vector<double> featureValues {
+      std::numeric_limits<double>::infinity(),
+      std::numeric_limits<double>::infinity(),
    };
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], 3, pIllegal);
    CHECK(0 == countCuts);
 }
 
 TEST_CASE("CutUniform, identical values + missing") {
-   std::vector<FloatEbmType> featureValues { 1, 1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 1 };
+   std::vector<double> featureValues { 1, 1, std::numeric_limits<double>::quiet_NaN(), 1 };
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], 10, pIllegal);
    CHECK(0 == countCuts);
 }
 
 TEST_CASE("CutUniform, exactly sufficient floting point range for all cuts") {
-   std::vector<FloatEbmType> featureValues;
-   std::vector<FloatEbmType> expectedCuts;
+   std::vector<double> featureValues;
+   std::vector<double> expectedCuts;
 
-   FloatEbmType val = 10.0;
+   double val = 10.0;
    for(int i = 0; i < 1000; ++i) {
       featureValues.push_back(val);
-      val = std::nextafter(val, std::numeric_limits<FloatEbmType>::max());
+      val = std::nextafter(val, std::numeric_limits<double>::max());
       expectedCuts.push_back(val);
    }
    expectedCuts.pop_back();
 
-   std::vector<FloatEbmType> cuts(featureValues.size() - 1, illegalVal);
+   std::vector<double> cuts(featureValues.size() - 1, illegalVal);
 
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
@@ -88,18 +88,18 @@ TEST_CASE("CutUniform, exactly sufficient floting point range for all cuts") {
 }
 
 TEST_CASE("CutUniform, insufficient floting point range for all cuts") {
-   std::vector<FloatEbmType> featureValues;
-   std::vector<FloatEbmType> expectedCuts;
+   std::vector<double> featureValues;
+   std::vector<double> expectedCuts;
 
-   FloatEbmType val = 10.0;
+   double val = 10.0;
    for(int i = 0; i < 1000; ++i) {
       featureValues.push_back(val);
-      val = std::nextafter(val, std::numeric_limits<FloatEbmType>::max());
+      val = std::nextafter(val, std::numeric_limits<double>::max());
       expectedCuts.push_back(val);
    }
    expectedCuts.pop_back();
 
-   std::vector<FloatEbmType> cuts(featureValues.size(), illegalVal);
+   std::vector<double> cuts(featureValues.size(), illegalVal);
 
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
@@ -113,11 +113,11 @@ TEST_CASE("CutUniform, insufficient floting point range for all cuts") {
 }
 
 TEST_CASE("CutUniform, one cut, -infinity and +infinity") {
-   std::vector<FloatEbmType> featureValues {
-      std::numeric_limits<FloatEbmType>::infinity(),
-      -std::numeric_limits<FloatEbmType>::infinity(),
+   std::vector<double> featureValues {
+      std::numeric_limits<double>::infinity(),
+      -std::numeric_limits<double>::infinity(),
    };
-   std::vector<FloatEbmType> cuts(1, illegalVal);
+   std::vector<double> cuts(1, illegalVal);
 
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
@@ -128,13 +128,13 @@ TEST_CASE("CutUniform, one cut, -infinity and +infinity") {
 TEST_CASE("CutUniform, infinite diff, even cuts") {
    IntEbmType countCuts = 2;
 
-   std::vector<FloatEbmType> featureValues {
-      std::numeric_limits<FloatEbmType>::max(),
-      std::numeric_limits<FloatEbmType>::lowest(),
+   std::vector<double> featureValues {
+      std::numeric_limits<double>::max(),
+      std::numeric_limits<double>::lowest(),
    };
-   const std::vector<FloatEbmType> expectedCuts { -5.9923104495410517e+307, 5.9923104495410517e+307 };
+   const std::vector<double> expectedCuts { -5.9923104495410517e+307, 5.9923104495410517e+307 };
 
-   std::vector<FloatEbmType> cuts(static_cast<size_t>(countCuts), illegalVal);
+   std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
    countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
@@ -150,13 +150,13 @@ TEST_CASE("CutUniform, infinite diff, even cuts") {
 TEST_CASE("CutUniform, infinite diff, odd cuts") {
    IntEbmType countCuts = 3;
 
-   std::vector<FloatEbmType> featureValues {
-      std::numeric_limits<FloatEbmType>::lowest(),
-      std::numeric_limits<FloatEbmType>::max(),
+   std::vector<double> featureValues {
+      std::numeric_limits<double>::lowest(),
+      std::numeric_limits<double>::max(),
    };
-   const std::vector<FloatEbmType> expectedCuts { -8.9884656743115785e+307, 0, 8.9884656743115785e+307 };
+   const std::vector<double> expectedCuts { -8.9884656743115785e+307, 0, 8.9884656743115785e+307 };
 
-   std::vector<FloatEbmType> cuts(static_cast<size_t>(countCuts), illegalVal);
+   std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
    countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
@@ -172,10 +172,10 @@ TEST_CASE("CutUniform, infinite diff, odd cuts") {
 TEST_CASE("CutUniform, anchor on min") {
    IntEbmType countCuts = 3;
 
-   std::vector<FloatEbmType> featureValues { -2, std::nextafter(2, 1000000) };
-   const std::vector<FloatEbmType> expectedCuts { -1, 0, 1 };
+   std::vector<double> featureValues { -2, std::nextafter(2, 1000000) };
+   const std::vector<double> expectedCuts { -1, 0, 1 };
 
-   std::vector<FloatEbmType> cuts(static_cast<size_t>(countCuts), illegalVal);
+   std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
    countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
@@ -191,10 +191,10 @@ TEST_CASE("CutUniform, anchor on min") {
 TEST_CASE("CutUniform, anchor on max") {
    IntEbmType countCuts = 3;
 
-   std::vector<FloatEbmType> featureValues { std::nextafter(-2, -100000), 2 };
-   const std::vector<FloatEbmType> expectedCuts { -1, 0, 1 };
+   std::vector<double> featureValues { std::nextafter(-2, -100000), 2 };
+   const std::vector<double> expectedCuts { -1, 0, 1 };
 
-   std::vector<FloatEbmType> cuts(static_cast<size_t>(countCuts), illegalVal);
+   std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
    countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
@@ -210,10 +210,10 @@ TEST_CASE("CutUniform, anchor on max") {
 TEST_CASE("CutUniform, min and max at interior positions") {
    IntEbmType countCuts = 9;
 
-   std::vector<FloatEbmType> featureValues { 1, 2, 3, 4, 5, 0, 10, 6, 7, 8, 9 };
-   const std::vector<FloatEbmType> expectedCuts { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+   std::vector<double> featureValues { 1, 2, 3, 4, 5, 0, 10, 6, 7, 8, 9 };
+   const std::vector<double> expectedCuts { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
-   std::vector<FloatEbmType> cuts(static_cast<size_t>(countCuts), illegalVal);
+   std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
    countCuts = CutUniform(featureValues.size(), &featureValues[0], countCuts, &cuts[0]);
 
@@ -227,15 +227,15 @@ TEST_CASE("CutUniform, min and max at interior positions") {
 }
 
 TEST_CASE("CutUniform, low start, hit float resolution before end") {
-   std::vector<FloatEbmType> featureValues;
+   std::vector<double> featureValues;
 
-   FloatEbmType val = -std::numeric_limits<FloatEbmType>::min();
+   double val = -std::numeric_limits<double>::min();
    for(int i = 0; i < 5; ++i) {
       // backup a few ticks
       val = TickLowerTest(val);
    }
    for(size_t iPast = 0; iPast < 10; ) {
-      if(std::numeric_limits<FloatEbmType>::min() <= val) {
+      if(std::numeric_limits<double>::min() <= val) {
          ++iPast;
       }
       featureValues.push_back(val);
@@ -243,7 +243,7 @@ TEST_CASE("CutUniform, low start, hit float resolution before end") {
    }
 
    // have just 1 hole in the middle
-   std::vector<FloatEbmType> cuts(featureValues.size() - 2, illegalVal);
+   std::vector<double> cuts(featureValues.size() - 2, illegalVal);
 
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
@@ -251,15 +251,15 @@ TEST_CASE("CutUniform, low start, hit float resolution before end") {
 }
 
 TEST_CASE("CutUniform, high start, hit float resolution before end") {
-   std::vector<FloatEbmType> featureValues;
+   std::vector<double> featureValues;
 
-   FloatEbmType val = -std::numeric_limits<FloatEbmType>::min();
+   double val = -std::numeric_limits<double>::min();
    for(int i = 0; i < 10; ++i) {
       // backup a few ticks
       val = TickLowerTest(val);
    }
    for(size_t iPast = 0; iPast < 5; ) {
-      if(std::numeric_limits<FloatEbmType>::min() <= val) {
+      if(std::numeric_limits<double>::min() <= val) {
          ++iPast;
       }
       featureValues.push_back(val);
@@ -267,7 +267,7 @@ TEST_CASE("CutUniform, high start, hit float resolution before end") {
    }
 
    // have just 1 hole in the middle
-   std::vector<FloatEbmType> cuts(featureValues.size() - 2, illegalVal);
+   std::vector<double> cuts(featureValues.size() - 2, illegalVal);
 
    IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
 
@@ -279,25 +279,25 @@ TEST_CASE("CutUniform, stress test reproducible") {
    static_assert(k_denormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
       "bad min to denorm_min ratio");
 
-   std::vector<FloatEbmType> featureValues { 0, 0 };
+   std::vector<double> featureValues { 0, 0 };
 
    double interestingValues[] = {
-      std::numeric_limits<FloatEbmType>::lowest(),
+      std::numeric_limits<double>::lowest(),
       -1.0
       -2 * k_denormToNorm * std::numeric_limits<double>::min(),
       -k_denormToNorm * std::numeric_limits<double>::min(),
-      -std::numeric_limits<FloatEbmType>::min(),
+      -std::numeric_limits<double>::min(),
       0,
-      std::numeric_limits<FloatEbmType>::min(),
+      std::numeric_limits<double>::min(),
       k_denormToNorm * std::numeric_limits<double>::min(),
       2 * k_denormToNorm * std::numeric_limits<double>::min(),
       1.0,
-      std::numeric_limits<FloatEbmType>::max(),
+      std::numeric_limits<double>::max(),
    };
    const size_t cInteresting = static_cast<int>(sizeof(interestingValues) / sizeof(interestingValues[0]));
 
    // 31 is prime
-   std::vector<FloatEbmType> cuts(31, illegalVal);
+   std::vector<double> cuts(31, illegalVal);
 
    double result = 0.0;
 
@@ -322,13 +322,13 @@ TEST_CASE("CutUniform, stress test reproducible") {
 
       if(isPositiveLow) {
          for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
-            if(low != std::numeric_limits<FloatEbmType>::lowest()) {
+            if(low != std::numeric_limits<double>::lowest()) {
                low = TickLowerTest(low);
             }
          }
       } else {
          for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
-            if(low != std::numeric_limits<FloatEbmType>::max()) {
+            if(low != std::numeric_limits<double>::max()) {
                low = TickHigherTest(low);
             }
          }
@@ -336,13 +336,13 @@ TEST_CASE("CutUniform, stress test reproducible") {
 
       if(isPositiveHigh) {
          for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
-            if(high != std::numeric_limits<FloatEbmType>::lowest()) {
+            if(high != std::numeric_limits<double>::lowest()) {
                high = TickLowerTest(high);
             }
          }
       } else {
          for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
-            if(high != std::numeric_limits<FloatEbmType>::max()) {
+            if(high != std::numeric_limits<double>::max()) {
                high = TickHigherTest(high);
             }
          }

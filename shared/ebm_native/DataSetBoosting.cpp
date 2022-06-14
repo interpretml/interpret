@@ -47,7 +47,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    const size_t cVectorLength,
    const BagEbmType direction,
    const BagEbmType * const aBag,
-   const FloatEbmType * const aPredictorScoresFrom,
+   const double * const aPredictorScoresFrom,
    const size_t cSetSamples
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructPredictorScores");
@@ -73,7 +73,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    const BagEbmType * pBag = aBag;
    FloatEbmType * pPredictorScoresTo = aPredictorScoresTo;
    const FloatEbmType * const pPredictorScoresToEnd = aPredictorScoresTo + cVectorLength * cSetSamples;
-   const FloatEbmType * pPredictorScoresFrom = aPredictorScoresFrom;
+   const double * pPredictorScoresFrom = aPredictorScoresFrom;
    const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
       BagEbmType countBagged = 1;
@@ -90,6 +90,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
                   static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
                   memset(pPredictorScoresTo, 0, cBytesPerItem);
                } else {
+                  static_assert(sizeof(*pPredictorScoresTo) == sizeof(*pPredictorScoresFrom), "float mismatch");
                   memcpy(pPredictorScoresTo, pPredictorScoresFrom, cBytesPerItem);
                }
                pPredictorScoresTo += cVectorLength;
@@ -410,7 +411,7 @@ ErrorEbmType DataSetBoosting::Initialize(
    const unsigned char * const pDataSetShared,
    const BagEbmType direction,
    const BagEbmType * const aBag,
-   const FloatEbmType * const aPredictorScores,
+   const double * const aPredictorScores,
    const size_t cSetSamples,
    const size_t cFeatureGroups,
    const FeatureGroup * const * const apFeatureGroup

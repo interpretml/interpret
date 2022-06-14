@@ -11,7 +11,7 @@ static const TestPriority k_filePriority = TestPriority::Discretize;
 
 TEST_CASE("GetHistogramCutCount, normals") {
    UNUSED(testCaseHidden);
-   const FloatEbmType test[] { 1, 2, 3, 5 };
+   const double test[] { 1, 2, 3, 5 };
    constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
 
    IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test, 0);
@@ -20,7 +20,7 @@ TEST_CASE("GetHistogramCutCount, normals") {
 
 TEST_CASE("GetHistogramCutCount, out of bound inputs") {
    UNUSED(testCaseHidden);
-   const FloatEbmType test[] { std::numeric_limits<FloatEbmType>::infinity(), 1, 2, std::numeric_limits<FloatEbmType>::quiet_NaN(), 3, 5, -std::numeric_limits<FloatEbmType>::infinity() };
+   const double test[] { std::numeric_limits<double>::infinity(), 1, 2, std::numeric_limits<double>::quiet_NaN(), 3, 5, -std::numeric_limits<double>::infinity() };
    constexpr size_t cTest = sizeof(test) / sizeof(test[0]);
 
    IntEbmType result = GetHistogramCutCount(static_cast<IntEbmType>(cTest), test, 0);
@@ -31,7 +31,7 @@ TEST_CASE("Discretize, zero samples") {
    ErrorEbmType error;
 
    UNUSED(testCaseHidden);
-   const FloatEbmType cutsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
+   const double cutsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
    constexpr IntEbmType countCuts = sizeof(cutsLowerBoundInclusive) / sizeof(cutsLowerBoundInclusive[0]);
    constexpr IntEbmType  cSamples = 0;
 
@@ -60,30 +60,30 @@ TEST_CASE("Discretize, increasing lengths") {
 
    ErrorEbmType error;
 
-   FloatEbmType * cutsLowerBoundInclusive = new FloatEbmType[cCutsEnd];
-   FloatEbmType * featureValues = new FloatEbmType[cData];
+   double * cutsLowerBoundInclusive = new double[cCutsEnd];
+   double * featureValues = new double[cData];
    IntEbmType * singleFeatureDiscretized = new IntEbmType[cData];
    for(size_t iCutPoint = 0; iCutPoint < cCutsEnd; ++iCutPoint) {
-      const FloatEbmType cutPoint = static_cast<FloatEbmType>(iCutPoint);
+      const double cutPoint = static_cast<double>(iCutPoint);
       cutsLowerBoundInclusive[iCutPoint] = cutPoint;
 
       // we have 11 items here, which will put these odd values into various positions for SIMD testing
       // we wrap missing at the first and last positions for additional testing of initial memory slots
 
-      featureValues[11 * iCutPoint + 0] = std::numeric_limits<FloatEbmType>::lowest();
-      featureValues[11 * iCutPoint + 1] = std::numeric_limits<FloatEbmType>::quiet_NaN();
+      featureValues[11 * iCutPoint + 0] = std::numeric_limits<double>::lowest();
+      featureValues[11 * iCutPoint + 1] = std::numeric_limits<double>::quiet_NaN();
 
-      featureValues[11 * iCutPoint + 2] = -std::numeric_limits<FloatEbmType>::denorm_min();
-      featureValues[11 * iCutPoint + 3] = std::numeric_limits<FloatEbmType>::denorm_min();
+      featureValues[11 * iCutPoint + 2] = -std::numeric_limits<double>::denorm_min();
+      featureValues[11 * iCutPoint + 3] = std::numeric_limits<double>::denorm_min();
 
-      featureValues[11 * iCutPoint + 4] = std::nextafter(cutPoint, std::numeric_limits<FloatEbmType>::lowest());
+      featureValues[11 * iCutPoint + 4] = std::nextafter(cutPoint, std::numeric_limits<double>::lowest());
       featureValues[11 * iCutPoint + 5] = cutPoint;
-      featureValues[11 * iCutPoint + 6] = std::nextafter(cutPoint, std::numeric_limits<FloatEbmType>::max());
-      featureValues[11 * iCutPoint + 7] = std::numeric_limits<FloatEbmType>::max();
-      featureValues[11 * iCutPoint + 8] = std::numeric_limits<FloatEbmType>::infinity();
+      featureValues[11 * iCutPoint + 6] = std::nextafter(cutPoint, std::numeric_limits<double>::max());
+      featureValues[11 * iCutPoint + 7] = std::numeric_limits<double>::max();
+      featureValues[11 * iCutPoint + 8] = std::numeric_limits<double>::infinity();
 
-      featureValues[11 * iCutPoint + 9] = std::numeric_limits<FloatEbmType>::signaling_NaN();
-      featureValues[11 * iCutPoint + 10] = -std::numeric_limits<FloatEbmType>::infinity();
+      featureValues[11 * iCutPoint + 9] = std::numeric_limits<double>::signaling_NaN();
+      featureValues[11 * iCutPoint + 10] = -std::numeric_limits<double>::infinity();
    }
 
    for(size_t cCuts = 0; cCuts < cCutsEnd; ++cCuts) {

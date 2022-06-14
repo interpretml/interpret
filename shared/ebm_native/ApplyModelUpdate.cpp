@@ -38,7 +38,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
 // a*PredictorScores = predictedValue for regression
 static ErrorEbmType ApplyModelUpdateInternal(
    BoosterShell * const pBoosterShell,
-   FloatEbmType * const pValidationMetricReturn
+   double * const pValidationMetricReturn
 ) {
    LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateInternal");
 
@@ -51,7 +51,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
    error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
    if(Error_None != error) {
       if(nullptr != pValidationMetricReturn) {
-         *pValidationMetricReturn = FloatEbmType { 0 };
+         *pValidationMetricReturn = double { 0 };
       }
       return error;
    }
@@ -118,7 +118,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
             error = pBoosterCore->GetBestModel()[iModel]->Copy(*pBoosterCore->GetCurrentModel()[iModel]);
             if(Error_None != error) {
                if(nullptr != pValidationMetricReturn) {
-                  *pValidationMetricReturn = FloatEbmType { 0 };
+                  *pValidationMetricReturn = double { 0 };
                }
                LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateInternal with memory allocation error in copy");
                return error;
@@ -128,7 +128,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
       }
    }
    if(nullptr != pValidationMetricReturn) {
-      *pValidationMetricReturn = modelMetric;
+      *pValidationMetricReturn = static_cast<double>(modelMetric);
    }
 
    LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateInternal");
@@ -144,7 +144,7 @@ static int g_cLogApplyModelUpdateParametersMessages = 10;
 // TODO: validationMetricOut should be an average
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
    BoosterHandle boosterHandle,
-   FloatEbmType * validationMetricOut
+   double * validationMetricOut
 ) {
    LOG_COUNTED_N(
       &g_cLogApplyModelUpdateParametersMessages,
@@ -163,7 +163,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != validationMetricOut)) {
-         *validationMetricOut = FloatEbmType { 0 };
+         *validationMetricOut = 0.0;
       }
       // already logged
       return Error_IllegalParamValue;
@@ -172,7 +172,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
    const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
    if(BoosterShell::k_illegalFeatureGroupIndex == iFeatureGroup) {
       if(LIKELY(nullptr != validationMetricOut)) {
-         *validationMetricOut = FloatEbmType { 0 };
+         *validationMetricOut = 0.0;
       }
       LOG_0(TraceLevelError, "ERROR ApplyModelUpdate bad internal state.  No FeatureGroupIndex set");
       return Error_IllegalParamValue;
@@ -194,7 +194,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
       // length array logits, which means for our representation that we have zero items in the array total.
       // since we can predit the output with 100% accuracy, our log loss is 0.
       if(nullptr != validationMetricOut) {
-         *validationMetricOut = 0;
+         *validationMetricOut = 0.0;
       }
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
       LOG_COUNTED_0(
@@ -221,13 +221,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
       EBM_ASSERT(!std::isnan(*validationMetricOut)); // NaNs can happen, but we should have edited those before here
       EBM_ASSERT(!std::isinf(*validationMetricOut)); // infinities can happen, but we should have edited those before here
       // both log loss and RMSE need to be above zero.  We previously zero any values below zero, which can happen due to floating point instability.
-      EBM_ASSERT(FloatEbmType { 0 } <= *validationMetricOut);
+      EBM_ASSERT(0.0 <= *validationMetricOut);
       LOG_COUNTED_N(
          pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
          "Exited ApplyModelUpdate: "
-         "*validationMetricOut=%" FloatEbmTypePrintf
+         "*validationMetricOut=%le"
          , 
          *validationMetricOut
       );
@@ -351,7 +351,7 @@ static int g_cLogGetModelUpdateExpandedParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
    BoosterHandle boosterHandle,
-   FloatEbmType * modelFeatureGroupUpdateTensorOut
+   double * modelFeatureGroupUpdateTensorOut
 ) {
    LOG_COUNTED_N(
       &g_cLogGetModelUpdateExpandedParametersMessages,
@@ -408,7 +408,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    }
    const FloatEbmType * const pValues = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
+   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensorOut), cValues));
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
+   static_assert(sizeof(*modelFeatureGroupUpdateTensorOut) == sizeof(*pValues), "float mismatch");
    memcpy(modelFeatureGroupUpdateTensorOut, pValues, sizeof(*pValues) * cValues);
    return Error_None;
 }
@@ -422,7 +424,7 @@ static int g_cLogSetModelUpdateExpandedParametersMessages = 10;
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   FloatEbmType * modelFeatureGroupUpdateTensor
+   double * modelFeatureGroupUpdateTensor
 ) {
    LOG_COUNTED_N(
       &g_cLogSetModelUpdateExpandedParametersMessages,
@@ -498,6 +500,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
    }
    FloatEbmType * const pValues = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensor), cValues));
+   static_assert(sizeof(*modelFeatureGroupUpdateTensor) == sizeof(*pValues), "float mismatch");
    memcpy(pValues, modelFeatureGroupUpdateTensor, sizeof(*pValues) * cValues);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT

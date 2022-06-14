@@ -161,12 +161,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    SeedEbmType randomSeed,
    const void * dataSet,
    const BagEbmType * bag,
-   const FloatEbmType * predictorScores,
+   const double * predictorScores,
    IntEbmType countFeatureGroups,
    const IntEbmType * dimensionCounts,
    const IntEbmType * featureIndexes,
    IntEbmType countInnerBags,
-   const FloatEbmType * optionalTempParams,
+   const double * optionalTempParams,
    BoosterHandle * boosterHandleOut
 ) {
    LOG_N(
@@ -333,7 +333,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   FloatEbmType * modelFeatureGroupTensorOut
+   double * modelFeatureGroupTensorOut
 ) {
    LOG_N(
       TraceLevelInfo,
@@ -414,7 +414,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
    FloatEbmType * const pValues = pBestModel->GetValuePointer();
    EBM_ASSERT(nullptr != pValues);
 
+   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cValues));
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
+   static_assert(sizeof(*modelFeatureGroupTensorOut) == sizeof(*pValues), "float mismatch");
    memcpy(modelFeatureGroupTensorOut, pValues, sizeof(*pValues) * cValues);
 
    LOG_0(TraceLevelInfo, "Exited GetBestModelFeatureGroup");
@@ -424,7 +426,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   FloatEbmType * modelFeatureGroupTensorOut
+   double * modelFeatureGroupTensorOut
 ) {
    LOG_N(
       TraceLevelInfo,
@@ -505,7 +507,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
    FloatEbmType * const pValues = pCurrentModel->GetValuePointer();
    EBM_ASSERT(nullptr != pValues);
 
+   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cValues));
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
+   static_assert(sizeof(*modelFeatureGroupTensorOut) == sizeof(*pValues), "float mismatch");
    memcpy(modelFeatureGroupTensorOut, pValues, sizeof(*pValues) * cValues);
 
    LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureGroup");

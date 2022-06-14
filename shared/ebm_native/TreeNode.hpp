@@ -426,7 +426,7 @@ public:
    }
 
    INLINE_ALWAYS void SPLIT_THIS_NODE() {
-      this->AFTER_SetSplitGain(k_illegalGain);
+      this->AFTER_SetSplitGain(k_illegalGainFloat);
    }
 
    INLINE_ALWAYS void INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED() {
@@ -438,7 +438,7 @@ public:
    }
 
    INLINE_ALWAYS bool WAS_THIS_NODE_SPLIT() const {
-      return k_illegalGain == this->AFTER_GetSplitGain();
+      return k_illegalGainFloat == this->AFTER_GetSplitGain();
    }
 };
 static_assert(std::is_standard_layout<TreeNode<true>>::value && std::is_standard_layout<TreeNode<false>>::value,

@@ -56,7 +56,7 @@ public:
       const unsigned char * const pDataSetShared,
       const BagEbmType direction,
       const BagEbmType * const aBag,
-      const FloatEbmType * const aPredictorScores,
+      const double * const aPredictorScores,
       const size_t cSetSamples,
       const size_t cFeatureGroups,
       const FeatureGroup * const * const apFeatureGroup

@@ -721,7 +721,7 @@ class Native:
         self._unsafe.SizeWeight.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # FloatEbmType * weights
+            # double * weights
             ct.c_void_p,
         ]
         self._unsafe.SizeWeight.restype = ct.c_int64
@@ -729,7 +729,7 @@ class Native:
         self._unsafe.FillWeight.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # FloatEbmType * weights
+            # double * weights
             ct.c_void_p,
             # int64_t countBytesAllocated
             ct.c_int64,
@@ -765,7 +765,7 @@ class Native:
         self._unsafe.SizeRegressionTarget.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # FloatEbmType * targets
+            # double * targets
             ct.c_void_p,
         ]
         self._unsafe.SizeRegressionTarget.restype = ct.c_int64
@@ -773,7 +773,7 @@ class Native:
         self._unsafe.FillRegressionTarget.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # FloatEbmType * targets
+            # double * targets
             ct.c_void_p,
             # int64_t countBytesAllocated
             ct.c_int64,

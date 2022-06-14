@@ -86,7 +86,7 @@ static FloatEbmType SweepMultiDimensional(
 
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
-   FloatEbmType bestGain = k_illegalGain;
+   FloatEbmType bestGain = k_illegalGainFloat;
    size_t iBin = 0;
    do {
       *piBin = iBin;
@@ -174,7 +174,7 @@ static FloatEbmType SweepMultiDimensional(
    } while(iBin < cSweepBins - 1);
    *piBestSplit = iBestSplit;
 
-   EBM_ASSERT(std::isnan(bestGain) || k_illegalGain == bestGain || FloatEbmType { 0 } <= bestGain);
+   EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || FloatEbmType { 0 } <= bestGain);
    return bestGain;
 }
 
@@ -252,7 +252,7 @@ public:
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
-      FloatEbmType bestGain = k_illegalGain;
+      FloatEbmType bestGain = k_illegalGainFloat;
 
       size_t splitFirst1Best;
       size_t splitFirst1LowBest;
@@ -344,11 +344,11 @@ public:
                }
             } else {
                EBM_ASSERT(!std::isnan(gain2));
-               EBM_ASSERT(k_illegalGain == gain2);
+               EBM_ASSERT(k_illegalGainFloat == gain2);
             }
          } else {
             EBM_ASSERT(!std::isnan(gain1));
-            EBM_ASSERT(k_illegalGain == gain1);
+            EBM_ASSERT(k_illegalGainFloat == gain1);
          }
          ++iBin1;
       } while(iBin1 < cBinsDimension1 - 1);
@@ -445,17 +445,17 @@ public:
                }
             } else {
                EBM_ASSERT(!std::isnan(gain2));
-               EBM_ASSERT(k_illegalGain == gain2);
+               EBM_ASSERT(k_illegalGainFloat == gain2);
             }
          } else {
             EBM_ASSERT(!std::isnan(gain1));
-            EBM_ASSERT(k_illegalGain == gain1);
+            EBM_ASSERT(k_illegalGainFloat == gain1);
          }
          ++iBin2;
       } while(iBin2 < cBinsDimension2 - 1);
       LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Done sweep loops");
 
-      EBM_ASSERT(std::isnan(bestGain) || k_illegalGain == bestGain || FloatEbmType { 0 } <= bestGain);
+      EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || FloatEbmType { 0 } <= bestGain);
 
       // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
       // which contains the totals of all buckets

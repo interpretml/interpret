@@ -44,7 +44,7 @@ extern ErrorEbmType InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
    const BagEbmType direction,
    const BagEbmType * const aBag,
-   const FloatEbmType * const aPredictorScores,
+   const double * const aPredictorScores,
    const size_t cSetSamples,
    FloatEbmType * const aGradientAndHessian
 );
@@ -169,12 +169,12 @@ ErrorEbmType BoosterCore::Create(
    BoosterShell * const pBoosterShell,
    const size_t cFeatureGroups,
    const size_t cSamplingSets,
-   const FloatEbmType * const optionalTempParams,
+   const double * const optionalTempParams,
    const IntEbmType * const aFeatureGroupsDimensionCounts,
    const IntEbmType * const aFeatureGroupsFeatureIndexes, 
    const unsigned char * const pDataSetShared,
    const BagEbmType * const aBag,
-   const FloatEbmType * const aPredictorScores
+   const double * const aPredictorScores
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.

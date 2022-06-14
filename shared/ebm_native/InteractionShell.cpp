@@ -70,8 +70,8 @@ HistogramBucketBase * InteractionShell::GetHistogramBucketBase(size_t cBytesRequ
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbmType * bag,
-   const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
-   const FloatEbmType * optionalTempParams,
+   const double * predictorScores, // only samples with non-zeros in the bag are included
+   const double * optionalTempParams,
    InteractionHandle * interactionHandleOut
 ) {
    LOG_N(TraceLevelInfo, "Entered CreateInteractionDetector: "

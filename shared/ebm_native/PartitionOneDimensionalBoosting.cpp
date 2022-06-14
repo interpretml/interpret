@@ -438,7 +438,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    LOG_N(
       TraceLevelVerbose,
-      "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitValue=%zu, gain=%" FloatEbmTypePrintf,
+      "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: splitValue=%zu, gain=%le",
       static_cast<size_t>(pTreeNode->AFTER_GetSplitValue()),
       pTreeNode->AFTER_GetSplitGain()
    );

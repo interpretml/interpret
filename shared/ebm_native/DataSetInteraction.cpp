@@ -30,7 +30,7 @@ extern ErrorEbmType InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
    const BagEbmType direction,
    const BagEbmType * const aBag,
-   const FloatEbmType * const aPredictorScores,
+   const double * const aPredictorScores,
    const size_t cSetSamples,
    FloatEbmType * const aGradientAndHessian
 );
@@ -49,7 +49,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
    const BagEbmType * const aBag,
-   const FloatEbmType * const aPredictorScores,
+   const double * const aPredictorScores,
    const size_t cSetSamples,
    FloatEbmType ** paGradientsAndHessiansOut
 ) {
@@ -227,7 +227,7 @@ ErrorEbmType DataSetInteraction::Initialize(
    const unsigned char * const pDataSetShared,
    const size_t cAllSamples,
    const BagEbmType * const aBag,
-   const FloatEbmType * const aPredictorScores,
+   const double * const aPredictorScores,
    const size_t cSetSamples,
    const size_t cWeights,
    const size_t cFeatures

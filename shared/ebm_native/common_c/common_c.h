@@ -134,6 +134,8 @@ extern "C" {
 #error compiler not recognized
 #endif // compiler type
 
+typedef double FloatEbmType;
+
 INLINE_ALWAYS static void StopClangAnalysis() EBM_NOEXCEPT ANALYZER_NORETURN {
 }
 

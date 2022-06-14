@@ -185,12 +185,12 @@ public:
       BoosterShell * const pBoosterShell,
       const size_t cFeatureGroups,
       const size_t cSamplingSets,
-      const FloatEbmType * const optionalTempParams,
+      const double * const optionalTempParams,
       const IntEbmType * const aFeatureGroupsDimensionCounts,
       const IntEbmType * const aFeatureGroupsFeatureIndexes,
       const unsigned char * const pDataSetShared,
       const BagEbmType * const aBag,
-      const FloatEbmType * const aPredictorScores
+      const double * const aPredictorScores
    );
 };
 

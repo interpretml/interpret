@@ -57,7 +57,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    const FeatureGroup * const pFeatureGroup,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
-   FloatEbmType * const pInteractionStrengthAvgOut
+   double * const pInteractionStrengthAvgOut
 ) {
    // TODO : we NEVER use the hessian term (currently) in HistogramTargetEntry when calculating interaction scores, but we're spending time calculating 
    // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
@@ -214,11 +214,12 @@ static ErrorEbmType CalcInteractionStrengthInternal(
          EBM_ASSERT(FloatEbmType { 0 } < totalWeight); // if all are zeros we assume there are no weights and use the count
          bestGain /= totalWeight;
 
+         double bestGainOut = static_cast<double>(bestGain);
          if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<FloatEbmType>::max()))) {
             // We simplify our caller's handling by returning -lowest as our error indicator. -lowest will sort to being the
             // least important item, which is good, but it also signals an overflow without the weirness of NaNs.
             EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<FloatEbmType>::infinity() == bestGain);
-            bestGain = k_illegalGain;
+            bestGainOut = k_illegalGainDouble;
          } else if(UNLIKELY(bestGain < FloatEbmType { 0 })) {
             // gain can't mathematically be legally negative, but it can be here in the following situations:
             //   1) for impure interaction gain we subtract the parent partial gain, and there can be floating point
@@ -231,12 +232,12 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 
             EBM_ASSERT(!std::isnan(bestGain));
             EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != bestGain);
-            bestGain = std::numeric_limits<FloatEbmType>::lowest() <= bestGain ? FloatEbmType { 0 } : k_illegalGain;
+            bestGainOut = std::numeric_limits<FloatEbmType>::lowest() <= bestGain ? double { 0 } : k_illegalGainDouble;
          } else {
             EBM_ASSERT(!std::isnan(bestGain));
             EBM_ASSERT(!std::isinf(bestGain));
          }
-         *pInteractionStrengthAvgOut = bestGain;
+         *pInteractionStrengthAvgOut = bestGainOut;
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
@@ -246,7 +247,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       if(nullptr != pInteractionStrengthAvgOut) {
          // for now, just return any interactions that have other than 2 dimensions as -inf, 
          // which means they won't be considered but indicates they were not handled
-         *pInteractionStrengthAvgOut = k_illegalGain;
+         *pInteractionStrengthAvgOut = k_illegalGainDouble;
       }
    }
 
@@ -268,7 +269,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    const IntEbmType * featureIndexes,
    InteractionOptionsType options,
    IntEbmType countSamplesRequiredForChildSplitMin,
-   FloatEbmType * avgInteractionStrengthOut
+   double * avgInteractionStrengthOut
 ) {
    LOG_COUNTED_N(
       &g_cLogCalcInteractionStrengthParametersMessages,
@@ -291,7 +292,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    );
 
    if(LIKELY(nullptr != avgInteractionStrengthOut)) {
-      *avgInteractionStrengthOut = k_illegalGain;
+      *avgInteractionStrengthOut = k_illegalGainDouble;
    }
 
    ErrorEbmType error;
@@ -329,7 +330,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
       if(IntEbmType { 0 } == countDimensions) {
          LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength empty feature list");
          if(LIKELY(nullptr != avgInteractionStrengthOut)) {
-            *avgInteractionStrengthOut = FloatEbmType { 0 };
+            *avgInteractionStrengthOut = 0.0;
          }
          return Error_None;
       } else {
@@ -371,7 +372,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
       if(pFeature->GetCountBins() <= size_t { 1 }) {
          LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength feature group contains a feature with only 1 bin");
          if(nullptr != avgInteractionStrengthOut) {
-            *avgInteractionStrengthOut = FloatEbmType { 0 };
+            *avgInteractionStrengthOut = double { 0 };
          }
          return Error_None;
       }
@@ -386,7 +387,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength zero samples");
       if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = FloatEbmType { 0 };
+         *avgInteractionStrengthOut = double { 0 };
       }
       return Error_None;
    }
@@ -396,7 +397,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    if(ptrdiff_t { 1 } == pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
       LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
       if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = FloatEbmType { 0 };
+         *avgInteractionStrengthOut = double { 0 };
       }
       return Error_None;
    }
@@ -416,13 +417,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    }
 
    if(nullptr != avgInteractionStrengthOut) {
-      EBM_ASSERT(k_illegalGain == *avgInteractionStrengthOut || FloatEbmType { 0 } <= *avgInteractionStrengthOut);
+      EBM_ASSERT(k_illegalGainDouble == *avgInteractionStrengthOut || double { 0 } <= *avgInteractionStrengthOut);
       LOG_COUNTED_N(
          pInteractionShell->GetPointerCountLogExitMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
          "Exited CalcInteractionStrength: "
-         "*avgInteractionStrengthOut=%" FloatEbmTypePrintf
+         "*avgInteractionStrengthOut=%le"
          , 
          *avgInteractionStrengthOut
       );

@@ -29,6 +29,25 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+INLINE_ALWAYS FloatEbmType ConvertToEbmFloat(const double val) {
+   // In some IEEE-754 compatible implementations, you can get a float exception when converting a float64
+   // to a float32.  Avoid these issues, and incompatibilities, by calling this function which trims
+   // out +-inf results
+
+   // TODO: call this function from anywhere we convert doubles to FloatEbmTypes
+   // TODO : change this so that it doesn't execute anything if EbmFloat is a double
+   if(val < double { std::numeric_limits<FloatEbmType>::lowest() }) {
+      // if val is NaN it won't go here
+      return -std::numeric_limits<FloatEbmType>::infinity();
+   } else if(double { std::numeric_limits<FloatEbmType>::max() } < val) {
+      // if val is NaN it won't go here
+      return std::numeric_limits<FloatEbmType>::infinity();
+   } else {
+      // this works for NaN
+      return static_cast<FloatEbmType>(val);
+   }
+}
+
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type 
 //   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  
 //   Perhaps take the sqrt of the minimal change from 1?
@@ -39,17 +58,18 @@ namespace DEFINED_ZONE_NAME {
 
 // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small 
 // negative values close to zero that might occur due to numeric instability
-constexpr static FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest();
-constexpr static FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
-constexpr static FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
-constexpr static FloatEbmType k_epsilonGradient = 1e-7;
+constexpr static FloatEbmType k_illegalGainFloat = std::numeric_limits<FloatEbmType>::lowest();
+constexpr static double k_illegalGainDouble = std::numeric_limits<double>::lowest();
+constexpr static FloatEbmType k_epsilonNegativeGainAllowed = FloatEbmType { -1e-7 };
+constexpr static FloatEbmType k_epsilonNegativeValidationMetricAllowed = FloatEbmType { -1e-7 };
+constexpr static FloatEbmType k_epsilonGradient = FloatEbmType { 1e-7 };
 #if defined(FAST_EXP) || defined(FAST_LOG)
 // with the approximate exp function we can expect a bit of noise.  We might need to increase this further
-constexpr static FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-1;
+constexpr static FloatEbmType k_epsilonGradientForBinaryToMulticlass = FloatEbmType { 1e-1 };
 #else // defined(FAST_EXP) || defined(FAST_LOG)
-constexpr static FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-7;
+constexpr static FloatEbmType k_epsilonGradientForBinaryToMulticlass = FloatEbmType { 1e-7 };
 #endif // defined(FAST_EXP) || defined(FAST_LOG)
-constexpr static FloatEbmType k_epsilonLogLoss = 1e-7;
+constexpr static FloatEbmType k_epsilonLogLoss = FloatEbmType { 1e-7 };
 
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be 
 // that setting it too high increases compile time and module size

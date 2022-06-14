@@ -35,7 +35,7 @@ public:
       const BagEbmType direction,
       const BagEbmType * const aBag,
       const void * const aTargets,
-      const FloatEbmType * const aPredictorScores,
+      const double * const aPredictorScores,
       const size_t cSetSamples,
       FloatEbmType * const aGradientAndHessian
    ) {
@@ -64,7 +64,7 @@ public:
 
       const BagEbmType * pBag = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
-      const FloatEbmType * pPredictorScores = aPredictorScores;
+      const double * pPredictorScores = aPredictorScores;
       FloatEbmType * pGradientAndHessian = aGradientAndHessian;
       const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cVectorLength * cSetSamples * 2;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
@@ -94,6 +94,7 @@ public:
                do {
                   FloatEbmType predictorScore = 0;
                   if(nullptr != pPredictorScores) {
+                     static_assert(sizeof(*pPredictorScores) == sizeof(predictorScore), "float mismatch");
                      predictorScore = *pPredictorScores;
                      ++pPredictorScores;
                   }
@@ -162,7 +163,7 @@ public:
       const BagEbmType direction,
       const BagEbmType * const aBag,
       const void * const aTargets,
-      const FloatEbmType * const aPredictorScores,
+      const double * const aPredictorScores,
       const size_t cSetSamples,
       FloatEbmType * const aGradientAndHessian
    ) {
@@ -181,7 +182,7 @@ public:
 
       const BagEbmType * pBag = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
-      const FloatEbmType * pPredictorScores = aPredictorScores;
+      const double * pPredictorScores = aPredictorScores;
       FloatEbmType * pGradientAndHessian = aGradientAndHessian;
       const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples * 2;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
@@ -194,6 +195,7 @@ public:
          if(BagEbmType { 0 } != countBagged) {
             FloatEbmType predictionScore = 0;
             if(nullptr != pPredictorScores) {
+               static_assert(sizeof(*pPredictorScores) == sizeof(predictionScore), "float mismatch");
                predictionScore = *pPredictorScores;
                ++pPredictorScores;
             }
@@ -238,7 +240,7 @@ public:
       const BagEbmType direction,
       const BagEbmType * const aBag,
       const void * const aTargets,
-      const FloatEbmType * const aPredictorScores,
+      const double * const aPredictorScores,
       const size_t cSetSamples,
       FloatEbmType * const aGradientAndHessian
    ) {
@@ -257,7 +259,7 @@ public:
 
       const BagEbmType * pBag = aBag;
       const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargets);
-      const FloatEbmType * pPredictorScores = aPredictorScores;
+      const double * pPredictorScores = aPredictorScores;
       FloatEbmType * pGradientAndHessian = aGradientAndHessian;
       const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
@@ -270,6 +272,7 @@ public:
          if(BagEbmType { 0 } != countBagged) {
             FloatEbmType predictionScore = 0;
             if(nullptr != pPredictorScores) {
+               static_assert(sizeof(*pPredictorScores) == sizeof(predictionScore), "float mismatch");
                predictionScore = *pPredictorScores;
                ++pPredictorScores;
             }
@@ -306,7 +309,7 @@ extern ErrorEbmType InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
    const BagEbmType direction,
    const BagEbmType * const aBag,
-   const FloatEbmType * const aPredictorScores,
+   const double * const aPredictorScores,
    const size_t cSetSamples,
    FloatEbmType * const aGradientAndHessian
 ) {

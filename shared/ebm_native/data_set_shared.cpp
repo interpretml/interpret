@@ -729,7 +729,7 @@ return_bad:;
 
 static IntEbmType AppendWeight(
    const IntEbmType countSamples,
-   const FloatEbmType * aWeights,
+   const double * aWeights,
    const size_t cBytesAllocated,
    unsigned char * const pFillMem
 ) {
@@ -810,8 +810,8 @@ static IntEbmType AppendWeight(
             goto return_bad;
          }
 
-         if(IsMultiplyError(sizeof(FloatEbmType), cSamples)) {
-            LOG_0(TraceLevelError, "ERROR AppendWeight IsMultiplyError(sizeof(FloatEbmType), cSamples)");
+         if(IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatEbmType)), cSamples)) {
+            LOG_0(TraceLevelError, "ERROR AppendWeight IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatEbmType)), cSamples)");
             goto return_bad;
          }
          const size_t cBytesAllSamples = sizeof(FloatEbmType) * cSamples;
@@ -827,7 +827,7 @@ static IntEbmType AppendWeight(
                goto return_bad;
             }
 
-            EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType), cSamples)); // checked above
+            static_assert(sizeof(FloatEbmType) == sizeof(*aWeights), "float mismatch");
             memcpy(pFillMem + iByteCur, aWeights, cBytesAllSamples);
          }
          iByteCur = iByteNext;
@@ -987,14 +987,14 @@ static IntEbmType AppendTarget(
 
          size_t cBytesAllSamples;
          if(bClassification) {
-            if(IsMultiplyError(sizeof(SharedStorageDataType), cSamples)) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget IsMultiplyError(sizeof(SharedStorageDataType), cSamples)");
+            if(IsMultiplyError(EbmMax(sizeof(IntEbmType), sizeof(SharedStorageDataType)), cSamples)) {
+               LOG_0(TraceLevelError, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(IntEbmType), sizeof(SharedStorageDataType)), cSamples)");
                goto return_bad;
             }
             cBytesAllSamples = sizeof(SharedStorageDataType) * cSamples;
          } else {
-            if(IsMultiplyError(sizeof(FloatEbmType), cSamples)) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget IsMultiplyError(sizeof(FloatEbmType), cSamples)");
+            if(IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatEbmType)), cSamples)) {
+               LOG_0(TraceLevelError, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatEbmType)), cSamples)");
                goto return_bad;
             }
             cBytesAllSamples = sizeof(FloatEbmType) * cSamples;
@@ -1039,7 +1039,7 @@ static IntEbmType AppendTarget(
                } while(pTargetsEnd != pTarget);
                EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
             } else {
-               EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType), cSamples)); // checked above
+               static_assert(sizeof(FloatEbmType) == sizeof(double), "float mismatch");
                memcpy(pFillMem + iByteCur, aTargets, cBytesAllSamples);
             }
          }
@@ -1208,7 +1208,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillFea
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeWeight(
    IntEbmType countSamples,
-   const FloatEbmType * weights
+   const double * weights
 ) {
    return AppendWeight(
       countSamples,
@@ -1220,7 +1220,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeWeigh
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillWeight(
    IntEbmType countSamples,
-   const FloatEbmType * weights,
+   const double * weights,
    IntEbmType countBytesAllocated,
    void * fillMem
 ) {
@@ -1318,7 +1318,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillCla
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegressionTarget(
    IntEbmType countSamples,
-   const FloatEbmType * targets
+   const double * targets
 ) {
    return AppendTarget(
       false,
@@ -1332,7 +1332,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegre
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillRegressionTarget(
    IntEbmType countSamples,
-   const FloatEbmType * targets,
+   const double * targets,
    IntEbmType countBytesAllocated,
    void * fillMem
 ) {
@@ -1594,6 +1594,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Extract
    return Error_None;
 }
 
+// TODO: make an inline wrapper that forces this to the correct type and have 2 differently named functions
 // GetDataSetSharedFeature will return either (SparseFeatureDataSetSharedEntry *) or (SharedStorageDataType *)
 extern const void * GetDataSetSharedFeature(
    const unsigned char * const pDataSetShared,
@@ -1756,6 +1757,7 @@ extern const FloatEbmType * GetDataSetSharedWeight(
    return reinterpret_cast<const FloatEbmType *>(pWeightDataSetShared + 1);
 }
 
+// TODO: make an inline wrapper that forces this to the correct type and have 2 differently named functions
 // GetDataSetSharedTarget returns (FloatEbmType *) for regression and (SharedStorageDataType *) for classification
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,

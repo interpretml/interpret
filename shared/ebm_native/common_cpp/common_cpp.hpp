@@ -469,10 +469,10 @@ constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>()
 // will have more bins, and thus will be restricted to even less dimensions. If all dimensions had the minimum 
 // of two bins, we would need 2^N cells stored in the tensor.  If the tensor contained cells
 // of 1 byte and filled all memory on a 64 bit machine, then we could not have more than 64 dimensions.
-// On a real system, we can't fill all memory, and our interface requires tensors of FloatEbmType, so we  
-// can subtract bits for the # of bytes used in a FloatEbmType and subtract 1 more because we cannot use all memory.
+// On a real system, we can't fill all memory, and our interface requires tensors of double, so we  
+// can subtract bits for the # of bytes used in a double and subtract 1 more because we cannot use all memory.
 constexpr static size_t k_cDimensionsMax = 
-   k_cBitsForSizeT - CountBitsRequired(sizeof(FloatEbmType) / sizeof(uint8_t) - 1) - 1;
+   k_cBitsForSizeT - CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
 WARNING_PUSH

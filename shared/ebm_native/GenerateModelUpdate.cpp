@@ -682,10 +682,10 @@ static ErrorEbmType GenerateModelUpdateInternal(
    BoosterShell * const pBoosterShell,
    const size_t iFeatureGroup,
    const GenerateUpdateOptionsType options,
-   const FloatEbmType learningRate,
+   const double learningRate,
    const size_t cSamplesRequiredForChildSplitMin,
    const IntEbmType * const aLeavesMax, 
-   FloatEbmType * const pGainAvgOut
+   double * const pGainAvgOut
 ) {
    ErrorEbmType error;
 
@@ -747,7 +747,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
    // if pBoosterCore->m_apSamplingSets is nullptr, then we should have zero training samples
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
-   FloatEbmType gainAvg = FloatEbmType { 0 };
+   double gainAvgOut = 0.0;
    const SamplingSet * const * ppSamplingSet = pBoosterCore->GetSamplingSets();
    if(nullptr != ppSamplingSet) {
       pBoosterShell->GetOverwritableModelUpdate()->SetCountDimensions(cDimensions);
@@ -759,6 +759,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
       EBM_ASSERT(1 <= cSamplingSetsAfterZero);
       const SamplingSet * const * const ppSamplingSetEnd = &ppSamplingSet[cSamplingSetsAfterZero];
       const FloatEbmType invertedSampleCount = FloatEbmType { 1 } / cSamplingSetsAfterZero;
+      FloatEbmType gainAvg = FloatEbmType { 0 };
       do {
          const SamplingSet * const pSamplingSet = *ppSamplingSet;
          if(UNLIKELY(IntEbmType { 0 } == lastDimensionLeavesMax)) {
@@ -766,7 +767,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
             error = BoostZeroDimensional(pBoosterShell, pSamplingSet, options);
             if(Error_None != error) {
                if(LIKELY(nullptr != pGainAvgOut)) {
-                  *pGainAvgOut = FloatEbmType { 0 };
+                  *pGainAvgOut = double { 0 };
                }
                return error;
             }
@@ -790,7 +791,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                );
                if(Error_None != error) {
                   if(LIKELY(nullptr != pGainAvgOut)) {
-                     *pGainAvgOut = FloatEbmType { 0 };
+                     *pGainAvgOut = double { 0 };
                   }
                   return error;
                }
@@ -811,7 +812,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                );
                if(Error_None != error) {
                   if(LIKELY(nullptr != pGainAvgOut)) {
-                     *pGainAvgOut = FloatEbmType { 0 };
+                     *pGainAvgOut = double { 0 };
                   }
                   return error;
                }
@@ -825,7 +826,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                );
                if(Error_None != error) {
                   if(LIKELY(nullptr != pGainAvgOut)) {
-                     *pGainAvgOut = FloatEbmType { 0 };
+                     *pGainAvgOut = double { 0 };
                   }
                   return error;
                }
@@ -852,7 +853,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
          error = pBoosterShell->GetAccumulatedModelUpdate()->Add(*pBoosterShell->GetOverwritableModelUpdate());
          if(Error_None != error) {
             if(LIKELY(nullptr != pGainAvgOut)) {
-               *pGainAvgOut = FloatEbmType { 0 };
+               *pGainAvgOut = double { 0 };
             }
             return error;
          }
@@ -863,6 +864,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
       EBM_ASSERT(!std::isnan(gainAvg));
       EBM_ASSERT(FloatEbmType { 0 } <= gainAvg);
 
+      gainAvgOut = static_cast<double>(gainAvg);
       if(UNLIKELY(/* NaN */ !LIKELY(gainAvg <= std::numeric_limits<FloatEbmType>::max()))) {
          // this also checks for NaN since NaN < anything is FALSE
 
@@ -875,7 +877,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
          // decide if they want to stop boosting at that point or continue.
          // So, if there is an update do not reset it here
 
-         gainAvg = k_illegalGain;
+         gainAvgOut = k_illegalGainDouble;
       } else {
          EBM_ASSERT(!std::isnan(gainAvg));
          EBM_ASSERT(!std::isinf(gainAvg));
@@ -883,6 +885,9 @@ static ErrorEbmType GenerateModelUpdateInternal(
       }
 
       LOG_0(TraceLevelVerbose, "GenerateModelUpdatePerTargetClasses done sampling set loop");
+
+      FloatEbmType learningRateFloat = static_cast<FloatEbmType>(learningRate);
+      static_assert(sizeof(learningRateFloat) == sizeof(learningRate), "float mismatch");
 
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
@@ -901,14 +906,14 @@ static ErrorEbmType GenerateModelUpdateInternal(
          //       pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses here to keep learning rates as equivalent as possible..  
          //       Actually, I think the real solution here is that 
          //   pBoosterCore->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(
-         //      learningRate * invertedSampleCount * (pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses - 1) / 
+         //      learningRateFloat * invertedSampleCount * (pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses - 1) / 
          //      pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses
          //   );
          //} else {
          //   // TODO : for classification, is our learning rate essentially being inflated as 
          //        pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses goes up?  If so, maybe we should divide by 
          //        pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses here to keep learning rates equivalent as possible
-         //   pBoosterCore->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate * invertedSampleCount);
+         //   pBoosterCore->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRateFloat * invertedSampleCount);
          //}
 
          // TODO: When NewtonBoosting is enabled, we need to multiply our rate by (K - 1)/K (see above), per:
@@ -918,12 +923,12 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
          const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
          if(bDividing) {
-            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount * 0.5);
+            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRateFloat * invertedSampleCount * FloatEbmType { 0.5 });
          } else {
-            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount);
+            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRateFloat * invertedSampleCount);
          }
       } else {
-         bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount);
+         bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRateFloat * invertedSampleCount);
       }
 
       if(UNLIKELY(bBad)) {
@@ -933,18 +938,18 @@ static ErrorEbmType GenerateModelUpdateInternal(
          pBoosterShell->GetAccumulatedModelUpdate()->Reset();
 
          // also, signal to our caller that an overflow occured with a negative gain
-         gainAvg = k_illegalGain;
+         gainAvgOut = k_illegalGainDouble;
       }
    }
 
    pBoosterShell->SetFeatureGroupIndex(iFeatureGroup);
 
-   EBM_ASSERT(!std::isnan(gainAvg));
-   EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != gainAvg);
-   EBM_ASSERT(k_illegalGain == gainAvg || FloatEbmType { 0 } <= gainAvg);
+   EBM_ASSERT(!std::isnan(gainAvgOut));
+   EBM_ASSERT(std::numeric_limits<double>::infinity() != gainAvgOut);
+   EBM_ASSERT(k_illegalGainDouble == gainAvgOut || double { 0 } <= gainAvgOut);
 
    if(nullptr != pGainAvgOut) {
-      *pGainAvgOut = gainAvg;
+      *pGainAvgOut = gainAvgOut;
    }
 
    LOG_0(TraceLevelVerbose, "Exited GenerateModelUpdatePerTargetClasses");
@@ -980,10 +985,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options,
-   FloatEbmType learningRate,
+   double learningRate,
    IntEbmType countSamplesRequiredForChildSplitMin,
    const IntEbmType * leavesMax,
-   FloatEbmType * avgGainOut
+   double * avgGainOut
 ) {
    LOG_COUNTED_N(
       &g_cLogGenerateModelUpdateParametersMessages,
@@ -993,7 +998,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       "boosterHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
       "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
-      "learningRate=%" FloatEbmTypePrintf ", "
+      "learningRate=%le, "
       "countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", "
       "leavesMax=%p, "
       "avgGainOut=%p"
@@ -1012,7 +1017,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
       // already logged
       return Error_IllegalParamValue;
@@ -1026,7 +1031,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
 
    if(indexFeatureGroup < 0) {
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup must be positive");
       return Error_IllegalParamValue;
@@ -1034,7 +1039,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
    if(IsConvertError<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup is too high to index");
       return Error_IllegalParamValue;
@@ -1042,7 +1047,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup above the number of feature groups that we have");
       return Error_IllegalParamValue;
@@ -1061,11 +1066,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
 
    if(std::isnan(learningRate)) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is NaN");
-   } else if(std::isinf(learningRate)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is infinity");
-   } else if(0 == learningRate) {
+   } else if(std::numeric_limits<double>::infinity() == learningRate) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is +infinity");
+   } else if(double { std::numeric_limits<FloatEbmType>::max() } < learningRate) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is +infinity in float32");
+   } else if(0.0 == learningRate) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is zero");
-   } else if(learningRate < FloatEbmType { 0 }) {
+   } else if(learningRate < double { 0 }) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is negative");
    }
 
@@ -1090,7 +1097,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       // length array logits, which means for our representation that we have zero items in the array total.
       // since we can predit the output with 100% accuracy, our gain will be 0.
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
       pBoosterShell->SetFeatureGroupIndex(iFeatureGroup);
 
@@ -1113,7 +1120,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
    if(Error_None != error) {
       LOG_N(TraceLevelWarning, "WARNING GenerateModelUpdate: return=%" ErrorEbmTypePrintf, error);
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
       return error;
    }
@@ -1122,13 +1129,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       EBM_ASSERT(!std::isnan(*avgGainOut)); // NaNs can happen, but we should have edited those before here
       EBM_ASSERT(!std::isinf(*avgGainOut)); // infinities can happen, but we should have edited those before here
       // no epsilon required.  We make it zero if the value is less than zero for floating point instability reasons
-      EBM_ASSERT(FloatEbmType { 0 } <= *avgGainOut);
+      EBM_ASSERT(double { 0 } <= *avgGainOut);
       LOG_COUNTED_N(
          pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
          "Exited GenerateModelUpdate: "
-         "*avgGainOut=%" FloatEbmTypePrintf
+         "*avgGainOut=%le"
          ,
          *avgGainOut
       );

@@ -34,7 +34,7 @@ namespace DEFINED_ZONE_NAME {
 // TODO: increase the k_cutExploreDistance, and also increase our testing length to compensate
 constexpr size_t k_cutExploreDistance = 20;
 // 1073741824 is 2^30.  Using a power of two with no detail in the mantissa might help multiplication
-constexpr FloatEbmType tweakIncrement = std::numeric_limits<FloatEbmType>::epsilon() * FloatEbmType { 1073741824 };
+constexpr double tweakIncrement = std::numeric_limits<double>::epsilon() * double { 1073741824 };
 
 // Some general definitions:
 //  - uncuttable range - a long contiguous series of feature values after sorting that have the same value, 
@@ -48,35 +48,35 @@ constexpr FloatEbmType tweakIncrement = std::numeric_limits<FloatEbmType>::epsil
 //    if we had the values [1, 2, 3, 4] and one CutPoint, a reasonable cutPoint would be 2.5.
 //  - cut range - the values between two CutPoint
 
-extern FloatEbmType ArithmeticMean(
-   const FloatEbmType low,
-   const FloatEbmType high
+extern double ArithmeticMean(
+   const double low,
+   const double high
 ) noexcept;
 
-extern FloatEbmType GetInterpretableCutPointFloat(
-   FloatEbmType low,
-   FloatEbmType high
+extern double GetInterpretableCutPointFloat(
+   double low,
+   double high
 ) noexcept;
 
-extern FloatEbmType GetInterpretableEndpoint(
-   const FloatEbmType center,
-   const FloatEbmType movementFromEnds
+extern double GetInterpretableEndpoint(
+   const double center,
+   const double movementFromEnds
 ) noexcept;
 
-extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, FloatEbmType * const aValues) noexcept;
+extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, double * const aValues) noexcept;
 
-INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultiplePositive(const size_t iTweak) noexcept {
-   return FloatEbmType { 1 } + tweakIncrement * static_cast<FloatEbmType>(iTweak);
+INLINE_ALWAYS constexpr static double GetTweakingMultiplePositive(const size_t iTweak) noexcept {
+   return double { 1 } + tweakIncrement * static_cast<double>(iTweak);
 }
-INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultipleNegative(const size_t iTweak) noexcept {
-   return FloatEbmType { 1 } - tweakIncrement * static_cast<FloatEbmType>(iTweak);
+INLINE_ALWAYS constexpr static double GetTweakingMultipleNegative(const size_t iTweak) noexcept {
+   return double { 1 } - tweakIncrement * static_cast<double>(iTweak);
 }
 
 constexpr ptrdiff_t k_movementDoneCut = std::numeric_limits<ptrdiff_t>::lowest();
-constexpr FloatEbmType k_priorityNoCutsPossible = std::numeric_limits<FloatEbmType>::lowest();
+constexpr double k_priorityNoCutsPossible = std::numeric_limits<double>::lowest();
 constexpr size_t k_valNotLegal = std::numeric_limits<size_t>::max();
 
-constexpr FloatEbmType k_illegalAvgCuttableRangeWidthAfterAddingOneCut = std::numeric_limits<FloatEbmType>::lowest();
+constexpr double k_illegalAvgCuttableRangeWidthAfterAddingOneCut = std::numeric_limits<double>::lowest();
 
 struct NeighbourJump final {
 
@@ -105,7 +105,7 @@ struct CutPoint final {
    CutPoint *   m_pNext;
 
    // after cutting, we set m_iValAspirationalFloat to m_iVal to avoid needing if statements in some places
-   FloatEbmType   m_iValAspirationalFloat;
+   double   m_iValAspirationalFloat;
 
    size_t         m_iVal;
    // m_cPredeterminedMovementOnCut is a valid number until we cut it.  After cutting we don't 
@@ -113,7 +113,7 @@ struct CutPoint final {
    ptrdiff_t      m_cPredeterminedMovementOnCut;
 
    // the higher the m_priority, the more likely it is that it'll be chosen to cut
-   FloatEbmType   m_priority;
+   double   m_priority;
 
    // the higher the m_uniqueTiebreaker, the more likely it is that it'll be chosen to cut (after considering priority)
    // the tiebreakers are ordered with symmetry in mind such that items are ranked first by distance to the end
@@ -164,13 +164,13 @@ struct CuttingRange final {
 
    // this can be zero if we're sandwitched between two uncuttable ranges, eg: 0, 0, 0, <CuttingRange here> 1, 1, 1
    size_t         m_cCuttableValues;
-   FloatEbmType * m_pCuttableValuesFirst;
+   double * m_pCuttableValuesFirst;
 
    size_t         m_uniqueTiebreaker;
 
    size_t         m_cRangesAssigned;
 
-   FloatEbmType   m_avgCuttableRangeWidthAfterAddingOneCut;
+   double   m_avgCuttableRangeWidthAfterAddingOneCut;
    size_t         m_cRangesMax;
 };
 static_assert(std::is_standard_layout<CuttingRange>::value,
@@ -209,8 +209,8 @@ public:
 };
 
 INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
-   const FloatEbmType sideDistance, 
-   const FloatEbmType totalDistance, 
+   const double sideDistance, 
+   const double totalDistance, 
    const size_t cRanges,
    const size_t cRangesSideOriginal
 ) noexcept {
@@ -221,32 +221,31 @@ INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
    EBM_ASSERT(2 <= cRanges); // we require there to be at least one range on the left and one range on the right
    EBM_ASSERT(0 <= sideDistance);
    EBM_ASSERT(sideDistance <= totalDistance);
-   // provided FloatEbmType is a double, this shouldn't be able to overflow even if we're on a 128 bit computer
-   // if FloatEbmType was a float we might be in trouble for extrememly large ranges and iVal values
+   // This shouldn't be able to overflow even if we're on a 128 bit computer
    //
    // even with numeric instability, we shouldn't end up with a terrible result here since we only get numeric
    // issues if the number of ranges is huge, and we clip on both the low and high ranges below to handle issues
    // where rounding pushes us a bit over the numeric limits
    const size_t cRangesPlusOne = cRanges + size_t { 1 };
-   const FloatEbmType result = static_cast<FloatEbmType>(cRangesPlusOne) * sideDistance / totalDistance;
+   const double result = static_cast<double>(cRangesPlusOne) * sideDistance / totalDistance;
    size_t cSide = static_cast<size_t>(result);
    cSide = std::max(size_t { 1 }, cSide); // don't allow zero ranges on the low side
    cSide = std::min(cSide, cRanges - 1); // don't allow zero ranges on the high side
 
 #ifndef NDEBUG
 
-   const FloatEbmType avg = std::min(sideDistance / cSide, (totalDistance - sideDistance) / (cRanges - cSide));
+   const double avg = std::min(sideDistance / cSide, (totalDistance - sideDistance) / (cRanges - cSide));
    if(2 <= cSide) {
       const size_t denominator1 = cSide - size_t { 1 };
       const size_t denominator2 = cRanges - cSide + size_t { 1 };
-      const FloatEbmType avgOther = std::min(sideDistance / static_cast<FloatEbmType>(denominator1), (totalDistance - sideDistance) / static_cast<FloatEbmType>(denominator2));
+      const double avgOther = std::min(sideDistance / static_cast<double>(denominator1), (totalDistance - sideDistance) / static_cast<double>(denominator2));
       EBM_ASSERT(avgOther <= avg * 1.00001);
    }
 
    if(2 <= cRanges - cSide) {
       const size_t denominator1 = cSide + size_t { 1 };
       const size_t denominator2 = cRanges - cSide - size_t { 1 };
-      const FloatEbmType avgOther = std::min(sideDistance / static_cast<FloatEbmType>(denominator1), (totalDistance - sideDistance) / static_cast<FloatEbmType>(denominator2));
+      const double avgOther = std::min(sideDistance / static_cast<double>(denominator1), (totalDistance - sideDistance) / static_cast<double>(denominator2));
       EBM_ASSERT(avgOther <= avg * 1.00001);
    }
 
@@ -259,7 +258,7 @@ INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
       // number of ranges we can avoid divergence on exact matches
 
       // move slighly in the direction towards zero to put us off exact integers and move us in a helpful direction
-      const FloatEbmType multiple = UNPREDICTABLE(cSide < cRangesSideOriginal) ? 
+      const double multiple = UNPREDICTABLE(cSide < cRangesSideOriginal) ? 
          GetTweakingMultiplePositive(1) : GetTweakingMultipleNegative(1);
 
       cSide = static_cast<size_t>(result * multiple);
@@ -300,9 +299,9 @@ INLINE_RELEASE_UNTEMPLATED static void IronCuts() noexcept {
    //     moves along
 }
 
-static FloatEbmType CalculatePriority(
-   const FloatEbmType iValLowerFloat,
-   const FloatEbmType iValHigherFloat,
+static double CalculatePriority(
+   const double iValLowerFloat,
+   const double iValHigherFloat,
    const CutPoint * const pCutCur
 ) noexcept {
    EBM_ASSERT(!pCutCur->IsCut());
@@ -320,7 +319,7 @@ static FloatEbmType CalculatePriority(
 
    // if the m_iVal value was set to k_illegalIndex, then there are no legal cuts, 
    // so leave it with the most terrible possible priority
-   FloatEbmType priority = k_priorityNoCutsPossible;
+   double priority = k_priorityNoCutsPossible;
    if(LIKELY(k_valNotLegal != pCutCur->m_iVal)) {
       // TODO: This calculation doesn't take into account that we can trade our cut points with neighbours
       // with m_cPredeterminedMovementOnCut.  For an example, see test:
@@ -345,8 +344,8 @@ static FloatEbmType CalculatePriority(
       // 10 to 5 would be the same as movement from 10 to 15, but compression or expansion by 50% in either direction
       // is probably the right way to think about it since compressing small ranges is more damaging, and this metric
       // values movement towards the smaller end more.
-      FloatEbmType priorityLow;
-      FloatEbmType priorityHigh;
+      double priorityLow;
+      double priorityHigh;
       if(pCutCur->m_iVal < pCutCur->m_iValAspirationalFloat) {
          priorityLow = (pCutCur->m_iValAspirationalFloat - iValLowerFloat) / (pCutCur->m_iVal - iValLowerFloat);
          priorityHigh = (iValHigherFloat - pCutCur->m_iVal) / (iValHigherFloat - pCutCur->m_iValAspirationalFloat);
@@ -356,8 +355,8 @@ static FloatEbmType CalculatePriority(
       }
 
       // TODO : these are not guaranteed due to floating point inexactness.  We should detect this scenario
-      EBM_ASSERT(FloatEbmType { 1 } <= priorityLow);
-      EBM_ASSERT(FloatEbmType { 1 } <= priorityHigh);
+      EBM_ASSERT(double { 1 } <= priorityLow);
+      EBM_ASSERT(double { 1 } <= priorityHigh);
 
       // TODO: evaluate max here instead as well
 
@@ -368,7 +367,7 @@ static FloatEbmType CalculatePriority(
       //priority = std::max(priorityLow, priorityHigh);
 
       priority = priorityLow * priorityHigh;
-      EBM_ASSERT(FloatEbmType { 1 } <= priority);
+      EBM_ASSERT(double { 1 } <= priority);
 
       // initiallly the space is divided into equal length ranges, so there are usually a lot of collisions
       // in priority from potential cuts on opposite sides of the value array.  We have a tiebreaker inside
@@ -384,7 +383,7 @@ static FloatEbmType CalculatePriority(
    }
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
-   LOG_N(TraceLevelVerbose, "Prioritized CutPoint: %zu, %zu, %" FloatEbmTypePrintf ", %td, %" FloatEbmTypePrintf,
+   LOG_N(TraceLevelVerbose, "Prioritized CutPoint: %zu, %zu, %le, %td, %le",
       pCutCur->m_uniqueTiebreaker,
       pCutCur->m_iVal,
       pCutCur->m_iValAspirationalFloat,
@@ -406,11 +405,11 @@ static void BuildNeighbourhoodPlan(
 
    const size_t cRangesLow,
    const size_t iValLow,
-   const FloatEbmType iValAspirationalLowFloat,
+   const double iValAspirationalLowFloat,
 
    const size_t cRangesHigh,
    const size_t iValHigh,
-   const FloatEbmType iValAspirationalHighFloat,
+   const double iValAspirationalHighFloat,
 
    // m_iValAspirationalFloat and m_uniqueTiebreaker are the only values in pCurCut that are pre-initialized
    CutPoint * const pCutCur
@@ -424,15 +423,15 @@ static void BuildNeighbourhoodPlan(
    EBM_ASSERT(1 <= cRangesLow);
    EBM_ASSERT(1 <= cRangesHigh);
 
-   EBM_ASSERT(k_valNotLegal == iValLow || (iValAspirationalLowFloat * FloatEbmType { 0.9999 } <=
-      static_cast<FloatEbmType>(iValLow) && static_cast<FloatEbmType>(iValLow) <=
-      iValAspirationalLowFloat * FloatEbmType { 1.0001 }));
+   EBM_ASSERT(k_valNotLegal == iValLow || (iValAspirationalLowFloat * double { 0.9999 } <=
+      static_cast<double>(iValLow) && static_cast<double>(iValLow) <=
+      iValAspirationalLowFloat * double { 1.0001 }));
 
-   EBM_ASSERT(k_valNotLegal == iValHigh || (iValAspirationalHighFloat * FloatEbmType { 0.9999 } <=
-      static_cast<FloatEbmType>(iValHigh) && static_cast<FloatEbmType>(iValHigh) <=
-      iValAspirationalHighFloat * FloatEbmType { 1.0001 }));
+   EBM_ASSERT(k_valNotLegal == iValHigh || (iValAspirationalHighFloat * double { 0.9999 } <=
+      static_cast<double>(iValHigh) && static_cast<double>(iValHigh) <=
+      iValAspirationalHighFloat * double { 1.0001 }));
 
-   EBM_ASSERT(iValAspirationalLowFloat < iValAspirationalHighFloat * FloatEbmType { 1.0001 });
+   EBM_ASSERT(iValAspirationalLowFloat < iValAspirationalHighFloat * double { 1.0001 });
 
    EBM_ASSERT(nullptr != pCutCur);
 
@@ -440,8 +439,8 @@ static void BuildNeighbourhoodPlan(
    // prevent our aspirational cuts from breaking the cSamplesPerBinMin barrier since the ultimate cut might
    // end up on the far side.  There's a huge gulf though from starting at cSamplesPerBinMin to the minimum
    // floating point, so much so that it should never get to zero
-   EBM_ASSERT(FloatEbmType { 0 } < pCutCur->m_iValAspirationalFloat);
-   EBM_ASSERT(pCutCur->m_iValAspirationalFloat <= static_cast<FloatEbmType>(cCuttableItems) * FloatEbmType { 1.0001 });
+   EBM_ASSERT(double { 0 } < pCutCur->m_iValAspirationalFloat);
+   EBM_ASSERT(pCutCur->m_iValAspirationalFloat <= static_cast<double>(cCuttableItems) * double { 1.0001 });
 
    // Before making any cuts, we examine each potential cut AS IF we were going to cut it, and we determine
    // which direction we would go in that instance.  After making all these future decisions for each aspirational
@@ -543,7 +542,7 @@ static void BuildNeighbourhoodPlan(
    // tweaking function that uses m_uniqueTiebreaker, but practically speaking this shouldn't make any difference
 
    const bool bLocalSymmetryReversal = (0 != (size_t { 1 } & pCutCur->m_uniqueTiebreaker)) != bSymmetryReversal;
-   const FloatEbmType smallTweak = bLocalSymmetryReversal ? GetTweakingMultiplePositive(1) : GetTweakingMultipleNegative(1);
+   const double smallTweak = bLocalSymmetryReversal ? GetTweakingMultiplePositive(1) : GetTweakingMultipleNegative(1);
 
    size_t iValAspirationalCur = static_cast<size_t>(smallTweak * pCutCur->m_iValAspirationalFloat);
    if(UNLIKELY(cCuttableItems <= iValAspirationalCur)) {
@@ -573,9 +572,9 @@ static void BuildNeighbourhoodPlan(
    const ptrdiff_t iValHighChoice = 
       static_cast<ptrdiff_t>(iStartNext) - static_cast<ptrdiff_t>(iValuesStart);
 
-   FloatEbmType totalDistance;
-   FloatEbmType distanceLowLowFloat;
-   FloatEbmType distanceHighLowFloat;
+   double totalDistance;
+   double distanceLowLowFloat;
+   double distanceHighLowFloat;
    bool bCanCutLow;
    bool bCanCutHigh;
 
@@ -584,27 +583,27 @@ static void BuildNeighbourhoodPlan(
    if(UNLIKELY(k_valNotLegal == iValLow)) {
       // we always start from the low index because for floating points the low numbers have more resolution
       totalDistance = iValAspirationalHighFloat - iValAspirationalLowFloat;
-      distanceLowLowFloat = static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowFloat;
-      distanceHighLowFloat = static_cast<FloatEbmType>(iValHighChoice) - iValAspirationalLowFloat;
+      distanceLowLowFloat = static_cast<double>(iValLowChoice) - iValAspirationalLowFloat;
+      distanceHighLowFloat = static_cast<double>(iValHighChoice) - iValAspirationalLowFloat;
 
       const ptrdiff_t lowLowBoundPtrdiff = iValLowChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin);
-      const FloatEbmType lowLowBoundFloat = static_cast<FloatEbmType>(lowLowBoundPtrdiff);
+      const double lowLowBoundFloat = static_cast<double>(lowLowBoundPtrdiff);
       const ptrdiff_t highLowBoundPtrdiff = iValHighChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin);
-      const FloatEbmType highLowBoundFloat = static_cast<FloatEbmType>(highLowBoundPtrdiff);
+      const double highLowBoundFloat = static_cast<double>(highLowBoundPtrdiff);
       if(UNLIKELY(k_valNotLegal == iValHigh)) {
          // given all our indexes and counts refer to an existing array with more than 4 bytes, 
          // they should not be able to overflow when adding any of these numbers
 
          // since we always start from the low end, I don't think we can ever get a number less than zero, which
          // is a preceise floating point value also.
-         EBM_ASSERT(FloatEbmType { 0 } <= iValAspirationalLowFloat);
+         EBM_ASSERT(double { 0 } <= iValAspirationalLowFloat);
 
          // check our soft bounds and hard bounds (to avoid floating point issues)
          bCanCutLow = LIKELY(LIKELY(iValAspirationalLowFloat <= lowLowBoundFloat) &&
-            LIKELY(static_cast<FloatEbmType>(lowHighBound) <= iValAspirationalHighFloat) &&
+            LIKELY(static_cast<double>(lowHighBound) <= iValAspirationalHighFloat) &&
             LIKELY(lowHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
 
-         bCanCutHigh = LIKELY(LIKELY(static_cast<FloatEbmType>(highHighBound) <= iValAspirationalHighFloat) &&
+         bCanCutHigh = LIKELY(LIKELY(static_cast<double>(highHighBound) <= iValAspirationalHighFloat) &&
             LIKELY(iValAspirationalLowFloat <= highLowBoundFloat) &&
             LIKELY(highHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
       } else {
@@ -614,7 +613,7 @@ static void BuildNeighbourhoodPlan(
          EBM_ASSERT(iValHigh <= cCuttableItems);
          // since we always start from the low end, I don't think we can ever get a number less than zero, which
          // is a preceise floating point value also.
-         EBM_ASSERT(FloatEbmType { 0 } <= iValAspirationalLowFloat);
+         EBM_ASSERT(double { 0 } <= iValAspirationalLowFloat);
 
          // check our soft bounds and hard bounds (to avoid floating point issues)
          bCanCutLow = LIKELY(LIKELY(iValAspirationalLowFloat <= lowLowBoundFloat) &&
@@ -632,8 +631,8 @@ static void BuildNeighbourhoodPlan(
       // for data structures much larger than 2 bytes, so we should have room for the negatives here
       const ptrdiff_t distanceLowPtrdiffT = iValLowChoice - static_cast<ptrdiff_t>(iValLow);
       const ptrdiff_t distanceHighPtrdiffT = iValHighChoice - static_cast<ptrdiff_t>(iValLow);
-      distanceLowLowFloat = static_cast<FloatEbmType>(distanceLowPtrdiffT);
-      distanceHighLowFloat = static_cast<FloatEbmType>(distanceHighPtrdiffT);
+      distanceLowLowFloat = static_cast<double>(distanceLowPtrdiffT);
+      distanceHighLowFloat = static_cast<double>(distanceHighPtrdiffT);
       if(UNLIKELY(k_valNotLegal == iValHigh)) {
          totalDistance = iValAspirationalHighFloat - iValAspirationalLowFloat;
 
@@ -642,15 +641,15 @@ static void BuildNeighbourhoodPlan(
 
          // check our soft bounds and hard bounds (to avoid floating point issues)
          bCanCutLow = LIKELY(LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceLowPtrdiffT) &&
-            LIKELY(static_cast<FloatEbmType>(lowHighBound) <= iValAspirationalHighFloat) &&
+            LIKELY(static_cast<double>(lowHighBound) <= iValAspirationalHighFloat) &&
             LIKELY(lowHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
 
-         bCanCutHigh = LIKELY(LIKELY(static_cast<FloatEbmType>(highHighBound) <= iValAspirationalHighFloat) &&
+         bCanCutHigh = LIKELY(LIKELY(static_cast<double>(highHighBound) <= iValAspirationalHighFloat) &&
             LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceHighPtrdiffT) &&
             LIKELY(highHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
       } else {
          // reduce floating point noise when we have have exact distances
-         totalDistance = static_cast<FloatEbmType>(iValHigh - iValLow);
+         totalDistance = static_cast<double>(iValHigh - iValLow);
 
          // given all our indexes and counts refer to an existing array with more than 4 bytes, 
          // they should not be able to overflow when adding any of these numbers
@@ -665,9 +664,9 @@ static void BuildNeighbourhoodPlan(
       }
    }
 
-   constexpr FloatEbmType k_badScore = std::numeric_limits<FloatEbmType>::lowest();
+   constexpr double k_badScore = std::numeric_limits<double>::lowest();
 
-   FloatEbmType scoreHigh;
+   double scoreHigh;
    ptrdiff_t transferRangesHigh;
 
    if(LIKELY(bCanCutHigh)) {
@@ -678,21 +677,21 @@ static void BuildNeighbourhoodPlan(
          const size_t cRangesHighHigh = cRanges - cRangesHighLow;
          EBM_ASSERT(1 <= cRangesHighHigh);
 
-         FloatEbmType distanceHigh;
+         double distanceHigh;
          if(UNLIKELY(k_valNotLegal == iValHigh)) {
-            distanceHigh = iValAspirationalHighFloat - static_cast<FloatEbmType>(iValHighChoice);
+            distanceHigh = iValAspirationalHighFloat - static_cast<double>(iValHighChoice);
          } else {
             const ptrdiff_t distanceHighPtrdiff = static_cast<ptrdiff_t>(iValHigh) - iValHighChoice;
-            distanceHigh = static_cast<FloatEbmType>(distanceHighPtrdiff);
+            distanceHigh = static_cast<double>(distanceHighPtrdiff);
          }
-         const FloatEbmType avgLengthHighHigh = distanceHigh / cRangesHighHigh;
-         const FloatEbmType avgLengthHighLow = distanceHighLowFloat / cRangesHighLow;
+         const double avgLengthHighHigh = distanceHigh / cRangesHighHigh;
+         const double avgLengthHighLow = distanceHighLowFloat / cRangesHighLow;
 
          scoreHigh = std::min(avgLengthHighLow, avgLengthHighHigh);
          transferRangesHigh = static_cast<ptrdiff_t>(cRangesHighLow) - static_cast<ptrdiff_t>(cRangesLow);
       }
 
-      FloatEbmType scoreLow;
+      double scoreLow;
       ptrdiff_t transferRangesLow;
 
       if(LIKELY(bCanCutLow)) {
@@ -705,15 +704,15 @@ static void BuildNeighbourhoodPlan(
          const size_t cRangesLowHigh = cRanges - cRangesLowLow;
          EBM_ASSERT(1 <= cRangesLowHigh);
 
-         FloatEbmType distanceHigh;
+         double distanceHigh;
          if(UNLIKELY(k_valNotLegal == iValHigh)) {
-            distanceHigh = iValAspirationalHighFloat - static_cast<FloatEbmType>(iValLowChoice);
+            distanceHigh = iValAspirationalHighFloat - static_cast<double>(iValLowChoice);
          } else {
             const ptrdiff_t distanceHighPtrdiff = static_cast<ptrdiff_t>(iValHigh) - iValLowChoice;
-            distanceHigh = static_cast<FloatEbmType>(distanceHighPtrdiff);
+            distanceHigh = static_cast<double>(distanceHighPtrdiff);
          }
-         const FloatEbmType avgLengthLowHigh = distanceHigh / cRangesLowHigh;
-         const FloatEbmType avgLengthLowLow = distanceLowLowFloat / cRangesLowLow;
+         const double avgLengthLowHigh = distanceHigh / cRangesLowHigh;
+         const double avgLengthLowLow = distanceLowLowFloat / cRangesLowLow;
 
          scoreLow = std::min(avgLengthLowLow, avgLengthLowHigh);
          transferRangesLow = static_cast<ptrdiff_t>(cRangesLowLow) - static_cast<ptrdiff_t>(cRangesLow);
@@ -779,7 +778,7 @@ static void BuildNeighbourhoodPlan(
       }
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
-      LOG_N(TraceLevelVerbose, "Plan CutPoint: %zu, %zu, %" FloatEbmTypePrintf ", %td, %" FloatEbmTypePrintf ", %" FloatEbmTypePrintf,
+      LOG_N(TraceLevelVerbose, "Plan CutPoint: %zu, %zu, %le, %td, %le" ", %le",
          pCutCur->m_uniqueTiebreaker,
          pCutCur->m_iVal,
          pCutCur->m_iValAspirationalFloat,
@@ -927,7 +926,7 @@ static ErrorEbmType CutCuttingRange(
          CutPoint * const pCutBest = *pBestCuts->begin();
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
-         LOG_N(TraceLevelVerbose, "Dequeue CutPoint: %zu, %zu, %" FloatEbmTypePrintf ", %td, %" FloatEbmTypePrintf,
+         LOG_N(TraceLevelVerbose, "Dequeue CutPoint: %zu, %zu, %le, %td, %le",
             pCutBest->m_uniqueTiebreaker,
             pCutBest->m_iVal,
             pCutBest->m_iValAspirationalFloat,
@@ -946,7 +945,7 @@ static ErrorEbmType CutCuttingRange(
 
          EBM_ASSERT(!std::isnan(pCutBest->m_iValAspirationalFloat));
          EBM_ASSERT(!std::isinf(pCutBest->m_iValAspirationalFloat));
-         EBM_ASSERT(FloatEbmType { 0 } < pCutBest->m_iValAspirationalFloat);
+         EBM_ASSERT(double { 0 } < pCutBest->m_iValAspirationalFloat);
 
          EBM_ASSERT(!std::isnan(pCutBest->m_priority));
          EBM_ASSERT(!std::isinf(pCutBest->m_priority));
@@ -958,7 +957,7 @@ static ErrorEbmType CutCuttingRange(
             EBM_ASSERT(k_priorityNoCutsPossible == pCutBest->m_priority);
             break;
          }
-         EBM_ASSERT(FloatEbmType { 0 } <= pCutBest->m_priority);
+         EBM_ASSERT(double { 0 } <= pCutBest->m_priority);
 
          // find our visibility window region
          CutPoint * pCutLowModificationExclusiveBoundary = pCutBest;
@@ -976,10 +975,10 @@ static ErrorEbmType CutCuttingRange(
          EBM_ASSERT(cRangesLowModification <= k_cutExploreDistance);
          EBM_ASSERT(-pCutBest->m_cPredeterminedMovementOnCut < static_cast<ptrdiff_t>(cRangesLowModification));
 
-         EBM_ASSERT(FloatEbmType { 0 } <= pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat);
+         EBM_ASSERT(double { 0 } <= pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat);
 
          // this should be exact, since we would have set it like this
-         EBM_ASSERT(!pCutLowModificationExclusiveBoundary->IsCut() || pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat == static_cast<FloatEbmType>(pCutLowModificationExclusiveBoundary->m_iVal));
+         EBM_ASSERT(!pCutLowModificationExclusiveBoundary->IsCut() || pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat == static_cast<double>(pCutLowModificationExclusiveBoundary->m_iVal));
          EBM_ASSERT(pCutLowModificationExclusiveBoundary->m_iVal <= pCutBest->m_iVal);
          EBM_ASSERT(pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat < pCutBest->m_iValAspirationalFloat);
 
@@ -998,10 +997,10 @@ static ErrorEbmType CutCuttingRange(
          EBM_ASSERT(cRangesHighModification <= k_cutExploreDistance);
          EBM_ASSERT(pCutBest->m_cPredeterminedMovementOnCut < static_cast<ptrdiff_t>(cRangesHighModification));
 
-         EBM_ASSERT(FloatEbmType { 0 } < pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat);
+         EBM_ASSERT(double { 0 } < pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat);
 
          // this should be exact, since we would have set it like this
-         EBM_ASSERT(!pCutHighModificationExclusiveBoundary->IsCut() || pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat == static_cast<FloatEbmType>(pCutHighModificationExclusiveBoundary->m_iVal));
+         EBM_ASSERT(!pCutHighModificationExclusiveBoundary->IsCut() || pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat == static_cast<double>(pCutHighModificationExclusiveBoundary->m_iVal));
          EBM_ASSERT(pCutBest->m_iVal <= pCutHighModificationExclusiveBoundary->m_iVal);
          EBM_ASSERT(pCutBest->m_iValAspirationalFloat < pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat);
 
@@ -1095,7 +1094,7 @@ static ErrorEbmType CutCuttingRange(
 
          pCutCur->SetCut();
 
-         const FloatEbmType iValFloat = static_cast<FloatEbmType>(iVal);
+         const double iValFloat = static_cast<double>(iVal);
 
          pCutCur->m_iValAspirationalFloat = iValFloat;
          pCutCur->m_iVal = iVal;
@@ -1130,40 +1129,40 @@ static ErrorEbmType CutCuttingRange(
          // cross any of those indexes we know if we've gone below a limit.
 
 
-         FloatEbmType stepPoint = pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat;
-         FloatEbmType stepLength;
+         double stepPoint = pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat;
+         double stepLength;
          if(pCutLowModificationExclusiveBoundary->IsCut()) {
             EBM_ASSERT(pCutLowModificationExclusiveBoundary->m_iVal < iVal);
-            stepLength = static_cast<FloatEbmType>(iVal - pCutLowModificationExclusiveBoundary->m_iVal);
+            stepLength = static_cast<double>(iVal - pCutLowModificationExclusiveBoundary->m_iVal);
          } else {
             EBM_ASSERT(stepPoint < iValFloat);
             stepLength = iValFloat - stepPoint;
          }
-         stepLength /= static_cast<FloatEbmType>(cRangesLowModification);
+         stepLength /= static_cast<double>(cRangesLowModification);
 
          CutPoint * pCutAspirational = pCutCur;
          while(LIKELY(size_t { 0 } != --cRangesLowModification)) {
             pCutAspirational = pCutAspirational->m_pPrev;
-            const FloatEbmType iValAspirationalFloat = stepPoint + 
-               stepLength * static_cast<FloatEbmType>(cRangesLowModification);
+            const double iValAspirationalFloat = stepPoint + 
+               stepLength * static_cast<double>(cRangesLowModification);
             pCutAspirational->m_iValAspirationalFloat = iValAspirationalFloat;
          }
 
          stepPoint = iValFloat;
          if(pCutHighModificationExclusiveBoundary->IsCut()) {
             EBM_ASSERT(iVal < pCutHighModificationExclusiveBoundary->m_iVal);
-            stepLength = static_cast<FloatEbmType>(pCutHighModificationExclusiveBoundary->m_iVal - iVal);
+            stepLength = static_cast<double>(pCutHighModificationExclusiveBoundary->m_iVal - iVal);
          } else {
             EBM_ASSERT(iValFloat < pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat);
             stepLength = pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat - stepPoint;
          }
-         stepLength /= static_cast<FloatEbmType>(cRangesHighModification);
+         stepLength /= static_cast<double>(cRangesHighModification);
 
          pCutAspirational = pCutHighModificationExclusiveBoundary;
          while(size_t { 0 } != --cRangesHighModification) {
             pCutAspirational = pCutAspirational->m_pPrev;
-            const FloatEbmType iValAspirationalFloat = stepPoint + 
-               stepLength * static_cast<FloatEbmType>(cRangesHighModification);
+            const double iValAspirationalFloat = stepPoint + 
+               stepLength * static_cast<double>(cRangesHighModification);
             pCutAspirational->m_iValAspirationalFloat = iValAspirationalFloat;
          }
 
@@ -1393,7 +1392,7 @@ static ErrorEbmType CutCuttingRange(
 
 #ifndef NDEBUG
 
-                  FloatEbmType debugPriority = CalculatePriority(
+                  double debugPriority = CalculatePriority(
                      pCutLowLowPriorityInclusiveBoundary->m_iValAspirationalFloat,
                      pCutLowHighPriorityInclusiveBoundary->m_iValAspirationalFloat,
                      pCutLowPriorityCur
@@ -1450,7 +1449,7 @@ static ErrorEbmType CutCuttingRange(
 
 #ifndef NDEBUG
 
-                  FloatEbmType debugPriority = CalculatePriority(
+                  double debugPriority = CalculatePriority(
                      pCutHighLowPriorityInclusiveBoundary->m_iValAspirationalFloat,
                      pCutHighHighPriorityInclusiveBoundary->m_iValAspirationalFloat,
                      pCutHighPriorityCur
@@ -1548,16 +1547,16 @@ static ErrorEbmType TreeSearchCutSegment(
 
       pCutCur->m_pNext = pCutNext;
       pCutCur->SetCut();
-      pCutCur->m_iValAspirationalFloat = FloatEbmType { 0 };
+      pCutCur->m_iValAspirationalFloat = double { 0 };
       pCutCur->m_iVal = size_t { 0 };
 
-      const FloatEbmType stepInit = static_cast<FloatEbmType>(cCuttableItems) / static_cast<FloatEbmType>(cRanges);
+      const double stepInit = static_cast<double>(cCuttableItems) / static_cast<double>(cRanges);
       EBM_ASSERT(cSamplesPerBinMin <= 1.00001 * stepInit);
 
-      const FloatEbmType cCuttableItemsFloat = static_cast<FloatEbmType>(cCuttableItems);
+      const double cCuttableItemsFloat = static_cast<double>(cCuttableItems);
       size_t iCutCur = 1;
       size_t iValLow = size_t { 0 };
-      FloatEbmType iValAspirationalLowFloat = FloatEbmType { 0 };
+      double iValAspirationalLowFloat = double { 0 };
       size_t cRangesHigh = k_cutExploreDistance;
       size_t iValHigh = k_valNotLegal;
       do {
@@ -1572,14 +1571,14 @@ static ErrorEbmType TreeSearchCutSegment(
          if(UNLIKELY(iRangeLow <= ptrdiff_t { 0 })) {
             cRangesLow = iCutCur;
             EBM_ASSERT(size_t { 0 } == iValLow);
-            EBM_ASSERT(FloatEbmType { 0 } == iValAspirationalLowFloat);
+            EBM_ASSERT(double { 0 } == iValAspirationalLowFloat);
          } else {
             cRangesLow = k_cutExploreDistance;
             iValLow = k_valNotLegal;
-            iValAspirationalLowFloat = stepInit * static_cast<FloatEbmType>(static_cast<size_t>(iRangeLow));
+            iValAspirationalLowFloat = stepInit * static_cast<double>(static_cast<size_t>(iRangeLow));
          }
 
-         FloatEbmType iValAspirationalHighFloat;
+         double iValAspirationalHighFloat;
          size_t iRangeHigh = iCutCur + k_cutExploreDistance;
          if(UNLIKELY(cRanges <= iRangeHigh)) {
             cRangesHigh = cRanges - iCutCur;
@@ -1588,10 +1587,10 @@ static ErrorEbmType TreeSearchCutSegment(
          } else {
             EBM_ASSERT(k_cutExploreDistance == cRangesHigh);
             EBM_ASSERT(k_valNotLegal == iValHigh);
-            iValAspirationalHighFloat = stepInit * static_cast<FloatEbmType>(iRangeHigh);
+            iValAspirationalHighFloat = stepInit * static_cast<double>(iRangeHigh);
          }
 
-         const FloatEbmType iValAspirationalCurFloat = stepInit * static_cast<FloatEbmType>(iCutCur);
+         const double iValAspirationalCurFloat = stepInit * static_cast<double>(iCutCur);
          pCutCur->m_iValAspirationalFloat = iValAspirationalCurFloat;
 
          EBM_ASSERT(pCutCur->m_uniqueTiebreaker < cRanges);
@@ -1732,7 +1731,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType TradeCutSegment(
 
 INLINE_RELEASE_UNTEMPLATED static size_t DetermineRangesMax(
    const size_t cSamplesInSubset,
-   const FloatEbmType * const pValues,
+   const double * const pValues,
    const size_t cSamplesPerBinMin
 ) noexcept {
    EBM_ASSERT(1 <= cSamplesInSubset);
@@ -1745,16 +1744,16 @@ INLINE_RELEASE_UNTEMPLATED static size_t DetermineRangesMax(
       return size_t { 1 };
    }
 
-   FloatEbmType valPrev = pValues[0];
-   const FloatEbmType * pValueStartRange = pValues;
-   const FloatEbmType * pValue = pValues + 1;
-   const FloatEbmType * const pValueEnd = pValues + cSamplesInSubset;
+   double valPrev = pValues[0];
+   const double * pValueStartRange = pValues;
+   const double * pValue = pValues + 1;
+   const double * const pValueEnd = pValues + cSamplesInSubset;
 
    size_t cRanges = 0;
    size_t cItems;
    do {
       EBM_ASSERT(pValue < pValueEnd);
-      FloatEbmType valCur = *pValue;
+      double valCur = *pValue;
       if(valCur != valPrev) {
          cItems = pValue - pValueStartRange;
          if(cSamplesPerBinMin <= cItems) {
@@ -1816,7 +1815,7 @@ static bool AddCutToRanges(
    const size_t cRangesCur = cRangesPrev + size_t { 1 };
    pCuttingRangeAdd->m_cRangesAssigned = cRangesCur;
 
-   FloatEbmType avgRangeWidthAfterAddingOneCut = k_illegalAvgCuttableRangeWidthAfterAddingOneCut;
+   double avgRangeWidthAfterAddingOneCut = k_illegalAvgCuttableRangeWidthAfterAddingOneCut;
    EBM_ASSERT(cRangesCur <= pCuttingRangeAdd->m_cRangesMax);
    if(LIKELY(pCuttingRangeAdd->m_cRangesMax != cRangesCur)) {
       // we need to re-add our CuttingRange back into the priority queue.  If we were assigned a new range
@@ -1825,7 +1824,7 @@ static bool AddCutToRanges(
       const size_t cCuttableItems = pCuttingRangeAdd->m_cCuttableValues;
 
       avgRangeWidthAfterAddingOneCut =
-         static_cast<FloatEbmType>(cCuttableItems) / static_cast<FloatEbmType>(cRangesNext);
+         static_cast<double>(cCuttableItems) / static_cast<double>(cRangesNext);
 
       // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
       // size_t values, it should have exactly the same value when cCuttableItems and cRangesNext
@@ -1895,7 +1894,7 @@ static void StuffCutsIntoCuttingRanges(
       // that it has enough samples per bin
       const size_t cCuttableItems = pCuttingRangeInit->m_cCuttableValues;
       size_t cRangesMax = 0;
-      FloatEbmType avgRangeWidthAfterAddingOneCut = k_illegalAvgCuttableRangeWidthAfterAddingOneCut;
+      double avgRangeWidthAfterAddingOneCut = k_illegalAvgCuttableRangeWidthAfterAddingOneCut;
       if(LIKELY(cSamplesPerBinMin <= cCuttableItems)) {
          // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
          // size_t values, it should have exactly the same value when cCuttableItems and newProposedRanges
@@ -1903,7 +1902,7 @@ static void StuffCutsIntoCuttingRanges(
          // floating point equality.  Also, unlike the CutPoint priority value, we don't want to affect
          // m_avgCuttableRangeWidthAfterAddingOneCut since even distant regions shouldn't have divergent
          // priorities, unlike for Cuts
-         avgRangeWidthAfterAddingOneCut = static_cast<FloatEbmType>(cCuttableItems);
+         avgRangeWidthAfterAddingOneCut = static_cast<double>(cCuttableItems);
 
          cRangesMax = DetermineRangesMax(
             cCuttableItems, 
@@ -1950,7 +1949,7 @@ static void StuffCutsIntoCuttingRanges(
 
 INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeNeighbours(
    const size_t cSamples,
-   FloatEbmType * const aSingleFeatureValues,
+   double * const aSingleFeatureValues,
    const size_t cCuttingRanges,
    CuttingRange * const aCuttingRange
 ) noexcept {
@@ -1961,7 +1960,7 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeNeighbours(
 
    CuttingRange * pCuttingRange = aCuttingRange;
    size_t cUncuttablePriorItems = pCuttingRange->m_pCuttableValuesFirst - aSingleFeatureValues;
-   const FloatEbmType * const aSingleFeatureValuesEnd = aSingleFeatureValues + cSamples;
+   const double * const aSingleFeatureValuesEnd = aSingleFeatureValues + cSamples;
    const size_t cCuttingRangesMinusOne = cCuttingRanges - 1;
    if(PREDICTABLE(0 != cCuttingRangesMinusOne)) {
       // exit without doing the last one
@@ -1989,7 +1988,7 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeNeighbours(
 
 INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
    const size_t cSamples,
-   FloatEbmType * const aSingleFeatureValues,
+   double * const aSingleFeatureValues,
    const size_t cUncuttableRangeLengthMin,
    const size_t cSamplesPerBinMin,
    const size_t cCuttingRanges,
@@ -2002,15 +2001,15 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
    EBM_ASSERT(1 <= cCuttingRanges);
    EBM_ASSERT(nullptr != aCuttingRange);
 
-   FloatEbmType rangeValue = *aSingleFeatureValues;
-   FloatEbmType * pCuttableValuesStart = aSingleFeatureValues;
-   const FloatEbmType * pStartEqualRange = aSingleFeatureValues;
-   FloatEbmType * pScan = aSingleFeatureValues + 1;
-   const FloatEbmType * const pValuesEnd = aSingleFeatureValues + cSamples;
+   double rangeValue = *aSingleFeatureValues;
+   double * pCuttableValuesStart = aSingleFeatureValues;
+   const double * pStartEqualRange = aSingleFeatureValues;
+   double * pScan = aSingleFeatureValues + 1;
+   const double * const pValuesEnd = aSingleFeatureValues + cSamples;
 
    CuttingRange * pCuttingRange = aCuttingRange;
    do {
-      const FloatEbmType val = *pScan;
+      const double val = *pScan;
       if(PREDICTABLE(val != rangeValue)) {
          size_t cEqualRangeItems = pScan - pStartEqualRange;
          if(PREDICTABLE(cUncuttableRangeLengthMin <= cEqualRangeItems)) {
@@ -2037,7 +2036,7 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
       pCuttingRange->m_pCuttableValuesFirst = pCuttableValuesStart;
       EBM_ASSERT(pStartEqualRange < pValuesEnd);
       const size_t cEqualRangeItems = pValuesEnd - pStartEqualRange;
-      const FloatEbmType * const pCuttableRangeEnd = cUncuttableRangeLengthMin <= cEqualRangeItems ? 
+      const double * const pCuttableRangeEnd = cUncuttableRangeLengthMin <= cEqualRangeItems ? 
          pStartEqualRange : pValuesEnd;
       pCuttingRange->m_cCuttableValues = pCuttableRangeEnd - pCuttableValuesStart;
    }
@@ -2154,17 +2153,17 @@ static void FillTiebreakers(
 
 INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
    const size_t cSamples,
-   const FloatEbmType * const aSingleFeatureValues
+   const double * const aSingleFeatureValues
 ) noexcept {
    EBM_ASSERT(size_t { 2 } <= cSamples); // if we don't have enough samples to generate 2 bins we exit earlier
    EBM_ASSERT(nullptr != aSingleFeatureValues);
 
-   const FloatEbmType * const pTop = aSingleFeatureValues + cSamples - size_t { 1 };
+   const double * const pTop = aSingleFeatureValues + cSamples - size_t { 1 };
 
-   const FloatEbmType * pLow = aSingleFeatureValues;
-   const FloatEbmType * pHigh = pTop;
-   FloatEbmType lowPrev = *pLow;
-   FloatEbmType highPrev = *pHigh;
+   const double * pLow = aSingleFeatureValues;
+   const double * pHigh = pTop;
+   double lowPrev = *pLow;
+   double highPrev = *pHigh;
 
    // first try and see if we can differentiate by having identical values next to eachother.  Identical values
    // should be invariant to the transform, except in the rare case that two values get mapped to the same
@@ -2179,8 +2178,8 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
       EBM_ASSERT(size_t { 2 } == cSamples && pLow == 1 + pHigh || pLow <= pHigh);
 
       // pLow and pHigh can be aliased, and that's ok.  If that happens we want to compare to the previous values anyways
-      const FloatEbmType lowCur = *pLow;
-      const FloatEbmType highCur = *pHigh;
+      const double lowCur = *pLow;
+      const double highCur = *pHigh;
 
       const bool lowIdentical = lowPrev == lowCur;
       const bool highIdentical = highPrev == highCur;
@@ -2223,25 +2222,25 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
       pLow = pHigh - (size_t { 1 } & (cSamples - size_t { 1 }));
 
       // pHigh and pLow might be aliased pointers.  If we have an odd number of values then there is one center
-      const FloatEbmType valCenterHigh = *pHigh;
-      const FloatEbmType valCenterLow = *pLow;
+      const double valCenterHigh = *pHigh;
+      const double valCenterLow = *pLow;
 
       do {
          ++pHigh;
          --pLow;
 
-         const FloatEbmType valHigh = *pHigh;
-         const FloatEbmType valLow = *pLow;
+         const double valHigh = *pHigh;
+         const double valLow = *pLow;
 
-         const FloatEbmType distanceHigh = valHigh - valCenterHigh;
-         const FloatEbmType distanceLow = valCenterLow - valLow;
+         const double distanceHigh = valHigh - valCenterHigh;
+         const double distanceLow = valCenterLow - valLow;
 
          // our distance high and distance low might be integers, so don't use base 10 decimals which might
          // lead to collisions
-         if(distanceLow < distanceHigh * FloatEbmType { 0.9999248297572194127975024574325 }) {
+         if(distanceLow < distanceHigh * double { 0.9999248297572194127975024574325 }) {
             return true;
          }
-         if(distanceHigh < distanceLow * FloatEbmType { 0.9999248297572194127975024574325 }) {
+         if(distanceHigh < distanceLow * double { 0.9999248297572194127975024574325 }) {
             return false;
          }
       } while(aSingleFeatureValues != pLow);
@@ -2251,8 +2250,8 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
    do {
       EBM_ASSERT(pLow < pHigh);
 
-      const FloatEbmType lowCur = std::abs(*pLow);
-      const FloatEbmType highCur = std::abs(*pHigh);
+      const double lowCur = std::abs(*pLow);
+      const double highCur = std::abs(*pHigh);
 
       if(UNLIKELY(lowCur != highCur)) {
          return lowCur < highCur;
@@ -2275,21 +2274,21 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
 
 INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
    const size_t cSamples, 
-   const FloatEbmType * const aValues, 
+   const double * const aValues, 
    NeighbourJump * const aNeighbourJump
 ) noexcept {
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aValues);
    EBM_ASSERT(nullptr != aNeighbourJump);
 
-   FloatEbmType valNext = aValues[0];
-   const FloatEbmType * pValue = aValues;
-   const FloatEbmType * const pValueEnd = aValues + cSamples;
+   double valNext = aValues[0];
+   const double * pValue = aValues;
+   const double * const pValueEnd = aValues + cSamples;
 
    size_t iStartCur = 0;
    NeighbourJump * pNeighbourJump = aNeighbourJump;
    while(true) {
-      const FloatEbmType valCur = valNext;
+      const double valCur = valNext;
       do {
          ++pValue;
          if(UNLIKELY(pValueEnd == pValue)) {
@@ -2320,7 +2319,7 @@ INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
 
 INLINE_RELEASE_UNTEMPLATED static size_t CountCuttingRanges(
    const size_t cSamples,
-   const FloatEbmType * const aSingleFeatureValues,
+   const double * const aSingleFeatureValues,
    const size_t cUncuttableRangeLengthMin,
    const size_t cSamplesPerBinMin
 ) noexcept {
@@ -2330,15 +2329,15 @@ INLINE_RELEASE_UNTEMPLATED static size_t CountCuttingRanges(
    EBM_ASSERT(size_t { 1 } <= cSamplesPerBinMin);
    EBM_ASSERT(cSamplesPerBinMin <= cSamples / size_t { 2 }); // we exit earlier if we don't have enough samples for 2 bins
 
-   FloatEbmType rangeValue = *aSingleFeatureValues;
-   const FloatEbmType * pCuttableValuesStart = aSingleFeatureValues;
-   const FloatEbmType * pStartEqualRange = aSingleFeatureValues;
-   const FloatEbmType * pScan = aSingleFeatureValues + 1;
-   const FloatEbmType * const pValuesEnd = aSingleFeatureValues + cSamples;
+   double rangeValue = *aSingleFeatureValues;
+   const double * pCuttableValuesStart = aSingleFeatureValues;
+   const double * pStartEqualRange = aSingleFeatureValues;
+   const double * pScan = aSingleFeatureValues + 1;
+   const double * const pValuesEnd = aSingleFeatureValues + cSamples;
    size_t cCuttingRanges = 0;
    EBM_ASSERT(pValuesEnd != pScan); // because 2 <= cSamples
    do {
-      const FloatEbmType val = *pScan;
+      const double val = *pScan;
       if(PREDICTABLE(val != rangeValue)) {
          const size_t cEqualRangeItems = pScan - pStartEqualRange;
          if(cUncuttableRangeLengthMin <= cEqualRangeItems) {
@@ -2358,9 +2357,9 @@ INLINE_RELEASE_UNTEMPLATED static size_t CountCuttingRanges(
       // we're still on the first cutting range.  We need to make sure that there is at least one possible cut
       // if we require 3 items for a cut, a problematic range like 0 1 3 3 4 5 could look ok, but we can't cut it in the middle!
 
-      const FloatEbmType * pLow = aSingleFeatureValues + cSamplesPerBinMin - 1;
+      const double * pLow = aSingleFeatureValues + cSamplesPerBinMin - 1;
       EBM_ASSERT(pLow < pValuesEnd);
-      const FloatEbmType * pHigh = pValuesEnd - cSamplesPerBinMin;
+      const double * pHigh = pValuesEnd - cSamplesPerBinMin;
       EBM_ASSERT(aSingleFeatureValues <= pHigh);
       EBM_ASSERT(pLow < pHigh);
 
@@ -2454,11 +2453,11 @@ static int g_cLogExitCutQuantileParametersMessages = 25;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuantile(
    IntEbmType countSamples,
-   const FloatEbmType * featureValues,
+   const double * featureValues,
    IntEbmType countSamplesPerBinMin,
    BoolEbmType isRounded,
    IntEbmType * countCutsInOut,
-   FloatEbmType * cutsLowerBoundInclusiveOut
+   double * cutsLowerBoundInclusiveOut
 ) {
    // don't expose this random seed.  It's used to settle tiebreakers and will only make 
    // marginal changes to where the cuts are placed.  Exposing it just means we need to 
@@ -2522,7 +2521,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
 
          const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
 
-         FloatEbmType * const aFeatureValues = EbmMalloc<FloatEbmType>(cSamplesIncludingMissingValues);
+         double * const aFeatureValues = EbmMalloc<double>(cSamplesIncludingMissingValues);
          if(UNLIKELY(nullptr == aFeatureValues)) {
             LOG_0(TraceLevelError, "ERROR CutQuantile nullptr == aFeatureValues");
 
@@ -2621,9 +2620,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          EBM_ASSERT(size_t { 1 } <= cCutsMax); // we won't eliminate to less than 1, and we had at least 1 before
 
          // we need to be able to index both the cutsLowerBoundInclusiveOut AND we also allocate an array
-         // of pointers below of FloatEbmType * to index into aFeatureValues 
-         if(UNLIKELY(IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)), cCutsMax))) {
-            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(FloatEbmType *)), cCutsMax)");
+         // of pointers below of double * to index into aFeatureValues 
+         if(UNLIKELY(IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(double *)), cCutsMax))) {
+            LOG_0(TraceLevelWarning, "WARNING CutQuantile IsMultiplyError(std::max(sizeof(*cutsLowerBoundInclusiveOut), sizeof(double *)), cCutsMax)");
             free(aFeatureValues);
             countCutsRet = IntEbmType { 0 };
             error = Error_OutOfMemory;
@@ -2667,8 +2666,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          const size_t cBytesNeighbourJumps = sizeof(NeighbourJump) * cSamples;
 
          // we checked that this multiplication wouldn't overflow above
-         EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType *), cCutsMax));
-         const size_t cBytesValueCutPointers = sizeof(FloatEbmType *) * cCutsMax;
+         EBM_ASSERT(!IsMultiplyError(sizeof(double *), cCutsMax));
+         const size_t cBytesValueCutPointers = sizeof(double *) * cCutsMax;
 
          // we limit the cCutsMax to no more than cSamples - 1.  cSamples can't be anywhere close to
          // the maximum size_t though since the caller must have allocated cSamples floats in aFeatureValues, and
@@ -2736,7 +2735,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          }
 
          NeighbourJump * const aNeighbourJumps = reinterpret_cast<NeighbourJump *>(pMem + cBytesToNeighbourJump);
-         const FloatEbmType ** const apValueCutTops = reinterpret_cast<const FloatEbmType **>(pMem + cBytesToValueCutPointers);
+         const double ** const apValueCutTops = reinterpret_cast<const double **>(pMem + cBytesToValueCutPointers);
          CutPoint * const aCuts = reinterpret_cast<CutPoint *>(pMem + cBytesToCuts);
          CuttingRange * const aCuttingRange = reinterpret_cast<CuttingRange *>(pMem + cBytesToCuttingRange);
 
@@ -2754,7 +2753,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          FillCuttingRangeBasics(cSamples, aFeatureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
          FillCuttingRangeNeighbours(cSamples, aFeatureValues, cCuttingRanges, aCuttingRange);
 
-         const FloatEbmType ** ppValueCutTop = apValueCutTops;
+         const double ** ppValueCutTop = apValueCutTops;
          try {
             std::set<CuttingRange *, CompareCuttingRange> priorityQueue;
             StuffCutsIntoCuttingRanges(
@@ -2776,7 +2775,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                const size_t cRanges = pCuttingRange->m_cRangesAssigned;
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
-               LOG_N(TraceLevelVerbose, "Dequque CuttingRange: %zu, %zu, %zu, %zu, %zu, %zu, %zu, %" FloatEbmTypePrintf,
+               LOG_N(TraceLevelVerbose, "Dequque CuttingRange: %zu, %zu, %zu, %zu, %zu, %zu, %zu, %le",
                   pCuttingRange->m_uniqueTiebreaker,
                   pCuttingRange->m_cRangesAssigned,
                   pCuttingRange->m_cCuttableValues,
@@ -2847,12 +2846,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                      goto exit_with_log;
                   }
 
-                  const FloatEbmType * const pCuttableValuesStart = pCuttingRange->m_pCuttableValuesFirst;
+                  const double * const pCuttableValuesStart = pCuttingRange->m_pCuttableValuesFirst;
 
                   if(0 != pCuttingRange->m_cUncuttableLowValues) {
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
-                     const FloatEbmType * const pCut = pCuttableValuesStart;
+                     const double * const pCut = pCuttableValuesStart;
                      EBM_ASSERT(aFeatureValues < pCut);
                      EBM_ASSERT(pCut < aFeatureValues + countSamples);
                      *ppValueCutTop = pCut;
@@ -2864,7 +2863,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                   while(LIKELY(nullptr != pNext)) {
                      const size_t iVal = pCutPoint->m_iVal;
                      if(LIKELY(k_valNotLegal != iVal)) {
-                        const FloatEbmType * const pCut = pCuttableValuesStart + iVal;
+                        const double * const pCut = pCuttableValuesStart + iVal;
                         EBM_ASSERT(aFeatureValues < pCut);
                         EBM_ASSERT(pCut < aFeatureValues + countSamples);
                         EBM_ASSERT(pCuttingRange->m_pCuttableValuesFirst < pCut);
@@ -2879,7 +2878,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                   if(0 != pCuttingRange->m_cUncuttableHighValues) {
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
-                     const FloatEbmType * const pCut =
+                     const double * const pCut =
                         pCuttableValuesStart + pCuttingRange->m_cCuttableValues;
                      EBM_ASSERT(aFeatureValues < pCut);
                      EBM_ASSERT(pCut < aFeatureValues + countSamples);
@@ -2894,7 +2893,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                   if(0 != pCuttingRange->m_cUncuttableLowValues) {
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
-                     const FloatEbmType * const pCut = pCuttingRange->m_pCuttableValuesFirst;
+                     const double * const pCut = pCuttingRange->m_pCuttableValuesFirst;
                      EBM_ASSERT(aFeatureValues < pCut);
                      EBM_ASSERT(pCut < aFeatureValues + countSamples);
                      *ppValueCutTop = pCut;
@@ -2903,7 +2902,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                   if(0 != pCuttingRange->m_cUncuttableHighValues) {
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
                      // otherwise put in the cut
-                     const FloatEbmType * const pCut =
+                     const double * const pCut =
                         pCuttingRange->m_pCuttableValuesFirst + pCuttingRange->m_cCuttableValues;
                      EBM_ASSERT(aFeatureValues < pCut);
                      EBM_ASSERT(pCut < aFeatureValues + countSamples);
@@ -2985,7 +2984,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                            }
                         }
                      }
-                     const FloatEbmType * pCut = aFeatureValues + iResult;
+                     const double * pCut = aFeatureValues + iResult;
                      EBM_ASSERT(aFeatureValues < pCut);
                      *ppValueCutTop = pCut;
                      ++ppValueCutTop;
@@ -3021,21 +3020,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
             // the pointers are guaranteed to be in same order as the cut values
             std::sort(apValueCutTops, ppValueCutTop);
 
-            FloatEbmType * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
-            const FloatEbmType * const * ppValueCutTop2 = apValueCutTops;
+            double * pCutsLowerBoundInclusive = cutsLowerBoundInclusiveOut;
+            const double * const * ppValueCutTop2 = apValueCutTops;
 
             if(EBM_FALSE == isRounded) {
                do {
-                  const FloatEbmType * const pCut = *ppValueCutTop2;
+                  const double * const pCut = *ppValueCutTop2;
                   EBM_ASSERT(aFeatureValues < pCut);
                   EBM_ASSERT(pCut < aFeatureValues + cSamples);
-                  const FloatEbmType valHigh = *pCut;
+                  const double valHigh = *pCut;
                   EBM_ASSERT(!std::isnan(valHigh));
                   EBM_ASSERT(!std::isinf(valHigh));
-                  const FloatEbmType valLow = *(pCut - size_t { 1 });
+                  const double valLow = *(pCut - size_t { 1 });
                   EBM_ASSERT(!std::isnan(valLow));
                   EBM_ASSERT(!std::isinf(valLow));
-                  const FloatEbmType cut = ArithmeticMean(valLow, valHigh);
+                  const double cut = ArithmeticMean(valLow, valHigh);
                   EBM_ASSERT(cutsLowerBoundInclusiveOut == pCutsLowerBoundInclusive || *(pCutsLowerBoundInclusive - size_t { 1 }) < cut);
                   *pCutsLowerBoundInclusive = cut;
                   ++pCutsLowerBoundInclusive;
@@ -3043,16 +3042,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                } while(ppValueCutTop != ppValueCutTop2);
             } else {
                do {
-                  const FloatEbmType * const pCut = *ppValueCutTop2;
+                  const double * const pCut = *ppValueCutTop2;
                   EBM_ASSERT(aFeatureValues < pCut);
                   EBM_ASSERT(pCut < aFeatureValues + cSamples);
-                  const FloatEbmType valHigh = *pCut;
+                  const double valHigh = *pCut;
                   EBM_ASSERT(!std::isnan(valHigh));
                   EBM_ASSERT(!std::isinf(valHigh));
-                  const FloatEbmType valLow = *(pCut - size_t { 1 });
+                  const double valLow = *(pCut - size_t { 1 });
                   EBM_ASSERT(!std::isnan(valLow));
                   EBM_ASSERT(!std::isinf(valLow));
-                  const FloatEbmType cut = GetInterpretableCutPointFloat(valLow, valHigh);
+                  const double cut = GetInterpretableCutPointFloat(valLow, valHigh);
                   EBM_ASSERT(cutsLowerBoundInclusiveOut == pCutsLowerBoundInclusive || *(pCutsLowerBoundInclusive - size_t { 1 }) < cut);
                   *pCutsLowerBoundInclusive = cut;
                   ++pCutsLowerBoundInclusive;
@@ -3126,30 +3125,30 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                // and we extend by half a bin upwards from the 4, which gives (4 + 1 / 2) = 4.5
 
                if(LIKELY(size_t { 3 } <= cCutsRet)) {
-                  const FloatEbmType * const pScaleHighHigh = *(ppValueCutTop - size_t { 1 });
+                  const double * const pScaleHighHigh = *(ppValueCutTop - size_t { 1 });
                   EBM_ASSERT(aFeatureValues + size_t { 2 } < pScaleHighHigh);
                   EBM_ASSERT(pScaleHighHigh < aFeatureValues + cSamples);
-                  const FloatEbmType * const pScaleHighLow = pScaleHighHigh - size_t { 1 };
+                  const double * const pScaleHighLow = pScaleHighHigh - size_t { 1 };
                   EBM_ASSERT(aFeatureValues + size_t { 1 } < pScaleHighLow);
                   EBM_ASSERT(pScaleHighLow < aFeatureValues + cSamples - size_t { 1 });
-                  const FloatEbmType scaleHighLow = *pScaleHighLow;
+                  const double scaleHighLow = *pScaleHighLow;
                   EBM_ASSERT(!std::isnan(scaleHighLow));
                   EBM_ASSERT(!std::isinf(scaleHighLow));
-                  const FloatEbmType * pScaleLowHigh = *apValueCutTops;
+                  const double * pScaleLowHigh = *apValueCutTops;
                   EBM_ASSERT(aFeatureValues < pScaleLowHigh);
                   EBM_ASSERT(pScaleLowHigh < aFeatureValues + cSamples - size_t { 2 });
-                  const FloatEbmType scaleLowHigh = *pScaleLowHigh;
+                  const double scaleLowHigh = *pScaleLowHigh;
                   EBM_ASSERT(!std::isnan(scaleLowHigh));
                   EBM_ASSERT(!std::isinf(scaleLowHigh));
                   EBM_ASSERT(scaleLowHigh < scaleHighLow);
                   // this is the inescapable scale of our graph, from the value right above the lowest cut to the value 
                   // right below the highest cut
 
-                  const FloatEbmType scaleMin = scaleHighLow - scaleLowHigh;
+                  const double scaleMin = scaleHighLow - scaleLowHigh;
                   // scaleMin can be +infinity if scaleHighLow is max and scaleLowHigh is lowest.  We can handle it.
                   EBM_ASSERT(!std::isnan(scaleMin));
                   // IEEE 754 (which we static_assert) won't allow the subtraction of two unequal numbers to be non-zero
-                  EBM_ASSERT(FloatEbmType { 0 } < scaleMin);
+                  EBM_ASSERT(double { 0 } < scaleMin);
 
                   // limit the amount of dillution allowed for the tails by capping the relevant cCutPointRet value
                   // to 1/32, which means we leave about 3% of the visible area to tail bounds (1.5% on the left and
@@ -3167,20 +3166,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                   EBM_ASSERT(IntEbmType { 3 } <= countCuts);
                   const size_t denominator = (cCutsLimited - size_t { 2 }) << 1;
                   EBM_ASSERT(size_t { 0 } < denominator);
-                  const FloatEbmType movementFromEnds = scaleMin / static_cast<FloatEbmType>(denominator);
+                  const double movementFromEnds = scaleMin / static_cast<double>(denominator);
                   // movementFromEnds can be +infinity if scaleMin is infinity. We can handle it.
                   EBM_ASSERT(!std::isnan(movementFromEnds));
-                  EBM_ASSERT(FloatEbmType { 0 } <= movementFromEnds); // underflow is possible
+                  EBM_ASSERT(double { 0 } <= movementFromEnds); // underflow is possible
 
-                  const FloatEbmType lowCutFullPrecisionMin = scaleLowHigh - movementFromEnds;
+                  const double lowCutFullPrecisionMin = scaleLowHigh - movementFromEnds;
                   // lowCutFullPrecisionMin can be -infinity if movementFromEnds is +infinity.  We can handle it.
                   EBM_ASSERT(!std::isnan(lowCutFullPrecisionMin));
-                  EBM_ASSERT(lowCutFullPrecisionMin < std::numeric_limits<FloatEbmType>::max());
+                  EBM_ASSERT(lowCutFullPrecisionMin < std::numeric_limits<double>::max());
                   // GetInterpretableEndpoint can accept -infinity, but it'll return -infinity in that case
-                  const FloatEbmType lowCutMin = GetInterpretableEndpoint(lowCutFullPrecisionMin, movementFromEnds);
+                  const double lowCutMin = GetInterpretableEndpoint(lowCutFullPrecisionMin, movementFromEnds);
                   // lowCutMin can legally be -infinity and we handle this scenario below
 
-                  const FloatEbmType lowCutExisting = *cutsLowerBoundInclusiveOut;
+                  const double lowCutExisting = *cutsLowerBoundInclusiveOut;
                   EBM_ASSERT(!std::isnan(lowCutExisting));
                   EBM_ASSERT(!std::isinf(lowCutExisting));
 
@@ -3191,15 +3190,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                      *cutsLowerBoundInclusiveOut = lowCutMin;
                   }
 
-                  const FloatEbmType highCutFullPrecisionMax = scaleHighLow + movementFromEnds;
+                  const double highCutFullPrecisionMax = scaleHighLow + movementFromEnds;
                   // highCutFullPrecisionMax can be +infinity if movementFromEnds is +infinity.  We can handle it.
                   EBM_ASSERT(!std::isnan(highCutFullPrecisionMax));
-                  EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < highCutFullPrecisionMax);
+                  EBM_ASSERT(std::numeric_limits<double>::lowest() < highCutFullPrecisionMax);
                   // GetInterpretableEndpoint can accept infinity, but it'll return infinity in that case
-                  const FloatEbmType highCutMax = GetInterpretableEndpoint(highCutFullPrecisionMax, movementFromEnds);
+                  const double highCutMax = GetInterpretableEndpoint(highCutFullPrecisionMax, movementFromEnds);
                   // highCutMax can legally be +infinity and we handle this scenario below
 
-                  const FloatEbmType highCutExisting = *(pCutsLowerBoundInclusive - size_t { 1 });
+                  const double highCutExisting = *(pCutsLowerBoundInclusive - size_t { 1 });
                   EBM_ASSERT(!std::isnan(highCutExisting));
                   EBM_ASSERT(!std::isinf(highCutExisting));
 

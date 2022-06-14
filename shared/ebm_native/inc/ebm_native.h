@@ -117,21 +117,6 @@ typedef struct _InteractionHandle {
 #define PRIx64 "llx"
 #endif // PRIx64
 
-// std::numeric_limits<FloatEbmType>::max() -> big positive number
-#define FLOAT_EBM_MAX            DBL_MAX
-// std::numeric_limits<FloatEbmType>::lowest() -> big negative number.  True in IEEE-754, which we require
-#define FLOAT_EBM_LOWEST         (-DBL_MAX)
-// std::numeric_limits<FloatEbmType>::min() -> small positive number
-#define FLOAT_EBM_MIN            DBL_MIN
-// std::numeric_limits<FloatEbmType>::denorm_min() -> small positive number
-//#define FLOAT_EBM_DENORM_MIN     DBL_TRUE_MIN -> not supported in g++ version of float.h for now (it's a C11 construct)
-// std::numeric_limits<FloatEbmType>::infinity()
-#define FLOAT_EBM_POSITIVE_INF   (STATIC_CAST(FloatEbmType, (INFINITY)))
-// -std::numeric_limits<FloatEbmType>::infinity()
-#define FLOAT_EBM_NEGATIVE_INF   (-FLOAT_EBM_POSITIVE_INF)
-// std::numeric_limits<FloatEbmType>::quiet_NaN()
-#define FLOAT_EBM_NAN            (STATIC_CAST(FloatEbmType, (NAN)))
-
 // Smaller integers can safely roundtrip to double values and back, but this breaks down at
 // exactly 2^53.  2^53 will convert from an integer to a correct double, but 2^53 + 1 will round
 // down to 2^53 in IEEE-754 where banker's rounding is used.  So, if we see an integer with 
@@ -152,13 +137,6 @@ typedef struct _InteractionHandle {
 
 // TODO: look through our code for places where SAFE_FLOAT64_AS_INT_MAX or FLOAT64_TO_INT_MAX would be useful
 
-// TODO: we can eliminate FloatEbmType and make our interface entirely doubles.  JSON only supports doubles, and it's
-// the most cross-language and highest precision type commonly available.  We can move FloatEbmType into our
-// internal interface and use it to switch our score representation which is the only place we'd benefit from float32
-typedef double FloatEbmType;
-// this needs to be in "le" format, since we internally use that format to generate "interpretable" 
-// floating point numbers in text format.   See Discretization.cpp for details.
-#define FloatEbmTypePrintf "le"
 typedef int64_t IntEbmType;
 #define IntEbmTypePrintf PRId64
 typedef uint64_t UIntEbmType;
@@ -258,40 +236,40 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHis
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuantile(
    IntEbmType countSamples,
-   const FloatEbmType * featureValues,
+   const double * featureValues,
    IntEbmType countSamplesPerBinMin,
    BoolEbmType isRounded,
    IntEbmType * countCutsInOut,
-   FloatEbmType * cutsLowerBoundInclusiveOut
+   double * cutsLowerBoundInclusiveOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUniform(
    IntEbmType countSamples,
-   const FloatEbmType * featureValues,
+   const double * featureValues,
    IntEbmType countDesiredCuts,
-   FloatEbmType * cutsLowerBoundInclusiveOut
+   double * cutsLowerBoundInclusiveOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsorized(
    IntEbmType countSamples,
-   const FloatEbmType * featureValues,
+   const double * featureValues,
    IntEbmType * countCutsInOut,
-   FloatEbmType * cutsLowerBoundInclusiveOut
+   double * cutsLowerBoundInclusiveOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countCuts,
-   FloatEbmType lowestCut,
-   FloatEbmType highestCut,
-   FloatEbmType minValue,
-   FloatEbmType maxValue,
-   FloatEbmType * lowGraphBoundOut,
-   FloatEbmType * highGraphBoundOut
+   double lowestCut,
+   double highestCut,
+   double minValue,
+   double maxValue,
+   double * lowGraphBoundOut,
+   double * highGraphBoundOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
-   const FloatEbmType * featureValues,
+   const double * featureValues,
    IntEbmType countCuts,
-   const FloatEbmType * cutsLowerBoundInclusive,
+   const double * cutsLowerBoundInclusive,
    IntEbmType * discretizedOut
 );
 
@@ -329,11 +307,11 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeWeight(
    IntEbmType countSamples,
-   const FloatEbmType * weights
+   const double * weights
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillWeight(
    IntEbmType countSamples,
-   const FloatEbmType * weights,
+   const double * weights,
    IntEbmType countBytesAllocated,
    void * fillMem
 );
@@ -353,11 +331,11 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Fill
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegressionTarget(
    IntEbmType countSamples,
-   const FloatEbmType * targets
+   const double * targets
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillRegressionTarget(
    IntEbmType countSamples,
-   const FloatEbmType * targets,
+   const double * targets,
    IntEbmType countBytesAllocated,
    void * fillMem
 );
@@ -386,8 +364,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Extr
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
    IntEbmType countTargetClasses,
    IntEbmType countSamples,
-   const FloatEbmType * logits,
-   FloatEbmType * probabilitiesOut
+   const double * logits,
+   double * probabilitiesOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
@@ -410,12 +388,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Crea
    SeedEbmType randomSeed,
    const void * dataSet,
    const BagEbmType * bag,
-   const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
+   const double * predictorScores, // only samples with non-zeros in the bag are included
    IntEbmType countFeatureGroups,
    const IntEbmType * dimensionCounts,
    const IntEbmType * featureIndexes,
    IntEbmType countInnerBags,
-   const FloatEbmType * optionalTempParams,
+   const double * optionalTempParams,
    BoosterHandle * boosterHandleOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBoosterView(
@@ -426,10 +404,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Gene
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
    GenerateUpdateOptionsType options, 
-   FloatEbmType learningRate, 
+   double learningRate, 
    IntEbmType countSamplesRequiredForChildSplitMin, 
    const IntEbmType * leavesMax, 
-   FloatEbmType * avgGainOut
+   double * avgGainOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateSplits(
    BoosterHandle boosterHandle,
@@ -439,26 +417,26 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetM
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
    BoosterHandle boosterHandle,
-   FloatEbmType * modelFeatureGroupUpdateTensorOut
+   double * modelFeatureGroupUpdateTensorOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   FloatEbmType * modelFeatureGroupUpdateTensor
+   double * modelFeatureGroupUpdateTensor
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
    BoosterHandle boosterHandle,
-   FloatEbmType * validationMetricOut
+   double * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
    BoosterHandle boosterHandle, 
    IntEbmType indexFeatureGroup,
-   FloatEbmType * modelFeatureGroupTensorOut
+   double * modelFeatureGroupTensorOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   FloatEbmType * modelFeatureGroupTensorOut
+   double * modelFeatureGroupTensorOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
@@ -467,8 +445,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbmType * bag,
-   const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
-   const FloatEbmType * optionalTempParams,
+   const double * predictorScores, // only samples with non-zeros in the bag are included
+   const double * optionalTempParams,
    InteractionHandle * interactionHandleOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInteractionStrength(
@@ -477,7 +455,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Calc
    const IntEbmType * featureIndexes,
    InteractionOptionsType options,
    IntEbmType countSamplesRequiredForChildSplitMin,
-   FloatEbmType * avgInteractionStrengthOut
+   double * avgInteractionStrengthOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
    InteractionHandle interactionHandle
