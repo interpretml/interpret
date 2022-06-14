@@ -44,8 +44,7 @@ public:
       LOG_0(TraceLevelVerbose, "Entered BinBoostingZeroDimensions");
 
       HistogramBucketBase * const pHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
-      HistogramBucket<bClassification> * const pHistogramBucketEntry =
-         pHistogramBucketBase->GetHistogramBucket<bClassification>();
+      auto * const pHistogramBucketEntry = pHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -55,7 +54,7 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
 
       const size_t cSamples = pTrainingSet->GetDataSetBoosting()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
@@ -71,8 +70,7 @@ public:
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
 
-      HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
-         pHistogramBucketEntry->GetHistogramTargetEntry();
+      auto * const pHistogramTargetEntry = pHistogramBucketEntry->GetHistogramTargetEntry();
       do {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          //   in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
@@ -216,8 +214,7 @@ public:
       LOG_0(TraceLevelVerbose, "Entered BinBoostingInternal");
 
       HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
-      HistogramBucket<bClassification> * const aHistogramBuckets =
-         aHistogramBucketBase->GetHistogramBucket<bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -235,8 +232,8 @@ public:
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
       const size_t cSamples = pTrainingSet->GetDataSetBoosting()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
@@ -284,7 +281,7 @@ public:
          do {
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            HistogramBucket<bClassification> * const pHistogramBucketEntry = GetHistogramBucketByIndex(
+            auto * const pHistogramBucketEntry = GetHistogramBucketByIndex(
                cBytesPerHistogramBucket,
                aHistogramBuckets,
                iTensorBin
@@ -303,8 +300,7 @@ public:
             pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
             pHistogramBucketEntry->SetWeightInBucket(pHistogramBucketEntry->GetWeightInBucket() + weight);
 
-            HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
-               pHistogramBucketEntry->GetHistogramTargetEntry();
+            auto * pHistogramTargetEntry = pHistogramBucketEntry->GetHistogramTargetEntry();
 
             size_t iVector = 0;
 

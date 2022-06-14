@@ -46,8 +46,7 @@ public:
 
       LOG_0(TraceLevelVerbose, "Entered BinInteractionInternal");
 
-      HistogramBucket<bClassification> * const aHistogramBuckets =
-         aHistogramBucketBase->GetHistogramBucket<bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
@@ -56,8 +55,8 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
       const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
       const FloatEbmType * pGradientAndHessian = pDataSet->GetGradientsAndHessiansPointer();
@@ -109,8 +108,8 @@ public:
             ++iDimension;
          } while(iDimension < cDimensions);
 
-         HistogramBucket<bClassification> * pHistogramBucketEntry =
-            GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
+         auto * pHistogramBucketEntry = 
+            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
          pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + 1);
          FloatEbmType weight = 1;
@@ -123,8 +122,7 @@ public:
          }
          pHistogramBucketEntry->SetWeightInBucket(pHistogramBucketEntry->GetWeightInBucket() + weight);
 
-         HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
-            pHistogramBucketEntry->GetHistogramTargetEntry();
+         auto * const pHistogramTargetEntry = pHistogramBucketEntry->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatEbmType gradient = *pGradientAndHessian;

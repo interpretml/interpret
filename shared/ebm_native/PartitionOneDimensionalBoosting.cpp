@@ -60,8 +60,7 @@ static void Flatten(
       FloatEbmType * const pValuesNext = pValuesCur + cVectorLength;
       *ppValues = pValuesNext;
 
-      const HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
-         pTreeNode->GetHistogramTargetEntry();
+      const auto * pHistogramTargetEntry = pTreeNode->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
       FloatEbmType zeroLogit = FloatEbmType { 0 };
@@ -134,26 +133,21 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // since the memory pointed to at pRootTreeNode is freed and re-allocated.
    // So, DO NOT DO: pBoosterShell->GetSumHistogramTargetEntryArray()->
    //   GetHistogramTargetEntry<bClassification>();
-   HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntryLeft =
-      pBoosterShell->GetSumHistogramTargetEntryLeft<bClassification>();
+   auto * const aSumHistogramTargetEntryLeft = pBoosterShell->GetSumHistogramTargetEntryLeft<bClassification>();
 
    for(size_t i = 0; i < cVectorLength; ++i) {
       aSumHistogramTargetEntryLeft[i].Zero();
    }
 
-   HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntryRight =
-      pBoosterShell->GetSumHistogramTargetEntryRight<bClassification>();
-   const HistogramTargetEntry<bClassification> * pHistogramTargetEntryInit = 
-      pTreeNode->GetHistogramTargetEntry();
+   auto * const aSumHistogramTargetEntryRight = pBoosterShell->GetSumHistogramTargetEntryRight<bClassification>();
+   const auto * pHistogramTargetEntryInit = pTreeNode->GetHistogramTargetEntry();
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       // TODO : memcpy this instead
       aSumHistogramTargetEntryRight[iVector] = pHistogramTargetEntryInit[iVector];
    }
 
-   const HistogramBucket<bClassification> * pHistogramBucketEntryCur =
-      pTreeNode->BEFORE_GetHistogramBucketEntryFirst();
-   const HistogramBucket<bClassification> * const pHistogramBucketEntryLast =
-      pTreeNode->BEFORE_GetHistogramBucketEntryLast();
+   auto * pHistogramBucketEntryCur = pTreeNode->BEFORE_GetHistogramBucketEntryFirst();
+   const auto * const pHistogramBucketEntryLast = pTreeNode->BEFORE_GetHistogramBucketEntryLast();
 
    EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
@@ -171,8 +165,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pLeftChildInit->BEFORE_SetHistogramBucketEntryFirst(pHistogramBucketEntryCur);
    pRightChildInit->BEFORE_SetHistogramBucketEntryLast(pHistogramBucketEntryLast);
 
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
    EBM_ASSERT(!GetTreeSweepSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cVectorLength);
 
@@ -205,8 +199,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       weightRight -= CHANGE_weight;
       weightLeft += CHANGE_weight;
 
-      const HistogramTargetEntry<bClassification> * pHistogramTargetEntry =
-         pHistogramBucketEntryCur->GetHistogramTargetEntry();
+      const auto * pHistogramTargetEntry = pHistogramBucketEntryCur->GetHistogramTargetEntry();
 
       if(LIKELY(cSamplesRequiredForChildSplitMin <= cSamplesLeft)) {
          EBM_ASSERT(0 < cSamplesRight);
@@ -304,7 +297,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             }
          }
       }
-      pHistogramBucketEntryCur = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
+      pHistogramBucketEntryCur = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
    } while(pHistogramBucketEntryLast != pHistogramBucketEntryCur);
 
    if(UNLIKELY(pTreeSweepStart == pTreeSweepCur)) {
@@ -324,7 +317,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    }
 
    FloatEbmType sumHessiansOverwrite = pTreeNode->GetWeight();
-   const HistogramTargetEntry<bClassification> * pHistEntryParent = pTreeNode->GetHistogramTargetEntry();
+   const auto * pHistEntryParent = pTreeNode->GetHistogramTargetEntry();
 
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       const FloatEbmType sumGradientsParent = pHistEntryParent[iVector].m_sumGradients;
@@ -366,7 +359,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    TreeNode<bClassification> * const pLeftChild = 
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pTreeSweepStart->GetBestHistogramBucketEntry();
+   const auto * const BEST_pHistogramBucketEntry = pTreeSweepStart->GetBestHistogramBucketEntry();
    pLeftChild->BEFORE_SetHistogramBucketEntryLast(BEST_pHistogramBucketEntry);
    const size_t BEST_cSamplesLeft = pTreeSweepStart->GetCountBestSamplesLeft();
    pLeftChild->AMBIGUOUS_SetCountSamples(BEST_cSamplesLeft);
@@ -374,8 +367,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const FloatEbmType BEST_weightLeft = pTreeSweepStart->GetBestWeightLeft();
    pLeftChild->SetWeight(BEST_weightLeft);
 
-   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntryNext =
-      GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
+   const auto * const BEST_pHistogramBucketEntryNext = 
+      GetHistogramBucketByIndex(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, pBoosterShell->GetHistogramBucketsEndDebug());
 
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
@@ -390,17 +383,13 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const FloatEbmType weightParent = pTreeNode->GetWeight();
    pRightChild->SetWeight(weightParent - BEST_weightLeft);
 
-   HistogramTargetEntry<bClassification> * pHistogramTargetEntryLeftChild =
-      pLeftChild->GetHistogramTargetEntry();
+   auto * pHistogramTargetEntryLeftChild = pLeftChild->GetHistogramTargetEntry();
 
-   HistogramTargetEntry<bClassification> * pHistogramTargetEntryRightChild =
-      pRightChild->GetHistogramTargetEntry();
+   auto * pHistogramTargetEntryRightChild = pRightChild->GetHistogramTargetEntry();
 
-   const HistogramTargetEntry<bClassification> * pHistogramTargetEntryTreeNode =
-      pTreeNode->GetHistogramTargetEntry();
+   const auto * pHistogramTargetEntryTreeNode = pTreeNode->GetHistogramTargetEntry();
 
-   const HistogramTargetEntry<bClassification> * pHistogramTargetEntrySweep =
-      pTreeSweepStart->GetBestHistogramTargetEntry();
+   const auto * pHistogramTargetEntrySweep = pTreeSweepStart->GetBestHistogramTargetEntry();
 
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       const FloatEbmType BEST_sumGradientsLeft = pHistogramTargetEntrySweep[iVector].m_sumGradients;
@@ -428,8 +417,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pTreeNode->AFTER_SetSplitGain(BEST_gain);
 
    HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
-   const HistogramBucket<bClassification> * const aHistogramBucket =
-      aHistogramBucketBase->GetHistogramBucket<bClassification>();
+   const auto * const aHistogramBucket = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
    EBM_ASSERT(reinterpret_cast<const char *>(aHistogramBucket) <= reinterpret_cast<const char *>(BEST_pHistogramBucketEntry));
    EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) % cBytesPerHistogramBucket);
@@ -477,13 +465,13 @@ public:
       ErrorEbmType error;
 
       HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
-      const HistogramBucket<bClassification> * const aHistogramBucket =
-         aHistogramBucketBase->GetHistogramBucket<bClassification>();
+      const auto * const aHistogramBucket = 
+         aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
          pBoosterShell->GetSumHistogramTargetEntryArray();
-      const HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntry =
-         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<bClassification>();
+      const auto * const aSumHistogramTargetEntry =
+         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<FloatEbmType, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -506,8 +494,8 @@ public:
          return Error_OutOfMemory; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
       }
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
    retry_with_bigger_tree_node_children_array:
 
@@ -535,7 +523,7 @@ public:
 
       pRootTreeNode->BEFORE_SetHistogramBucketEntryFirst(aHistogramBucket);
       pRootTreeNode->BEFORE_SetHistogramBucketEntryLast(
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBucket, cHistogramBuckets - 1)
+         GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucket, cHistogramBuckets - 1)
       );
       ASSERT_BINNED_BUCKET_OK(
          cBytesPerHistogramBucket,
@@ -647,11 +635,9 @@ public:
             cBytesPerTreeNode
          );
 
-         const HistogramTargetEntry<bClassification> * pHistogramTargetEntryLeftChild =
-            pLeftChild->GetHistogramTargetEntry();
+         const auto * pHistogramTargetEntryLeftChild = pLeftChild->GetHistogramTargetEntry();
 
-         const HistogramTargetEntry<bClassification> * pHistogramTargetEntryRightChild =
-            pRightChild->GetHistogramTargetEntry();
+         const auto * pHistogramTargetEntryRightChild = pRightChild->GetHistogramTargetEntry();
 
          FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          if(bClassification) {

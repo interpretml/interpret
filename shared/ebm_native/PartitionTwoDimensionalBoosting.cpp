@@ -33,7 +33,7 @@ namespace DEFINED_ZONE_NAME {
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static FloatEbmType SweepMultiDimensional(
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
+   const HistogramBucket<FloatEbmType, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
    const FeatureGroup * const pFeatureGroup,
    size_t * const aiPoint,
    const size_t directionVectorLow,
@@ -41,10 +41,10 @@ static FloatEbmType SweepMultiDimensional(
    const size_t cSweepBins,
    const size_t cSamplesRequiredForChildSplitMin,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp,
+   HistogramBucket<FloatEbmType, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp,
    size_t * const piBestSplit
 #ifndef NDEBUG
-   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy
+   , const HistogramBucket<FloatEbmType, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
@@ -63,8 +63,8 @@ static FloatEbmType SweepMultiDimensional(
       runtimeLearningTypeOrCountTargetClasses
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
    EBM_ASSERT(!IsMultiplyError(size_t { 2 }, cBytesPerHistogramBucket)); // we're accessing allocated memory
    const size_t cBytesPerTwoHistogramBuckets = cBytesPerHistogramBucket << 1;
 
@@ -76,12 +76,10 @@ static FloatEbmType SweepMultiDimensional(
 
    size_t iBestSplit = 0;
 
-   HistogramBucket<bClassification> * const pTotalsLow =
-      GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 2);
+   auto * const pTotalsLow = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 2);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotalsLow, aHistogramBucketsEndDebug);
 
-   HistogramBucket<bClassification> * const pTotalsHigh =
-      GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 3);
+   auto * const pTotalsHigh = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 3);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotalsHigh, aHistogramBucketsEndDebug);
 
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
@@ -126,11 +124,9 @@ static FloatEbmType SweepMultiDimensional(
             const FloatEbmType cLowWeightInBucket = pTotalsLow->GetWeightInBucket();
             const FloatEbmType cHighWeightInBucket = pTotalsHigh->GetWeightInBucket();
 
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryLow =
-               pTotalsLow->GetHistogramTargetEntry();
+            auto * const pHistogramTargetEntryLow = pTotalsLow->GetHistogramTargetEntry();
 
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntryHigh =
-               pTotalsHigh->GetHistogramTargetEntry();
+            auto * const pHistogramTargetEntryHigh = pTotalsHigh->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -156,12 +152,12 @@ static FloatEbmType SweepMultiDimensional(
 
                ASSERT_BINNED_BUCKET_OK(
                   cBytesPerHistogramBucket,
-                  GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 1),
+                  GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 1),
                   aHistogramBucketsEndDebug
                );
                ASSERT_BINNED_BUCKET_OK(
                   cBytesPerHistogramBucket,
-                  GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pTotalsLow, 1),
+                  GetHistogramBucketByIndex(cBytesPerHistogramBucket, pTotalsLow, 1),
                   aHistogramBucketsEndDebug
                );
                memcpy(pHistogramBucketBestAndTemp, pTotalsLow, cBytesPerTwoHistogramBuckets); // this copies both pTotalsLow and pTotalsHigh
@@ -214,13 +210,13 @@ public:
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAuxiliaryBucketZone = pAuxiliaryBucketZoneBase->GetHistogramBucket<bClassification>();
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<bClassification>();
+      auto * pAuxiliaryBucketZone = pAuxiliaryBucketZoneBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
 #ifndef NDEBUG
-      const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy = aHistogramBucketsDebugCopyBase->GetHistogramBucket<bClassification>();
+      const auto * const aHistogramBucketsDebugCopy = aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatEbmType, bClassification>();
 #endif // NDEBUG
 
       size_t aiStart[k_cDimensionsMax];
@@ -258,14 +254,10 @@ public:
       size_t splitFirst1LowBest;
       size_t splitFirst1HighBest;
 
-      HistogramBucket<bClassification> * pTotals1LowLowBest =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
-      HistogramBucket<bClassification> * pTotals1LowHighBest =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
-      HistogramBucket<bClassification> * pTotals1HighLowBest =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
-      HistogramBucket<bClassification> * pTotals1HighHighBest =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
+      auto * pTotals1LowLowBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
+      auto * pTotals1LowHighBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
+      auto * pTotals1HighLowBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
+      auto * pTotals1HighHighBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
       EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
@@ -275,10 +267,8 @@ public:
          aiStart[0] = iBin1;
 
          size_t splitSecond1LowBest;
-         HistogramBucket<bClassification> * pTotals2LowLowBest =
-            GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
-         HistogramBucket<bClassification> * pTotals2LowHighBest =
-            GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
+         auto * pTotals2LowLowBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
+         auto * pTotals2LowHighBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
          const FloatEbmType gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
             pFeatureGroup,
@@ -300,10 +290,8 @@ public:
             EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
 
             size_t splitSecond1HighBest;
-            HistogramBucket<bClassification> * pTotals2HighLowBest =
-               GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
-            HistogramBucket<bClassification> * pTotals2HighHighBest =
-               GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
+            auto * pTotals2HighLowBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
+            auto * pTotals2HighHighBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
             const FloatEbmType gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
                pFeatureGroup,
@@ -359,14 +347,10 @@ public:
       size_t splitFirst2LowBest;
       size_t splitFirst2HighBest;
 
-      HistogramBucket<bClassification> * pTotals2LowLowBest =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 12);
-      HistogramBucket<bClassification> * pTotals2LowHighBest =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 13);
-      HistogramBucket<bClassification> * pTotals2HighLowBest =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 14);
-      HistogramBucket<bClassification> * pTotals2HighHighBest =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 15);
+      auto * pTotals2LowLowBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 12);
+      auto * pTotals2LowHighBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 13);
+      auto * pTotals2HighLowBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 14);
+      auto * pTotals2HighHighBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 15);
 
       LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Starting SECOND bin sweep loop");
       size_t iBin2 = 0;
@@ -374,10 +358,8 @@ public:
          aiStart[1] = iBin2;
 
          size_t splitSecond2LowBest;
-         HistogramBucket<bClassification> * pTotals1LowLowBestInner =
-            GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
-         HistogramBucket<bClassification> * pTotals1LowHighBestInner =
-            GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
+         auto * pTotals1LowLowBestInner = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
+         auto * pTotals1LowHighBestInner = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
          const FloatEbmType gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
             pFeatureGroup,
@@ -399,10 +381,8 @@ public:
             EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
 
             size_t splitSecond2HighBest;
-            HistogramBucket<bClassification> * pTotals1HighLowBestInner =
-               GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
-            HistogramBucket<bClassification> * pTotals1HighHighBestInner =
-               GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
+            auto * pTotals1HighLowBestInner = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
+            auto * pTotals1HighHighBestInner = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
             const FloatEbmType gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
                pFeatureGroup,
@@ -459,14 +439,13 @@ public:
 
       // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
       // which contains the totals of all buckets
-      const HistogramBucket<bClassification> * const pTotal =
-         reinterpret_cast<const HistogramBucket<bClassification> *>(
+      const auto * const pTotal =
+         reinterpret_cast<const HistogramBucket<FloatEbmType, bClassification> *>(
             reinterpret_cast<const char *>(pAuxiliaryBucketZoneBase) - cBytesPerHistogramBucket);
 
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, pBoosterShell->GetHistogramBucketsEndDebug());
 
-      const HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotal =
-         pTotal->GetHistogramTargetEntry();
+      const auto * const pHistogramTargetEntryTotal = pTotal->GetHistogramTargetEntry();
 
       const FloatEbmType weightAll = pTotal->GetWeightInBucket();
       EBM_ASSERT(0 < weightAll);
@@ -559,14 +538,10 @@ public:
                         pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
                      }
 
-                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowLowBest =
-                        pTotals2LowLowBest->GetHistogramTargetEntry();
-                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2LowHighBest =
-                        pTotals2LowHighBest->GetHistogramTargetEntry();
-                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2HighLowBest =
-                        pTotals2HighLowBest->GetHistogramTargetEntry();
-                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals2HighHighBest =
-                        pTotals2HighHighBest->GetHistogramTargetEntry();
+                     auto * const pHistogramTargetEntryTotals2LowLowBest = pTotals2LowLowBest->GetHistogramTargetEntry();
+                     auto * const pHistogramTargetEntryTotals2LowHighBest = pTotals2LowHighBest->GetHistogramTargetEntry();
+                     auto * const pHistogramTargetEntryTotals2HighLowBest = pTotals2HighLowBest->GetHistogramTargetEntry();
+                     auto * const pHistogramTargetEntryTotals2HighHighBest = pTotals2HighHighBest->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                      FloatEbmType zeroLogit0 = FloatEbmType { 0 };
@@ -705,14 +680,10 @@ public:
                         pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
                      }
 
-                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowLowBest =
-                        pTotals1LowLowBest->GetHistogramTargetEntry();
-                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1LowHighBest =
-                        pTotals1LowHighBest->GetHistogramTargetEntry();
-                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1HighLowBest =
-                        pTotals1HighLowBest->GetHistogramTargetEntry();
-                     HistogramTargetEntry<bClassification> * const pHistogramTargetEntryTotals1HighHighBest =
-                        pTotals1HighHighBest->GetHistogramTargetEntry();
+                     auto * const pHistogramTargetEntryTotals1LowLowBest = pTotals1LowLowBest->GetHistogramTargetEntry();
+                     auto * const pHistogramTargetEntryTotals1LowHighBest = pTotals1LowHighBest->GetHistogramTargetEntry();
+                     auto * const pHistogramTargetEntryTotals1HighLowBest = pTotals1HighLowBest->GetHistogramTargetEntry();
+                     auto * const pHistogramTargetEntryTotals1HighHighBest = pTotals1HighHighBest->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                      FloatEbmType zeroLogit0 = FloatEbmType { 0 };

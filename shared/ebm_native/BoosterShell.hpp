@@ -168,13 +168,13 @@ public:
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntryLeft() {
-      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntryLeft);
+   INLINE_ALWAYS HistogramTargetEntry<FloatEbmType, bClassification> * GetSumHistogramTargetEntryLeft() {
+      return static_cast<HistogramTargetEntry<FloatEbmType, bClassification> *>(m_aSumHistogramTargetEntryLeft);
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntryRight() {
-      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntryRight);
+   INLINE_ALWAYS HistogramTargetEntry<FloatEbmType, bClassification> * GetSumHistogramTargetEntryRight() {
+      return static_cast<HistogramTargetEntry<FloatEbmType, bClassification> *>(m_aSumHistogramTargetEntryRight);
    }
 
 #ifndef NDEBUG

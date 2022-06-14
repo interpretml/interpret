@@ -103,12 +103,12 @@ static ErrorEbmType BoostZeroDimensional(
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
+      LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<FloatEbmType, bClassification>(cVectorLength)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
    HistogramBucketBase * const pHistogramBucket = pBoosterShell->GetHistogramBucketBase(cBytesPerHistogramBucket);
    if(UNLIKELY(nullptr == pHistogramBucket)) {
@@ -117,9 +117,9 @@ static ErrorEbmType BoostZeroDimensional(
    }
 
    if(bClassification) {
-      pHistogramBucket->GetHistogramBucket<true>()->Zero(cVectorLength);
+      pHistogramBucket->GetHistogramBucket<FloatEbmType, true>()->Zero(cVectorLength);
    } else {
-      pHistogramBucket->GetHistogramBucket<false>()->Zero(cVectorLength);
+      pHistogramBucket->GetHistogramBucket<FloatEbmType, false>()->Zero(cVectorLength);
    }
 
 #ifndef NDEBUG
@@ -136,9 +136,8 @@ static ErrorEbmType BoostZeroDimensional(
       pBoosterShell->GetOverwritableModelUpdate();
    FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(bClassification) {
-      const HistogramBucket<true> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<true>();
-      const HistogramTargetEntry<true> * const aSumHistogramTargetEntry =
-         pHistogramBucketLocal->GetHistogramTargetEntry();
+      const auto * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<FloatEbmType, true>();
+      const auto * const aSumHistogramTargetEntry = pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iVector].m_sumGradients);
@@ -176,9 +175,8 @@ static ErrorEbmType BoostZeroDimensional(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      const HistogramBucket<false> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<false>();
-      const HistogramTargetEntry<false> * const aSumHistogramTargetEntry =
-         pHistogramBucketLocal->GetHistogramTargetEntry();
+      const auto * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<FloatEbmType, false>();
+      const auto * const aSumHistogramTargetEntry = pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
          aValues[0] = smallChangeToModel;
@@ -223,12 +221,12 @@ static ErrorEbmType BoostSingleDimensional(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucket, cHistogramBuckets)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cBytesPerHistogramBucket, cHistogramBuckets)");
@@ -246,26 +244,24 @@ static ErrorEbmType BoostSingleDimensional(
       pBoosterShell->GetSumHistogramTargetEntryArray();
 
    if(bClassification) {
-      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
+      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, true>();
       for(size_t i = 0; i < cHistogramBuckets; ++i) {
-         HistogramBucket<true> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
       }
 
-      HistogramTargetEntry<true> * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<true>();
+      auto * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<FloatEbmType, true>();
       for(size_t i = 0; i < cVectorLength; ++i) {
          aSumHistogramTargetEntryLocal[i].Zero();
       }
    } else {
-      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
+      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, false>();
       for(size_t i = 0; i < cHistogramBuckets; ++i) {
-         HistogramBucket<false> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
       }
 
-      HistogramTargetEntry<false> * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<false>();
+      auto * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<FloatEbmType, false>();
       for(size_t i = 0; i < cVectorLength; ++i) {
          aSumHistogramTargetEntryLocal[i].Zero();
       }
@@ -363,14 +359,14 @@ static ErrorEbmType BoostMultiDimensional(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) {
       LOG_0(
          TraceLevelWarning,
          "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
       return Error_OutOfMemory;
@@ -385,17 +381,15 @@ static ErrorEbmType BoostMultiDimensional(
    }
 
    if(bClassification) {
-      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
+      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, true>();
       for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<true> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
       }
    } else {
-      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
+      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, false>();
       for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<false> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
       }
    }
@@ -609,14 +603,14 @@ static ErrorEbmType BoostRandom(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) {
       LOG_0(
          TraceLevelWarning,
          "WARNING BoostRandom GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
       return Error_OutOfMemory;
@@ -631,17 +625,15 @@ static ErrorEbmType BoostRandom(
    }
 
    if(bClassification) {
-      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
+      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, true>();
       for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<true> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
       }
    } else {
-      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
+      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, false>();
       for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<false> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
       }
    }

@@ -31,7 +31,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<bool bClassification>
+template<typename TFloat, bool bClassification>
 struct HistogramBucket;
 
 struct HistogramBucketBase {
@@ -40,13 +40,13 @@ struct HistogramBucketBase {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   template<bool bClassification>
-   INLINE_ALWAYS HistogramBucket<bClassification> * GetHistogramBucket() {
-      return static_cast<HistogramBucket<bClassification> *>(this);
+   template<typename TFloat, bool bClassification>
+   INLINE_ALWAYS HistogramBucket<TFloat, bClassification> * GetHistogramBucket() {
+      return static_cast<HistogramBucket<TFloat, bClassification> *>(this);
    }
-   template<bool bClassification>
-   INLINE_ALWAYS const HistogramBucket<bClassification> * GetHistogramBucket() const {
-      return static_cast<const HistogramBucket<bClassification> *>(this);
+   template<typename TFloat, bool bClassification>
+   INLINE_ALWAYS const HistogramBucket<TFloat, bClassification> * GetHistogramBucket() const {
+      return static_cast<const HistogramBucket<TFloat, bClassification> *>(this);
    }
 };
 static_assert(std::is_standard_layout<HistogramBucketBase>::value,
@@ -56,19 +56,19 @@ static_assert(std::is_trivial<HistogramBucketBase>::value,
 static_assert(std::is_pod<HistogramBucketBase>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-template<bool bClassification>
+template<typename TFloat, bool bClassification>
 struct HistogramBucket final : HistogramBucketBase {
 private:
 
    size_t m_cSamplesInBucket;
-   FloatEbmType m_weightInBucket;
+   TFloat m_weightInBucket;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramTargetEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramTargetEntry<bClassification> m_aHistogramTargetEntry[1];
+   HistogramTargetEntry<TFloat, bClassification> m_aHistogramTargetEntry[1];
 
 public:
 
@@ -84,52 +84,50 @@ public:
       m_cSamplesInBucket = cSamplesInBucket;
    }
 
-   INLINE_ALWAYS FloatEbmType GetWeightInBucket() const {
+   INLINE_ALWAYS TFloat GetWeightInBucket() const {
       return m_weightInBucket;
    }
-   INLINE_ALWAYS void SetWeightInBucket(const FloatEbmType weightInBucket) {
+   INLINE_ALWAYS void SetWeightInBucket(const TFloat weightInBucket) {
       m_weightInBucket = weightInBucket;
    }
 
-   INLINE_ALWAYS const HistogramTargetEntry<bClassification> * GetHistogramTargetEntry() const {
+   INLINE_ALWAYS const HistogramTargetEntry<TFloat, bClassification> * GetHistogramTargetEntry() const {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
-   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetHistogramTargetEntry() {
+   INLINE_ALWAYS HistogramTargetEntry<TFloat, bClassification> * GetHistogramTargetEntry() {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
 
-   INLINE_ALWAYS void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
+   INLINE_ALWAYS void Add(const HistogramBucket<TFloat, bClassification> & other, const size_t cVectorLength) {
       m_cSamplesInBucket += other.m_cSamplesInBucket;
       m_weightInBucket += other.m_weightInBucket;
 
-      HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
+      auto * pHistogramBucketVectorThis = GetHistogramTargetEntry();
 
-      const HistogramTargetEntry<bClassification> * pHistogramBucketVectorOther = 
-         other.GetHistogramTargetEntry();
+      const auto * pHistogramBucketVectorOther = other.GetHistogramTargetEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketVectorThis[iVector].Add(pHistogramBucketVectorOther[iVector]);
       }
    }
 
-   INLINE_ALWAYS void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
+   INLINE_ALWAYS void Subtract(const HistogramBucket<TFloat, bClassification> & other, const size_t cVectorLength) {
       m_cSamplesInBucket -= other.m_cSamplesInBucket;
       m_weightInBucket -= other.m_weightInBucket;
 
-      HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
+      auto * pHistogramBucketVectorThis = GetHistogramTargetEntry();
 
-      const HistogramTargetEntry<bClassification> * pHistogramBucketVectorOther =
-         other.GetHistogramTargetEntry();
+      const auto * pHistogramBucketVectorOther = other.GetHistogramTargetEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketVectorThis[iVector].Subtract(pHistogramBucketVectorOther[iVector]);
       }
    }
 
-   INLINE_ALWAYS void Copy(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
+   INLINE_ALWAYS void Copy(const HistogramBucket<TFloat, bClassification> & other, const size_t cVectorLength) {
       const size_t cBytesPerHistogramBucket = 
-         sizeof(HistogramBucket<bClassification>) - sizeof(HistogramTargetEntry<bClassification>) +
-         sizeof(HistogramTargetEntry<bClassification>) * cVectorLength;
+         sizeof(HistogramBucket<TFloat, bClassification>) - sizeof(HistogramTargetEntry<TFloat, bClassification>) +
+         sizeof(HistogramTargetEntry<TFloat, bClassification>) * cVectorLength;
 
       memcpy(this, &other, cBytesPerHistogramBucket);
    }
@@ -157,8 +155,8 @@ public:
 
       m_cSamplesInBucket = size_t { 0 };
       m_weightInBucket = size_t { 0 };
-      HistogramTargetEntry<bClassification> * pHistogramTargetEntry = GetHistogramTargetEntry();
-      const HistogramTargetEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
+      auto * pHistogramTargetEntry = GetHistogramTargetEntry();
+      const auto * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
       EBM_ASSERT(1 <= cVectorLength);
       do {
          pHistogramTargetEntry->Zero();
@@ -174,7 +172,7 @@ public:
       EBM_ASSERT(0 == m_cSamplesInBucket);
       EBM_ASSERT(0 == m_weightInBucket);
 
-      const HistogramTargetEntry<bClassification> * pHistogramBucketVector = GetHistogramTargetEntry();
+      const auto * pHistogramBucketVector = GetHistogramTargetEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketVector[iVector].AssertZero();
@@ -182,25 +180,33 @@ public:
 #endif // NDEBUG
    }
 };
-static_assert(std::is_standard_layout<HistogramBucket<true>>::value && std::is_standard_layout<HistogramBucket<false>>::value,
+static_assert(std::is_standard_layout<HistogramBucket<double, true>>::value && std::is_standard_layout<HistogramBucket<double, false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<HistogramBucket<true>>::value && std::is_trivial<HistogramBucket<false>>::value,
+static_assert(std::is_trivial<HistogramBucket<double, true>>::value && std::is_trivial<HistogramBucket<double, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<HistogramBucket<true>>::value && std::is_pod<HistogramBucket<false>>::value,
+static_assert(std::is_pod<HistogramBucket<double, true>>::value && std::is_pod<HistogramBucket<double, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
+static_assert(std::is_standard_layout<HistogramBucket<float, true>>::value && std::is_standard_layout<HistogramBucket<float, false>>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<HistogramBucket<float, true>>::value && std::is_trivial<HistogramBucket<float, false>>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<HistogramBucket<float, true>>::value && std::is_pod<HistogramBucket<float, false>>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
+
+template<typename TFloat>
 INLINE_ALWAYS bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<true>) :
-      sizeof(HistogramTargetEntry<false>);
+      sizeof(HistogramTargetEntry<TFloat, true>) :
+      sizeof(HistogramTargetEntry<TFloat, false>);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
    }
 
    const size_t cBytesHistogramBucketComponent = bClassification ?
-      (sizeof(HistogramBucket<true>) - sizeof(HistogramTargetEntry<true>)) :
-      (sizeof(HistogramBucket<false>) - sizeof(HistogramTargetEntry<false>));
+      (sizeof(HistogramBucket<TFloat, true>) - sizeof(HistogramTargetEntry<TFloat, true>)) :
+      (sizeof(HistogramBucket<TFloat, false>) - sizeof(HistogramTargetEntry<TFloat, false>));
 
    if(UNLIKELY(IsAddError(cBytesHistogramBucketComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
@@ -209,42 +215,43 @@ INLINE_ALWAYS bool GetHistogramBucketSizeOverflow(const bool bClassification, co
    return false;
 }
 
+template<typename TFloat>
 INLINE_ALWAYS size_t GetHistogramBucketSize(const bool bClassification, const size_t cVectorLength) {
    // TODO: someday try out bucket sizes that are a power of two.  This would allow us to use a shift when bucketing into histograms
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
 
    const size_t cBytesHistogramBucketComponent = bClassification ?
-      sizeof(HistogramBucket<true>) - sizeof(HistogramTargetEntry<true>) :
-      sizeof(HistogramBucket<false>) - sizeof(HistogramTargetEntry<false>);
+      sizeof(HistogramBucket<TFloat, true>) - sizeof(HistogramTargetEntry<TFloat, true>) :
+      sizeof(HistogramBucket<TFloat, false>) - sizeof(HistogramTargetEntry<TFloat, false>);
 
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<true>) :
-      sizeof(HistogramTargetEntry<false>);
+      sizeof(HistogramTargetEntry<TFloat, true>) :
+      sizeof(HistogramTargetEntry<TFloat, false>);
 
    return cBytesHistogramBucketComponent + cBytesHistogramTargetEntry * cVectorLength;
 }
 
-template<bool bClassification>
-INLINE_ALWAYS HistogramBucket<bClassification> * GetHistogramBucketByIndex(
+template<typename TFloat, bool bClassification>
+INLINE_ALWAYS HistogramBucket<TFloat, bClassification> * GetHistogramBucketByIndex(
    const size_t cBytesPerHistogramBucket,
-   HistogramBucket<bClassification> * const aHistogramBuckets,
+   HistogramBucket<TFloat, bClassification> * const aHistogramBuckets,
    const size_t iBin
 ) {
    // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
    // therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<HistogramBucket<bClassification> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+   return reinterpret_cast<HistogramBucket<TFloat, bClassification> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
 }
 
-template<bool bClassification>
-INLINE_ALWAYS const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
+template<typename TFloat, bool bClassification>
+INLINE_ALWAYS const HistogramBucket<TFloat, bClassification> * GetHistogramBucketByIndex(
    const size_t cBytesPerHistogramBucket,
-   const HistogramBucket<bClassification> * const aHistogramBuckets,
+   const HistogramBucket<TFloat, bClassification> * const aHistogramBuckets,
    const size_t iBin
 ) {
    // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
    //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<const HistogramBucket<bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+   return reinterpret_cast<const HistogramBucket<TFloat, bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
 }
 
 INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketByIndex(

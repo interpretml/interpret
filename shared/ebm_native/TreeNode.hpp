@@ -43,8 +43,8 @@ struct TreeNodeData<true> {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      const HistogramBucket<true> * m_pHistogramBucketEntryFirst;
-      const HistogramBucket<true> * m_pHistogramBucketEntryLast;
+      const HistogramBucket<FloatEbmType, true> * m_pHistogramBucketEntryFirst;
+      const HistogramBucket<FloatEbmType, true> * m_pHistogramBucketEntryLast;
       size_t m_cSamples;
    };
    static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
@@ -115,23 +115,23 @@ struct TreeNodeData<true> {
       m_weight = weight;
    }
 
-   INLINE_ALWAYS const HistogramBucket<true> * BEFORE_GetHistogramBucketEntryFirst() const {
+   INLINE_ALWAYS const HistogramBucket<FloatEbmType, true> * BEFORE_GetHistogramBucketEntryFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
    }
    INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryFirst(
-      const HistogramBucket<true> * const pHistogramBucketEntryFirst) 
+      const HistogramBucket<FloatEbmType, true> * const pHistogramBucketEntryFirst)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryFirst;
    }
 
-   INLINE_ALWAYS const HistogramBucket<true> * BEFORE_GetHistogramBucketEntryLast() const {
+   INLINE_ALWAYS const HistogramBucket<FloatEbmType, true> * BEFORE_GetHistogramBucketEntryLast() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
    }
    INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryLast(
-      const HistogramBucket<true> * const pHistogramBucketEntryLast) 
+      const HistogramBucket<FloatEbmType, true> * const pHistogramBucketEntryLast)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
@@ -168,10 +168,10 @@ struct TreeNodeData<true> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue = splitValue;
    }
 
-   INLINE_ALWAYS const HistogramTargetEntry<true> * GetHistogramTargetEntry() const {
+   INLINE_ALWAYS const HistogramTargetEntry<FloatEbmType, true> * GetHistogramTargetEntry() const {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
-   INLINE_ALWAYS HistogramTargetEntry<true> * GetHistogramTargetEntry() {
+   INLINE_ALWAYS HistogramTargetEntry<FloatEbmType, true> * GetHistogramTargetEntry() {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
 
@@ -203,7 +203,7 @@ private:
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramTargetEntry<true> m_aHistogramTargetEntry[1];
+   HistogramTargetEntry<FloatEbmType, true> m_aHistogramTargetEntry[1];
 };
 static_assert(std::is_standard_layout<TreeNodeData<true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -227,8 +227,8 @@ struct TreeNodeData<false> {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      const HistogramBucket<false> * m_pHistogramBucketEntryFirst;
-      const HistogramBucket<false> * m_pHistogramBucketEntryLast;
+      const HistogramBucket<FloatEbmType, false> * m_pHistogramBucketEntryFirst;
+      const HistogramBucket<FloatEbmType, false> * m_pHistogramBucketEntryLast;
    };
    static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -296,23 +296,23 @@ struct TreeNodeData<false> {
       m_weight = weight;
    }
 
-   INLINE_ALWAYS const HistogramBucket<false> * BEFORE_GetHistogramBucketEntryFirst() const {
+   INLINE_ALWAYS const HistogramBucket<FloatEbmType, false> * BEFORE_GetHistogramBucketEntryFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
    }
    INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryFirst(
-      const HistogramBucket<false> * const pHistogramBucketEntryFirst) 
+      const HistogramBucket<FloatEbmType, false> * const pHistogramBucketEntryFirst)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryFirst;
    }
 
-   INLINE_ALWAYS const HistogramBucket<false> * BEFORE_GetHistogramBucketEntryLast() const {
+   INLINE_ALWAYS const HistogramBucket<FloatEbmType, false> * BEFORE_GetHistogramBucketEntryLast() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
    }
    INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryLast(
-      const HistogramBucket<false> * const pHistogramBucketEntryLast) 
+      const HistogramBucket<FloatEbmType, false> * const pHistogramBucketEntryLast)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
@@ -349,10 +349,10 @@ struct TreeNodeData<false> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue = splitValue;
    }
 
-   INLINE_ALWAYS const HistogramTargetEntry<false> * GetHistogramTargetEntry() const {
+   INLINE_ALWAYS const HistogramTargetEntry<FloatEbmType, false> * GetHistogramTargetEntry() const {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
-   INLINE_ALWAYS HistogramTargetEntry<false> * GetHistogramTargetEntry() {
+   INLINE_ALWAYS HistogramTargetEntry<FloatEbmType, false> * GetHistogramTargetEntry() {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
 
@@ -386,7 +386,7 @@ private:
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramTargetEntry<false> m_aHistogramTargetEntry[1];
+   HistogramTargetEntry<FloatEbmType, false> m_aHistogramTargetEntry[1];
 };
 static_assert(std::is_standard_layout<TreeNodeData<false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -450,16 +450,16 @@ static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>
 
 INLINE_ALWAYS size_t GetTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<true>) :
-      sizeof(HistogramTargetEntry<false>);
+      sizeof(HistogramTargetEntry<FloatEbmType, true>) :
+      sizeof(HistogramTargetEntry<FloatEbmType, false>);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
    }
 
    const size_t cBytesTreeNodeComponent = bClassification ?
-      (sizeof(TreeNode<true>) - sizeof(HistogramTargetEntry<true>)) :
-      (sizeof(TreeNode<false>) - sizeof(HistogramTargetEntry<false>));
+      (sizeof(TreeNode<true>) - sizeof(HistogramTargetEntry<FloatEbmType, true>)) :
+      (sizeof(TreeNode<false>) - sizeof(HistogramTargetEntry<FloatEbmType, false>));
 
    if(UNLIKELY(IsAddError(cBytesTreeNodeComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
@@ -470,12 +470,12 @@ INLINE_ALWAYS size_t GetTreeNodeSizeOverflow(const bool bClassification, const s
 
 INLINE_ALWAYS size_t GetTreeNodeSize(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesTreeNodeComponent = bClassification ?
-      sizeof(TreeNode<true>) - sizeof(HistogramTargetEntry<true>) :
-      sizeof(TreeNode<false>) - sizeof(HistogramTargetEntry<false>);
+      sizeof(TreeNode<true>) - sizeof(HistogramTargetEntry<FloatEbmType, true>) :
+      sizeof(TreeNode<false>) - sizeof(HistogramTargetEntry<FloatEbmType, false>);
 
    const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<true>) :
-      sizeof(HistogramTargetEntry<false>);
+      sizeof(HistogramTargetEntry<FloatEbmType, true>) :
+      sizeof(HistogramTargetEntry<FloatEbmType, false>);
 
    return cBytesTreeNodeComponent + cBytesHistogramTargetEntry * cVectorLength;
 }

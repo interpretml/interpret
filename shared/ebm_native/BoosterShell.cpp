@@ -70,7 +70,7 @@ ErrorEbmType BoosterShell::FillAllocations() {
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = m_pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
-      sizeof(HistogramTargetEntry<true>) : sizeof(HistogramTargetEntry<false>);
+      sizeof(HistogramTargetEntry<FloatEbmType, true>) : sizeof(HistogramTargetEntry<FloatEbmType, false>);
 
    m_pSmallChangeToModelAccumulatedFromSamplingSets = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
    if(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets) {

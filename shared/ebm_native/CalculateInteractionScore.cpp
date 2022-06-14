@@ -115,14 +115,14 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) {
       LOG_0(
          TraceLevelWarning,
          "WARNING CalcInteractionStrengthInternal GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
       return Error_OutOfMemory;
@@ -137,16 +137,16 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    }
 
    if(bClassification) {
-      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
+      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, true>();
       for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<true> * const pHistogramBucket =
+         auto * const pHistogramBucket = 
             GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
       }
    } else {
-      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
+      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, false>();
       for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<false> * const pHistogramBucket =
+         auto * const pHistogramBucket = 
             GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
          pHistogramBucket->Zero(cVectorLength);
       }

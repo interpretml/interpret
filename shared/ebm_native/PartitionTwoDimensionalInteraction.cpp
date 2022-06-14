@@ -49,15 +49,12 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pAuxiliaryBucketZone =
-         pAuxiliaryBucketZoneBase->GetHistogramBucket<bClassification>();
+      auto * const pAuxiliaryBucketZone = pAuxiliaryBucketZoneBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets =
-         aHistogramBucketsBase->GetHistogramBucket<bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
 #ifndef NDEBUG
-      const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy =
-         aHistogramBucketsDebugCopyBase->GetHistogramBucket<bClassification>();
+      auto * const aHistogramBucketsDebugCopy = aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatEbmType, bClassification>();
 #endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -66,16 +63,12 @@ public:
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
-      HistogramBucket<bClassification> * const pTotals00 =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
-      HistogramBucket<bClassification> * const pTotals01 =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
-      HistogramBucket<bClassification> * const pTotals10 =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
-      HistogramBucket<bClassification> * const pTotals11 =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
+      auto * const pTotals00 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
+      auto * const pTotals01 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
+      auto * const pTotals10 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
+      auto * const pTotals11 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
       // for interactions we return an interaction score of 0 if any of the dimensions are useless
       EBM_ASSERT(2 == pFeatureGroup->GetCountDimensions());
@@ -176,14 +169,10 @@ public:
                         FloatEbmType weight10 = pTotals10->GetWeightInBucket();
                         FloatEbmType weight11 = pTotals11->GetWeightInBucket();
 
-                        HistogramTargetEntry<bClassification> * const pHistogramEntry00 =
-                           pTotals00->GetHistogramTargetEntry();
-                        HistogramTargetEntry<bClassification> * const pHistogramEntry01 =
-                           pTotals01->GetHistogramTargetEntry();
-                        HistogramTargetEntry<bClassification> * const pHistogramEntry10 =
-                           pTotals10->GetHistogramTargetEntry();
-                        HistogramTargetEntry<bClassification> * const pHistogramEntry11 =
-                           pTotals11->GetHistogramTargetEntry();
+                        auto * const pHistogramEntry00 = pTotals00->GetHistogramTargetEntry();
+                        auto * const pHistogramEntry01 = pTotals01->GetHistogramTargetEntry();
+                        auto * const pHistogramEntry10 = pTotals10->GetHistogramTargetEntry();
+                        auto * const pHistogramEntry11 = pTotals11->GetHistogramTargetEntry();
 
                         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -359,14 +348,13 @@ public:
 
          // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
          // which contains the totals of all buckets
-         const HistogramBucket<bClassification> * const pTotal =
-            reinterpret_cast<const HistogramBucket<bClassification> *>(
+         const auto * const pTotal =
+            reinterpret_cast<const HistogramBucket<FloatEbmType, bClassification> *>(
                reinterpret_cast<const char *>(pAuxiliaryBucketZoneBase) - cBytesPerHistogramBucket);
 
          const FloatEbmType weightAll = pTotal->GetWeightInBucket();
 
-         const HistogramTargetEntry<bClassification> * const pHistogramEntryTotal =
-            pTotal->GetHistogramTargetEntry();
+         const auto * const pHistogramEntryTotal = pTotal->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 

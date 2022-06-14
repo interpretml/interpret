@@ -64,11 +64,11 @@ public:
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
       HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBase();
-      HistogramBucket<bClassification> * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
@@ -347,8 +347,8 @@ public:
       }
 
       // put the histograms right after our slice array
-      HistogramBucket<bClassification> * const aCollapsedHistogramBuckets =
-         reinterpret_cast<HistogramBucket<bClassification> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
+      auto * const aCollapsedHistogramBuckets =
+         reinterpret_cast<HistogramBucket<FloatEbmType, bClassification> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
 
       // TODO: move this into a helper function on the histogram bucket object that zeros N bytes (if we know the bytes).  Mostly as a warning to understand where we're using memset
 
@@ -363,15 +363,15 @@ public:
       // of the value zero in that type.
       static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
       memset(aCollapsedHistogramBuckets, 0, cBytesCollapsedTensor3);
-      const HistogramBucket<bClassification> * const pCollapsedHistogramBucketEnd =
-         reinterpret_cast<HistogramBucket<bClassification> *>(reinterpret_cast<char *>(aCollapsedHistogramBuckets) +
+      const auto * const pCollapsedHistogramBucketEnd =
+         reinterpret_cast<HistogramBucket<FloatEbmType, bClassification> *>(reinterpret_cast<char *>(aCollapsedHistogramBuckets) +
             cBytesCollapsedTensor3);
 
       // we special case the first dimension, so drop it by subtracting
       EBM_ASSERT(&randomSplitState[pFeatureGroup->GetCountSignificantDimensions() - size_t { 1 }] == pStateInit);
 
-      const HistogramBucket<bClassification> * pHistogramBucket = aHistogramBuckets;
-      HistogramBucket<bClassification> * pCollapsedHistogramBucket1 = aCollapsedHistogramBuckets;
+      const auto * pHistogramBucket = aHistogramBuckets;
+      auto * pCollapsedHistogramBucket1 = aCollapsedHistogramBuckets;
 
       {
       move_next_slice:;
@@ -383,8 +383,8 @@ public:
          // super critical inner loop without overburdening the CPU registers when we execute the outer loop.
          const size_t * pcItemsInNextSliceOrBytesInCurrentSlice = acItemsInNextSliceOrBytesInCurrentSlice;
          do {
-            const HistogramBucket<bClassification> * const pHistogramBucketSliceEnd = 
-               reinterpret_cast<const HistogramBucket<bClassification> *>(
+            const auto * const pHistogramBucketSliceEnd =
+               reinterpret_cast<const HistogramBucket<FloatEbmType, bClassification> *>(
                reinterpret_cast<const char *>(pHistogramBucket) + *pcItemsInNextSliceOrBytesInCurrentSlice);
 
             do {
@@ -394,12 +394,12 @@ public:
                // we're walking through all buckets, so just move to the next one in the flat array, 
                // with the knowledge that we'll figure out it's multi-dimenional index below
                pHistogramBucket = 
-                  GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucket, 1);
+                  GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucket, 1);
 
             } while(LIKELY(pHistogramBucketSliceEnd != pHistogramBucket));
 
             pCollapsedHistogramBucket1 = 
-               GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCollapsedHistogramBucket1, 1);
+               GetHistogramBucketByIndex(cBytesPerHistogramBucket, pCollapsedHistogramBucket1, 1);
 
             ++pcItemsInNextSliceOrBytesInCurrentSlice;
          } while(PREDICTABLE(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice));
@@ -412,7 +412,7 @@ public:
                // jump over it on the first loop, but I wasn't able to make the Visual Studio compiler do it
 
                pState->m_cItemsInSliceRemaining = cItemsInSliceRemaining;
-               pCollapsedHistogramBucket1 = reinterpret_cast<HistogramBucket<bClassification> *>(
+               pCollapsedHistogramBucket1 = reinterpret_cast<HistogramBucket<FloatEbmType, bClassification> *>(
                   reinterpret_cast<char *>(pCollapsedHistogramBucket1) -
                   pState->m_cBytesSubtractResetCollapsedHistogramBucket);
 
@@ -524,12 +524,11 @@ public:
       }
 
       FloatEbmType * pUpdate = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-      HistogramBucket<bClassification> * pCollapsedHistogramBucket2 = aCollapsedHistogramBuckets;
+      auto * pCollapsedHistogramBucket2 = aCollapsedHistogramBuckets;
 
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          do {
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
-               pCollapsedHistogramBucket2->GetHistogramTargetEntry();
+            auto * const pHistogramTargetEntry = pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iVector].m_sumGradients);
@@ -541,8 +540,7 @@ public:
                *pUpdate = update;
                ++pUpdate;
             }
-            pCollapsedHistogramBucket2 = GetHistogramBucketByIndex<bClassification>(
-               cBytesPerHistogramBucket, pCollapsedHistogramBucket2, 1);
+            pCollapsedHistogramBucket2 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pCollapsedHistogramBucket2, 1);
          } while(pCollapsedHistogramBucketEnd != pCollapsedHistogramBucket2);
       } else {
          do {
@@ -565,8 +563,7 @@ public:
                   ++pUpdate;
                }
             } else {
-               HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
-                  pCollapsedHistogramBucket2->GetHistogramTargetEntry();
+               auto * const pHistogramTargetEntry = pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                FloatEbmType zeroLogit = FloatEbmType { 0 };
@@ -598,7 +595,7 @@ public:
                   ++pUpdate;
                }
             }
-            pCollapsedHistogramBucket2 = GetHistogramBucketByIndex<bClassification>(
+            pCollapsedHistogramBucket2 = GetHistogramBucketByIndex(
                cBytesPerHistogramBucket, pCollapsedHistogramBucket2, 1);
          } while(pCollapsedHistogramBucketEnd != pCollapsedHistogramBucket2);
       }

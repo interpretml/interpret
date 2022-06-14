@@ -165,20 +165,20 @@ public:
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
       struct FastTotalState {
-         HistogramBucket<bClassification> * m_pDimensionalCur;
-         HistogramBucket<bClassification> * m_pDimensionalWrap;
-         HistogramBucket<bClassification> * m_pDimensionalFirst;
+         HistogramBucket<FloatEbmType, bClassification> * m_pDimensionalCur;
+         HistogramBucket<FloatEbmType, bClassification> * m_pDimensionalWrap;
+         HistogramBucket<FloatEbmType, bClassification> * m_pDimensionalFirst;
          size_t m_iCur;
          size_t m_cBins;
       };
 
       LOG_0(TraceLevelVerbose, "Entered BuildFastTotals");
 
-      HistogramBucket<bClassification> * pBucketAuxiliaryBuildZone =
-         pBucketAuxiliaryBuildZoneBase->GetHistogramBucket<bClassification>();
+      auto * pBucketAuxiliaryBuildZone =
+         pBucketAuxiliaryBuildZoneBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
-      HistogramBucket<bClassification> * const aHistogramBuckets = 
-         aHistogramBucketBase->GetHistogramBucket<bClassification>();
+      auto * const aHistogramBuckets =
+         aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       // TODO: we can get rid of the cCompilerDimensions aspect here by making the 1 or 2 inner loops register/pointer
       //       based and then having a stack based pointer system like the RandomSplitState class in PartitionRandomBoostingInternal
@@ -193,8 +193,8 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
       FastTotalState fastTotalState[k_cDimensionsMax];
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
@@ -217,7 +217,7 @@ public:
                pFastTotalStateInitialize->m_pDimensionalCur = pBucketAuxiliaryBuildZone;
                // when we exit, pBucketAuxiliaryBuildZone should be == to aHistogramBucketsEndDebug, which is legal in C++ since it doesn't extend beyond 1 
                // item past the end of the array
-               pBucketAuxiliaryBuildZone = GetHistogramBucketByIndex<bClassification>(
+               pBucketAuxiliaryBuildZone = GetHistogramBucketByIndex(
                   cBytesPerHistogramBucket,
                   pBucketAuxiliaryBuildZone,
                   multiply
@@ -233,9 +233,9 @@ public:
                   // if this isn't the last iteration, then we'll actually be using this memory, so the entire bucket had better be useable
                   EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) + cBytesPerHistogramBucket <= aHistogramBucketsEndDebug);
                }
-               for(HistogramBucket<bClassification> * pDimensionalCur = pFastTotalStateInitialize->m_pDimensionalCur;
+               for(auto * pDimensionalCur = pFastTotalStateInitialize->m_pDimensionalCur;
                   pBucketAuxiliaryBuildZone != pDimensionalCur;
-                  pDimensionalCur = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pDimensionalCur, 1)) 
+                  pDimensionalCur = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pDimensionalCur, 1)) 
                {
                   pDimensionalCur->AssertZero(cVectorLength);
                }
@@ -255,27 +255,27 @@ public:
 
 #ifndef NDEBUG
 
-      HistogramBucket<bClassification> * const pDebugBucket =
-         EbmMalloc<HistogramBucket<bClassification>>(1, cBytesPerHistogramBucket);
+      auto * const pDebugBucket = 
+         EbmMalloc<HistogramBucket<FloatEbmType, bClassification>>(1, cBytesPerHistogramBucket);
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * aHistogramBucketsDebugCopy =
-         aHistogramBucketsDebugCopyBase->GetHistogramBucket<bClassification>();
+      auto * aHistogramBucketsDebugCopy =
+         aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
 #endif //NDEBUG
 
-      HistogramBucket<bClassification> * pHistogramBucket = aHistogramBuckets;
+      auto * pHistogramBucket = aHistogramBuckets;
 
       while(true) {
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
 
-         HistogramBucket<bClassification> * pAddPrev = pHistogramBucket;
+         auto * pAddPrev = pHistogramBucket;
          size_t iDimension = cSignificantDimensions;
          do {
             --iDimension;
-            HistogramBucket<bClassification> * pAddTo = fastTotalState[iDimension].m_pDimensionalCur;
+            auto * pAddTo = fastTotalState[iDimension].m_pDimensionalCur;
             pAddTo->Add(*pAddPrev, cVectorLength);
             pAddPrev = pAddTo;
-            pAddTo = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAddTo, 1);
+            pAddTo = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAddTo, 1);
             if(pAddTo == fastTotalState[iDimension].m_pDimensionalWrap) {
                pAddTo = fastTotalState[iDimension].m_pDimensionalFirst;
             }
@@ -305,7 +305,7 @@ public:
 
          // we're walking through all buckets, so just move to the next one in the flat array, 
          // with the knowledge that we'll figure out it's multi-dimenional index below
-         pHistogramBucket = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucket, 1);
+         pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucket, 1);
 
          FastTotalState * pFastTotalState = &fastTotalState[0];
          while(true) {
@@ -320,8 +320,8 @@ public:
             const char * const pEnd = reinterpret_cast<char *>(pFastTotalState->m_pDimensionalWrap);
             EBM_ASSERT(pCur != pEnd);
             do {
-               HistogramBucket<bClassification> * pHistogramBucketCur =
-                  reinterpret_cast<HistogramBucket<bClassification> *>(pCur);
+               auto * pHistogramBucketCur =
+                  reinterpret_cast<HistogramBucket<FloatEbmType, bClassification> *>(pCur);
                pHistogramBucketCur->Zero(cVectorLength);
                pCur += cBytesPerHistogramBucket;
             } while(pEnd != pCur);
@@ -572,7 +572,7 @@ extern void TensorTotalsBuild(
 //   if(nullptr != aHistogramBucketsDebugCopy) {
 //      // if we can't obtain the memory, then don't do the comparison and exit
 //      memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
-//      pDebugBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBucketsDebugCopy, cTotalBucketsDebug);
+//      pDebugBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsDebugCopy, cTotalBucketsDebug);
 //   }
 //#endif // NDEBUG
 //
@@ -599,7 +599,7 @@ extern void TensorTotalsBuild(
 //   while(true) {
 //      pCurrentIndexAndCountBins->m_iCur = iBucket;
 //      // we're walking through all buckets, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
-//      pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, 1);
+//      pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucket, 1);
 //
 //   skip_intro:
 //
@@ -617,7 +617,7 @@ extern void TensorTotalsBuild(
 //               if(0 == pCurrentIndexAndCountBins->m_iCur) {
 //                  goto skip_group;
 //               }
-//               pTargetHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pTargetHistogramBucket, multiplyDimension);
+//               pTargetHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pTargetHistogramBucket, multiplyDimension);
 //               bPositive = !bPositive;
 //            }
 //            DO: ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> can we eliminate the multiplication by storing the multiples instead of the cBins?
@@ -701,7 +701,7 @@ extern void TensorTotalsBuild(
 //   if(nullptr != aHistogramBucketsDebugCopy) {
 //      // if we can't obtain the memory, then don't do the comparison and exit
 //      memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
-//      pDebugBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBucketsDebugCopy, cTotalBucketsDebug);
+//      pDebugBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsDebugCopy, cTotalBucketsDebug);
 //   }
 //#endif // NDEBUG
 //
@@ -730,7 +730,7 @@ extern void TensorTotalsBuild(
 //   while(true) {
 //      pCurrentIndexAndCountBins->multipliedIndexCur = multipliedIndexCur;
 //      // we're walking through all buckets, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
-//      pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, 1);
+//      pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucket, 1);
 //
 //   skip_intro:
 //
@@ -749,7 +749,7 @@ extern void TensorTotalsBuild(
 //               if(0 == pCurrentIndexAndCountBins->multipliedIndexCur) {
 //                  goto skip_group;
 //               }
-//               pTargetHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pTargetHistogramBucket, multipleTotal);
+//               pTargetHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pTargetHistogramBucket, multipleTotal);
 //               bPositive = !bPositive;
 //            }
 //            multipleTotal = pCurrentIndexAndCountBins->multipleTotal;
@@ -849,7 +849,7 @@ extern void TensorTotalsBuild(
 //   // TODO: If we have a compiler cVectorLength, we could put the pPrevious object into our stack since it would have a defined size.  We could then eliminate having to access it through a pointer and we'd just access through the stack pointer
 //   // TODO: can we put HistogramBucket object onto the stack in other places too?
 //   // we reserved 1 extra space for these when we binned our buckets
-//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pPrevious = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, -multipleTotalInitialize);
+//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pPrevious = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, -multipleTotalInitialize);
 //   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pPrevious, aHistogramBucketsEndDebug);
 //
 //#ifndef NDEBUG
@@ -921,11 +921,11 @@ extern void TensorTotalsBuild(
 //            // the cost of a branch misprediction is probably equal to one complete loop above, but we're reducing it by more than that, and keeping the code more compact by not 
 //            // exploding the amount of code based on the number of possible dimensions
 //         } while(LIKELY(0 != permuteVectorDestroy));
-//         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), aHistogramBucketsEndDebug);
+//         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), aHistogramBucketsEndDebug);
 //         if(UNPREDICTABLE(0 != (1 & evenOdd))) {
-//            pHistogramBucket->Add(*GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
+//            pHistogramBucket->Add(*GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
 //         } else {
-//            pHistogramBucket->Subtract(*GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
+//            pHistogramBucket->Subtract(*GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
 //         }
 //      skip_group:
 //         ++permuteVector;
@@ -945,7 +945,7 @@ extern void TensorTotalsBuild(
 //#endif // NDEBUG
 //
 //      // we're walking through all buckets, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
-//      pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, 1);
+//      pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucket, 1);
 //
 //      // TODO: we are putting storage that would exist in our array from the innermost loop into registers (multipliedIndexCur0 & multipleTotal0).  We can probably do this in many other places as well that use this pattern of indexing via an array
 //
@@ -1034,13 +1034,13 @@ extern void TensorTotalsBuild(
 //         for(size_t iBin2 = 0; iBin2 < cBinsDimension2 - 1; ++iBin2) {
 //            FloatEbmType splittingScore;
 //
-//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowLow = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 0);
-//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighLow = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 1);
-//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowHigh = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 2);
-//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighHigh = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 3);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowLow = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 0);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighLow = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 1);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowHigh = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 2);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighHigh = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 3);
 //
-//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsTarget = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 4);
-//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsOther = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 5);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsTarget = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 4);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsOther = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 5);
 //
 //            aiStart[0] = 0;
 //            aiStart[1] = 0;

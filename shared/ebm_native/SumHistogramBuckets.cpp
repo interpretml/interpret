@@ -50,10 +50,10 @@ public:
 
       HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBase();
 
-      const HistogramBucket<bClassification> * const aHistogramBuckets = 
-         aHistogramBucketsBase->GetHistogramBucket<bClassification>();
-      HistogramTargetEntry<bClassification> * const aSumHistogramTargetEntry = 
-         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<bClassification>();
+      const auto * const aHistogramBuckets = 
+         aHistogramBucketsBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * const aSumHistogramTargetEntry =
+         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<FloatEbmType, bClassification>();
 
       EBM_ASSERT(2 <= cHistogramBuckets); // we pre-filter out features with only one bucket
 
@@ -67,12 +67,12 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
-      const HistogramBucket<bClassification> * pCopyFrom = aHistogramBuckets;
-      const HistogramBucket<bClassification> * pCopyFromEnd =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, cHistogramBuckets);
+      const auto * pCopyFrom = aHistogramBuckets;
+      const auto * pCopyFromEnd = 
+         GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, cHistogramBuckets);
 
       // we do a lot more work in the PartitionOneDimensionalBoosting function per binned bucket entry, so if we can compress it by any amount, then it will probably be a win
       // for binned bucket arrays that have a small set of labels, this loop will be fast and result in no movements.  For binned bucket arrays that are long 
@@ -85,8 +85,7 @@ public:
          weightTotalDebug += pCopyFrom->GetWeightInBucket();
 #endif // NDEBUG
 
-         const HistogramTargetEntry<bClassification> * pHistogramTargetEntry = 
-            pCopyFrom->GetHistogramTargetEntry();
+         const auto * pHistogramTargetEntry = pCopyFrom->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             // when building a tree, we start from one end and sweep to the other.  In order to caluculate
@@ -102,7 +101,7 @@ public:
             aSumHistogramTargetEntry[iVector].Add(pHistogramTargetEntry[iVector]);
          }
 
-         pCopyFrom = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyFrom, 1);
+         pCopyFrom = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pCopyFrom, 1);
       } while(pCopyFromEnd != pCopyFrom);
       EBM_ASSERT(0 == (reinterpret_cast<const char *>(pCopyFrom) - reinterpret_cast<const char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
 
