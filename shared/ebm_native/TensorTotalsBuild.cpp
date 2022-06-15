@@ -319,12 +319,7 @@ public:
             char * pCur = reinterpret_cast<char *>(pFastTotalState->m_pDimensionalFirst);
             const char * const pEnd = reinterpret_cast<char *>(pFastTotalState->m_pDimensionalWrap);
             EBM_ASSERT(pCur != pEnd);
-            do {
-               auto * pHistogramBucketCur =
-                  reinterpret_cast<HistogramBucket<FloatEbmType, bClassification> *>(pCur);
-               pHistogramBucketCur->Zero(cVectorLength);
-               pCur += cBytesPerHistogramBucket;
-            } while(pEnd != pCur);
+            memset(pCur, 0, pEnd - pCur);
 
             ++pFastTotalState;
 

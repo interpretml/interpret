@@ -48,6 +48,21 @@ struct HistogramBucketBase {
    INLINE_ALWAYS const HistogramBucket<TFloat, bClassification> * GetHistogramBucket() const {
       return static_cast<const HistogramBucket<TFloat, bClassification> *>(this);
    }
+
+   INLINE_ALWAYS void Zero(const size_t cBytesPerHistogramBucket, const size_t cBuckets = 1, const size_t iBucket = 0) {
+      // The C standard guarantees that zeroing integer types is a zero, and IEEE-754 guarantees 
+      // that zeroing a floating point is zero.  Our HistogramBucket objects are POD and also only contain
+      // floating point and unsigned integer types
+      //
+      // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
+      // object representation of a signed integer type where the sign bit is zero is a valid object 
+      // representation of the corresponding unsigned type, and shall represent the same value.For any 
+      // integer type, the object representation where all the bits are zero shall be a representation 
+      // of the value zero in that type.
+
+      static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
+      memset(reinterpret_cast<char *>(this) + iBucket * cBytesPerHistogramBucket, 0, cBuckets * cBytesPerHistogramBucket);
+   }
 };
 static_assert(std::is_standard_layout<HistogramBucketBase>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -125,45 +140,10 @@ public:
    }
 
    INLINE_ALWAYS void Copy(const HistogramBucket<TFloat, bClassification> & other, const size_t cVectorLength) {
-      const size_t cBytesPerHistogramBucket = 
-         sizeof(HistogramBucket<TFloat, bClassification>) - sizeof(HistogramTargetEntry<TFloat, bClassification>) +
-         sizeof(HistogramTargetEntry<TFloat, bClassification>) * cVectorLength;
+      const size_t cBytesPerHistogramBucket = sizeof(HistogramBucket) - sizeof(m_aHistogramTargetEntry) +
+         sizeof(m_aHistogramTargetEntry[0]) * cVectorLength;
 
       memcpy(this, &other, cBytesPerHistogramBucket);
-   }
-
-   INLINE_ALWAYS void Zero(const size_t cVectorLength) {
-      // TODO: make this a function that can operate on an array of HistogramBucket objects with given total size 
-      //
-      // probably we should get rid of this function, and any others that zero via non-memset ways.  We should use memset instead.  Traditionally
-      // C/C++ only guaranteed that memset would lead to zeroed integers, but I think size_t would also quality
-      // (check this), and if we have IEEE 754 floats (which we can check), then zeroed memory is a zeroed float
-
-      // C standard guarantees that zeroing integer types (size_t) is a zero, and IEEE 754 guarantees 
-      // that zeroing a floating point is zero.  Our HistogramBucket objects are POD and also only contain
-      // floating point types and size_t
-      //
-      // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
-      // object representation of a signed integer type where the sign bit is zero is a valid object 
-      // representation of the corresponding unsigned type, and shall represent the same value.For any 
-      // integer type, the object representation where all the bits are zero shall be a representation 
-      // of the value zero in that type.
-      //
-      // static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
-      // memset(some_pointer, 0, my_size);
-
-
-      m_cSamplesInBucket = size_t { 0 };
-      m_weightInBucket = size_t { 0 };
-      auto * pHistogramTargetEntry = GetHistogramTargetEntry();
-      const auto * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
-      EBM_ASSERT(1 <= cVectorLength);
-      do {
-         pHistogramTargetEntry->Zero();
-         ++pHistogramTargetEntry;
-      } while(pHistogramTargetEntryEnd != pHistogramTargetEntry);
-
-      AssertZero(cVectorLength);
    }
 
    INLINE_ALWAYS void AssertZero(const size_t cVectorLength) const {
@@ -196,17 +176,19 @@ static_assert(std::is_pod<HistogramBucket<float, true>>::value && std::is_pod<Hi
 
 template<typename TFloat>
 INLINE_ALWAYS bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<TFloat, true>) :
-      sizeof(HistogramTargetEntry<TFloat, false>);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<TFloat>(bClassification);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
    }
 
-   const size_t cBytesHistogramBucketComponent = bClassification ?
-      (sizeof(HistogramBucket<TFloat, true>) - sizeof(HistogramTargetEntry<TFloat, true>)) :
-      (sizeof(HistogramBucket<TFloat, false>) - sizeof(HistogramTargetEntry<TFloat, false>));
+   size_t cBytesHistogramBucketComponent;
+   if(bClassification) {
+      cBytesHistogramBucketComponent = sizeof(HistogramBucket<TFloat, true>);
+   } else {
+      cBytesHistogramBucketComponent = sizeof(HistogramBucket<TFloat, false>);
+   }
+   cBytesHistogramBucketComponent -= cBytesHistogramTargetEntry;
 
    if(UNLIKELY(IsAddError(cBytesHistogramBucketComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
@@ -221,13 +203,15 @@ INLINE_ALWAYS size_t GetHistogramBucketSize(const bool bClassification, const si
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
 
-   const size_t cBytesHistogramBucketComponent = bClassification ?
-      sizeof(HistogramBucket<TFloat, true>) - sizeof(HistogramTargetEntry<TFloat, true>) :
-      sizeof(HistogramBucket<TFloat, false>) - sizeof(HistogramTargetEntry<TFloat, false>);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<TFloat>(bClassification);
 
-   const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<TFloat, true>) :
-      sizeof(HistogramTargetEntry<TFloat, false>);
+   size_t cBytesHistogramBucketComponent;
+   if(bClassification) {
+      cBytesHistogramBucketComponent = sizeof(HistogramBucket<TFloat, true>);
+   } else {
+      cBytesHistogramBucketComponent = sizeof(HistogramBucket<TFloat, false>);
+   }
+   cBytesHistogramBucketComponent -= cBytesHistogramTargetEntry;
 
    return cBytesHistogramBucketComponent + cBytesHistogramTargetEntry * cVectorLength;
 }

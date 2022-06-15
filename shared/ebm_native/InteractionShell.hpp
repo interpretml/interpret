@@ -35,6 +35,10 @@ class InteractionShell final {
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
 
+#ifndef NDEBUG
+   const unsigned char * m_aHistogramBucketsEndDebug;
+#endif // NDEBUG
+
 public:
 
    InteractionShell() = default; // preserve our POD status
@@ -99,6 +103,20 @@ public:
 
    HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);
 
+   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBase() {
+      // call this if the histograms were already allocated and we just need the pointer
+      return m_aThreadByteBuffer1;
+   }
+
+#ifndef NDEBUG
+   INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebug() const {
+      return m_aHistogramBucketsEndDebug;
+   }
+
+   INLINE_ALWAYS void SetHistogramBucketsEndDebug(const unsigned char * const val) {
+      m_aHistogramBucketsEndDebug = val;
+   }
+#endif // NDEBUG
 };
 static_assert(std::is_standard_layout<InteractionShell>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

@@ -29,11 +29,15 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinInteraction(
-   InteractionCore * const pInteractionCore,
+extern void BinInteraction(InteractionShell * const pInteractionShell, const FeatureGroup * const pFeatureGroup);
+
+extern void TensorTotalsBuild(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const FeatureGroup * const pFeatureGroup,
+   HistogramBucketBase * pBucketAuxiliaryBuildZone,
    HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
+   , HistogramBucketBase * const aHistogramBucketsDebugCopy
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 );
@@ -135,38 +139,14 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       // already logged
       return Error_OutOfMemory;
    }
-
-   if(bClassification) {
-      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, true>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         auto * const pHistogramBucket = 
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   } else {
-      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, false>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         auto * const pHistogramBucket = 
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   }
-
-   HistogramBucketBase * pAuxiliaryBucketZone =
-      GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);
+   aHistogramBuckets->Zero(cBytesPerHistogramBucket, cTotalBuckets);
 
 #ifndef NDEBUG
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
+   pInteractionShell->SetHistogramBucketsEndDebug(aHistogramBucketsEndDebug);
 #endif // NDEBUG
 
-   BinInteraction(
-      pInteractionCore,
-      pFeatureGroup,
-      aHistogramBuckets
-#ifndef NDEBUG
-      , aHistogramBucketsEndDebug
-#endif // NDEBUG
-   );
+   BinInteraction(pInteractionShell, pFeatureGroup);
 
 #ifndef NDEBUG
    // make a copy of the original binned buckets for debugging purposes
@@ -178,6 +158,9 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
    }
 #endif // NDEBUG
+
+   HistogramBucketBase * pAuxiliaryBucketZone =
+      GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);
 
    TensorTotalsBuild(
       runtimeLearningTypeOrCountTargetClasses,

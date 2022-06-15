@@ -24,17 +24,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void TensorTotalsBuild(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureGroup * const pFeatureGroup,
-   HistogramBucketBase * pBucketAuxiliaryBuildZone,
-   HistogramBucketBase * const aHistogramBuckets
-#ifndef NDEBUG
-   , HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
-);
-
 #ifndef NDEBUG
 
 template<bool bClassification>
@@ -79,7 +68,7 @@ void TensorTotalsSumDebugSlow(
    // we've allocated this, so it should fit
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength));
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
-   pRet->Zero(cVectorLength);
+   pRet->Zero(cBytesPerHistogramBucket);
 
    const size_t cSignficantDimensions = pFeatureGroup->GetCountSignificantDimensions();
 
@@ -295,7 +284,7 @@ void TensorTotalsSum(
    const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cAllBits < k_cBitsForSizeT);
 
-   pRet->Zero(cVectorLength);
+   pRet->Zero(cBytesPerHistogramBucket);
 
    size_t permuteVector = 0;
    do {

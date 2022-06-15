@@ -57,6 +57,21 @@ struct HistogramTargetEntryBase {
    INLINE_ALWAYS const HistogramTargetEntry<TFloat, bClassification> * GetHistogramTargetEntry() const {
       return static_cast<const HistogramTargetEntry<TFloat, bClassification> *>(this);
    }
+
+   INLINE_ALWAYS void Zero(const size_t cBytesPerItem, const size_t cItems = 1) {
+      // The C standard guarantees that zeroing integer types is a zero, and IEEE-754 guarantees 
+      // that zeroing a floating point is zero.  Our HistogramTargetEntry objects are POD and also only contain
+      // floating point and unsigned integer types
+      //
+      // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
+      // object representation of a signed integer type where the sign bit is zero is a valid object 
+      // representation of the corresponding unsigned type, and shall represent the same value.For any 
+      // integer type, the object representation where all the bits are zero shall be a representation 
+      // of the value zero in that type.
+
+      static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
+      memset(this, 0, cItems * cBytesPerItem);
+   }
 };
 static_assert(std::is_standard_layout<HistogramTargetEntryBase>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -116,10 +131,6 @@ struct HistogramTargetEntry<TFloat, true> final : HistogramTargetEntryBase {
       EBM_ASSERT(0 == m_sumGradients);
       EBM_ASSERT(0 == m_sumHessians);
    }
-   INLINE_ALWAYS void Zero() {
-      m_sumGradients = TFloat { 0 };
-      m_sumHessians = TFloat { 0 };
-   }
 };
 static_assert(std::is_standard_layout<HistogramTargetEntry<double, true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -174,9 +185,6 @@ struct HistogramTargetEntry<TFloat, false> final : HistogramTargetEntryBase {
    INLINE_ALWAYS void AssertZero() const {
       EBM_ASSERT(0 == m_sumGradients);
    }
-   INLINE_ALWAYS void Zero() {
-      m_sumGradients = TFloat { 0 };
-   }
 };
 static_assert(std::is_standard_layout<HistogramTargetEntry<double, false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -191,6 +199,15 @@ static_assert(std::is_trivial<HistogramTargetEntry<float, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<HistogramTargetEntry<float, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+template<typename TFloat>
+INLINE_ALWAYS size_t GetHistogramTargetEntrySize(const bool bClassification) {
+   if(bClassification) {
+      return sizeof(HistogramTargetEntry<TFloat, true>);
+   } else {
+      return sizeof(HistogramTargetEntry<TFloat, false>);
+   }
+}
 
 } // DEFINED_ZONE_NAME
 

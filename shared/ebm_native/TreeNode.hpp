@@ -448,18 +448,20 @@ static_assert(std::is_trivial<TreeNode<true>>::value && std::is_trivial<TreeNode
 static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-INLINE_ALWAYS size_t GetTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<FloatEbmType, true>) :
-      sizeof(HistogramTargetEntry<FloatEbmType, false>);
+INLINE_ALWAYS bool GetTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
    }
 
-   const size_t cBytesTreeNodeComponent = bClassification ?
-      (sizeof(TreeNode<true>) - sizeof(HistogramTargetEntry<FloatEbmType, true>)) :
-      (sizeof(TreeNode<false>) - sizeof(HistogramTargetEntry<FloatEbmType, false>));
+   size_t cBytesTreeNodeComponent;
+   if(bClassification) {
+      cBytesTreeNodeComponent = sizeof(TreeNode<true>);
+   } else {
+      cBytesTreeNodeComponent = sizeof(TreeNode<false>);
+   }
+   cBytesTreeNodeComponent -= cBytesHistogramTargetEntry;
 
    if(UNLIKELY(IsAddError(cBytesTreeNodeComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
@@ -469,13 +471,15 @@ INLINE_ALWAYS size_t GetTreeNodeSizeOverflow(const bool bClassification, const s
 }
 
 INLINE_ALWAYS size_t GetTreeNodeSize(const bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesTreeNodeComponent = bClassification ?
-      sizeof(TreeNode<true>) - sizeof(HistogramTargetEntry<FloatEbmType, true>) :
-      sizeof(TreeNode<false>) - sizeof(HistogramTargetEntry<FloatEbmType, false>);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
 
-   const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<FloatEbmType, true>) :
-      sizeof(HistogramTargetEntry<FloatEbmType, false>);
+   size_t cBytesTreeNodeComponent;
+   if(bClassification) {
+      cBytesTreeNodeComponent = sizeof(TreeNode<true>);
+   } else {
+      cBytesTreeNodeComponent = sizeof(TreeNode<false>);
+   }
+   cBytesTreeNodeComponent -= cBytesHistogramTargetEntry;
 
    return cBytesTreeNodeComponent + cBytesHistogramTargetEntry * cVectorLength;
 }

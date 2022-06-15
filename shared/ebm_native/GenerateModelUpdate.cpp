@@ -115,12 +115,7 @@ static ErrorEbmType BoostZeroDimensional(
       // already logged
       return Error_OutOfMemory;
    }
-
-   if(bClassification) {
-      pHistogramBucket->GetHistogramBucket<FloatEbmType, true>()->Zero(cVectorLength);
-   } else {
-      pHistogramBucket->GetHistogramBucket<FloatEbmType, false>()->Zero(cVectorLength);
-   }
+   pHistogramBucket->Zero(cBytesPerHistogramBucket);
 
 #ifndef NDEBUG
    pBoosterShell->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(pHistogramBucket) + cBytesPerHistogramBucket);
@@ -239,33 +234,11 @@ static ErrorEbmType BoostSingleDimensional(
       // already logged
       return Error_OutOfMemory;
    }
+   aHistogramBuckets->Zero(cBytesPerHistogramBucket, cHistogramBuckets);
 
-   HistogramTargetEntryBase * const aSumHistogramTargetEntry =
-      pBoosterShell->GetSumHistogramTargetEntryArray();
-
-   if(bClassification) {
-      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, true>();
-      for(size_t i = 0; i < cHistogramBuckets; ++i) {
-         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-
-      auto * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<FloatEbmType, true>();
-      for(size_t i = 0; i < cVectorLength; ++i) {
-         aSumHistogramTargetEntryLocal[i].Zero();
-      }
-   } else {
-      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, false>();
-      for(size_t i = 0; i < cHistogramBuckets; ++i) {
-         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-
-      auto * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<FloatEbmType, false>();
-      for(size_t i = 0; i < cVectorLength; ++i) {
-         aSumHistogramTargetEntryLocal[i].Zero();
-      }
-   }
+   HistogramTargetEntryBase * const aSumHistogramTargetEntry = pBoosterShell->GetSumHistogramTargetEntryArray();
+   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
+   aSumHistogramTargetEntry->Zero(cBytesPerHistogramTargetEntry, cVectorLength);
 
 #ifndef NDEBUG
    pBoosterShell->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer);
@@ -379,26 +352,7 @@ static ErrorEbmType BoostMultiDimensional(
       // already logged
       return Error_OutOfMemory;
    }
-
-   if(bClassification) {
-      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, true>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   } else {
-      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, false>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   }
-
-   HistogramBucketBase * pAuxiliaryBucketZone = GetHistogramBucketByIndex(
-      cBytesPerHistogramBucket,
-      aHistogramBuckets,
-      cTotalBucketsMainSpace
-   );
+   aHistogramBuckets->Zero(cBytesPerHistogramBucket, cTotalBuckets);
 
 #ifndef NDEBUG
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
@@ -422,6 +376,12 @@ static ErrorEbmType BoostMultiDimensional(
       memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
    }
 #endif // NDEBUG
+
+   HistogramBucketBase * pAuxiliaryBucketZone = GetHistogramBucketByIndex(
+      cBytesPerHistogramBucket,
+      aHistogramBuckets,
+      cTotalBucketsMainSpace
+   );
 
    TensorTotalsBuild(
       runtimeLearningTypeOrCountTargetClasses,
@@ -623,20 +583,7 @@ static ErrorEbmType BoostRandom(
       // already logged
       return Error_OutOfMemory;
    }
-
-   if(bClassification) {
-      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, true>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   } else {
-      auto * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<FloatEbmType, false>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         auto * const pHistogramBucket = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   }
+   aHistogramBuckets->Zero(cBytesPerHistogramBucket, cTotalBuckets);
 
 #ifndef NDEBUG
    pBoosterShell->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer);

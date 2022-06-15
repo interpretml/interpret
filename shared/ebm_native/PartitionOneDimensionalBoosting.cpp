@@ -134,10 +134,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // So, DO NOT DO: pBoosterShell->GetSumHistogramTargetEntryArray()->
    //   GetHistogramTargetEntry<bClassification>();
    auto * const aSumHistogramTargetEntryLeft = pBoosterShell->GetSumHistogramTargetEntryLeft<bClassification>();
-
-   for(size_t i = 0; i < cVectorLength; ++i) {
-      aSumHistogramTargetEntryLeft[i].Zero();
-   }
+   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
+   aSumHistogramTargetEntryLeft->Zero(cBytesPerHistogramTargetEntry, cVectorLength);
 
    auto * const aSumHistogramTargetEntryRight = pBoosterShell->GetSumHistogramTargetEntryRight<bClassification>();
    const auto * pHistogramTargetEntryInit = pTreeNode->GetHistogramTargetEntry();

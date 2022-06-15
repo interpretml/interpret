@@ -81,17 +81,19 @@ static_assert(std::is_pod<TreeSweep<true>>::value && std::is_pod<TreeSweep<false
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 INLINE_ALWAYS bool GetTreeSweepSizeOverflow(const bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<FloatEbmType, true>) :
-      sizeof(HistogramTargetEntry<FloatEbmType, false>);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
    }
 
-   const size_t cBytesTreeSweepComponent = bClassification ?
-      (sizeof(TreeSweep<true>) - sizeof(HistogramTargetEntry<FloatEbmType, true>)) :
-      (sizeof(TreeSweep<false>) - sizeof(HistogramTargetEntry<FloatEbmType, false>));
+   size_t cBytesTreeSweepComponent;
+   if(bClassification) {
+      cBytesTreeSweepComponent = sizeof(TreeSweep<true>);
+   } else {
+      cBytesTreeSweepComponent = sizeof(TreeSweep<false>);
+   }
+   cBytesTreeSweepComponent -= cBytesHistogramTargetEntry;
 
    if(UNLIKELY(IsAddError(cBytesTreeSweepComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
@@ -101,13 +103,15 @@ INLINE_ALWAYS bool GetTreeSweepSizeOverflow(const bool bClassification, const si
 }
 
 INLINE_ALWAYS size_t GetTreeSweepSize(bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesTreeSweepComponent = bClassification ?
-      sizeof(TreeSweep<true>) - sizeof(HistogramTargetEntry<FloatEbmType, true>) :
-      sizeof(TreeSweep<false>) - sizeof(HistogramTargetEntry<FloatEbmType, false>);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
 
-   const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<FloatEbmType, true>) :
-      sizeof(HistogramTargetEntry<FloatEbmType, false>);
+   size_t cBytesTreeSweepComponent;
+   if(bClassification) {
+      cBytesTreeSweepComponent = sizeof(TreeSweep<true>);
+   } else {
+      cBytesTreeSweepComponent = sizeof(TreeSweep<false>);
+   }
+   cBytesTreeSweepComponent -= cBytesHistogramTargetEntry;
 
    return cBytesTreeSweepComponent + cBytesHistogramTargetEntry * cVectorLength;
 }
