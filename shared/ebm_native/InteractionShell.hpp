@@ -29,14 +29,17 @@ class InteractionShell final {
 
    InteractionCore * m_pInteractionCore;
 
-   HistogramBucketBase * m_aThreadByteBuffer1;
-   size_t m_cThreadByteBufferCapacity1;
+   HistogramBucketBase * m_aThreadByteBuffer1Fast;
+   size_t m_cThreadByteBufferCapacity1Fast;
+
+   HistogramBucketBase * m_aThreadByteBuffer1Big;
+   size_t m_cThreadByteBufferCapacity1Big;
 
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
 
 #ifndef NDEBUG
-   const unsigned char * m_aHistogramBucketsEndDebug;
+   const unsigned char * m_aHistogramBucketsEndDebugFast;
 #endif // NDEBUG
 
 public:
@@ -50,8 +53,11 @@ public:
       m_handleVerification = k_handleVerificationOk;
       m_pInteractionCore = nullptr;
 
-      m_aThreadByteBuffer1 = nullptr;
-      m_cThreadByteBufferCapacity1 = 0;
+      m_aThreadByteBuffer1Fast = nullptr;
+      m_cThreadByteBufferCapacity1Fast = 0;
+
+      m_aThreadByteBuffer1Big = nullptr;
+      m_cThreadByteBufferCapacity1Big = 0;
 
       m_cLogEnterMessages = 1000;
       m_cLogExitMessages = 1000;
@@ -101,20 +107,27 @@ public:
       return &m_cLogExitMessages;
    }
 
-   HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);
+   HistogramBucketBase * GetHistogramBucketBaseFast(size_t cBytesRequired);
 
-   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBase() {
+   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBaseFast() {
       // call this if the histograms were already allocated and we just need the pointer
-      return m_aThreadByteBuffer1;
+      return m_aThreadByteBuffer1Fast;
+   }
+
+   HistogramBucketBase * GetHistogramBucketBaseBig(size_t cBytesRequired);
+
+   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBaseBig() {
+      // call this if the histograms were already allocated and we just need the pointer
+      return m_aThreadByteBuffer1Big;
    }
 
 #ifndef NDEBUG
-   INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebug() const {
-      return m_aHistogramBucketsEndDebug;
+   INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebugFast() const {
+      return m_aHistogramBucketsEndDebugFast;
    }
 
-   INLINE_ALWAYS void SetHistogramBucketsEndDebug(const unsigned char * const val) {
-      m_aHistogramBucketsEndDebug = val;
+   INLINE_ALWAYS void SetHistogramBucketsEndDebugFast(const unsigned char * const val) {
+      m_aHistogramBucketsEndDebugFast = val;
    }
 #endif // NDEBUG
 };

@@ -348,6 +348,7 @@ ErrorEbmType BoosterCore::Create(
 
          size_t cSignificantDimensions = 0;
          ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
+         size_t cTensorBins = 1;
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(TraceLevelInfo, "INFO BoosterCore::Create empty feature group");
          } else {
@@ -356,7 +357,6 @@ ErrorEbmType BoosterCore::Create(
                return Error_IllegalParamValue;
             }
             size_t cEquivalentSplits = 1;
-            size_t cTensorBins = 1;
             FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
             FeatureGroupEntry * pFeatureGroupEntryEnd = pFeatureGroupEntry + cDimensions;
             do {
@@ -426,6 +426,7 @@ ErrorEbmType BoosterCore::Create(
                cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
             }
          }
+         pFeatureGroup->SetCountTensorBins(cTensorBins);
          pFeatureGroup->SetCountSignificantFeatures(cSignificantDimensions);
          pFeatureGroup->SetBitPack(cItemsPerBitPack);
 

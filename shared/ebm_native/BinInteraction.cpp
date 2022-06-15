@@ -40,7 +40,7 @@ public:
 
       LOG_0(TraceLevelVerbose, "Entered BinInteractionInternal");
 
-      HistogramBucketBase * const aHistogramBucketBase = pInteractionShell->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketBase = pInteractionShell->GetHistogramBucketBaseFast();
       auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
@@ -107,7 +107,7 @@ public:
 
          auto * pHistogramBucketEntry = 
             GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pInteractionShell->GetHistogramBucketsEndDebug());
+         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pInteractionShell->GetHistogramBucketsEndDebugFast());
          pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + 1);
          FloatEbmType weight = 1;
          if(nullptr != pWeight) {

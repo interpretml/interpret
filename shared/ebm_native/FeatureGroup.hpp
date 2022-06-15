@@ -41,6 +41,7 @@ class FeatureGroup final {
    size_t m_cDimensions;
    size_t m_cSignificantDimensions;
    size_t m_iInputData;
+   size_t m_cTensorBins;
    int m_cLogEnterGenerateModelUpdateMessages;
    int m_cLogExitGenerateModelUpdateMessages;
    int m_cLogEnterApplyModelUpdateMessages;
@@ -94,6 +95,14 @@ public:
 
    INLINE_ALWAYS size_t GetIndexInputData() const noexcept {
       return m_iInputData;
+   }
+
+   INLINE_ALWAYS void SetCountTensorBins(const size_t cTensorBins) noexcept {
+      m_cTensorBins = cTensorBins;
+   }
+
+   INLINE_ALWAYS size_t GetCountTensorBins() const noexcept {
+      return m_cTensorBins;
    }
 
    INLINE_ALWAYS size_t GetCountDimensions() const noexcept {

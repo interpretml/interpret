@@ -25,7 +25,8 @@ void InteractionShell::Free(InteractionShell * const pInteractionShell) {
    LOG_0(TraceLevelInfo, "Entered InteractionShell::Free");
 
    if(nullptr != pInteractionShell) {
-      free(pInteractionShell->m_aThreadByteBuffer1);
+      free(pInteractionShell->m_aThreadByteBuffer1Fast);
+      free(pInteractionShell->m_aThreadByteBuffer1Big);
       InteractionCore::Free(pInteractionShell->m_pInteractionCore);
       
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -50,18 +51,35 @@ InteractionShell * InteractionShell::Create() {
    return pNew;
 }
 
-HistogramBucketBase * InteractionShell::GetHistogramBucketBase(size_t cBytesRequired) {
-   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
-   if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
+HistogramBucketBase * InteractionShell::GetHistogramBucketBaseFast(size_t cBytesRequired) {
+   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1Fast;
+   if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
       cBytesRequired <<= 1;
-      m_cThreadByteBufferCapacity1 = cBytesRequired;
-      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1 to %zu", cBytesRequired);
+      m_cThreadByteBufferCapacity1Fast = cBytesRequired;
+      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
 
       free(aBuffer);
       aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
-      m_aThreadByteBuffer1 = aBuffer; // store it before checking it incase it's null so that we don't free old memory
+      m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING InteractionShell::GetHistogramBucketBase OutOfMemory");
+         LOG_0(TraceLevelWarning, "WARNING InteractionShell::GetHistogramBucketBaseFast OutOfMemory");
+      }
+   }
+   return aBuffer;
+}
+
+HistogramBucketBase * InteractionShell::GetHistogramBucketBaseBig(size_t cBytesRequired) {
+   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1Big;
+   if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
+      cBytesRequired <<= 1;
+      m_cThreadByteBufferCapacity1Big = cBytesRequired;
+      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
+
+      free(aBuffer);
+      aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
+      m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
+      if(nullptr == aBuffer) {
+         LOG_0(TraceLevelWarning, "WARNING InteractionShell::GetHistogramBucketBaseBig OutOfMemory");
       }
    }
    return aBuffer;
