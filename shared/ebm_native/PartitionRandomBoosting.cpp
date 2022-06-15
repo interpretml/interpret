@@ -67,7 +67,7 @@ public:
       EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
-      HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBaseBig();
       auto * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
@@ -388,7 +388,7 @@ public:
                reinterpret_cast<const char *>(pHistogramBucket) + *pcItemsInNextSliceOrBytesInCurrentSlice);
 
             do {
-               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, pBoosterShell->GetHistogramBucketsEndDebug());
+               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, pBoosterShell->GetHistogramBucketsEndDebugBig());
                pCollapsedHistogramBucket1->Add(*pHistogramBucket, cVectorLength);
 
                // we're walking through all buckets, so just move to the next one in the flat array, 

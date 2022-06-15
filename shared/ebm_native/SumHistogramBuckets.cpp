@@ -48,7 +48,7 @@ public:
       HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
          pBoosterShell->GetSumHistogramTargetEntryArray();
 
-      HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBaseBig();
 
       const auto * const aHistogramBuckets = 
          aHistogramBucketsBase->GetHistogramBucket<FloatEbmType, bClassification>();
@@ -79,7 +79,7 @@ public:
       // and have many different labels, we are more likley to find bins with zero items, and that's where we get a win by compressing it down to just the 
       // non-zero binned buckets, even though this requires one more member variable in the binned bucket array
       do {
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, pBoosterShell->GetHistogramBucketsEndDebug());
+         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, pBoosterShell->GetHistogramBucketsEndDebugBig());
 #ifndef NDEBUG
          cSamplesTotalDebug += pCopyFrom->GetCountSamplesInBucket();
          weightTotalDebug += pCopyFrom->GetWeightInBucket();

@@ -183,7 +183,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
    EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
    do {
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, pBoosterShell->GetHistogramBucketsEndDebug());
+      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, pBoosterShell->GetHistogramBucketsEndDebugBig());
 
       const size_t CHANGE_cSamples = pHistogramBucketEntryCur->GetCountSamplesInBucket();
       cSamplesRight -= CHANGE_cSamples;
@@ -367,7 +367,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    const auto * const BEST_pHistogramBucketEntryNext = 
       GetHistogramBucketByIndex(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
-   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, pBoosterShell->GetHistogramBucketsEndDebug());
+   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, pBoosterShell->GetHistogramBucketsEndDebugBig());
 
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
@@ -414,7 +414,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pTreeNode->AFTER_SetTreeNodeChildren(pTreeNodeChildrenAvailableStorageSpaceCur);
    pTreeNode->AFTER_SetSplitGain(BEST_gain);
 
-   HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
+   HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseBig();
    const auto * const aHistogramBucket = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
    EBM_ASSERT(reinterpret_cast<const char *>(aHistogramBucket) <= reinterpret_cast<const char *>(BEST_pHistogramBucketEntry));
@@ -462,7 +462,7 @@ public:
 
       ErrorEbmType error;
 
-      HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseBig();
       const auto * const aHistogramBucket = 
          aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
@@ -526,7 +526,7 @@ public:
       ASSERT_BINNED_BUCKET_OK(
          cBytesPerHistogramBucket,
          pRootTreeNode->BEFORE_GetHistogramBucketEntryLast(),
-         pBoosterShell->GetHistogramBucketsEndDebug()
+         pBoosterShell->GetHistogramBucketsEndDebugBig()
       );
       pRootTreeNode->AMBIGUOUS_SetCountSamples(cSamplesTotal);
       pRootTreeNode->SetWeight(weightTotal);

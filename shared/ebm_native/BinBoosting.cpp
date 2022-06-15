@@ -43,7 +43,7 @@ public:
 
       LOG_0(TraceLevelVerbose, "Entered BinBoostingZeroDimensions");
 
-      HistogramBucketBase * const pHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
+      HistogramBucketBase * const pHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseFast();
       auto * const pHistogramBucketEntry = pHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -213,7 +213,7 @@ public:
 
       LOG_0(TraceLevelVerbose, "Entered BinBoostingInternal");
 
-      HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseFast();
       auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -287,7 +287,7 @@ public:
                iTensorBin
             );
 
-            ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pBoosterShell->GetHistogramBucketsEndDebug());
+            ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pBoosterShell->GetHistogramBucketsEndDebugFast());
             const size_t cOccurences = *pCountOccurrences;
             const FloatEbmType weight = *pWeight;
 

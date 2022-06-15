@@ -103,22 +103,25 @@ static ErrorEbmType BoostZeroDimensional(
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) {
+
+   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || 
+      GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) 
+   {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<FloatEbmType, bClassification>(cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING BoostZeroDimensional GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
 
-   HistogramBucketBase * const pHistogramBucket = pBoosterShell->GetHistogramBucketBase(cBytesPerHistogramBucket);
-   if(UNLIKELY(nullptr == pHistogramBucket)) {
+   HistogramBucketBase * const pHistogramBucketFast = pBoosterShell->GetHistogramBucketBaseFast(cBytesPerHistogramBucketFast);
+   if(UNLIKELY(nullptr == pHistogramBucketFast)) {
       // already logged
       return Error_OutOfMemory;
    }
-   pHistogramBucket->Zero(cBytesPerHistogramBucket);
+   pHistogramBucketFast->Zero(cBytesPerHistogramBucketFast);
 
 #ifndef NDEBUG
-   pBoosterShell->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(pHistogramBucket) + cBytesPerHistogramBucket);
+   pBoosterShell->SetHistogramBucketsEndDebugFast(reinterpret_cast<unsigned char *>(pHistogramBucketFast) + cBytesPerHistogramBucketFast);
 #endif // NDEBUG
 
    BinBoosting(
@@ -127,11 +130,32 @@ static ErrorEbmType BoostZeroDimensional(
       pTrainingSet
    );
 
+   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+
+   HistogramBucketBase * const pHistogramBucketBig = pBoosterShell->GetHistogramBucketBaseBig(cBytesPerHistogramBucketBig);
+   if(UNLIKELY(nullptr == pHistogramBucketBig)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+
+#ifndef NDEBUG
+   pBoosterShell->SetHistogramBucketsEndDebugBig(reinterpret_cast<unsigned char *>(pHistogramBucketBig) + cBytesPerHistogramBucketBig);
+#endif // NDEBUG
+
+   // TODO: put this into it's own function that converts our fast floats to big floats
+   static_assert(sizeof(FloatEbmType) == sizeof(FloatEbmType), "float mismatch");
+   EBM_ASSERT(cBytesPerHistogramBucketFast == cBytesPerHistogramBucketBig); // until we switch fast to float datatypes
+   memcpy(pHistogramBucketBig, pHistogramBucketFast, cBytesPerHistogramBucketFast);
+
+
+   // TODO: we can exit here back to python to allow caller modification to our histograms
+
+
    CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet = 
       pBoosterShell->GetOverwritableModelUpdate();
    FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(bClassification) {
-      const auto * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<FloatEbmType, true>();
+      const auto * const pHistogramBucketLocal = pHistogramBucketBig->GetHistogramBucket<FloatEbmType, true>();
       const auto * const aSumHistogramTargetEntry = pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -170,7 +194,7 @@ static ErrorEbmType BoostZeroDimensional(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      const auto * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<FloatEbmType, false>();
+      const auto * const pHistogramBucketLocal = pHistogramBucketBig->GetHistogramBucket<FloatEbmType, false>();
       const auto * const aSumHistogramTargetEntry = pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
@@ -216,32 +240,32 @@ static ErrorEbmType BoostSingleDimensional(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) {
-      // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
-      return Error_OutOfMemory;
-   }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
-   if(IsMultiplyError(cBytesPerHistogramBucket, cHistogramBuckets)) {
-      // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cBytesPerHistogramBucket, cHistogramBuckets)");
-      return Error_OutOfMemory;
-   }
-   const size_t cBytesBuffer = cBytesPerHistogramBucket * cHistogramBuckets;
 
-   HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
-   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) ||
+      GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) 
+   {
+      // TODO : move this to initialization where we execute it only once
+      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)");
+      return Error_OutOfMemory;
+   }
+
+   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerHistogramBucketFast, cHistogramBuckets)) {
+      // TODO : move this to initialization where we execute it only once
+      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerHistogramBucketFast, cHistogramBuckets)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesBufferFast = cBytesPerHistogramBucketFast * cHistogramBuckets;
+
+   HistogramBucketBase * const aHistogramBucketsFast = pBoosterShell->GetHistogramBucketBaseFast(cBytesBufferFast);
+   if(UNLIKELY(nullptr == aHistogramBucketsFast)) {
       // already logged
       return Error_OutOfMemory;
    }
-   aHistogramBuckets->Zero(cBytesPerHistogramBucket, cHistogramBuckets);
-
-   HistogramTargetEntryBase * const aSumHistogramTargetEntry = pBoosterShell->GetSumHistogramTargetEntryArray();
-   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
-   aSumHistogramTargetEntry->Zero(cBytesPerHistogramTargetEntry, cVectorLength);
+   aHistogramBucketsFast->Zero(cBytesPerHistogramBucketFast, cHistogramBuckets);
 
 #ifndef NDEBUG
-   pBoosterShell->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer);
+   pBoosterShell->SetHistogramBucketsEndDebugFast(reinterpret_cast<unsigned char *>(aHistogramBucketsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
    BinBoosting(
@@ -249,6 +273,37 @@ static ErrorEbmType BoostSingleDimensional(
       pFeatureGroup,
       pTrainingSet
    );
+
+   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerHistogramBucketBig, cHistogramBuckets)) {
+      // TODO : move this to initialization where we execute it only once
+      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerHistogramBucketBig, cHistogramBuckets)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesBufferBig = cBytesPerHistogramBucketBig * cHistogramBuckets;
+
+   HistogramBucketBase * const aHistogramBucketsBig = pBoosterShell->GetHistogramBucketBaseBig(cBytesBufferBig);
+   if(UNLIKELY(nullptr == aHistogramBucketsBig)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+
+#ifndef NDEBUG
+   pBoosterShell->SetHistogramBucketsEndDebugBig(reinterpret_cast<unsigned char *>(aHistogramBucketsBig) + cBytesBufferBig);
+#endif // NDEBUG
+
+   // TODO: put this into it's own function that converts our fast floats to big floats
+   static_assert(sizeof(FloatEbmType) == sizeof(FloatEbmType), "float mismatch");
+   EBM_ASSERT(cBytesBufferFast == cBytesBufferBig); // until we switch fast to float datatypes
+   memcpy(aHistogramBucketsBig, aHistogramBucketsFast, cBytesBufferFast);
+
+
+   // TODO: we can exit here back to python to allow caller modification to our histograms
+
+
+   HistogramTargetEntryBase * const aSumHistogramTargetEntry = pBoosterShell->GetSumHistogramTargetEntryArray();
+   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
+   aSumHistogramTargetEntry->Zero(cBytesPerHistogramTargetEntry, cVectorLength);
 
    SumHistogramBuckets(
       pBoosterShell,
@@ -318,45 +373,38 @@ static ErrorEbmType BoostMultiDimensional(
       }
       ++pFeatureGroupEntry;
    } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
-   // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
-   const size_t cAuxillaryBucketsForSplitting = 24;
-   const size_t cAuxillaryBuckets =
-      cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
-   if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
-      return Error_OutOfMemory;
-   }
-   const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) {
+
+   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || 
+      GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) 
+   {
       LOG_0(
          TraceLevelWarning,
-         "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
+         "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
-   if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
+   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBucketsMainSpace)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBucketsMainSpace)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
+   const size_t cBytesBufferFast = cBytesPerHistogramBucketFast * cTotalBucketsMainSpace;
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
-   HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
-   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+   HistogramBucketBase * const aHistogramBucketsFast = pBoosterShell->GetHistogramBucketBaseFast(cBytesBufferFast);
+   if(UNLIKELY(nullptr == aHistogramBucketsFast)) {
       // already logged
       return Error_OutOfMemory;
    }
-   aHistogramBuckets->Zero(cBytesPerHistogramBucket, cTotalBuckets);
+   aHistogramBucketsFast->Zero(cBytesPerHistogramBucketFast, cTotalBucketsMainSpace);
 
 #ifndef NDEBUG
-   const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
-   pBoosterShell->SetHistogramBucketsEndDebug(aHistogramBucketsEndDebug);
+   pBoosterShell->SetHistogramBucketsEndDebugFast(reinterpret_cast<unsigned char *>(aHistogramBucketsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
    BinBoosting(
@@ -365,21 +413,62 @@ static ErrorEbmType BoostMultiDimensional(
       pTrainingSet
    );
 
+   // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
+   const size_t cAuxillaryBucketsForSplitting = 24;
+   const size_t cAuxillaryBuckets =
+      cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
+   if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
+      return Error_OutOfMemory;
+   }
+   const size_t cTotalBucketsBig = cTotalBucketsMainSpace + cAuxillaryBuckets;
+
+   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBucketsBig)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBucketsBig)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesBufferBig = cBytesPerHistogramBucketBig * cTotalBucketsBig;
+
+   // we don't need to free this!  It's tracked and reused by pBoosterShell
+   HistogramBucketBase * const aHistogramBucketsBig = pBoosterShell->GetHistogramBucketBaseBig(cBytesBufferBig);
+   if(UNLIKELY(nullptr == aHistogramBucketsBig)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+
+#ifndef NDEBUG
+   const unsigned char * const aHistogramBucketsEndDebugBig = reinterpret_cast<unsigned char *>(aHistogramBucketsBig) + cBytesBufferBig;
+   pBoosterShell->SetHistogramBucketsEndDebugBig(aHistogramBucketsEndDebugBig);
+#endif // NDEBUG
+
+   // TODO: put this into it's own function that converts our fast floats to big floats
+   static_assert(sizeof(FloatEbmType) == sizeof(FloatEbmType), "float mismatch");
+   memcpy(aHistogramBucketsBig, aHistogramBucketsFast, cBytesBufferFast);
+
+
+   // we also need to zero the top end buckets above the binned histograms we've already generated
+   aHistogramBucketsBig->Zero(cBytesPerHistogramBucketBig, cAuxillaryBuckets, cTotalBucketsMainSpace);
+
+
+   // TODO: we can exit here back to python to allow caller modification to our histograms
+
+
 #ifndef NDEBUG
    // make a copy of the original binned buckets for debugging purposes
 
    HistogramBucketBase * const aHistogramBucketsDebugCopy =
-      EbmMalloc<HistogramBucketBase>(cTotalBucketsMainSpace, cBytesPerHistogramBucket);
+      EbmMalloc<HistogramBucketBase>(cTotalBucketsMainSpace, cBytesPerHistogramBucketBig);
    if(nullptr != aHistogramBucketsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTotalBucketsMainSpace * cBytesPerHistogramBucket;
-      memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
+      const size_t cBytesBufferDebug = cTotalBucketsMainSpace * cBytesPerHistogramBucketBig;
+      memcpy(aHistogramBucketsDebugCopy, aHistogramBucketsBig, cBytesBufferDebug);
    }
 #endif // NDEBUG
 
    HistogramBucketBase * pAuxiliaryBucketZone = GetHistogramBucketByIndex(
-      cBytesPerHistogramBucket,
-      aHistogramBuckets,
+      cBytesPerHistogramBucketBig,
+      aHistogramBucketsBig,
       cTotalBucketsMainSpace
    );
 
@@ -387,10 +476,10 @@ static ErrorEbmType BoostMultiDimensional(
       runtimeLearningTypeOrCountTargetClasses,
       pFeatureGroup,
       pAuxiliaryBucketZone,
-      aHistogramBuckets
+      aHistogramBucketsBig
 #ifndef NDEBUG
       , aHistogramBucketsDebugCopy
-      , aHistogramBucketsEndDebug
+      , aHistogramBucketsEndDebugBig
 #endif // NDEBUG
    );
 
@@ -563,30 +652,33 @@ static ErrorEbmType BoostRandom(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) {
+
+   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) ||
+      GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength))
+   {
       LOG_0(
          TraceLevelWarning,
-         "WARNING BoostRandom GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
+         "WARNING BoostRandom GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
-   if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
+   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBuckets)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBuckets)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
+   const size_t cBytesBufferFast = cBytesPerHistogramBucketFast * cTotalBuckets;
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
-   HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
-   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+   HistogramBucketBase * const aHistogramBucketsFast = pBoosterShell->GetHistogramBucketBaseFast(cBytesBufferFast);
+   if(UNLIKELY(nullptr == aHistogramBucketsFast)) {
       // already logged
       return Error_OutOfMemory;
    }
-   aHistogramBuckets->Zero(cBytesPerHistogramBucket, cTotalBuckets);
+   aHistogramBucketsFast->Zero(cBytesPerHistogramBucketFast, cTotalBuckets);
 
 #ifndef NDEBUG
-   pBoosterShell->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer);
+   pBoosterShell->SetHistogramBucketsEndDebugFast(reinterpret_cast<unsigned char *>(aHistogramBucketsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
    BinBoosting(
@@ -594,6 +686,33 @@ static ErrorEbmType BoostRandom(
       pFeatureGroup,
       pTrainingSet
    );
+
+   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBuckets)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBuckets)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesBufferBig = cBytesPerHistogramBucketBig * cTotalBuckets;
+
+   // we don't need to free this!  It's tracked and reused by pBoosterShell
+   HistogramBucketBase * const aHistogramBucketsBig = pBoosterShell->GetHistogramBucketBaseBig(cBytesBufferBig);
+   if(UNLIKELY(nullptr == aHistogramBucketsBig)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+
+#ifndef NDEBUG
+   pBoosterShell->SetHistogramBucketsEndDebugBig(reinterpret_cast<unsigned char *>(aHistogramBucketsBig) + cBytesBufferBig);
+#endif // NDEBUG
+
+   // TODO: put this into it's own function that converts our fast floats to big floats
+   static_assert(sizeof(FloatEbmType) == sizeof(FloatEbmType), "float mismatch");
+   EBM_ASSERT(cBytesBufferFast == cBytesBufferBig); // until we switch fast to float datatypes
+   memcpy(aHistogramBucketsBig, aHistogramBucketsFast, cBytesBufferFast);
+
+
+   // TODO: we can exit here back to python to allow caller modification to our histograms
+
 
    error = PartitionRandomBoosting(
       pBoosterShell,

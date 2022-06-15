@@ -31,7 +31,8 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    if(nullptr != pBoosterShell) {
       CompressibleTensor::Free(pBoosterShell->m_pSmallChangeToModelAccumulatedFromSamplingSets);
       CompressibleTensor::Free(pBoosterShell->m_pSmallChangeToModelOverwriteSingleSamplingSet);
-      free(pBoosterShell->m_aThreadByteBuffer1);
+      free(pBoosterShell->m_aThreadByteBuffer1Fast);
+      free(pBoosterShell->m_aThreadByteBuffer1Big);
       free(pBoosterShell->m_aThreadByteBuffer2);
       free(pBoosterShell->m_aSumHistogramTargetEntry);
       free(pBoosterShell->m_aSumHistogramTargetEntryLeft);
@@ -116,18 +117,35 @@ failed_allocation:;
    return Error_OutOfMemory;
 }
 
-HistogramBucketBase * BoosterShell::GetHistogramBucketBase(size_t cBytesRequired) {
-   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
-   if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
+HistogramBucketBase * BoosterShell::GetHistogramBucketBaseFast(size_t cBytesRequired) {
+   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1Fast;
+   if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
       cBytesRequired <<= 1;
-      m_cThreadByteBufferCapacity1 = cBytesRequired;
-      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1 to %zu", cBytesRequired);
+      m_cThreadByteBufferCapacity1Fast = cBytesRequired;
+      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
 
       free(aBuffer);
       aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
-      m_aThreadByteBuffer1 = aBuffer; // store it before checking it incase it's null so that we don't free old memory
+      m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetHistogramBucketBase OutOfMemory");
+         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetHistogramBucketBaseFast OutOfMemory");
+      }
+   }
+   return aBuffer;
+}
+
+HistogramBucketBase * BoosterShell::GetHistogramBucketBaseBig(size_t cBytesRequired) {
+   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1Big;
+   if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
+      cBytesRequired <<= 1;
+      m_cThreadByteBufferCapacity1Big = cBytesRequired;
+      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
+
+      free(aBuffer);
+      aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
+      m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
+      if(nullptr == aBuffer) {
+         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetHistogramBucketBaseBig OutOfMemory");
       }
    }
    return aBuffer;

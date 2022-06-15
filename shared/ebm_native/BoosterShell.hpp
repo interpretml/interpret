@@ -40,8 +40,11 @@ class BoosterShell final {
 
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
-   HistogramBucketBase * m_aThreadByteBuffer1;
-   size_t m_cThreadByteBufferCapacity1;
+   HistogramBucketBase * m_aThreadByteBuffer1Fast;
+   size_t m_cThreadByteBufferCapacity1Fast;
+
+   HistogramBucketBase * m_aThreadByteBuffer1Big;
+   size_t m_cThreadByteBufferCapacity1Big;
 
    void * m_aThreadByteBuffer2;
    size_t m_cThreadByteBufferCapacity2;
@@ -54,7 +57,8 @@ class BoosterShell final {
    HistogramTargetEntryBase * m_aSumHistogramTargetEntryRight;
 
 #ifndef NDEBUG
-   const unsigned char * m_aHistogramBucketsEndDebug;
+   const unsigned char * m_aHistogramBucketsEndDebugFast;
+   const unsigned char * m_aHistogramBucketsEndDebugBig;
 #endif // NDEBUG
 
 public:
@@ -72,8 +76,10 @@ public:
       m_iFeatureGroup = k_illegalFeatureGroupIndex;
       m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
       m_pSmallChangeToModelOverwriteSingleSamplingSet = nullptr;
-      m_aThreadByteBuffer1 = nullptr;
-      m_cThreadByteBufferCapacity1 = 0;
+      m_aThreadByteBuffer1Fast = nullptr;
+      m_cThreadByteBufferCapacity1Fast = 0;
+      m_aThreadByteBuffer1Big = nullptr;
+      m_cThreadByteBufferCapacity1Big = 0;
       m_aThreadByteBuffer2 = nullptr;
       m_cThreadByteBufferCapacity2 = 0;
       m_aTempFloatVector = nullptr;
@@ -138,11 +144,18 @@ public:
       return &m_randomStream;
    }
 
-   HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);
+   HistogramBucketBase * GetHistogramBucketBaseFast(size_t cBytesRequired);
 
-   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBase() {
+   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBaseFast() {
       // call this if the histograms were already allocated and we just need the pointer
-      return m_aThreadByteBuffer1;
+      return m_aThreadByteBuffer1Fast;
+   }
+
+   HistogramBucketBase * GetHistogramBucketBaseBig(size_t cBytesRequired);
+
+   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBaseBig() {
+      // call this if the histograms were already allocated and we just need the pointer
+      return m_aThreadByteBuffer1Big;
    }
 
    ErrorEbmType GrowThreadByteBuffer2(const size_t cByteBoundaries);
@@ -178,12 +191,20 @@ public:
    }
 
 #ifndef NDEBUG
-   INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebug() const {
-      return m_aHistogramBucketsEndDebug;
+   INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebugFast() const {
+      return m_aHistogramBucketsEndDebugFast;
    }
 
-   INLINE_ALWAYS void SetHistogramBucketsEndDebug(const unsigned char * const val) {
-      m_aHistogramBucketsEndDebug = val;
+   INLINE_ALWAYS void SetHistogramBucketsEndDebugFast(const unsigned char * const val) {
+      m_aHistogramBucketsEndDebugFast = val;
+   }
+
+   INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebugBig() const {
+      return m_aHistogramBucketsEndDebugBig;
+   }
+
+   INLINE_ALWAYS void SetHistogramBucketsEndDebugBig(const unsigned char * const val) {
+      m_aHistogramBucketsEndDebugBig = val;
    }
 #endif // NDEBUG
 };

@@ -198,7 +198,7 @@ public:
       ErrorEbmType error;
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBase();
+      HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseBig();
       CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
          pBoosterShell->GetOverwritableModelUpdate();
 
@@ -282,7 +282,7 @@ public:
             &splitSecond1LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy
-            , pBoosterShell->GetHistogramBucketsEndDebug()
+            , pBoosterShell->GetHistogramBucketsEndDebugBig()
 #endif // NDEBUG
             );
 
@@ -305,7 +305,7 @@ public:
                &splitSecond1HighBest
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy
-               , pBoosterShell->GetHistogramBucketsEndDebug()
+               , pBoosterShell->GetHistogramBucketsEndDebugBig()
 #endif // NDEBUG
                );
 
@@ -373,7 +373,7 @@ public:
             &splitSecond2LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy
-            , pBoosterShell->GetHistogramBucketsEndDebug()
+            , pBoosterShell->GetHistogramBucketsEndDebugBig()
 #endif // NDEBUG
             );
 
@@ -396,7 +396,7 @@ public:
                &splitSecond2HighBest
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy
-               , pBoosterShell->GetHistogramBucketsEndDebug()
+               , pBoosterShell->GetHistogramBucketsEndDebugBig()
 #endif // NDEBUG
                );
 
@@ -443,7 +443,7 @@ public:
          reinterpret_cast<const HistogramBucket<FloatEbmType, bClassification> *>(
             reinterpret_cast<const char *>(pAuxiliaryBucketZoneBase) - cBytesPerHistogramBucket);
 
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, pBoosterShell->GetHistogramBucketsEndDebug());
+      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, pBoosterShell->GetHistogramBucketsEndDebugBig());
 
       const auto * const pHistogramTargetEntryTotal = pTotal->GetHistogramTargetEntry();
 
