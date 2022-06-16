@@ -42,12 +42,12 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
       DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-      FloatEbmType * const aTempFloatVector = pBoosterShell->GetTempFloatVector();
+      FloatFast * const aTempFloatVector = pBoosterShell->GetTempFloatVector();
 
-      FloatEbmType aLocalExpVector[
+      FloatFast aLocalExpVector[
          k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
       ];
-      FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
+      FloatFast * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -57,28 +57,28 @@ public:
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
+      FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
-      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples * cVectorLength;
+      FloatFast * pPredictorScores = pTrainingSet->GetPredictorScores();
+      const FloatFast * const pPredictorScoresEnd = pPredictorScores + cSamples * cVectorLength;
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
 
-         const FloatEbmType * pValues = aModelFeatureGroupUpdateTensor;
-         FloatEbmType * pExpVector = aExpVector;
-         FloatEbmType sumExp = FloatEbmType { 0 };
+         const FloatFast * pValues = aModelFeatureGroupUpdateTensor;
+         FloatFast * pExpVector = aExpVector;
+         FloatFast sumExp = FloatFast { 0 };
          size_t iVector = 0;
          do {
             // TODO : because there is only one bin for a zero feature feature group, we could move these values to the stack where the
             // compiler could reason about their visibility and optimize small arrays into registers
-            const FloatEbmType smallChangeToPredictorScores = *pValues;
+            const FloatFast smallChangeToPredictorScores = *pValues;
             ++pValues;
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+            const FloatFast predictorScore = *pPredictorScores + smallChangeToPredictorScores;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
@@ -91,7 +91,7 @@ public:
 
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType oneExp = ExpForMulticlass<false>(predictorScore);
+            const FloatFast oneExp = ExpForMulticlass<false>(predictorScore);
             *pExpVector = oneExp;
             ++pExpVector;
             sumExp += oneExp;
@@ -100,8 +100,8 @@ public:
          pExpVector -= cVectorLength;
          iVector = 0;
          do {
-            FloatEbmType gradient;
-            FloatEbmType hessian;
+            FloatFast gradient;
+            FloatFast hessian;
             EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(
                sumExp,
                *pExpVector,
@@ -133,22 +133,22 @@ public:
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
+      FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
-      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples;
-      const FloatEbmType smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[0];
+      FloatFast * pPredictorScores = pTrainingSet->GetPredictorScores();
+      const FloatFast * const pPredictorScoresEnd = pPredictorScores + cSamples;
+      const FloatFast smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[0];
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
          // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+         const FloatFast predictorScore = *pPredictorScores + smallChangeToPredictorScores;
          *pPredictorScores = predictorScore;
          ++pPredictorScores;
-         const FloatEbmType gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictorScore, targetData);
+         const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictorScore, targetData);
          *pGradientAndHessian = gradient;
          *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
          pGradientAndHessian += 2;
@@ -169,16 +169,16 @@ public:
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
       // no hessian for regression
-      FloatEbmType * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
-      const FloatEbmType * const pGradientsEnd = pGradient + cSamples;
-      const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
+      FloatFast * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
+      const FloatFast * const pGradientsEnd = pGradient + cSamples;
+      const FloatFast smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
          // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
+         const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
          *pGradient = gradient;
          ++pGradient;
       } while(pGradientsEnd != pGradient);
@@ -246,12 +246,12 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
       DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
-      FloatEbmType * const aTempFloatVector = pBoosterShell->GetTempFloatVector();
+      FloatFast * const aTempFloatVector = pBoosterShell->GetTempFloatVector();
 
-      FloatEbmType aLocalExpVector[
+      FloatFast aLocalExpVector[
          k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
       ];
-      FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
+      FloatFast * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -270,18 +270,18 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
+      FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
+      FloatFast * pPredictorScores = pTrainingSet->GetPredictorScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples * cVectorLength;
-      const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
-      const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
+      const FloatFast * const pPredictorScoresTrueEnd = pPredictorScores + cSamples * cVectorLength;
+      const FloatFast * pPredictorScoresExit = pPredictorScoresTrueEnd;
+      const FloatFast * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
@@ -302,15 +302,15 @@ public:
             ++pTargetData;
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
-            const FloatEbmType * pValues = &aModelFeatureGroupUpdateTensor[iTensorBin * cVectorLength];
-            FloatEbmType * pExpVector = aExpVector;
-            FloatEbmType sumExp = FloatEbmType { 0 };
+            const FloatFast * pValues = &aModelFeatureGroupUpdateTensor[iTensorBin * cVectorLength];
+            FloatFast * pExpVector = aExpVector;
+            FloatFast sumExp = 0;
             size_t iVector = 0;
             do {
-               const FloatEbmType smallChangeToPredictorScores = *pValues;
+               const FloatFast smallChangeToPredictorScores = *pValues;
                ++pValues;
                // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-               const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+               const FloatFast predictorScore = *pPredictorScores + smallChangeToPredictorScores;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
@@ -323,7 +323,7 @@ public:
 
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
-               const FloatEbmType oneExp = ExpForMulticlass<false>(predictorScore);
+               const FloatFast oneExp = ExpForMulticlass<false>(predictorScore);
                *pExpVector = oneExp;
                ++pExpVector;
                sumExp += oneExp;
@@ -332,8 +332,8 @@ public:
             pExpVector -= cVectorLength;
             iVector = 0;
             do {
-               FloatEbmType gradient;
-               FloatEbmType hessian;
+               FloatFast gradient;
+               FloatFast hessian;
                EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(
                   sumExp,
                   *pExpVector,
@@ -389,18 +389,18 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
-      FloatEbmType * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
+      FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
+      FloatFast * pPredictorScores = pTrainingSet->GetPredictorScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples;
-      const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
-      const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
+      const FloatFast * const pPredictorScoresTrueEnd = pPredictorScores + cSamples;
+      const FloatFast * pPredictorScoresExit = pPredictorScoresTrueEnd;
+      const FloatFast * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
@@ -422,12 +422,12 @@ public:
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatEbmType smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[iTensorBin];
+            const FloatFast smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+            const FloatFast predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictorScore, targetData);
+            const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictorScore, targetData);
 
             *pGradientAndHessian = gradient;
             *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
@@ -473,17 +473,17 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
       EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
 
       // No hessians for regression
-      FloatEbmType * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
+      FloatFast * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pGradientTrueEnd = pGradient + cSamples;
-      const FloatEbmType * pGradientExit = pGradientTrueEnd;
-      const FloatEbmType * pGradientInnerEnd = pGradientTrueEnd;
+      const FloatFast * const pGradientTrueEnd = pGradient + cSamples;
+      const FloatFast * pGradientExit = pGradientTrueEnd;
+      const FloatFast * pGradientInnerEnd = pGradientTrueEnd;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
@@ -502,9 +502,9 @@ public:
          do {
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
+            const FloatFast smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
+            const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
 
             *pGradient = gradient;
             ++pGradient;

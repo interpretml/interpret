@@ -40,7 +40,7 @@ template<bool bClassification>
 static void Flatten(
    const TreeNode<bClassification> * const pTreeNode,
    ActiveDataType ** const ppSplits, 
-   FloatEbmType ** const ppValues, 
+   FloatFast ** const ppValues, 
    const size_t cVectorLength
 ) {
    // don't log this since we call it recursively.  Log where the root is called
@@ -56,18 +56,18 @@ static void Flatten(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
       Flatten<bClassification>(pRightChild, ppSplits, ppValues, cVectorLength);
    } else {
-      FloatEbmType * pValuesCur = *ppValues;
-      FloatEbmType * const pValuesNext = pValuesCur + cVectorLength;
+      FloatFast * pValuesCur = *ppValues;
+      FloatFast * const pValuesNext = pValuesCur + cVectorLength;
       *ppValues = pValuesNext;
 
       const auto * pHistogramTargetEntry = pTreeNode->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-      FloatEbmType zeroLogit = FloatEbmType { 0 };
+      FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
       do {
-         FloatEbmType update;
+         FloatBig update;
          if(bClassification) {
             update = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntry->m_sumGradients, pHistogramTargetEntry->GetSumHessians());
@@ -85,7 +85,7 @@ static void Flatten(
             update = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntry->m_sumGradients, pTreeNode->GetWeight());
          }
-         *pValuesCur = update;
+         *pValuesCur = SafeConvertFloat<FloatFast>(update);
 
          ++pHistogramTargetEntry;
          ++pValuesCur;
@@ -134,7 +134,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // So, DO NOT DO: pBoosterShell->GetSumHistogramTargetEntryArray()->
    //   GetHistogramTargetEntry<bClassification>();
    auto * const aSumHistogramTargetEntryLeft = pBoosterShell->GetSumHistogramTargetEntryLeft<bClassification>();
-   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
+   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
    aSumHistogramTargetEntryLeft->Zero(cBytesPerHistogramTargetEntry, cVectorLength);
 
    auto * const aSumHistogramTargetEntryRight = pBoosterShell->GetSumHistogramTargetEntryRight<bClassification>();
@@ -163,8 +163,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pLeftChildInit->BEFORE_SetHistogramBucketEntryFirst(pHistogramBucketEntryCur);
    pRightChildInit->BEFORE_SetHistogramBucketEntryLast(pHistogramBucketEntryLast);
 
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
    EBM_ASSERT(!GetTreeSweepSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cVectorLength);
 
@@ -175,11 +175,11 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    size_t cSamplesRight = pTreeNode->AMBIGUOUS_GetCountSamples();
    size_t cSamplesLeft = 0;
 
-   FloatEbmType weightRight = pTreeNode->GetWeight();
-   FloatEbmType weightLeft = 0;
+   FloatBig weightRight = pTreeNode->GetWeight();
+   FloatBig weightLeft = 0;
 
-   EBM_ASSERT(FloatEbmType { 0 } <= k_gainMin);
-   FloatEbmType BEST_gain = k_gainMin; // it must at least be this, and maybe it needs to be more
+   EBM_ASSERT(0 <= k_gainMin);
+   FloatBig BEST_gain = k_gainMin; // it must at least be this, and maybe it needs to be more
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
    EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
    do {
@@ -193,7 +193,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       cSamplesLeft += CHANGE_cSamples;
 
 
-      const FloatEbmType CHANGE_weight = pHistogramBucketEntryCur->GetWeightInBucket();
+      const FloatBig CHANGE_weight = pHistogramBucketEntryCur->GetWeightInBucket();
       weightRight -= CHANGE_weight;
       weightLeft += CHANGE_weight;
 
@@ -203,20 +203,20 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          EBM_ASSERT(0 < cSamplesRight);
          EBM_ASSERT(0 < cSamplesLeft);
 
-         FloatEbmType sumHessiansRight = weightRight;
-         FloatEbmType sumHessiansLeft = weightLeft;
-         FloatEbmType gain = 0;
+         FloatBig sumHessiansRight = weightRight;
+         FloatBig sumHessiansLeft = weightLeft;
+         FloatBig gain = 0;
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
-            const FloatEbmType sumGradientsRight = aSumHistogramTargetEntryRight[iVector].m_sumGradients - CHANGE_sumGradients;
+            const FloatBig CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
+            const FloatBig sumGradientsRight = aSumHistogramTargetEntryRight[iVector].m_sumGradients - CHANGE_sumGradients;
             aSumHistogramTargetEntryRight[iVector].m_sumGradients = sumGradientsRight;
-            const FloatEbmType sumGradientsLeft = aSumHistogramTargetEntryLeft[iVector].m_sumGradients + CHANGE_sumGradients;
+            const FloatBig sumGradientsLeft = aSumHistogramTargetEntryLeft[iVector].m_sumGradients + CHANGE_sumGradients;
             aSumHistogramTargetEntryLeft[iVector].m_sumGradients = sumGradientsLeft;
 
             if(bClassification) {
-               const FloatEbmType CHANGE_sumHessians = pHistogramTargetEntry[iVector].GetSumHessians();
-               const FloatEbmType newSumHessiansLeft = aSumHistogramTargetEntryLeft[iVector].GetSumHessians() + CHANGE_sumHessians;
+               const FloatBig CHANGE_sumHessians = pHistogramTargetEntry[iVector].GetSumHessians();
+               const FloatBig newSumHessiansLeft = aSumHistogramTargetEntryLeft[iVector].GetSumHessians() + CHANGE_sumHessians;
                aSumHistogramTargetEntryLeft[iVector].SetSumHessians(newSumHessiansLeft);
                if(bUseLogitBoost) {
                   sumHessiansLeft = newSumHessiansLeft;
@@ -227,17 +227,17 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType gainRight = EbmStats::CalcPartialGain(sumGradientsRight, sumHessiansRight);
-            EBM_ASSERT(std::isnan(gainRight) || FloatEbmType { 0 } <= gainRight);
+            const FloatBig gainRight = EbmStats::CalcPartialGain(sumGradientsRight, sumHessiansRight);
+            EBM_ASSERT(std::isnan(gainRight) || 0 <= gainRight);
             gain += gainRight;
 
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType gainLeft = EbmStats::CalcPartialGain(sumGradientsLeft, sumHessiansLeft);
-            EBM_ASSERT(std::isnan(gainLeft) || FloatEbmType { 0 } <= gainLeft);
+            const FloatBig gainLeft = EbmStats::CalcPartialGain(sumGradientsLeft, sumHessiansLeft);
+            EBM_ASSERT(std::isnan(gainLeft) || 0 <= gainLeft);
             gain += gainLeft;
          }
-         EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain);
+         EBM_ASSERT(std::isnan(gain) || 0 <= gain);
 
          if(UNLIKELY(/* NaN */ !LIKELY(gain < BEST_gain))) {
             // propagate NaN values since we stop boosting when we see them
@@ -283,11 +283,11 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          }
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
+            const FloatBig CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
             aSumHistogramTargetEntryRight[iVector].m_sumGradients -= CHANGE_sumGradients;
             aSumHistogramTargetEntryLeft[iVector].m_sumGradients += CHANGE_sumGradients;
             if(bClassification) {
-               const FloatEbmType CHANGE_sumHessians = pHistogramTargetEntry[iVector].GetSumHessians();
+               const FloatBig CHANGE_sumHessians = pHistogramTargetEntry[iVector].GetSumHessians();
                aSumHistogramTargetEntryLeft[iVector].SetSumHessians(aSumHistogramTargetEntryLeft[iVector].GetSumHessians() + CHANGE_sumHessians);
                if(bUseLogitBoost) {
                   aSumHistogramTargetEntryRight[iVector].SetSumHessians(aSumHistogramTargetEntryRight[iVector].GetSumHessians() - CHANGE_sumHessians);
@@ -303,9 +303,9 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       EBM_ASSERT(k_gainMin == BEST_gain);
       return 1;
    }
-   EBM_ASSERT(std::isnan(BEST_gain) || FloatEbmType { 0 } <= BEST_gain);
+   EBM_ASSERT(std::isnan(BEST_gain) || 0 <= BEST_gain);
 
-   if(UNLIKELY(/* NaN */ !LIKELY(BEST_gain <= std::numeric_limits<FloatEbmType>::max()))) {
+   if(UNLIKELY(/* NaN */ !LIKELY(BEST_gain <= std::numeric_limits<FloatBig>::max()))) {
       // this tests for NaN and +inf
 
       // we need this test since the priority queue in the function that calls us cannot accept a NaN value
@@ -314,37 +314,37 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       return -1; // exit boosting with overflow
    }
 
-   FloatEbmType sumHessiansOverwrite = pTreeNode->GetWeight();
+   FloatBig sumHessiansOverwrite = pTreeNode->GetWeight();
    const auto * pHistEntryParent = pTreeNode->GetHistogramTargetEntry();
 
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      const FloatEbmType sumGradientsParent = pHistEntryParent[iVector].m_sumGradients;
+      const FloatBig sumGradientsParent = pHistEntryParent[iVector].m_sumGradients;
       if(bClassification) {
          if(bUseLogitBoost) {
             sumHessiansOverwrite = pHistEntryParent[iVector].GetSumHessians();
          }
       }
-      const FloatEbmType gain1 = EbmStats::CalcPartialGain(sumGradientsParent, sumHessiansOverwrite);
-      EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+      const FloatBig gain1 = EbmStats::CalcPartialGain(sumGradientsParent, sumHessiansOverwrite);
+      EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
       BEST_gain -= gain1;
    }
 
    // BEST_gain could be -inf if the partial gain on the children reached a number close to +inf and then
    // the children were -inf due to floating point noise.  
-   EBM_ASSERT(std::isnan(BEST_gain) || -std::numeric_limits<FloatEbmType>::infinity() == BEST_gain || k_epsilonNegativeGainAllowed <= BEST_gain);
-   EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != BEST_gain);
+   EBM_ASSERT(std::isnan(BEST_gain) || -std::numeric_limits<FloatBig>::infinity() == BEST_gain || k_epsilonNegativeGainAllowed <= BEST_gain);
+   EBM_ASSERT(std::numeric_limits<FloatBig>::infinity() != BEST_gain);
 
-   EBM_ASSERT(FloatEbmType { 0 } <= k_gainMin);
+   EBM_ASSERT(0 <= k_gainMin);
    if(UNLIKELY(/* NaN */ !LIKELY(k_gainMin <= BEST_gain))) {
       // do not allow splits on gains that are too small
       // also filter out slightly negative numbers that can arrise from floating point noise
 
       // but if the parent partial gain overflowed to +inf and thus we got a -inf gain, then handle as an overflow
-      return /* NaN */ std::numeric_limits<FloatEbmType>::lowest() <= BEST_gain ? 1 : -1;
+      return /* NaN */ std::numeric_limits<FloatBig>::lowest() <= BEST_gain ? 1 : -1;
    }
    EBM_ASSERT(!std::isnan(BEST_gain));
    EBM_ASSERT(!std::isinf(BEST_gain));
-   EBM_ASSERT(FloatEbmType { 0 } <= BEST_gain);
+   EBM_ASSERT(0 <= BEST_gain);
 
    RandomStream * const pRandomStream = pBoosterShell->GetRandomStream();
 
@@ -362,7 +362,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const size_t BEST_cSamplesLeft = pTreeSweepStart->GetCountBestSamplesLeft();
    pLeftChild->AMBIGUOUS_SetCountSamples(BEST_cSamplesLeft);
 
-   const FloatEbmType BEST_weightLeft = pTreeSweepStart->GetBestWeightLeft();
+   const FloatBig BEST_weightLeft = pTreeSweepStart->GetBestWeightLeft();
    pLeftChild->SetWeight(BEST_weightLeft);
 
    const auto * const BEST_pHistogramBucketEntryNext = 
@@ -378,7 +378,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(0 < cSamplesParent);
    pRightChild->AMBIGUOUS_SetCountSamples(cSamplesParent - BEST_cSamplesLeft);
 
-   const FloatEbmType weightParent = pTreeNode->GetWeight();
+   const FloatBig weightParent = pTreeNode->GetWeight();
    pRightChild->SetWeight(weightParent - BEST_weightLeft);
 
    auto * pHistogramTargetEntryLeftChild = pLeftChild->GetHistogramTargetEntry();
@@ -390,15 +390,15 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const auto * pHistogramTargetEntrySweep = pTreeSweepStart->GetBestHistogramTargetEntry();
 
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      const FloatEbmType BEST_sumGradientsLeft = pHistogramTargetEntrySweep[iVector].m_sumGradients;
+      const FloatBig BEST_sumGradientsLeft = pHistogramTargetEntrySweep[iVector].m_sumGradients;
       pHistogramTargetEntryLeftChild[iVector].m_sumGradients = BEST_sumGradientsLeft;
-      const FloatEbmType sumGradientsParent = pHistogramTargetEntryTreeNode[iVector].m_sumGradients;
+      const FloatBig sumGradientsParent = pHistogramTargetEntryTreeNode[iVector].m_sumGradients;
       pHistogramTargetEntryRightChild[iVector].m_sumGradients = sumGradientsParent - BEST_sumGradientsLeft;
 
       if(bClassification) {
-         const FloatEbmType BEST_sumHessiansLeft = pHistogramTargetEntrySweep[iVector].GetSumHessians();
+         const FloatBig BEST_sumHessiansLeft = pHistogramTargetEntrySweep[iVector].GetSumHessians();
          pHistogramTargetEntryLeftChild[iVector].SetSumHessians(BEST_sumHessiansLeft);
-         const FloatEbmType sumHessiansParent = pHistogramTargetEntryTreeNode[iVector].GetSumHessians();
+         const FloatBig sumHessiansParent = pHistogramTargetEntryTreeNode[iVector].GetSumHessians();
          pHistogramTargetEntryRightChild[iVector].SetSumHessians(sumHessiansParent - BEST_sumHessiansLeft);
       }
    }
@@ -415,7 +415,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pTreeNode->AFTER_SetSplitGain(BEST_gain);
 
    HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseBig();
-   const auto * const aHistogramBucket = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
+   const auto * const aHistogramBucket = aHistogramBucketBase->GetHistogramBucket<FloatBig, bClassification>();
 
    EBM_ASSERT(reinterpret_cast<const char *>(aHistogramBucket) <= reinterpret_cast<const char *>(BEST_pHistogramBucketEntry));
    EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) % cBytesPerHistogramBucket);
@@ -452,11 +452,11 @@ public:
       BoosterShell * const pBoosterShell,
       const size_t cHistogramBuckets,
       const size_t cSamplesTotal,
-      const FloatEbmType weightTotal,
+      const FloatBig weightTotal,
       const size_t iDimension,
       const size_t cSamplesRequiredForChildSplitMin,
       const size_t cLeavesMax,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
@@ -464,12 +464,12 @@ public:
 
       HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseBig();
       const auto * const aHistogramBucket = 
-         aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
+         aHistogramBucketBase->GetHistogramBucket<FloatBig, bClassification>();
 
       HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
          pBoosterShell->GetSumHistogramTargetEntryArray();
       const auto * const aSumHistogramTargetEntry =
-         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<FloatEbmType, bClassification>();
+         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<FloatBig, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -492,8 +492,8 @@ public:
          return Error_OutOfMemory; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
       }
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
 
    retry_with_bigger_tree_node_children_array:
 
@@ -552,7 +552,7 @@ public:
          // there will be no splits at all
 
          // any negative gain means there was an overflow.  Let the caller decide if they want to ignore it
-         *pTotalGain = UNLIKELY(retExamine < 0) ? std::numeric_limits<FloatEbmType>::infinity() : FloatEbmType { 0 };
+         *pTotalGain = UNLIKELY(retExamine < 0) ? std::numeric_limits<double>::infinity() : 0.0;
 
          error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension, 0);
          if(UNLIKELY(Error_None != error)) {
@@ -562,14 +562,14 @@ public:
 
          // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
          if(bClassification) {
-            FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+            FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            FloatEbmType zeroLogit = FloatEbmType { 0 };
+            FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType update = EbmStats::ComputeSinglePartitionUpdate(
+               FloatBig update = EbmStats::ComputeSinglePartitionUpdate(
                   pRootTreeNode->GetHistogramTargetEntry()[iVector].m_sumGradients, pRootTreeNode->GetHistogramTargetEntry()[iVector].GetSumHessians()
                );
 
@@ -582,15 +582,15 @@ public:
                }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               aValues[iVector] = update;
+               aValues[iVector] = SafeConvertFloat<FloatFast>(update);
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
+            const FloatBig smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
                pRootTreeNode->GetHistogramTargetEntry()[0].m_sumGradients, weightTotal
             );
-            FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-            pValues[0] = smallChangeToModel;
+            FloatFast * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+            pValues[0] = SafeConvertFloat<FloatFast>(smallChangeToModel);
          }
 
          return Error_None;
@@ -599,7 +599,7 @@ public:
       // our priority queue comparison function cannot handle NaN gains so we filter out before
       EBM_ASSERT(!std::isnan(pRootTreeNode->AFTER_GetSplitGain()));
       EBM_ASSERT(!std::isinf(pRootTreeNode->AFTER_GetSplitGain()));
-      EBM_ASSERT(FloatEbmType { 0 } <= pRootTreeNode->AFTER_GetSplitGain());
+      EBM_ASSERT(0 <= pRootTreeNode->AFTER_GetSplitGain());
 
       if(UNPREDICTABLE(PREDICTABLE(2 == cLeavesMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
          // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
@@ -637,20 +637,20 @@ public:
 
          const auto * pHistogramTargetEntryRightChild = pRightChild->GetHistogramTargetEntry();
 
-         FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+         FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          if(bClassification) {
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            FloatEbmType zeroLogit0 = FloatEbmType { 0 };
-            FloatEbmType zeroLogit1 = FloatEbmType { 0 };
+            FloatBig zeroLogit0 = FloatBig { 0 };
+            FloatBig zeroLogit1 = FloatBig { 0 };
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType update0 = EbmStats::ComputeSinglePartitionUpdate(
+               FloatBig update0 = EbmStats::ComputeSinglePartitionUpdate(
                   pHistogramTargetEntryLeftChild[iVector].m_sumGradients,
                   pHistogramTargetEntryLeftChild[iVector].GetSumHessians()
                );
-               FloatEbmType update1 = EbmStats::ComputeSinglePartitionUpdate(
+               FloatBig update1 = EbmStats::ComputeSinglePartitionUpdate(
                   pHistogramTargetEntryRightChild[iVector].m_sumGradients,
                   pHistogramTargetEntryRightChild[iVector].GetSumHessians()
                );
@@ -666,26 +666,29 @@ public:
                }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               aValues[iVector] = update0;
-               aValues[cVectorLength + iVector] = update1;
+               aValues[iVector] = SafeConvertFloat<FloatFast>(update0);
+               aValues[cVectorLength + iVector] = SafeConvertFloat<FloatFast>(update1);
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            aValues[0] = EbmStats::ComputeSinglePartitionUpdate(
+            FloatBig update0 = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntryLeftChild[0].m_sumGradients,
                pLeftChild->GetWeight()
             );
-            aValues[1] = EbmStats::ComputeSinglePartitionUpdate(
+            FloatBig update1 = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntryRightChild[0].m_sumGradients,
                pRightChild->GetWeight()
             );
+
+            aValues[0] = SafeConvertFloat<FloatFast>(update0);
+            aValues[1] = SafeConvertFloat<FloatFast>(update1);
          }
 
-         const FloatEbmType totalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+         const FloatBig totalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
          EBM_ASSERT(!std::isnan(totalGain));
          EBM_ASSERT(!std::isinf(totalGain));
-         EBM_ASSERT(FloatEbmType { 0 } <= totalGain);
-         *pTotalGain = totalGain;
+         EBM_ASSERT(0 <= totalGain);
+         *pTotalGain = static_cast<double>(totalGain);
          return Error_None;
       }
 
@@ -717,7 +720,7 @@ public:
          TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceCur =
             AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesInitialNeededAllocation);
 
-         FloatEbmType totalGain = FloatEbmType { 0 };
+         FloatBig totalGain = 0;
 
          goto skip_first_push_pop;
 
@@ -738,10 +741,10 @@ public:
          skip_first_push_pop:
 
             // ONLY AFTER WE'VE POPPED pParentTreeNode OFF the priority queue is it considered to have been split.  Calling SPLIT_THIS_NODE makes it formal
-            const FloatEbmType totalGainUpdate = pParentTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+            const FloatBig totalGainUpdate = pParentTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
             EBM_ASSERT(!std::isnan(totalGainUpdate));
             EBM_ASSERT(!std::isinf(totalGainUpdate));
-            EBM_ASSERT(FloatEbmType { 0 } <= totalGainUpdate);
+            EBM_ASSERT(0 <= totalGainUpdate);
             totalGain += totalGainUpdate;
 
             pParentTreeNode->SPLIT_THIS_NODE();
@@ -775,7 +778,7 @@ public:
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
                   EBM_ASSERT(!std::isnan(pLeftChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pLeftChild->AFTER_GetSplitGain()));
-                  EBM_ASSERT(FloatEbmType { 0 } <= pLeftChild->AFTER_GetSplitGain());
+                  EBM_ASSERT(0 <= pLeftChild->AFTER_GetSplitGain());
                   bestTreeNodeToSplit.push(pLeftChild);
                } else {
                   // if ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint returned -1 to indicate an 
@@ -829,7 +832,7 @@ public:
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
                   EBM_ASSERT(!std::isnan(pRightChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pRightChild->AFTER_GetSplitGain()));
-                  EBM_ASSERT(FloatEbmType { 0 } <= pRightChild->AFTER_GetSplitGain());
+                  EBM_ASSERT(0 <= pRightChild->AFTER_GetSplitGain());
                   bestTreeNodeToSplit.push(pRightChild);
                } else {
                   // if ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint returned -1 to indicate an 
@@ -861,9 +864,9 @@ public:
 
 
          EBM_ASSERT(!std::isnan(totalGain));
-         EBM_ASSERT(FloatEbmType { 0 } <= totalGain);
+         EBM_ASSERT(0 <= totalGain);
 
-         *pTotalGain = totalGain;
+         *pTotalGain = static_cast<double>(totalGain);
          EBM_ASSERT(
             static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2
          );
@@ -892,7 +895,7 @@ public:
          return error;
       }
       ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension);
-      FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+      FloatFast * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
 
       LOG_0(TraceLevelVerbose, "Entered Flatten");
       Flatten<bClassification>(pRootTreeNode, &pSplits, &pValues, cVectorLength);
@@ -911,11 +914,11 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
-   const FloatEbmType weightTotal,
+   const FloatBig weightTotal,
    const size_t iDimension,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 ) {
    LOG_0(TraceLevelVerbose, "Entered PartitionOneDimensionalBoosting");
 

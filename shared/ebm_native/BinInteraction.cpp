@@ -41,7 +41,7 @@ public:
       LOG_0(TraceLevelVerbose, "Entered BinInteractionInternal");
 
       HistogramBucketBase * const aHistogramBucketBase = pInteractionShell->GetHistogramBucketBaseFast();
-      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatFast, bClassification>();
 
       InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -51,22 +51,21 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatFast>(bClassification, cVectorLength);
 
       const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
-      const FloatEbmType * pGradientAndHessian = pDataSet->GetGradientsAndHessiansPointer();
-      const FloatEbmType * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * pDataSet->GetCountSamples();
+      const FloatFast * pGradientAndHessian = pDataSet->GetGradientsAndHessiansPointer();
+      const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * pDataSet->GetCountSamples();
 
-      const FloatEbmType * pWeight = pDataSet->GetWeights();
+      const FloatFast * pWeight = pDataSet->GetWeights();
 
       EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions()); // for interactions, we just return 0 for interactions with zero features
       const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= cDimensions); // for interactions, we just return 0 for interactions with zero features
 
 #ifndef NDEBUG
-      FloatEbmType weightTotalDebug = 0;
+      FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
       for(size_t iSample = 0; pGradientsAndHessiansEnd != pGradientAndHessian; ++iSample) {
@@ -109,7 +108,7 @@ public:
             GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pInteractionShell->GetHistogramBucketsEndDebugFast());
          pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + 1);
-         FloatEbmType weight = 1;
+         FloatFast weight = 1;
          if(nullptr != pWeight) {
             weight = *pWeight;
             ++pWeight;
@@ -122,7 +121,7 @@ public:
          auto * const pHistogramTargetEntry = pHistogramBucketEntry->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType gradient = *pGradientAndHessian;
+            const FloatFast gradient = *pGradientAndHessian;
             // gradient could be NaN
             // for classification, gradient can be anything from -1 to +1 (it cannot be infinity!)
             // for regression, gradient can be anything from +infinity or -infinity
@@ -132,7 +131,7 @@ public:
                EBM_ASSERT(
                   std::isnan(gradient) ||
                   !std::isinf(gradient) && 
-                  FloatEbmType { -1 } - k_epsilonGradient <= gradient && gradient <= FloatEbmType { 1 }
+                  -1 - k_epsilonGradient <= gradient && gradient <= 1
                   );
 
                // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the SamplingSet
@@ -140,16 +139,16 @@ public:
                //   values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to 
                //   hold the gradient and this computation from that value and then comment out the computation if not necssary and access it through an 
                //   accessor so that we can make the change entirely via macro
-               const FloatEbmType hessian = *(pGradientAndHessian + 1);
+               const FloatFast hessian = *(pGradientAndHessian + 1);
                EBM_ASSERT(
                   std::isnan(hessian) ||
-                  !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatEbmType { 0.25 }
+                  !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatFast { 0.25 }
                ); // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
 
-               const FloatEbmType oldHessian = pHistogramTargetEntry[iVector].GetSumHessians();
+               const FloatFast oldHessian = pHistogramTargetEntry[iVector].GetSumHessians();
                // since any one hessian is limited to 0 <= gradient <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(oldHessian) || !std::isinf(oldHessian) && -k_epsilonGradient <= oldHessian);
-               const FloatEbmType newHessian = oldHessian + hessian * weight;
+               const FloatFast newHessian = oldHessian + hessian * weight;
                // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(newHessian) || !std::isinf(newHessian) && -k_epsilonGradient <= newHessian);
                // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
@@ -158,11 +157,11 @@ public:
             pGradientAndHessian += bClassification ? 2 : 1;
          }
       }
-      EBM_ASSERT(FloatEbmType { 0 } < pDataSet->GetWeightTotal());
-      EBM_ASSERT(nullptr == pWeight || weightTotalDebug * 0.999 <= pDataSet->GetWeightTotal() && 
-         pDataSet->GetWeightTotal() <= 1.001 * weightTotalDebug);
+      EBM_ASSERT(0 < pDataSet->GetWeightTotal());
+      EBM_ASSERT(nullptr == pWeight || static_cast<FloatBig>(weightTotalDebug * 0.999) <= pDataSet->GetWeightTotal() && 
+         pDataSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
       EBM_ASSERT(nullptr != pWeight || 
-         static_cast<FloatEbmType>(pDataSet->GetCountSamples()) == pDataSet->GetWeightTotal());
+         static_cast<FloatBig>(pDataSet->GetCountSamples()) == pDataSet->GetWeightTotal());
 
       LOG_0(TraceLevelVerbose, "Exited BinInteractionInternal");
    }

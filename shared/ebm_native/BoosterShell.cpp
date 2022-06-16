@@ -70,7 +70,7 @@ ErrorEbmType BoosterShell::FillAllocations() {
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = m_pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cBytesPerItem = GetHistogramTargetEntrySize<FloatEbmType>(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+   const size_t cBytesPerItem = GetHistogramTargetEntrySize<FloatBig>(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       
    m_pSmallChangeToModelAccumulatedFromSamplingSets = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
    if(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets) {
@@ -97,7 +97,7 @@ ErrorEbmType BoosterShell::FillAllocations() {
       goto failed_allocation;
    }
 
-   m_aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
+   m_aTempFloatVector = EbmMalloc<FloatFast>(cVectorLength);
    if(nullptr == m_aTempFloatVector) {
       goto failed_allocation;
    }
@@ -428,7 +428,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
    CompressibleTensor * const pBestModel = pBoosterCore->GetBestModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pBestModel);
    EBM_ASSERT(pBestModel->GetExpanded()); // the model should have been expanded at startup
-   FloatEbmType * const pValues = pBestModel->GetValuePointer();
+   FloatFast * const pValues = pBestModel->GetValuePointer();
    EBM_ASSERT(nullptr != pValues);
 
    EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cValues));
@@ -521,7 +521,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
    CompressibleTensor * const pCurrentModel = pBoosterCore->GetCurrentModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pCurrentModel);
    EBM_ASSERT(pCurrentModel->GetExpanded()); // the model should have been expanded at startup
-   FloatEbmType * const pValues = pCurrentModel->GetValuePointer();
+   FloatFast * const pValues = pCurrentModel->GetValuePointer();
    EBM_ASSERT(nullptr != pValues);
 
    EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cValues));

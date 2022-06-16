@@ -73,7 +73,7 @@ GPU_GLOBAL static void ExecuteApplyValidation(
    const Loss * const pLoss, 
    const ptrdiff_t cRuntimeScores,
    const ptrdiff_t cRuntimePack,
-   FloatEbmType * const pMetricOut
+   double * const pMetricOut
 ) {
    TLoss * const pLossSpecific = static_cast<TLoss *>(pLoss);
    TExecute<TLoss, TFloat, cCompilerScores, cCompilerPack, bHessian>::ApplyValidation(
@@ -256,7 +256,7 @@ struct Loss : public Registrable {
          const TLoss * const pLoss,
          const ptrdiff_t cRuntimeScores,
          const ptrdiff_t cRuntimePack,
-         FloatEbmType * const pMetricOut
+         double * const pMetricOut
       ) {
          UNUSED(pLoss);
          UNUSED(cRuntimeScores);
@@ -283,7 +283,7 @@ struct Loss : public Registrable {
          const TLoss * const pLoss,
          const ptrdiff_t cRuntimeScores,
          const ptrdiff_t cRuntimePack,
-         FloatEbmType * const pMetricOut
+         double * const pMetricOut
       ) {
          UNUSED(pLoss);
          UNUSED(cRuntimeScores);
@@ -310,7 +310,7 @@ struct Loss : public Registrable {
          const TLoss * const pLoss,
          const ptrdiff_t cRuntimeScores,
          const ptrdiff_t cRuntimePack,
-         FloatEbmType * const pMetricOut
+         double * const pMetricOut
       ) {
          UNUSED(pLoss);
          UNUSED(cRuntimeScores);
@@ -337,7 +337,7 @@ struct Loss : public Registrable {
          const TLoss * const pLoss,
          const ptrdiff_t cRuntimeScores,
          const ptrdiff_t cRuntimePack,
-         FloatEbmType * const pMetricOut
+         double * const pMetricOut
       ) {
          UNUSED(pLoss);
          UNUSED(cRuntimeScores);
@@ -379,7 +379,7 @@ struct Loss : public Registrable {
    };
 
 
-   template<class TLoss>
+   template<class TLoss, typename TFloat>
    struct HasCalculateHessianFunctionInternal {
       // use SFINAE to find out if the target class has the function with the correct signature
       struct TrueStruct {
@@ -400,7 +400,7 @@ struct Loss : public Registrable {
       template<class TCheck>
       static TrueStruct NotInvokedCheck(TCheck const * pCheck,
          typename std::enable_if<
-         std::is_same<FloatEbmType, decltype(pCheck->CalculateHessian(float { 0 }, float { 0 }))>::value
+         std::is_same<TFloat, decltype(pCheck->CalculateHessian(TFloat { 0 }, TFloat { 0 }))>::value
          >::type * = nullptr);
       static FalseStruct NotInvokedCheck(...);
       static constexpr bool value = std::is_same<TrueStruct, 
@@ -410,10 +410,10 @@ struct Loss : public Registrable {
 
 protected:
 
-   template<typename TLoss>
+   template<typename TLoss, typename TFloat>
    constexpr static bool HasCalculateHessianFunction() {
       // use SFINAE to find out if our Loss class has the function CalculateHessian with the correct signature
-      return HasCalculateHessianFunctionInternal<TLoss>::value;
+      return HasCalculateHessianFunctionInternal<TLoss, TFloat>::value;
    }
 
    template<typename TLoss>
@@ -431,12 +431,12 @@ protected:
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbmType SharedApplyTraining(ApplyTrainingData * const pData) const {
       static_assert(IsEdgeLoss<TLoss>(), "TLoss must inherit from one of the children of the Loss class");
-      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyTraining(this, pData);
+      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss, TFloat>()>::ApplyTraining(this, pData);
    }
    template<typename TLoss, typename TFloat, ptrdiff_t cCompilerScores, ptrdiff_t cCompilerPack>
    INLINE_RELEASE_TEMPLATED ErrorEbmType SharedApplyValidation(ApplyValidationData * const pData) const {
       static_assert(IsEdgeLoss<TLoss>(), "TLoss must inherit from one of the children of the Loss class");
-      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss>()>::ApplyValidation(this, pData);
+      return AttachHessian<TLoss, TFloat, cCompilerScores, cCompilerPack, HasCalculateHessianFunction<TLoss, TFloat>()>::ApplyValidation(this, pData);
    }
 
 
@@ -452,11 +452,8 @@ protected:
    }
 
 
-   template<typename TLoss>
-   INLINE_RELEASE_TEMPLATED void LossFillWrapper(
-      const FloatEbmType updateMultiple,
-      void * const pWrapperOut
-   ) noexcept {
+   template<typename TLoss, typename TFloat>
+   INLINE_RELEASE_TEMPLATED void LossFillWrapper(void * const pWrapperOut) noexcept {
       EBM_ASSERT(nullptr != pWrapperOut);
       LossWrapper * const pLossWrapperOut = static_cast<LossWrapper *>(pWrapperOut);
       FunctionPointersCpp * const pFunctionPointers =
@@ -466,8 +463,10 @@ protected:
       pFunctionPointers->m_pApplyTrainingCpp = &TLoss::ApplyTraining;
       pFunctionPointers->m_pApplyValidationCpp = &TLoss::ApplyValidation;
 
-      pLossWrapperOut->m_updateMultiple = updateMultiple;
-      pLossWrapperOut->m_bLossHasHessian = HasCalculateHessianFunction<TLoss>() ? EBM_TRUE : EBM_FALSE;
+      auto multiplier = (static_cast<TLoss *>(this))->GetFinalMultiplier();
+      static_assert(std::is_same<decltype(multiplier), double>::value, "this->GetFinalMultiplier() should return a double");
+      pLossWrapperOut->m_updateMultiple = multiplier;
+      pLossWrapperOut->m_bLossHasHessian = HasCalculateHessianFunction<TLoss, TFloat>() ? EBM_TRUE : EBM_FALSE;
       pLossWrapperOut->m_bSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies = EBM_FALSE;
 
       pLossWrapperOut->m_pLoss = this;
@@ -580,10 +579,10 @@ protected:
 };
 
 
-#define LOSS_CLASS_BOILERPLATE(__EBM_TYPE, isVectorized, __updateMultiple) \
+#define LOSS_CLASS_BOILERPLATE(__EBM_TYPE, isVectorized) \
    LOSS_CLASS_CONSTANTS_BOILERPLATE(isVectorized) \
    LOSS_CLASS_TEMPLATE_BOILERPLATE \
-   LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE, (__updateMultiple))
+   LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE)
 
 // TODO: use the isVectorized constexpr to control construction of the Loss structs
 #define LOSS_CLASS_CONSTANTS_BOILERPLATE(isVectorized) \
@@ -603,7 +602,7 @@ protected:
             cCompilerScores, cCompilerPack>(pData); \
       }
 
-#define LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE, __updateMultiple) \
+#define LOSS_CLASS_VIRTUAL_BOILERPLATE(__EBM_TYPE) \
    public: \
       static ErrorEbmType ApplyTraining(const Loss * const pThis, ApplyTrainingData * const pData) { \
          return (static_cast<const __EBM_TYPE<TFloat> *>(pThis))->LossApplyTraining<const __EBM_TYPE<TFloat>>(pData); \
@@ -615,9 +614,7 @@ protected:
          static_assert( \
             std::is_same<__EBM_TYPE<TFloat>, typename std::remove_pointer<decltype(this)>::type>::value, \
             "*Loss types mismatch"); \
-         LossFillWrapper<typename std::remove_pointer<decltype(this)>::type>( \
-            static_cast<FloatEbmType>(__updateMultiple), \
-            pWrapperOut); \
+         LossFillWrapper<typename std::remove_pointer<decltype(this)>::type, TFloat>(pWrapperOut); \
       }
 
 } // DEFINED_ZONE_NAME

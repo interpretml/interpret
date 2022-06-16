@@ -46,7 +46,7 @@ extern ErrorEbmType InitializeGradientsAndHessians(
    const BagEbmType * const aBag,
    const double * const aPredictorScores,
    const size_t cSetSamples,
-   FloatEbmType * const aGradientAndHessian
+   FloatFast * const aGradientAndHessian
 );
 
 extern ErrorEbmType Unbag(
@@ -62,7 +62,7 @@ extern ErrorEbmType ExtractWeights(
    const size_t cAllSamples,
    const BagEbmType * const aBag,
    const size_t cSetSamples,
-   FloatEbmType ** ppWeightsOut
+   FloatFast ** ppWeightsOut
 );
 
 INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
@@ -490,7 +490,7 @@ ErrorEbmType BoosterCore::Create(
 
    EBM_ASSERT(nullptr == pBoosterCore->m_apSamplingSets);
    if(0 != cTrainingSamples) {
-      FloatEbmType * aWeights = nullptr;
+      FloatFast * aWeights = nullptr;
       if(0 != cWeights) {
          error = ExtractWeights(
             pDataSetShared,
@@ -521,7 +521,7 @@ ErrorEbmType BoosterCore::Create(
    }
 
    EBM_ASSERT(nullptr == pBoosterCore->m_aValidationWeights);
-   pBoosterCore->m_validationWeightTotal = static_cast<FloatEbmType>(cValidationSamples);
+   pBoosterCore->m_validationWeightTotal = static_cast<FloatBig>(cValidationSamples);
    if(0 != cWeights && 0 != cValidationSamples) {
       error = ExtractWeights(
          pDataSetShared,
@@ -536,14 +536,14 @@ ErrorEbmType BoosterCore::Create(
          return error;
       }
       if(nullptr != pBoosterCore->m_aValidationWeights) {
-         const FloatEbmType total = AddPositiveFloatsSafe(cValidationSamples, pBoosterCore->m_aValidationWeights);
-         if(std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
+         const FloatBig total = AddPositiveFloatsSafeBig(cValidationSamples, pBoosterCore->m_aValidationWeights);
+         if(std::isnan(total) || std::isinf(total) || total <= 0) {
+            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create std::isnan(total) || std::isinf(total) || total <= 0");
             return Error_UserParamValue;
          }
          // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
          // to zero though so check it after checking for negative
-         EBM_ASSERT(FloatEbmType { 0 } != total);
+         EBM_ASSERT(0 != total);
          pBoosterCore->m_validationWeightTotal = total;
       }
    }
@@ -596,7 +596,7 @@ ErrorEbmType BoosterCore::Create(
    }
 
    pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses = runtimeLearningTypeOrCountTargetClasses;
-   pBoosterCore->m_bestModelMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::max() };
+   pBoosterCore->m_bestModelMetric = std::numeric_limits<double>::max();
 
    LOG_0(TraceLevelInfo, "Exited BoosterCore::Create");
    return Error_None;

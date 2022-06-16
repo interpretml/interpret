@@ -9,7 +9,7 @@
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
 struct LogLossMulticlassLoss : public MulticlassLoss {
-   LOSS_CLASS_BOILERPLATE(LogLossMulticlassLoss, true, 1)
+   LOSS_CLASS_BOILERPLATE(LogLossMulticlassLoss, true)
 
    // IMPORTANT: the constructor parameters here must match the RegisterLoss parameters in the file Loss.cpp
    INLINE_ALWAYS LogLossMulticlassLoss(const Config & config) {
@@ -23,6 +23,10 @@ struct LogLossMulticlassLoss : public MulticlassLoss {
       if(config.cOutputs <= 0) {
          throw ParamMismatchWithConfigException();
       }
+   }
+
+   INLINE_ALWAYS double GetFinalMultiplier() const noexcept {
+      return 1.0;
    }
 
    GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunctionPass1(size_t countTargetClasses, TFloat * pointerScores, TFloat * pointerTempStorage, const TFloat & tempValue) const {

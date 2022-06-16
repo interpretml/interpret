@@ -35,7 +35,7 @@ public:
 
    PartitionTwoDimensionalInteractionInternal() = delete; // this is a static class.  Do not construct
 
-   static FloatEbmType Func(
+   static double Func(
       InteractionCore * const pInteractionCore,
       const FeatureGroup * const pFeatureGroup,
       const InteractionOptionsType options,
@@ -49,12 +49,12 @@ public:
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      auto * const pAuxiliaryBucketZone = pAuxiliaryBucketZoneBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * const pAuxiliaryBucketZone = pAuxiliaryBucketZoneBase->GetHistogramBucket<FloatBig, bClassification>();
 
-      auto * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<FloatBig, bClassification>();
 
 #ifndef NDEBUG
-      auto * const aHistogramBucketsDebugCopy = aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * const aHistogramBucketsDebugCopy = aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatBig, bClassification>();
 #endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -63,7 +63,7 @@ public:
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
 
       auto * const pTotals00 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
       auto * const pTotals01 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
@@ -90,7 +90,7 @@ public:
 #endif // NDEBUG
 
       // if a negative value were to occur, then it would be due to numeric instability, so clip it to zero here
-      FloatEbmType bestGain = FloatEbmType { 0 };
+      FloatBig bestGain = 0;
 
       size_t aiStart[k_cDimensionsMax];
 
@@ -162,12 +162,12 @@ public:
 #ifndef NDEBUG
                         bAnySplits = true;
 #endif // NDEBUG
-                        FloatEbmType gain = 0;
+                        FloatBig gain = 0;
 
-                        FloatEbmType weight00 = pTotals00->GetWeightInBucket();
-                        FloatEbmType weight01 = pTotals01->GetWeightInBucket();
-                        FloatEbmType weight10 = pTotals10->GetWeightInBucket();
-                        FloatEbmType weight11 = pTotals11->GetWeightInBucket();
+                        FloatBig weight00 = pTotals00->GetWeightInBucket();
+                        FloatBig weight01 = pTotals01->GetWeightInBucket();
+                        FloatBig weight10 = pTotals10->GetWeightInBucket();
+                        FloatBig weight11 = pTotals11->GetWeightInBucket();
 
                         auto * const pHistogramEntry00 = pTotals00->GetHistogramTargetEntry();
                         auto * const pHistogramEntry01 = pTotals01->GetHistogramTargetEntry();
@@ -182,20 +182,20 @@ public:
 
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
-                           const FloatEbmType n00 = pHistogramEntry00[iVector].m_sumGradients;
-                           const FloatEbmType d00 = bUseLogitBoost ?
+                           const FloatBig n00 = pHistogramEntry00[iVector].m_sumGradients;
+                           const FloatBig d00 = bUseLogitBoost ?
                               pHistogramEntry00[iVector].GetSumHessians() : weight00;
 
-                           const FloatEbmType n01 = pHistogramEntry01[iVector].m_sumGradients;
-                           const FloatEbmType d01 = bUseLogitBoost ?
+                           const FloatBig n01 = pHistogramEntry01[iVector].m_sumGradients;
+                           const FloatBig d01 = bUseLogitBoost ?
                               pHistogramEntry01[iVector].GetSumHessians() : weight01;
 
-                           const FloatEbmType n10 = pHistogramEntry10[iVector].m_sumGradients;
-                           const FloatEbmType d10 = bUseLogitBoost ?
+                           const FloatBig n10 = pHistogramEntry10[iVector].m_sumGradients;
+                           const FloatBig d10 = bUseLogitBoost ?
                               pHistogramEntry10[iVector].GetSumHessians() : weight10;
 
-                           const FloatEbmType n11 = pHistogramEntry11[iVector].m_sumGradients;
-                           const FloatEbmType d11 = bUseLogitBoost ?
+                           const FloatBig n11 = pHistogramEntry11[iVector].m_sumGradients;
+                           const FloatBig d11 = bUseLogitBoost ?
                               pHistogramEntry11[iVector].GetSumHessians() : weight11;
 
                            if(0 != (InteractionOptions_Pure & options)) {
@@ -255,40 +255,39 @@ public:
 
                               // if any of the denominators (weights) are zero then the purified gain will be
                               // zero.  Handle it here to avoid division by zero
-                              if(FloatEbmType { 0 } != d00 && FloatEbmType { 0 } != d01 && 
-                                 FloatEbmType { 0 } != d10 && FloatEbmType { 0 } != d11) {
+                              if(0 != d00 && 0 != d01 && 0 != d10 && 0 != d11) {
 
                                  // TODO: instead of checking the denominators for zero above, can we do it earlier?
                                  // If we're using hessians then we'd need it here, but we aren't using them yet
 
                                  // calculate what the full updates would be for non-purified:
                                  // u = update (non-purified)
-                                 const FloatEbmType u00 = n00 / d00;
-                                 const FloatEbmType u01 = n01 / d01;
-                                 const FloatEbmType u10 = n10 / d10;
-                                 const FloatEbmType u11 = n11 / d11;
+                                 const FloatBig u00 = n00 / d00;
+                                 const FloatBig u01 = n01 / d01;
+                                 const FloatBig u10 = n10 / d10;
+                                 const FloatBig u11 = n11 / d11;
 
                                  // common part of equations (positive for 00 & 11 equations, negative for 01 and 10)
-                                 const FloatEbmType common = u00 - u01 - u10 + u11;
+                                 const FloatBig common = u00 - u01 - u10 + u11;
 
                                  // p = purified update
-                                 const FloatEbmType p00 = common / (FloatEbmType { 1 } + d00 / d01 + d00 / d10 + d00 / d11);
-                                 const FloatEbmType p01 = common / (FloatEbmType { -1 } - d01 / d00 - d01 / d10 - d01 / d11);
-                                 const FloatEbmType p10 = common / (FloatEbmType { -1 } - d10 / d00 - d10 / d01 - d10 / d11);
-                                 const FloatEbmType p11 = common / (FloatEbmType { 1 } + d11 / d00 + d11 / d01 + d11 / d10);
+                                 const FloatBig p00 = common / (FloatBig { 1 } + d00 / d01 + d00 / d10 + d00 / d11);
+                                 const FloatBig p01 = common / (FloatBig { -1 } - d01 / d00 - d01 / d10 - d01 / d11);
+                                 const FloatBig p10 = common / (FloatBig { -1 } - d10 / d00 - d10 / d01 - d10 / d11);
+                                 const FloatBig p11 = common / (FloatBig { 1 } + d11 / d00 + d11 / d01 + d11 / d10);
 
                                  // g = gain
-                                 const FloatEbmType g00 = EbmStats::CalcPartialGainFromUpdate(p00, d00);
-                                 const FloatEbmType g01 = EbmStats::CalcPartialGainFromUpdate(p01, d01);
-                                 const FloatEbmType g10 = EbmStats::CalcPartialGainFromUpdate(p10, d10);
-                                 const FloatEbmType g11 = EbmStats::CalcPartialGainFromUpdate(p11, d11);
+                                 const FloatBig g00 = EbmStats::CalcPartialGainFromUpdate(p00, d00);
+                                 const FloatBig g01 = EbmStats::CalcPartialGainFromUpdate(p01, d01);
+                                 const FloatBig g10 = EbmStats::CalcPartialGainFromUpdate(p10, d10);
+                                 const FloatBig g11 = EbmStats::CalcPartialGainFromUpdate(p11, d11);
 
 #ifndef NDEBUG
                                  // r = reconsituted numerator (after purification)
-                                 const FloatEbmType r00 = p00 * d00;
-                                 const FloatEbmType r01 = p01 * d01;
-                                 const FloatEbmType r10 = p10 * d10;
-                                 const FloatEbmType r11 = p11 * d11;
+                                 const FloatBig r00 = p00 * d00;
+                                 const FloatBig r01 = p01 * d01;
+                                 const FloatBig r10 = p10 * d10;
+                                 const FloatBig r11 = p11 * d11;
 
                                  // purification means summing any direction gives us zero
                                  EBM_ASSERT(std::abs(r00 + r01) < 0.001);
@@ -318,7 +317,7 @@ public:
                               gain += EbmStats::CalcPartialGain(n11, d11);
                            }
                         }
-                        EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain); // sumations of positive numbers should be positive
+                        EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumations of positive numbers should be positive
 
                         // If we get a NaN result, we'd like to propagate it by making bestGain NaN.  
                         // The rules for NaN values say that non equality comparisons are all false so, 
@@ -338,7 +337,7 @@ public:
       } while(iBin1 < cBinsDimension1 - 1);
 
       // we start from zero, so bestGain can't be negative here
-      EBM_ASSERT(std::isnan(bestGain) || FloatEbmType { 0 } <= bestGain);
+      EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
 
       if(0 == (InteractionOptions_Pure & options)) {
          // if we are detecting impure interaction then so far we have only calculated the children partial gain 
@@ -349,10 +348,10 @@ public:
          // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
          // which contains the totals of all buckets
          const auto * const pTotal =
-            reinterpret_cast<const HistogramBucket<FloatEbmType, bClassification> *>(
+            reinterpret_cast<const HistogramBucket<FloatBig, bClassification> *>(
                reinterpret_cast<const char *>(pAuxiliaryBucketZoneBase) - cBytesPerHistogramBucket);
 
-         const FloatEbmType weightAll = pTotal->GetWeightInBucket();
+         const FloatBig weightAll = pTotal->GetWeightInBucket();
 
          const auto * const pHistogramEntryTotal = pTotal->GetHistogramTargetEntry();
 
@@ -380,12 +379,12 @@ public:
          // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative gain.
 
          EBM_ASSERT(std::isnan(bestGain) ||
-            -std::numeric_limits<FloatEbmType>::infinity() == bestGain ||
+            -std::numeric_limits<FloatBig>::infinity() == bestGain ||
             k_epsilonNegativeGainAllowed <= bestGain || !bAnySplits);
       }
 
       // we clean up bestGain in the caller, since this function is templated and created many times
-      return bestGain;
+      return static_cast<double>(bestGain);
    }
 };
 
@@ -395,7 +394,7 @@ public:
 
    PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
       const FeatureGroup * const pFeatureGroup,
       const InteractionOptionsType options,
@@ -450,7 +449,7 @@ public:
 
    PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
       const FeatureGroup * const pFeatureGroup,
       const InteractionOptionsType options,
@@ -482,7 +481,7 @@ public:
    }
 };
 
-extern FloatEbmType PartitionTwoDimensionalInteraction(
+extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
    const InteractionOptionsType options,

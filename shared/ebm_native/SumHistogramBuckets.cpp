@@ -37,7 +37,7 @@ public:
       const size_t cHistogramBuckets
 #ifndef NDEBUG
       , const size_t cSamplesTotal
-      , const FloatEbmType weightTotal
+      , const FloatBig weightTotal
 #endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
@@ -51,15 +51,15 @@ public:
       HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBaseBig();
 
       const auto * const aHistogramBuckets = 
-         aHistogramBucketsBase->GetHistogramBucket<FloatEbmType, bClassification>();
+         aHistogramBucketsBase->GetHistogramBucket<FloatBig, bClassification>();
       auto * const aSumHistogramTargetEntry =
-         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<FloatEbmType, bClassification>();
+         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<FloatBig, bClassification>();
 
       EBM_ASSERT(2 <= cHistogramBuckets); // we pre-filter out features with only one bucket
 
 #ifndef NDEBUG
       size_t cSamplesTotalDebug = 0;
-      FloatEbmType weightTotalDebug = 0;
+      FloatBig weightTotalDebug = 0;
 #endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -67,8 +67,8 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
 
       const auto * pCopyFrom = aHistogramBuckets;
       const auto * pCopyFromEnd = 
@@ -115,7 +115,7 @@ extern void SumHistogramBuckets(
    const size_t cHistogramBuckets
 #ifndef NDEBUG
    , const size_t cSamplesTotal
-   , const FloatEbmType weightTotal
+   , const FloatBig weightTotal
 #endif // NDEBUG
 ) {
    LOG_0(TraceLevelVerbose, "Entered SumHistogramBuckets");

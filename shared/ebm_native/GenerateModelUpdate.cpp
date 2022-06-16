@@ -46,7 +46,7 @@ extern void SumHistogramBuckets(
    const size_t cHistogramBuckets
 #ifndef NDEBUG
    , const size_t cSamplesTotal
-   , const FloatEbmType weightTotal
+   , const FloatBig weightTotal
 #endif // NDEBUG
 );
 
@@ -65,11 +65,11 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
    BoosterShell * const pBoosterShell,
    const size_t cHistogramBuckets,
    const size_t cSamplesTotal,
-   const FloatEbmType weightTotal,
+   const FloatBig weightTotal,
    const size_t iDimension,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 );
 
 extern ErrorEbmType PartitionTwoDimensionalBoosting(
@@ -77,7 +77,7 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 #ifndef NDEBUG
    , const HistogramBucketBase * const aHistogramBucketsDebugCopy
 #endif // NDEBUG
@@ -88,7 +88,7 @@ extern ErrorEbmType PartitionRandomBoosting(
    const FeatureGroup * const pFeatureGroup,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 );
 
 static ErrorEbmType BoostZeroDimensional(
@@ -104,14 +104,14 @@ static ErrorEbmType BoostZeroDimensional(
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || 
-      GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) 
+   if(GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) || 
+      GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)) 
    {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING BoostZeroDimensional GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING BoostZeroDimensional GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatFast>(bClassification, cVectorLength);
 
    HistogramBucketBase * const pHistogramBucketFast = pBoosterShell->GetHistogramBucketBaseFast(cBytesPerHistogramBucketFast);
    if(UNLIKELY(nullptr == pHistogramBucketFast)) {
@@ -130,7 +130,7 @@ static ErrorEbmType BoostZeroDimensional(
       pTrainingSet
    );
 
-   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
 
    HistogramBucketBase * const pHistogramBucketBig = pBoosterShell->GetHistogramBucketBaseBig(cBytesPerHistogramBucketBig);
    if(UNLIKELY(nullptr == pHistogramBucketBig)) {
@@ -143,7 +143,7 @@ static ErrorEbmType BoostZeroDimensional(
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatEbmType) == sizeof(FloatEbmType), "float mismatch");
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
    EBM_ASSERT(cBytesPerHistogramBucketFast == cBytesPerHistogramBucketBig); // until we switch fast to float datatypes
    memcpy(pHistogramBucketBig, pHistogramBucketFast, cBytesPerHistogramBucketFast);
 
@@ -153,29 +153,29 @@ static ErrorEbmType BoostZeroDimensional(
 
    CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet = 
       pBoosterShell->GetOverwritableModelUpdate();
-   FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+   FloatFast * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(bClassification) {
-      const auto * const pHistogramBucketLocal = pHistogramBucketBig->GetHistogramBucket<FloatEbmType, true>();
+      const auto * const pHistogramBucketLocal = pHistogramBucketBig->GetHistogramBucket<FloatBig, true>();
       const auto * const aSumHistogramTargetEntry = pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iVector].m_sumGradients);
+            const FloatBig update = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iVector].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             // Hmmm.. for DP we need the sum, which means that we can't zero one of the class numbers as we
             // could with one of the logits in multiclass.
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            aValues[iVector] = update;
+            aValues[iVector] = SafeConvertFloat<FloatFast>(update);
          }
       } else {
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-         FloatEbmType zeroLogit = FloatEbmType { 0 };
+         FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            FloatEbmType update = EbmStats::ComputeSinglePartitionUpdate(
+            FloatBig update = EbmStats::ComputeSinglePartitionUpdate(
                aSumHistogramTargetEntry[iVector].m_sumGradients,
                aSumHistogramTargetEntry[iVector].GetSumHessians()
             );
@@ -189,22 +189,22 @@ static ErrorEbmType BoostZeroDimensional(
             }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            aValues[iVector] = update;
+            aValues[iVector] = SafeConvertFloat<FloatFast>(update);
          }
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      const auto * const pHistogramBucketLocal = pHistogramBucketBig->GetHistogramBucket<FloatEbmType, false>();
+      const auto * const pHistogramBucketLocal = pHistogramBucketBig->GetHistogramBucket<FloatBig, false>();
       const auto * const aSumHistogramTargetEntry = pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-         const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
-         aValues[0] = smallChangeToModel;
+         const FloatBig smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
+         aValues[0] = SafeConvertFloat<FloatFast>(smallChangeToModel);
       } else {
-         const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
+         const FloatBig smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
             aSumHistogramTargetEntry[0].m_sumGradients,
             pHistogramBucketLocal->GetWeightInBucket()
          );
-         aValues[0] = smallChangeToModel;
+         aValues[0] = SafeConvertFloat<FloatFast>(smallChangeToModel);
       }
    }
 
@@ -220,7 +220,7 @@ static ErrorEbmType BoostSingleDimensional(
    const size_t iDimension,
    const size_t cSamplesRequiredForChildSplitMin,
    const IntEbmType countLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 ) {
    ErrorEbmType error;
 
@@ -241,15 +241,15 @@ static ErrorEbmType BoostSingleDimensional(
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) ||
-      GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) 
+   if(GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) ||
+      GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)) 
    {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)");
       return Error_OutOfMemory;
    }
 
-   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatFast>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucketFast, cHistogramBuckets)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerHistogramBucketFast, cHistogramBuckets)");
@@ -274,7 +274,7 @@ static ErrorEbmType BoostSingleDimensional(
       pTrainingSet
    );
 
-   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucketBig, cHistogramBuckets)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerHistogramBucketBig, cHistogramBuckets)");
@@ -293,7 +293,7 @@ static ErrorEbmType BoostSingleDimensional(
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatEbmType) == sizeof(FloatEbmType), "float mismatch");
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
    EBM_ASSERT(cBytesBufferFast == cBytesBufferBig); // until we switch fast to float datatypes
    memcpy(aHistogramBucketsBig, aHistogramBucketsFast, cBytesBufferFast);
 
@@ -302,7 +302,7 @@ static ErrorEbmType BoostSingleDimensional(
 
 
    HistogramTargetEntryBase * const aSumHistogramTargetEntry = pBoosterShell->GetSumHistogramTargetEntryArray();
-   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
+   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
    aSumHistogramTargetEntry->Zero(cBytesPerHistogramTargetEntry, cVectorLength);
 
    SumHistogramBuckets(
@@ -316,7 +316,7 @@ static ErrorEbmType BoostSingleDimensional(
 
    const size_t cSamplesTotal = pTrainingSet->GetTotalCountSampleOccurrences();
    EBM_ASSERT(1 <= cSamplesTotal);
-   const FloatEbmType weightTotal = pTrainingSet->GetWeightTotal();
+   const FloatBig weightTotal = pTrainingSet->GetWeightTotal();
 
    error = PartitionOneDimensionalBoosting(
       pBoosterShell,
@@ -341,7 +341,7 @@ static ErrorEbmType BoostMultiDimensional(
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    const size_t cSamplesRequiredForChildSplitMin,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
@@ -379,16 +379,16 @@ static ErrorEbmType BoostMultiDimensional(
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || 
-      GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) 
+   if(GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) || 
+      GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)) 
    {
       LOG_0(
          TraceLevelWarning,
-         "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)"
+         "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatFast>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBucketsMainSpace)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBucketsMainSpace)");
       return Error_OutOfMemory;
@@ -423,7 +423,7 @@ static ErrorEbmType BoostMultiDimensional(
    }
    const size_t cTotalBucketsBig = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
-   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBucketsBig)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBucketsBig)");
       return Error_OutOfMemory;
@@ -443,7 +443,7 @@ static ErrorEbmType BoostMultiDimensional(
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatEbmType) == sizeof(FloatEbmType), "float mismatch");
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
    memcpy(aHistogramBucketsBig, aHistogramBucketsFast, cBytesBufferFast);
 
 
@@ -601,7 +601,7 @@ static ErrorEbmType BoostMultiDimensional(
       }
 
       EBM_ASSERT(!std::isnan(*pTotalGain));
-      EBM_ASSERT(FloatEbmType { 0 } <= *pTotalGain);
+      EBM_ASSERT(0 <= *pTotalGain);
    } else {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional 2 != pFeatureGroup->GetCountSignificantFeatures()");
 
@@ -628,7 +628,7 @@ static ErrorEbmType BoostRandom(
    const SamplingSet * const pTrainingSet,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 ) {
    // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
@@ -653,16 +653,16 @@ static ErrorEbmType BoostRandom(
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) ||
-      GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength))
+   if(GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) ||
+      GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength))
    {
       LOG_0(
          TraceLevelWarning,
-         "WARNING BoostRandom GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)"
+         "WARNING BoostRandom GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) || GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatFast>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBuckets)");
       return Error_OutOfMemory;
@@ -687,7 +687,7 @@ static ErrorEbmType BoostRandom(
       pTrainingSet
    );
 
-   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBuckets)");
       return Error_OutOfMemory;
@@ -706,7 +706,7 @@ static ErrorEbmType BoostRandom(
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatEbmType) == sizeof(FloatEbmType), "float mismatch");
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
    EBM_ASSERT(cBytesBufferFast == cBytesBufferBig); // until we switch fast to float datatypes
    memcpy(aHistogramBucketsBig, aHistogramBucketsFast, cBytesBufferFast);
 
@@ -727,7 +727,7 @@ static ErrorEbmType BoostRandom(
    }
 
    EBM_ASSERT(!std::isnan(*pTotalGain));
-   EBM_ASSERT(FloatEbmType { 0 } <= *pTotalGain);
+   EBM_ASSERT(0 <= *pTotalGain);
 
    LOG_0(TraceLevelVerbose, "Exited BoostRandom");
    return Error_None;
@@ -816,8 +816,8 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
       EBM_ASSERT(1 <= cSamplingSetsAfterZero);
       const SamplingSet * const * const ppSamplingSetEnd = &ppSamplingSet[cSamplingSetsAfterZero];
-      const FloatEbmType invertedSampleCount = FloatEbmType { 1 } / cSamplingSetsAfterZero;
-      FloatEbmType gainAvg = FloatEbmType { 0 };
+      const double invertedSampleCount = 1.0 / cSamplingSetsAfterZero;
+      double gainAvg = 0;
       do {
          const SamplingSet * const pSamplingSet = *ppSamplingSet;
          if(UNLIKELY(IntEbmType { 0 } == lastDimensionLeavesMax)) {
@@ -830,7 +830,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                return error;
             }
          } else {
-            FloatEbmType gain;
+            double gain;
             if(0 != (GenerateUpdateOptions_RandomSplits & options) || 2 < cSignificantDimensions) {
                if(size_t { 1 } != cSamplesRequiredForChildSplitMin) {
                   LOG_0(TraceLevelWarning,
@@ -892,18 +892,18 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
             // gain should be +inf if there was an overflow in our callees
             EBM_ASSERT(!std::isnan(gain));
-            EBM_ASSERT(FloatEbmType { 0 } <= gain);
+            EBM_ASSERT(0 <= gain);
 
-            const FloatEbmType weightTotal = pSamplingSet->GetWeightTotal();
-            EBM_ASSERT(FloatEbmType { 0 } < weightTotal); // if all are zeros we assume there are no weights and use the count
+            const double weightTotal = static_cast<double>(pSamplingSet->GetWeightTotal());
+            EBM_ASSERT(0 < weightTotal); // if all are zeros we assume there are no weights and use the count
 
             // this could re-promote gain to be +inf again if weightTotal < 1.0
             // do the sample count inversion here in case adding all the avgeraged gains pushes us into +inf
-            EBM_ASSERT(invertedSampleCount <= FloatEbmType { 1 });
+            EBM_ASSERT(invertedSampleCount <= 1);
             gain = gain * invertedSampleCount / weightTotal;
             gainAvg += gain;
             EBM_ASSERT(!std::isnan(gainAvg));
-            EBM_ASSERT(FloatEbmType { 0 } <= gainAvg);
+            EBM_ASSERT(0 <= gainAvg);
          }
 
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
@@ -920,10 +920,10 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
       // gainAvg is +inf on overflow. It cannot be NaN, but check for that anyways since it's free
       EBM_ASSERT(!std::isnan(gainAvg));
-      EBM_ASSERT(FloatEbmType { 0 } <= gainAvg);
+      EBM_ASSERT(0 <= gainAvg);
 
       gainAvgOut = static_cast<double>(gainAvg);
-      if(UNLIKELY(/* NaN */ !LIKELY(gainAvg <= std::numeric_limits<FloatEbmType>::max()))) {
+      if(UNLIKELY(/* NaN */ !LIKELY(gainAvg <= std::numeric_limits<double>::max()))) {
          // this also checks for NaN since NaN < anything is FALSE
 
          // indicate an error/overflow with -inf similar to interaction strength.
@@ -939,13 +939,14 @@ static ErrorEbmType GenerateModelUpdateInternal(
       } else {
          EBM_ASSERT(!std::isnan(gainAvg));
          EBM_ASSERT(!std::isinf(gainAvg));
-         EBM_ASSERT(FloatEbmType { 0 } <= gainAvg);
+         EBM_ASSERT(0 <= gainAvg);
       }
 
       LOG_0(TraceLevelVerbose, "GenerateModelUpdatePerTargetClasses done sampling set loop");
 
-      FloatEbmType learningRateFloat = static_cast<FloatEbmType>(learningRate);
-      static_assert(sizeof(learningRateFloat) == sizeof(learningRate), "float mismatch");
+      double multiple = 1.0; // TODO: get this from the loss function
+      multiple /= cSamplingSetsAfterZero;
+      multiple *= learningRate;
 
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
@@ -981,12 +982,12 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
          const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
          if(bDividing) {
-            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRateFloat * invertedSampleCount * FloatEbmType { 0.5 });
+            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(multiple * 0.5);
          } else {
-            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRateFloat * invertedSampleCount);
+            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(multiple);
          }
       } else {
-         bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRateFloat * invertedSampleCount);
+         bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(multiple);
       }
 
       if(UNLIKELY(bBad)) {
@@ -1126,8 +1127,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is NaN");
    } else if(std::numeric_limits<double>::infinity() == learningRate) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is +infinity");
-   } else if(double { std::numeric_limits<FloatEbmType>::max() } < learningRate) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is +infinity in float32");
    } else if(0.0 == learningRate) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is zero");
    } else if(learningRate < double { 0 }) {

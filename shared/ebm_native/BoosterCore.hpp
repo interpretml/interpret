@@ -52,13 +52,13 @@ class BoosterCore final {
 
    size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
-   FloatEbmType m_validationWeightTotal;
-   FloatEbmType * m_aValidationWeights;
+   FloatBig m_validationWeightTotal;
+   FloatFast * m_aValidationWeights;
 
    CompressibleTensor ** m_apCurrentModel;
    CompressibleTensor ** m_apBestModel;
 
-   FloatEbmType m_bestModelMetric;
+   double m_bestModelMetric;
 
    size_t m_cBytesArrayEquivalentSplitMax;
 
@@ -155,11 +155,11 @@ public:
       return m_apSamplingSets;
    }
 
-   INLINE_ALWAYS FloatEbmType GetValidationWeightTotal() const {
+   INLINE_ALWAYS FloatBig GetValidationWeightTotal() const {
       return m_validationWeightTotal;
    }
 
-   INLINE_ALWAYS const FloatEbmType * GetValidationWeights() const {
+   INLINE_ALWAYS const FloatFast * GetValidationWeights() const {
       return m_aValidationWeights;
    }
 
@@ -171,11 +171,11 @@ public:
       return m_apBestModel;
    }
 
-   INLINE_ALWAYS FloatEbmType GetBestModelMetric() const {
+   INLINE_ALWAYS double GetBestModelMetric() const {
       return m_bestModelMetric;
    }
 
-   INLINE_ALWAYS void SetBestModelMetric(const FloatEbmType bestModelMetric) {
+   INLINE_ALWAYS void SetBestModelMetric(const double bestModelMetric) {
       m_bestModelMetric = bestModelMetric;
    }
 

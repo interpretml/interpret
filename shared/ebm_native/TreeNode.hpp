@@ -43,8 +43,8 @@ struct TreeNodeData<true> {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      const HistogramBucket<FloatEbmType, true> * m_pHistogramBucketEntryFirst;
-      const HistogramBucket<FloatEbmType, true> * m_pHistogramBucketEntryLast;
+      const HistogramBucket<FloatBig, true> * m_pHistogramBucketEntryFirst;
+      const HistogramBucket<FloatBig, true> * m_pHistogramBucketEntryLast;
       size_t m_cSamples;
    };
    static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
@@ -63,7 +63,7 @@ struct TreeNodeData<true> {
       TreeNode<true> * m_pTreeNodeChildren;
       // put this at the top so that our priority queue can access it directly without adding anything to the pointer 
       // (this is slightly more efficient on intel systems at least)
-      FloatEbmType m_splitGain;
+      FloatBig m_splitGain;
       ActiveDataType m_splitValue;
    };
    static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value,
@@ -108,30 +108,30 @@ struct TreeNodeData<true> {
       m_UNION.m_beforeExaminationForPossibleSplitting.m_cSamples = cSamples;
    }
 
-   INLINE_ALWAYS FloatEbmType GetWeight() const {
+   INLINE_ALWAYS FloatBig GetWeight() const {
       return m_weight;
    }
-   INLINE_ALWAYS void SetWeight(const FloatEbmType weight) {
+   INLINE_ALWAYS void SetWeight(const FloatBig weight) {
       m_weight = weight;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatEbmType, true> * BEFORE_GetHistogramBucketEntryFirst() const {
+   INLINE_ALWAYS const HistogramBucket<FloatBig, true> * BEFORE_GetHistogramBucketEntryFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
    }
    INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryFirst(
-      const HistogramBucket<FloatEbmType, true> * const pHistogramBucketEntryFirst)
+      const HistogramBucket<FloatBig, true> * const pHistogramBucketEntryFirst)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryFirst;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatEbmType, true> * BEFORE_GetHistogramBucketEntryLast() const {
+   INLINE_ALWAYS const HistogramBucket<FloatBig, true> * BEFORE_GetHistogramBucketEntryLast() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
    }
    INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryLast(
-      const HistogramBucket<FloatEbmType, true> * const pHistogramBucketEntryLast)
+      const HistogramBucket<FloatBig, true> * const pHistogramBucketEntryLast)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
@@ -150,11 +150,11 @@ struct TreeNodeData<true> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren = pTreeNodeChildren;
    }
 
-   INLINE_ALWAYS FloatEbmType AFTER_GetSplitGain() const {
+   INLINE_ALWAYS FloatBig AFTER_GetSplitGain() const {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
       return m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
-   INLINE_ALWAYS void AFTER_SetSplitGain(const FloatEbmType splitGain) {
+   INLINE_ALWAYS void AFTER_SetSplitGain(const FloatBig splitGain) {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
    }
@@ -168,10 +168,10 @@ struct TreeNodeData<true> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue = splitValue;
    }
 
-   INLINE_ALWAYS const HistogramTargetEntry<FloatEbmType, true> * GetHistogramTargetEntry() const {
+   INLINE_ALWAYS const HistogramTargetEntry<FloatBig, true> * GetHistogramTargetEntry() const {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
-   INLINE_ALWAYS HistogramTargetEntry<FloatEbmType, true> * GetHistogramTargetEntry() {
+   INLINE_ALWAYS HistogramTargetEntry<FloatBig, true> * GetHistogramTargetEntry() {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
 
@@ -195,7 +195,7 @@ private:
    bool m_bExaminedForPossibleSplitting;
 #endif // NDEBUG
 
-   FloatEbmType m_weight;
+   FloatBig m_weight;
 
    TreeNodeDataUnion m_UNION;
    // use the "struct hack" since Flexible array member method is not available in C++
@@ -203,7 +203,7 @@ private:
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramTargetEntry<FloatEbmType, true> m_aHistogramTargetEntry[1];
+   HistogramTargetEntry<FloatBig, true> m_aHistogramTargetEntry[1];
 };
 static_assert(std::is_standard_layout<TreeNodeData<true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -227,8 +227,8 @@ struct TreeNodeData<false> {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      const HistogramBucket<FloatEbmType, false> * m_pHistogramBucketEntryFirst;
-      const HistogramBucket<FloatEbmType, false> * m_pHistogramBucketEntryLast;
+      const HistogramBucket<FloatBig, false> * m_pHistogramBucketEntryFirst;
+      const HistogramBucket<FloatBig, false> * m_pHistogramBucketEntryLast;
    };
    static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -246,7 +246,7 @@ struct TreeNodeData<false> {
       TreeNode<false> * m_pTreeNodeChildren;
       // put this at the top so that our priority queue can access it directly without adding anything to the pointer 
       // (this is slightly more efficient on intel systems at least)
-      FloatEbmType m_splitGain;
+      FloatBig m_splitGain;
       ActiveDataType m_splitValue;
    };
    static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value,
@@ -289,30 +289,30 @@ struct TreeNodeData<false> {
       m_cSamples = cSamples;
    }
 
-   INLINE_ALWAYS FloatEbmType GetWeight() const {
+   INLINE_ALWAYS FloatBig GetWeight() const {
       return m_weight;
    }
-   INLINE_ALWAYS void SetWeight(const FloatEbmType weight) {
+   INLINE_ALWAYS void SetWeight(const FloatBig weight) {
       m_weight = weight;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatEbmType, false> * BEFORE_GetHistogramBucketEntryFirst() const {
+   INLINE_ALWAYS const HistogramBucket<FloatBig, false> * BEFORE_GetHistogramBucketEntryFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
    }
    INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryFirst(
-      const HistogramBucket<FloatEbmType, false> * const pHistogramBucketEntryFirst)
+      const HistogramBucket<FloatBig, false> * const pHistogramBucketEntryFirst)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryFirst;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatEbmType, false> * BEFORE_GetHistogramBucketEntryLast() const {
+   INLINE_ALWAYS const HistogramBucket<FloatBig, false> * BEFORE_GetHistogramBucketEntryLast() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
    }
    INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryLast(
-      const HistogramBucket<FloatEbmType, false> * const pHistogramBucketEntryLast)
+      const HistogramBucket<FloatBig, false> * const pHistogramBucketEntryLast)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
       m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
@@ -331,11 +331,11 @@ struct TreeNodeData<false> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren = pTreeNodeChildren;
    }
 
-   INLINE_ALWAYS FloatEbmType AFTER_GetSplitGain() const {
+   INLINE_ALWAYS FloatBig AFTER_GetSplitGain() const {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
       return m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
-   INLINE_ALWAYS void AFTER_SetSplitGain(const FloatEbmType splitGain) {
+   INLINE_ALWAYS void AFTER_SetSplitGain(const FloatBig splitGain) {
       EBM_ASSERT(IsExaminedForPossibleSplitting());
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
    }
@@ -349,10 +349,10 @@ struct TreeNodeData<false> {
       m_UNION.m_afterExaminationForPossibleSplitting.m_splitValue = splitValue;
    }
 
-   INLINE_ALWAYS const HistogramTargetEntry<FloatEbmType, false> * GetHistogramTargetEntry() const {
+   INLINE_ALWAYS const HistogramTargetEntry<FloatBig, false> * GetHistogramTargetEntry() const {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
-   INLINE_ALWAYS HistogramTargetEntry<FloatEbmType, false> * GetHistogramTargetEntry() {
+   INLINE_ALWAYS HistogramTargetEntry<FloatBig, false> * GetHistogramTargetEntry() {
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
 
@@ -376,7 +376,7 @@ private:
    bool m_bExaminedForPossibleSplitting;
 #endif // NDEBUG
 
-   FloatEbmType m_weight;
+   FloatBig m_weight;
 
    TreeNodeDataUnion m_UNION;
 
@@ -386,7 +386,7 @@ private:
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramTargetEntry<FloatEbmType, false> m_aHistogramTargetEntry[1];
+   HistogramTargetEntry<FloatBig, false> m_aHistogramTargetEntry[1];
 };
 static_assert(std::is_standard_layout<TreeNodeData<false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -412,16 +412,16 @@ public:
          this->BEFORE_GetHistogramBucketEntryFirst();
    }
 
-   INLINE_ALWAYS FloatEbmType EXTRACT_GAIN_BEFORE_SPLITTING() {
+   INLINE_ALWAYS FloatBig EXTRACT_GAIN_BEFORE_SPLITTING() {
       // m_splitGain is the result of a subtraction between a memory location and a calculation
       // if there is a difference in the number of bits between these two (some floating point processors store more bits)
       // then we could get a negative number, even if mathematically it can't be less than zero
-      const FloatEbmType splitGain = this->AFTER_GetSplitGain();
+      const FloatBig splitGain = this->AFTER_GetSplitGain();
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
       EBM_ASSERT(!std::isinf(splitGain));
       // in ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint we can get a -infinity gain as a special extremely unlikely case for regression
-      EBM_ASSERT(FloatEbmType { 0 } <= splitGain);
+      EBM_ASSERT(0 <= splitGain);
       return splitGain;
    }
 
@@ -434,7 +434,7 @@ public:
       // that could be NaN (meaning the node was a branch) we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode 
       // because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the 
       // m_UNION.m_beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
-      this->AFTER_SetSplitGain(FloatEbmType { 0 });
+      this->AFTER_SetSplitGain(0);
    }
 
    INLINE_ALWAYS bool WAS_THIS_NODE_SPLIT() const {
@@ -449,7 +449,7 @@ static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 INLINE_ALWAYS bool GetTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
@@ -471,7 +471,7 @@ INLINE_ALWAYS bool GetTreeNodeSizeOverflow(const bool bClassification, const siz
 }
 
 INLINE_ALWAYS size_t GetTreeNodeSize(const bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
 
    size_t cBytesTreeNodeComponent;
    if(bClassification) {

@@ -39,7 +39,7 @@ namespace DEFINED_ZONE_NAME {
 // NO m_cVectorLength -> we don't need to pass this arround from process to process since it's global info and can be passed to the individual functions
 // NO m_cDimensionsMax -> we pre-determine the maximum size and always allocate the max max size
 // NO m_cDimensions; -> we can pass in the FeatureGroup object to know the # of dimensions
-// FloatEbmType m_values[]; // a space for our values
+// FloatFast m_values[]; // a space for our values
 // UIntEbmType DIMENSION_1_SPLIT_POINTS
 // UIntEbmType DIMENSION_1_BIN_COUNT -> we find this by traversing the 0th dimension items
 // UIntEbmType DIMENSION_0_SPLIT_POINTS -> we travel backwards by the count
@@ -154,7 +154,7 @@ class CompressibleTensor final {
    size_t m_cVectorLength;
    size_t m_cDimensionsMax;
    size_t m_cDimensions;
-   FloatEbmType * m_aValues;
+   FloatFast * m_aValues;
    bool m_bExpanded;
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_aDimensions must be the last item in this struct
@@ -196,9 +196,9 @@ public:
    ErrorEbmType SetCountSplits(const size_t iDimension, const size_t cSplits);
    ErrorEbmType EnsureValueCapacity(const size_t cValues);
    ErrorEbmType Copy(const CompressibleTensor & rhs);
-   bool MultiplyAndCheckForIssues(const FloatEbmType v);
+   bool MultiplyAndCheckForIssues(const double v);
    ErrorEbmType Expand(const FeatureGroup * const pFeatureGroup);
-   void AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues);
+   void AddExpandedWithBadValueProtection(const FloatFast * const aFromValues);
    ErrorEbmType Add(const CompressibleTensor & rhs);
 
 #ifndef NDEBUG
@@ -224,7 +224,7 @@ public:
       return GetDimensions()[iDimension].m_cSplits;
    }
 
-   INLINE_ALWAYS FloatEbmType * GetValuePointer() {
+   INLINE_ALWAYS FloatFast * GetValuePointer() {
       return m_aValues;
    }
 };

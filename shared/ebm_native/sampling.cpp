@@ -501,14 +501,14 @@ INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
    const BagEbmType direction,
    const size_t cAllSamples,
    const BagEbmType * pBag,
-   const FloatEbmType * pWeights
+   const FloatFast * pWeights
 ) {
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(1 <= cAllSamples);
    EBM_ASSERT(nullptr != pWeights);
 
-   FloatEbmType firstWeight = std::numeric_limits<FloatEbmType>::quiet_NaN();
-   const FloatEbmType * const pWeightsEnd = pWeights + cAllSamples;
+   FloatFast firstWeight = std::numeric_limits<FloatFast>::quiet_NaN();
+   const FloatFast * const pWeightsEnd = pWeights + cAllSamples;
    const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
       BagEbmType countBagged = 1;
@@ -519,7 +519,7 @@ INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
       if(BagEbmType { 0 } != countBagged) {
          const bool isItemTraining = BagEbmType { 0 } < countBagged;
          if(isLoopTraining == isItemTraining) {
-            const FloatEbmType weight = *pWeights;
+            const FloatFast weight = *pWeights;
             // this relies on the property that NaN is not equal to everything, including NaN
             if(UNLIKELY(firstWeight != weight)) {
                if(!std::isnan(firstWeight)) {
@@ -542,7 +542,7 @@ extern ErrorEbmType ExtractWeights(
    const size_t cAllSamples,
    const BagEbmType * const aBag,
    const size_t cSetSamples,
-   FloatEbmType ** ppWeightsOut
+   FloatFast ** ppWeightsOut
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
@@ -552,11 +552,11 @@ extern ErrorEbmType ExtractWeights(
    EBM_ASSERT(nullptr != ppWeightsOut);
    EBM_ASSERT(nullptr == *ppWeightsOut);
 
-   const FloatEbmType * const aWeights = GetDataSetSharedWeight(pDataSetShared, 0);
+   const FloatFast * const aWeights = GetDataSetSharedWeight(pDataSetShared, 0);
    EBM_ASSERT(nullptr != aWeights);
    if(!CheckWeightsEqual(direction, cAllSamples, aBag, aWeights)) {
       const size_t cBytes = sizeof(*aWeights) * cSetSamples;
-      FloatEbmType * const aRet = static_cast<FloatEbmType *>(malloc(cBytes));
+      FloatFast * const aRet = static_cast<FloatFast *>(malloc(cBytes));
       if(UNLIKELY(nullptr == aRet)) {
          LOG_0(TraceLevelWarning, "WARNING ExtractWeights nullptr == aRet");
          return Error_OutOfMemory;
@@ -564,9 +564,9 @@ extern ErrorEbmType ExtractWeights(
       *ppWeightsOut = aRet;
 
       const BagEbmType * pBag = aBag;
-      const FloatEbmType * pWeightFrom = aWeights;
-      FloatEbmType * pWeightTo = aRet;
-      FloatEbmType * pWeightToEnd = aRet + cSetSamples;
+      const FloatFast * pWeightFrom = aWeights;
+      FloatFast * pWeightTo = aRet;
+      FloatFast * pWeightToEnd = aRet + cSetSamples;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
          BagEbmType countBagged = 1;
@@ -577,7 +577,7 @@ extern ErrorEbmType ExtractWeights(
          if(BagEbmType { 0 } != countBagged) {
             const bool isItemTraining = BagEbmType { 0 } < countBagged;
             if(isLoopTraining == isItemTraining) {
-               const FloatEbmType weight = *pWeightFrom;
+               const FloatFast weight = *pWeightFrom;
                do {
                   EBM_ASSERT(pWeightTo < pWeightToEnd);
                   *pWeightTo = weight;

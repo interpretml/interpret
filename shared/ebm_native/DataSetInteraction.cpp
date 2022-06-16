@@ -32,7 +32,7 @@ extern ErrorEbmType InitializeGradientsAndHessians(
    const BagEbmType * const aBag,
    const double * const aPredictorScores,
    const size_t cSetSamples,
-   FloatEbmType * const aGradientAndHessian
+   FloatFast * const aGradientAndHessian
 );
 
 extern ErrorEbmType ExtractWeights(
@@ -41,7 +41,7 @@ extern ErrorEbmType ExtractWeights(
    const size_t cAllSamples,
    const BagEbmType * const aBag,
    const size_t cSetSamples,
-   FloatEbmType ** ppWeightsOut
+   FloatFast ** ppWeightsOut
 );
 
 INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
@@ -51,7 +51,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    const BagEbmType * const aBag,
    const double * const aPredictorScores,
    const size_t cSetSamples,
-   FloatEbmType ** paGradientsAndHessiansOut
+   FloatFast ** paGradientsAndHessiansOut
 ) {
    LOG_0(TraceLevelInfo, "Entered ConstructGradientsAndHessians");
 
@@ -74,7 +74,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    }
    const size_t cElements = cVectorLength * cStorageItems * cSetSamples;
 
-   FloatEbmType * aGradientsAndHessians = EbmMalloc<FloatEbmType>(cElements);
+   FloatFast * aGradientsAndHessians = EbmMalloc<FloatFast>(cElements);
    if(UNLIKELY(nullptr == aGradientsAndHessians)) {
       LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians nullptr == aGradientsAndHessians");
       return Error_OutOfMemory;
@@ -254,7 +254,7 @@ ErrorEbmType DataSetInteraction::Initialize(
       // if cSamples is zero, then we don't need to allocate anything since we won't use them anyways
 
       EBM_ASSERT(nullptr == m_aWeights);
-      m_weightTotal = static_cast<FloatEbmType>(cSetSamples);
+      m_weightTotal = static_cast<FloatBig>(cSetSamples);
       if(0 != cWeights) {
          error = ExtractWeights(
             pDataSetShared,
@@ -269,14 +269,14 @@ ErrorEbmType DataSetInteraction::Initialize(
             return error;
          }
          if(nullptr != m_aWeights) {
-            const FloatEbmType total = AddPositiveFloatsSafe(cSetSamples, m_aWeights);
-            if(std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }) {
-               LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= FloatEbmType { 0 }");
+            const FloatBig total = AddPositiveFloatsSafeBig(cSetSamples, m_aWeights);
+            if(std::isnan(total) || std::isinf(total) || total <= 0) {
+               LOG_0(TraceLevelWarning, "WARNING DataSetInteraction::Initialize std::isnan(total) || std::isinf(total) || total <= 0");
                return Error_UserParamValue;
             }
             // if they were all zero then we'd ignore the weights param.  If there are negative numbers it might add
             // to zero though so check it after checking for negative
-            EBM_ASSERT(FloatEbmType { 0 } != total);
+            EBM_ASSERT(0 != total);
             m_weightTotal = total;
          }
       }

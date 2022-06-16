@@ -810,11 +810,11 @@ static IntEbmType AppendWeight(
             goto return_bad;
          }
 
-         if(IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatEbmType)), cSamples)) {
-            LOG_0(TraceLevelError, "ERROR AppendWeight IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatEbmType)), cSamples)");
+         if(IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatFast)), cSamples)) {
+            LOG_0(TraceLevelError, "ERROR AppendWeight IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatFast)), cSamples)");
             goto return_bad;
          }
-         const size_t cBytesAllSamples = sizeof(FloatEbmType) * cSamples;
+         const size_t cBytesAllSamples = sizeof(FloatFast) * cSamples;
 
          if(IsAddError(iByteCur, cBytesAllSamples)) {
             LOG_0(TraceLevelError, "ERROR AppendWeight IsAddError(iByteCur, cBytesAllSamples)");
@@ -827,7 +827,7 @@ static IntEbmType AppendWeight(
                goto return_bad;
             }
 
-            static_assert(sizeof(FloatEbmType) == sizeof(*aWeights), "float mismatch");
+            static_assert(sizeof(FloatFast) == sizeof(*aWeights), "float mismatch");
             memcpy(pFillMem + iByteCur, aWeights, cBytesAllSamples);
          }
          iByteCur = iByteNext;
@@ -993,11 +993,11 @@ static IntEbmType AppendTarget(
             }
             cBytesAllSamples = sizeof(SharedStorageDataType) * cSamples;
          } else {
-            if(IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatEbmType)), cSamples)) {
-               LOG_0(TraceLevelError, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatEbmType)), cSamples)");
+            if(IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatFast)), cSamples)) {
+               LOG_0(TraceLevelError, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatFast)), cSamples)");
                goto return_bad;
             }
-            cBytesAllSamples = sizeof(FloatEbmType) * cSamples;
+            cBytesAllSamples = sizeof(FloatFast) * cSamples;
          }
          if(IsAddError(iByteCur, cBytesAllSamples)) {
             LOG_0(TraceLevelError, "ERROR AppendTarget IsAddError(iByteCur, cBytesAllSamples)");
@@ -1039,7 +1039,7 @@ static IntEbmType AppendTarget(
                } while(pTargetsEnd != pTarget);
                EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
             } else {
-               static_assert(sizeof(FloatEbmType) == sizeof(double), "float mismatch");
+               static_assert(sizeof(FloatFast) == sizeof(double), "float mismatch");
                memcpy(pFillMem + iByteCur, aTargets, cBytesAllSamples);
             }
          }
@@ -1726,7 +1726,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Extract
    return Error_None;
 }
 
-extern const FloatEbmType * GetDataSetSharedWeight(
+extern const FloatFast * GetDataSetSharedWeight(
    const unsigned char * const pDataSetShared,
    const size_t iWeight
 ) {
@@ -1754,11 +1754,11 @@ extern const FloatEbmType * GetDataSetSharedWeight(
 
    EBM_ASSERT(k_weightId == pWeightDataSetShared->m_id);
 
-   return reinterpret_cast<const FloatEbmType *>(pWeightDataSetShared + 1);
+   return reinterpret_cast<const FloatFast *>(pWeightDataSetShared + 1);
 }
 
 // TODO: make an inline wrapper that forces this to the correct type and have 2 differently named functions
-// GetDataSetSharedTarget returns (FloatEbmType *) for regression and (SharedStorageDataType *) for classification
+// GetDataSetSharedTarget returns (FloatFast *) for regression and (SharedStorageDataType *) for classification
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,
    const size_t iTarget,

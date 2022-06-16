@@ -50,12 +50,12 @@ extern const void * GetDataSetSharedFeature(
    size_t * const pcNonDefaultsSparseOut
 );
 
-extern const FloatEbmType * GetDataSetSharedWeight(
+extern const FloatFast * GetDataSetSharedWeight(
    const unsigned char * const pDataSetShared,
    const size_t iWeight
 );
 
-// GetDataSetSharedTarget returns (FloatEbmType *) for regression and (SharedStorageDataType *) for classification
+// GetDataSetSharedTarget returns (FloatFast *) for regression and (SharedStorageDataType *) for classification
 extern const void * GetDataSetSharedTarget(
    const unsigned char * const pDataSetShared,
    const size_t iTarget,

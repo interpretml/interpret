@@ -49,7 +49,7 @@ class BoosterShell final {
    void * m_aThreadByteBuffer2;
    size_t m_cThreadByteBufferCapacity2;
 
-   FloatEbmType * m_aTempFloatVector;
+   FloatFast * m_aTempFloatVector;
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
    HistogramTargetEntryBase * m_aSumHistogramTargetEntry;
@@ -168,7 +168,7 @@ public:
       return m_cThreadByteBufferCapacity2;
    }
 
-   INLINE_ALWAYS FloatEbmType * GetTempFloatVector() {
+   INLINE_ALWAYS FloatFast * GetTempFloatVector() {
       return m_aTempFloatVector;
    }
 
@@ -181,13 +181,13 @@ public:
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<FloatEbmType, bClassification> * GetSumHistogramTargetEntryLeft() {
-      return static_cast<HistogramTargetEntry<FloatEbmType, bClassification> *>(m_aSumHistogramTargetEntryLeft);
+   INLINE_ALWAYS HistogramTargetEntry<FloatBig, bClassification> * GetSumHistogramTargetEntryLeft() {
+      return static_cast<HistogramTargetEntry<FloatBig, bClassification> *>(m_aSumHistogramTargetEntryLeft);
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<FloatEbmType, bClassification> * GetSumHistogramTargetEntryRight() {
-      return static_cast<HistogramTargetEntry<FloatEbmType, bClassification> *>(m_aSumHistogramTargetEntryRight);
+   INLINE_ALWAYS HistogramTargetEntry<FloatBig, bClassification> * GetSumHistogramTargetEntryRight() {
+      return static_cast<HistogramTargetEntry<FloatBig, bClassification> *>(m_aSumHistogramTargetEntryRight);
    }
 
 #ifndef NDEBUG

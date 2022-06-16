@@ -41,7 +41,7 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
    ) {
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
@@ -64,11 +64,11 @@ public:
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
 
       HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBaseBig();
-      auto * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<FloatBig, bClassification>();
 
       EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
@@ -348,7 +348,7 @@ public:
 
       // put the histograms right after our slice array
       auto * const aCollapsedHistogramBuckets =
-         reinterpret_cast<HistogramBucket<FloatEbmType, bClassification> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
+         reinterpret_cast<HistogramBucket<FloatBig, bClassification> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
 
       // TODO: move this into a helper function on the histogram bucket object that zeros N bytes (if we know the bytes).  Mostly as a warning to understand where we're using memset
 
@@ -364,7 +364,7 @@ public:
       static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
       memset(aCollapsedHistogramBuckets, 0, cBytesCollapsedTensor3);
       const auto * const pCollapsedHistogramBucketEnd =
-         reinterpret_cast<HistogramBucket<FloatEbmType, bClassification> *>(reinterpret_cast<char *>(aCollapsedHistogramBuckets) +
+         reinterpret_cast<HistogramBucket<FloatBig, bClassification> *>(reinterpret_cast<char *>(aCollapsedHistogramBuckets) +
             cBytesCollapsedTensor3);
 
       // we special case the first dimension, so drop it by subtracting
@@ -384,7 +384,7 @@ public:
          const size_t * pcItemsInNextSliceOrBytesInCurrentSlice = acItemsInNextSliceOrBytesInCurrentSlice;
          do {
             const auto * const pHistogramBucketSliceEnd =
-               reinterpret_cast<const HistogramBucket<FloatEbmType, bClassification> *>(
+               reinterpret_cast<const HistogramBucket<FloatBig, bClassification> *>(
                reinterpret_cast<const char *>(pHistogramBucket) + *pcItemsInNextSliceOrBytesInCurrentSlice);
 
             do {
@@ -412,7 +412,7 @@ public:
                // jump over it on the first loop, but I wasn't able to make the Visual Studio compiler do it
 
                pState->m_cItemsInSliceRemaining = cItemsInSliceRemaining;
-               pCollapsedHistogramBucket1 = reinterpret_cast<HistogramBucket<FloatEbmType, bClassification> *>(
+               pCollapsedHistogramBucket1 = reinterpret_cast<HistogramBucket<FloatBig, bClassification> *>(
                   reinterpret_cast<char *>(pCollapsedHistogramBucket1) -
                   pState->m_cBytesSubtractResetCollapsedHistogramBucket);
 
@@ -445,9 +445,9 @@ public:
       //      Then, before exiting, on the last one we collapse the collapsed tensor even more into just a single
       //      bin from which we can calculate the parent and subtract the best child from the parent.
       
-      //FloatEbmType gain;
-      //FloatEbmType gainParent = FloatEbmType { 0 };
-      FloatEbmType gain = FloatEbmType { 0 };
+      //FloatBig gain;
+      //FloatBig gainParent = FloatBig { 0 };
+      FloatBig gain = 0;
 
 
       const FeatureGroupEntry * pFeatureGroupEntry4 = pFeatureGroup->GetFeatureGroupEntries();
@@ -523,7 +523,7 @@ public:
          } while(PREDICTABLE(pStateInit != pState));
       }
 
-      FloatEbmType * pUpdate = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+      FloatFast * pUpdate = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       auto * pCollapsedHistogramBucket2 = aCollapsedHistogramBuckets;
 
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
@@ -531,13 +531,13 @@ public:
             auto * const pHistogramTargetEntry = pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iVector].m_sumGradients);
+               FloatBig update = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iVector].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                // for DP-EBMs, we can't zero one of the class scores as we can for logits since we're returning a sum
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               *pUpdate = update;
+               *pUpdate = SafeConvertFloat<FloatFast>(update);
                ++pUpdate;
             }
             pCollapsedHistogramBucket2 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pCollapsedHistogramBucket2, 1);
@@ -553,24 +553,22 @@ public:
                // normally, we'd eliminate regions where the number of items was zero before putting down a split
                // but for random splits we can't know beforehand if there will be zero splits, so we need to check
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  FloatEbmType update = FloatEbmType { 0 };
-
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                   // if we eliminated the space for the logit, we'd need to eliminate one assignment here
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-                  *pUpdate = update;
+                  *pUpdate = 0;
                   ++pUpdate;
                }
             } else {
                auto * const pHistogramTargetEntry = pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               FloatEbmType zeroLogit = FloatEbmType { 0 };
+               FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  FloatEbmType update;
+                  FloatBig update;
                   if(bClassification) {
                      update = EbmStats::ComputeSinglePartitionUpdate(
                         pHistogramTargetEntry[iVector].m_sumGradients,
@@ -591,7 +589,7 @@ public:
                         pCollapsedHistogramBucket2->GetWeightInBucket()
                      );
                   }
-                  *pUpdate = update;
+                  *pUpdate = SafeConvertFloat<FloatFast>(update);
                   ++pUpdate;
                }
             }
@@ -601,7 +599,7 @@ public:
       }
 
       free(pBuffer);
-      *pTotalGain = gain;
+      *pTotalGain = static_cast<double>(gain);
       return Error_None;
    }
 };
@@ -617,7 +615,7 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
@@ -658,7 +656,7 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
@@ -680,7 +678,7 @@ extern ErrorEbmType PartitionRandomBoosting(
    const FeatureGroup * const pFeatureGroup,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();

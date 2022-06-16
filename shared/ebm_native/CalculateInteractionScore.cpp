@@ -42,7 +42,7 @@ extern void TensorTotalsBuild(
 #endif // NDEBUG
 );
 
-extern FloatEbmType PartitionTwoDimensionalInteraction(
+extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
    const FeatureGroup * const pFeatureGroup,
    const InteractionOptionsType options,
@@ -110,16 +110,16 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength) || 
-      GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)) 
+   if(GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) || 
+      GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)) 
    {
       LOG_0(
          TraceLevelWarning,
-         "WARNING CalcInteractionStrengthInternal GetHistogramBucketSizeOverflow<bClassification>(cVectorLength) || GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)"
+         "WARNING CalcInteractionStrengthInternal GetHistogramBucketSizeOverflow overflow"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatFast>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBucketsMainSpace)) {
       LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBucketsMainSpace)");
       return Error_OutOfMemory;
@@ -151,7 +151,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 
    const size_t cTotalBucketsBig = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
-   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
    if(IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBucketsBig)) {
       LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBucketsBig)");
       return Error_OutOfMemory;
@@ -170,7 +170,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
-   static_assert(sizeof(FloatEbmType) == sizeof(FloatEbmType), "float mismatch");
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
    memcpy(aHistogramBucketsBig, aHistogramBucketsFast, cBytesBufferFast);
 
 
@@ -205,7 +205,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
       LOG_0(TraceLevelVerbose, "CalcInteractionStrengthInternal Starting bin sweep loop");
 
-      FloatEbmType bestGain = PartitionTwoDimensionalInteraction(
+      double bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
          pFeatureGroup,
          options,
@@ -222,17 +222,16 @@ static ErrorEbmType CalcInteractionStrengthInternal(
          // if totalWeight < 1 then bestGain could overflow to +inf, so do the division first
          const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
          EBM_ASSERT(nullptr != pDataSet);
-         const FloatEbmType totalWeight = pDataSet->GetWeightTotal();
-         EBM_ASSERT(FloatEbmType { 0 } < totalWeight); // if all are zeros we assume there are no weights and use the count
+         const double totalWeight = static_cast<double>(pDataSet->GetWeightTotal());
+         EBM_ASSERT(0 < totalWeight); // if all are zeros we assume there are no weights and use the count
          bestGain /= totalWeight;
 
-         double bestGainOut = static_cast<double>(bestGain);
-         if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<FloatEbmType>::max()))) {
+         if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<double>::max()))) {
             // We simplify our caller's handling by returning -lowest as our error indicator. -lowest will sort to being the
             // least important item, which is good, but it also signals an overflow without the weirness of NaNs.
-            EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<FloatEbmType>::infinity() == bestGain);
-            bestGainOut = k_illegalGainDouble;
-         } else if(UNLIKELY(bestGain < FloatEbmType { 0 })) {
+            EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<double>::infinity() == bestGain);
+            bestGain = k_illegalGainDouble;
+         } else if(UNLIKELY(bestGain < 0)) {
             // gain can't mathematically be legally negative, but it can be here in the following situations:
             //   1) for impure interaction gain we subtract the parent partial gain, and there can be floating point
             //      noise that makes this slightly negative
@@ -243,13 +242,13 @@ static ErrorEbmType CalcInteractionStrengthInternal(
             //      here instead of inside the templated function.
 
             EBM_ASSERT(!std::isnan(bestGain));
-            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != bestGain);
-            bestGainOut = std::numeric_limits<FloatEbmType>::lowest() <= bestGain ? double { 0 } : k_illegalGainDouble;
+            EBM_ASSERT(std::numeric_limits<double>::infinity() != bestGain);
+            bestGain = std::numeric_limits<double>::lowest() <= bestGain ? 0.0 : k_illegalGainDouble;
          } else {
             EBM_ASSERT(!std::isnan(bestGain));
             EBM_ASSERT(!std::isinf(bestGain));
          }
-         *pInteractionStrengthAvgOut = bestGainOut;
+         *pInteractionStrengthAvgOut = bestGain;
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently

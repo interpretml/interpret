@@ -165,9 +165,9 @@ public:
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
       struct FastTotalState {
-         HistogramBucket<FloatEbmType, bClassification> * m_pDimensionalCur;
-         HistogramBucket<FloatEbmType, bClassification> * m_pDimensionalWrap;
-         HistogramBucket<FloatEbmType, bClassification> * m_pDimensionalFirst;
+         HistogramBucket<FloatBig, bClassification> * m_pDimensionalCur;
+         HistogramBucket<FloatBig, bClassification> * m_pDimensionalWrap;
+         HistogramBucket<FloatBig, bClassification> * m_pDimensionalFirst;
          size_t m_iCur;
          size_t m_cBins;
       };
@@ -175,10 +175,10 @@ public:
       LOG_0(TraceLevelVerbose, "Entered BuildFastTotals");
 
       auto * pBucketAuxiliaryBuildZone =
-         pBucketAuxiliaryBuildZoneBase->GetHistogramBucket<FloatEbmType, bClassification>();
+         pBucketAuxiliaryBuildZoneBase->GetHistogramBucket<FloatBig, bClassification>();
 
       auto * const aHistogramBuckets =
-         aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
+         aHistogramBucketBase->GetHistogramBucket<FloatBig, bClassification>();
 
       // TODO: we can get rid of the cCompilerDimensions aspect here by making the 1 or 2 inner loops register/pointer
       //       based and then having a stack based pointer system like the RandomSplitState class in PartitionRandomBoostingInternal
@@ -193,8 +193,8 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
 
       FastTotalState fastTotalState[k_cDimensionsMax];
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
@@ -256,10 +256,10 @@ public:
 #ifndef NDEBUG
 
       auto * const pDebugBucket = 
-         EbmMalloc<HistogramBucket<FloatEbmType, bClassification>>(1, cBytesPerHistogramBucket);
+         EbmMalloc<HistogramBucket<FloatBig, bClassification>>(1, cBytesPerHistogramBucket);
 
       auto * aHistogramBucketsDebugCopy =
-         aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatEbmType, bClassification>();
+         aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatBig, bClassification>();
 
 #endif //NDEBUG
 
@@ -882,12 +882,12 @@ extern void TensorTotalsBuild(
 //      pHistogramBucket->m_cSamplesInBucket = cSamplesInBucket;
 //      pPrevious->m_cSamplesInBucket = cSamplesInBucket;
 //      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//         const FloatEbmType sumGradients = pHistogramBucket->GetHistogramTargetEntry()[iVector].m_sumGradients + pPrevious->GetHistogramTargetEntry()[iVector].m_sumGradients;
+//         const FloatBig sumGradients = pHistogramBucket->GetHistogramTargetEntry()[iVector].m_sumGradients + pPrevious->GetHistogramTargetEntry()[iVector].m_sumGradients;
 //         pHistogramBucket->GetHistogramTargetEntry()[iVector].m_sumGradients = sumGradients;
 //         pPrevious->GetHistogramTargetEntry()[iVector].m_sumGradients = sumGradients;
 //
 //         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-//            const FloatEbmType sumHessians = pHistogramBucket->GetHistogramTargetEntry()[iVector].GetSumHessians() + pPrevious->GetHistogramTargetEntry()[iVector].GetSumHessians();
+//            const FloatBig sumHessians = pHistogramBucket->GetHistogramTargetEntry()[iVector].GetSumHessians() + pPrevious->GetHistogramTargetEntry()[iVector].GetSumHessians();
 //            pHistogramBucket->GetHistogramTargetEntry()[iVector].SetSumHessians(sumHessians);
 //            pPrevious->GetHistogramTargetEntry()[iVector].SetSumHessians(sumHessians);
 //         }
@@ -978,7 +978,7 @@ extern void TensorTotalsBuild(
 
 
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//bool BoostMultiDimensionalPaulAlgorithm(BoosterShell<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const FeatureGroup * const pFeatureGroup, SegmentedRegion<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
+//bool BoostMultiDimensionalPaulAlgorithm(BoosterShell<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const FeatureGroup * const pFeatureGroup, SegmentedRegion<ActiveDataType, FloatBig> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
 //   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = BinDataSet<compilerLearningTypeOrCountTargetClasses>(pThreadState, pFeatureGroup, pTrainingSet, pTargetFeature);
 //   if(UNLIKELY(nullptr == aHistogramBuckets)) {
 //      return true;
@@ -1001,7 +1001,7 @@ extern void TensorTotalsBuild(
 //      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->m_cBins;
 //      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->m_cBins;
 //
-//      FloatEbmType bestSplittingScore = FloatEbmType { -std::numeric_limits<FloatEbmType>::infinity() };
+//      FloatBig bestSplittingScore = FloatBig { -std::numeric_limits<FloatBig>::infinity() };
 //
 //      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 1)) {
 //         free(aDynamicHistogramBuckets);
@@ -1027,7 +1027,7 @@ extern void TensorTotalsBuild(
 //
 //      for(size_t iBin1 = 0; iBin1 < cBinsDimension1 - 1; ++iBin1) {
 //         for(size_t iBin2 = 0; iBin2 < cBinsDimension2 - 1; ++iBin2) {
-//            FloatEbmType splittingScore;
+//            FloatBig splittingScore;
 //
 //            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowLow = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 0);
 //            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighLow = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 1);
@@ -1079,8 +1079,8 @@ extern void TensorTotalsBuild(
 //               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//                  FloatEbmType predictionTarget;
-//                  FloatEbmType predictionOther;
+//                  FloatBig predictionTarget;
+//                  FloatBig predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
@@ -1122,8 +1122,8 @@ extern void TensorTotalsBuild(
 //               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//                  FloatEbmType predictionTarget;
-//                  FloatEbmType predictionOther;
+//                  FloatBig predictionTarget;
+//                  FloatBig predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
@@ -1165,8 +1165,8 @@ extern void TensorTotalsBuild(
 //               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//                  FloatEbmType predictionTarget;
-//                  FloatEbmType predictionOther;
+//                  FloatBig predictionTarget;
+//                  FloatBig predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
@@ -1207,8 +1207,8 @@ extern void TensorTotalsBuild(
 //               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//                  FloatEbmType predictionTarget;
-//                  FloatEbmType predictionOther;
+//                  FloatBig predictionTarget;
+//                  FloatBig predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression

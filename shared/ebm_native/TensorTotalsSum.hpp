@@ -30,10 +30,10 @@ template<bool bClassification>
 void TensorTotalsSumDebugSlow(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const FeatureGroup * const pFeatureGroup,
-   const HistogramBucket<FloatEbmType, bClassification> * const aHistogramBuckets,
+   const HistogramBucket<FloatBig, bClassification> * const aHistogramBuckets,
    const size_t * const aiStart,
    const size_t * const aiLast,
-   HistogramBucket<FloatEbmType, bClassification> * const pRet
+   HistogramBucket<FloatBig, bClassification> * const pRet
 ) {
    EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions()); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
@@ -66,8 +66,8 @@ void TensorTotalsSumDebugSlow(
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    // we've allocated this, so it should fit
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength));
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength));
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
    pRet->Zero(cBytesPerHistogramBucket);
 
    const size_t cSignficantDimensions = pFeatureGroup->GetCountSignificantDimensions();
@@ -112,16 +112,16 @@ void TensorTotalsSumDebugSlow(
 
 template<bool bClassification>
 void TensorTotalsCompareDebug(
-   const HistogramBucket<FloatEbmType, bClassification> * const aHistogramBuckets,
+   const HistogramBucket<FloatBig, bClassification> * const aHistogramBuckets,
    const FeatureGroup * const pFeatureGroup,
    const size_t * const aiPoint,
    const size_t directionVector,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const HistogramBucket<FloatEbmType, bClassification> * const pComparison
+   const HistogramBucket<FloatBig, bClassification> * const pComparison
 ) {
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
 
    size_t aiStart[k_cDimensionsMax];
    size_t aiLast[k_cDimensionsMax];
@@ -150,7 +150,7 @@ void TensorTotalsCompareDebug(
       ++pFeatureGroupEntry;
    } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
 
-   auto * const pComparison2 = EbmMalloc<HistogramBucket<FloatEbmType, bClassification>>(1, cBytesPerHistogramBucket);
+   auto * const pComparison2 = EbmMalloc<HistogramBucket<FloatBig, bClassification>>(1, cBytesPerHistogramBucket);
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
       TensorTotalsSumDebugSlow<bClassification>(
@@ -173,12 +173,12 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDim
 void TensorTotalsSum(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const FeatureGroup * const pFeatureGroup,
-   const HistogramBucket<FloatEbmType, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
+   const HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
    const size_t * const aiPoint,
    const size_t directionVector,
-   HistogramBucket<FloatEbmType, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
+   HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
 #ifndef NDEBUG
-   , const HistogramBucket<FloatEbmType, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy
+   , const HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
@@ -202,8 +202,8 @@ void TensorTotalsSum(
       runtimeLearningTypeOrCountTargetClasses
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;

@@ -46,7 +46,7 @@ CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, c
    pCompressibleTensor->m_cValueCapacity = cValueCapacity;
    pCompressibleTensor->m_bExpanded = false;
 
-   FloatEbmType * const aValues = EbmMalloc<FloatEbmType>(cValueCapacity);
+   FloatFast * const aValues = EbmMalloc<FloatFast>(cValueCapacity);
    if(UNLIKELY(nullptr == aValues)) {
       LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
       free(pCompressibleTensor); // don't need to call the full Free(*) yet
@@ -54,10 +54,10 @@ CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, c
    }
    pCompressibleTensor->m_aValues = aValues;
    // we only need to set the base case to zero, not our entire initial allocation
-   // we checked for cVectorLength * k_initialValueCapacity * sizeof(FloatEbmType), and 1 <= k_initialValueCapacity, 
-   // so sizeof(FloatEbmType) * cVectorLength can't overflow
+   // we checked for cVectorLength * k_initialValueCapacity * sizeof(FloatFast), and 1 <= k_initialValueCapacity, 
+   // so sizeof(FloatFast) * cVectorLength can't overflow
    for(size_t i = 0; i < cVectorLength; ++i) {
-      aValues[i] = FloatEbmType { 0 };
+      aValues[i] = 0;
    }
 
    if(0 != cDimensionsMax) {
@@ -111,7 +111,7 @@ void CompressibleTensor::Reset() {
    // we only need to set the base case to zero
    // this can't overflow since we previously allocated this memory
    for(size_t i = 0; i < m_cVectorLength; ++i) {
-      m_aValues[i] = FloatEbmType { 0 };
+      m_aValues[i] = 0;
    }
    m_bExpanded = false;
 }
@@ -164,12 +164,12 @@ ErrorEbmType CompressibleTensor::EnsureValueCapacity(const size_t cValues) {
       size_t cNewValueCapacity = cValues + (cValues >> 1);
       LOG_N(TraceLevelInfo, "EnsureValueCapacity Growing to size %zu", cNewValueCapacity);
 
-      if(IsMultiplyError(sizeof(FloatEbmType), cNewValueCapacity)) {
-         LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(FloatEbmType), cNewValueCapacity)");
+      if(IsMultiplyError(sizeof(FloatFast), cNewValueCapacity)) {
+         LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(FloatFast), cNewValueCapacity)");
          return Error_OutOfMemory;
       }
-      size_t cBytes = sizeof(FloatEbmType) * cNewValueCapacity;
-      FloatEbmType * const aNewValues = static_cast<FloatEbmType *>(realloc(m_aValues, cBytes));
+      size_t cBytes = sizeof(FloatFast) * cNewValueCapacity;
+      FloatFast * const aNewValues = static_cast<FloatFast *>(realloc(m_aValues, cBytes));
       if(UNLIKELY(nullptr == aNewValues)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
@@ -209,14 +209,14 @@ ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
       // already logged
       return error;
    }
-   EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType), cValues)); // we're copying this memory, so multiplication can't overflow
-   memcpy(m_aValues, rhs.m_aValues, sizeof(FloatEbmType) * cValues);
+   EBM_ASSERT(!IsMultiplyError(sizeof(FloatFast), cValues)); // we're copying this memory, so multiplication can't overflow
+   memcpy(m_aValues, rhs.m_aValues, sizeof(FloatFast) * cValues);
    m_bExpanded = rhs.m_bExpanded;
    return Error_None;
 }
 
-bool CompressibleTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
-
+bool CompressibleTensor::MultiplyAndCheckForIssues(const double v) {
+   const FloatFast vFloat = SafeConvertFloat<FloatFast>(v);
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
 
    size_t cValues = 1;
@@ -226,12 +226,12 @@ bool CompressibleTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
       cValues *= pThisDimensionInfo[iDimension].m_cSplits + 1;
    }
 
-   FloatEbmType * pCur = &m_aValues[0];
-   FloatEbmType * pEnd = &m_aValues[cValues * m_cVectorLength];
+   FloatFast * pCur = &m_aValues[0];
+   FloatFast * pEnd = &m_aValues[cValues * m_cVectorLength];
    int bBad = 0;
    // we always have 1 value, even if we have zero splits
    do {
-      const FloatEbmType val = *pCur * v;
+      const FloatFast val = *pCur * vFloat;
       // TODO: these can be done with bitwise operators, which would be good for SIMD.  Check to see what assembly this turns into.
       // since both NaN and +-infinity have the exponential as FF, and no other values do, the best optimized assembly would test the exponential 
       // bits for FF and then OR a 1 if the test is true and 0 if the test is false
@@ -312,20 +312,20 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
             return error;
          }
 
-         FloatEbmType * const aValues = m_aValues;
+         FloatFast * const aValues = m_aValues;
          const DimensionInfo * const aDimension1 = GetDimensions();
 
          EBM_ASSERT(cValues1 <= cNewValues);
          EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
-         const FloatEbmType * pValue1 = &aValues[m_cVectorLength * cValues1];
-         FloatEbmType * pValueTop = &aValues[cVectoredNewValues];
+         const FloatFast * pValue1 = &aValues[m_cVectorLength * cValues1];
+         FloatFast * pValueTop = &aValues[cVectoredNewValues];
 
          // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
          // existing values which we still need to copy first do the values because we need to refer to the old splits when making decisions about 
          // where to move next
          while(true) {
-            const FloatEbmType * pValue1Move = pValue1;
-            const FloatEbmType * const pValueTopEnd = pValueTop - m_cVectorLength;
+            const FloatFast * pValue1Move = pValue1;
+            const FloatFast * const pValueTopEnd = pValueTop - m_cVectorLength;
             do {
                --pValue1Move;
                --pValueTop;
@@ -436,7 +436,7 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
    return Error_None;
 }
 
-void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues) {
+void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromValues) {
    EBM_ASSERT(m_bExpanded);
    size_t cItems = m_cVectorLength;
 
@@ -447,9 +447,9 @@ void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatEbmType * 
       cItems *= aDimension[iDimension].m_cSplits + 1;
    }
 
-   const FloatEbmType * pFromValue = aFromValues;
-   FloatEbmType * pToValue = m_aValues;
-   const FloatEbmType * const pToValueEnd = m_aValues + cItems;
+   const FloatFast * pFromValue = aFromValues;
+   FloatFast * pToValue = m_aValues;
+   const FloatFast * const pToValueEnd = m_aValues + cItems;
    do {
       // if we get a NaN value, then just consider it a no-op zero
       // if we get a +infinity, then just make our value the maximum
@@ -458,17 +458,17 @@ void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatEbmType * 
       // so, not much real loss there.  Also, if we have NaN, or +-infinity in an update, we'll be stopping boosting soon
       // but we want to preserve the best model that we had
 
-      FloatEbmType val = *pFromValue;
-      val = std::isnan(val) ? FloatEbmType { 0 } : val;
+      FloatFast val = *pFromValue;
+      val = std::isnan(val) ? FloatFast { 0 } : val;
       val = *pToValue + val;
       // this is a check for -infinity, without the -infinity value since some compilers make that illegal
       // even so far as to make isinf always FALSE with some compiler flags
       // include the equals case so that the compiler is less likely to optimize that out
-      val = val <= std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
+      val = val <= std::numeric_limits<FloatFast>::lowest() ? std::numeric_limits<FloatFast>::lowest() : val;
       // this is a check for +infinity, without the +infinity value since some compilers make that illegal
       // even so far as to make isinf always FALSE with some compiler flags
       // include the equals case so that the compiler is less likely to optimize that out
-      val = std::numeric_limits<FloatEbmType>::max() <= val ? std::numeric_limits<FloatEbmType>::max() : val;
+      val = std::numeric_limits<FloatFast>::max() <= val ? std::numeric_limits<FloatFast>::max() : val;
       *pToValue = val;
       ++pFromValue;
       ++pToValue;
@@ -486,9 +486,9 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
       EBM_ASSERT(1 <= m_cValueCapacity);
       EBM_ASSERT(nullptr != m_aValues);
 
-      FloatEbmType * pTo = &m_aValues[0];
-      const FloatEbmType * pFrom = &rhs.m_aValues[0];
-      const FloatEbmType * const pToEnd = &pTo[m_cVectorLength];
+      FloatFast * pTo = &m_aValues[0];
+      const FloatFast * pFrom = &rhs.m_aValues[0];
+      const FloatFast * const pToEnd = &pTo[m_cVectorLength];
       do {
          *pTo += *pFrom;
          ++pTo;
@@ -580,22 +580,22 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
       return error;
    }
 
-   const FloatEbmType * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
+   const FloatFast * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
    const DimensionInfo * const aDimension2 = rhs.GetDimensions();
 
-   FloatEbmType * const aValues = m_aValues;
+   FloatFast * const aValues = m_aValues;
    const DimensionInfo * const aDimension1 = GetDimensions();
 
-   const FloatEbmType * pValue1 = &aValues[m_cVectorLength * cValues1]; // we're accessing allocated memory, so it can't overflow
-   FloatEbmType * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
+   const FloatFast * pValue1 = &aValues[m_cVectorLength * cValues1]; // we're accessing allocated memory, so it can't overflow
+   FloatFast * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
 
    // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our
    // existing values which we still need to copy first do the values because we need to refer to the old splits when making decisions about where 
    // to move next
    while(true) {
-      const FloatEbmType * pValue1Move = pValue1;
-      const FloatEbmType * pValue2Move = pValue2;
-      const FloatEbmType * const pValueTopEnd = pValueTop - m_cVectorLength;
+      const FloatFast * pValue1Move = pValue1;
+      const FloatFast * pValue2Move = pValue2;
+      const FloatFast * const pValueTopEnd = pValueTop - m_cVectorLength;
       do {
          --pValue1Move;
          --pValue2Move;
@@ -793,9 +793,9 @@ bool CompressibleTensor::IsEqual(const CompressibleTensor & rhs) const {
       }
    }
 
-   const FloatEbmType * pV1Cur = &m_aValues[0];
-   const FloatEbmType * pV2Cur = &rhs.m_aValues[0];
-   const FloatEbmType * const pV1End = pV1Cur + cValues;
+   const FloatFast * pV1Cur = &m_aValues[0];
+   const FloatFast * pV2Cur = &rhs.m_aValues[0];
+   const FloatFast * const pV1End = pV1Cur + cValues;
    do {
       if(UNLIKELY(*pV1Cur != *pV2Cur)) {
          return false;

@@ -44,7 +44,7 @@ public:
       LOG_0(TraceLevelVerbose, "Entered BinBoostingZeroDimensions");
 
       HistogramBucketBase * const pHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseFast();
-      auto * const pHistogramBucketEntry = pHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * const pHistogramBucketEntry = pHistogramBucketBase->GetHistogramBucket<FloatFast, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -54,21 +54,21 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength)); // we're accessing allocated memory
 
       const size_t cSamples = pTrainingSet->GetDataSetBoosting()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const FloatEbmType * pWeight = pTrainingSet->GetWeights();
+      const FloatFast * pWeight = pTrainingSet->GetWeights();
       EBM_ASSERT(nullptr != pWeight);
 #ifndef NDEBUG
-      FloatEbmType weightTotalDebug = 0;
+      FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
-      const FloatEbmType * pGradientAndHessian = pTrainingSet->GetDataSetBoosting()->GetGradientsAndHessiansPointer();
+      const FloatFast * pGradientAndHessian = pTrainingSet->GetDataSetBoosting()->GetGradientsAndHessiansPointer();
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
+      const FloatFast * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
 
       auto * const pHistogramTargetEntry = pHistogramBucketEntry->GetHistogramTargetEntry();
       do {
@@ -85,7 +85,7 @@ public:
          //   (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
          const size_t cOccurences = *pCountOccurrences;
-         const FloatEbmType weight = *pWeight;
+         const FloatFast weight = *pWeight;
 
 #ifndef NDEBUG
          weightTotalDebug += weight;
@@ -104,10 +104,10 @@ public:
 #else // EXPAND_BINARY_LOGITS
          constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
-         FloatEbmType sumGradientsDebug = 0;
+         FloatFast sumGradientsDebug = 0;
 #endif // NDEBUG
          do {
-            const FloatEbmType gradient = *pGradientAndHessian;
+            const FloatFast gradient = *pGradientAndHessian;
 #ifndef NDEBUG
             sumGradientsDebug += gradient;
 #endif // NDEBUG
@@ -118,7 +118,7 @@ public:
                //   more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a 
                //   MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the computation if 
                //   not necssary and access it through an accessor so that we can make the change entirely via macro
-               const FloatEbmType hessian = *(pGradientAndHessian + 1);
+               const FloatFast hessian = *(pGradientAndHessian + 1);
                pHistogramTargetEntry[iVector].SetSumHessians(pHistogramTargetEntry[iVector].GetSumHessians() + hessian * weight);
             }
             pGradientAndHessian += bClassification ? 2 : 1;
@@ -136,9 +136,9 @@ public:
          );
       } while(pGradientAndHessiansEnd != pGradientAndHessian);
       
-      EBM_ASSERT(FloatEbmType { 0 } < weightTotalDebug);
-      EBM_ASSERT(weightTotalDebug * 0.999 <= pTrainingSet->GetWeightTotal() &&
-         pTrainingSet->GetWeightTotal() <= 1.001 * weightTotalDebug);
+      EBM_ASSERT(0 < weightTotalDebug);
+      EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pTrainingSet->GetWeightTotal() &&
+         pTrainingSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
 
       LOG_0(TraceLevelVerbose, "Exited BinBoostingZeroDimensions");
    }
@@ -214,7 +214,7 @@ public:
       LOG_0(TraceLevelVerbose, "Entered BinBoostingInternal");
 
       HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseFast();
-      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatFast, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -232,25 +232,25 @@ public:
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatFast>(bClassification, cVectorLength);
 
       const size_t cSamples = pTrainingSet->GetDataSetBoosting()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const FloatEbmType * pWeight = pTrainingSet->GetWeights();
+      const FloatFast * pWeight = pTrainingSet->GetWeights();
       EBM_ASSERT(nullptr != pWeight);
 #ifndef NDEBUG
-      FloatEbmType weightTotalDebug = 0;
+      FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
       const StorageDataType * pInputData = pTrainingSet->GetDataSetBoosting()->GetInputDataPointer(pFeatureGroup);
-      const FloatEbmType * pGradientAndHessian = pTrainingSet->GetDataSetBoosting()->GetGradientsAndHessiansPointer();
+      const FloatFast * pGradientAndHessian = pTrainingSet->GetDataSetBoosting()->GetGradientsAndHessiansPointer();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pGradientAndHessiansTrueEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
-      const FloatEbmType * pGradientAndHessiansExit = pGradientAndHessiansTrueEnd;
+      const FloatFast * const pGradientAndHessiansTrueEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
+      const FloatFast * pGradientAndHessiansExit = pGradientAndHessiansTrueEnd;
       size_t cItemsRemaining = cSamples;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
@@ -289,7 +289,7 @@ public:
 
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pBoosterShell->GetHistogramBucketsEndDebugFast());
             const size_t cOccurences = *pCountOccurrences;
-            const FloatEbmType weight = *pWeight;
+            const FloatFast weight = *pWeight;
 
 #ifndef NDEBUG
             weightTotalDebug += weight;
@@ -310,10 +310,10 @@ public:
 #else // EXPAND_BINARY_LOGITS
             constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
-            FloatEbmType gradientTotalDebug = 0;
+            FloatFast gradientTotalDebug = 0;
 #endif // NDEBUG
             do {
-               const FloatEbmType gradient = *pGradientAndHessian;
+               const FloatFast gradient = *pGradientAndHessian;
 #ifndef NDEBUG
                gradientTotalDebug += gradient;
 #endif // NDEBUG
@@ -324,7 +324,7 @@ public:
                   //   make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be 
                   //   done in a MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the 
                   //   computation if not necssary and access it through an accessor so that we can make the change entirely via macro
-                  const FloatEbmType hessian = *(pGradientAndHessian + 1);
+                  const FloatFast hessian = *(pGradientAndHessian + 1);
                   pHistogramTargetEntry[iVector].SetSumHessians(
                      pHistogramTargetEntry[iVector].GetSumHessians() + hessian * weight
                   );
@@ -363,9 +363,9 @@ public:
          goto one_last_loop;
       }
 
-      EBM_ASSERT(FloatEbmType { 0 } < weightTotalDebug);
-      EBM_ASSERT(weightTotalDebug * 0.999 <= pTrainingSet->GetWeightTotal() &&
-         pTrainingSet->GetWeightTotal() <= 1.001 * weightTotalDebug);
+      EBM_ASSERT(0 < weightTotalDebug);
+      EBM_ASSERT(static_cast<FloatBig>(weightTotalDebug * 0.999) <= pTrainingSet->GetWeightTotal() &&
+         pTrainingSet->GetWeightTotal() <= static_cast<FloatBig>(1.001 * weightTotalDebug));
 
       LOG_0(TraceLevelVerbose, "Exited BinBoostingInternal");
    }

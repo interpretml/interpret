@@ -32,19 +32,19 @@ class SamplingSet final {
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
    // the raw data in both formats since it is never converted anyways, but this count is!
    size_t * m_aCountOccurrences;
-   FloatEbmType * m_aWeights;
-   FloatEbmType m_weightTotal;
+   FloatFast * m_aWeights;
+   FloatBig m_weightTotal;
 
    // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataSet since many 
    // SamplingSet objects will refer to the original one
    static SamplingSet * GenerateSingleSamplingSet(
       RandomStream * const pRandomStream, 
       const DataSetBoosting * const pOriginDataSet,
-      const FloatEbmType * const aWeights
+      const FloatFast * const aWeights
    );
    static SamplingSet * GenerateFlatSamplingSet(
       const DataSetBoosting * const pOriginDataSet,
-      const FloatEbmType * const aWeights
+      const FloatFast * const aWeights
    );
    void Free();
    void InitializeUnfailing();
@@ -76,17 +76,17 @@ public:
    const size_t * GetCountOccurrences() const {
       return m_aCountOccurrences;
    }
-   const FloatEbmType * GetWeights() const {
+   const FloatFast * GetWeights() const {
       return m_aWeights;
    }
-   FloatEbmType GetWeightTotal() const {
+   FloatBig GetWeightTotal() const {
       return m_weightTotal;
    }
 
    static SamplingSet ** GenerateSamplingSets(
       RandomStream * const pRandomStream, 
       const DataSetBoosting * const pOriginDataSet, 
-      const FloatEbmType * const aWeights,
+      const FloatFast * const aWeights,
       const size_t cSamplingSets
    );
    static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);

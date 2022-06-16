@@ -28,15 +28,15 @@ template<bool bClassification>
 struct TreeSweep final {
 private:
    size_t m_cBestSamplesLeft;
-   FloatEbmType m_bestWeightLeft;
-   const HistogramBucket<FloatEbmType, bClassification> * m_pBestHistogramBucketEntry;
+   FloatBig m_bestWeightLeft;
+   const HistogramBucket<FloatBig, bClassification> * m_pBestHistogramBucketEntry;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_aBestHistogramTargetEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramTargetEntry<FloatEbmType, bClassification> m_aBestHistogramTargetEntry[1];
+   HistogramTargetEntry<FloatBig, bClassification> m_aBestHistogramTargetEntry[1];
 
 public:
 
@@ -53,23 +53,23 @@ public:
       m_cBestSamplesLeft = cBestSamplesLeft;
    }
 
-   INLINE_ALWAYS FloatEbmType GetBestWeightLeft() const {
+   INLINE_ALWAYS FloatBig GetBestWeightLeft() const {
       return m_bestWeightLeft;
    }
 
-   INLINE_ALWAYS void SetBestWeightLeft(const FloatEbmType bestWeightLeft) {
+   INLINE_ALWAYS void SetBestWeightLeft(const FloatBig bestWeightLeft) {
       m_bestWeightLeft = bestWeightLeft;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatEbmType, bClassification> * GetBestHistogramBucketEntry() const {
+   INLINE_ALWAYS const HistogramBucket<FloatBig, bClassification> * GetBestHistogramBucketEntry() const {
       return m_pBestHistogramBucketEntry;
    }
 
-   INLINE_ALWAYS void SetBestHistogramBucketEntry(const HistogramBucket<FloatEbmType, bClassification> * pBestHistogramBucketEntry) {
+   INLINE_ALWAYS void SetBestHistogramBucketEntry(const HistogramBucket<FloatBig, bClassification> * pBestHistogramBucketEntry) {
       m_pBestHistogramBucketEntry = pBestHistogramBucketEntry;
    }
 
-   INLINE_ALWAYS HistogramTargetEntry<FloatEbmType, bClassification> * GetBestHistogramTargetEntry() {
+   INLINE_ALWAYS HistogramTargetEntry<FloatBig, bClassification> * GetBestHistogramTargetEntry() {
       return ArrayToPointer(m_aBestHistogramTargetEntry);
    }
 };
@@ -81,7 +81,7 @@ static_assert(std::is_pod<TreeSweep<true>>::value && std::is_pod<TreeSweep<false
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 INLINE_ALWAYS bool GetTreeSweepSizeOverflow(const bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
@@ -103,7 +103,7 @@ INLINE_ALWAYS bool GetTreeSweepSizeOverflow(const bool bClassification, const si
 }
 
 INLINE_ALWAYS size_t GetTreeSweepSize(bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatEbmType>(bClassification);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
 
    size_t cBytesTreeSweepComponent;
    if(bClassification) {

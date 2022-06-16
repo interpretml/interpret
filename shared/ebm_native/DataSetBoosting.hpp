@@ -22,8 +22,8 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class DataSetBoosting final {
-   FloatEbmType * m_aGradientsAndHessians;
-   FloatEbmType * m_aPredictorScores;
+   FloatFast * m_aGradientsAndHessians;
+   FloatFast * m_aPredictorScores;
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
@@ -62,15 +62,15 @@ public:
       const FeatureGroup * const * const apFeatureGroup
    );
 
-   INLINE_ALWAYS FloatEbmType * GetGradientsAndHessiansPointer() {
+   INLINE_ALWAYS FloatFast * GetGradientsAndHessiansPointer() {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS const FloatEbmType * GetGradientsAndHessiansPointer() const {
+   INLINE_ALWAYS const FloatFast * GetGradientsAndHessiansPointer() const {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS FloatEbmType * GetPredictorScores() {
+   INLINE_ALWAYS FloatFast * GetPredictorScores() {
       EBM_ASSERT(nullptr != m_aPredictorScores);
       return m_aPredictorScores;
    }

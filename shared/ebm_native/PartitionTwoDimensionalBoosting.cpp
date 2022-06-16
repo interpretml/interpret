@@ -32,8 +32,8 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static FloatEbmType SweepMultiDimensional(
-   const HistogramBucket<FloatEbmType, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
+static FloatBig SweepMultiDimensional(
+   const HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
    const FeatureGroup * const pFeatureGroup,
    size_t * const aiPoint,
    const size_t directionVectorLow,
@@ -41,10 +41,10 @@ static FloatEbmType SweepMultiDimensional(
    const size_t cSweepBins,
    const size_t cSamplesRequiredForChildSplitMin,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   HistogramBucket<FloatEbmType, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp,
+   HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp,
    size_t * const piBestSplit
 #ifndef NDEBUG
-   , const HistogramBucket<FloatEbmType, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy
+   , const HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
@@ -63,8 +63,8 @@ static FloatEbmType SweepMultiDimensional(
       runtimeLearningTypeOrCountTargetClasses
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatEbmType>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
    EBM_ASSERT(!IsMultiplyError(size_t { 2 }, cBytesPerHistogramBucket)); // we're accessing allocated memory
    const size_t cBytesPerTwoHistogramBuckets = cBytesPerHistogramBucket << 1;
 
@@ -84,7 +84,7 @@ static FloatEbmType SweepMultiDimensional(
 
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
-   FloatEbmType bestGain = k_illegalGainFloat;
+   FloatBig bestGain = k_illegalGainFloat;
    size_t iBin = 0;
    do {
       *piBin = iBin;
@@ -117,12 +117,12 @@ static FloatEbmType SweepMultiDimensional(
 #endif // NDEBUG
          );
          if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHigh->GetCountSamplesInBucket())) {
-            FloatEbmType gain = FloatEbmType { 0 };
+            FloatBig gain = 0;
             EBM_ASSERT(0 < pTotalsLow->GetCountSamplesInBucket());
             EBM_ASSERT(0 < pTotalsHigh->GetCountSamplesInBucket());
 
-            const FloatEbmType cLowWeightInBucket = pTotalsLow->GetWeightInBucket();
-            const FloatEbmType cHighWeightInBucket = pTotalsHigh->GetWeightInBucket();
+            const FloatBig cLowWeightInBucket = pTotalsLow->GetWeightInBucket();
+            const FloatBig cHighWeightInBucket = pTotalsHigh->GetWeightInBucket();
 
             auto * const pHistogramTargetEntryLow = pTotalsLow->GetHistogramTargetEntry();
 
@@ -133,16 +133,16 @@ static FloatEbmType SweepMultiDimensional(
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
-               const FloatEbmType gain1 = EbmStats::CalcPartialGain(
+               const FloatBig gain1 = EbmStats::CalcPartialGain(
                   pHistogramTargetEntryLow[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryLow[iVector].GetSumHessians() : cLowWeightInBucket);
-               EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+               EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                gain += gain1;
-               const FloatEbmType gain2 = EbmStats::CalcPartialGain(
+               const FloatBig gain2 = EbmStats::CalcPartialGain(
                   pHistogramTargetEntryHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryHigh[iVector].GetSumHessians() : cHighWeightInBucket);
-               EBM_ASSERT(std::isnan(gain2) || FloatEbmType { 0 } <= gain2);
+               EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
                gain += gain2;
             }
-            EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain); // sumation of positive numbers should be positive
+            EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumation of positive numbers should be positive
 
             if(UNLIKELY(/* NaN */ !LIKELY(gain <= bestGain))) {
                // propagate NaNs
@@ -170,7 +170,7 @@ static FloatEbmType SweepMultiDimensional(
    } while(iBin < cSweepBins - 1);
    *piBestSplit = iBestSplit;
 
-   EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || FloatEbmType { 0 } <= bestGain);
+   EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || 0 <= bestGain);
    return bestGain;
 }
 
@@ -188,7 +188,7 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
 #ifndef NDEBUG
       , const HistogramBucketBase * const aHistogramBucketsDebugCopyBase
 #endif // NDEBUG
@@ -210,13 +210,13 @@ public:
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatEbmType>(bClassification, cVectorLength);
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
 
-      auto * pAuxiliaryBucketZone = pAuxiliaryBucketZoneBase->GetHistogramBucket<FloatEbmType, bClassification>();
-      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      auto * pAuxiliaryBucketZone = pAuxiliaryBucketZoneBase->GetHistogramBucket<FloatBig, bClassification>();
+      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatBig, bClassification>();
 
 #ifndef NDEBUG
-      const auto * const aHistogramBucketsDebugCopy = aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatEbmType, bClassification>();
+      const auto * const aHistogramBucketsDebugCopy = aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatBig, bClassification>();
 #endif // NDEBUG
 
       size_t aiStart[k_cDimensionsMax];
@@ -248,7 +248,7 @@ public:
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
-      FloatEbmType bestGain = k_illegalGainFloat;
+      FloatBig bestGain = k_illegalGainFloat;
 
       size_t splitFirst1Best;
       size_t splitFirst1LowBest;
@@ -269,7 +269,7 @@ public:
          size_t splitSecond1LowBest;
          auto * pTotals2LowLowBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
          auto * pTotals2LowHighBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
-         const FloatEbmType gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+         const FloatBig gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
             pFeatureGroup,
             aiStart,
@@ -286,13 +286,13 @@ public:
 #endif // NDEBUG
             );
 
-         if(LIKELY(/* NaN */ !UNLIKELY(gain1 < FloatEbmType { 0 }))) {
-            EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+         if(LIKELY(/* NaN */ !UNLIKELY(gain1 < 0))) {
+            EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
 
             size_t splitSecond1HighBest;
             auto * pTotals2HighLowBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
             auto * pTotals2HighHighBest = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
-            const FloatEbmType gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+            const FloatBig gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
                pFeatureGroup,
                aiStart,
@@ -309,14 +309,14 @@ public:
 #endif // NDEBUG
                );
 
-            if(LIKELY(/* NaN */ !UNLIKELY(gain2 < FloatEbmType { 0 }))) {
-               EBM_ASSERT(std::isnan(gain2) || FloatEbmType { 0 } <= gain2);
+            if(LIKELY(/* NaN */ !UNLIKELY(gain2 < 0))) {
+               EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
 
-               const FloatEbmType gain = gain1 + gain2;
+               const FloatBig gain = gain1 + gain2;
                if(UNLIKELY(/* NaN */ !LIKELY(gain <= bestGain))) {
                   // propagate NaNs
 
-                  EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain);
+                  EBM_ASSERT(std::isnan(gain) || 0 <= gain);
 
                   bestGain = gain;
                   splitFirst1Best = iBin1;
@@ -360,7 +360,7 @@ public:
          size_t splitSecond2LowBest;
          auto * pTotals1LowLowBestInner = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
          auto * pTotals1LowHighBestInner = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
-         const FloatEbmType gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+         const FloatBig gain1 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
             pFeatureGroup,
             aiStart,
@@ -377,13 +377,13 @@ public:
 #endif // NDEBUG
             );
 
-         if(LIKELY(/* NaN */ !UNLIKELY(gain1 < FloatEbmType { 0 }))) {
-            EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+         if(LIKELY(/* NaN */ !UNLIKELY(gain1 < 0))) {
+            EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
 
             size_t splitSecond2HighBest;
             auto * pTotals1HighLowBestInner = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
             auto * pTotals1HighHighBestInner = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
-            const FloatEbmType gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
+            const FloatBig gain2 = SweepMultiDimensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
                pFeatureGroup,
                aiStart,
@@ -400,14 +400,14 @@ public:
 #endif // NDEBUG
                );
 
-            if(LIKELY(/* NaN */ !UNLIKELY(gain2 < FloatEbmType { 0 }))) {
-               EBM_ASSERT(std::isnan(gain2) || FloatEbmType { 0 } <= gain2);
+            if(LIKELY(/* NaN */ !UNLIKELY(gain2 < 0))) {
+               EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
 
-               const FloatEbmType gain = gain1 + gain2;
+               const FloatBig gain = gain1 + gain2;
                if(UNLIKELY(/* NaN */ !LIKELY(gain <= bestGain))) {
                   // propagate NaNs
 
-                  EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain);
+                  EBM_ASSERT(std::isnan(gain) || 0 <= gain);
 
                   bestGain = gain;
                   splitFirst2Best = iBin2;
@@ -435,32 +435,32 @@ public:
       } while(iBin2 < cBinsDimension2 - 1);
       LOG_0(TraceLevelVerbose, "PartitionTwoDimensionalBoostingInternal Done sweep loops");
 
-      EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || FloatEbmType { 0 } <= bestGain);
+      EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || 0 <= bestGain);
 
       // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
       // which contains the totals of all buckets
       const auto * const pTotal =
-         reinterpret_cast<const HistogramBucket<FloatEbmType, bClassification> *>(
+         reinterpret_cast<const HistogramBucket<FloatBig, bClassification> *>(
             reinterpret_cast<const char *>(pAuxiliaryBucketZoneBase) - cBytesPerHistogramBucket);
 
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, pBoosterShell->GetHistogramBucketsEndDebugBig());
 
       const auto * const pHistogramTargetEntryTotal = pTotal->GetHistogramTargetEntry();
 
-      const FloatEbmType weightAll = pTotal->GetWeightInBucket();
+      const FloatBig weightAll = pTotal->GetWeightInBucket();
       EBM_ASSERT(0 < weightAll);
 
-      *pTotalGain = FloatEbmType { 0 };
+      *pTotalGain = 0;
       EBM_ASSERT(0 <= k_gainMin);
       if(LIKELY(/* NaN */ !UNLIKELY(bestGain < k_gainMin))) {
-         EBM_ASSERT(std::isnan(bestGain) || FloatEbmType { 0 } <= bestGain);
+         EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
 
          // signal that we've hit an overflow.  Use +inf here since our caller likes that and will flip to -inf
-         *pTotalGain = std::numeric_limits<FloatEbmType>::infinity();
-         if(LIKELY(/* NaN */ bestGain <= std::numeric_limits<FloatEbmType>::max())) {
+         *pTotalGain = std::numeric_limits<double>::infinity();
+         if(LIKELY(/* NaN */ bestGain <= std::numeric_limits<FloatBig>::max())) {
             EBM_ASSERT(!std::isnan(bestGain));
-            EBM_ASSERT(FloatEbmType { 0 } <= bestGain);
-            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != bestGain);
+            EBM_ASSERT(0 <= bestGain);
+            EBM_ASSERT(std::numeric_limits<FloatBig>::infinity() != bestGain);
 
             // now subtract the parent partial gain
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -468,26 +468,26 @@ public:
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
-               const FloatEbmType gain1 = EbmStats::CalcPartialGain(
+               const FloatBig gain1 = EbmStats::CalcPartialGain(
                   pHistogramTargetEntryTotal[iVector].m_sumGradients,
                   bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : weightAll
                );
-               EBM_ASSERT(std::isnan(gain1) || FloatEbmType { 0 } <= gain1);
+               EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                bestGain -= gain1;
             }
 
-            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != bestGain);
-            EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatEbmType>::infinity() == bestGain ||
+            EBM_ASSERT(std::numeric_limits<FloatBig>::infinity() != bestGain);
+            EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatBig>::infinity() == bestGain ||
                k_epsilonNegativeGainAllowed <= bestGain);
 
-            if(LIKELY(/* NaN */ std::numeric_limits<FloatEbmType>::lowest() <= bestGain)) {
+            if(LIKELY(/* NaN */ std::numeric_limits<FloatBig>::lowest() <= bestGain)) {
                EBM_ASSERT(!std::isnan(bestGain));
                EBM_ASSERT(!std::isinf(bestGain));
                EBM_ASSERT(k_epsilonNegativeGainAllowed <= bestGain);
 
-               *pTotalGain = FloatEbmType { 0 };
+               *pTotalGain = 0;
                if(LIKELY(k_gainMin <= bestGain)) {
-                  *pTotalGain = bestGain;
+                  *pTotalGain = static_cast<double>(bestGain);
                   if(bSplitFirst2) {
                      // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero splits
                      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension2, 1);
@@ -544,17 +544,17 @@ public:
                      auto * const pHistogramTargetEntryTotals2HighHighBest = pTotals2HighHighBest->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                     FloatEbmType zeroLogit0 = FloatEbmType { 0 };
-                     FloatEbmType zeroLogit1 = FloatEbmType { 0 };
-                     FloatEbmType zeroLogit2 = FloatEbmType { 0 };
-                     FloatEbmType zeroLogit3 = FloatEbmType { 0 };
+                     FloatBig zeroLogit0 = 0;
+                     FloatBig zeroLogit1 = 0;
+                     FloatBig zeroLogit2 = 0;
+                     FloatBig zeroLogit3 = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
                      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                        FloatEbmType predictionLowLow;
-                        FloatEbmType predictionLowHigh;
-                        FloatEbmType predictionHighLow;
-                        FloatEbmType predictionHighHigh;
+                        FloatBig predictionLowLow;
+                        FloatBig predictionLowHigh;
+                        FloatBig predictionHighLow;
+                        FloatBig predictionHighHigh;
 
                         if(bClassification) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
@@ -609,25 +609,26 @@ public:
                            );
                         }
 
+                        FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
                         if(splitFirst2LowBest < splitFirst2HighBest) {
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionHighLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aValues[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aValues[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionHighHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aValues[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aValues[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else {
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionLowHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionHighLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
+                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         }
                      }
                   } else {
@@ -686,17 +687,17 @@ public:
                      auto * const pHistogramTargetEntryTotals1HighHighBest = pTotals1HighHighBest->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-                     FloatEbmType zeroLogit0 = FloatEbmType { 0 };
-                     FloatEbmType zeroLogit1 = FloatEbmType { 0 };
-                     FloatEbmType zeroLogit2 = FloatEbmType { 0 };
-                     FloatEbmType zeroLogit3 = FloatEbmType { 0 };
+                     FloatBig zeroLogit0 = 0;
+                     FloatBig zeroLogit1 = 0;
+                     FloatBig zeroLogit2 = 0;
+                     FloatBig zeroLogit3 = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
                      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                        FloatEbmType predictionLowLow;
-                        FloatEbmType predictionLowHigh;
-                        FloatEbmType predictionHighLow;
-                        FloatEbmType predictionHighHigh;
+                        FloatBig predictionLowLow;
+                        FloatBig predictionLowHigh;
+                        FloatBig predictionHighLow;
+                        FloatBig predictionHighHigh;
 
                         if(bClassification) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
@@ -749,35 +750,36 @@ public:
                               pTotals1HighHighBest->GetWeightInBucket()
                            );
                         }
+                        FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
                         if(splitFirst1LowBest < splitFirst1HighBest) {
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aValues[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aValues[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aValues[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aValues[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else {
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-                           pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
+                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         }
                      }
                   }
                   return Error_None;
                }
             } else {
-               EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatEbmType>::infinity() == bestGain);
+               EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatBig>::infinity() == bestGain);
             }
          } else {
-            EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<FloatEbmType>::infinity() == bestGain);
+            EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<FloatBig>::infinity() == bestGain);
          }
       } else {
          EBM_ASSERT(!std::isnan(bestGain));
@@ -802,11 +804,11 @@ public:
       // since our value capacity would be 1, which is pre-allocated
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-      FloatEbmType zeroLogit = FloatEbmType { 0 };
+      FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         FloatEbmType update;
+         FloatBig update;
          if(bClassification) {
             update = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntryTotal[iVector].m_sumGradients,
@@ -830,7 +832,8 @@ public:
             );
          }
 
-         pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[iVector] = update;
+         FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+         aValues[iVector] = SafeConvertFloat<FloatFast>(update);
       }
       return Error_None;
    }
@@ -848,7 +851,7 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
 #ifndef NDEBUG
       , const HistogramBucketBase * const aHistogramBucketsDebugCopy
 #endif // NDEBUG
@@ -898,7 +901,7 @@ public:
       const FeatureGroup * const pFeatureGroup,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
 #ifndef NDEBUG
       , const HistogramBucketBase * const aHistogramBucketsDebugCopy
 #endif // NDEBUG
@@ -926,7 +929,7 @@ extern ErrorEbmType PartitionTwoDimensionalBoosting(
    const FeatureGroup * const pFeatureGroup,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 #ifndef NDEBUG
    , const HistogramBucketBase * const aHistogramBucketsDebugCopy
 #endif // NDEBUG

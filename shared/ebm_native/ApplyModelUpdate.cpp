@@ -28,7 +28,7 @@ extern void ApplyModelUpdateTraining(
    const FeatureGroup * const pFeatureGroup
 );
 
-extern FloatEbmType ApplyModelUpdateValidation(
+extern double ApplyModelUpdateValidation(
    BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup
 );
@@ -63,7 +63,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
-   const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+   const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
 
    // our caller can give us one of these bad types of inputs:
    //  1) NaN values
@@ -84,7 +84,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
       ApplyModelUpdateTraining(pBoosterShell, pFeatureGroup);
    }
 
-   FloatEbmType modelMetric = FloatEbmType { 0 };
+   double modelMetric = 0.0;
    if(0 != pBoosterCore->GetValidationSet()->GetCountSamples()) {
       // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
       // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
@@ -103,7 +103,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
       EBM_ASSERT(!std::isinf(modelMetric)); // +infinity can happen, but we should have converted it
       // both log loss and RMSE need to be above zero.  If we got a negative number due to floating point 
       // instability we should have previously converted it to zero.
-      EBM_ASSERT(FloatEbmType { 0 } <= modelMetric);
+      EBM_ASSERT(0.0 <= modelMetric);
 
       // modelMetric is either logloss (classification) or mean squared error (mse) (regression).  In either case we want to minimize it.
       if(LIKELY(modelMetric < pBoosterCore->GetBestModelMetric())) {
@@ -128,7 +128,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
       }
    }
    if(nullptr != pValidationMetricReturn) {
-      *pValidationMetricReturn = static_cast<double>(modelMetric);
+      *pValidationMetricReturn = modelMetric;
    }
 
    LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateInternal");
@@ -406,7 +406,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
-   const FloatEbmType * const pValues = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+   const FloatFast * const pValues = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
    EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensorOut), cValues));
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
@@ -498,7 +498,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
-   FloatEbmType * const pValues = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+   FloatFast * const pValues = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
    EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensor), cValues));
    static_assert(sizeof(*modelFeatureGroupUpdateTensor) == sizeof(*pValues), "float mismatch");
@@ -507,11 +507,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
 
    if(2 <= cVectorLength) {
-      FloatEbmType * pScore = pValues;
-      const FloatEbmType * const pScoreExteriorEnd = pScore + cValues;
+      FloatFast * pScore = pValues;
+      const FloatFast * const pScoreExteriorEnd = pScore + cValues;
       do {
-         FloatEbmType scoreShift = pScore[0];
-         const FloatEbmType * const pScoreInteriorEnd = pScore + cVectorLength;
+         FloatFast scoreShift = pScore[0];
+         const FloatFast * const pScoreInteriorEnd = pScore + cVectorLength;
          do {
             *pScore -= scoreShift;
             ++pScore;

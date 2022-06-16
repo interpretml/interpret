@@ -37,7 +37,7 @@ public:
       const void * const aTargets,
       const double * const aPredictorScores,
       const size_t cSetSamples,
-      FloatEbmType * const aGradientAndHessian
+      FloatFast * const aGradientAndHessian
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
@@ -56,7 +56,7 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
       // TODO: we could eliminate this memory by doing the calculation twice below and then this code could return on error value (or would that work with the loss function stuff?)
-      FloatEbmType * const aExpVector = EbmMalloc<FloatEbmType>(cVectorLength);
+      FloatFast * const aExpVector = EbmMalloc<FloatFast>(cVectorLength);
       if(UNLIKELY(nullptr == aExpVector)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeGradientsAndHessians nullptr == aExpVector");
          return Error_OutOfMemory;
@@ -65,8 +65,8 @@ public:
       const BagEbmType * pBag = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const double * pPredictorScores = aPredictorScores;
-      FloatEbmType * pGradientAndHessian = aGradientAndHessian;
-      const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cVectorLength * cSetSamples * 2;
+      FloatFast * pGradientAndHessian = aGradientAndHessian;
+      const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cVectorLength * cSetSamples * 2;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
          BagEbmType countBagged = 1;
@@ -82,20 +82,19 @@ public:
                EBM_ASSERT(!IsConvertError<size_t>(targetOriginal));
                const size_t target = static_cast<size_t>(targetOriginal);
                EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
-               FloatEbmType * pExpVector = aExpVector;
+               FloatFast * pExpVector = aExpVector;
 
-               FloatEbmType sumExp = FloatEbmType { 0 };
+               FloatFast sumExp = 0;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               FloatEbmType zeroLogit = FloatEbmType { 0 };
+               FloatFast zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
                size_t iVector = 0;
                do {
-                  FloatEbmType predictorScore = 0;
+                  FloatFast predictorScore = 0;
                   if(nullptr != pPredictorScores) {
-                     static_assert(sizeof(*pPredictorScores) == sizeof(predictorScore), "float mismatch");
-                     predictorScore = *pPredictorScores;
+                     predictorScore = SafeConvertFloat<FloatFast>(*pPredictorScores);
                      ++pPredictorScores;
                   }
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -107,7 +106,7 @@ public:
                   }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-                  const FloatEbmType oneExp = ExpForMulticlass<false>(predictorScore);
+                  const FloatFast oneExp = ExpForMulticlass<false>(predictorScore);
                   *pExpVector = oneExp;
                   ++pExpVector;
                   sumExp += oneExp;
@@ -120,8 +119,8 @@ public:
 
                   iVector = 0;
                   do {
-                     FloatEbmType gradient;
-                     FloatEbmType hessian;
+                     FloatFast gradient;
+                     FloatFast hessian;
                      EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(sumExp, *pExpVector, target, iVector, gradient, hessian);
                      ++pExpVector;
 
@@ -165,7 +164,7 @@ public:
       const void * const aTargets,
       const double * const aPredictorScores,
       const size_t cSetSamples,
-      FloatEbmType * const aGradientAndHessian
+      FloatFast * const aGradientAndHessian
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
@@ -183,8 +182,8 @@ public:
       const BagEbmType * pBag = aBag;
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const double * pPredictorScores = aPredictorScores;
-      FloatEbmType * pGradientAndHessian = aGradientAndHessian;
-      const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples * 2;
+      FloatFast * pGradientAndHessian = aGradientAndHessian;
+      const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples * 2;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
          BagEbmType countBagged = 1;
@@ -193,10 +192,9 @@ public:
             ++pBag;
          }
          if(BagEbmType { 0 } != countBagged) {
-            FloatEbmType predictionScore = 0;
+            FloatFast predictionScore = 0;
             if(nullptr != pPredictorScores) {
-               static_assert(sizeof(*pPredictorScores) == sizeof(predictionScore), "float mismatch");
-               predictionScore = *pPredictorScores;
+               predictionScore = SafeConvertFloat<FloatFast>(*pPredictorScores);
                ++pPredictorScores;
             }
             const bool isItemTraining = BagEbmType { 0 } < countBagged;
@@ -207,8 +205,8 @@ public:
                const size_t target = static_cast<size_t>(targetOriginal);
                EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
 
-               const FloatEbmType gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictionScore, target);
-               const FloatEbmType hessian = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
+               const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictionScore, target);
+               const FloatFast hessian = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
 
                do {
                   EBM_ASSERT(pGradientAndHessian < pGradientAndHessianEnd - 1);
@@ -242,7 +240,7 @@ public:
       const void * const aTargets,
       const double * const aPredictorScores,
       const size_t cSetSamples,
-      FloatEbmType * const aGradientAndHessian
+      FloatFast * const aGradientAndHessian
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
@@ -258,10 +256,10 @@ public:
       EBM_ASSERT(nullptr != aGradientAndHessian);
 
       const BagEbmType * pBag = aBag;
-      const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargets);
+      const FloatFast * pTargetData = static_cast<const FloatFast *>(aTargets);
       const double * pPredictorScores = aPredictorScores;
-      FloatEbmType * pGradientAndHessian = aGradientAndHessian;
-      const FloatEbmType * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
+      FloatFast * pGradientAndHessian = aGradientAndHessian;
+      const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cSetSamples;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
          BagEbmType countBagged = 1;
@@ -270,10 +268,9 @@ public:
             ++pBag;
          }
          if(BagEbmType { 0 } != countBagged) {
-            FloatEbmType predictionScore = 0;
+            FloatFast predictionScore = 0;
             if(nullptr != pPredictorScores) {
-               static_assert(sizeof(*pPredictorScores) == sizeof(predictionScore), "float mismatch");
-               predictionScore = *pPredictorScores;
+               predictionScore = SafeConvertFloat<FloatFast>(*pPredictorScores);
                ++pPredictorScores;
             }
             const bool isItemTraining = BagEbmType { 0 } < countBagged;
@@ -284,10 +281,10 @@ public:
                // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
                // There is no need to check it here since we already have graceful detection later for other reasons.
 
-               const FloatEbmType data = *pTargetData;
+               const FloatFast data = *pTargetData;
                // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
                //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-               const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEInit(predictionScore, data);
+               const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEInit(predictionScore, data);
                do {
                   EBM_ASSERT(pGradientAndHessian < pGradientAndHessianEnd);
                   *pGradientAndHessian = gradient;
@@ -311,7 +308,7 @@ extern ErrorEbmType InitializeGradientsAndHessians(
    const BagEbmType * const aBag,
    const double * const aPredictorScores,
    const size_t cSetSamples,
-   FloatEbmType * const aGradientAndHessian
+   FloatFast * const aGradientAndHessian
 ) {
    ptrdiff_t runtimeLearningTypeOrCountTargetClasses;
    const void * const aTargets = GetDataSetSharedTarget(

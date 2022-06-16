@@ -24,7 +24,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cSamples, const size_t cVectorLength) {
+INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cSamples, const size_t cVectorLength) {
    LOG_0(TraceLevelInfo, "Entered ConstructGradientsAndHessians");
 
    EBM_ASSERT(1 <= cSamples);
@@ -37,13 +37,13 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructGradientsAndHessians(c
    }
    const size_t cElements = cVectorLength * cStorageItems * cSamples;
 
-   FloatEbmType * aGradientsAndHessians = EbmMalloc<FloatEbmType>(cElements);
+   FloatFast * aGradientsAndHessians = EbmMalloc<FloatFast>(cElements);
 
    LOG_0(TraceLevelInfo, "Exited ConstructGradientsAndHessians");
    return aGradientsAndHessians;
 }
 
-INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
+INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructPredictorScores(
    const size_t cVectorLength,
    const BagEbmType direction,
    const BagEbmType * const aBag,
@@ -62,17 +62,17 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    }
 
    const size_t cElements = cVectorLength * cSetSamples;
-   FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType>(cElements);
+   FloatFast * const aPredictorScoresTo = EbmMalloc<FloatFast>(cElements);
    if(nullptr == aPredictorScoresTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
    }
 
-   const size_t cBytesPerItem = sizeof(FloatEbmType) * cVectorLength;
+   const size_t cBytesPerItem = sizeof(*aPredictorScoresTo) * cVectorLength;
 
    const BagEbmType * pBag = aBag;
-   FloatEbmType * pPredictorScoresTo = aPredictorScoresTo;
-   const FloatEbmType * const pPredictorScoresToEnd = aPredictorScoresTo + cVectorLength * cSetSamples;
+   FloatFast * pPredictorScoresTo = aPredictorScoresTo;
+   const FloatFast * const pPredictorScoresToEnd = aPredictorScoresTo + cVectorLength * cSetSamples;
    const double * pPredictorScoresFrom = aPredictorScoresFrom;
    const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
@@ -87,7 +87,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
             do {
                EBM_ASSERT(pPredictorScoresTo < aPredictorScoresTo + cVectorLength * cSetSamples);
                if(nullptr == pPredictorScoresFrom) {
-                  static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
+                  static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
                   memset(pPredictorScoresTo, 0, cBytesPerItem);
                } else {
                   static_assert(sizeof(*pPredictorScoresTo) == sizeof(*pPredictorScoresFrom), "float mismatch");
@@ -107,11 +107,11 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
 
    // TODO: move this into the loop above
    if(2 <= cVectorLength) {
-      FloatEbmType * pScore = aPredictorScoresTo;
-      const FloatEbmType * const pScoreExteriorEnd = pScore + cVectorLength * cSetSamples;
+      FloatFast * pScore = aPredictorScoresTo;
+      const FloatFast * const pScoreExteriorEnd = pScore + cVectorLength * cSetSamples;
       do {
-         FloatEbmType scoreShift = pScore[0];
-         const FloatEbmType * const pScoreInteriorEnd = pScore + cVectorLength;
+         FloatFast scoreShift = pScore[0];
+         const FloatFast * const pScoreInteriorEnd = pScore + cVectorLength;
          do {
             *pScore -= scoreShift;
             ++pScore;
@@ -429,7 +429,7 @@ ErrorEbmType DataSetBoosting::Initialize(
 
    if(0 != cSetSamples) {
       if(bAllocateGradients) {
-         FloatEbmType * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cVectorLength);
+         FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cVectorLength);
          if(nullptr == aGradientsAndHessians) {
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
             return Error_OutOfMemory;
@@ -439,7 +439,7 @@ ErrorEbmType DataSetBoosting::Initialize(
          EBM_ASSERT(!bAllocateHessians);
       }
       if(bAllocatePredictorScores) {
-         FloatEbmType * const aPredictorScoresBag = ConstructPredictorScores(
+         FloatFast * const aPredictorScoresBag = ConstructPredictorScores(
             cVectorLength, 
             direction, 
             aBag, 
