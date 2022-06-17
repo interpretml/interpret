@@ -162,8 +162,11 @@ class Native:
 
         self._unsafe.SetTraceLevel(trace_level)
 
-    def flush_subnormals_to_zero(self, val):
-        return self._unsafe.FlushSubnormalsToZero(val)
+    def clean_float(self, val):
+        # the EBM spec does not allow subnormal floats to be in the model definition, so flush them to zero
+        val_array = np.array([val], np.float64)
+        self._unsafe.CleanFloats(len(val_array), Native._make_pointer(val_array, np.float64))
+        return val_array[0]
 
     def generate_random_number(self, random_seed, stage_randomization_mix):
         return self._unsafe.GenerateRandomNumber(random_seed, stage_randomization_mix)
@@ -530,12 +533,13 @@ class Native:
         ]
         self._unsafe.SetTraceLevel.restype = None
 
-
-        self._unsafe.FlushSubnormalsToZero.argtypes = [
-            # double value
-            ct.c_double,
+        self._unsafe.CleanFloats.argtypes = [
+            # int64_t count
+            ct.c_int64,
+            # double * valsInOut
+            ct.c_void_p,
         ]
-        self._unsafe.FlushSubnormalsToZero.restype = ct.c_double
+        self._unsafe.CleanFloats.restype = None
 
         self._unsafe.GenerateRandomNumber.argtypes = [
             # int32_t randomSeed

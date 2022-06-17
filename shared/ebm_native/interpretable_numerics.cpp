@@ -1414,8 +1414,4 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistog
    return ret;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY double EBM_NATIVE_CALLING_CONVENTION FlushSubnormalsToZero(double value) {
-   return Denormalize(value);
-}
-
 } // DEFINED_ZONE_NAME

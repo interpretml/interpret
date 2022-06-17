@@ -23,7 +23,7 @@ enum class TestPriority {
 
 
 // TODO: use these instead of nextafter everywhere we can use them
-inline static double TickHigherTest(const double v) noexcept {
+inline static double TickUpTest(const double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
 
    assert(!std::isnan(v));
@@ -39,7 +39,7 @@ inline static double TickHigherTest(const double v) noexcept {
       return std::numeric_limits<double>::min();
    }
 }
-inline static double TickLowerTest(const double v) noexcept {
+inline static double TickDownTest(const double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
 
    assert(!std::isnan(v));

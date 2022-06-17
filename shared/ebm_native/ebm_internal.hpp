@@ -188,6 +188,30 @@ static FloatBig AddPositiveFloatsSafeBig(size_t cVals, const T * pVals) {
    return totalOuter;
 }
 
+extern double TickUpInternal(double deprecisioned[1]) noexcept;
+extern double TickDownInternal(double deprecisioned[1]) noexcept;
+
+// TODO: call these instead of nextafter throughout our code
+INLINE_ALWAYS static double TickUp(const double val) noexcept {
+   // we use an array in the call to TickUpInternal to chop off any extended precision bits that might be in the float
+   double deprecisioned[1];
+   deprecisioned[0] = val;
+   return TickUpInternal(deprecisioned);
+}
+INLINE_ALWAYS static double TickDown(const double val) noexcept {
+   // we use an array in the call to TickDownInternal to chop off any extended precision bits that might be in the float
+   double deprecisioned[1];
+   deprecisioned[0] = val;
+   return TickDownInternal(deprecisioned);
+}
+// TODO: call this throughout our code to remove subnormals
+INLINE_ALWAYS static double CleanFloat(const double val) noexcept {
+   double deprecisioned[1];
+   deprecisioned[0] = val;
+   CleanFloats(1, deprecisioned);
+   return deprecisioned[0];
+}
+
 //#define ZERO_FIRST_MULTICLASS_LOGIT
 
 } // DEFINED_ZONE_NAME

@@ -87,6 +87,54 @@ TEST_CASE("CutUniform, exactly sufficient floting point range for all cuts") {
    }
 }
 
+TEST_CASE("CutUniform, exactly sufficient floting point range for all cuts, cross power 2 high boundary upwards") {
+   std::vector<double> featureValues;
+   std::vector<double> expectedCuts;
+
+   double val = 8.0;
+   for(int i = 0; i < 500; ++i) {
+      val = std::nextafter(val, std::numeric_limits<double>::lowest());
+   }
+   for(int i = 0; i < 1000; ++i) {
+      featureValues.push_back(val);
+      val = std::nextafter(val, std::numeric_limits<double>::max());
+      expectedCuts.push_back(val);
+   }
+   expectedCuts.pop_back();
+
+   std::vector<double> cuts(featureValues.size() - 1, illegalVal);
+
+   IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
+
+   size_t cCuts = static_cast<size_t>(countCuts);
+   CHECK(expectedCuts.size() == cCuts);
+   if(expectedCuts.size() == cCuts) {
+      for(size_t i = 0; i < cCuts; ++i) {
+         CHECK_APPROX(expectedCuts[i], cuts[i]);
+      }
+   }
+}
+
+TEST_CASE("CutUniform, marginally sufficient floting point range for all cuts, cross power 2 high boundary upwards") {
+   std::vector<double> featureValues;
+
+   double val = 8.0;
+   for(int i = 0; i < 500; ++i) {
+      val = std::nextafter(val, std::numeric_limits<double>::lowest());
+   }
+   for(int i = 0; i < 1000; ++i) {
+      featureValues.push_back(val);
+      val = std::nextafter(val, std::numeric_limits<double>::max());
+   }
+
+   std::vector<double> cuts(featureValues.size() - 2, illegalVal);
+
+   IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
+
+   size_t cCuts = static_cast<size_t>(countCuts);
+   CHECK(cuts.size() == cCuts);
+}
+
 TEST_CASE("CutUniform, insufficient floting point range for all cuts") {
    std::vector<double> featureValues;
    std::vector<double> expectedCuts;
@@ -123,6 +171,18 @@ TEST_CASE("CutUniform, one cut, -infinity and +infinity") {
 
    CHECK(1 == countCuts);
    CHECK(0 == cuts[0]);
+}
+
+TEST_CASE("CutUniform, mid-point overflow if not special cased") {
+   std::vector<double> featureValues {
+      std::numeric_limits<double>::lowest(),
+      std::numeric_limits<double>::max(),
+   };
+   std::vector<double> cuts(13, illegalVal);
+
+   IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
+
+   CHECK(13 == countCuts);
 }
 
 TEST_CASE("CutUniform, infinite diff, even cuts") {
@@ -232,14 +292,14 @@ TEST_CASE("CutUniform, low start, hit float resolution before end") {
    double val = -std::numeric_limits<double>::min();
    for(int i = 0; i < 5; ++i) {
       // backup a few ticks
-      val = TickLowerTest(val);
+      val = TickDownTest(val);
    }
    for(size_t iPast = 0; iPast < 10; ) {
       if(std::numeric_limits<double>::min() <= val) {
          ++iPast;
       }
       featureValues.push_back(val);
-      val = TickHigherTest(val);
+      val = TickUpTest(val);
    }
 
    // have just 1 hole in the middle
@@ -256,14 +316,14 @@ TEST_CASE("CutUniform, high start, hit float resolution before end") {
    double val = -std::numeric_limits<double>::min();
    for(int i = 0; i < 10; ++i) {
       // backup a few ticks
-      val = TickLowerTest(val);
+      val = TickDownTest(val);
    }
    for(size_t iPast = 0; iPast < 5; ) {
       if(std::numeric_limits<double>::min() <= val) {
          ++iPast;
       }
       featureValues.push_back(val);
-      val = TickHigherTest(val);
+      val = TickUpTest(val);
    }
 
    // have just 1 hole in the middle
@@ -275,23 +335,31 @@ TEST_CASE("CutUniform, high start, hit float resolution before end") {
 }
 
 TEST_CASE("CutUniform, stress test reproducible") {
-   constexpr double k_denormToNorm = 4503599627370496.0;
-   static_assert(k_denormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
+   constexpr double k_subnormToNorm = 4503599627370496.0;
+   static_assert(k_subnormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
       "bad min to denorm_min ratio");
 
    std::vector<double> featureValues { 0, 0 };
 
    double interestingValues[] = {
       std::numeric_limits<double>::lowest(),
-      -1.0
-      -2 * k_denormToNorm * std::numeric_limits<double>::min(),
-      -k_denormToNorm * std::numeric_limits<double>::min(),
+      -3.0,
+      -2.0,
+      -1.5,
+      -1.0,
+      -0.5,
+      -2 * k_subnormToNorm * std::numeric_limits<double>::min(),
+      -k_subnormToNorm * std::numeric_limits<double>::min(),
       -std::numeric_limits<double>::min(),
       0,
       std::numeric_limits<double>::min(),
-      k_denormToNorm * std::numeric_limits<double>::min(),
-      2 * k_denormToNorm * std::numeric_limits<double>::min(),
+      k_subnormToNorm * std::numeric_limits<double>::min(),
+      2 * k_subnormToNorm * std::numeric_limits<double>::min(),
+      0.5,
       1.0,
+      1.5,
+      2.0,
+      3.0,
       std::numeric_limits<double>::max(),
    };
    const size_t cInteresting = static_cast<int>(sizeof(interestingValues) / sizeof(interestingValues[0]));
@@ -302,7 +370,7 @@ TEST_CASE("CutUniform, stress test reproducible") {
    double result = 0.0;
 
    std::mt19937 randomize(42);
-   for(int i = 0; i < 10000; ++i) {
+   for(int i = 0; i < 20000; ++i) {
       size_t val = static_cast<size_t>(randomize());
       bool isPositiveLow = static_cast<bool>(0x1 & val);
       val >>= 1;
@@ -323,13 +391,13 @@ TEST_CASE("CutUniform, stress test reproducible") {
       if(isPositiveLow) {
          for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
             if(low != std::numeric_limits<double>::lowest()) {
-               low = TickLowerTest(low);
+               low = TickDownTest(low);
             }
          }
       } else {
          for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
             if(low != std::numeric_limits<double>::max()) {
-               low = TickHigherTest(low);
+               low = TickUpTest(low);
             }
          }
       }
@@ -337,13 +405,13 @@ TEST_CASE("CutUniform, stress test reproducible") {
       if(isPositiveHigh) {
          for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
             if(high != std::numeric_limits<double>::lowest()) {
-               high = TickLowerTest(high);
+               high = TickDownTest(high);
             }
          }
       } else {
          for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
             if(high != std::numeric_limits<double>::max()) {
-               high = TickHigherTest(high);
+               high = TickUpTest(high);
             }
          }
       }
@@ -376,6 +444,6 @@ TEST_CASE("CutUniform, stress test reproducible") {
       }
    }
 
-   CHECK(0.37728699762447393 == result);
+   CHECK(-0.91091062627780173 == result);
 }
 
