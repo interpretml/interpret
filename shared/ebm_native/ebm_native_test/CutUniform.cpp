@@ -229,44 +229,6 @@ TEST_CASE("CutUniform, infinite diff, odd cuts") {
    }
 }
 
-TEST_CASE("CutUniform, anchor on min") {
-   IntEbmType countCuts = 3;
-
-   std::vector<double> featureValues { -2, std::nextafter(2, 1000000) };
-   const std::vector<double> expectedCuts { -1, 0, 1 };
-
-   std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
-
-   countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
-
-   size_t cCuts = static_cast<size_t>(countCuts);
-   CHECK(expectedCuts.size() == cCuts);
-   if(expectedCuts.size() == cCuts) {
-      for(size_t i = 0; i < cCuts; ++i) {
-         CHECK_APPROX(expectedCuts[i], cuts[i]);
-      }
-   }
-}
-
-TEST_CASE("CutUniform, anchor on max") {
-   IntEbmType countCuts = 3;
-
-   std::vector<double> featureValues { std::nextafter(-2, -100000), 2 };
-   const std::vector<double> expectedCuts { -1, 0, 1 };
-
-   std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
-
-   countCuts = CutUniform(featureValues.size(), &featureValues[0], cuts.size(), &cuts[0]);
-
-   size_t cCuts = static_cast<size_t>(countCuts);
-   CHECK(expectedCuts.size() == cCuts);
-   if(expectedCuts.size() == cCuts) {
-      for(size_t i = 0; i < cCuts; ++i) {
-         CHECK_APPROX(expectedCuts[i], cuts[i]);
-      }
-   }
-}
-
 TEST_CASE("CutUniform, min and max at interior positions") {
    IntEbmType countCuts = 9;
 
@@ -292,14 +254,14 @@ TEST_CASE("CutUniform, low start, hit float resolution before end") {
    double val = -std::numeric_limits<double>::min();
    for(int i = 0; i < 5; ++i) {
       // backup a few ticks
-      val = TickDownTest(val);
+      val = FloatTickDecrementTest(val);
    }
    for(size_t iPast = 0; iPast < 10; ) {
       if(std::numeric_limits<double>::min() <= val) {
          ++iPast;
       }
       featureValues.push_back(val);
-      val = TickUpTest(val);
+      val = FloatTickIncrementTest(val);
    }
 
    // have just 1 hole in the middle
@@ -316,14 +278,14 @@ TEST_CASE("CutUniform, high start, hit float resolution before end") {
    double val = -std::numeric_limits<double>::min();
    for(int i = 0; i < 10; ++i) {
       // backup a few ticks
-      val = TickDownTest(val);
+      val = FloatTickDecrementTest(val);
    }
    for(size_t iPast = 0; iPast < 5; ) {
       if(std::numeric_limits<double>::min() <= val) {
          ++iPast;
       }
       featureValues.push_back(val);
-      val = TickUpTest(val);
+      val = FloatTickIncrementTest(val);
    }
 
    // have just 1 hole in the middle
@@ -391,13 +353,13 @@ TEST_CASE("CutUniform, stress test reproducible") {
       if(isPositiveLow) {
          for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
             if(low != std::numeric_limits<double>::lowest()) {
-               low = TickDownTest(low);
+               low = FloatTickDecrementTest(low);
             }
          }
       } else {
          for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
             if(low != std::numeric_limits<double>::max()) {
-               low = TickUpTest(low);
+               low = FloatTickIncrementTest(low);
             }
          }
       }
@@ -405,13 +367,13 @@ TEST_CASE("CutUniform, stress test reproducible") {
       if(isPositiveHigh) {
          for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
             if(high != std::numeric_limits<double>::lowest()) {
-               high = TickDownTest(high);
+               high = FloatTickDecrementTest(high);
             }
          }
       } else {
          for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
             if(high != std::numeric_limits<double>::max()) {
-               high = TickUpTest(high);
+               high = FloatTickIncrementTest(high);
             }
          }
       }
@@ -444,6 +406,6 @@ TEST_CASE("CutUniform, stress test reproducible") {
       }
    }
 
-   CHECK(-0.91091062627780173 == result);
+   CHECK(0.91301445208964638 == result);
 }
 

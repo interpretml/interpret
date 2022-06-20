@@ -6,6 +6,7 @@
 #define EBM_NATIVE_TEST_HPP
 
 #define UNUSED(x) (void)(x)
+#define EBM_ASSERT(x) assert(x)
 
 enum class TestPriority {
    DataSetShared,
@@ -23,7 +24,7 @@ enum class TestPriority {
 
 
 // TODO: use these instead of nextafter everywhere we can use them
-inline static double TickUpTest(const double v) noexcept {
+inline static double FloatTickIncrementTest(const double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
 
    assert(!std::isnan(v));
@@ -39,7 +40,7 @@ inline static double TickUpTest(const double v) noexcept {
       return std::numeric_limits<double>::min();
    }
 }
-inline static double TickDownTest(const double v) noexcept {
+inline static double FloatTickDecrementTest(const double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
 
    assert(!std::isnan(v));
