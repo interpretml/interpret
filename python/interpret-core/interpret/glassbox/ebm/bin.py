@@ -2121,19 +2121,19 @@ def ebm_decision_function(
     feature_types_in, 
     bins, 
     intercept, 
-    additive_terms, 
+    term_scores, 
     term_features
 ):
     if type(intercept) is float or len(intercept) == 1:
-        scores = np.full(n_samples, intercept, dtype=np.float64)
+        sample_scores = np.full(n_samples, intercept, dtype=np.float64)
     else:
-        scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
+        sample_scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
 
     if 0 < n_samples:
         for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-            scores += additive_terms[term_idx][tuple(binned_data)]
+            sample_scores += term_scores[term_idx][tuple(binned_data)]
 
-    return scores
+    return sample_scores
 
 def ebm_decision_function_and_explain(
     X, 
@@ -2142,24 +2142,24 @@ def ebm_decision_function_and_explain(
     feature_types_in, 
     bins, 
     intercept, 
-    additive_terms, 
+    term_scores, 
     term_features
 ):
     if type(intercept) is float or len(intercept) == 1:
-        scores = np.full(n_samples, intercept, dtype=np.float64)
+        sample_scores = np.full(n_samples, intercept, dtype=np.float64)
         explanations = np.empty((n_samples, len(term_features)), dtype=np.float64)
     else:
         # TODO: add a test for multiclass calls to ebm_decision_function_and_explain
-        scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
+        sample_scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
         explanations = np.empty((n_samples, len(term_features), len(intercept)), dtype=np.float64)
 
     if 0 < n_samples:
         for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-            term_scores = additive_terms[term_idx][tuple(binned_data)]
-            scores += term_scores
-            explanations[:, term_idx] = term_scores
+            scores = term_scores[term_idx][tuple(binned_data)]
+            sample_scores += scores
+            explanations[:, term_idx] = scores
 
-    return scores, explanations
+    return sample_scores, explanations
 
 def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features):
     bin_counts = _none_list * len(term_features)
