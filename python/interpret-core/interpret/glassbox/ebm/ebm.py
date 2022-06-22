@@ -687,6 +687,45 @@ class BaseEBM(BaseEstimator):
             JSON string
         """
 
+        # NOTES: If we eventually want to record edits to EBMs within the same file, we should:
+        #        1) Have the final EBM section first.  This allows people to diff two models and the diffs for 
+        #           the current model will be at the top.  If people are comparing a non-edited model to an edited
+        #           model then they will be comparing the non-edited model to the current model, which is what we want.
+        #           When people open the file they'll see the current model, which will confuse people less.
+        #        2) Have the initial model second.  If the user is comparing two edited models derived from a single
+        #           initial model, then this section should be a big block of unchanged text which should help the
+        #           diffing tool retrack for both the initial model and the next section which contains the edits.
+        #        3) The edits, starting from the first edit to the last edit chronologically downwards from the 
+        #           "initial_model".  If someone diffs the models at various
+        #           stages of editing that were derived from a single model then the initial edits should be common
+        #           and show up in the diff as unchanged.  If one file has a superset of edits all the newest edits
+        #           will appear in the diff at the bottom as added.  If the two files diverge at some point then
+        #           the divergence point will be obvious since everything above will be shown as unchanged and
+        #           the changes will occur after that point
+        # - A non-edited EBM file should be saved with just the single JSON for the model and not an initial and 
+        #   final model.  The only section should be marked with the tag "ebm" so that tools that read in EBMs
+        #   Are compatible with both editied and non-edited files.  The tools will always look for the "ebm"
+        #   section, which will be in both non-edited EBMs and edited EBMs at the top.
+        # - The file would look like this for edited EBMs:
+        #   {
+        #     "version": "1.0"
+        #     "ebm": { EBM_JSON }
+        #     "initial_ebm": { EBM_JSON }
+        #     "edits": [
+        #       { EDIT_JSON },
+        #       { EDIT_JSON },
+        #       { EDIT_JSON }
+        #     ]
+        #   }
+        # - The file would look like this for unedited EBMs:
+        #   {
+        #     "version": "1.0"
+        #     "ebm": { EBM_JSON }
+        #   }
+        # - In python, we could contain these in attributes called "initial_ebm" which would contain a fully formed ebm
+        #   and "edits", which would contain a list of the edits.  These fields wouldn't be present in a scikit-learn
+        #   generated EBM, but would appear if the user edited the EBM, or if they loaded one that had edits.
+
         if properties == 'minimal':
             level = 0
         elif properties == 'interpretable':
@@ -702,19 +741,17 @@ class BaseEBM(BaseEstimator):
 
         j = {}
 
-        j['version'] = '1.0'
-
         # future-proof support for multi-output models
         outputs = []
         output = {}
         if is_classifier(self):
             if len(self.classes_) <= 2:
                 # include 1 class classification in the binary classification category and use -inf in the intercept
-                output['output_type'] = 'binary_classification'
+                output['output_type'] = 'binary'
             else:
-                # distinquish from binary classification so that we can support ordinal classification someday
+                # distinquish from binary classification so that we can support 'ordinal' classification someday
                 # https://en.wikipedia.org/wiki/Ordinal_regression
-                output['output_type'] = 'multinomial_classification'
+                output['output_type'] = 'multinomial'
             output['classes'] = self.classes_.tolist()
             output['link_function'] = 'logit' # logistic is the inverse link function for logit
         else:
@@ -919,7 +956,11 @@ class BaseEBM(BaseEstimator):
             terms.append(term)
         j['terms'] = terms
 
-        return json.dumps(j, allow_nan=False, indent=2)
+        outer = {}
+        outer['version'] = '1.0'
+        outer['ebm'] = j
+
+        return json.dumps(outer, allow_nan=False, indent=2)
 
     def decision_function(self, X):
         """ Predict scores from model before calling the link function.
@@ -1317,17 +1358,17 @@ class BaseEBM(BaseEstimator):
                         return make_histogram_edges(min_val, max_val, histogram_bin_counts)
         return None
 
-    def get_importances(self, style='avg_weight'):
+    def get_importances(self, importance_type='avg_weight'):
         """ Provides the term importances
 
         Args:
-            style: the type of term importance requested ('avg_weight', 'min_max')
+            importance_type: the type of term importance requested ('avg_weight', 'min_max')
 
         Returns:
             An array term importances with one importance per additive term
         """
 
-        if style == 'avg_weight':
+        if importance_type == 'avg_weight':
             importances = np.empty(len(self.term_features_), np.float64)
             for i in range(len(self.term_features_)):
                 mean_abs_score = np.abs(self.additive_terms_[i])
@@ -1336,10 +1377,10 @@ class BaseEBM(BaseEstimator):
                 mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
                 importances.itemset(i, mean_abs_score)
             return importances
-        elif style == 'min_max':
+        elif importance_type == 'min_max':
             return np.array([np.max(tensor) - np.min(tensor) for tensor in self.additive_terms_], np.float64)
         else:
-            raise ValueError(f"Unrecognized style: {style}")
+            raise ValueError(f"Unrecognized importance_type: {importance_type}")
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
