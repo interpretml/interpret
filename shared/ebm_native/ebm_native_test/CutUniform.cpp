@@ -11,6 +11,10 @@
 
 static const TestPriority k_filePriority = TestPriority::CutUniform;
 
+constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // DBL_MIN
+constexpr double k_maxNonInf = 1.7976931348623158e+308; // DBL_MAX
+constexpr double k_subnormToNorm = 4503599627370496.0; // multiplying by this will move a subnormal into a normal
+
 constexpr double illegalVal = double { -888.88 };
 static double * const pIllegal = reinterpret_cast<double *>(1);
 
@@ -297,106 +301,116 @@ TEST_CASE("CutUniform, high start, hit float resolution before end") {
 }
 
 TEST_CASE("CutUniform, stress test reproducible") {
-   constexpr double k_subnormToNorm = 4503599627370496.0;
-   static_assert(k_subnormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
-      "bad min to denorm_min ratio");
+   IntEbmType iTest;
+   IntEbmType iCut;
+   IntEbmType countCuts;
 
-   std::vector<double> featureValues { 0, 0 };
+   double lowTest;
+   double highTest;
+   double oneCut;
 
-   double interestingValues[] = {
-      std::numeric_limits<double>::lowest(),
+   uint32_t testVal;
+   uint32_t checkVal;
+   size_t iTick;
+
+   double result = 0.0;
+   double seed = 64906263;
+
+   double featureValues[2] = { 0, 0 };
+
+   constexpr size_t cInteresting = 19;
+   double interestingValues[cInteresting] = {
+      -k_maxNonInf,
       -3.0,
       -2.0,
       -1.5,
       -1.0,
       -0.5,
-      -2 * k_subnormToNorm * std::numeric_limits<double>::min(),
-      -k_subnormToNorm * std::numeric_limits<double>::min(),
-      -std::numeric_limits<double>::min(),
-      0,
-      std::numeric_limits<double>::min(),
-      k_subnormToNorm * std::numeric_limits<double>::min(),
-      2 * k_subnormToNorm * std::numeric_limits<double>::min(),
+      -2 * k_subnormToNorm * k_minNonSubnormal,
+      -k_subnormToNorm * k_minNonSubnormal,
+      -k_minNonSubnormal,
+      0.0,
+      k_minNonSubnormal,
+      k_subnormToNorm * k_minNonSubnormal,
+      2 * k_subnormToNorm * k_minNonSubnormal,
       0.5,
       1.0,
       1.5,
       2.0,
       3.0,
-      std::numeric_limits<double>::max(),
+      k_maxNonInf
    };
-   const size_t cInteresting = static_cast<int>(sizeof(interestingValues) / sizeof(interestingValues[0]));
+   constexpr size_t cCutsMax = 31; // 31 is prime
+   double cuts[cCutsMax] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-   // 31 is prime
-   std::vector<double> cuts(31, illegalVal);
+   // this is a really crappy Middle-square random number generator so that we can replicate it in any language
+   for(iTest = 0; iTest < 20000; ++iTest) {
+      seed = floor((seed * seed) / 11.0);
+      seed = seed - floor(seed / 94906263) * 94906263; // floor(sqrt(SAFE_FLOAT64_AS_INT_MAX))
+      testVal = seed;
 
-   double result = 0.0;
+      checkVal = testVal % cInteresting;
+      lowTest = interestingValues[checkVal];
+      testVal = testVal / cInteresting;
 
-   std::mt19937 randomize(42);
-   for(int i = 0; i < 20000; ++i) {
-      size_t val = static_cast<size_t>(randomize());
-      bool isPositiveLow = static_cast<bool>(0x1 & val);
-      val >>= 1;
-      bool isPositiveHigh = static_cast<bool>(0x1 & val);
-      val >>= 1;
-      size_t shiftLow = static_cast<size_t>(0xF & val); // 0-15 shift
-      val >>= 4;
-      size_t shiftHigh = static_cast<size_t>(0xF & val); // 0-15 shift
-      val >>= 4;
-      size_t iInterestingLow = val % cInteresting;
-      val /= cInteresting;
-      size_t iInterestingHigh = val % cInteresting;
-      val /= cInteresting;
+      checkVal = testVal % cInteresting;
+      highTest = interestingValues[checkVal];
+      testVal = testVal / cInteresting;
 
-      double low = DenormalizeTest(interestingValues[iInterestingLow]);
-      double high = DenormalizeTest(interestingValues[iInterestingHigh]);
-
-      if(isPositiveLow) {
-         for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
-            if(low != std::numeric_limits<double>::lowest()) {
-               low = FloatTickDecrementTest(low);
+      checkVal = testVal % 2;
+      if(0 == checkVal) {
+         testVal = testVal / 2;
+         checkVal = testVal % 16;
+         for(iTick = 0; iTick < checkVal; ++iTick) {
+            if(lowTest != -k_maxNonInf) {
+               lowTest = FloatTickDecrementTest(lowTest);
             }
          }
       } else {
-         for(size_t iTick = 0; iTick < shiftLow; ++iTick) {
-            if(low != std::numeric_limits<double>::max()) {
-               low = FloatTickIncrementTest(low);
+         testVal = testVal / 2;
+         checkVal = testVal % 16;
+         for(iTick = 0; iTick < checkVal; ++iTick) {
+            if(lowTest != k_maxNonInf) {
+               lowTest = FloatTickIncrementTest(lowTest);
             }
          }
       }
+      testVal = testVal / 16;
 
-      if(isPositiveHigh) {
-         for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
-            if(high != std::numeric_limits<double>::lowest()) {
-               high = FloatTickDecrementTest(high);
+      checkVal = testVal % 2;
+      if(0 == checkVal) {
+         testVal = testVal / 2;
+         checkVal = testVal % 16;
+         for(iTick = 0; iTick < checkVal; ++iTick) {
+            if(highTest != -k_maxNonInf) {
+               highTest = FloatTickDecrementTest(highTest);
             }
          }
       } else {
-         for(size_t iTick = 0; iTick < shiftHigh; ++iTick) {
-            if(high != std::numeric_limits<double>::max()) {
-               high = FloatTickIncrementTest(high);
+         testVal = testVal / 2;
+         checkVal = testVal % 16;
+         for(iTick = 0; iTick < checkVal; ++iTick) {
+            if(highTest != k_maxNonInf) {
+               highTest = FloatTickIncrementTest(highTest);
             }
          }
       }
+      testVal = testVal / 16;
 
-      featureValues[0] = low;
-      featureValues[1] = high;
+      featureValues[0] = lowTest;
+      featureValues[1] = highTest;
 
-      IntEbmType iCuts = static_cast<IntEbmType>(val % cuts.size());
-      IntEbmType countCuts = CutUniform(featureValues.size(), &featureValues[0], iCuts, &cuts[0]);
+      checkVal = testVal % cCutsMax;
+      countCuts = static_cast<IntEbmType>(checkVal);
+      countCuts = CutUniform(2, featureValues, countCuts, cuts);
 
-      size_t cCuts = static_cast<size_t>(countCuts);
-      for(size_t iCut = 0; iCut < cCuts; ++iCut) {
-         double oneCut = cuts[iCut];
-         if(0.0 != oneCut) {
-            if(std::abs(oneCut) < 1.0) {
-               do {
-                  oneCut *= 2.0;
-               } while(std::abs(oneCut) < 1.0);
-            } else {
-               do {
-                  oneCut *= 0.5;
-               } while(1.0 < std::abs(oneCut));
-            }
+      for(iCut = 0; iCut < countCuts; ++iCut) {
+         oneCut = cuts[iCut];
+         while(-1.0 < oneCut && oneCut < 1.0 && 0.0 != oneCut) {
+            oneCut *= 2.0;
+         }
+         while(oneCut < -1.0 || 1.0 < oneCut) {
+            oneCut *= 0.5;
          }
          if(result < 0.0 && 0.0 < oneCut || 0.0 < result && oneCut < 0.0) {
             result += oneCut;
@@ -406,6 +420,6 @@ TEST_CASE("CutUniform, stress test reproducible") {
       }
    }
 
-   CHECK(0.91301445208964638 == result);
+   CHECK(0.083452131729086054 == result);
 }
 

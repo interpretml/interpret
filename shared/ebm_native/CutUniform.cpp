@@ -68,6 +68,9 @@ static_assert(std::numeric_limits<double>::infinity() != (k_nonDoubleable - k_la
 extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
    // This is a cross-language portable implementation of nextafter
 
+   double bound;
+   double tick;
+
    // We pass values in as an array in order to force the elimination of any possible extended precision bits.
    double val = deprecisioned[0];
 
@@ -90,10 +93,10 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
          // By shifting upwards through a multiple we can maintain the same spacing for the epsilons
          
          val *= k_subnormToNorm;
-         double low = -1.0 * k_subnormToNorm * 0.5;
-         double tick = k_epsilon * k_subnormToNorm * 0.5;
-         while(low <= val) {
-            low *= 0.5;
+         bound = -1.0 * k_subnormToNorm * 0.5;
+         tick = k_epsilon * k_subnormToNorm * 0.5;
+         while(bound <= val) {
+            bound *= 0.5;
             tick *= 0.5;
             EBM_ASSERT(DBL_MIN <= tick);
          }
@@ -103,10 +106,10 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
             // avoid hitting -infinity high by checking for the last doubling
             return val + k_lastTick;
          }
-         double high = -2.0;
-         double tick = k_epsilon;
-         while(val < high) {
-            high *= 2.0;
+         bound = -2.0;
+         tick = k_epsilon;
+         while(val < bound) {
+            bound *= 2.0;
             tick *= 2.0;
             EBM_ASSERT(!isinf(tick));
          }
@@ -118,10 +121,10 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
          // By shifting upwards through a multiple we can maintain the same spacing for the epsilons
 
          val *= k_subnormToNorm;
-         double low = 1.0 * k_subnormToNorm * 0.5;
-         double tick = k_epsilon * k_subnormToNorm * 0.5;
-         while(val < low) {
-            low *= 0.5;
+         bound = 1.0 * k_subnormToNorm * 0.5;
+         tick = k_epsilon * k_subnormToNorm * 0.5;
+         while(val < bound) {
+            bound *= 0.5;
             tick *= 0.5;
             EBM_ASSERT(DBL_MIN <= tick);
          }
@@ -132,10 +135,10 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
             // also, if val is +inf we can't exit the loop below without this check
             return val + k_lastTick;
          }
-         double high = 2.0;
-         double tick = k_epsilon;
-         while(high <= val) {
-            high *= 2.0;
+         bound = 2.0;
+         tick = k_epsilon;
+         while(bound <= val) {
+            bound *= 2.0;
             tick *= 2.0;
             EBM_ASSERT(!isinf(tick));
          }
@@ -146,6 +149,9 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
 
 extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
    // This is a cross-language portable implementation of nextafter
+
+   double bound;
+   double tick;
 
    // We pass values in as an array in order to force the elimination of any possible extended precision bits.
    double val = deprecisioned[0];
@@ -169,10 +175,10 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
          // By shifting upwards through a multiple we can maintain the same spacing for the epsilons
 
          val *= k_subnormToNorm;
-         double low = 1.0 * k_subnormToNorm * 0.5;
-         double tick = k_epsilon * k_subnormToNorm * 0.5;
-         while(val <= low) {
-            low *= 0.5;
+         bound = 1.0 * k_subnormToNorm * 0.5;
+         tick = k_epsilon * k_subnormToNorm * 0.5;
+         while(val <= bound) {
+            bound *= 0.5;
             tick *= 0.5;
             EBM_ASSERT(DBL_MIN <= tick);
          }
@@ -182,10 +188,10 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
             // avoid hitting +infinity high by checking for the last doubling
             return val - k_lastTick;
          }
-         double high = 2.0;
-         double tick = k_epsilon;
-         while(high < val) {
-            high *= 2.0;
+         bound = 2.0;
+         tick = k_epsilon;
+         while(bound < val) {
+            bound *= 2.0;
             tick *= 2.0;
             EBM_ASSERT(!isinf(tick));
          }
@@ -197,10 +203,10 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
          // By shifting upwards through a multiple we can maintain the same spacing for the epsilons
 
          val *= k_subnormToNorm;
-         double low = -1.0 * k_subnormToNorm * 0.5;
-         double tick = k_epsilon * k_subnormToNorm * 0.5;
-         while(low < val) {
-            low *= 0.5;
+         bound = -1.0 * k_subnormToNorm * 0.5;
+         tick = k_epsilon * k_subnormToNorm * 0.5;
+         while(bound < val) {
+            bound *= 0.5;
             tick *= 0.5;
             EBM_ASSERT(DBL_MIN <= tick);
          }
@@ -211,10 +217,10 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
             // also, if our input was -inf and we allowed it, this would avoid an infinite loop
             return val - k_lastTick;
          }
-         double high = -2.0;
-         double tick = k_epsilon;
-         while(val <= high) {
-            high *= 2.0;
+         bound = -2.0;
+         tick = k_epsilon;
+         while(val <= bound) {
+            bound *= 2.0;
             tick *= 2.0;
             EBM_ASSERT(!isinf(tick));
          }
@@ -325,7 +331,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CleanFloats(Int
    while(0 != c) {
       --c;
       const double val = valsInOut[c];
-      if(-std::numeric_limits<double>::min() < val && val < std::numeric_limits<double>::min()) {
+      if(-k_minNonSubnormal < val && val < k_minNonSubnormal) {
          // val is in the subnormal range, so force it to zero.  
          // DO NOT COMPARE WITH ZERO SINCE SOME CPUs INDICATE TRUE WHEN COMPARING 0.0 TO A SUBNORMAL
          // if the environment violates IEEE-754 with "denormals-are-zero" ("subnormals-are-zero")
@@ -419,6 +425,25 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
    // complexity since we want this code to be cross-language portable, and this only affects extremely tiny numbers 
    // in the range of 10^-308.  Numbers that small are really skirting close to being zero anyways.
 
+
+   double minValue;
+   double maxValue;
+   size_t iSample;
+   double val;
+   double walkValue;
+   size_t iCut;
+   double multiple;
+   double halfDiff;
+   double cBinsFloat;
+   size_t cHalfCuts;
+   double cutPrev;
+
+   double numerator;
+   double fraction;
+   double shift;
+   double cutExpanded;
+   double cut;
+
    if(0 == countDesiredCuts) {
       // we need this check because otherwise we could overflow to +inf when we calculate halfDiff below
       // if both minValue and maxValue are both very big (close to infinity) and opposite in sign
@@ -449,11 +474,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       return 0;
    }
 
-   double minValue = std::numeric_limits<double>::max();
-   double maxValue = std::numeric_limits<double>::lowest();
+   minValue = k_maxNonInf;
+   maxValue = -k_maxNonInf;
 
-   for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-      const double val = featureValues[iSample];
+   for(iSample = 0; iSample < cSamples; ++iSample) {
+      val = featureValues[iSample];
       // Use this check for NaN for cross-language portability.  It is not technically needed 
       // if IEEE-754 is followed, since "NaN < anything" and "anything < NaN" are false
       if(!isnan(val)) {
@@ -474,19 +499,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
    EBM_ASSERT(-std::numeric_limits<double>::infinity() != maxValue);
    EBM_ASSERT(std::numeric_limits<double>::infinity() != minValue);
 
-   if(std::numeric_limits<double>::max() == minValue && std::numeric_limits<double>::lowest() == maxValue) {
+   if(k_maxNonInf == minValue && -k_maxNonInf == maxValue) {
       // all features are the missing value
       return 0;
    }
 
-   if(minValue <= std::numeric_limits<double>::lowest()) {
+   if(minValue <= -k_maxNonInf) {
       // this is a way to check for -inf without using an -inf value which might be less portable
-      minValue = std::numeric_limits<double>::lowest();
+      minValue = -k_maxNonInf;
    }
 
-   if(std::numeric_limits<double>::max() <= maxValue) {
+   if(k_maxNonInf <= maxValue) {
       // this is a way to check for +inf without using an +inf value which might be less portable
-      maxValue = std::numeric_limits<double>::max();
+      maxValue = k_maxNonInf;
    }
 
    // make it zero if our caller gave us a subnormal
@@ -503,8 +528,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       return 0;
    }
 
-   double walkValue = minValue;
-   size_t iCut;
+   walkValue = minValue;
    for(iCut = 0; cCuts != iCut; ++iCut) {
       EBM_ASSERT(walkValue < maxValue);
       walkValue = FloatTickIncrement(walkValue);
@@ -523,7 +547,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
    // of that value to place cuts that we could otherwise place in the normal range. We can solve these issues by 
    // shifting upwards.  A simple way to do this is to keep shifting until right before the numbers will overflow
 
-   double multiple = 1.0;
+   multiple = 1.0;
    while(maxValue < k_nonDoubleable && -k_nonDoubleable < minValue && multiple < k_nonDoubleable) {
       // doubling the maxValue and minValue just shifts the exponent without changing the mantissa, which
       // is a lossless float operation that we can do and undo. The difference of maxValue - minValue doubles
@@ -548,7 +572,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
    // extreme ends, then there could be rounding, but under correct rounding rules the end result could not be 
    // bigger than our result with larger numbers.  Therefore, this operation cannot overflow to +infinity.
 
-   const double halfDiff = CleanFloat(maxValue / 2.0 - minValue / 2.0);
+   halfDiff = CleanFloat(maxValue / 2.0 - minValue / 2.0);
    EBM_ASSERT(!std::isinf(halfDiff));
 
    // Don't take the reciprocal here because dividing below will be more accurate when rounding
@@ -557,21 +581,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
    // integers cannot be identified since the float tick is larger than an integer.  We would want to eliminate
    // any extended precision bits, if there were any. We'd also get float bunching, but meh, it's hard to fix,
    // so avoid having 2^53 cuts.
-   const double cBinsFloat = CleanFloat(static_cast<double>(cCuts + 1));
+   cBinsFloat = CleanFloat(static_cast<double>(cCuts + 1));
 
    // make the first cut subtract from maxValue so that we do not need to check for forward progress on the first loop
-   const size_t cHalfCuts = cCuts / 2;
-   double cutPrev = 0.0;
+   cHalfCuts = cCuts / 2;
+   cutPrev = 0.0;
 
    iCut = cCuts;
-   while(cHalfCuts != iCut) {
+   while(cHalfCuts < iCut) {
       --iCut;
-      const double numerator = CleanFloat(static_cast<double>((cCuts - iCut) * 2)); // clear for > 2^53 cuts
-      const double fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
+      numerator = CleanFloat(static_cast<double>((cCuts - iCut) * 2)); // clear for > 2^53 cuts
+      fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
       EBM_ASSERT(fraction <= 1.0);
-      const double shift = CleanFloat(fraction * halfDiff); // clear extended precision bits
-      const double cutExpanded = CleanFloat(maxValue - shift); // stop from using fused CPU instructions
-      double cut = CleanFloat(cutExpanded / multiple); // zero subnormals
+      shift = CleanFloat(fraction * halfDiff); // clear extended precision bits
+      cutExpanded = CleanFloat(maxValue - shift); // stop from using fused CPU instructions
+      cut = CleanFloat(cutExpanded / multiple); // zero subnormals
 
       if(cutPrev <= cut && cCuts != iCut + 1) {
          // Do not tick down from our first cut value. We subtract from maxValue, so even if 
@@ -588,12 +612,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       cutPrev = cut;
    }
    while(0 != iCut) {
-      const double numerator = CleanFloat(static_cast<double>(iCut * 2)); // clear for > 2^53 cuts
-      const double fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
+      numerator = CleanFloat(static_cast<double>(iCut * 2)); // clear for > 2^53 cuts
+      fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
       EBM_ASSERT(fraction <= 1.0);
-      const double shift = CleanFloat(fraction * halfDiff); // clear extended precision bits
-      const double cutExpanded = CleanFloat(minValue + shift); // stop from using fused CPU instructions
-      double cut = CleanFloat(cutExpanded / multiple); // zero subnormals
+      shift = CleanFloat(fraction * halfDiff); // clear extended precision bits
+      cutExpanded = CleanFloat(minValue + shift); // stop from using fused CPU instructions
+      cut = CleanFloat(cutExpanded / multiple); // zero subnormals
 
       --iCut;
 
