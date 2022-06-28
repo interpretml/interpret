@@ -191,7 +191,6 @@ static FloatBig AddPositiveFloatsSafeBig(size_t cVals, const T * pVals) {
 extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept;
 extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept;
 
-// TODO: call these instead of nextafter throughout our code
 INLINE_ALWAYS static double FloatTickIncrement(const double val) noexcept {
    // we use an array in the call to FloatTickIncrementInternal to chop off any extended precision bits that might be in the float
    double deprecisioned[1];

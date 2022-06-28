@@ -6,8 +6,9 @@
 #define COMMON_CPP_HPP
 
 #include <limits> // numeric_limits
-#include <type_traits> // std::is_standard_layout, std::is_integral
-#include <math.h> // std::nextafter
+#include <type_traits> // std::is_integral, std::enable_if, std::is_signed
+#include <stddef.h> // size_t, ptrdiff_t
+#include <stdlib.h> // malloc
 
 #include "ebm_native.h"
 #include "logging.h"

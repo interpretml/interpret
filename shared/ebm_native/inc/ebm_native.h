@@ -8,9 +8,7 @@
 #ifndef EBM_NATIVE_H
 #define EBM_NATIVE_H
 
-#include <inttypes.h>
-#include <float.h>
-#include <math.h>
+#include <inttypes.h> // fixed sized integer types and printf strings.  Includes stdint.h
 
 #ifdef __cplusplus
 extern "C" {

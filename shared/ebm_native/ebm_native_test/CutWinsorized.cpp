@@ -633,7 +633,7 @@ TEST_CASE("CutWinsorized, two cuts") {
    IntEbmType countCuts = 2;
 
    std::vector<double> featureValues { 0, 1, 2, 3, 4, 5 };
-   const std::vector<double> expectedCuts { 2, std::nextafter(3, std::numeric_limits<double>::max()) };
+   const std::vector<double> expectedCuts { 2, FloatTickIncrementTest(3) };
 
    std::vector<double> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
@@ -661,7 +661,7 @@ TEST_CASE("CutWinsorized, three cuts") {
    IntEbmType countCuts = 3;
 
    std::vector<double> featureValues { 0, 1, 2, 3, 4, 5, 6, 7 };
-   const std::vector<double> expectedCuts {2, std::nextafter(3.5, std::numeric_limits<double>::max()), std::nextafter(5, std::numeric_limits<double>::max())};
+   const std::vector<double> expectedCuts {2, FloatTickIncrementTest(3.5), FloatTickIncrementTest(5)};
 
    std::vector<double> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
@@ -689,7 +689,7 @@ TEST_CASE("CutWinsorized, four cuts") {
    IntEbmType countCuts = 4;
 
    std::vector<double> featureValues { 0, 1, 2, 3, 5, 7, 8, 9, 10 };
-   const std::vector<double> expectedCuts { 2, 4, 6, std::nextafter(8, std::numeric_limits<double>::max()) };
+   const std::vector<double> expectedCuts { 2, 4, 6, FloatTickIncrementTest(8) };
 
    std::vector<double> cutsLowerBoundInclusive(
       0 == countCuts ? size_t { 1 } : static_cast<size_t>(countCuts), illegalVal);
@@ -751,8 +751,8 @@ TEST_CASE("CutWinsorized, one cut, -infinity, lowest + 1, max - 1, and +infinity
 
    std::vector<double> featureValues {
       -std::numeric_limits<double>::infinity(),
-      std::nextafter(std::numeric_limits<double>::lowest(), 0),
-      std::nextafter(std::numeric_limits<double>::max(), 0),
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
+      FloatTickDecrementTest(std::numeric_limits<double>::max()),
       std::numeric_limits<double>::infinity()
    };
    const std::vector<double> expectedCuts { 0 };
@@ -817,12 +817,12 @@ TEST_CASE("CutWinsorized, 3 cuts, -infinity, lowest + 1, max - 1, and +infinity"
 
    std::vector<double> featureValues {
       -std::numeric_limits<double>::infinity(),
-      std::nextafter(std::numeric_limits<double>::lowest(), 0),
-      std::nextafter(std::numeric_limits<double>::max(), 0),
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
+      FloatTickDecrementTest(std::numeric_limits<double>::max()),
       std::numeric_limits<double>::infinity()
    };
    const std::vector<double> expectedCuts { 
-      std::nextafter(std::numeric_limits<double>::lowest(), 0), 
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
       0,
       std::numeric_limits<double>::max()
    };

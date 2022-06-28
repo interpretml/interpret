@@ -314,7 +314,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWins
                         // basically round to 5 in the UI but we'll get a number here that's just slighly higher
 
                         EBM_ASSERT(highInnerVal < std::numeric_limits<double>::max());
-                        highInnerVal = std::nextafter(highInnerVal, std::numeric_limits<double>::max());
+                        highInnerVal = FloatTickIncrement(highInnerVal);
 
                         EBM_ASSERT(lowInnerVal < highInnerVal);
                         EBM_ASSERT(size_t { 2 } <= cCuts); // we can put down the low and high ones at least

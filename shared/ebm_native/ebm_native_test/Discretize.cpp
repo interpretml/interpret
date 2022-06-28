@@ -76,9 +76,9 @@ TEST_CASE("Discretize, increasing lengths") {
       featureValues[11 * iCutPoint + 2] = -std::numeric_limits<double>::denorm_min();
       featureValues[11 * iCutPoint + 3] = std::numeric_limits<double>::denorm_min();
 
-      featureValues[11 * iCutPoint + 4] = std::nextafter(cutPoint, std::numeric_limits<double>::lowest());
+      featureValues[11 * iCutPoint + 4] = FloatTickDecrementTest(cutPoint);
       featureValues[11 * iCutPoint + 5] = cutPoint;
-      featureValues[11 * iCutPoint + 6] = std::nextafter(cutPoint, std::numeric_limits<double>::max());
+      featureValues[11 * iCutPoint + 6] = FloatTickIncrementTest(cutPoint);
       featureValues[11 * iCutPoint + 7] = std::numeric_limits<double>::max();
       featureValues[11 * iCutPoint + 8] = std::numeric_limits<double>::infinity();
 

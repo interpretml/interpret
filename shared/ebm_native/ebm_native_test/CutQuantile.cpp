@@ -222,7 +222,7 @@ TEST_CASE("CutQuantile, one and +max minus one tick backwards") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<double> featureValues { double { 1 }, std::nextafter(std::numeric_limits<double>::max(), double { 0 }) };
+   const std::vector<double> featureValues { double { 1 }, FloatTickDecrementTest(std::numeric_limits<double>::max()) };
    const std::vector<double> expectedCuts { 1e+154 };
 
    TestQuantileBinning(
@@ -317,7 +317,7 @@ TEST_CASE("CutQuantile, -1 and lowest plus one tick backwards") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<double> featureValues { double { -1 }, std::nextafter(std::numeric_limits<double>::lowest(), double { 0 }) };
+   const std::vector<double> featureValues { double { -1 }, FloatTickIncrementTest(std::numeric_limits<double>::lowest()) };
    const std::vector<double> expectedCuts { -1e+154 };
 
    TestQuantileBinning(
@@ -1100,13 +1100,13 @@ TEST_CASE("CutQuantile, overflow interpretable ends") {
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<double> featureValues {
       std::numeric_limits<double>::lowest(),
-      std::nextafter(std::numeric_limits<double>::lowest(), double { 0 }),
-      std::nextafter(std::numeric_limits<double>::max(), double { 0 }),
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
+      FloatTickDecrementTest(std::numeric_limits<double>::max()),
       std::numeric_limits<double>::max()
    };
 
    const std::vector<double> expectedCuts {
-      std::nextafter(std::numeric_limits<double>::lowest(), double { 0 }),
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
       0,
       std::numeric_limits<double>::max()
    };
@@ -1129,13 +1129,13 @@ TEST_CASE("CutQuantile, maximum non-overflow interpretable ends") {
    constexpr size_t cSamplesPerBinMin = 1;
    const std::vector<double> featureValues {
       std::numeric_limits<double>::lowest(),
-      std::nextafter(std::numeric_limits<double>::lowest(), double { 0 }),
-      std::numeric_limits<double>::max() - std::nextafter(std::numeric_limits<double>::max(), double { 0 }),
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
+      std::numeric_limits<double>::max() - FloatTickDecrementTest(std::numeric_limits<double>::max()),
       std::numeric_limits<double>::max()
    };
 
    const std::vector<double> expectedCuts {
-      std::nextafter(std::numeric_limits<double>::lowest(), double { 0 }),
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
       0,
       2.0000000000000001e+300
    };

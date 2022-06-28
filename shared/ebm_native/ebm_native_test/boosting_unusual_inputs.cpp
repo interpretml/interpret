@@ -223,11 +223,11 @@ TEST_CASE("weights are proportional, boosting, regression") {
    test1.AddFeatures({ FeatureTest(2) });
    test1.AddFeatureGroups({ { 0 } });
    test1.AddTrainingSamples({
-      TestSample({ 0 }, 10, std::nextafter(0.3, 100)),
+      TestSample({ 0 }, 10, FloatTickIncrementTest(0.3)),
       TestSample({ 1 }, 10, 0.3),
       });
    test1.AddValidationSamples({ 
-      TestSample({ 1 }, 12, std::nextafter(0.3, 100)),
+      TestSample({ 1 }, 12, FloatTickIncrementTest(0.3)),
       TestSample({ 1 }, 12, 0.3)
       });
    test1.InitializeBoosting();
@@ -241,11 +241,11 @@ TEST_CASE("weights are proportional, boosting, regression") {
    test2.AddFeatures({ FeatureTest(2) });
    test2.AddFeatureGroups({ { 0 } });
    test2.AddTrainingSamples({
-      TestSample({ 0 }, 10, std::nextafter(2, 100)),
+      TestSample({ 0 }, 10, FloatTickIncrementTest(2)),
       TestSample({ 1 }, 10, 2),
       });
    test2.AddValidationSamples({ 
-      TestSample({ 1 }, 12, std::nextafter(2, 100)),
+      TestSample({ 1 }, 12, FloatTickIncrementTest(2)),
       TestSample({ 1 }, 12, 2)
       });
    test2.InitializeBoosting();
@@ -284,11 +284,11 @@ TEST_CASE("weights are proportional, boosting, binary") {
    test1.AddFeatures({ FeatureTest(2) });
    test1.AddFeatureGroups({ { 0 } });
    test1.AddTrainingSamples({
-      TestSample({ 0 }, 0, std::nextafter(0.3, 100)),
+      TestSample({ 0 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 1 }, 0, 0.3),
       });
    test1.AddValidationSamples({ 
-      TestSample({ 1 }, 0, std::nextafter(0.3, 100)),
+      TestSample({ 1 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 1 }, 0, 0.3)
       });
    test1.InitializeBoosting();
@@ -302,11 +302,11 @@ TEST_CASE("weights are proportional, boosting, binary") {
    test2.AddFeatures({ FeatureTest(2) });
    test2.AddFeatureGroups({ { 0 } });
    test2.AddTrainingSamples({
-      TestSample({ 0 }, 1, std::nextafter(2, 100)),
+      TestSample({ 0 }, 1, FloatTickIncrementTest(2)),
       TestSample({ 1 }, 1, 2),
       });
    test2.AddValidationSamples({ 
-      TestSample({ 1 }, 1, std::nextafter(2, 100)),
+      TestSample({ 1 }, 1, FloatTickIncrementTest(2)),
       TestSample({ 1 }, 1, 2)
       });
    test2.InitializeBoosting();
@@ -345,11 +345,11 @@ TEST_CASE("weights are proportional, boosting, multiclass") {
    test1.AddFeatures({ FeatureTest(2) });
    test1.AddFeatureGroups({ { 0 } });
    test1.AddTrainingSamples({
-      TestSample({ 0 }, 0, std::nextafter(0.3, 100)),
+      TestSample({ 0 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 1 }, 0, 0.3),
       });
    test1.AddValidationSamples({ 
-      TestSample({ 1 }, 0, std::nextafter(0.3, 100)),
+      TestSample({ 1 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 1 }, 0, 0.3)
       });
    test1.InitializeBoosting();
@@ -363,11 +363,11 @@ TEST_CASE("weights are proportional, boosting, multiclass") {
    test2.AddFeatures({ FeatureTest(2) });
    test2.AddFeatureGroups({ { 0 } });
    test2.AddTrainingSamples({
-      TestSample({ 0 }, 1, std::nextafter(2, 100)),
+      TestSample({ 0 }, 1, FloatTickIncrementTest(2)),
       TestSample({ 1 }, 1, 2),
       });
    test2.AddValidationSamples({ 
-      TestSample({ 1 }, 1, std::nextafter(2, 100)),
+      TestSample({ 1 }, 1, FloatTickIncrementTest(2)),
       TestSample({ 1 }, 1, 2)
       });
    test2.InitializeBoosting();

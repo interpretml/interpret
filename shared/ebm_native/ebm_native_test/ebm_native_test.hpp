@@ -23,7 +23,6 @@ enum class TestPriority {
 };
 
 
-// TODO: use these instead of nextafter everywhere we can use them
 inline static double FloatTickIncrementTest(const double v) noexcept {
    // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
 

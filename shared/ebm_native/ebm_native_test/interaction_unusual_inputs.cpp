@@ -127,7 +127,7 @@ TEST_CASE("weights are proportional, interaction, regression") {
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({ 
-      TestSample({ 0, 0 }, 10.1, std::nextafter(0.3, 100)),
+      TestSample({ 0, 0 }, 10.1, FloatTickIncrementTest(0.3)),
       TestSample({ 0, 1 }, 20.2, 0.3),
       TestSample({ 1, 0 }, 30.3, 0.3),
       TestSample({ 1, 1 }, 40.4, 0.3),
@@ -138,7 +138,7 @@ TEST_CASE("weights are proportional, interaction, regression") {
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
-      TestSample({ 0, 0 }, 10.1, std::nextafter(2, 100)),
+      TestSample({ 0, 0 }, 10.1, FloatTickIncrementTest(2)),
       TestSample({ 0, 1 }, 20.2, 2),
       TestSample({ 1, 0 }, 30.3, 2),
       TestSample({ 1, 1 }, 40.4, 2),
@@ -165,7 +165,7 @@ TEST_CASE("weights are proportional, interaction, binary") {
    TestApi test1 = TestApi(2);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
-      TestSample({ 0, 0 }, 0, std::nextafter(0.3, 100)),
+      TestSample({ 0, 0 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 0, 1 }, 1, 0.3),
       TestSample({ 1, 0 }, 1, 0.3),
       TestSample({ 1, 1 }, 0, 0.3),
@@ -176,7 +176,7 @@ TEST_CASE("weights are proportional, interaction, binary") {
    TestApi test2 = TestApi(2);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
-      TestSample({ 0, 0 }, 0, std::nextafter(2, 100)),
+      TestSample({ 0, 0 }, 0, FloatTickIncrementTest(2)),
       TestSample({ 0, 1 }, 1, 2),
       TestSample({ 1, 0 }, 1, 2),
       TestSample({ 1, 1 }, 0, 2),
@@ -203,7 +203,7 @@ TEST_CASE("weights are proportional, interaction, multiclass") {
    TestApi test1 = TestApi(3);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
-      TestSample({ 0, 0 }, 0, std::nextafter(0.3, 100)),
+      TestSample({ 0, 0 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 0, 1 }, 1, 0.3),
       TestSample({ 1, 0 }, 2, 0.3),
       TestSample({ 1, 1 }, 0, 0.3),
@@ -214,7 +214,7 @@ TEST_CASE("weights are proportional, interaction, multiclass") {
    TestApi test2 = TestApi(3);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
-      TestSample({ 0, 0 }, 0, std::nextafter(2, 100)),
+      TestSample({ 0, 0 }, 0, FloatTickIncrementTest(2)),
       TestSample({ 0, 1 }, 1, 2),
       TestSample({ 1, 0 }, 2, 2),
       TestSample({ 1, 1 }, 0, 2),

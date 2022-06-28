@@ -73,7 +73,7 @@ TEST_CASE("CutUniform, exactly sufficient floting point range for all cuts") {
    double val = 10.0;
    for(int i = 0; i < 1000; ++i) {
       featureValues.push_back(val);
-      val = std::nextafter(val, std::numeric_limits<double>::max());
+      val = FloatTickIncrementTest(val);
       expectedCuts.push_back(val);
    }
    expectedCuts.pop_back();
@@ -97,11 +97,11 @@ TEST_CASE("CutUniform, exactly sufficient floting point range for all cuts, cros
 
    double val = 8.0;
    for(int i = 0; i < 500; ++i) {
-      val = std::nextafter(val, std::numeric_limits<double>::lowest());
+      val = FloatTickDecrementTest(val);
    }
    for(int i = 0; i < 1000; ++i) {
       featureValues.push_back(val);
-      val = std::nextafter(val, std::numeric_limits<double>::max());
+      val = FloatTickIncrementTest(val);
       expectedCuts.push_back(val);
    }
    expectedCuts.pop_back();
@@ -124,11 +124,11 @@ TEST_CASE("CutUniform, marginally sufficient floting point range for all cuts, c
 
    double val = 8.0;
    for(int i = 0; i < 500; ++i) {
-      val = std::nextafter(val, std::numeric_limits<double>::lowest());
+      val = FloatTickDecrementTest(val);
    }
    for(int i = 0; i < 1000; ++i) {
       featureValues.push_back(val);
-      val = std::nextafter(val, std::numeric_limits<double>::max());
+      val = FloatTickIncrementTest(val);
    }
 
    std::vector<double> cuts(featureValues.size() - 2, illegalVal);
@@ -146,7 +146,7 @@ TEST_CASE("CutUniform, insufficient floting point range for all cuts") {
    double val = 10.0;
    for(int i = 0; i < 1000; ++i) {
       featureValues.push_back(val);
-      val = std::nextafter(val, std::numeric_limits<double>::max());
+      val = FloatTickIncrementTest(val);
       expectedCuts.push_back(val);
    }
    expectedCuts.pop_back();
@@ -301,7 +301,7 @@ TEST_CASE("CutUniform, high start, hit float resolution before end") {
 }
 
 TEST_CASE("CutUniform, stress test reproducible") {
-   IntEbmType iTest;
+   size_t iTest;
    IntEbmType iCut;
    IntEbmType countCuts;
 
@@ -309,9 +309,9 @@ TEST_CASE("CutUniform, stress test reproducible") {
    double highTest;
    double oneCut;
 
-   uint32_t testVal;
-   uint32_t checkVal;
-   size_t iTick;
+   IntEbmType testVal;
+   IntEbmType checkVal;
+   IntEbmType iTick;
 
    double result = 0.0;
    double seed = 64906263;
@@ -347,7 +347,7 @@ TEST_CASE("CutUniform, stress test reproducible") {
    for(iTest = 0; iTest < 20000; ++iTest) {
       seed = floor((seed * seed) / 11.0);
       seed = seed - floor(seed / 94906263) * 94906263; // floor(sqrt(SAFE_FLOAT64_AS_INT_MAX))
-      testVal = seed;
+      testVal = static_cast<IntEbmType>(seed);
 
       checkVal = testVal % cInteresting;
       lowTest = interestingValues[checkVal];
@@ -401,8 +401,7 @@ TEST_CASE("CutUniform, stress test reproducible") {
       featureValues[1] = highTest;
 
       checkVal = testVal % cCutsMax;
-      countCuts = static_cast<IntEbmType>(checkVal);
-      countCuts = CutUniform(2, featureValues, countCuts, cuts);
+      countCuts = CutUniform(2, featureValues, checkVal, cuts);
 
       for(iCut = 0; iCut < countCuts; ++iCut) {
          oneCut = cuts[iCut];

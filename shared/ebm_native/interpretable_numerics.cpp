@@ -376,9 +376,9 @@ static double StringToFloatWithFixup(
 
    EBM_ASSERT('+' == str[0]);
 
-   // according to the C++ docs, nextafter won't exceed the to parameter, so we don't have to worry about this
-   // generating infinities
-   ret = std::nextafter(ret, std::numeric_limits<double>::max());
+   if(std::numeric_limits<double>::max() != ret) {
+      ret = FloatTickIncrement(ret);
+   }
 
    return ret;
 }
