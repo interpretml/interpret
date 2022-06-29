@@ -47,18 +47,18 @@ namespace DEFINED_ZONE_NAME {
 // We require that the numbers in this file are converted to their exact IEEE-754 representation, which is a 
 // requirement by the IEEE-754 standard when numbers are provided with 17 digits of precision, which we provide.
 
-constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // DBL_MIN
-constexpr double k_maxNonInf = 1.7976931348623158e+308; // DBL_MAX
+constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // std::numeric_limits<double>::min()
+constexpr double k_maxNonInf = 1.7976931348623158e+308; // std::numeric_limits<double>::max()
 constexpr double k_nonDoubleable = 8.9884656743115795e+307; // if you double this power of two you get +inf
 constexpr double k_lastTick = 1.9958403095347198e+292; // the tick for numbers greater or equal to k_nonDoubleable
-constexpr double k_epsilon = 2.2204460492503131e-16; // DBL_EPSILON
+constexpr double k_epsilon = 2.2204460492503131e-16; // std::numeric_limits<double>::epsilon()
 constexpr double k_subnormToNorm = 4503599627370496.0; // multiplying by this will move a subnormal into a normal
 
 static_assert(k_subnormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
    "bad min to denorm_min ratio");
-static_assert(k_epsilon == DBL_EPSILON, "bad k_epsilon");
-static_assert(k_maxNonInf == DBL_MAX, "bad k_maxNonInf");
-static_assert(k_minNonSubnormal == DBL_MIN, "bad k_minNonSubnormal");
+static_assert(k_epsilon == std::numeric_limits<double>::epsilon(), "bad k_epsilon");
+static_assert(k_maxNonInf == std::numeric_limits<double>::max(), "bad k_maxNonInf");
+static_assert(k_minNonSubnormal == std::numeric_limits<double>::min(), "bad k_minNonSubnormal");
 static_assert(k_nonDoubleable + k_lastTick != k_nonDoubleable, "bad k_lastTick");
 static_assert(k_nonDoubleable + k_lastTick / 2 == k_nonDoubleable, "bad k_lastTick");
 static_assert(k_nonDoubleable - k_lastTick / 2 != k_nonDoubleable, "bad k_lastTick");
@@ -76,9 +76,9 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
 
    // we would handle all of these special values, but we don't use them anywhere, so 
    // simplify our cross-platform port testing by eliminating them as valid inputs
-   EBM_ASSERT(!isnan(val));
-   EBM_ASSERT(!isinf(val));
-   EBM_ASSERT(DBL_MAX != val);
+   EBM_ASSERT(!std::isnan(val));
+   EBM_ASSERT(!std::isinf(val));
+   EBM_ASSERT(std::numeric_limits<double>::max() != val);
 
    if(val < k_minNonSubnormal) {
       if(-1.0 <= val) {
@@ -98,7 +98,7 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
          while(bound <= val) {
             bound *= 0.5;
             tick *= 0.5;
-            EBM_ASSERT(DBL_MIN <= tick);
+            EBM_ASSERT(std::numeric_limits<double>::min() <= tick);
          }
          return (val + tick) / k_subnormToNorm;
       } else {
@@ -111,7 +111,7 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
          while(val < bound) {
             bound *= 2.0;
             tick *= 2.0;
-            EBM_ASSERT(!isinf(tick));
+            EBM_ASSERT(!std::isinf(tick));
          }
          return val + tick;
       }
@@ -126,7 +126,7 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
          while(val < bound) {
             bound *= 0.5;
             tick *= 0.5;
-            EBM_ASSERT(DBL_MIN <= tick);
+            EBM_ASSERT(std::numeric_limits<double>::min() <= tick);
          }
          return (val + tick) / k_subnormToNorm;
       } else {
@@ -140,7 +140,7 @@ extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
          while(bound <= val) {
             bound *= 2.0;
             tick *= 2.0;
-            EBM_ASSERT(!isinf(tick));
+            EBM_ASSERT(!std::isinf(tick));
          }
          return val + tick;
       }
@@ -158,9 +158,9 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
 
    // we would handle all of these special values, but we don't use them anywhere, so 
    // simplify our cross-platform port testing by eliminating them as valid inputs
-   EBM_ASSERT(!isnan(val));
-   EBM_ASSERT(!isinf(val));
-   EBM_ASSERT(-DBL_MAX != val);
+   EBM_ASSERT(!std::isnan(val));
+   EBM_ASSERT(!std::isinf(val));
+   EBM_ASSERT(std::numeric_limits<double>::lowest() != val);
 
    if(-k_minNonSubnormal < val) {
       if(val <= 1.0) {
@@ -180,7 +180,7 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
          while(val <= bound) {
             bound *= 0.5;
             tick *= 0.5;
-            EBM_ASSERT(DBL_MIN <= tick);
+            EBM_ASSERT(std::numeric_limits<double>::min() <= tick);
          }
          return (val - tick) / k_subnormToNorm;
       } else {
@@ -193,7 +193,7 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
          while(bound < val) {
             bound *= 2.0;
             tick *= 2.0;
-            EBM_ASSERT(!isinf(tick));
+            EBM_ASSERT(!std::isinf(tick));
          }
          return val - tick;
       }
@@ -208,7 +208,7 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
          while(bound < val) {
             bound *= 0.5;
             tick *= 0.5;
-            EBM_ASSERT(DBL_MIN <= tick);
+            EBM_ASSERT(std::numeric_limits<double>::min() <= tick);
          }
          return (val - tick) / k_subnormToNorm;
       } else {
@@ -222,7 +222,7 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
          while(val <= bound) {
             bound *= 2.0;
             tick *= 2.0;
-            EBM_ASSERT(!isinf(tick));
+            EBM_ASSERT(!std::isinf(tick));
          }
          return val - tick;
       }
@@ -234,82 +234,82 @@ extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
 TEST_CASE("FloatTickIncrementInternal and FloatTickDecrementInternal") {
    double deprecisioned[1];
 
-   deprecisioned[0] = -DBL_MAX;
-   CHECK(nextafter(-DBL_MAX, DBL_MAX) == FloatTickIncrementInternal(deprecisioned));
-   deprecisioned[0] = nextafter(-DBL_MAX, DBL_MAX);
-   CHECK(nextafter(nextafter(-DBL_MAX, DBL_MAX), DBL_MAX) == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = std::numeric_limits<double>::lowest();
+   CHECK(nextafter(std::numeric_limits<double>::lowest(), 0.0) == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::lowest(), 0.0);
+   CHECK(nextafter(nextafter(std::numeric_limits<double>::lowest(), 0.0), 0.0) == FloatTickIncrementInternal(deprecisioned));
 
-   deprecisioned[0] = nextafter(nextafter(-DBL_MIN, -DBL_MAX), -DBL_MAX);
-   CHECK(nextafter(-DBL_MIN, -DBL_MAX) == FloatTickIncrementInternal(deprecisioned));
-   deprecisioned[0] = nextafter(-DBL_MIN, -DBL_MAX);
-   CHECK(-DBL_MIN == FloatTickIncrementInternal(deprecisioned));
-   deprecisioned[0] = -DBL_MIN;
+   deprecisioned[0] = nextafter(nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest()), std::numeric_limits<double>::lowest());
+   CHECK(nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest()) == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest());
+   CHECK(-std::numeric_limits<double>::min() == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = -std::numeric_limits<double>::min();
    CHECK(0.0 == FloatTickIncrementInternal(deprecisioned));
    deprecisioned[0] = -DBL_TRUE_MIN;
-   CHECK(DBL_MIN == FloatTickIncrementInternal(deprecisioned));
+   CHECK(std::numeric_limits<double>::min() == FloatTickIncrementInternal(deprecisioned));
    deprecisioned[0] = 0.0;
-   CHECK(DBL_MIN == FloatTickIncrementInternal(deprecisioned));
+   CHECK(std::numeric_limits<double>::min() == FloatTickIncrementInternal(deprecisioned));
    deprecisioned[0] = DBL_TRUE_MIN;
-   CHECK(DBL_MIN == FloatTickIncrementInternal(deprecisioned));
-   deprecisioned[0] = DBL_MIN;
-   CHECK(nextafter(DBL_MIN, DBL_MAX) == FloatTickIncrementInternal(deprecisioned));
-   deprecisioned[0] = nextafter(DBL_MIN, DBL_MAX);
-   CHECK(nextafter(nextafter(DBL_MIN, DBL_MAX), DBL_MAX) == FloatTickIncrementInternal(deprecisioned));
+   CHECK(std::numeric_limits<double>::min() == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = std::numeric_limits<double>::min();
+   CHECK(nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max()) == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max());
+   CHECK(nextafter(nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max()), std::numeric_limits<double>::max()) == FloatTickIncrementInternal(deprecisioned));
 
-   deprecisioned[0] = nextafter(DBL_MAX, -DBL_MAX);
-   CHECK(DBL_MAX == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::max(), 0.0);
+   CHECK(std::numeric_limits<double>::max() == FloatTickIncrementInternal(deprecisioned));
 
 
 
-   deprecisioned[0] = nextafter(-DBL_MAX, DBL_MAX);
-   CHECK(-DBL_MAX == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::lowest(), 0.0);
+   CHECK(std::numeric_limits<double>::lowest() == FloatTickDecrementInternal(deprecisioned));
 
-   deprecisioned[0] = nextafter(-DBL_MIN, -DBL_MAX);
-   CHECK(nextafter(nextafter(-DBL_MIN, -DBL_MAX), -DBL_MAX) == FloatTickDecrementInternal(deprecisioned));
-   deprecisioned[0] = -DBL_MIN;
-   CHECK(nextafter(-DBL_MIN, -DBL_MAX) == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest());
+   CHECK(nextafter(nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest()), std::numeric_limits<double>::lowest()) == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = -std::numeric_limits<double>::min();
+   CHECK(nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest()) == FloatTickDecrementInternal(deprecisioned));
    deprecisioned[0] = -DBL_TRUE_MIN;
-   CHECK(-DBL_MIN == FloatTickDecrementInternal(deprecisioned));
+   CHECK(-std::numeric_limits<double>::min() == FloatTickDecrementInternal(deprecisioned));
    deprecisioned[0] = 0.0;
-   CHECK(-DBL_MIN == FloatTickDecrementInternal(deprecisioned));
+   CHECK(-std::numeric_limits<double>::min() == FloatTickDecrementInternal(deprecisioned));
    deprecisioned[0] = DBL_TRUE_MIN;
-   CHECK(-DBL_MIN == FloatTickDecrementInternal(deprecisioned));
-   deprecisioned[0] = DBL_MIN;
+   CHECK(-std::numeric_limits<double>::min() == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = std::numeric_limits<double>::min();
    CHECK(0.0 == FloatTickDecrementInternal(deprecisioned));
-   deprecisioned[0] = nextafter(DBL_MIN, DBL_MAX);
-   CHECK(DBL_MIN == FloatTickDecrementInternal(deprecisioned));
-   deprecisioned[0] = nextafter(nextafter(DBL_MIN, DBL_MAX), DBL_MAX);
-   CHECK(nextafter(DBL_MIN, DBL_MAX) == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max());
+   CHECK(std::numeric_limits<double>::min() == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max()), std::numeric_limits<double>::max());
+   CHECK(nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max()) == FloatTickDecrementInternal(deprecisioned));
 
-   deprecisioned[0] = nextafter(DBL_MAX, -DBL_MAX);
-   CHECK(nextafter(nextafter(DBL_MAX, -DBL_MAX), -DBL_MAX) == FloatTickDecrementInternal(deprecisioned));
-   deprecisioned[0] = DBL_MAX;
-   CHECK(nextafter(DBL_MAX, -DBL_MAX) == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::max(), 0.0);
+   CHECK(nextafter(nextafter(std::numeric_limits<double>::max(), 0.0), 0.0) == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = std::numeric_limits<double>::max();
+   CHECK(nextafter(std::numeric_limits<double>::max(), 0.0) == FloatTickDecrementInternal(deprecisioned));
 
-   double base = 2 * DBL_MIN;
+   double base = 2 * std::numeric_limits<double>::min();
    do {
       double sweep = base;
 
       for(int i = 0; i < 5; ++i) {
-         sweep = nextafter(sweep, -DBL_MAX);
+         sweep = nextafter(sweep, std::numeric_limits<double>::lowest());
       }
 
       for(int i = 0; i < 11; ++i) {
          deprecisioned[0] = sweep;
          double test = FloatTickIncrementInternal(deprecisioned);
-         sweep = nextafter(sweep, DBL_MAX);
+         sweep = nextafter(sweep, std::numeric_limits<double>::max());
          CHECK(sweep == test);
       }
 
       for(int i = 0; i < 11; ++i) {
          deprecisioned[0] = sweep;
          double test = FloatTickDecrementInternal(deprecisioned);
-         sweep = nextafter(sweep, -DBL_MAX);
+         sweep = nextafter(sweep, std::numeric_limits<double>::lowest());
          CHECK(sweep == test);
       }
 
       base *= 2.0;
-   } while(!isinf(base));
+   } while(!std::isinf(base));
 }
 
 #endif // UNDEFINED_TEST_TICK_HIGHER
@@ -481,7 +481,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUnifor
       val = featureValues[iSample];
       // Use this check for NaN for cross-language portability.  It is not technically needed 
       // if IEEE-754 is followed, since "NaN < anything" and "anything < NaN" are false
-      if(!isnan(val)) {
+      if(!std::isnan(val)) {
          if(maxValue < val) {
             // this works for NaN values which evals to false
             maxValue = val;

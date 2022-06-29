@@ -11,8 +11,8 @@
 
 static const TestPriority k_filePriority = TestPriority::CutUniform;
 
-constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // DBL_MIN
-constexpr double k_maxNonInf = 1.7976931348623158e+308; // DBL_MAX
+constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // std::numeric_limits<double>::min()
+constexpr double k_maxNonInf = 1.7976931348623158e+308; // std::numeric_limits<double>::max()
 constexpr double k_subnormToNorm = 4503599627370496.0; // multiplying by this will move a subnormal into a normal
 
 constexpr double illegalVal = double { -888.88 };
