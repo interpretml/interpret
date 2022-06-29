@@ -312,6 +312,7 @@ EXIT /B 0
     <ClInclude Include="ebm_stats.hpp" />
     <ClInclude Include="precompiled_header_cpp.hpp" />
     <ClInclude Include="HistogramTargetEntry.hpp" />
+    <ClInclude Include="RandomNondeterministic.hpp" />
     <ClInclude Include="RandomStream.hpp" />
     <ClInclude Include="SamplingSet.hpp" />
     <ClInclude Include="CompressibleTensor.hpp" />
