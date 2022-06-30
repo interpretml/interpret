@@ -371,7 +371,7 @@ static_assert(MaxFromCountBits<uint8_t>(2) == 3, "automated test with compiler")
 static_assert(MaxFromCountBits<uint8_t>(3) == 7, "automated test with compiler");
 static_assert(MaxFromCountBits<uint8_t>(4) == 15, "automated test with compiler");
 static_assert(MaxFromCountBits<uint8_t>(8) == 255, "automated test with compiler");
-static_assert(MaxFromCountBits<uint64_t>(64) == 18446744073709551615ull, "automated test with compiler");
+static_assert(MaxFromCountBits<uint64_t>(64) == uint64_t { 18446744073709551615u }, "automated test with compiler");
 
 constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 

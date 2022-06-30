@@ -168,7 +168,7 @@ public:
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
       const IntEbmType * pLeavesMax2 = aLeavesMax;
-      RandomDeterministic<size_t> * const pRandomDeterministic = pBoosterShell->GetRandomDeterministic();
+      RandomDeterministic * const pRandomDeterministic = pBoosterShell->GetRandomDeterministic();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
       do {

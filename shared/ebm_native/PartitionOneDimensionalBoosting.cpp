@@ -346,7 +346,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(!std::isinf(BEST_gain));
    EBM_ASSERT(0 <= BEST_gain);
 
-   RandomDeterministic<size_t> * const pRandomDeterministic = pBoosterShell->GetRandomDeterministic();
+   RandomDeterministic * const pRandomDeterministic = pBoosterShell->GetRandomDeterministic();
 
    const size_t cSweepItems = CountTreeSweep(pTreeSweepStart, pTreeSweepCur, cBytesPerTreeSweep);
    if(UNLIKELY(1 < cSweepItems)) {

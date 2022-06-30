@@ -23,7 +23,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 SamplingSet * SamplingSet::GenerateSingleSamplingSet(
-   RandomDeterministic<size_t> * const pRandomDeterministic,
+   RandomDeterministic * const pRandomDeterministic,
    const DataSetBoosting * const pOriginDataSet,
    const FloatFast * const aWeights
 ) {
@@ -198,7 +198,7 @@ void SamplingSet::FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** co
 WARNING_POP
 
 SamplingSet ** SamplingSet::GenerateSamplingSets(
-   RandomDeterministic<size_t> * const pRandomDeterministic,
+   RandomDeterministic * const pRandomDeterministic,
    const DataSetBoosting * const pOriginDataSet, 
    const FloatFast * const aWeights,
    const size_t cSamplingSets

@@ -2045,7 +2045,7 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
 template<typename T>
 static void FillTiebreakers(
    const bool bSymmetryReversal,
-   RandomDeterministic<size_t> * const pRandomDeterministic,
+   RandomDeterministic * const pRandomDeterministic,
    const size_t cItems,
    T * const aItems
 ) noexcept {
@@ -2745,7 +2745,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          // XOR bSymmetryReversal with a random number here
          const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, aFeatureValues);
 
-         RandomDeterministic<size_t> randomDeterministic;
+         RandomDeterministic randomDeterministic;
          randomDeterministic.InitializeUnsigned(randomSeed, k_quantileRandomizationMix);
 
          FillTiebreakers(bSymmetryReversal, &randomDeterministic, cCuttingRanges, aCuttingRange);

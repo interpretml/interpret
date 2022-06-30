@@ -38,7 +38,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY SeedEbmType EBM_NATIVE_CALLING_CONVENTION Generate
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix
 ) {
-   RandomDeterministic<size_t> randomDeterministic;
+   RandomDeterministic randomDeterministic;
    // this is a bit inefficient in that we go through a complete regeneration of the internal state,
    // but it gives us a simple interface
    randomDeterministic.InitializeSigned(randomSeed, stageRandomizationMix);
@@ -113,7 +113,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
 
    size_t cTrainingRemaining = cTrainingSamples;
 
-   RandomDeterministic<size_t> randomDeterministic;
+   RandomDeterministic randomDeterministic;
    randomDeterministic.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
 
    BagEbmType * pSampleCountsOut = sampleCountsOut;
@@ -336,7 +336,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
       return Error_OutOfMemory;
    }
 
-   RandomDeterministic<size_t> randomDeterministic;
+   RandomDeterministic randomDeterministic;
    randomDeterministic.InitializeUnsigned(randomSeed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
 
    for (size_t iLeftover = 0; iLeftover < globalLeftover; iLeftover++) {

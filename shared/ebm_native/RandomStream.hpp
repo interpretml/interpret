@@ -28,9 +28,6 @@ constexpr uint64_t k_boosterRandomizationMix = uint64_t { 9397611943394063143u }
 constexpr uint64_t k_samplingWithoutReplacementRandomizationMix = uint64_t { 10077040353197036781u };
 constexpr uint64_t k_stratifiedSamplingWithoutReplacementRandomizationMix = uint64_t { 8537734853377176632u };
 
-extern const uint_fast64_t k_oneTimePadRandomSeed[64];
-
-template<typename T>
 class RandomDeterministic final {
    // If the RandomDeterministic object is stored inside a class/struct, and used inside a hotspot loop, to get the best 
    // performance copy this structure to the stack before using it, and then copy it back to the struct/class 
@@ -63,9 +60,6 @@ class RandomDeterministic final {
    // If we had memcopied RandomDeterministic cross machine we would want these to be uint64_t instead of uint_fast64_t
    // but we only copy seeds cross machine, so we can leave them as uint_fast64_t
 
-   static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
-   static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
-
    uint_fast64_t m_state1;
    uint_fast64_t m_state2;
    uint_fast64_t m_stateSeedConst;
@@ -83,88 +77,8 @@ class RandomDeterministic final {
       return static_cast<uint_fast32_t>(static_cast<uint32_t>(result));
    }
 
-   static uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed) {
-      static_assert(CountBitsRequiredPositiveMax<uint64_t>() ==
-         sizeof(k_oneTimePadRandomSeed) / sizeof(k_oneTimePadRandomSeed[0]),
-         "the one time pad must have the same length as the number of bits"
-         );
-      EBM_ASSERT(seed == static_cast<uint_fast64_t>(static_cast<uint64_t>(seed)));
-
-      // this number generates a perfectly valid converted seed in a single pass if the user passes us a seed of zero
-      uint_fast64_t result = uint_fast64_t { 0x6b79a38fd52c4e71 };
-      const uint_fast64_t * pRandom = k_oneTimePadRandomSeed;
-      do {
-         if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } &seed))) {
-            result ^= *pRandom;
-         }
-         ++pRandom;
-         seed >>= 1;
-      } while(LIKELY(0 != seed));
-      return result;
-   }
-
-   void Initialize(const uint64_t seed) {
-      constexpr uint_fast64_t initializeSeed = { 0xa75f138b4a162cfd };
-
-      m_state1 = initializeSeed;
-      m_state2 = initializeSeed;
-      m_stateSeedConst = initializeSeed;
-
-      uint_fast64_t originalRandomBits = GetOneTimePadConversion(static_cast<uint_fast64_t>(seed));
-      EBM_ASSERT(originalRandomBits == static_cast<uint_fast64_t>(static_cast<uint64_t>(originalRandomBits)));
-
-      uint_fast64_t randomBits = originalRandomBits;
-      // the lowest bit of our result needs to be 1 to make our number odd (per the paper)
-      uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } &randomBits) | uint_fast64_t { 1 };
-      randomBits >>= 4; // remove the bits that we used
-      // disallow zeros for our hex digits by ORing 1
-      const uint_fast16_t disallowMapFuture = (uint_fast16_t { 1 } << sanitizedSeed) | uint_fast16_t { 1 };
-
-      // disallow zeros for our hex digits by initially setting to 1, which is our "hash" for the zero bit
-      uint_fast16_t disallowMap = uint_fast16_t { 1 };
-      uint_fast8_t bitShiftCur = uint_fast8_t { 60 };
-      while(true) {
-         // we ignore zeros, so use a do loop instead of while
-         do {
-            uint_fast64_t randomHexDigit = uint_fast64_t { 0xF } &randomBits;
-            const uint_fast16_t indexBit = uint_fast16_t { 1 } << randomHexDigit;
-            if(LIKELY(uint_fast16_t { 0 } == (indexBit & disallowMap))) {
-               sanitizedSeed |= randomHexDigit << bitShiftCur;
-               bitShiftCur -= uint_fast8_t { 4 };
-               if(UNLIKELY(uint_fast8_t { 0 } == bitShiftCur)) {
-                  goto exit_loop;
-               }
-               disallowMap |= indexBit;
-               if(UNLIKELY(UNLIKELY(uint_fast8_t { 28 } == bitShiftCur) ||
-                  UNLIKELY(uint_fast8_t { 24 } == bitShiftCur))) {
-                  // if bitShiftCur is 28 now then we just filled the low 4 bits for the high 32 bit number,
-                  // so for the upper 4 bits of the lower 32 bit number don't allow it to have the same
-                  // value as the lowest 4 bits of the upper 32 bits, and don't allow 0 and don't allow
-                  // the value at the bottom 4 bits
-                  //
-                  // if bitShiftCur is 28 then remove the disallowing of the lowest 4 bits of the upper 32 bit
-                  // number by only disallowing the previous number we just included (the uppre 4 bits of the lower
-                  // 32 bit value, and don't allow the lowest 4 bits, and don't allow 0.
-
-                  disallowMap = indexBit | disallowMapFuture;
-               }
-            }
-            randomBits >>= 4;
-         } while(LIKELY(uint_fast64_t { 0 } != randomBits));
-         // ok, this is sort of a two time pad I guess, but we shouldn't ever use it more than twice in real life
-         const uint_fast64_t top = static_cast<uint_fast64_t>(Rand32());
-         const uint_fast64_t bottom = static_cast<uint_fast64_t>(Rand32());
-         originalRandomBits = GetOneTimePadConversion(originalRandomBits ^ ((top << 32) | bottom));
-         randomBits = originalRandomBits;
-      }
-   exit_loop:;
-      // is the lowest bit set as it should?
-      EBM_ASSERT(uint_fast64_t { 1 } == sanitizedSeed % uint_fast64_t { 2 });
-
-      m_state1 = sanitizedSeed;
-      m_state2 = sanitizedSeed;
-      m_stateSeedConst = sanitizedSeed;
-   }
+   static uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed);
+   void Initialize(const uint64_t seed);
 
 public:
 
@@ -223,8 +137,11 @@ public:
       return uint_fast32_t { 0 } != (uint_fast32_t { 1 } & Rand32());
    }
 
-   template<class Q = T>
-   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<uint32_t>::max() < std::numeric_limits<Q>::max(), Q>::type NextFast(const T maxPlusOne) {
+   template<typename T>
+   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<uint32_t>::max() < std::numeric_limits<T>::max(), T>::type NextFast(const T maxPlusOne) {
+      static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
+      static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
+
       EBM_ASSERT(T { 1 } <= maxPlusOne);
 
       // let's say that we are given maxPlusOneConverted == 7.  In that case we take our 32 bit
@@ -241,7 +158,7 @@ public:
       // low bound that we need.
 
       if(T { std::numeric_limits<uint32_t>::max() } < maxPlusOne) {
-         const T max = maxPlusOne - 1;
+         const T max = maxPlusOne - T { 1 };
          T rand;
          T randMult;
          do {
@@ -270,8 +187,11 @@ public:
       }
    }
 
-   template<class Q = T>
-   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<Q>::max() <= std::numeric_limits<uint32_t>::max(), Q>::type NextFast(const T maxPlusOne) {
+   template<typename T>
+   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<T>::max() <= std::numeric_limits<uint32_t>::max(), T>::type NextFast(const T maxPlusOne) {
+      static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
+      static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
+
       EBM_ASSERT(T { 1 } <= maxPlusOne);
 
       // let's say that we are given maxPlusOneConverted == 7.  In that case we take our 32 bit
@@ -299,33 +219,42 @@ public:
       return static_cast<T>(rand - randMult);
    }
 
-   template<class Q = T>
-   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<uint32_t>::max() < std::numeric_limits<Q>::max(), Q>::type Next(const T max) {
+   template<typename T>
+   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<uint32_t>::max() < std::numeric_limits<T>::max(), T>::type Next(const T max) {
+      static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
+      static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
+
       if(std::numeric_limits<T>::max() == max) {
-         T maxContent = T { std::numeric_limits<uint32_t>::max() };
+         static constexpr size_t k_bitsT = CountBitsRequiredPositiveMax<T>();
+         static_assert(MaxFromCountBits<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
+         size_t count = (k_bitsT + 31) / 32 - 1;
+         EBM_ASSERT(1 <= count);
          T rand = static_cast<T>(Rand32());
-         while(maxContent < max) {
-            maxContent = (maxContent << 32) | T { std::numeric_limits<uint32_t>::max() };
+         do {
             rand = (rand << 32) | static_cast<T>(Rand32());
-         }
+            --count;
+         } while(0 != count);
          return rand;
       }
-      return NextFast(max + 1);
+      return NextFast(max + T { 1 });
    }
 
-   template<class Q = T>
-   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<Q>::max() <= std::numeric_limits<uint32_t>::max(), Q>::type Next(const T max) {
+   template<typename T>
+   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<T>::max() <= std::numeric_limits<uint32_t>::max(), T>::type Next(const T max) {
+      static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
+      static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
+
       if(std::numeric_limits<T>::max() == max) {
          return static_cast<T>(Rand32());
       }
-      return NextFast(max + 1);
+      return NextFast(max + T { 1 });
    }
 };
-static_assert(std::is_standard_layout<RandomDeterministic<size_t>>::value,
+static_assert(std::is_standard_layout<RandomDeterministic>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<RandomDeterministic<size_t>>::value,
+static_assert(std::is_trivial<RandomDeterministic>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<RandomDeterministic<size_t>>::value,
+static_assert(std::is_pod<RandomDeterministic>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME

@@ -21,13 +21,6 @@ class RandomNondeterministic final {
    static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
    static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
 
-   static constexpr size_t k_bitsT = CountBitsRequiredPositiveMax<T>();
-   static constexpr size_t k_bitsRandom = CountBitsRequiredPositiveMax<unsigned int>();
-
-   static_assert(MaxFromCountBits<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
-   static_assert(MaxFromCountBits<unsigned int>(k_bitsRandom) == std::numeric_limits<unsigned int>::max(), 
-      "unsigned int max must be all 1s");
-
    T m_randomRemainingMax;
    T m_randomRemaining;
 
@@ -49,10 +42,6 @@ class RandomNondeterministic final {
    //
    std::random_device m_generator;
 
-   static_assert(0 == std::random_device::min(), "std::random_device::min() must be zero");
-   static_assert(MaxFromCountBits<unsigned int>(k_bitsRandom) == std::random_device::max(),
-      "std::random_device::max() must be the max for unsigned int");
-
    INLINE_ALWAYS T Shift(const T val, const size_t shift) {
       // putting this shift in a function avoids a compiler warning
       return val << shift;
@@ -66,8 +55,18 @@ public:
    }
 
    INLINE_ALWAYS T Next() {
+      static constexpr size_t k_bitsT = CountBitsRequiredPositiveMax<T>();
+      static constexpr size_t k_bitsRandom = CountBitsRequiredPositiveMax<unsigned int>();
+
+      static_assert(MaxFromCountBits<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
+      static_assert(MaxFromCountBits<unsigned int>(k_bitsRandom) == std::numeric_limits<unsigned int>::max(),
+         "unsigned int max must be all 1s");
+
+      static_assert(0 == std::random_device::min(), "std::random_device::min() must be zero");
+      static_assert(MaxFromCountBits<unsigned int>(k_bitsRandom) == std::random_device::max(),
+         "std::random_device::max() must be the max for unsigned int");
+
       T ret = static_cast<T>(m_generator());
-      
       size_t count = (k_bitsT + k_bitsRandom - 1) / k_bitsRandom - 1;
       while(0 != count) {
          // if k_bitsT == k_bitsRandom then the compiler should optimize this out
@@ -81,7 +80,7 @@ public:
       if(std::numeric_limits<T>::max() == max) {
          return Next();
       }
-      const T maxPlusOne = max + 1;
+      const T maxPlusOne = max + T { 1 };
 
       T randomRemainingMax = m_randomRemainingMax;
       T randomRemaining = m_randomRemaining;

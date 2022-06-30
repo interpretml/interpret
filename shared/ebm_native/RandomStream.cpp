@@ -18,7 +18,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 // I generated these as purely random numbers from 0 to 2^64-1
-const uint_fast64_t k_oneTimePadRandomSeed[64] {
+static const uint_fast64_t k_oneTimePadRandomSeed[64] {
    uint_fast64_t { 12108613678499979739U },
    uint_fast64_t { 8329435972752283296U },
    uint_fast64_t { 17571318292481228596U },
@@ -84,5 +84,88 @@ const uint_fast64_t k_oneTimePadRandomSeed[64] {
    uint_fast64_t { 10333533257119705764U },
    uint_fast64_t { 8350484291935387907U } // 64
 };
+
+uint_fast64_t RandomDeterministic::GetOneTimePadConversion(uint_fast64_t seed) {
+   static_assert(CountBitsRequiredPositiveMax<uint64_t>() ==
+      sizeof(k_oneTimePadRandomSeed) / sizeof(k_oneTimePadRandomSeed[0]),
+      "the one time pad must have the same length as the number of bits"
+      );
+   EBM_ASSERT(seed == static_cast<uint_fast64_t>(static_cast<uint64_t>(seed)));
+
+   // this number generates a perfectly valid converted seed in a single pass if the user passes us a seed of zero
+   uint_fast64_t result = uint_fast64_t { 0x6b79a38fd52c4e71 };
+   const uint_fast64_t * pRandom = k_oneTimePadRandomSeed;
+   do {
+      if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } &seed))) {
+         result ^= *pRandom;
+      }
+      ++pRandom;
+      seed >>= 1;
+   } while(LIKELY(0 != seed));
+   return result;
+}
+
+void RandomDeterministic::Initialize(const uint64_t seed) {
+   constexpr uint_fast64_t initializeSeed = { 0xa75f138b4a162cfd };
+
+   m_state1 = initializeSeed;
+   m_state2 = initializeSeed;
+   m_stateSeedConst = initializeSeed;
+
+   uint_fast64_t originalRandomBits = GetOneTimePadConversion(static_cast<uint_fast64_t>(seed));
+   EBM_ASSERT(originalRandomBits == static_cast<uint_fast64_t>(static_cast<uint64_t>(originalRandomBits)));
+
+   uint_fast64_t randomBits = originalRandomBits;
+   // the lowest bit of our result needs to be 1 to make our number odd (per the paper)
+   uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } &randomBits) | uint_fast64_t { 1 };
+   randomBits >>= 4; // remove the bits that we used
+   // disallow zeros for our hex digits by ORing 1
+   const uint_fast16_t disallowMapFuture = (uint_fast16_t { 1 } << sanitizedSeed) | uint_fast16_t { 1 };
+
+   // disallow zeros for our hex digits by initially setting to 1, which is our "hash" for the zero bit
+   uint_fast16_t disallowMap = uint_fast16_t { 1 };
+   uint_fast8_t bitShiftCur = uint_fast8_t { 60 };
+   while(true) {
+      // we ignore zeros, so use a do loop instead of while
+      do {
+         uint_fast64_t randomHexDigit = uint_fast64_t { 0xF } &randomBits;
+         const uint_fast16_t indexBit = uint_fast16_t { 1 } << randomHexDigit;
+         if(LIKELY(uint_fast16_t { 0 } == (indexBit & disallowMap))) {
+            sanitizedSeed |= randomHexDigit << bitShiftCur;
+            bitShiftCur -= uint_fast8_t { 4 };
+            if(UNLIKELY(uint_fast8_t { 0 } == bitShiftCur)) {
+               goto exit_loop;
+            }
+            disallowMap |= indexBit;
+            if(UNLIKELY(UNLIKELY(uint_fast8_t { 28 } == bitShiftCur) ||
+               UNLIKELY(uint_fast8_t { 24 } == bitShiftCur))) {
+               // if bitShiftCur is 28 now then we just filled the low 4 bits for the high 32 bit number,
+               // so for the upper 4 bits of the lower 32 bit number don't allow it to have the same
+               // value as the lowest 4 bits of the upper 32 bits, and don't allow 0 and don't allow
+               // the value at the bottom 4 bits
+               //
+               // if bitShiftCur is 28 then remove the disallowing of the lowest 4 bits of the upper 32 bit
+               // number by only disallowing the previous number we just included (the uppre 4 bits of the lower
+               // 32 bit value, and don't allow the lowest 4 bits, and don't allow 0.
+
+               disallowMap = indexBit | disallowMapFuture;
+            }
+         }
+         randomBits >>= 4;
+      } while(LIKELY(uint_fast64_t { 0 } != randomBits));
+      // ok, this is sort of a two time pad I guess, but we shouldn't ever use it more than twice in real life
+      const uint_fast64_t top = static_cast<uint_fast64_t>(Rand32());
+      const uint_fast64_t bottom = static_cast<uint_fast64_t>(Rand32());
+      originalRandomBits = GetOneTimePadConversion(originalRandomBits ^ ((top << 32) | bottom));
+      randomBits = originalRandomBits;
+   }
+exit_loop:;
+   // is the lowest bit set as it should?
+   EBM_ASSERT(uint_fast64_t { 1 } == sanitizedSeed % uint_fast64_t { 2 });
+
+   m_state1 = sanitizedSeed;
+   m_state2 = sanitizedSeed;
+   m_stateSeedConst = sanitizedSeed;
+}
 
 } // DEFINED_ZONE_NAME
