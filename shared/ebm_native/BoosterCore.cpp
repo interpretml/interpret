@@ -508,7 +508,7 @@ ErrorEbmType BoosterCore::Create(
       pBoosterCore->m_cSamplingSets = cSamplingSets;
       // TODO: we could steal the aWeights in GenerateSamplingSets for flat sampling sets
       pBoosterCore->m_apSamplingSets = SamplingSet::GenerateSamplingSets(
-         pBoosterShell->GetRandomStream(), 
+         pBoosterShell->GetRandomDeterministic(),
          &pBoosterCore->m_trainingSet, 
          aWeights, 
          cSamplingSets

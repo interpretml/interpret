@@ -13,7 +13,7 @@
 
 #include "ebm_internal.hpp"
 
-#include "RandomStream.hpp" // our header didn't need the full definition, but we use the RandomStream in here, so we need it
+#include "RandomStream.hpp" // our header didn't need the full definition, but we use the RandomDeterministic in here, so we need it
 #include "DataSetBoosting.hpp"
 #include "SamplingSet.hpp"
 
@@ -23,13 +23,13 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 SamplingSet * SamplingSet::GenerateSingleSamplingSet(
-   RandomStream * const pRandomStream, 
+   RandomDeterministic<size_t> * const pRandomDeterministic,
    const DataSetBoosting * const pOriginDataSet,
    const FloatFast * const aWeights
 ) {
    LOG_0(TraceLevelVerbose, "Entered SamplingSet::GenerateSingleSamplingSet");
 
-   EBM_ASSERT(nullptr != pRandomStream);
+   EBM_ASSERT(nullptr != pRandomDeterministic);
    EBM_ASSERT(nullptr != pOriginDataSet);
 
    SamplingSet * pRet = EbmMalloc<SamplingSet>();
@@ -64,7 +64,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    }
 
    for(size_t iSample = 0; iSample < cSamples; ++iSample) {
-      const size_t iCountOccurrences = pRandomStream->Next(cSamples);
+      const size_t iCountOccurrences = pRandomDeterministic->NextFast(cSamples);
       ++aCountOccurrences[iCountOccurrences];
    }
 
@@ -198,14 +198,14 @@ void SamplingSet::FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** co
 WARNING_POP
 
 SamplingSet ** SamplingSet::GenerateSamplingSets(
-   RandomStream * const pRandomStream, 
+   RandomDeterministic<size_t> * const pRandomDeterministic,
    const DataSetBoosting * const pOriginDataSet, 
    const FloatFast * const aWeights,
    const size_t cSamplingSets
 ) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateSamplingSets");
 
-   EBM_ASSERT(nullptr != pRandomStream);
+   EBM_ASSERT(nullptr != pRandomDeterministic);
    EBM_ASSERT(nullptr != pOriginDataSet);
 
    const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
@@ -230,7 +230,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
       apSamplingSets[0] = pSingleSamplingSet;
    } else {
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSets; ++iSamplingSet) {
-         SamplingSet * const pSingleSamplingSet = GenerateSingleSamplingSet(pRandomStream, pOriginDataSet, aWeights);
+         SamplingSet * const pSingleSamplingSet = GenerateSingleSamplingSet(pRandomDeterministic, pOriginDataSet, aWeights);
          if(UNLIKELY(nullptr == pSingleSamplingSet)) {
             LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");
             FreeSamplingSets(cSamplingSets, apSamplingSets);

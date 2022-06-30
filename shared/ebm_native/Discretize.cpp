@@ -272,8 +272,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discret
    //         we can't handle bad input points in general, so this is just accepting a reality for a tradeoff in speed
    //       - create a function that converts any signed value into the proper unsigned value 
    //         we can do this using std::make_unsigned to find the type and then use the twos compliment
-   //         trick in RandomStream to convert the signed value into the corresponding unsigned value
-   //         (also replace the code in RandomStream with this new function).  This function will be 
+   //         trick in RandomDeterministic to convert the signed value into the corresponding unsigned value
+   //         (also replace the code in RandomDeterministic with this new function).  This function will be 
    //         a no-op in assembly.
    //       - we check for both negative AND positive countCuts values that are too high.  We can
    //         combine these checks by first converting negatives into big positive unsigned values

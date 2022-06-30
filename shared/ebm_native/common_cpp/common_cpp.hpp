@@ -361,6 +361,18 @@ static_assert(CountBitsRequiredPositiveMax<int16_t>() == 15, "automated test wit
 static_assert(CountBitsRequiredPositiveMax<int32_t>() == 31, "automated test with compiler");
 static_assert(CountBitsRequiredPositiveMax<int64_t>() == 63, "automated test with compiler");
 
+template<typename T>
+INLINE_ALWAYS constexpr static T MaxFromCountBits(const size_t cBits) noexcept {
+   return 0 == cBits ? T { 0 } : (MaxFromCountBits<T>(cBits - 1) << 1 | T { 1 });
+}
+static_assert(MaxFromCountBits<uint8_t>(0) == 0, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(1) == 1, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(2) == 3, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(3) == 7, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(4) == 15, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(8) == 255, "automated test with compiler");
+static_assert(MaxFromCountBits<uint64_t>(64) == 18446744073709551615ull, "automated test with compiler");
+
 constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 
 // It is impossible for us to have tensors with more than k_cDimensionsMax dimensions.  

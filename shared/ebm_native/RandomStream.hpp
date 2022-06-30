@@ -2,11 +2,12 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef RANDOM_STREAM_HPP
-#define RANDOM_STREAM_HPP
+#ifndef RANDOM_DETERMINISTIC_HPP
+#define RANDOM_DETERMINISTIC_HPP
 
 #include <inttypes.h> // uint32_t, uint_fast64_t
 #include <stddef.h> // size_t, ptrdiff_t
+#include <type_traits>
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -27,12 +28,15 @@ constexpr uint64_t k_boosterRandomizationMix = uint64_t { 9397611943394063143u }
 constexpr uint64_t k_samplingWithoutReplacementRandomizationMix = uint64_t { 10077040353197036781u };
 constexpr uint64_t k_stratifiedSamplingWithoutReplacementRandomizationMix = uint64_t { 8537734853377176632u };
 
-class RandomStream final {
-   // If the RandomStream object is stored inside a class/struct, and used inside a hotspot loop, to get the best 
+extern const uint_fast64_t k_oneTimePadRandomSeed[64];
+
+template<typename T>
+class RandomDeterministic final {
+   // If the RandomDeterministic object is stored inside a class/struct, and used inside a hotspot loop, to get the best 
    // performance copy this structure to the stack before using it, and then copy it back to the struct/class 
    // after looping on it.  Copying it to the stack allows the internal state to be kept inside CPU
    // registers since no aliased pointers can point to the stack version unless we explicitly create a pointer to it.
-   // Use references instead of pointers if we want to pass the RandomStream to called functions to avoid the 
+   // Use references instead of pointers if we want to pass the RandomDeterministic to called functions to avoid the 
    // aliasing issues. In contrast, if we used main memory to hold our state, the compiler can't know if any pointers 
    // used are pointing to the main memory version of our internal state for sure if there are char or void * pointers
    // involved, or if aliasing assumptions are disallowed.
@@ -56,18 +60,16 @@ class RandomStream final {
    // that detects a cycle and increments to the next valid internal seed.  Then we'd have 2^118 unique random 
    // 64 bit numbers, according to the paper.
 
-   // If we had memcopied RandomStream cross machine we would want these to be uint64_t instead of uint_fast64_t
+   // If we had memcopied RandomDeterministic cross machine we would want these to be uint64_t instead of uint_fast64_t
    // but we only copy seeds cross machine, so we can leave them as uint_fast64_t
+
+   static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
+   static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
 
    uint_fast64_t m_state1;
    uint_fast64_t m_state2;
    uint_fast64_t m_stateSeedConst;
 
-   static uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed);
-
-   // TODO: it might be possible to make the 64 bit version a bit faster, either by having 2 independent streams
-   //       so that the multiplication can be done in parallel (although this would consume more registers), or
-   //       if we combine the two 32 bit functions which might eliminate some of the shifting
    INLINE_ALWAYS uint_fast32_t Rand32() {
       // if this gets properly optimized, it gets converted into 4 machine instructions: imulq, iaddq, iaddq, and rorq
       m_state1 *= m_state1;
@@ -81,18 +83,93 @@ class RandomStream final {
       return static_cast<uint_fast32_t>(static_cast<uint32_t>(result));
    }
 
-   INLINE_ALWAYS uint_fast64_t Rand64() {
-      const uint_fast64_t top = static_cast<uint_fast64_t>(Rand32());
-      const uint_fast64_t bottom = static_cast<uint_fast64_t>(Rand32());
-      return (top << 32) | bottom;
+   static uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed) {
+      static_assert(CountBitsRequiredPositiveMax<uint64_t>() ==
+         sizeof(k_oneTimePadRandomSeed) / sizeof(k_oneTimePadRandomSeed[0]),
+         "the one time pad must have the same length as the number of bits"
+         );
+      EBM_ASSERT(seed == static_cast<uint_fast64_t>(static_cast<uint64_t>(seed)));
+
+      // this number generates a perfectly valid converted seed in a single pass if the user passes us a seed of zero
+      uint_fast64_t result = uint_fast64_t { 0x6b79a38fd52c4e71 };
+      const uint_fast64_t * pRandom = k_oneTimePadRandomSeed;
+      do {
+         if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } &seed))) {
+            result ^= *pRandom;
+         }
+         ++pRandom;
+         seed >>= 1;
+      } while(LIKELY(0 != seed));
+      return result;
    }
 
-   void Initialize(const uint64_t seed);
+   void Initialize(const uint64_t seed) {
+      constexpr uint_fast64_t initializeSeed = { 0xa75f138b4a162cfd };
+
+      m_state1 = initializeSeed;
+      m_state2 = initializeSeed;
+      m_stateSeedConst = initializeSeed;
+
+      uint_fast64_t originalRandomBits = GetOneTimePadConversion(static_cast<uint_fast64_t>(seed));
+      EBM_ASSERT(originalRandomBits == static_cast<uint_fast64_t>(static_cast<uint64_t>(originalRandomBits)));
+
+      uint_fast64_t randomBits = originalRandomBits;
+      // the lowest bit of our result needs to be 1 to make our number odd (per the paper)
+      uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } &randomBits) | uint_fast64_t { 1 };
+      randomBits >>= 4; // remove the bits that we used
+      // disallow zeros for our hex digits by ORing 1
+      const uint_fast16_t disallowMapFuture = (uint_fast16_t { 1 } << sanitizedSeed) | uint_fast16_t { 1 };
+
+      // disallow zeros for our hex digits by initially setting to 1, which is our "hash" for the zero bit
+      uint_fast16_t disallowMap = uint_fast16_t { 1 };
+      uint_fast8_t bitShiftCur = uint_fast8_t { 60 };
+      while(true) {
+         // we ignore zeros, so use a do loop instead of while
+         do {
+            uint_fast64_t randomHexDigit = uint_fast64_t { 0xF } &randomBits;
+            const uint_fast16_t indexBit = uint_fast16_t { 1 } << randomHexDigit;
+            if(LIKELY(uint_fast16_t { 0 } == (indexBit & disallowMap))) {
+               sanitizedSeed |= randomHexDigit << bitShiftCur;
+               bitShiftCur -= uint_fast8_t { 4 };
+               if(UNLIKELY(uint_fast8_t { 0 } == bitShiftCur)) {
+                  goto exit_loop;
+               }
+               disallowMap |= indexBit;
+               if(UNLIKELY(UNLIKELY(uint_fast8_t { 28 } == bitShiftCur) ||
+                  UNLIKELY(uint_fast8_t { 24 } == bitShiftCur))) {
+                  // if bitShiftCur is 28 now then we just filled the low 4 bits for the high 32 bit number,
+                  // so for the upper 4 bits of the lower 32 bit number don't allow it to have the same
+                  // value as the lowest 4 bits of the upper 32 bits, and don't allow 0 and don't allow
+                  // the value at the bottom 4 bits
+                  //
+                  // if bitShiftCur is 28 then remove the disallowing of the lowest 4 bits of the upper 32 bit
+                  // number by only disallowing the previous number we just included (the uppre 4 bits of the lower
+                  // 32 bit value, and don't allow the lowest 4 bits, and don't allow 0.
+
+                  disallowMap = indexBit | disallowMapFuture;
+               }
+            }
+            randomBits >>= 4;
+         } while(LIKELY(uint_fast64_t { 0 } != randomBits));
+         // ok, this is sort of a two time pad I guess, but we shouldn't ever use it more than twice in real life
+         const uint_fast64_t top = static_cast<uint_fast64_t>(Rand32());
+         const uint_fast64_t bottom = static_cast<uint_fast64_t>(Rand32());
+         originalRandomBits = GetOneTimePadConversion(originalRandomBits ^ ((top << 32) | bottom));
+         randomBits = originalRandomBits;
+      }
+   exit_loop:;
+      // is the lowest bit set as it should?
+      EBM_ASSERT(uint_fast64_t { 1 } == sanitizedSeed % uint_fast64_t { 2 });
+
+      m_state1 = sanitizedSeed;
+      m_state2 = sanitizedSeed;
+      m_stateSeedConst = sanitizedSeed;
+   }
 
 public:
 
-   RandomStream() = default; // preserve our POD status
-   ~RandomStream() = default; // preserve our POD status
+   RandomDeterministic() = default; // preserve our POD status
+   ~RandomDeterministic() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -108,7 +185,7 @@ public:
       Initialize(static_cast<uint64_t>(seed) ^ stageRandomizationMix);
    }
 
-   INLINE_ALWAYS void Initialize(const RandomStream & other) {
+   INLINE_ALWAYS void Initialize(const RandomDeterministic & other) {
       m_state1 = other.m_state1;
       m_state2 = other.m_state2;
       m_stateSeedConst = other.m_stateSeedConst;
@@ -142,14 +219,15 @@ public:
       return ret;
    }
 
-   INLINE_ALWAYS bool Next() {
+   INLINE_ALWAYS bool NextBool() {
       return uint_fast32_t { 0 } != (uint_fast32_t { 1 } & Rand32());
    }
 
-   INLINE_ALWAYS size_t Next(const size_t maxValueExclusive) {
-      EBM_ASSERT(size_t { 1 } <= maxValueExclusive);
+   template<class Q = T>
+   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<uint32_t>::max() < std::numeric_limits<Q>::max(), Q>::type NextFast(const T maxPlusOne) {
+      EBM_ASSERT(T { 1 } <= maxPlusOne);
 
-      // let's say that we are given maxValueExclusiveConverted == 7.  In that case we take our 32 bit
+      // let's say that we are given maxPlusOneConverted == 7.  In that case we take our 32 bit
       // number and take modulo 7, giving us random numbers 0, 1, 2, 3, 4, 5, and 6.
       // but there's a problem if rand is 4294967295 (the maximum 32 bit number) because 
       // 4294967295 % 7 == 3, which means there are more opportunities to return 0, 1, 2, 3 than there are
@@ -159,47 +237,97 @@ public:
       // any rounded down muliple that is higher than (UINT32_MAX + 1) - 7 will lead to imbalanced
       // random number generation, since the next higher up muliple of 7 will overflow.  (UINT32_MAX + 1)
       // overlfows to 0, but since underflow and overlfow of unsigned numbers is legal in C++, we can use
-      // this fact, and the fact that maxValueExclusiveConverted needs to be at least 1 to generate the
+      // this fact, and the fact that maxPlusOneConverted needs to be at least 1 to generate the
       // low bound that we need.
 
-#if !defined(UINT32_MAX) || !defined(SIZE_MAX) || UINT32_MAX < SIZE_MAX
-      static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<uint64_t>::max(),
-         "we must be able to at least generate a real random size_t value");
-
-      if(size_t { std::numeric_limits<uint32_t>::max() } < maxValueExclusive) {
-         const uint64_t maxValueExclusiveConverted = static_cast<uint64_t>(maxValueExclusive);
-         uint64_t rand;
-         uint64_t randMult;
+      if(T { std::numeric_limits<uint32_t>::max() } < maxPlusOne) {
+         const T max = maxPlusOne - 1;
+         T rand;
+         T randMult;
          do {
-            rand = static_cast<uint64_t>(Rand64());
-            const uint64_t randDivided = rand / maxValueExclusiveConverted;
-            randMult = randDivided * maxValueExclusiveConverted;
-         } while(UNLIKELY(uint64_t { 0 } - maxValueExclusiveConverted < randMult));
+            T maxContent = T { std::numeric_limits<uint32_t>::max() };
+            rand = static_cast<T>(Rand32());
+            while(maxContent < max) {
+               maxContent = (maxContent << 32) | T { std::numeric_limits<uint32_t>::max() };
+               rand = (rand << 32) | static_cast<T>(Rand32());
+            }
+            const T randDivided = rand / maxPlusOne;
+            randMult = randDivided * maxPlusOne;
+         } while(UNLIKELY(T { 0 } - maxPlusOne < randMult));
          EBM_ASSERT(randMult <= rand);
          return rand - randMult;
-      } else 
-#endif // UINT32_MAX < SIZE_MAX
-      {
-         const uint32_t maxValueExclusiveConverted = static_cast<uint32_t>(maxValueExclusive);
+      } else {
+         const uint32_t maxPlusOneConverted = static_cast<uint32_t>(maxPlusOne);
          uint32_t rand;
          uint32_t randMult;
          do {
             rand = static_cast<uint32_t>(Rand32());
-            const uint32_t randDivided = rand / maxValueExclusiveConverted;
-            randMult = randDivided * maxValueExclusiveConverted;
-         } while(UNLIKELY(uint32_t { 0 } - maxValueExclusiveConverted < randMult));
+            const uint32_t randDivided = rand / maxPlusOneConverted;
+            randMult = randDivided * maxPlusOneConverted;
+         } while(UNLIKELY(uint32_t { 0 } - maxPlusOneConverted < randMult));
          EBM_ASSERT(randMult <= rand);
-         return rand - randMult;
+         return static_cast<T>(rand - randMult);
       }
    }
+
+   template<class Q = T>
+   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<Q>::max() <= std::numeric_limits<uint32_t>::max(), Q>::type NextFast(const T maxPlusOne) {
+      EBM_ASSERT(T { 1 } <= maxPlusOne);
+
+      // let's say that we are given maxPlusOneConverted == 7.  In that case we take our 32 bit
+      // number and take modulo 7, giving us random numbers 0, 1, 2, 3, 4, 5, and 6.
+      // but there's a problem if rand is 4294967295 (the maximum 32 bit number) because 
+      // 4294967295 % 7 == 3, which means there are more opportunities to return 0, 1, 2, 3 than there are
+      // to return 4, 5, or 6.  To avoid this, we throw our any random numbers equal or above
+      // 4294967292.  Calculating the exact number 4294967292 is expensive though, so we instead find the
+      // highest number that the rounded down multiple can be before we reject it.  In the case of 7,
+      // any rounded down muliple that is higher than (UINT32_MAX + 1) - 7 will lead to imbalanced
+      // random number generation, since the next higher up muliple of 7 will overflow.  (UINT32_MAX + 1)
+      // overlfows to 0, but since underflow and overlfow of unsigned numbers is legal in C++, we can use
+      // this fact, and the fact that maxPlusOneConverted needs to be at least 1 to generate the
+      // low bound that we need.
+
+      const uint32_t maxPlusOneConverted = static_cast<uint32_t>(maxPlusOne);
+      uint32_t rand;
+      uint32_t randMult;
+      do {
+         rand = static_cast<uint32_t>(Rand32());
+         const uint32_t randDivided = rand / maxPlusOneConverted;
+         randMult = randDivided * maxPlusOneConverted;
+      } while(UNLIKELY(uint32_t { 0 } - maxPlusOneConverted < randMult));
+      EBM_ASSERT(randMult <= rand);
+      return static_cast<T>(rand - randMult);
+   }
+
+   template<class Q = T>
+   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<uint32_t>::max() < std::numeric_limits<Q>::max(), Q>::type Next(const T max) {
+      if(std::numeric_limits<T>::max() == max) {
+         T maxContent = T { std::numeric_limits<uint32_t>::max() };
+         T rand = static_cast<T>(Rand32());
+         while(maxContent < max) {
+            maxContent = (maxContent << 32) | T { std::numeric_limits<uint32_t>::max() };
+            rand = (rand << 32) | static_cast<T>(Rand32());
+         }
+         return rand;
+      }
+      return NextFast(max + 1);
+   }
+
+   template<class Q = T>
+   INLINE_ALWAYS typename std::enable_if<std::numeric_limits<Q>::max() <= std::numeric_limits<uint32_t>::max(), Q>::type Next(const T max) {
+      if(std::numeric_limits<T>::max() == max) {
+         return static_cast<T>(Rand32());
+      }
+      return NextFast(max + 1);
+   }
 };
-static_assert(std::is_standard_layout<RandomStream>::value,
+static_assert(std::is_standard_layout<RandomDeterministic<size_t>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<RandomStream>::value,
+static_assert(std::is_trivial<RandomDeterministic<size_t>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<RandomStream>::value,
+static_assert(std::is_pod<RandomDeterministic<size_t>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME
 
-#endif // RANDOM_STREAM_HPP
+#endif // RANDOM_DETERMINISTIC_HPP

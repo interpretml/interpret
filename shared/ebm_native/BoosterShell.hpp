@@ -36,7 +36,7 @@ class BoosterShell final {
    CompressibleTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
    CompressibleTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
 
-   RandomStream m_randomStream;
+   RandomDeterministic<size_t> m_randomDeterministic;
 
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
@@ -140,8 +140,8 @@ public:
       return m_pSmallChangeToModelOverwriteSingleSamplingSet;
    }
 
-   INLINE_ALWAYS RandomStream * GetRandomStream() {
-      return &m_randomStream;
+   INLINE_ALWAYS RandomDeterministic<size_t> * GetRandomDeterministic() {
+      return &m_randomDeterministic;
    }
 
    HistogramBucketBase * GetHistogramBucketBaseFast(size_t cBytesRequired);

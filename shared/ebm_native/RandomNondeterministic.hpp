@@ -8,6 +8,7 @@
 #include <random>
 
 #include "zones.h"
+#include "common_cpp.hpp"
 #include "ebm_internal.hpp" // INLINE_ALWAYS
 
 namespace DEFINED_ZONE_NAME {
@@ -15,10 +16,20 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+template<typename T>
 class RandomNondeterministic final {
+   static_assert(!std::is_signed<T>::value, "T must be an unsigned type");
+   static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
 
-   unsigned int m_randomRemainingMax;
-   unsigned int m_randomRemaining;
+   static constexpr size_t k_bitsT = CountBitsRequiredPositiveMax<T>();
+   static constexpr size_t k_bitsRandom = CountBitsRequiredPositiveMax<unsigned int>();
+
+   static_assert(MaxFromCountBits<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
+   static_assert(MaxFromCountBits<unsigned int>(k_bitsRandom) == std::numeric_limits<unsigned int>::max(), 
+      "unsigned int max must be all 1s");
+
+   T m_randomRemainingMax;
+   T m_randomRemaining;
 
    // The C++ standard does not give us a guarantee that random_device is non-deterministic in all implementations
    // We need to check on each platform whether std::random_device comes from a non-deterministic high quality source.
@@ -38,6 +49,15 @@ class RandomNondeterministic final {
    //
    std::random_device m_generator;
 
+   static_assert(0 == std::random_device::min(), "std::random_device::min() must be zero");
+   static_assert(MaxFromCountBits<unsigned int>(k_bitsRandom) == std::random_device::max(),
+      "std::random_device::max() must be the max for unsigned int");
+
+   INLINE_ALWAYS T Shift(const T val, const size_t shift) {
+      // putting this shift in a function avoids a compiler warning
+      return val << shift;
+   }
+
 public:
 
    INLINE_ALWAYS RandomNondeterministic() :
@@ -45,39 +65,43 @@ public:
       m_randomRemaining(0) {
    }
 
-   INLINE_ALWAYS unsigned int Next() {
-      return m_generator();
+   INLINE_ALWAYS T Next() {
+      T ret = static_cast<T>(m_generator());
+      
+      size_t count = (k_bitsT + k_bitsRandom - 1) / k_bitsRandom - 1;
+      while(0 != count) {
+         // if k_bitsT == k_bitsRandom then the compiler should optimize this out
+         ret = Shift(ret, k_bitsRandom) | static_cast<T>(m_generator());
+         --count;
+      }
+      return ret;
    }
 
-   INLINE_ALWAYS unsigned int Next(const unsigned int maxInclusive) {
-      static_assert(0 == std::random_device::min(), "std::random_device::min() must be zero");
-      static_assert(std::numeric_limits<decltype(maxInclusive)>::max() == std::random_device::max(), 
-         "std::random_device::max() must be the maximum of the maxInclusive type");
-
-      if(std::random_device::max() == maxInclusive) {
-         return m_generator();
+   INLINE_ALWAYS T Next(const T max) {
+      if(std::numeric_limits<T>::max() == max) {
+         return Next();
       }
-      const unsigned int maxExclusive = maxInclusive + 1;
+      const T maxPlusOne = max + 1;
 
-      unsigned int randomRemainingMax = m_randomRemainingMax;
-      unsigned int randomRemaining = m_randomRemaining;
+      T randomRemainingMax = m_randomRemainingMax;
+      T randomRemaining = m_randomRemaining;
       EBM_ASSERT(randomRemaining <= randomRemainingMax);
       while(true) {
-         if(maxInclusive <= randomRemainingMax) {
-            randomRemainingMax = (randomRemainingMax - maxInclusive) / maxExclusive;
-            const unsigned int legalMax = randomRemainingMax * maxExclusive + maxInclusive;
+         if(max <= randomRemainingMax) {
+            randomRemainingMax = (randomRemainingMax - max) / maxPlusOne;
+            const T legalMax = randomRemainingMax * maxPlusOne + max;
             if(randomRemaining <= legalMax) {
                break;
             }
          }
 
-         randomRemaining = m_generator();
-         randomRemainingMax = std::random_device::max();
+         randomRemaining = Next();
+         randomRemainingMax = std::numeric_limits<T>::max();
       }
-      const unsigned int ret = randomRemaining % maxExclusive;
-      EBM_ASSERT(randomRemaining / maxExclusive <= randomRemainingMax);
+      const T ret = randomRemaining % maxPlusOne;
+      EBM_ASSERT(randomRemaining / maxPlusOne <= randomRemainingMax);
       m_randomRemainingMax = randomRemainingMax;
-      m_randomRemaining = randomRemaining / maxExclusive;
+      m_randomRemaining = randomRemaining / maxPlusOne;
 
       return ret;
    }

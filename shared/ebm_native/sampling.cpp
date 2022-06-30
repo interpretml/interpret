@@ -38,11 +38,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY SeedEbmType EBM_NATIVE_CALLING_CONVENTION Generate
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix
 ) {
-   RandomStream randomStream;
+   RandomDeterministic<size_t> randomDeterministic;
    // this is a bit inefficient in that we go through a complete regeneration of the internal state,
    // but it gives us a simple interface
-   randomStream.InitializeSigned(randomSeed, stageRandomizationMix);
-   SeedEbmType ret = randomStream.NextSeed();
+   randomDeterministic.InitializeSigned(randomSeed, stageRandomizationMix);
+   SeedEbmType ret = randomDeterministic.NextSeed();
    return ret;
 }
 
@@ -113,12 +113,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
 
    size_t cTrainingRemaining = cTrainingSamples;
 
-   RandomStream randomStream;
-   randomStream.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
+   RandomDeterministic<size_t> randomDeterministic;
+   randomDeterministic.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
 
    BagEbmType * pSampleCountsOut = sampleCountsOut;
    do {
-      const size_t iRandom = randomStream.Next(cSamplesRemaining);
+      const size_t iRandom = randomDeterministic.NextFast(cSamplesRemaining);
       const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
       cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
       *pSampleCountsOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
@@ -336,8 +336,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
       return Error_OutOfMemory;
    }
 
-   RandomStream randomStream;
-   randomStream.InitializeUnsigned(randomSeed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
+   RandomDeterministic<size_t> randomDeterministic;
+   randomDeterministic.InitializeUnsigned(randomSeed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
 
    for (size_t iLeftover = 0; iLeftover < globalLeftover; iLeftover++) {
       double maxImprovement = std::numeric_limits<double>::lowest();
@@ -381,7 +381,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
 
       // If more than one class has the same max improvement, randomly select between the classes
       // to give the leftover to.
-      size_t iRandom = randomStream.Next(mostImprovedClassesSize);
+      size_t iRandom = randomDeterministic.NextFast(mostImprovedClassesSize);
       size_t classToImprove = *(pMostImprovedClasses + iRandom);
       (pTargetSamplingCounts + classToImprove)->m_cTraining++;
    }
@@ -402,7 +402,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    for (size_t iSample = 0; iSample < cSamples; iSample++) {
       TargetSamplingCounts* pTargetSample = pTargetSamplingCounts + targets[iSample];
       EBM_ASSERT(pTargetSample->m_cTotalRemaining > 0);
-      const size_t iRandom = randomStream.Next(pTargetSample->m_cTotalRemaining);
+      const size_t iRandom = randomDeterministic.NextFast(pTargetSample->m_cTotalRemaining);
       const bool bTrainingSample = UNPREDICTABLE(iRandom < pTargetSample->m_cTraining);
 
       if (UNPREDICTABLE(bTrainingSample)) {

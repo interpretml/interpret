@@ -18,7 +18,9 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-class RandomStream;
+template<typename T>
+class RandomDeterministic;
+
 class DataSetBoosting;
 
 class SamplingSet final {
@@ -38,7 +40,7 @@ class SamplingSet final {
    // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataSet since many 
    // SamplingSet objects will refer to the original one
    static SamplingSet * GenerateSingleSamplingSet(
-      RandomStream * const pRandomStream, 
+      RandomDeterministic<size_t> * const pRandomDeterministic,
       const DataSetBoosting * const pOriginDataSet,
       const FloatFast * const aWeights
    );
@@ -84,7 +86,7 @@ public:
    }
 
    static SamplingSet ** GenerateSamplingSets(
-      RandomStream * const pRandomStream, 
+      RandomDeterministic<size_t> * const pRandomDeterministic,
       const DataSetBoosting * const pOriginDataSet, 
       const FloatFast * const aWeights,
       const size_t cSamplingSets

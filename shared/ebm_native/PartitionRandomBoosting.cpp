@@ -168,7 +168,7 @@ public:
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
       const IntEbmType * pLeavesMax2 = aLeavesMax;
-      RandomStream * const pRandomStream = pBoosterShell->GetRandomStream();
+      RandomDeterministic<size_t> * const pRandomDeterministic = pBoosterShell->GetRandomDeterministic();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
       do {
@@ -212,7 +212,7 @@ public:
                EBM_ASSERT(1 <= cSplits);
                const size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cSplits;
                do {
-                  const size_t iRandom = pRandomStream->Next(cPossibleSplitLocations);
+                  const size_t iRandom = pRandomDeterministic->NextFast(cPossibleSplitLocations);
                   size_t * const pRandomSwap = pcItemsInNextSliceOrBytesInCurrentSlice2 + iRandom;
                   const size_t temp = *pRandomSwap;
                   *pRandomSwap = *pcItemsInNextSliceOrBytesInCurrentSlice2;

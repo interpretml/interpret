@@ -13,6 +13,8 @@
 
 #include "ebm_internal.hpp"
 
+#include "RandomStream.hpp"
+
 #include "CompressibleTensor.hpp"
 
 #include "HistogramTargetEntry.hpp"
@@ -262,7 +264,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_OutOfMemory;
    }
 
-   pBoosterShell->GetRandomStream()->InitializeUnsigned(randomSeed, k_boosterRandomizationMix);
+   pBoosterShell->GetRandomDeterministic()->InitializeUnsigned(randomSeed, k_boosterRandomizationMix);
 
    error = BoosterCore::Create(
       pBoosterShell,
@@ -328,7 +330,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_OutOfMemory;
    }
 
-   pBoosterShellNew->GetRandomStream()->Initialize(*pBoosterShellOriginal->GetRandomStream());
+   pBoosterShellNew->GetRandomDeterministic()->Initialize(*pBoosterShellOriginal->GetRandomDeterministic());
 
    BoosterCore * const pBoosterCore = pBoosterShellOriginal->GetBoosterCore();
    pBoosterCore->AddReferenceCount();

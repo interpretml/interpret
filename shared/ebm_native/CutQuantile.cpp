@@ -2045,7 +2045,7 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
 template<typename T>
 static void FillTiebreakers(
    const bool bSymmetryReversal,
-   RandomStream * const pRandomStream,
+   RandomDeterministic<size_t> * const pRandomDeterministic,
    const size_t cItems,
    T * const aItems
 ) noexcept {
@@ -2080,7 +2080,7 @@ static void FillTiebreakers(
    // If the center values was flipped, then you'd see a 1 in the opposite direction, which would screw up our
    // symmetry
    
-   EBM_ASSERT(nullptr != pRandomStream);
+   EBM_ASSERT(nullptr != pRandomDeterministic);
    EBM_ASSERT(size_t { 1 } <= cItems);
    EBM_ASSERT(nullptr != aItems);
 
@@ -2097,7 +2097,7 @@ static void FillTiebreakers(
       // bSymmetryReversal helps us ensure symmetry because we pick true or false based on a fingerprint of the original 
       // values so if the values are flipped in a transform, then we'll flip bSymmetryReversal and get the same 
       // cuts mirror on the opposite sides from the ends
-      const bool bRandom = pRandomStream->Next() != bSymmetryReversal; // this is an XOR for bools
+      const bool bRandom = pRandomDeterministic->NextBool() != bSymmetryReversal; // this is an XOR for bools
 
       const ptrdiff_t tiebreakerMinusOne = tiebreaker - ptrdiff_t { 1 };
       const ptrdiff_t tiebreaker1 = UNPREDICTABLE(bRandom) ? tiebreaker : tiebreakerMinusOne;
@@ -2745,10 +2745,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
          // XOR bSymmetryReversal with a random number here
          const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, aFeatureValues);
 
-         RandomStream randomStream;
-         randomStream.InitializeUnsigned(randomSeed, k_quantileRandomizationMix);
+         RandomDeterministic<size_t> randomDeterministic;
+         randomDeterministic.InitializeUnsigned(randomSeed, k_quantileRandomizationMix);
 
-         FillTiebreakers(bSymmetryReversal, &randomStream, cCuttingRanges, aCuttingRange);
+         FillTiebreakers(bSymmetryReversal, &randomDeterministic, cCuttingRanges, aCuttingRange);
 
          FillCuttingRangeBasics(cSamples, aFeatureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
          FillCuttingRangeNeighbours(cSamples, aFeatureValues, cCuttingRanges, aCuttingRange);
@@ -2822,7 +2822,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                   std::set<CutPoint *, CompareCutPoint> fillTheVoids;
 #endif // NEVER
 
-                  FillTiebreakers(bSymmetryReversal, &randomStream, cRanges - size_t { 1 }, aCuts + 1);
+                  FillTiebreakers(bSymmetryReversal, &randomDeterministic, cRanges - size_t { 1 }, aCuts + 1);
 
                   error = TradeCutSegment(
                      &bestCuts,
@@ -2979,7 +2979,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuan
                               // uncuttable ranges, AND the center of the cutable ranges.  Our final fallback
                               // is to resort to our symmetric determination (PLUS randomness)
 
-                              bool bLocalSymmetryReversal = randomStream.Next() != bSymmetryReversal;
+                              bool bLocalSymmetryReversal = randomDeterministic.NextBool() != bSymmetryReversal;
                               iResult = UNPREDICTABLE(bLocalSymmetryReversal) ? iStartCur : iStartNext;
                            }
                         }
