@@ -39,7 +39,7 @@ setuptools.setup(
             "openml >=0.12",
         ],
         "docker": [
-            "aiodocker",
+            "docker",
         ],
         "postgres": [
             "psycopg2 >=2.9",
