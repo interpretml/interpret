@@ -26,6 +26,7 @@ from sklearn.base import is_classifier
 from sklearn.utils.validation import check_is_fitted
 from sklearn.metrics import log_loss, mean_squared_error
 import heapq
+import operator
 
 from sklearn.base import (
     BaseEstimator,
@@ -493,6 +494,7 @@ class BaseEBM(BaseEstimator):
 
             if isinstance(interactions, int):
                 _log.info("Estimating with FAST")
+                from ...utils.fast import _get_ranked_interactions
 
                 parallel_args = []
                 for idx in range(self.outer_bags):
@@ -512,14 +514,15 @@ class BaseEBM(BaseEstimator):
                 # TODO: for now we're using only 1 job because FAST isn't memory optimized.  After
                 # the native code is done with compression of the data we can go back to using self.n_jobs
                 provider2 = JobLibProvider(n_jobs=1) 
-                bagged_interaction_indices = provider2.parallel(EBMUtils.calc_interaction_order, parallel_args)
+                bagged_ranked_interaction = provider2.parallel(_get_ranked_interactions, parallel_args)
 
                 # this holds references to dataset, bags, and scores_bags which we want python to reclaim later
                 del parallel_args 
 
                 # Select merged pairs
                 pair_ranks = {}
-                for n, interaction_indices in enumerate(bagged_interaction_indices):
+                for n, interaction_strengths_and_indices in enumerate(bagged_ranked_interaction):
+                    interaction_indices =  list(map(operator.itemgetter(1), interaction_strengths_and_indices))
                     for rank, indices in enumerate(interaction_indices):
                         old_mean = pair_ranks.get(indices, 0)
                         pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))

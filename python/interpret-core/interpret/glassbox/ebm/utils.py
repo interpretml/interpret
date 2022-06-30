@@ -4,7 +4,7 @@
 # TODO: Test EBMUtils
 
 from math import ceil, isnan, isinf, exp, log
-from .internal import Native, Booster, InteractionDetector
+from .internal import Native, Booster
 
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax
@@ -14,7 +14,6 @@ import numbers
 import numpy as np
 import warnings
 import copy
-import operator
 from itertools import islice
 
 from scipy.stats import norm
@@ -1213,27 +1212,6 @@ class EBMUtils:
                 model_update = booster.get_best_model()
 
         return model_update, episode_index
-
-    @staticmethod
-    def calc_interaction_order(
-        dataset,
-        bag,
-        scores,
-        iter_term_features,
-        interaction_options, 
-        min_samples_leaf,
-        optional_temp_params=None,
-    ):
-        interaction_strengths = []
-        with InteractionDetector(dataset, bag, scores, optional_temp_params) as interaction_detector:
-            for feature_idxs in iter_term_features:
-                strength = interaction_detector.calc_interaction_strength(
-                    feature_idxs, interaction_options, min_samples_leaf,
-                )
-                interaction_strengths.append((strength, feature_idxs))
-
-        interaction_strengths.sort(reverse=True)
-        return list(map(operator.itemgetter(1), interaction_strengths))
 
 
 class DPUtils:
