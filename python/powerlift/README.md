@@ -105,3 +105,8 @@ experiment = Experiment(store, "SVM vs RF")
 executor = experiment.run(benchmark, trials, timeout=10, executor=executor)
 executor.join()
 ```
+
+## Install
+`pip install powerlift`
+
+That's it, go get 'em boss.

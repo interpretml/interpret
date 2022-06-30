@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="powerlift",
-    version="0.0.1",
+    version="0.0.2",
     author="InterpretML Team",
     author_email="interpret@microsoft.com",
     description="Interactive Benchmarking for Machine Learning.",
