@@ -2239,25 +2239,25 @@ def test_eval_terms():
     ]
 
     term_features = []
-    additive_terms = []
+    term_scores = []
 
     term_features.append([0])
-    additive_terms.append(np.array([0.1, 0.2, 0.3, 0], dtype=np.float64))
+    term_scores.append(np.array([0.1, 0.2, 0.3, 0], dtype=np.float64))
 
     term_features.append([1])
-    additive_terms.append(np.array([0.01, 0.02, 0.03, 0.04, 0], dtype=np.float64))
+    term_scores.append(np.array([0.01, 0.02, 0.03, 0.04, 0], dtype=np.float64))
 
     term_features.append([2])
-    additive_terms.append(np.array([0.001, 0.002, 0.003, 0], dtype=np.float64))
+    term_scores.append(np.array([0.001, 0.002, 0.003, 0], dtype=np.float64))
 
     term_features.append([0, 1])
-    additive_terms.append(np.array([[0.0001, 0.0002, 0.0003, 0], [0.0004, 0.0005, 0.0006, 0], [0, 0, 0, 0]], dtype=np.float64))
+    term_scores.append(np.array([[0.0001, 0.0002, 0.0003, 0], [0.0004, 0.0005, 0.0006, 0], [0, 0, 0, 0]], dtype=np.float64))
 
     term_features.append([0, 2])
-    additive_terms.append(np.array([[0.00001, 0.00002, 0.00003, 0], [0.00004, 0.00005, 0.00006, 0], [0, 0, 0, 0]], dtype=np.float64))
+    term_scores.append(np.array([[0.00001, 0.00002, 0.00003, 0], [0.00004, 0.00005, 0.00006, 0], [0, 0, 0, 0]], dtype=np.float64))
 
     term_features.append([0, 1, 2])
-    additive_terms.append(np.array([[[0.000001, 0.000002, 0], [0.000003, 0.000004, 0], [0, 0, 0]], [[0.000005, 0.000006, 0], [0.000007, 0.000008, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], dtype=np.float64))
+    term_scores.append(np.array([[[0.000001, 0.000002, 0], [0.000003, 0.000004, 0], [0, 0, 0]], [[0.000005, 0.000006, 0], [0.000007, 0.000008, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], dtype=np.float64))
 
     X, n_samples = clean_X(X)
 
@@ -2266,7 +2266,7 @@ def test_eval_terms():
     assert(bin_weights is not None)
 
     result = list(eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features))
-    result = [additive_terms[x[0]][tuple(x[1])] for x in result]
+    result = [term_scores[x[0]][tuple(x[1])] for x in result]
 
     assert(result[0][0] == 0.2)
     assert(result[0][1] == 0.3)
@@ -2300,7 +2300,7 @@ def test_eval_terms():
     assert(result[5][2] == 0.000008)
     assert(result[5][3] == 0)
 
-    scores = ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins, np.array([7], dtype=np.float64), additive_terms, term_features)
+    scores = ebm_decision_function(X, n_samples, feature_names_in, feature_types_in, bins, np.array([7], dtype=np.float64), term_scores, term_features)
     assert(math.isclose(scores[0], 7.221547))
     assert(math.isclose(scores[1], 7.332000))
     assert(math.isclose(scores[2], 7.233668))

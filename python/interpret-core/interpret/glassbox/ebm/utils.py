@@ -201,11 +201,11 @@ def _create_proportional_tensor(axis_weights):
         tensor.itemset(cell_idx, val)
     return tensor.reshape(shape)
 
-def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag_weights):
-    additive_terms = []
+def _process_terms(n_classes, n_samples, bagged_scores, bin_weights, bag_weights):
+    term_scores = []
     term_standard_deviations = []
-    new_bagged_additive_terms = []
-    for score_tensors, weights in zip(bagged_additive_terms, bin_weights):
+    new_bagged_scores = []
+    for score_tensors, weights in zip(bagged_scores, bin_weights):
         # if the missing/unknown bin has zero weight then whatever number was generated via boosting is 
         # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons 
         tensor_bags = []
@@ -214,7 +214,7 @@ def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag
             _restore_missing_value_zeros2(tensor_copy, weights)
             tensor_bags.append(tensor_copy)
         score_tensors = np.array(tensor_bags, np.float64) # replace it to get stddev of 0 for weight of 0
-        new_bagged_additive_terms.append(score_tensors)
+        new_bagged_scores.append(score_tensors)
 
         # TODO PK: shouldn't we be zero centering each score tensor first before taking the standard deviation
         # It's possible to shift scores arbitary to the intercept, so we should be able to get any desired stddev
@@ -222,16 +222,16 @@ def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag
         if (bag_weights == bag_weights[0]).all():
             # if all the bags have the same total weight we can avoid some numeracy issues
             # by using a non-weighted standard deviation
-            additive_terms.append(np.average(score_tensors, axis=0))
+            term_scores.append(np.average(score_tensors, axis=0))
             term_standard_deviations.append(np.std(score_tensors, axis=0))
         else:
-            additive_terms.append(np.average(score_tensors, axis=0, weights=bag_weights))
+            term_scores.append(np.average(score_tensors, axis=0, weights=bag_weights))
             term_standard_deviations.append(_weighted_std(score_tensors, axis=0, weights=bag_weights))
 
     intercept = np.zeros(Native.get_count_scores_c(n_classes), np.float64)
 
     if n_classes <= 2:
-        for scores, weights in zip(additive_terms, bin_weights):
+        for scores, weights in zip(term_scores, bin_weights):
             score_mean = np.average(scores, weights=weights)
             scores -= score_mean
 
@@ -239,9 +239,9 @@ def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag
             intercept += score_mean
     else:
         # Postprocess model graphs for multiclass
-        multiclass_postprocess2(n_classes, n_samples, additive_terms, intercept, bin_weights)
+        multiclass_postprocess2(n_classes, n_samples, term_scores, intercept, bin_weights)
 
-    for scores, weights in zip(additive_terms, bin_weights):
+    for scores, weights in zip(term_scores, bin_weights):
         # set these to zero again since zero-centering them causes the missing/unknown to shift away from zero
         _restore_missing_value_zeros2(scores, weights)
 
@@ -249,7 +249,7 @@ def _process_terms(n_classes, n_samples, bagged_additive_terms, bin_weights, bag
         # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
         intercept = float(intercept)
 
-    return additive_terms, term_standard_deviations, intercept, new_bagged_additive_terms
+    return term_scores, term_standard_deviations, intercept, new_bagged_scores
 
 def _generate_term_names(feature_names, term_features):
     return [" & ".join(feature_names[i] for i in grp) for grp in term_features]
@@ -799,9 +799,9 @@ def merge_ebms(models):
         model_weights.append(avg_weight)
 
         n_outer_bags = -1
-        if hasattr(model, 'bagged_additive_terms_'):
-            if 0 < len(model.bagged_additive_terms_):
-                n_outer_bags = len(model.bagged_additive_terms_[0])
+        if hasattr(model, 'bagged_scores_'):
+            if 0 < len(model.bagged_scores_):
+                n_outer_bags = len(model.bagged_scores_[0])
 
         model_bag_weights = getattr(model, 'bag_weights_', None)
         if model_bag_weights is None:
@@ -815,7 +815,7 @@ def merge_ebms(models):
         bag_weights.extend(model_bag_weights)
     # this attribute wasn't available in the original model since we can calculate it for non-merged
     # models, but once a model is merged we need to preserve it for future merging or other uses
-    # of the ebm.bagged_additive_terms_ attribute
+    # of the ebm.bagged_scores_ attribute
     ebm.bag_weights_ = bag_weights
 
     fg_dicts = []
@@ -835,7 +835,7 @@ def merge_ebms(models):
 
 
     ebm.bin_weights_ = []
-    ebm.bagged_additive_terms_ = []
+    ebm.bagged_scores_ = []
     for sorted_fg in sorted_fgs:
         # since interactions are often automatically generated, we'll often always have 
         # interaction mismatches where an interaction will be in one model, but not the other.  
@@ -896,17 +896,17 @@ def merge_ebms(models):
             additive_shape = tuple(list(additive_shape) + [n_classes])
 
         new_bin_weights = []
-        new_bagged_additive_terms = []
+        new_bagged_scores = []
         for model_idx, model, fg_dict, model_weight in zip(count(), models, fg_dicts, model_weights):
             n_outer_bags = -1
-            if hasattr(model, 'bagged_additive_terms_'):
-                if 0 < len(model.bagged_additive_terms_):
-                    n_outer_bags = len(model.bagged_additive_terms_[0])
+            if hasattr(model, 'bagged_scores_'):
+                if 0 < len(model.bagged_scores_):
+                    n_outer_bags = len(model.bagged_scores_[0])
 
             term_idx = fg_dict.get(sorted_fg)
             if term_idx is None:
                 new_bin_weights.append(model_weight * bin_weight_percentages)
-                new_bagged_additive_terms.extend(n_outer_bags * [np.zeros(additive_shape, np.float64)])
+                new_bagged_scores.extend(n_outer_bags * [np.zeros(additive_shape, np.float64)])
             else:
                 harmonized_bin_weights = _harmonize_tensor(
                     sorted_fg,
@@ -921,7 +921,7 @@ def merge_ebms(models):
                 )
                 new_bin_weights.append(harmonized_bin_weights)
                 for bag_idx in range(n_outer_bags):
-                    harmonized_bagged_additive_terms = _harmonize_tensor(
+                    harmonized_bagged_scores = _harmonize_tensor(
                         sorted_fg,
                         ebm.feature_bounds_,
                         ebm.bins_, 
@@ -929,17 +929,17 @@ def merge_ebms(models):
                         old_bounds[model_idx],
                         old_bins[model_idx],
                         old_mapping[model_idx],
-                        model.bagged_additive_terms_[term_idx][bag_idx], 
+                        model.bagged_scores_[term_idx][bag_idx], 
                         model.bin_weights_[term_idx] # we use these to weigh distribution of scores for mulple bins
                     )
-                    new_bagged_additive_terms.append(harmonized_bagged_additive_terms)
+                    new_bagged_scores.append(harmonized_bagged_scores)
         ebm.bin_weights_.append(np.sum(new_bin_weights, axis=0))
-        ebm.bagged_additive_terms_.append(np.array(new_bagged_additive_terms, np.float64))
+        ebm.bagged_scores_.append(np.array(new_bagged_scores, np.float64))
 
-    ebm.additive_terms_, ebm.term_standard_deviations_, ebm.intercept_, ebm.bagged_additive_terms_ = _process_terms(
+    ebm.term_scores_, ebm.term_standard_deviations_, ebm.intercept_, ebm.bagged_scores_ = _process_terms(
         n_classes, 
         ebm.n_samples_, 
-        ebm.bagged_additive_terms_, 
+        ebm.bagged_scores_, 
         ebm.bin_weights_,
         ebm.bag_weights_
     )

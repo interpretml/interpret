@@ -37,8 +37,8 @@ warnings.warn = warn
 def valid_ebm(ebm):
     assert ebm.term_features_[0] == (0,)
 
-    for additive_term in ebm.additive_terms_:
-        all_finite = np.isfinite(additive_term).all()
+    for term_scores in ebm.term_scores_:
+        all_finite = np.isfinite(term_scores).all()
         assert all_finite
 
 def _smoke_test_explanations(global_exp, local_exp, port):
@@ -221,8 +221,8 @@ def test_prefit_ebm():
     clf = ExplainableBoostingClassifier(n_jobs=1, interactions=0, max_rounds=0)
     clf.fit(X, y)
 
-    for additive_term in clf.additive_terms_:
-        has_non_zero = np.any(additive_term)
+    for term_scores in clf.term_scores_:
+        has_non_zero = np.any(term_scores)
         assert not has_non_zero
 
 
@@ -736,13 +736,13 @@ def test_json_classification():
     max_val = max(clf.bins_[0][0].values())
     clf.bins_[0][0] = { key: value if value != max_val else max_val - 1 for key, value in clf.bins_[0][0].items() }
 
-    clf.additive_terms_[0] = np.delete(clf.additive_terms_[0], 1)
-    clf.additive_terms_[0][1] = -np.inf
-    clf.additive_terms_[0][2] = np.inf
-    clf.additive_terms_[0][3] = np.nan
+    clf.term_scores_[0] = np.delete(clf.term_scores_[0], 1)
+    clf.term_scores_[0][1] = -np.inf
+    clf.term_scores_[0][2] = np.inf
+    clf.term_scores_[0][3] = np.nan
 
     clf.term_standard_deviations_[0] = np.delete(clf.term_standard_deviations_[0], 1)
-    clf.bagged_additive_terms_[0] = np.array([np.delete(clf.bagged_additive_terms_[0][0], 1), np.delete(clf.bagged_additive_terms_[0][1], 1), np.delete(clf.bagged_additive_terms_[0][2], 1)])
+    clf.bagged_scores_[0] = np.array([np.delete(clf.bagged_scores_[0][0], 1), np.delete(clf.bagged_scores_[0][1], 1), np.delete(clf.bagged_scores_[0][2], 1)])
 
     clf.bin_counts_[0] = np.delete(clf.bin_counts_[0], 1)
     clf.bin_weights_[0] = np.delete(clf.bin_weights_[0], 1)
@@ -777,9 +777,9 @@ def test_json_dp_classification():
     feature_types[0] = 'nominal'
     clf = DPExplainableBoostingClassifier(max_bins=10, feature_types=feature_types)
     clf.fit(X, y)
-    clf.additive_terms_[0][0] = np.nan
-    clf.additive_terms_[0][1] = np.inf
-    clf.additive_terms_[0][2] = -np.inf
+    clf.term_scores_[0][0] = np.nan
+    clf.term_scores_[0][1] = np.inf
+    clf.term_scores_[0][2] = -np.inf
     json_text = clf._to_json(properties='all')
 
 def test_json_dp_regression():
