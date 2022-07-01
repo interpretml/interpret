@@ -5,6 +5,7 @@
 #include "precompiled_header_cpp.hpp"
 
 #include <stddef.h> // size_t, ptrdiff_t
+#include <string.h> // memcpy
 
 #include "ebm_native.h"
 #include "logging.h"

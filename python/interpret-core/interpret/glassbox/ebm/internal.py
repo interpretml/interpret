@@ -171,6 +171,23 @@ class Native:
     def generate_random_number(self, random_seed, stage_randomization_mix):
         return self._unsafe.GenerateRandomNumber(random_seed, stage_randomization_mix)
 
+    def generate_gaussian_random(self, is_deterministic, random_seed, stddev, count):
+        random_seed = ct.c_int32(random_seed)
+        random_numbers = np.empty(count, dtype=np.float64, order="C")
+
+        return_code = self._unsafe.GenerateGaussianRandom(
+            is_deterministic,
+            random_seed,
+            stddev,
+            count,
+            Native._make_pointer(random_numbers, np.float64)
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "GenerateGaussianRandom")
+
+        return random_numbers
+
     def sample_without_replacement(
         self, 
         random_seed, 
@@ -548,6 +565,20 @@ class Native:
             ct.c_int32,
         ]
         self._unsafe.GenerateRandomNumber.restype = ct.c_int32
+
+        self._unsafe.GenerateGaussianRandom.argtypes = [
+            # int64_t isDeterministic
+            ct.c_int64,
+            # int32_t randomSeed
+            ct.c_int32,
+            # double stddev
+            ct.c_double,
+            # int64_t count
+            ct.c_int64,
+            # double * randomOut
+            ct.c_void_p,
+        ]
+        self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
 
         self._unsafe.SampleWithoutReplacement.argtypes = [
             # int32_t randomSeed

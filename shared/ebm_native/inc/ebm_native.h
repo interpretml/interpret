@@ -226,6 +226,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION Gener
    SeedEbmType stageRandomizationMix
 );
 
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GenerateGaussianRandom(
+   BoolEbmType isDeterministic,
+   SeedEbmType randomSeed,
+   double stddev,
+   IntEbmType count,
+   double * randomOut
+);
+
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistogramCutCount(
    IntEbmType countSamples,
    const double * featureValues,

@@ -298,6 +298,7 @@ EXIT /B 0
     <ClInclude Include="common_c\common_c.h" />
     <ClInclude Include="compute_accessors.hpp" />
     <ClInclude Include="data_set_shared.hpp" />
+    <ClInclude Include="GaussianDistribution.hpp" />
     <ClInclude Include="InteractionShell.hpp" />
     <ClInclude Include="InteractionCore.hpp" />
     <ClInclude Include="BoosterCore.hpp" />
@@ -343,6 +344,7 @@ EXIT /B 0
     <ClCompile Include="CutUniform.cpp" />
     <ClCompile Include="CutWinsorized.cpp" />
     <ClCompile Include="BoosterShell.cpp" />
+    <ClCompile Include="GaussianDistribution.cpp" />
     <ClCompile Include="InteractionShell.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
     <ClCompile Include="PartitionRandomBoosting.cpp" />

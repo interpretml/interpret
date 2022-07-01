@@ -38,6 +38,7 @@
       SuggestGraphBounds;
       CleanFloats;
       GenerateRandomNumber;
+      GenerateGaussianRandom;
       SampleWithoutReplacement;
       StratifiedSamplingWithoutReplacement;
    local: *;

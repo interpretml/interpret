@@ -10,6 +10,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 #include <cmath> // std::exp, std::log
+#include <string.h> // memcpy
 
 #include "ebm_native.h"
 #include "logging.h"

@@ -6,7 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
-#include <string.h> // strchr, memmove
+#include <string.h> // strchr, memmove, memcpy
 
 #include "ebm_native.h"
 #include "logging.h"

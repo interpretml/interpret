@@ -7,6 +7,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
+#include <string.h> // memcpy
 
 #include "ebm_native.h"
 #include "logging.h"

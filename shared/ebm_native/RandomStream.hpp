@@ -27,6 +27,7 @@ constexpr uint64_t k_quantileRandomizationMix = uint64_t { 5744215463699302938u 
 constexpr uint64_t k_boosterRandomizationMix = uint64_t { 9397611943394063143u };
 constexpr uint64_t k_samplingWithoutReplacementRandomizationMix = uint64_t { 10077040353197036781u };
 constexpr uint64_t k_stratifiedSamplingWithoutReplacementRandomizationMix = uint64_t { 8537734853377176632u };
+constexpr uint64_t k_gaussianRandomizationMix = uint64_t { 5329481091937718381u };
 
 class RandomDeterministic final {
    // If the RandomDeterministic object is stored inside a class/struct, and used inside a hotspot loop, to get the best 
