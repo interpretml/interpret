@@ -104,6 +104,42 @@ public:
 
       return ret;
    }
+
+   INLINE_ALWAYS T NextFast(const T maxPlusOne) {
+      EBM_ASSERT(T { 1 } <= maxPlusOne);
+      return Next(maxPlusOne - T { 1 });
+   }
+
+   INLINE_ALWAYS SeedEbmType NextSeed() {
+      static_assert(std::numeric_limits<SeedEbmType>::lowest() < SeedEbmType { 0 },
+         "SeedEbmType must be signed");
+
+      // we only allow you to generate a seed on uint32_t instanciations
+      EBM_ASSERT(std::numeric_limits<T>::max() == std::numeric_limits<uint32_t>::max());
+
+      // this is meant to result in a positive value that is of the negation of 
+      // std::numeric_limits<SeedEbmType>::lowest(), so -std::numeric_limits<SeedEbmType>::lowest().
+      // but the pitfall is that for numbers expressed in twos complement, there is one more
+      // negative number than there are positive numbers, so we subtract one (adding to a negated number), then add 
+      // one to keep the numbers in bounds.  If the compiler is using some non-twos complement
+      // representation, then we'll get a compile error in the static_asserts below or in the initialization
+      // of uint32_t below
+      constexpr uint32_t negativeOfLowest =
+         uint32_t { -(std::numeric_limits<SeedEbmType>::lowest() + SeedEbmType { 1 }) } + uint32_t { 1 };
+
+      static_assert(uint32_t { std::numeric_limits<SeedEbmType>::max() } ==
+         negativeOfLowest - uint32_t { 1 }, "max must == lowestInUnsigned - 1");
+
+      const uint32_t randomNumber = Next();
+      // adding negativeOfLowest and then adding lowest are a no-op as far as affecting the value of randomNumber
+      // but since adding randomNumber + negativeOfLowest (two unsigned values) is legal in C++, and since we'll
+      // always end up with a value that can be expressed as an SeedEbmType after that addition we don't have
+      // and undefined behavior here.  The compiler should be smart enough to eliminate this operation.
+      const SeedEbmType ret = randomNumber < negativeOfLowest ? static_cast<SeedEbmType>(randomNumber) :
+         static_cast<SeedEbmType>(randomNumber + negativeOfLowest) + std::numeric_limits<SeedEbmType>::lowest();
+
+      return ret;
+   }
 };
 
 } // DEFINED_ZONE_NAME

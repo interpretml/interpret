@@ -168,11 +168,21 @@ class Native:
         self._unsafe.CleanFloats(len(val_array), Native._make_pointer(val_array, np.float64))
         return val_array[0]
 
-    def generate_random_number(self, random_seed, stage_randomization_mix):
-        return self._unsafe.GenerateRandomNumber(random_seed, stage_randomization_mix)
+    def generate_deterministic_seed(self, random_seed, stage_randomization_mix):
+        return self._unsafe.GenerateDeterministicSeed(random_seed, stage_randomization_mix)
 
-    def generate_gaussian_random(self, is_deterministic, random_seed, stddev, count):
-        random_seed = ct.c_int32(random_seed)
+    def generate_nondeterministic_seed(self):
+        random_seed = ct.c_int32(0)
+        return_code = self._unsafe.GenerateNondeterministicSeed(ct.byref(random_seed))
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "GenerateNondeterministicSeed")
+
+        return random_seed.value
+
+    def generate_gaussian_random(self, random_seed, stddev, count):
+        is_deterministic = random_seed is not None
+        random_seed = 0 if random_seed is None else random_seed
         random_numbers = np.empty(count, dtype=np.float64, order="C")
 
         return_code = self._unsafe.GenerateGaussianRandom(
@@ -195,18 +205,23 @@ class Native:
         count_validation_samples
     ):
         count_samples = count_training_samples + count_validation_samples
-        random_seed = ct.c_int32(random_seed)
+        is_deterministic = random_seed is not None
+        random_seed = 0 if random_seed is None else random_seed
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
 
         sample_counts_out = np.empty(count_samples, dtype=np.int8, order="C")
 
-        self._unsafe.SampleWithoutReplacement(
+        return_code = self._unsafe.SampleWithoutReplacement(
+            is_deterministic,
             random_seed,
             count_training_samples,
             count_validation_samples,
             Native._make_pointer(sample_counts_out, np.int8),
         )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SampleWithoutReplacement")
 
         return sample_counts_out
 
@@ -223,7 +238,11 @@ class Native:
         if len(targets) != count_samples:
             raise ValueError("count_training_samples + count_validation_samples should be equal to len(targets)")
 
-        random_seed = ct.c_int32(random_seed)
+        if random_seed is None:
+            # we don't call this function in differential privacy, so use a non-deterministic seed
+            # to generate non-deterministic outputs since it doesn't need to be cryptographically secure
+            random_seed = self.generate_nondeterministic_seed()
+
         count_target_classes = ct.c_int64(count_target_classes)
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
@@ -558,13 +577,19 @@ class Native:
         ]
         self._unsafe.CleanFloats.restype = None
 
-        self._unsafe.GenerateRandomNumber.argtypes = [
+        self._unsafe.GenerateDeterministicSeed.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
             # int64_t stageRandomizationMix
             ct.c_int32,
         ]
-        self._unsafe.GenerateRandomNumber.restype = ct.c_int32
+        self._unsafe.GenerateDeterministicSeed.restype = ct.c_int32
+
+        self._unsafe.GenerateNondeterministicSeed.argtypes = [
+            # int32_t * randomSeedOut
+            ct.POINTER(ct.c_int32),
+        ]
+        self._unsafe.GenerateNondeterministicSeed.restype = ct.c_int32
 
         self._unsafe.GenerateGaussianRandom.argtypes = [
             # int64_t isDeterministic
@@ -581,6 +606,8 @@ class Native:
         self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
 
         self._unsafe.SampleWithoutReplacement.argtypes = [
+            # int64_t isDeterministic
+            ct.c_int64,
             # int32_t randomSeed
             ct.c_int32,
             # int64_t countTrainingSamples
@@ -590,7 +617,7 @@ class Native:
             # int8_t * sampleCountsOut
             ct.c_void_p,
         ]
-        self._unsafe.SampleWithoutReplacement.restype = None
+        self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
 
         self._unsafe.StratifiedSamplingWithoutReplacement.argtypes = [
             # int32_t randomSeed
@@ -1100,10 +1127,25 @@ class Booster(AbstractContextManager):
             if self.scores.shape[0] != n_scores:  # pragma: no cover
                 raise ValueError("scores should have the same length as the number of non-zero bag entries")
 
+        random_seed = self.random_state
+        if random_seed is None:
+            # We use the seed for three things during boosting and none of them require a cryptographically
+            # secure random number generator.  We use the seed for:
+            #   - Creating inner bags. Inner bags are not used in DP-EBMs
+            #   - Deciding ties in regular boosting, but we use random boosting in DP-EBMs, which doesn't have ties
+            #   - Deciding split points during random boosting.  The DP-EBM proof doesn't rely on the 
+            #     randomness of the chosen split points. We could allow an attacker to choose the split points, 
+            #     and privacy would be preserved. The randomness is only used for generating diversity in the 
+            #     split locations.
+            #
+            # Since we do not need high-quality non-determinism, generate a non-deterministic seed
+            #
+            random_seed = native.generate_nondeterministic_seed()
+
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
-            self.random_state,
+            random_seed,
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(self.scores, np.float64, 2 if n_class_scores > 1 else 1, True),

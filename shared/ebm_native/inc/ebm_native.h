@@ -221,9 +221,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetT
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION CleanFloats(IntEbmType count, double * valsInOut);
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateDeterministicSeed(
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix
+);
+
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GenerateNondeterministicSeed(
+   SeedEbmType * randomSeedOut
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GenerateGaussianRandom(
@@ -374,7 +378,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Soft
    double * probabilitiesOut
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
+   BoolEbmType isDeterministic,
    SeedEbmType randomSeed,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,

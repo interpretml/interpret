@@ -222,7 +222,7 @@ IntEbmType CountDoubles(const SEXP items) {
 
 }
 
-SEXP GenerateRandomNumber_R(
+SEXP GenerateDeterministicSeed_R(
    SEXP randomSeed,
    SEXP stageRandomizationMix
 ) {
@@ -230,18 +230,18 @@ SEXP GenerateRandomNumber_R(
    EBM_ASSERT(nullptr != stageRandomizationMix);
 
    if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR GenerateRandomNumber_R !IsSingleIntVector(randomSeed)");
+      LOG_0(TraceLevelError, "ERROR GenerateDeterministicSeed_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
    const SeedEbmType randomSeedLocal = INTEGER(randomSeed)[0];
 
    if(!IsSingleIntVector(stageRandomizationMix)) {
-      LOG_0(TraceLevelError, "ERROR GenerateRandomNumber_R !IsSingleIntVector(stageRandomizationMix)");
+      LOG_0(TraceLevelError, "ERROR GenerateDeterministicSeed_R !IsSingleIntVector(stageRandomizationMix)");
       return R_NilValue;
    }
    const SeedEbmType stageRandomizationMixLocal = INTEGER(stageRandomizationMix)[0];
 
-   const SeedEbmType retSeed = GenerateRandomNumber(randomSeedLocal, stageRandomizationMixLocal);
+   const SeedEbmType retSeed = GenerateDeterministicSeed(randomSeedLocal, stageRandomizationMixLocal);
 
    SEXP ret = PROTECT(allocVector(INTSXP, R_xlen_t { 1 }));
    INTEGER(ret)[0] = retSeed;
@@ -438,6 +438,8 @@ SEXP SampleWithoutReplacement_R(
    EBM_ASSERT(nullptr != countValidationSamples);
    EBM_ASSERT(nullptr != sampleCountsOut);
 
+   ErrorEbmType error;
+
    if(!IsSingleIntVector(randomSeed)) {
       LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
@@ -488,12 +490,16 @@ SEXP SampleWithoutReplacement_R(
          reinterpret_cast<IntEbmType *>(R_alloc(cSampleCountsOut, static_cast<int>(sizeof(IntEbmType))));
       EBM_ASSERT(nullptr != aSampleCounts); // this can't be nullptr since R_alloc uses R error handling
 
-      SampleWithoutReplacement(
+      error = SampleWithoutReplacement(
          randomSeedLocal,
          countTrainingSamplesIntEbmType,
          countValidationSamplesIntEbmType,
          aSampleCounts
       );
+
+      if(Error_None != error) {
+         return R_NilValue;
+      }
 
       double * pSampleCountsOut = REAL(sampleCountsOut);
       const IntEbmType * pSampleCounts = aSampleCounts;
@@ -1613,7 +1619,7 @@ SEXP FreeInteractionDetector_R(
 }
 
 static const R_CallMethodDef g_exposedFunctions[] = {
-   { "GenerateRandomNumber_R", (DL_FUNC)&GenerateRandomNumber_R, 2 },
+   { "GenerateDeterministicSeed_R", (DL_FUNC)&GenerateDeterministicSeed_R, 2 },
    { "CutQuantile_R", (DL_FUNC)&CutQuantile_R, 4 },
    { "Discretize_R", (DL_FUNC)&Discretize_R, 3 },
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },

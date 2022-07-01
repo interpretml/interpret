@@ -117,7 +117,7 @@ ebm_classify <- function(
    scores_val <- vector("numeric", num_scores * validation_size)
 
    for(i_outer_bag in 1:outer_bags) {
-      random_state <- generate_random_number(random_state, 1416147523)
+      random_state <- generate_deterministic_seed(random_state, 1416147523)
       # WARNING: sample_counts is modified in-place
       sample_without_replacement(random_state, train_size, validation_size, sample_counts)
 

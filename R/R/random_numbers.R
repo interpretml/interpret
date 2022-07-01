@@ -25,13 +25,13 @@ normalize_initial_random_seed <- function(seed) {
    return(seed)
 }
 
-generate_random_number <- function(random_seed, stage_randomization_mix) {
+generate_deterministic_seed <- function(random_seed, stage_randomization_mix) {
    random_seed <- as.integer(random_seed)
    stage_randomization_mix <- as.integer(stage_randomization_mix)
 
-   ret <- .Call(GenerateRandomNumber_R, random_seed, stage_randomization_mix)
+   ret <- .Call(GenerateDeterministicSeed_R, random_seed, stage_randomization_mix)
    if(is.null(ret)) {
-      stop("error in GenerateRandomNumber_R")
+      stop("error in GenerateDeterministicSeed_R")
    }
    return(ret)
 }

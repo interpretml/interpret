@@ -388,8 +388,13 @@ class BaseEBM(BaseEstimator):
         bag_weights = []
         bags = []
         for _ in range(self.outer_bags):
-            bagged_seed = native.generate_random_number(bagged_seed, 1416147523)
-            bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
+            bagged_seed = native.generate_deterministic_seed(bagged_seed, 1416147523)
+            bag = EBMUtils.make_bag(
+                y, 
+                self.validation_size, 
+                bagged_seed, 
+                is_classifier(self) and not is_differential_privacy
+            )
             bags.append(bag)
             if bag is None:
                 if sample_weight is None:
@@ -420,7 +425,7 @@ class BaseEBM(BaseEstimator):
         bagged_seed = init_seed
         parallel_args = []
         for idx in range(self.outer_bags):
-            bagged_seed = native.generate_random_number(bagged_seed, 1416147523)
+            bagged_seed = native.generate_deterministic_seed(bagged_seed, 1416147523)
             parallel_args.append(
                 (
                     dataset,
@@ -559,7 +564,7 @@ class BaseEBM(BaseEstimator):
             bagged_seed = init_seed
             parallel_args = []
             for idx in range(self.outer_bags):
-                bagged_seed = native.generate_random_number(bagged_seed, 1416147523)
+                bagged_seed = native.generate_deterministic_seed(bagged_seed, 1416147523)
                 parallel_args.append(
                     (
                         dataset,

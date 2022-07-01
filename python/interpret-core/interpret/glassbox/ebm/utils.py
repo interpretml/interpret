@@ -1030,7 +1030,7 @@ class EBMUtils:
         return cuts
 
     @staticmethod
-    def make_bag(y, test_size, random_state, is_classification):
+    def make_bag(y, test_size, random_state, is_stratified):
         # all test/train splits should be done with this function to ensure that
         # if we re-generate the train/test splits that they are generated exactly
         # the same as before
@@ -1052,7 +1052,7 @@ class EBMUtils:
             native = Native.get_native_singleton()
 
             # Adapt test size if too small relative to number of classes
-            if is_classification:
+            if is_stratified:
                 y_uniq = len(set(y))
                 if n_test_samples < y_uniq:  # pragma: no cover
                     warnings.warn(

@@ -37,7 +37,8 @@
       Softmax;
       SuggestGraphBounds;
       CleanFloats;
-      GenerateRandomNumber;
+      GenerateDeterministicSeed;
+      GenerateNondeterministicSeed;
       GenerateGaussianRandom;
       SampleWithoutReplacement;
       StratifiedSamplingWithoutReplacement;
