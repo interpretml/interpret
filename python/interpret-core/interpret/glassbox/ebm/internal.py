@@ -239,7 +239,7 @@ class Native:
             raise ValueError("count_training_samples + count_validation_samples should be equal to len(targets)")
 
         if random_seed is None:
-            # we don't call this function in differential privacy, so use a non-deterministic seed
+            # We don't call this function in differential privacy, so use a non-deterministic seed
             # to generate non-deterministic outputs since it doesn't need to be cryptographically secure
             random_seed = self.generate_nondeterministic_seed()
 
@@ -1129,14 +1129,15 @@ class Booster(AbstractContextManager):
 
         random_seed = self.random_state
         if random_seed is None:
-            # We use the seed for three things during boosting and none of them require a cryptographically
-            # secure random number generator.  We use the seed for:
+            # We use the seed for three things during boosting, and none of them requires 
+            # a cryptographically secure random number generator.  We use the seed for:
             #   - Creating inner bags. Inner bags are not used in DP-EBMs
             #   - Deciding ties in regular boosting, but we use random boosting in DP-EBMs, which doesn't have ties
-            #   - Deciding split points during random boosting.  The DP-EBM proof doesn't rely on the 
-            #     randomness of the chosen split points. We could allow an attacker to choose the split points, 
-            #     and privacy would be preserved. The randomness is only used for generating diversity in the 
-            #     split locations.
+            #   - Deciding split points during random boosting. The DP-EBM proof doesn't rely on the perfect 
+            #     randomness of the chosen split points. It only relies on the fact that the splits are 
+            #     chosen independently of the data. We could allow an attacker to choose the split points, 
+            #     and privacy would be preserved provided the attacker was not able to look at the data when 
+            #     choosing the splits.
             #
             # Since we do not need high-quality non-determinism, generate a non-deterministic seed
             #

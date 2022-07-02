@@ -682,54 +682,15 @@ class BaseEBM(BaseEstimator):
 
         return self
 
-    def _to_json(self, properties='interpretable'):
-        """ Converts the model to a JSON representation.
+    def _to_inner_jsonable(self, properties='interpretable'):
+        """ Converts the inner model to a JSONable representation.
 
         Args:
             properties: 'minimal', 'interpretable', 'mergeable', 'all'
 
         Returns:
-            JSON string
+            JSONable object
         """
-
-        # NOTES: If we eventually want to record edits to EBMs within the same file, we should:
-        #        1) Have the final EBM section first.  This allows people to diff two models and the diffs for 
-        #           the current model will be at the top.  If people are comparing a non-edited model to an edited
-        #           model then they will be comparing the non-edited model to the current model, which is what we want.
-        #           When people open the file they'll see the current model, which will confuse people less.
-        #        2) Have the initial model second.  If the user is comparing two edited models derived from a single
-        #           initial model, then this section should be a big block of unchanged text which should help the
-        #           diffing tool retrack for both the initial model and the next section which contains the edits.
-        #        3) The edits, starting from the first edit to the last edit chronologically downwards from the 
-        #           "initial_model".  If someone diffs the models at various
-        #           stages of editing that were derived from a single model then the initial edits should be common
-        #           and show up in the diff as unchanged.  If one file has a superset of edits all the newest edits
-        #           will appear in the diff at the bottom as added.  If the two files diverge at some point then
-        #           the divergence point will be obvious since everything above will be shown as unchanged and
-        #           the changes will occur after that point
-        # - A non-edited EBM file should be saved with just the single JSON for the model and not an initial and 
-        #   final model.  The only section should be marked with the tag "ebm" so that tools that read in EBMs
-        #   Are compatible with both editied and non-edited files.  The tools will always look for the "ebm"
-        #   section, which will be in both non-edited EBMs and edited EBMs at the top.
-        # - The file would look like this for edited EBMs:
-        #   {
-        #     "version": "1.0"
-        #     "ebm": { EBM_JSON }
-        #     "initial_ebm": { EBM_JSON }
-        #     "edits": [
-        #       { EDIT_JSON },
-        #       { EDIT_JSON },
-        #       { EDIT_JSON }
-        #     ]
-        #   }
-        # - The file would look like this for unedited EBMs:
-        #   {
-        #     "version": "1.0"
-        #     "ebm": { EBM_JSON }
-        #   }
-        # - In python, we could contain these in attributes called "initial_ebm" which would contain a fully formed ebm
-        #   and "edits", which would contain a list of the edits.  These fields wouldn't be present in a scikit-learn
-        #   generated EBM, but would appear if the user edited the EBM, or if they loaded one that had edits.
 
         if properties == 'minimal':
             level = 0
@@ -961,10 +922,84 @@ class BaseEBM(BaseEstimator):
             terms.append(term)
         j['terms'] = terms
 
+        return j
+
+    def _to_outer_jsonable(self, properties='interpretable'):
+        """ Converts the outer model to a JSONable representation.
+
+        Args:
+            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+
+        Returns:
+            JSONable object
+        """
+
+        # NOTES: When recording edits to the EBM within a single file, we should:
+        #        1) Have the final EBM section first.  This allows people to diff two models and the diffs for 
+        #           the current model (the most important information) will be at the top. If people are comparing a 
+        #           non-edited model to an edited model then they will be comparing the non-edited model to the 
+        #           current model, which is what we want. When people open the file they'll see the current model, 
+        #           which will confuse people less.
+        #        2) Have the initial model LAST.  This will help separate the final and inital model spacially.
+        #           Someone examining the models won't accidentlly stray as easily from the current model into the 
+        #           initial model while examining them. This also helps prevent the diffing tool from getting
+        #           confused and diffing parts of the final model with parts of the initial model if there are
+        #           substantial changes. Two final models that have the same initial model should then have a large
+        #           unmodified section at the bottom, which the diffing tool should easily identify and keep
+        #           together as one block since diffing tools look for longest unmodified sections of text
+        #        3) The edits in the MIDDLE, starting from the LAST edit to the FIRST edit chronologically.
+        #           If two models are derrived from the same initial model, then they will share a common initial
+        #           block of text at the bottom of the file. If the two models share a few edits, then the shared edits
+        #           will be at the bottom and will therefore form a larger block of unmodified text along with the
+        #           initial model.  Since diff tools look for longest unmodified blocks, this will gobble up the initial 
+        #           model and the initial edits together first, and thus leave the final models for comparison with
+        #           eachother. All edits should have a bi-directional nature so someone could start
+        #           from the final model and work backwards to the initial model, or vice versa. The overall file
+        #           can then be viewed as a reverse chronological ordering from the final model back to its
+        #           original/initial model.
+        # - A non-edited EBM file should be saved with just the single JSON for the model and not an initial and 
+        #   final model.  The only section should be marked with the tag "ebm" so that tools that read in EBMs
+        #   Are compatible with both editied and non-edited files.  The tools will always look for the "ebm"
+        #   section, which will be in both non-edited EBMs and edited EBMs at the top.
+        # - The file would look like this for an edited EBMs:
+        #   {
+        #     "version": "1.0"
+        #     "ebm": { FINAL_EBM_JSON }
+        #     "edits": [
+        #       { NEWEST_EDIT_JSON },
+        #       { MID_EDITs_JSON },
+        #       { OLDEST_EDIT_JSON }
+        #     ]
+        #     "initial_ebm": { INITIAL_EBM_JSON }
+        #   }
+        # - The file would look like this for an unedited EBMs:
+        #   {
+        #     "version": "1.0"
+        #     "ebm": { EBM_JSON }
+        #   }
+        # - In python, we could contain these in attributes called "initial_ebm" which would contain a fully formed ebm
+        #   and "edits", which would contain a list of the edits.  These fields wouldn't be present in a scikit-learn
+        #   generated EBM, but would appear if the user edited the EBM, or if they loaded one that had edits.
+
+        inner = self._to_inner_jsonable(properties)
+
         outer = {}
         outer['version'] = '1.0'
-        outer['ebm'] = j
+        outer['ebm'] = inner
 
+        return outer
+
+    def _to_json(self, properties='interpretable'):
+        """ Converts the model to a JSON representation.
+
+        Args:
+            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+
+        Returns:
+            JSON string
+        """
+
+        outer = self._to_outer_jsonable(properties)
         return json.dumps(outer, allow_nan=False, indent=2)
 
     def decision_function(self, X):
