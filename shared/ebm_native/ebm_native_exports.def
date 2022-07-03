@@ -35,7 +35,6 @@ EXPORTS
   CutWinsorized
   CutUniform
   Discretize
-  Softmax
   SuggestGraphBounds
   CleanFloats
   GenerateDeterministicSeed

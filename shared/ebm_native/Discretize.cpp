@@ -24,34 +24,6 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
-   IntEbmType countTargetClasses,
-   IntEbmType countSamples,
-   const double * logits,
-   double * probabilitiesOut
-) {
-   UNUSED(countTargetClasses);
-   UNUSED(countSamples);
-   UNUSED(logits);
-   UNUSED(probabilitiesOut);
-
-   return Error_UnexpectedInternal;
-
-   //if(2 != countTargetClasses) {
-   //   // TODO: handle multiclass
-   //   exit(1);
-   //};
-
-   //UNUSED(countTargetClasses); // TODO: use this
-   //for(size_t i = 0; i < static_cast<size_t>(countSamples); ++i) {
-   //   // NOTE: we use the non-approximate std::exp because we want our predictions to match what other softmax functions
-   //   // will generate instead of the approximation, and ordering is more sensitive to noise than boosting
-   //   const double odds = std::exp(logits[i]);
-   //   probabilitiesOut[i] = odds / (double { 1 } + odds);
-   //}
-   //return Error_None;
-}
-
 // Plan:
 //   - when making predictions, in the great majority of cases, we should serially determine the logits of each
 //     sample per feature and then later add those logits.  It's tempting to want to process more than one feature

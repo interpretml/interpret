@@ -2,9 +2,6 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// to minimize confusion, we try whenever possible to use common terms with scikit-learn:
-// https://scikit-learn.org/stable/glossary.html
-
 #ifndef EBM_NATIVE_H
 #define EBM_NATIVE_H
 
@@ -211,14 +208,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetLogMessag
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel);
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE const char * EBM_NATIVE_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel);
 
-// TODO: we should change our interface such that long running work items will return instantly but are working on
-//       a background thread.  The caller will get back a token to the work.  They can either start a number of
-//       work items simultaneously, or call a blocking function that waits on any/all work items to complete.
-//       The log in this world would be a circular buffer and wouldn't be writtent out unless the C++ code was
-//       controlling the main thread (either during calls to the non-blocking components, or while the caller is
-//       in the waiting function).  We would drop anything that exceeds the circular buffer.  This allows us to have
-//       threaded code inside non-threaded languages.
-
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION CleanFloats(IntEbmType count, double * valsInOut);
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateDeterministicSeed(
@@ -370,13 +359,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Extr
    IntEbmType * classCountsOut
 );
 
-
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Softmax(
-   IntEbmType countTargetClasses,
-   IntEbmType countSamples,
-   const double * logits,
-   double * probabilitiesOut
-);
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
    BoolEbmType isDeterministic,

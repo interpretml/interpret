@@ -879,19 +879,6 @@ class Native:
         self._unsafe.ExtractTargetClasses.restype = ct.c_int32
 
 
-        self._unsafe.Softmax.argtypes = [
-            # int64_t countTargetClasses
-            ct.c_int64,
-            # int64_t countSamples
-            ct.c_int64,
-            # double * logits
-            ct.c_void_p,
-            # double * probabilitiesOut
-            ct.c_void_p,
-        ]
-        self._unsafe.Softmax.restype = ct.c_int32
-
-
         self._unsafe.CreateBooster.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
