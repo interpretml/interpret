@@ -181,7 +181,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    SeedEbmType randomSeed,
    const void * dataSet,
    const BagEbmType * bag,
-   const double * predictorScores,
+   const double * initScores,
    IntEbmType countFeatureGroups,
    const IntEbmType * dimensionCounts,
    const IntEbmType * featureIndexes,
@@ -195,7 +195,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       "randomSeed=%" SeedEbmTypePrintf ", "
       "dataSet=%p, "
       "bag=%p, "
-      "predictorScores=%p, "
+      "initScores=%p, "
       "countFeatureGroups=%" IntEbmTypePrintf ", "
       "dimensionCounts=%p, "
       "featureIndexes=%p, "
@@ -206,7 +206,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       randomSeed,
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
-      static_cast<const void *>(predictorScores),
+      static_cast<const void *>(initScores),
       countFeatureGroups,
       static_cast<const void *>(dimensionCounts),
       static_cast<const void *>(featureIndexes),
@@ -276,7 +276,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       featureIndexes,
       static_cast<const unsigned char *>(dataSet),
       bag,
-      predictorScores
+      initScores
    );
    if(UNLIKELY(Error_None != error)) {
       BoosterShell::Free(pBoosterShell);

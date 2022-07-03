@@ -244,12 +244,12 @@ TEST_CASE("test random number generator equivalency") {
       }
    }
 
-   double modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   double termScore = test.GetCurrentTermScore(0, { 0 }, 0);
    // this is meant to be an exact check for this value.  We are testing here if we can generate identical results
    // accross different OSes and C/C++ libraries.  We specificed 2 inner samples, which will use the random generator
    // and if there are any differences between environments then this will catch those
 
-   CHECK_APPROX(modelValue, 0.31169469451667819);
+   CHECK_APPROX(termScore, 0.31169469451667819);
 }
 
 TEST_CASE("GenerateGaussianRandom") {

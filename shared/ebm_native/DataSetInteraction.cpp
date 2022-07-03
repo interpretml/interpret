@@ -30,7 +30,7 @@ extern ErrorEbmType InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
    const BagEbmType direction,
    const BagEbmType * const aBag,
-   const double * const aPredictorScores,
+   const double * const aInitScores,
    const size_t cSetSamples,
    FloatFast * const aGradientAndHessian
 );
@@ -49,7 +49,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
    const bool bAllocateHessians,
    const unsigned char * const pDataSetShared,
    const BagEbmType * const aBag,
-   const double * const aPredictorScores,
+   const double * const aInitScores,
    const size_t cSetSamples,
    FloatFast ** paGradientsAndHessiansOut
 ) {
@@ -85,7 +85,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbmType ConstructGradientsAndHessians(
       pDataSetShared,
       BagEbmType { 1 },
       aBag,
-      aPredictorScores,
+      aInitScores,
       cSetSamples,
       aGradientsAndHessians
    );
@@ -227,7 +227,7 @@ ErrorEbmType DataSetInteraction::Initialize(
    const unsigned char * const pDataSetShared,
    const size_t cAllSamples,
    const BagEbmType * const aBag,
-   const double * const aPredictorScores,
+   const double * const aInitScores,
    const size_t cSetSamples,
    const size_t cWeights,
    const size_t cFeatures
@@ -286,7 +286,7 @@ ErrorEbmType DataSetInteraction::Initialize(
          bAllocateHessians,
          pDataSetShared,
          aBag,
-         aPredictorScores,
+         aInitScores,
          cSetSamples,
          &m_aGradientsAndHessians
       );

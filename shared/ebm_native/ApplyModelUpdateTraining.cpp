@@ -62,8 +62,8 @@ public:
 
       FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatFast * pPredictorScores = pTrainingSet->GetPredictorScores();
-      const FloatFast * const pPredictorScoresEnd = pPredictorScores + cSamples * cVectorLength;
+      FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
+      const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cVectorLength;
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
@@ -75,23 +75,23 @@ public:
          do {
             // TODO : because there is only one bin for a zero feature feature group, we could move these values to the stack where the
             // compiler could reason about their visibility and optimize small arrays into registers
-            const FloatFast smallChangeToPredictorScores = *pValues;
+            const FloatFast scoreUpdate = *pValues;
             ++pValues;
-            // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-            const FloatFast predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+            // this will apply a small fix to our existing TrainingSampleScores, either positive or negative, whichever is needed
+            const FloatFast sampleScore = *pSampleScore + scoreUpdate;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                if(size_t { 0 } == iVector) {
-                  EBM_ASSERT(0 == smallChangeToPredictorScores);
-                  EBM_ASSERT(0 == predictorScore);
+                  EBM_ASSERT(0 == scoreUpdate);
+                  EBM_ASSERT(0 == sampleScore);
                }
             }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            *pPredictorScores = predictorScore;
-            ++pPredictorScores;
-            const FloatFast oneExp = ExpForMulticlass<false>(predictorScore);
+            *pSampleScore = sampleScore;
+            ++pSampleScore;
+            const FloatFast oneExp = ExpForMulticlass<false>(sampleScore);
             *pExpVector = oneExp;
             ++pExpVector;
             sumExp += oneExp;
@@ -116,7 +116,7 @@ public:
             pGradientAndHessian += 2;
             ++iVector;
          } while(iVector < cVectorLength);
-      } while(pPredictorScoresEnd != pPredictorScores);
+      } while(pSampleScoresEnd != pSampleScore);
    }
 };
 
@@ -138,21 +138,21 @@ public:
 
       FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatFast * pPredictorScores = pTrainingSet->GetPredictorScores();
-      const FloatFast * const pPredictorScoresEnd = pPredictorScores + cSamples;
-      const FloatFast smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[0];
+      FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
+      const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples;
+      const FloatFast scoreUpdate = aModelFeatureGroupUpdateTensor[0];
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
-         // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-         const FloatFast predictorScore = *pPredictorScores + smallChangeToPredictorScores;
-         *pPredictorScores = predictorScore;
-         ++pPredictorScores;
-         const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictorScore, targetData);
+         // this will apply a small fix to our existing TrainingSampleScores, either positive or negative, whichever is needed
+         const FloatFast sampleScore = *pSampleScore + scoreUpdate;
+         *pSampleScore = sampleScore;
+         ++pSampleScore;
+         const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(sampleScore, targetData);
          *pGradientAndHessian = gradient;
          *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
          pGradientAndHessian += 2;
-      } while(pPredictorScoresEnd != pPredictorScores);
+      } while(pSampleScoresEnd != pSampleScore);
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -175,10 +175,10 @@ public:
       // no hessian for regression
       FloatFast * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
       const FloatFast * const pGradientsEnd = pGradient + cSamples;
-      const FloatFast smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
+      const FloatFast scoreUpdate = aModelFeatureGroupUpdateTensor[0];
       do {
-         // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-         const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
+         // this will apply a small fix to our existing TrainingSampleScores, either positive or negative, whichever is needed
+         const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, scoreUpdate);
          *pGradient = gradient;
          ++pGradient;
       } while(pGradientsEnd != pGradient);
@@ -276,22 +276,22 @@ public:
       FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatFast * pPredictorScores = pTrainingSet->GetPredictorScores();
+      FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatFast * const pPredictorScoresTrueEnd = pPredictorScores + cSamples * cVectorLength;
-      const FloatFast * pPredictorScoresExit = pPredictorScoresTrueEnd;
-      const FloatFast * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
+      const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples * cVectorLength;
+      const FloatFast * pSampleScoresExit = pSampleScoresTrueEnd;
+      const FloatFast * pSampleScoresInnerEnd = pSampleScoresTrueEnd;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1) * cVectorLength;
-      EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
-      EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
+      pSampleScoresExit = pSampleScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1) * cVectorLength;
+      EBM_ASSERT(pSampleScore < pSampleScoresExit);
+      EBM_ASSERT(pSampleScoresExit < pSampleScoresTrueEnd);
 
       do {
-         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPack * cVectorLength;
-         // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
+         pSampleScoresInnerEnd = pSampleScore + cItemsPerBitPack * cVectorLength;
+         // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
@@ -307,23 +307,23 @@ public:
             FloatFast sumExp = 0;
             size_t iVector = 0;
             do {
-               const FloatFast smallChangeToPredictorScores = *pValues;
+               const FloatFast scoreUpdate = *pValues;
                ++pValues;
-               // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-               const FloatFast predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+               // this will apply a small fix to our existing TrainingSampleScores, either positive or negative, whichever is needed
+               const FloatFast sampleScore = *pSampleScore + scoreUpdate;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                   if(size_t { 0 } == iVector) {
-                     EBM_ASSERT(0 == smallChangeToPredictorScores);
-                     EBM_ASSERT(0 == predictorScore);
+                     EBM_ASSERT(0 == scoreUpdate);
+                     EBM_ASSERT(0 == sampleScore);
                   }
                }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               *pPredictorScores = predictorScore;
-               ++pPredictorScores;
-               const FloatFast oneExp = ExpForMulticlass<false>(predictorScore);
+               *pSampleScore = sampleScore;
+               ++pSampleScore;
+               const FloatFast oneExp = ExpForMulticlass<false>(sampleScore);
                *pExpVector = oneExp;
                ++pExpVector;
                sumExp += oneExp;
@@ -350,13 +350,13 @@ public:
             } while(iVector < cVectorLength);
 
             iTensorBinCombined >>= cBitsPerItemMax;
-         } while(pPredictorScoresInnerEnd != pPredictorScores);
-      } while(pPredictorScoresExit != pPredictorScores);
+         } while(pSampleScoresInnerEnd != pSampleScore);
+      } while(pSampleScoresExit != pSampleScore);
 
       // first time through?
-      if(pPredictorScoresTrueEnd != pPredictorScores) {
-         pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-         pPredictorScoresExit = pPredictorScoresTrueEnd;
+      if(pSampleScoresTrueEnd != pSampleScore) {
+         pSampleScoresInnerEnd = pSampleScoresTrueEnd;
+         pSampleScoresExit = pSampleScoresTrueEnd;
          goto one_last_loop;
       }
    }
@@ -395,22 +395,22 @@ public:
       FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
-      FloatFast * pPredictorScores = pTrainingSet->GetPredictorScores();
+      FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatFast * const pPredictorScoresTrueEnd = pPredictorScores + cSamples;
-      const FloatFast * pPredictorScoresExit = pPredictorScoresTrueEnd;
-      const FloatFast * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
+      const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples;
+      const FloatFast * pSampleScoresExit = pSampleScoresTrueEnd;
+      const FloatFast * pSampleScoresInnerEnd = pSampleScoresTrueEnd;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1);
-      EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
-      EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
+      pSampleScoresExit = pSampleScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1);
+      EBM_ASSERT(pSampleScore < pSampleScoresExit);
+      EBM_ASSERT(pSampleScoresExit < pSampleScoresTrueEnd);
 
       do {
-         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPack;
-         // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
+         pSampleScoresInnerEnd = pSampleScore + cItemsPerBitPack;
+         // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
@@ -422,25 +422,25 @@ public:
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatFast smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[iTensorBin];
-            // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-            const FloatFast predictorScore = *pPredictorScores + smallChangeToPredictorScores;
-            *pPredictorScores = predictorScore;
-            ++pPredictorScores;
-            const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(predictorScore, targetData);
+            const FloatFast scoreUpdate = aModelFeatureGroupUpdateTensor[iTensorBin];
+            // this will apply a small fix to our existing TrainingSampleScores, either positive or negative, whichever is needed
+            const FloatFast sampleScore = *pSampleScore + scoreUpdate;
+            *pSampleScore = sampleScore;
+            ++pSampleScore;
+            const FloatFast gradient = EbmStats::InverseLinkFunctionThenCalculateGradientBinaryClassification(sampleScore, targetData);
 
             *pGradientAndHessian = gradient;
             *(pGradientAndHessian + 1) = EbmStats::CalculateHessianFromGradientBinaryClassification(gradient);
             pGradientAndHessian += 2;
 
             iTensorBinCombined >>= cBitsPerItemMax;
-         } while(pPredictorScoresInnerEnd != pPredictorScores);
-      } while(pPredictorScoresExit != pPredictorScores);
+         } while(pSampleScoresInnerEnd != pSampleScore);
+      } while(pSampleScoresExit != pSampleScore);
 
       // first time through?
-      if(pPredictorScoresTrueEnd != pPredictorScores) {
-         pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-         pPredictorScoresExit = pPredictorScoresTrueEnd;
+      if(pSampleScoresTrueEnd != pSampleScore) {
+         pSampleScoresInnerEnd = pSampleScoresTrueEnd;
+         pSampleScoresExit = pSampleScoresTrueEnd;
          goto one_last_loop;
       }
    }
@@ -493,7 +493,7 @@ public:
 
       do {
          pGradientInnerEnd = pGradient + cItemsPerBitPack;
-         // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
+         // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
@@ -502,9 +502,9 @@ public:
          do {
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatFast smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
-            // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-            const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
+            const FloatFast scoreUpdate = aModelFeatureGroupUpdateTensor[iTensorBin];
+            // this will apply a small fix to our existing TrainingSampleScores, either positive or negative, whichever is needed
+            const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, scoreUpdate);
 
             *pGradient = gradient;
             ++pGradient;

@@ -586,11 +586,11 @@ public:
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            const FloatBig smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
+            const FloatBig scoreUpdate = EbmStats::ComputeSinglePartitionUpdate(
                pRootTreeNode->GetHistogramTargetEntry()[0].m_sumGradients, weightTotal
             );
             FloatFast * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-            pValues[0] = SafeConvertFloat<FloatFast>(smallChangeToModel);
+            pValues[0] = SafeConvertFloat<FloatFast>(scoreUpdate);
          }
 
          return Error_None;

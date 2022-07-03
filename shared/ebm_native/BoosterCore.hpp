@@ -190,7 +190,7 @@ public:
       const IntEbmType * const aFeatureGroupsFeatureIndexes,
       const unsigned char * const pDataSetShared,
       const BagEbmType * const aBag,
-      const double * const aPredictorScores
+      const double * const aInitScores
    );
 };
 

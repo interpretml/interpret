@@ -35,11 +35,11 @@ create_classification_booster <- function(
    training_binned_data, 
    training_targets, 
    training_weights, 
-   training_predictor_scores, 
+   training_init_scores, 
    validation_binned_data, 
    validation_targets, 
    validation_weights, 
-   validation_predictor_scores, 
+   validation_init_scores, 
    count_inner_bags
 ) {
    random_seed <- as.integer(random_seed)
@@ -53,16 +53,16 @@ create_classification_booster <- function(
    if(!is.null(training_weights)) {
       training_weights <- as.double(training_weights)
    }
-   if(!is.null(training_predictor_scores)) {
-      training_predictor_scores <- as.double(training_predictor_scores)
+   if(!is.null(training_init_scores)) {
+      training_init_scores <- as.double(training_init_scores)
    }
    validation_binned_data <- as.double(validation_binned_data)
    validation_targets <- as.double(validation_targets)
    if(!is.null(validation_weights)) {
       validation_weights <- as.double(validation_weights)
    }
-   if(!is.null(validation_predictor_scores)) {
-      validation_predictor_scores <- as.double(validation_predictor_scores)
+   if(!is.null(validation_init_scores)) {
+      validation_init_scores <- as.double(validation_init_scores)
    }
    count_inner_bags <- as.integer(count_inner_bags)
 
@@ -77,11 +77,11 @@ create_classification_booster <- function(
       training_binned_data, 
       training_targets, 
       training_weights, 
-      training_predictor_scores, 
+      training_init_scores, 
       validation_binned_data, 
       validation_targets, 
       validation_weights, 
-      validation_predictor_scores, 
+      validation_init_scores, 
       count_inner_bags
    )
    if(is.null(booster_handle)) {
@@ -99,11 +99,11 @@ create_regression_booster <- function(
    training_binned_data, 
    training_targets, 
    training_weights, 
-   training_predictor_scores, 
+   training_init_scores, 
    validation_binned_data, 
    validation_targets, 
    validation_weights, 
-   validation_predictor_scores, 
+   validation_init_scores, 
    count_inner_bags
 ) {
    random_seed <- as.integer(random_seed)
@@ -116,16 +116,16 @@ create_regression_booster <- function(
    if(!is.null(training_weights)) {
       training_weights <- as.double(training_weights)
    }
-   if(!is.null(training_predictor_scores)) {
-      training_predictor_scores <- as.double(training_predictor_scores)
+   if(!is.null(training_init_scores)) {
+      training_init_scores <- as.double(training_init_scores)
    }
    validation_binned_data <- as.double(validation_binned_data)
    validation_targets <- as.double(validation_targets)
    if(!is.null(validation_weights)) {
       validation_weights <- as.double(validation_weights)
    }
-   if(!is.null(validation_predictor_scores)) {
-      validation_predictor_scores <- as.double(validation_predictor_scores)
+   if(!is.null(validation_init_scores)) {
+      validation_init_scores <- as.double(validation_init_scores)
    }
    count_inner_bags <- as.integer(count_inner_bags)
 
@@ -139,11 +139,11 @@ create_regression_booster <- function(
       training_binned_data, 
       training_targets, 
       training_weights, 
-      training_predictor_scores, 
+      training_init_scores, 
       validation_binned_data, 
       validation_targets, 
       validation_weights, 
-      validation_predictor_scores, 
+      validation_init_scores, 
       count_inner_bags
    )
    if(is.null(booster_handle)) {
@@ -246,11 +246,11 @@ booster <- function(
    X_train,
    y_train,
    weights_train, 
-   scores_train,
+   init_scores_train,
    X_val,
    y_val,
    weights_val, 
-   scores_val,
+   init_scores_val,
    inner_bags,
    random_state
 ) {
@@ -267,11 +267,11 @@ booster <- function(
          X_train, 
          y_train, 
          weights_train, 
-         scores_train, 
+         init_scores_train, 
          X_val, 
          y_val, 
          weights_val, 
-         scores_val, 
+         init_scores_val, 
          inner_bags
       )
    } else if(model_type == "regression") {
@@ -284,11 +284,11 @@ booster <- function(
          X_train, 
          y_train, 
          weights_train, 
-         scores_train, 
+         init_scores_train, 
          X_val, 
          y_val, 
          weights_val, 
-         scores_val, 
+         init_scores_val, 
          inner_bags
       )
    } else {
@@ -313,11 +313,11 @@ cyclic_gradient_boost <- function(
    X_train,
    y_train,
    weights_train, 
-   scores_train,
+   init_scores_train,
    X_val,
    y_val,
    weights_val, 
-   scores_val,
+   init_scores_val,
    inner_bags,
    learning_rate,
    min_samples_leaf, 
@@ -339,11 +339,11 @@ cyclic_gradient_boost <- function(
       X_train,
       y_train,
       weights_train, 
-      scores_train,
+      init_scores_train,
       X_val,
       y_val,
       weights_val, 
-      scores_val,
+      init_scores_val,
       inner_bags,
       random_state
    )

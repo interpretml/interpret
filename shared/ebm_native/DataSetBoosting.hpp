@@ -23,7 +23,7 @@ namespace DEFINED_ZONE_NAME {
 
 class DataSetBoosting final {
    FloatFast * m_aGradientsAndHessians;
-   FloatFast * m_aPredictorScores;
+   FloatFast * m_aSampleScores;
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
@@ -38,7 +38,7 @@ public:
 
    INLINE_ALWAYS void InitializeUnfailing() {
       m_aGradientsAndHessians = nullptr;
-      m_aPredictorScores = nullptr;
+      m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
       m_cSamples = 0;
@@ -51,12 +51,12 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const bool bAllocateGradients,
       const bool bAllocateHessians,
-      const bool bAllocatePredictorScores,
+      const bool bAllocateSampleScores,
       const bool bAllocateTargetData,
       const unsigned char * const pDataSetShared,
       const BagEbmType direction,
       const BagEbmType * const aBag,
-      const double * const aPredictorScores,
+      const double * const aInitScores,
       const size_t cSetSamples,
       const size_t cFeatureGroups,
       const FeatureGroup * const * const apFeatureGroup
@@ -70,9 +70,9 @@ public:
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS FloatFast * GetPredictorScores() {
-      EBM_ASSERT(nullptr != m_aPredictorScores);
-      return m_aPredictorScores;
+   INLINE_ALWAYS FloatFast * GetSampleScores() {
+      EBM_ASSERT(nullptr != m_aSampleScores);
+      return m_aSampleScores;
    }
    INLINE_ALWAYS const StorageDataType * GetTargetDataPointer() const {
       EBM_ASSERT(nullptr != m_aTargetData);

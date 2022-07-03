@@ -44,7 +44,7 @@ extern ErrorEbmType InitializeGradientsAndHessians(
    const unsigned char * const pDataSetShared,
    const BagEbmType direction,
    const BagEbmType * const aBag,
-   const double * const aPredictorScores,
+   const double * const aInitScores,
    const size_t cSetSamples,
    FloatFast * const aGradientAndHessian
 );
@@ -174,7 +174,7 @@ ErrorEbmType BoosterCore::Create(
    const IntEbmType * const aFeatureGroupsFeatureIndexes, 
    const unsigned char * const pDataSetShared,
    const BagEbmType * const aBag,
-   const double * const aPredictorScores
+   const double * const aInitScores
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
@@ -459,7 +459,7 @@ ErrorEbmType BoosterCore::Create(
       pDataSetShared,
       BagEbmType { 1 },
       aBag,
-      aPredictorScores,
+      aInitScores,
       cTrainingSamples,
       cFeatureGroups,
       pBoosterCore->m_apFeatureGroups
@@ -478,7 +478,7 @@ ErrorEbmType BoosterCore::Create(
       pDataSetShared,
       BagEbmType { -1 },
       aBag,
-      aPredictorScores,
+      aInitScores,
       cValidationSamples,
       cFeatureGroups,
       pBoosterCore->m_apFeatureGroups
@@ -554,7 +554,7 @@ ErrorEbmType BoosterCore::Create(
             pDataSetShared,
             BagEbmType { 1 },
             aBag,
-            aPredictorScores,
+            aInitScores,
             cTrainingSamples,
             pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
          );
@@ -573,7 +573,7 @@ ErrorEbmType BoosterCore::Create(
             pDataSetShared,
             BagEbmType { 1 },
             aBag,
-            aPredictorScores,
+            aInitScores,
             cTrainingSamples,
             pBoosterCore->m_trainingSet.GetGradientsAndHessiansPointer()
          );
@@ -587,7 +587,7 @@ ErrorEbmType BoosterCore::Create(
             pDataSetShared,
             BagEbmType { -1 },
             aBag,
-            aPredictorScores,
+            aInitScores,
             cValidationSamples,
             pBoosterCore->m_validationSet.GetGradientsAndHessiansPointer()
          );

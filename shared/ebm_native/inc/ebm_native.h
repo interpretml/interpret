@@ -381,7 +381,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Crea
    SeedEbmType randomSeed,
    const void * dataSet,
    const BagEbmType * bag,
-   const double * predictorScores, // only samples with non-zeros in the bag are included
+   const double * initScores, // only samples with non-zeros in the bag are included
    IntEbmType countFeatureGroups,
    const IntEbmType * dimensionCounts,
    const IntEbmType * featureIndexes,
@@ -438,7 +438,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbmType * bag,
-   const double * predictorScores, // only samples with non-zeros in the bag are included
+   const double * initScores, // only samples with non-zeros in the bag are included
    const double * optionalTempParams,
    InteractionHandle * interactionHandleOut
 );

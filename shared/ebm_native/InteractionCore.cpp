@@ -68,7 +68,7 @@ ErrorEbmType InteractionCore::Create(
    InteractionShell * const pInteractionShell,
    const unsigned char * const pDataSetShared,
    const BagEbmType * const aBag,
-   const double * const aPredictorScores,
+   const double * const aInitScores,
    const double * const optionalTempParams
 ) {
    // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
@@ -187,7 +187,7 @@ ErrorEbmType InteractionCore::Create(
       pDataSetShared,
       cSamples,
       aBag,
-      aPredictorScores,
+      aInitScores,
       cTrainingSamples,
       cWeights,
       cFeatures

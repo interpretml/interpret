@@ -1109,7 +1109,7 @@ class EBMUtils:
     def cyclic_gradient_boost(
         dataset,
         bag,
-        scores,
+        init_scores,
         term_features,
         n_inner_bags,
         boosting_flags,
@@ -1129,7 +1129,7 @@ class EBMUtils:
         with Booster(
             dataset,
             bag,
-            scores,
+            init_scores,
             term_features,
             n_inner_bags,
             random_state,
@@ -1220,14 +1220,14 @@ class EBMUtils:
     def calc_interaction_order(
         dataset,
         bag,
-        scores,
+        init_scores,
         iter_term_features,
         interaction_options, 
         min_samples_leaf,
         optional_temp_params=None,
     ):
         interaction_strengths = []
-        with InteractionDetector(dataset, bag, scores, optional_temp_params) as interaction_detector:
+        with InteractionDetector(dataset, bag, init_scores, optional_temp_params) as interaction_detector:
             for feature_idxs in iter_term_features:
                 strength = interaction_detector.calc_interaction_strength(
                     feature_idxs, interaction_options, min_samples_leaf,

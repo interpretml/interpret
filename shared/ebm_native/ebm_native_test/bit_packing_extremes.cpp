@@ -34,8 +34,8 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
 
             double validationMetric = test.Boost(0).validationMetric;
             CHECK_APPROX(validationMetric, 62.8849);
-            double modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
-            CHECK_APPROX(modelValue, 0.07);
+            double termScore = test.GetCurrentTermScore(0, { static_cast<size_t>(cBins - 1) }, 0);
+            CHECK_APPROX(termScore, 0.07);
          }
       }
    }
@@ -67,11 +67,11 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
             double validationMetric = test.Boost(0).validationMetric;
             CHECK_APPROX_TOLERANCE(validationMetric, 0.70319717972663420, double { 1e-1 });
 
-            double modelValue;
-            modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
-            CHECK_APPROX(modelValue, 0);
-            modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 1);
-            CHECK_APPROX_TOLERANCE(modelValue, -0.02, double { 1e-1 });
+            double termScore;
+            termScore = test.GetCurrentTermScore(0, { static_cast<size_t>(cBins - 1) }, 0);
+            CHECK_APPROX(termScore, 0);
+            termScore = test.GetCurrentTermScore(0, { static_cast<size_t>(cBins - 1) }, 1);
+            CHECK_APPROX_TOLERANCE(termScore, -0.02, double { 1e-1 });
          }
       }
    }

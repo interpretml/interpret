@@ -886,7 +886,7 @@ class Native:
             ct.c_void_p,
             # int8_t * bag
             ct.c_void_p,
-            # double * predictorScores
+            # double * initScores
             ct.c_void_p,
             # int64_t countFeatureGroups
             ct.c_int64,
@@ -991,7 +991,7 @@ class Native:
             ct.c_void_p,
             # int8_t * bag
             ct.c_void_p,
-            # double * predictorScores
+            # double * initScores
             ct.c_void_p,
             # double * optionalTempParams
             ct.c_void_p,
@@ -1030,7 +1030,7 @@ class Booster(AbstractContextManager):
         self,
         dataset,
         bag,
-        scores,
+        init_scores,
         term_features,
         n_inner_bags,
         random_state,
@@ -1042,7 +1042,7 @@ class Booster(AbstractContextManager):
         Args:
             dataset: binned data in a compressed native form
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
-            scores: predictions from a prior predictor
+            init_scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
                 there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
@@ -1054,7 +1054,7 @@ class Booster(AbstractContextManager):
 
         self.dataset = dataset
         self.bag = bag
-        self.scores = scores
+        self.init_scores = init_scores
         self.term_features = term_features
         self.n_inner_bags = n_inner_bags
         self.random_state = random_state
@@ -1106,13 +1106,13 @@ class Booster(AbstractContextManager):
                 raise ValueError("bag should be len(n_samples)")
             n_scores = np.count_nonzero(self.bag)
 
-        if self.scores is not None:
+        if self.init_scores is not None:
             if n_class_scores > 1:
-                if self.scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"scores should have {n_class_scores} scores")
+                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                    raise ValueError(f"init_scores should have {n_class_scores} scores")
 
-            if self.scores.shape[0] != n_scores:  # pragma: no cover
-                raise ValueError("scores should have the same length as the number of non-zero bag entries")
+            if self.init_scores.shape[0] != n_scores:  # pragma: no cover
+                raise ValueError("init_scores should have the same length as the number of non-zero bag entries")
 
         random_seed = self.random_state
         if random_seed is None:
@@ -1136,7 +1136,7 @@ class Booster(AbstractContextManager):
             random_seed,
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
-            Native._make_pointer(self.scores, np.float64, 2 if n_class_scores > 1 else 1, True),
+            Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),
             len(feature_counts),
             Native._make_pointer(feature_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
@@ -1446,7 +1446,7 @@ class InteractionDetector(AbstractContextManager):
         self, 
         dataset,
         bag,
-        scores,
+        init_scores,
         optional_temp_params,
     ):
 
@@ -1455,7 +1455,7 @@ class InteractionDetector(AbstractContextManager):
         Args:
             dataset: binned data in a compressed native form
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
-            scores: predictions from a prior predictor
+            init_scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
                 there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
@@ -1465,7 +1465,7 @@ class InteractionDetector(AbstractContextManager):
 
         self.dataset = dataset
         self.bag = bag
-        self.scores = scores
+        self.init_scores = init_scores
         self.optional_temp_params = optional_temp_params
 
     def __enter__(self):
@@ -1490,20 +1490,20 @@ class InteractionDetector(AbstractContextManager):
                 raise ValueError("bag should be len(n_samples)")
             n_scores = np.count_nonzero(self.bag)
 
-        if self.scores is not None:
+        if self.init_scores is not None:
             if n_class_scores > 1:
-                if self.scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"scores should have {n_class_scores} scores")
+                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                    raise ValueError(f"init_scores should have {n_class_scores} scores")
 
-            if self.scores.shape[0] != n_scores:  # pragma: no cover
-                raise ValueError("scores should have the same length as the number of non-zero bag entries")
+            if self.init_scores.shape[0] != n_scores:  # pragma: no cover
+                raise ValueError("init_scores should have the same length as the number of non-zero bag entries")
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateInteractionDetector(
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
-            Native._make_pointer(self.scores, np.float64, 2 if n_class_scores > 1 else 1, True),
+            Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),
             Native._make_pointer(self.optional_temp_params, np.float64, 1, True),
             ct.byref(interaction_handle),
         )

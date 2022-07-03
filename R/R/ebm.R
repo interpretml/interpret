@@ -113,8 +113,8 @@ ebm_classify <- function(
    validation_size <- ceiling(length(y) * validation_size)
    train_size <- length(y) - validation_size
 
-   scores_train <- vector("numeric", num_scores * train_size)
-   scores_val <- vector("numeric", num_scores * validation_size)
+   init_scores_train <- vector("numeric", num_scores * train_size)
+   init_scores_val <- vector("numeric", num_scores * validation_size)
 
    for(i_outer_bag in 1:outer_bags) {
       random_state <- generate_deterministic_seed(random_state, 1416147523)
@@ -135,11 +135,11 @@ ebm_classify <- function(
          X_train,
          y_train,
          NULL,
-         scores_train,
+         init_scores_train,
          X_val,
          y_val,
          NULL,
-         scores_val,
+         init_scores_val,
          inner_bags,
          learning_rate,
          min_samples_leaf, 

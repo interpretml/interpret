@@ -88,20 +88,20 @@ HistogramBucketBase * InteractionShell::GetHistogramBucketBaseBig(size_t cBytesR
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbmType * bag,
-   const double * predictorScores, // only samples with non-zeros in the bag are included
+   const double * initScores, // only samples with non-zeros in the bag are included
    const double * optionalTempParams,
    InteractionHandle * interactionHandleOut
 ) {
    LOG_N(TraceLevelInfo, "Entered CreateInteractionDetector: "
       "dataSet=%p, "
       "bag=%p, "
-      "predictorScores=%p, "
+      "initScores=%p, "
       "optionalTempParams=%p, "
       "interactionHandleOut=%p"
       ,
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
-      static_cast<const void *>(predictorScores),
+      static_cast<const void *>(initScores),
       static_cast<const void *>(optionalTempParams),
       static_cast<const void *>(interactionHandleOut)
    );
@@ -129,7 +129,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateI
       pInteractionShell,
       static_cast<const unsigned char *>(dataSet),
       bag,
-      predictorScores,
+      initScores,
       optionalTempParams
    );
    if(Error_None != error) {

@@ -345,13 +345,13 @@ class TestApi {
 
    InteractionHandle m_interactionHandle;
 
-   const double * GetPredictorScores(
+   const double * GetTermScores(
       const size_t iFeatureGroup,
       const double * const pModelFeatureGroup,
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures)
       const;
 
-   double GetPredictorScore(
+   double GetTermScore(
       const size_t iFeatureGroup,
       const double * const pModelFeatureGroup,
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
@@ -384,7 +384,7 @@ public:
       const std::vector<IntEbmType> leavesMax = k_leavesMaxDefault
    );
 
-   double GetBestModelPredictorScore(
+   double GetBestTermScore(
       const size_t iFeatureGroup, 
       const std::vector<size_t> indexes, 
       const size_t iScore
@@ -392,7 +392,7 @@ public:
    
    void GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, double * const aModelValues) const;
 
-   double GetCurrentModelPredictorScore(
+   double GetCurrentTermScore(
       const size_t iFeatureGroup,
       const std::vector<size_t> indexes,
       const size_t iScore

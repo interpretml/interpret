@@ -529,11 +529,11 @@ SEXP CreateClassificationBooster_R(
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingWeights,
-   SEXP trainingPredictorScores,
+   SEXP trainingInitScores,
    SEXP validationBinnedData,
    SEXP validationTargets,
    SEXP validationWeights,
-   SEXP validationPredictorScores,
+   SEXP validationInitScores,
    SEXP countInnerBags
 ) {
    EBM_ASSERT(nullptr != randomSeed);
@@ -545,11 +545,11 @@ SEXP CreateClassificationBooster_R(
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingWeights);
-   EBM_ASSERT(nullptr != trainingPredictorScores);
+   EBM_ASSERT(nullptr != trainingInitScores);
    EBM_ASSERT(nullptr != validationBinnedData);
    EBM_ASSERT(nullptr != validationTargets);
    EBM_ASSERT(nullptr != validationWeights);
-   EBM_ASSERT(nullptr != validationPredictorScores);
+   EBM_ASSERT(nullptr != validationInitScores);
    EBM_ASSERT(nullptr != countInnerBags);
 
    ErrorEbmType error;
@@ -646,21 +646,21 @@ SEXP CreateClassificationBooster_R(
       return R_NilValue;
    }
 
-   const IntEbmType countTrainingPredictorScores = CountDoubles(trainingPredictorScores);
-   if(countTrainingPredictorScores < 0) {
+   const IntEbmType countTrainingInitScores = CountDoubles(trainingInitScores);
+   if(countTrainingInitScores < 0) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const size_t cTrainingPredictorScores = static_cast<size_t>(countTrainingPredictorScores);
+   const size_t cTrainingInitScores = static_cast<size_t>(countTrainingInitScores);
    if(IsMultiplyError(cVectorLength, cTrainingSamples)) {
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cVectorLength, cTrainingSamples)");
       return R_NilValue;
    }
-   if(cVectorLength * cTrainingSamples != cTrainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cVectorLength * cTrainingSamples != cTrainingPredictorScores");
+   if(cVectorLength * cTrainingSamples != cTrainingInitScores) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cVectorLength * cTrainingSamples != cTrainingInitScores");
       return R_NilValue;
    }
-   const double * const aTrainingPredictorScores = REAL(trainingPredictorScores);
+   const double * const aTrainingInitScores = REAL(trainingInitScores);
 
    size_t cValidationBinnedData;
    const IntEbmType * aValidationBinnedData;
@@ -686,21 +686,21 @@ SEXP CreateClassificationBooster_R(
       return R_NilValue;
    }
 
-   const IntEbmType countValidationPredictorScores = CountDoubles(validationPredictorScores);
-   if(countValidationPredictorScores < 0) {
+   const IntEbmType countValidationInitScores = CountDoubles(validationInitScores);
+   if(countValidationInitScores < 0) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const size_t cValidationPredictorScores = static_cast<size_t>(countValidationPredictorScores);
+   const size_t cValidationInitScores = static_cast<size_t>(countValidationInitScores);
    if(IsMultiplyError(cVectorLength, cValidationSamples)) {
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cVectorLength, cValidationSamples)");
       return R_NilValue;
    }
-   if(cVectorLength * cValidationSamples != cValidationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cVectorLength * cValidationSamples != cValidationPredictorScores");
+   if(cVectorLength * cValidationSamples != cValidationInitScores) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cVectorLength * cValidationSamples != cValidationInitScores");
       return R_NilValue;
    }
-   const double * const aValidationPredictorScores = REAL(validationPredictorScores);
+   const double * const aValidationInitScores = REAL(validationInitScores);
 
    if(!IsSingleIntVector(countInnerBags)) {
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R !IsSingleIntVector(countInnerBags)");
@@ -763,12 +763,12 @@ SEXP CreateClassificationBooster_R(
       aTrainingBinnedData, 
       aTrainingTargets, 
       pTrainingWeights,
-      aTrainingPredictorScores,
+      aTrainingInitScores,
       countValidationSamples, 
       aValidationBinnedData, 
       aValidationTargets, 
       pValidationWeights,
-      aValidationPredictorScores,
+      aValidationInitScores,
       countInnerBagsLocal, 
       nullptr,
       &boosterHandle
@@ -796,11 +796,11 @@ SEXP CreateRegressionBooster_R(
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingWeights,
-   SEXP trainingPredictorScores,
+   SEXP trainingInitScores,
    SEXP validationBinnedData,
    SEXP validationTargets,
    SEXP validationWeights,
-   SEXP validationPredictorScores,
+   SEXP validationInitScores,
    SEXP countInnerBags
 ) {
    EBM_ASSERT(nullptr != randomSeed);
@@ -811,11 +811,11 @@ SEXP CreateRegressionBooster_R(
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingWeights);
-   EBM_ASSERT(nullptr != trainingPredictorScores);
+   EBM_ASSERT(nullptr != trainingInitScores);
    EBM_ASSERT(nullptr != validationBinnedData);
    EBM_ASSERT(nullptr != validationTargets);
    EBM_ASSERT(nullptr != validationWeights);
-   EBM_ASSERT(nullptr != validationPredictorScores);
+   EBM_ASSERT(nullptr != validationInitScores);
    EBM_ASSERT(nullptr != countInnerBags);
 
    ErrorEbmType error;
@@ -895,17 +895,17 @@ SEXP CreateRegressionBooster_R(
    }
    const double * const aTrainingTargets = REAL(trainingTargets);
 
-   const IntEbmType countTrainingPredictorScores = CountDoubles(trainingPredictorScores);
-   if(countTrainingPredictorScores < 0) {
+   const IntEbmType countTrainingInitScores = CountDoubles(trainingInitScores);
+   if(countTrainingInitScores < 0) {
       // we've already logged any errors
       return R_NilValue;
    }
-   size_t cTrainingPredictorScores = static_cast<size_t>(countTrainingPredictorScores);
-   if(cTrainingSamples != cTrainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTrainingSamples != cTrainingPredictorScores");
+   size_t cTrainingInitScores = static_cast<size_t>(countTrainingInitScores);
+   if(cTrainingSamples != cTrainingInitScores) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTrainingSamples != cTrainingInitScores");
       return R_NilValue;
    }
-   const double * const aTrainingPredictorScores = REAL(trainingPredictorScores);
+   const double * const aTrainingInitScores = REAL(trainingInitScores);
 
    size_t cValidationBinnedData;
    const IntEbmType * aValidationBinnedData;
@@ -930,17 +930,17 @@ SEXP CreateRegressionBooster_R(
    }
    const double * const aValidationTargets = REAL(validationTargets);
 
-   const IntEbmType countValidationPredictorScores = CountDoubles(validationPredictorScores);
-   if(countValidationPredictorScores < 0) {
+   const IntEbmType countValidationInitScores = CountDoubles(validationInitScores);
+   if(countValidationInitScores < 0) {
       // we've already logged any errors
       return R_NilValue;
    }
-   size_t cValidationPredictorScores = static_cast<size_t>(countValidationPredictorScores);
-   if(cValidationSamples != cValidationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cValidationSamples != cValidationPredictorScores");
+   size_t cValidationInitScores = static_cast<size_t>(countValidationInitScores);
+   if(cValidationSamples != cValidationInitScores) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cValidationSamples != cValidationInitScores");
       return R_NilValue;
    }
-   const double * const aValidationPredictorScores = REAL(validationPredictorScores);
+   const double * const aValidationInitScores = REAL(validationInitScores);
 
    if(!IsSingleIntVector(countInnerBags)) {
       LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R !IsSingleIntVector(countInnerBags)");
@@ -1002,12 +1002,12 @@ SEXP CreateRegressionBooster_R(
       aTrainingBinnedData, 
       aTrainingTargets, 
       pTrainingWeights, 
-      aTrainingPredictorScores,
+      aTrainingInitScores,
       countValidationSamples, 
       aValidationBinnedData, 
       aValidationTargets, 
       pValidationWeights, 
-      aValidationPredictorScores,
+      aValidationInitScores,
       countInnerBagsLocal, 
       nullptr,
       &boosterHandle
@@ -1300,7 +1300,7 @@ SEXP CreateClassificationInteractionDetector_R(
    SEXP binnedData,
    SEXP targets,
    SEXP weights,
-   SEXP predictorScores
+   SEXP initScores
 ) {
    EBM_ASSERT(nullptr != countTargetClasses);
    EBM_ASSERT(nullptr != featuresCategorical);
@@ -1308,7 +1308,7 @@ SEXP CreateClassificationInteractionDetector_R(
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
-   EBM_ASSERT(nullptr != predictorScores);
+   EBM_ASSERT(nullptr != initScores);
 
    ErrorEbmType error;
 
@@ -1372,21 +1372,21 @@ SEXP CreateClassificationInteractionDetector_R(
       return R_NilValue;
    }
 
-   const IntEbmType countPredictorScores = CountDoubles(predictorScores);
-   if(countPredictorScores < 0) {
+   const IntEbmType countInitScores = CountDoubles(initScores);
+   if(countInitScores < 0) {
       // we've already logged any errors
       return R_NilValue;
    }
-   size_t cPredictorScores = static_cast<size_t>(countPredictorScores);
+   size_t cInitScores = static_cast<size_t>(countInitScores);
    if(IsMultiplyError(cVectorLength, cSamples)) {
       LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cVectorLength, cSamples)");
       return R_NilValue;
    }
-   if(cVectorLength * cSamples != cPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cVectorLength * cSamples != cPredictorScores");
+   if(cVectorLength * cSamples != cInitScores) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cVectorLength * cSamples != cInitScores");
       return R_NilValue;
    }
-   const double * const aPredictorScores = REAL(predictorScores);
+   const double * const aInitScores = REAL(initScores);
 
    double * pWeights = nullptr;
    if(NILSXP != TYPEOF(weights)) {
@@ -1417,7 +1417,7 @@ SEXP CreateClassificationInteractionDetector_R(
       aBinnedData,
       aTargets,
       pWeights,
-      aPredictorScores,
+      aInitScores,
       nullptr,
       &interactionHandle
    );
@@ -1441,14 +1441,14 @@ SEXP CreateRegressionInteractionDetector_R(
    SEXP binnedData,
    SEXP targets,
    SEXP weights,
-   SEXP predictorScores
+   SEXP initScores
 ) {
    EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
    EBM_ASSERT(nullptr != binnedData);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != weights);
-   EBM_ASSERT(nullptr != predictorScores);
+   EBM_ASSERT(nullptr != initScores);
 
    ErrorEbmType error;
 
@@ -1495,17 +1495,17 @@ SEXP CreateRegressionInteractionDetector_R(
    }
    const double * const aTargets = REAL(targets);
 
-   const IntEbmType countPredictorScores = CountDoubles(predictorScores);
-   if(countPredictorScores < 0) {
+   const IntEbmType countInitScores = CountDoubles(initScores);
+   if(countInitScores < 0) {
       // we've already logged any errors
       return R_NilValue;
    }
-   size_t cPredictorScores = static_cast<size_t>(countPredictorScores);
-   if(cSamples != cPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cSamples != cPredictorScores");
+   size_t cInitScores = static_cast<size_t>(countInitScores);
+   if(cSamples != cInitScores) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionInteractionDetector_R cSamples != cInitScores");
       return R_NilValue;
    }
-   const double * const aPredictorScores = REAL(predictorScores);
+   const double * const aInitScores = REAL(initScores);
 
    double * pWeights = nullptr;
    if(NILSXP != TYPEOF(weights)) {
@@ -1535,7 +1535,7 @@ SEXP CreateRegressionInteractionDetector_R(
       aBinnedData, 
       aTargets, 
       pWeights,
-      aPredictorScores,
+      aInitScores,
       nullptr,
       &interactionHandle
    );

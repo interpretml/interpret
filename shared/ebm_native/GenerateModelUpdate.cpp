@@ -198,14 +198,14 @@ static ErrorEbmType BoostZeroDimensional(
       const auto * const pHistogramBucketLocal = pHistogramBucketBig->GetHistogramBucket<FloatBig, false>();
       const auto * const aSumHistogramTargetEntry = pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-         const FloatBig smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
-         aValues[0] = SafeConvertFloat<FloatFast>(smallChangeToModel);
+         const FloatBig scoreUpdate = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
+         aValues[0] = SafeConvertFloat<FloatFast>(scoreUpdate);
       } else {
-         const FloatBig smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
+         const FloatBig scoreUpdate = EbmStats::ComputeSinglePartitionUpdate(
             aSumHistogramTargetEntry[0].m_sumGradients,
             pHistogramBucketLocal->GetWeightInBucket()
          );
-         aValues[0] = SafeConvertFloat<FloatFast>(smallChangeToModel);
+         aValues[0] = SafeConvertFloat<FloatFast>(scoreUpdate);
       }
    }
 
@@ -734,9 +734,6 @@ static ErrorEbmType BoostRandom(
    return Error_None;
 }
 
-// a*PredictorScores = logOdds for binary classification
-// a*PredictorScores = logWeights for multiclass classification
-// a*PredictorScores = predictedValue for regression
 static ErrorEbmType GenerateModelUpdateInternal(
    BoosterShell * const pBoosterShell,
    const size_t iFeatureGroup,

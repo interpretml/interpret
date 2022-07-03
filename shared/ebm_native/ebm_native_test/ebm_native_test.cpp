@@ -130,7 +130,7 @@ extern bool IsApproxEqual(const double value, const double expected, const doubl
    return isEqual;
 }
 
-const double * TestApi::GetPredictorScores(
+const double * TestApi::GetTermScores(
    const size_t iFeatureGroup,
    const double * const pModelFeatureGroup,
    const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures
@@ -161,13 +161,13 @@ const double * TestApi::GetPredictorScores(
    return &pModelFeatureGroup[iValue];
 }
 
-double TestApi::GetPredictorScore(
+double TestApi::GetTermScore(
    const size_t iFeatureGroup,
    const double * const pModelFeatureGroup,
    const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
    const size_t iTargetClassOrZero
 ) const {
-   const double * const aScores = GetPredictorScores(
+   const double * const aScores = GetTermScores(
       iFeatureGroup, 
       pModelFeatureGroup, 
       perDimensionIndexArrayForBinnedFeatures
@@ -772,7 +772,7 @@ BoostRet TestApi::Boost(
    return BoostRet { gainAvg, validationMetric };
 }
 
-double TestApi::GetBestModelPredictorScore(
+double TestApi::GetBestTermScore(
    const size_t iFeatureGroup, 
    const std::vector<size_t> indexes, 
    const size_t iScore
@@ -802,8 +802,8 @@ double TestApi::GetBestModelPredictorScore(
       exit(1);
    }
 
-   const double predictorScore = GetPredictorScore(iFeatureGroup, &model[0], indexes, iScore);
-   return predictorScore;
+   const double termScore = GetTermScore(iFeatureGroup, &model[0], indexes, iScore);
+   return termScore;
 }
 
 void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, double * const aModelValues) const {
@@ -821,7 +821,7 @@ void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, double * c
    }
 }
 
-double TestApi::GetCurrentModelPredictorScore(
+double TestApi::GetCurrentTermScore(
    const size_t iFeatureGroup,
    const std::vector<size_t> indexes,
    const size_t iScore
@@ -851,8 +851,8 @@ double TestApi::GetCurrentModelPredictorScore(
       exit(1);
    }
 
-   const double predictorScore = GetPredictorScore(iFeatureGroup, &model[0], indexes, iScore);
-   return predictorScore;
+   const double termScore = GetTermScore(iFeatureGroup, &model[0], indexes, iScore);
+   return termScore;
 }
 
 void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, double * const aModelValues) const {

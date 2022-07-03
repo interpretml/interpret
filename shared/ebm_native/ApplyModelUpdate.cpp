@@ -34,9 +34,6 @@ extern double ApplyModelUpdateValidation(
    const FeatureGroup * const pFeatureGroup
 );
 
-// a*PredictorScores = logOdds for binary classification
-// a*PredictorScores = logWeights for multiclass classification
-// a*PredictorScores = predictedValue for regression
 static ErrorEbmType ApplyModelUpdateInternal(
    BoosterShell * const pBoosterShell,
    double * const pValidationMetricReturn

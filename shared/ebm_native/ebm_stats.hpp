@@ -601,25 +601,25 @@ public:
       return sumGradient;
    }
 
-   INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEInit(const FloatFast predictorScore, const FloatFast target) {
+   INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEInit(const FloatFast sampleScore, const FloatFast target) {
       // this function is NOT performance critical as it's called on every sample, but only during initialization.
 
       // for MSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
       // to keep the original scores when computing the gradient updates.
 
-      // it's possible to reach NaN or +-infinity within this module, so predictorScore can be those values
+      // it's possible to reach NaN or +-infinity within this module, so sampleScore can be those values
       // since we can reach such values anyways, we might as well not check for them during initialization and detect the
       // NaN or +-infinity values in one of our boosting rounds and then terminate the algorithm once those special values
       // have propagaged, which we need to handle anyways
 
-      const FloatFast gradient = predictorScore - target;
+      const FloatFast gradient = sampleScore - target;
 
-      // if target and predictorScore are both +infinity or both -infinity, then we'll generate a NaN value
+      // if target and sampleScore are both +infinity or both -infinity, then we'll generate a NaN value
 
       return gradient;
    }
 
-   INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEFromOriginalGradient(const FloatFast originalGradient, const FloatFast modelUpdate) {
+   INLINE_ALWAYS static FloatFast ComputeGradientRegressionMSEFromOriginalGradient(const FloatFast originalGradient, const FloatFast update) {
       // this function IS performance critical as it's called on every sample
 
       // for MSE regression, the gradient is the residual, and we can calculate it once at init and we don't need
@@ -629,40 +629,40 @@ public:
 
       // this function is here to document where we're calculating regression, like InverseLinkFunctionThenCalculateGradientBinaryClassification below.  It doesn't do anything, 
       //   but it serves as an indication that the calculation would be placed here if we changed it in the future
-      return originalGradient + modelUpdate;
+      return originalGradient + update;
    }
 
    INLINE_ALWAYS static FloatFast InverseLinkFunctionThenCalculateGradientBinaryClassification(
-      const FloatFast predictorScore, 
+      const FloatFast sampleScore, 
       const size_t target
    ) {
       // this IS a performance critical function.  It gets called per sample!
 
-      // predictorScore can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
+      // sampleScore can be NaN -> We can get a NaN result inside ComputeSinglePartitionUpdate
       //   for sumGradient / sumHessian if both are zero.  Once one segment of one graph has a NaN logit, then some sample will have a NaN
       //   logit
 
-      // predictorScore can be +-infinity -> we can overflow to +-infinity
+      // sampleScore can be +-infinity -> we can overflow to +-infinity
 
       EBM_ASSERT(0 == target || 1 == target);
 
-      // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, predictorScore would need to be either 
+      // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, sampleScore would need to be either 
       //   infinity or -infinity
       // this function outputs 1 if actual value was 1 but we incorrectly predicted with 100% certainty that it was 0 by having 
-      //   predictorScore be -infinity
-      // this function outputs -1 if actual value was 0 but we incorrectly predicted with 100% certainty that it was 1 by having predictorScore 
+      //   sampleScore be -infinity
+      // this function outputs -1 if actual value was 0 but we incorrectly predicted with 100% certainty that it was 1 by having sampleScore 
       //   be infinity
       //
-      // this function outputs 0.5 if actual value was 1 but we were 50%/50% by having predictorScore be 0
-      // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having predictorScore be 0
+      // this function outputs 0.5 if actual value was 1 but we were 50%/50% by having sampleScore be 0
+      // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having sampleScore be 0
 
       // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == target.  We expect 0 to be the 
-      //   default target, so we should flip the value of predictorScore so that we don't need to negate it for the default 0 case
+      //   default target, so we should flip the value of sampleScore so that we don't need to negate it for the default 0 case
       // TODO: we can probably remove the negation on 1 == target via : return  binned_actual_value - 1 + (1 / (np.exp(training_log_odds_prediction) + 1)) 
       // once we've moved to sorted training data
       // exp will return the same type that it is given, either float or double
       // TODO: for the ApproxExp function, we can change the constant to being a negative once we change to sorting by our target value
-      //       then we don't need to even take the negative of predictorScore below
+      //       then we don't need to even take the negative of sampleScore below
 
       // !!! IMPORTANT: when using an approximate exp function, the formula used to compute the gradients becomes very
       //                important.  We want something that is balanced from positive to negative, which this version
@@ -678,10 +678,10 @@ public:
       //                sums of zero.
       //                I've made a copy of this formula as a comment to reference to what is good in-case the 
       //                formula is changed in the code without reading this comment
-      //                const FloatFast gradient = (UNPREDICTABLE(0 == target) ? FloatFast { -1 } : FloatFast { 1 }) / (FloatFast{ 1 } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -predictorScore : predictorScore));
+      //                const FloatFast gradient = (UNPREDICTABLE(0 == target) ? FloatFast { -1 } : FloatFast { 1 }) / (FloatFast{ 1 } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -sampleScore : sampleScore));
       // !!! IMPORTANT: SEE ABOVE
       const FloatFast gradient = (UNPREDICTABLE(0 == target) ? FloatFast { 1 } : FloatFast { -1 }) / (FloatFast { 1 } +
-         ExpForBinaryClassification<false>(UNPREDICTABLE(0 == target) ? -predictorScore : predictorScore));
+         ExpForBinaryClassification<false>(UNPREDICTABLE(0 == target) ? -sampleScore : sampleScore));
 
       // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
       // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
@@ -689,25 +689,25 @@ public:
       // above 1.0 especially, since IEEE 754 guarnatees that addition and division yield numbers rounded correctly to the last binary decimal place
       // IEEE 754, which we check for at compile time, specifies that +-1/infinity = 0
 
-      // gradient cannot be +-infinity -> even if predictorScore is +-infinity we then get +-1 division by 1, or division by +infinity, which are +-1 
+      // gradient cannot be +-infinity -> even if sampleScore is +-infinity we then get +-1 division by 1, or division by +infinity, which are +-1 
       //   or 0 respectively
 
       // gradient can only be NaN if our inputs are NaN
 
       // So...
-      EBM_ASSERT(std::isnan(predictorScore) || !std::isinf(gradient) && -1 <= gradient && gradient <= 1);
+      EBM_ASSERT(std::isnan(sampleScore) || !std::isinf(gradient) && -1 <= gradient && gradient <= 1);
 
       // gradient can't be +-infinity, since an infinity in the denominator would just lead us to zero for the gradient value!
 
 #ifndef NDEBUG
-      const FloatFast expVal = std::exp(predictorScore);
+      const FloatFast expVal = std::exp(sampleScore);
       FloatFast gradientDebug;
       FloatFast hessianDebug;
       InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(FloatFast { 1 } + expVal, expVal, target, 1, gradientDebug, hessianDebug);
       // the TransformScoreToGradientMulticlass can't be +-infinity per notes in TransformScoreToGradientMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
-      EBM_ASSERT(std::isnan(predictorScore) || std::isnan(gradientDebug) || std::abs(gradientDebug - gradient) < k_epsilonGradientForBinaryToMulticlass);
+      EBM_ASSERT(std::isnan(sampleScore) || std::isnan(gradientDebug) || std::abs(gradientDebug - gradient) < k_epsilonGradientForBinaryToMulticlass);
 #endif // NDEBUG
       return gradient;
    }
@@ -728,7 +728,7 @@ public:
       
       // trainingLogWeight (which calculates itemExp) can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
 
-      // sumExp can be NaN -> predictorScore is used when calculating sumExp, so if predictorScore can be NaN, then sumExp can be NaN
+      // sumExp can be NaN -> sampleScore is used when calculating sumExp, so if sampleScore can be NaN, then sumExp can be NaN
 
       // sumExp can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
@@ -802,7 +802,7 @@ public:
    }
 
    INLINE_ALWAYS static FloatFast ComputeSingleSampleLogLossBinaryClassification(
-      const FloatFast predictorScore, 
+      const FloatFast sampleScore, 
       const size_t target
    ) {
       // this IS a performance critical function.  It gets called per validation sample!
@@ -817,9 +817,9 @@ public:
 
       EBM_ASSERT(0 == target || 1 == target);
 
-      const FloatFast ourExp = ExpForLogLossBinaryClassification<false>(UNPREDICTABLE(0 == target) ? predictorScore : -predictorScore);
+      const FloatFast ourExp = ExpForLogLossBinaryClassification<false>(UNPREDICTABLE(0 == target) ? sampleScore : -sampleScore);
       // no reasonable implementation of exp should lead to a negative value
-      EBM_ASSERT(std::isnan(predictorScore) || 0 <= ourExp);
+      EBM_ASSERT(std::isnan(sampleScore) || 0 <= ourExp);
 
       // exp will always be positive, and when we add 1, we'll always be guaranteed to have a positive number, so log shouldn't ever fail due to negative 
       // numbers the exp term could overlfow to infinity, but that should only happen in pathalogical scenarios where our train set is driving the logits 
@@ -838,12 +838,12 @@ public:
       // exp given a 1, since 1 has an exact floating point number representation, and it computes to another exact floating point number, and who 
       // would seriously make a log function that take 1 and returns a negative.
       // So, 
-      EBM_ASSERT(std::isnan(predictorScore) || 0 <= singleSampleLogLoss); // log(1) == 0
+      EBM_ASSERT(std::isnan(sampleScore) || 0 <= singleSampleLogLoss); // log(1) == 0
       // TODO : check our approxmiate log above for handling of 1 exactly.  We might need to change the above assert to allow a small negative value
       //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
 
 #ifndef NDEBUG
-      const FloatFast expVal = std::exp(predictorScore);
+      const FloatFast expVal = std::exp(sampleScore);
       const FloatFast singleSampleLogLossDebug = EbmStats::ComputeSingleSampleLogLossMulticlass(
          1 + expVal, 0 == target ? FloatFast { 1 } : expVal
       );
@@ -867,7 +867,7 @@ public:
 
       // aValidationLogWeight (calculates itemExp) numbers can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
 
-      // sumExp can be NaN -> predictorScore is used when calculating sumExp, so if predictorScore can be NaN, then sumExp can be NaN
+      // sumExp can be NaN -> sampleScore is used when calculating sumExp, so if sampleScore can be NaN, then sumExp can be NaN
 
       // sumExp can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
