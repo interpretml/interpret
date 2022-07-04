@@ -76,6 +76,19 @@ def test_append_multiple_composite_importances():
     assert compute_composite_importance(composite_terms_1, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
     assert compute_composite_importance(composite_terms_2, ebm, X) in global_explanation._internal_obj["overall"]["scores"]
 
+def test_append_same_importance_twice():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+    composite_terms_1 = ["A", "B"]
+
+    ebm = ExplainableBoostingRegressor()
+    ebm.fit(X, y)
+
+    global_explanation = append_composite_importance(composite_terms_1, ebm, X)
+    with pytest.raises(ValueError):
+        global_explanation = append_composite_importance(composite_terms_1, ebm, X, global_exp=global_explanation)
+
 def test_composite_and_individual_terms():
     data = synthetic_regression()
     X = data["full"]["X"]

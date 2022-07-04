@@ -108,6 +108,10 @@ def append_composite_importance(composite_terms, ebm, X, composite_name=None, gl
 
     if composite_name is None:
         composite_name = _get_composite_name(composite_terms, ebm.term_names_)
+
+    if composite_name in global_explanation._internal_obj["overall"]["names"]:
+        raise ValueError(f"The composite {composite_name} is already in the global explanation.")
+
     composite_importance = compute_composite_importance(composite_terms, ebm, X, contributions)
 
     global_explanation._internal_obj["overall"]["names"].append(composite_name)
