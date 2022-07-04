@@ -61,7 +61,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
-   const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+   const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
 
    // our caller can give us one of these bad types of inputs:
    //  1) NaN values
@@ -76,7 +76,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
    // overlfows and gets converted to the maximum value which will mean the metric won't be changing or improving after that.
    // This is an acceptable compromise.  We protect our models since the user might want to extract them AFTER we overlfow our measurment metric
    // so we don't want to overflow the values to NaN or +-infinity there, and it's very cheap for us to check for overflows when applying the model
-   pBoosterCore->GetCurrentModel()[iFeatureGroup]->AddExpandedWithBadValueProtection(aModelFeatureGroupUpdateTensor);
+   pBoosterCore->GetCurrentModel()[iFeatureGroup]->AddExpandedWithBadValueProtection(aUpdateScores);
 
    if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
       ApplyModelUpdateTraining(pBoosterShell, pFeatureGroup);
@@ -392,24 +392,24 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    }
 
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
-   size_t cValues = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cValues, cBins));
-         cValues *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
+         cScores *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
-   const FloatFast * const pValues = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
+   const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
-   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensorOut), cValues));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
-   static_assert(sizeof(*modelFeatureGroupUpdateTensorOut) == sizeof(*pValues), "float mismatch");
-   memcpy(modelFeatureGroupUpdateTensorOut, pValues, sizeof(*pValues) * cValues);
+   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensorOut), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cScores));
+   static_assert(sizeof(*modelFeatureGroupUpdateTensorOut) == sizeof(*aUpdateScores), "float mismatch");
+   memcpy(modelFeatureGroupUpdateTensorOut, aUpdateScores, sizeof(*aUpdateScores) * cScores);
    return Error_None;
 }
 
@@ -484,37 +484,37 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
 
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
    const size_t cVectorLength = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
-   size_t cValues = cVectorLength;
+   size_t cScores = cVectorLength;
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cValues, cBins));
-         cValues *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
+         cScores *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
-   FloatFast * const pValues = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-   EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensor), cValues));
-   static_assert(sizeof(*modelFeatureGroupUpdateTensor) == sizeof(*pValues), "float mismatch");
-   memcpy(pValues, modelFeatureGroupUpdateTensor, sizeof(*pValues) * cValues);
+   FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensor), cScores));
+   static_assert(sizeof(*modelFeatureGroupUpdateTensor) == sizeof(*aUpdateScores), "float mismatch");
+   memcpy(aUpdateScores, modelFeatureGroupUpdateTensor, sizeof(*aUpdateScores) * cScores);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
 
    if(2 <= cVectorLength) {
-      FloatFast * pScore = pValues;
-      const FloatFast * const pScoreExteriorEnd = pScore + cValues;
+      FloatFast * pUpdateScore = aUpdateScores;
+      const FloatFast * const pExteriorEnd = pUpdateScore + cScores;
       do {
-         FloatFast scoreShift = pScore[0];
-         const FloatFast * const pScoreInteriorEnd = pScore + cVectorLength;
+         FloatFast shiftScore = pUpdateScore[0];
+         const FloatFast * const pInteriorEnd = pUpdateScore + cVectorLength;
          do {
-            *pScore -= scoreShift;
-            ++pScore;
-         } while(pScoreInteriorEnd != pScore);
-      } while(pScoreExteriorEnd != pScore);
+            *pUpdateScore -= shiftScore;
+            ++pUpdateScore;
+         } while(pInteriorEnd != pUpdateScore);
+      } while(pExteriorEnd != pUpdateScore);
    }
 
 #endif // ZERO_FIRST_MULTICLASS_LOGIT

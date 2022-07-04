@@ -738,16 +738,16 @@ BoostRet TestApi::Boost(
    if(0 != (GenerateUpdateOptions_GradientSums & options)) {
       // if sums are on, then we MUST change the model update
 
-      size_t cValues = GetVectorLength(m_learningTypeOrCountTargetClasses);
+      size_t cScores = GetVectorLength(m_learningTypeOrCountTargetClasses);
       std::vector<size_t> & countBinsByFeatureGroup = m_countBinsByFeatureGroup[static_cast<size_t>(indexFeatureGroup)];
 
       for(size_t iDimension = 0; iDimension < countBinsByFeatureGroup.size(); ++iDimension) {
          size_t cBins = countBinsByFeatureGroup[iDimension];
-         cValues *= cBins;
+         cScores *= cBins;
       }
 
-      double * aMem = new double[cValues];
-      memset(aMem, 0, sizeof(*aMem) * cValues);
+      double * aMem = new double[cScores];
+      memset(aMem, 0, sizeof(*aMem) * cScores);
 
       error = SetModelUpdateExpanded(
          m_boosterHandle,

@@ -35,7 +35,7 @@ namespace DEFINED_ZONE_NAME {
 //// if (m_endianAndExpanded < 0x2000000000000000) bExpanded = true;
 //// if (0 != (0x1 & m_endianAndExpanded)) bBigEndian = true;
 // UIntEbmType m_endianAndIsExpanded;
-// NO m_cValueCapacity -> we have a function that calculates the maximum capacity and we allocate it all at the start
+// NO m_cScoreCapacity -> we have a function that calculates the maximum capacity and we allocate it all at the start
 // NO m_cVectorLength -> we don't need to pass this arround from process to process since it's global info and can be passed to the individual functions
 // NO m_cDimensionsMax -> we pre-determine the maximum size and always allocate the max max size
 // NO m_cDimensions; -> we can pass in the FeatureGroup object to know the # of dimensions
@@ -148,13 +148,13 @@ class CompressibleTensor final {
    // we always allocate our array because we don't want to Require Add(...) to check for the null pointer
    // always allocate one so that we never have to check if we have sufficient storage when we call Reset with one split and two values
    static constexpr size_t k_initialSplitCapacity = 1;
-   static constexpr size_t k_initialValueCapacity = 2;
+   static constexpr size_t k_initialScoreCapacity = 2;
 
-   size_t m_cValueCapacity;
+   size_t m_cScoreCapacity;
    size_t m_cVectorLength;
    size_t m_cDimensionsMax;
    size_t m_cDimensions;
-   FloatFast * m_aValues;
+   FloatFast * m_aScores;
    bool m_bExpanded;
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_aDimensions must be the last item in this struct
@@ -194,7 +194,7 @@ public:
    static CompressibleTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength);
    void Reset();
    ErrorEbmType SetCountSplits(const size_t iDimension, const size_t cSplits);
-   ErrorEbmType EnsureValueCapacity(const size_t cValues);
+   ErrorEbmType EnsureScoreCapacity(const size_t cScores);
    ErrorEbmType Copy(const CompressibleTensor & rhs);
    bool MultiplyAndCheckForIssues(const double v);
    ErrorEbmType Expand(const FeatureGroup * const pFeatureGroup);
@@ -224,8 +224,8 @@ public:
       return GetDimensions()[iDimension].m_cSplits;
    }
 
-   INLINE_ALWAYS FloatFast * GetValuePointer() {
-      return m_aValues;
+   INLINE_ALWAYS FloatFast * GetScoresPointer() {
+      return m_aScores;
    }
 };
 static_assert(std::is_standard_layout<CompressibleTensor>::value,

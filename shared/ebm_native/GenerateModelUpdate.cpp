@@ -154,20 +154,20 @@ static ErrorEbmType BoostZeroDimensional(
 
    CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet = 
       pBoosterShell->GetOverwritableModelUpdate();
-   FloatFast * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+   FloatFast * aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
    if(bClassification) {
       const auto * const pHistogramBucketLocal = pHistogramBucketBig->GetHistogramBucket<FloatBig, true>();
       const auto * const aSumHistogramTargetEntry = pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatBig update = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iVector].m_sumGradients);
+            const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iVector].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             // Hmmm.. for DP we need the sum, which means that we can't zero one of the class numbers as we
             // could with one of the logits in multiclass.
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            aValues[iVector] = SafeConvertFloat<FloatFast>(update);
+            aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore);
          }
       } else {
 
@@ -176,7 +176,7 @@ static ErrorEbmType BoostZeroDimensional(
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            FloatBig update = EbmStats::ComputeSinglePartitionUpdate(
+            FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
                aSumHistogramTargetEntry[iVector].m_sumGradients,
                aSumHistogramTargetEntry[iVector].GetSumHessians()
             );
@@ -184,13 +184,13 @@ static ErrorEbmType BoostZeroDimensional(
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(IsMulticlass(runtimeLearningTypeOrCountTargetClasses)) {
                if(size_t { 0 } == iVector) {
-                  zeroLogit = update;
+                  zeroLogit = updateScore;
                }
-               update -= zeroLogit;
+               updateScore -= zeroLogit;
             }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            aValues[iVector] = SafeConvertFloat<FloatFast>(update);
+            aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore);
          }
       }
    } else {
@@ -198,14 +198,14 @@ static ErrorEbmType BoostZeroDimensional(
       const auto * const pHistogramBucketLocal = pHistogramBucketBig->GetHistogramBucket<FloatBig, false>();
       const auto * const aSumHistogramTargetEntry = pHistogramBucketLocal->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-         const FloatBig scoreUpdate = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
-         aValues[0] = SafeConvertFloat<FloatFast>(scoreUpdate);
+         const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
+         aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
       } else {
-         const FloatBig scoreUpdate = EbmStats::ComputeSinglePartitionUpdate(
+         const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
             aSumHistogramTargetEntry[0].m_sumGradients,
             pHistogramBucketLocal->GetWeightInBucket()
          );
-         aValues[0] = SafeConvertFloat<FloatFast>(scoreUpdate);
+         aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
       }
    }
 

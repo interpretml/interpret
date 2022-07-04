@@ -1017,7 +1017,7 @@ extern void TensorTotalsBuild(
 //#endif // NDEBUG
 //         return true;
 //      }
-//      if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+//      if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * 4)) {
 //         free(aDynamicHistogramBuckets);
 //#ifndef NDEBUG
 //         free(aHistogramBucketsDebugCopy);
@@ -1094,10 +1094,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionTarget;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[0 * cVectorLength + iVector] = predictionTarget;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
 //               }
 //            }
 //
@@ -1137,10 +1137,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionTarget;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[1 * cVectorLength + iVector] = predictionTarget;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
 //               }
 //            }
 //
@@ -1180,10 +1180,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionTarget;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[2 * cVectorLength + iVector] = predictionTarget;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
 //               }
 //            }
 //
@@ -1222,10 +1222,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionTarget;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[3 * cVectorLength + iVector] = predictionTarget;
 //               }
 //            }
 //

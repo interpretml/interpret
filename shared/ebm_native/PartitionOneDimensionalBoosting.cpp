@@ -40,7 +40,7 @@ template<bool bClassification>
 static void Flatten(
    const TreeNode<bClassification> * const pTreeNode,
    ActiveDataType ** const ppSplits, 
-   FloatFast ** const ppValues, 
+   FloatFast ** const ppUpdateScore, 
    const size_t cVectorLength
 ) {
    // don't log this since we call it recursively.  Log where the root is called
@@ -49,16 +49,16 @@ static void Flatten(
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
       const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
-      Flatten<bClassification>(pLeftChild, ppSplits, ppValues, cVectorLength);
+      Flatten<bClassification>(pLeftChild, ppSplits, ppUpdateScore, cVectorLength);
       **ppSplits = pTreeNode->AFTER_GetSplitValue();
       ++(*ppSplits);
       const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
-      Flatten<bClassification>(pRightChild, ppSplits, ppValues, cVectorLength);
+      Flatten<bClassification>(pRightChild, ppSplits, ppUpdateScore, cVectorLength);
    } else {
-      FloatFast * pValuesCur = *ppValues;
-      FloatFast * const pValuesNext = pValuesCur + cVectorLength;
-      *ppValues = pValuesNext;
+      FloatFast * pUpdateScoreCur = *ppUpdateScore;
+      FloatFast * const pUpdateScoreNext = pUpdateScoreCur + cVectorLength;
+      *ppUpdateScore = pUpdateScoreNext;
 
       const auto * pHistogramTargetEntry = pTreeNode->GetHistogramTargetEntry();
 
@@ -67,29 +67,29 @@ static void Flatten(
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
       do {
-         FloatBig update;
+         FloatBig updateScore;
          if(bClassification) {
-            update = EbmStats::ComputeSinglePartitionUpdate(
+            updateScore = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntry->m_sumGradients, pHistogramTargetEntry->GetSumHessians());
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(2 <= cVectorLength) {
                if(pTreeNode->GetHistogramTargetEntry() == pHistogramTargetEntry) {
-                  zeroLogit = update;
+                  zeroLogit = updateScore;
                }
-               update -= zeroLogit;
+               updateScore -= zeroLogit;
             }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
          } else {
-            update = EbmStats::ComputeSinglePartitionUpdate(
+            updateScore = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntry->m_sumGradients, pTreeNode->GetWeight());
          }
-         *pValuesCur = SafeConvertFloat<FloatFast>(update);
+         *pUpdateScoreCur = SafeConvertFloat<FloatFast>(updateScore);
 
          ++pHistogramTargetEntry;
-         ++pValuesCur;
-      } while(pValuesNext != pValuesCur);
+         ++pUpdateScoreCur;
+      } while(pUpdateScoreNext != pUpdateScoreCur);
    }
 }
 
@@ -560,37 +560,37 @@ public:
             return error;
          }
 
-         // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
+         // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cVectorLength
          if(bClassification) {
-            FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+            FloatFast * const aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatBig update = EbmStats::ComputeSinglePartitionUpdate(
+               FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
                   pRootTreeNode->GetHistogramTargetEntry()[iVector].m_sumGradients, pRootTreeNode->GetHistogramTargetEntry()[iVector].GetSumHessians()
                );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                   if(size_t { 0 } == iVector) {
-                     zeroLogit = update;
+                     zeroLogit = updateScore;
                   }
-                  update -= zeroLogit;
+                  updateScore -= zeroLogit;
                }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               aValues[iVector] = SafeConvertFloat<FloatFast>(update);
+               aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore);
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            const FloatBig scoreUpdate = EbmStats::ComputeSinglePartitionUpdate(
+            const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
                pRootTreeNode->GetHistogramTargetEntry()[0].m_sumGradients, weightTotal
             );
-            FloatFast * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-            pValues[0] = SafeConvertFloat<FloatFast>(scoreUpdate);
+            FloatFast * aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
+            aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
          }
 
          return Error_None;
@@ -621,7 +621,7 @@ public:
          ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension);
          pSplits[0] = pRootTreeNode->AFTER_GetSplitValue();
 
-         // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
+         // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cVectorLength
 
          // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
          const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
@@ -637,7 +637,7 @@ public:
 
          const auto * pHistogramTargetEntryRightChild = pRightChild->GetHistogramTargetEntry();
 
-         FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+         FloatFast * const aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
          if(bClassification) {
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -646,11 +646,11 @@ public:
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatBig update0 = EbmStats::ComputeSinglePartitionUpdate(
+               FloatBig updateScore0 = EbmStats::ComputeSinglePartitionUpdate(
                   pHistogramTargetEntryLeftChild[iVector].m_sumGradients,
                   pHistogramTargetEntryLeftChild[iVector].GetSumHessians()
                );
-               FloatBig update1 = EbmStats::ComputeSinglePartitionUpdate(
+               FloatBig updateScore1 = EbmStats::ComputeSinglePartitionUpdate(
                   pHistogramTargetEntryRightChild[iVector].m_sumGradients,
                   pHistogramTargetEntryRightChild[iVector].GetSumHessians()
                );
@@ -658,30 +658,30 @@ public:
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                   if(size_t { 0 } == iVector) {
-                     zeroLogit0 = update0;
-                     zeroLogit1 = update1;
+                     zeroLogit0 = updateScore0;
+                     zeroLogit1 = updateScore1;
                   }
-                  update0 -= zeroLogit0;
-                  update1 -= zeroLogit1;
+                  updateScore0 -= zeroLogit0;
+                  updateScore1 -= zeroLogit1;
                }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               aValues[iVector] = SafeConvertFloat<FloatFast>(update0);
-               aValues[cVectorLength + iVector] = SafeConvertFloat<FloatFast>(update1);
+               aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore0);
+               aUpdateScores[cVectorLength + iVector] = SafeConvertFloat<FloatFast>(updateScore1);
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            FloatBig update0 = EbmStats::ComputeSinglePartitionUpdate(
+            FloatBig updateScore0 = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntryLeftChild[0].m_sumGradients,
                pLeftChild->GetWeight()
             );
-            FloatBig update1 = EbmStats::ComputeSinglePartitionUpdate(
+            FloatBig updateScore1 = EbmStats::ComputeSinglePartitionUpdate(
                pHistogramTargetEntryRightChild[0].m_sumGradients,
                pRightChild->GetWeight()
             );
 
-            aValues[0] = SafeConvertFloat<FloatFast>(update0);
-            aValues[1] = SafeConvertFloat<FloatFast>(update1);
+            aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore0);
+            aUpdateScores[1] = SafeConvertFloat<FloatFast>(updateScore1);
          }
 
          const FloatBig totalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
@@ -889,22 +889,22 @@ public:
          LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cVectorLength, cLeaves)");
          return Error_OutOfMemory;
       }
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cLeaves);
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * cLeaves);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
       }
       ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension);
-      FloatFast * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+      FloatFast * pUpdateScore = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
 
       LOG_0(TraceLevelVerbose, "Entered Flatten");
-      Flatten<bClassification>(pRootTreeNode, &pSplits, &pValues, cVectorLength);
+      Flatten<bClassification>(pRootTreeNode, &pSplits, &pUpdateScore, cVectorLength);
       LOG_0(TraceLevelVerbose, "Exited Flatten");
 
       EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension) <= pSplits);
       EBM_ASSERT(static_cast<size_t>(pSplits - pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension)) == cLeaves - 1);
-      EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer() < pValues);
-      EBM_ASSERT(static_cast<size_t>(pValues - pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()) == cVectorLength * cLeaves);
+      EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer() < pUpdateScore);
+      EBM_ASSERT(static_cast<size_t>(pUpdateScore - pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()) == cVectorLength * cLeaves);
 
       return Error_None;
    }

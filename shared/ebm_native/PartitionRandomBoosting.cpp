@@ -138,7 +138,7 @@ public:
       }
       const size_t cBytesSlicesPlusRandom = sizeof(size_t) * cSlicesPlusRandomMax;
 
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells);
+      error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * cCollapsedTensorCells);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
@@ -523,7 +523,7 @@ public:
          } while(PREDICTABLE(pStateInit != pState));
       }
 
-      FloatFast * pUpdate = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+      FloatFast * pUpdateScore = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
       auto * pCollapsedHistogramBucket2 = aCollapsedHistogramBuckets;
 
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
@@ -531,14 +531,14 @@ public:
             auto * const pHistogramTargetEntry = pCollapsedHistogramBucket2->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatBig update = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iVector].m_sumGradients);
+               FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iVector].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                // for DP-EBMs, we can't zero one of the class scores as we can for logits since we're returning a sum
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               *pUpdate = SafeConvertFloat<FloatFast>(update);
-               ++pUpdate;
+               *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
+               ++pUpdateScore;
             }
             pCollapsedHistogramBucket2 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pCollapsedHistogramBucket2, 1);
          } while(pCollapsedHistogramBucketEnd != pCollapsedHistogramBucket2);
@@ -557,8 +557,8 @@ public:
                   // if we eliminated the space for the logit, we'd need to eliminate one assignment here
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-                  *pUpdate = 0;
-                  ++pUpdate;
+                  *pUpdateScore = 0;
+                  ++pUpdateScore;
                }
             } else {
                auto * const pHistogramTargetEntry = pCollapsedHistogramBucket2->GetHistogramTargetEntry();
@@ -568,29 +568,29 @@ public:
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  FloatBig update;
+                  FloatBig updateScore;
                   if(bClassification) {
-                     update = EbmStats::ComputeSinglePartitionUpdate(
+                     updateScore = EbmStats::ComputeSinglePartitionUpdate(
                         pHistogramTargetEntry[iVector].m_sumGradients,
                         pHistogramTargetEntry[iVector].GetSumHessians()
                      );
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                      if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                         if(size_t { 0 } == iVector) {
-                           zeroLogit = update;
+                           zeroLogit = updateScore;
                         }
-                        update -= zeroLogit;
+                        updateScore -= zeroLogit;
                      }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
                   } else {
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                     update = EbmStats::ComputeSinglePartitionUpdate(
+                     updateScore = EbmStats::ComputeSinglePartitionUpdate(
                         pHistogramTargetEntry[iVector].m_sumGradients,
                         pCollapsedHistogramBucket2->GetWeightInBucket()
                      );
                   }
-                  *pUpdate = SafeConvertFloat<FloatFast>(update);
-                  ++pUpdate;
+                  *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
+                  ++pUpdateScore;
                }
             }
             pCollapsedHistogramBucket2 = GetHistogramBucketByIndex(

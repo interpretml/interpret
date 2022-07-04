@@ -499,7 +499,7 @@ public:
                      pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst2Best;
 
                      if(splitFirst2LowBest < splitFirst2HighBest) {
-                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -512,7 +512,7 @@ public:
                         pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
                         pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[1] = splitFirst2HighBest;
                      } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -531,7 +531,7 @@ public:
                            return error;
                         }
 
-                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * 4);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -610,26 +610,26 @@ public:
                            );
                         }
 
-                        FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+                        FloatFast * const aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
                         if(splitFirst2LowBest < splitFirst2HighBest) {
-                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aValues[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aValues[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aValues[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
-                           aValues[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else {
-                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         }
                      }
                   } else {
@@ -641,7 +641,7 @@ public:
                      pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension1)[0] = splitFirst1Best;
 
                      if(splitFirst1LowBest < splitFirst1HighBest) {
-                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -655,7 +655,7 @@ public:
                         pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
                         pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension2)[1] = splitFirst1HighBest;
                      } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -674,7 +674,7 @@ public:
                            // already logged
                            return error;
                         }
-                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
+                        error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * 4);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -751,26 +751,26 @@ public:
                               pTotals1HighHighBest->GetWeightInBucket()
                            );
                         }
-                        FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+                        FloatFast * const aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
                         if(splitFirst1LowBest < splitFirst1HighBest) {
-                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aValues[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aValues[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
-                           aValues[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aValues[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else {
-                           aValues[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aValues[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aValues[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aValues[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         }
                      }
                   }
@@ -801,7 +801,7 @@ public:
       // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
       EBM_ASSERT(Error_None == errorDebug2);
 
-      // we don't need to call pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity, 
+      // we don't need to call pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity, 
       // since our value capacity would be 1, which is pre-allocated
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -833,8 +833,8 @@ public:
             );
          }
 
-         FloatFast * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-         aValues[iVector] = SafeConvertFloat<FloatFast>(update);
+         FloatFast * const aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
+         aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(update);
       }
       return Error_None;
    }

@@ -1188,7 +1188,7 @@ SEXP GetBestModelFeatureGroup_R(
       return R_NilValue;
    }
 
-   size_t cValues = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
    if(0 != cDimensions) {
@@ -1196,16 +1196,16 @@ SEXP GetBestModelFeatureGroup_R(
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
-         EBM_ASSERT(!IsMultiplyError(cValues, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         cValues *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         cScores *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
-   if(IsConvertError<R_xlen_t>(cValues)) {
+   if(IsConvertError<R_xlen_t>(cScores)) {
       return R_NilValue;
    }
-   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
-   EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cScores)));
+   EBM_ASSERT(!IsMultiplyError(sizeof(double), cScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
    error = GetBestModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 
@@ -1255,7 +1255,7 @@ SEXP GetCurrentModelFeatureGroup_R(
       return R_NilValue;
    }
 
-   size_t cValues = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
    if(0 != cDimensions) {
@@ -1263,16 +1263,16 @@ SEXP GetCurrentModelFeatureGroup_R(
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
-         EBM_ASSERT(!IsMultiplyError(cValues, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         cValues *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         cScores *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
-   if(IsConvertError<R_xlen_t>(cValues)) {
+   if(IsConvertError<R_xlen_t>(cScores)) {
       return R_NilValue;
    }
-   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
-   EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cScores)));
+   EBM_ASSERT(!IsMultiplyError(sizeof(double), cScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
    error = GetCurrentModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 

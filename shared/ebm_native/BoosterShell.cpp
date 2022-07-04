@@ -410,15 +410,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
 
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
-   size_t cValues = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cValues, cBins));
-         cValues *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
+         cScores *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
@@ -431,13 +431,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
    CompressibleTensor * const pBestModel = pBoosterCore->GetBestModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pBestModel);
    EBM_ASSERT(pBestModel->GetExpanded()); // the model should have been expanded at startup
-   FloatFast * const pValues = pBestModel->GetValuePointer();
-   EBM_ASSERT(nullptr != pValues);
+   FloatFast * const aTermScores = pBestModel->GetScoresPointer();
+   EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cValues));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
-   static_assert(sizeof(*modelFeatureGroupTensorOut) == sizeof(*pValues), "float mismatch");
-   memcpy(modelFeatureGroupTensorOut, pValues, sizeof(*pValues) * cValues);
+   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cScores));
+   static_assert(sizeof(*modelFeatureGroupTensorOut) == sizeof(*aTermScores), "float mismatch");
+   memcpy(modelFeatureGroupTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
 
    LOG_0(TraceLevelInfo, "Exited GetBestModelFeatureGroup");
    return Error_None;
@@ -503,15 +503,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
 
    const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
    const size_t cDimensions = pFeatureGroup->GetCountDimensions();
-   size_t cValues = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
       const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
       do {
          const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cValues, cBins));
-         cValues *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
+         cScores *= cBins;
          ++pFeatureGroupEntry;
       } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
@@ -524,13 +524,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
    CompressibleTensor * const pCurrentModel = pBoosterCore->GetCurrentModel()[iFeatureGroup];
    EBM_ASSERT(nullptr != pCurrentModel);
    EBM_ASSERT(pCurrentModel->GetExpanded()); // the model should have been expanded at startup
-   FloatFast * const pValues = pCurrentModel->GetValuePointer();
-   EBM_ASSERT(nullptr != pValues);
+   FloatFast * const aTermScores = pCurrentModel->GetScoresPointer();
+   EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cValues));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
-   static_assert(sizeof(*modelFeatureGroupTensorOut) == sizeof(*pValues), "float mismatch");
-   memcpy(modelFeatureGroupTensorOut, pValues, sizeof(*pValues) * cValues);
+   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cScores));
+   static_assert(sizeof(*modelFeatureGroupTensorOut) == sizeof(*aTermScores), "float mismatch");
+   memcpy(modelFeatureGroupTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
 
    LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureGroup");
    return Error_None;

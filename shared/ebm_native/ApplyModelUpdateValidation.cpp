@@ -40,8 +40,8 @@ public:
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
@@ -66,22 +66,22 @@ public:
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
 
-         const FloatFast * pValues = aModelFeatureGroupUpdateTensor;
+         const FloatFast * pUpdateScore = aUpdateScores;
          FloatFast itemExp = 0;
          FloatFast sumExp = 0;
          size_t iVector = 0;
          do {
             // TODO : because there is only one bin for a zero feature feature group, we could move these values to the stack where the
             // compiler could reason about their visibility and optimize small arrays into registers
-            const FloatFast scoreUpdate = *pValues;
-            ++pValues;
+            const FloatFast updateScore = *pUpdateScore;
+            ++pUpdateScore;
             // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
-            const FloatFast sampleScore = *pSampleScore + scoreUpdate;
+            const FloatFast sampleScore = *pSampleScore + updateScore;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                if(size_t { 0 } == iVector) {
-                  EBM_ASSERT(0 == scoreUpdate);
+                  EBM_ASSERT(0 == updateScore);
                   EBM_ASSERT(0 == sampleScore);
                }
             }
@@ -132,8 +132,8 @@ public:
 
    static double Func(BoosterShell * const pBoosterShell) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
       const size_t cSamples = pValidationSet->GetCountSamples();
@@ -148,12 +148,12 @@ public:
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
       FloatFast * pSampleScore = pValidationSet->GetSampleScores();
       const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples;
-      const FloatFast scoreUpdate = aModelFeatureGroupUpdateTensor[0];
+      const FloatFast updateScore = aUpdateScores[0];
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
          // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
-         const FloatFast sampleScore = *pSampleScore + scoreUpdate;
+         const FloatFast sampleScore = *pSampleScore + updateScore;
          *pSampleScore = sampleScore;
          ++pSampleScore;
          const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
@@ -190,8 +190,8 @@ public:
 
    static double Func(BoosterShell * const pBoosterShell) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
       const size_t cSamples = pValidationSet->GetCountSamples();
@@ -206,10 +206,10 @@ public:
       // no hessians for regression
       FloatFast * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
       const FloatFast * const pGradientsEnd = pGradient + cSamples;
-      const FloatFast scoreUpdate = aModelFeatureGroupUpdateTensor[0];
+      const FloatFast updateScore = aUpdateScores[0];
       do {
          // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
-         const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, scoreUpdate);
+         const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
          const FloatFast singleSampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
          EBM_ASSERT(std::isnan(singleSampleSquaredError) || 0 <= singleSampleSquaredError);
 
@@ -296,8 +296,8 @@ public:
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
       const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
@@ -353,20 +353,20 @@ public:
             ++pTargetData;
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
-            const FloatFast * pValues = &aModelFeatureGroupUpdateTensor[iTensorBin * cVectorLength];
+            const FloatFast * pUpdateScore = &aUpdateScores[iTensorBin * cVectorLength];
             FloatFast itemExp = 0;
             FloatFast sumExp = 0;
             size_t iVector = 0;
             do {
-               const FloatFast scoreUpdate = *pValues;
-               ++pValues;
+               const FloatFast updateScore = *pUpdateScore;
+               ++pUpdateScore;
                // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
-               const FloatFast sampleScore = *pSampleScore + scoreUpdate;
+               const FloatFast sampleScore = *pSampleScore + updateScore;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                   if(size_t { 0 } == iVector) {
-                     EBM_ASSERT(0 == scoreUpdate);
+                     EBM_ASSERT(0 == updateScore);
                      EBM_ASSERT(0 == sampleScore);
                   }
                }
@@ -429,8 +429,8 @@ public:
       const FeatureGroup * const pFeatureGroup
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
@@ -481,9 +481,9 @@ public:
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatFast scoreUpdate = aModelFeatureGroupUpdateTensor[iTensorBin];
+            const FloatFast updateScore = aUpdateScores[iTensorBin];
             // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
-            const FloatFast sampleScore = *pSampleScore + scoreUpdate;
+            const FloatFast sampleScore = *pSampleScore + updateScore;
             *pSampleScore = sampleScore;
             ++pSampleScore;
             const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
@@ -534,8 +534,8 @@ public:
       const FeatureGroup * const pFeatureGroup
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatFast * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
@@ -583,9 +583,9 @@ public:
          do {
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatFast scoreUpdate = aModelFeatureGroupUpdateTensor[iTensorBin];
+            const FloatFast updateScore = aUpdateScores[iTensorBin];
             // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
-            const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, scoreUpdate);
+            const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
             const FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
             EBM_ASSERT(std::isnan(sampleSquaredError) || 0 <= sampleSquaredError);
 
