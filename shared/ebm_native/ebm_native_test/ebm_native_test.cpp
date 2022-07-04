@@ -738,24 +738,24 @@ BoostRet TestApi::Boost(
    if(0 != (GenerateUpdateOptions_GradientSums & options)) {
       // if sums are on, then we MUST change the model update
 
-      size_t cScores = GetVectorLength(m_learningTypeOrCountTargetClasses);
+      size_t cUpdateScores = GetVectorLength(m_learningTypeOrCountTargetClasses);
       std::vector<size_t> & countBinsByFeatureGroup = m_countBinsByFeatureGroup[static_cast<size_t>(indexFeatureGroup)];
 
       for(size_t iDimension = 0; iDimension < countBinsByFeatureGroup.size(); ++iDimension) {
          size_t cBins = countBinsByFeatureGroup[iDimension];
-         cScores *= cBins;
+         cUpdateScores *= cBins;
       }
 
-      double * aMem = new double[cScores];
-      memset(aMem, 0, sizeof(*aMem) * cScores);
+      double * aUpdateScores = new double[cUpdateScores];
+      memset(aUpdateScores, 0, sizeof(*aUpdateScores) * cUpdateScores);
 
-      error = SetModelUpdateExpanded(
+      error = SetTermUpdateExpanded(
          m_boosterHandle,
          indexFeatureGroup,
-         aMem
+         aUpdateScores
       );
 
-      delete[] aMem;
+      delete[] aUpdateScores;
 
       if(Error_None != error) {
          exit(1);
@@ -797,7 +797,7 @@ double TestApi::GetBestTermScore(
    std::vector<double> model;
    model.resize(multiple);
 
-   error = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   error = GetBestTermScores(m_boosterHandle, iFeatureGroup, &model[0]);
    if(Error_None != error) {
       exit(1);
    }
@@ -806,7 +806,7 @@ double TestApi::GetBestTermScore(
    return termScore;
 }
 
-void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, double * const aModelValues) const {
+void TestApi::GetBestTermScoresRaw(const size_t iFeatureGroup, double * const aModelValues) const {
    ErrorEbmType error;
 
    if(Stage::InitializedBoosting != m_stage) {
@@ -815,7 +815,7 @@ void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, double * c
    if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
       exit(1);
    }
-   error = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   error = GetBestTermScores(m_boosterHandle, iFeatureGroup, aModelValues);
    if(Error_None != error) {
       exit(1);
    }
@@ -846,7 +846,7 @@ double TestApi::GetCurrentTermScore(
    std::vector<double> model;
    model.resize(multiple);
 
-   error = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   error = GetCurrentTermScores(m_boosterHandle, iFeatureGroup, &model[0]);
    if(Error_None != error) {
       exit(1);
    }
@@ -855,7 +855,7 @@ double TestApi::GetCurrentTermScore(
    return termScore;
 }
 
-void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, double * const aModelValues) const {
+void TestApi::GetCurrentTermScoresRaw(const size_t iFeatureGroup, double * const aModelValues) const {
    ErrorEbmType error;
 
    if(Stage::InitializedBoosting != m_stage) {
@@ -864,7 +864,7 @@ void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, double 
    if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
       exit(1);
    }
-   error = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   error = GetCurrentTermScores(m_boosterHandle, iFeatureGroup, aModelValues);
    if(Error_None != error) {
       exit(1);
    }

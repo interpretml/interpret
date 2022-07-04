@@ -408,28 +408,28 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetM
    IntEbmType * countSplitsInOut,
    IntEbmType * splitIndexesOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTermUpdateExpanded(
    BoosterHandle boosterHandle,
-   double * modelFeatureGroupUpdateTensorOut
+   double * updateScoresTensorOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetTermUpdateExpanded(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   double * modelFeatureGroupUpdateTensor
+   double * updateScoresTensor
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
    BoosterHandle boosterHandle,
    double * validationMetricOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestTermScores(
    BoosterHandle boosterHandle, 
    IntEbmType indexFeatureGroup,
-   double * modelFeatureGroupTensorOut
+   double * termScoresTensorOut
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentTermScores(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   double * modelFeatureGroupTensorOut
+   double * termScoresTensorOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle

@@ -743,10 +743,10 @@ TEST_CASE("features with 0 states, boosting") {
    // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure 
    // calling to get the models doesn't crash
    termScores[0] = 9.99;
-   test.GetBestModelFeatureGroupRaw(0, termScores);
+   test.GetBestTermScoresRaw(0, termScores);
    CHECK(9.99 == termScores[0]); // the model is a tensor with zero values since one of the dimensions is non-existant
    termScores[0] = 9.99;
-   test.GetCurrentModelFeatureGroupRaw(0, termScores);
+   test.GetCurrentTermScoresRaw(0, termScores);
    CHECK(9.99 == termScores[0]); // the model is a tensor with zero values since one of the dimensions is non-existant
 }
 

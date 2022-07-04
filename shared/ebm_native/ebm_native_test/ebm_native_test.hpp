@@ -390,7 +390,7 @@ public:
       const size_t iScore
    ) const;
    
-   void GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, double * const aModelValues) const;
+   void GetBestTermScoresRaw(const size_t iFeatureGroup, double * const aModelValues) const;
 
    double GetCurrentTermScore(
       const size_t iFeatureGroup,
@@ -398,7 +398,7 @@ public:
       const size_t iScore
    ) const;
 
-   void GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, double * const aModelValues) const;
+   void GetCurrentTermScoresRaw(const size_t iFeatureGroup, double * const aModelValues) const;
 
    void AddInteractionSamples(const std::vector<TestSample> samples);
 

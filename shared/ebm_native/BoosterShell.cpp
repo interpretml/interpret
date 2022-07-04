@@ -350,21 +350,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestTermScores(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   double * modelFeatureGroupTensorOut
+   double * termScoresTensorOut
 ) {
    LOG_N(
       TraceLevelInfo,
-      "Entered GetBestModelFeatureGroup: "
+      "Entered GetBestTermScores: "
       "boosterHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
-      "modelFeatureGroupTensorOut=%p, "
+      "termScoresTensorOut=%p, "
       ,
       static_cast<void *>(boosterHandle),
       indexFeatureGroup,
-      static_cast<void *>(modelFeatureGroupTensorOut)
+      static_cast<void *>(termScoresTensorOut)
    );
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
@@ -374,19 +374,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
    }
 
    if(indexFeatureGroup < 0) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexFeatureGroup must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexFeatureGroup is too high to index");
       return Error_IllegalParamValue;
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexFeatureGroup above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
 
@@ -395,12 +395,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
-      LOG_0(TraceLevelInfo, "Exited GetBestModelFeatureGroup no model");
+      LOG_0(TraceLevelInfo, "Exited GetBestTermScores no model");
       return Error_None;
    }
 
-   if(nullptr == modelFeatureGroupTensorOut) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup modelFeatureGroupTensorOut cannot be nullptr");
+   if(nullptr == termScoresTensorOut) {
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores termScoresTensorOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
@@ -434,30 +434,30 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
    FloatFast * const aTermScores = pBestModel->GetScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cScores));
    EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cScores));
-   static_assert(sizeof(*modelFeatureGroupTensorOut) == sizeof(*aTermScores), "float mismatch");
-   memcpy(modelFeatureGroupTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
+   static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
+   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
 
-   LOG_0(TraceLevelInfo, "Exited GetBestModelFeatureGroup");
+   LOG_0(TraceLevelInfo, "Exited GetBestTermScores");
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentTermScores(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   double * modelFeatureGroupTensorOut
+   double * termScoresTensorOut
 ) {
    LOG_N(
       TraceLevelInfo,
-      "Entered GetCurrentModelFeatureGroup: "
+      "Entered GetCurrentTermScores: "
       "boosterHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
-      "modelFeatureGroupTensorOut=%p, "
+      "termScoresTensorOut=%p, "
       ,
       static_cast<void *>(boosterHandle),
       indexFeatureGroup,
-      static_cast<void *>(modelFeatureGroupTensorOut)
+      static_cast<void *>(termScoresTensorOut)
    );
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
@@ -467,19 +467,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
    }
 
    if(indexFeatureGroup < 0) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexFeatureGroup must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexFeatureGroup is too high to index");
       return Error_IllegalParamValue;
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexFeatureGroup above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
 
@@ -488,12 +488,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
-      LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureGroup no model");
+      LOG_0(TraceLevelInfo, "Exited GetCurrentTermScores no model");
       return Error_None;
    }
 
-   if(nullptr == modelFeatureGroupTensorOut) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup modelFeatureGroupTensorOut cannot be nullptr");
+   if(nullptr == termScoresTensorOut) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores termScoresTensorOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
@@ -527,12 +527,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
    FloatFast * const aTermScores = pCurrentModel->GetScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupTensorOut), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cScores));
    EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cScores));
-   static_assert(sizeof(*modelFeatureGroupTensorOut) == sizeof(*aTermScores), "float mismatch");
-   memcpy(modelFeatureGroupTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
+   static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
+   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
 
-   LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureGroup");
+   LOG_0(TraceLevelInfo, "Exited GetCurrentTermScores");
    return Error_None;
 }
 

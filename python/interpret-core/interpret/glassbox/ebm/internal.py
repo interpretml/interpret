@@ -933,23 +933,23 @@ class Native:
         ]
         self._unsafe.GetModelUpdateSplits.restype = ct.c_int32
 
-        self._unsafe.GetModelUpdateExpanded.argtypes = [
+        self._unsafe.GetTermUpdateExpanded.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # double * modelFeatureGroupUpdateTensorOut
+            # double * updateScoresTensorOut
             ct.c_void_p,
         ]
-        self._unsafe.GetModelUpdateExpanded.restype = ct.c_int32
+        self._unsafe.GetTermUpdateExpanded.restype = ct.c_int32
 
-        self._unsafe.SetModelUpdateExpanded.argtypes = [
+        self._unsafe.SetTermUpdateExpanded.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
-            # double * modelFeatureGroupUpdateTensor
+            # double * updateScoresTensor
             ct.c_void_p,
         ]
-        self._unsafe.SetModelUpdateExpanded.restype = ct.c_int32
+        self._unsafe.SetTermUpdateExpanded.restype = ct.c_int32
 
         self._unsafe.ApplyModelUpdate.argtypes = [
             # void * boosterHandle
@@ -959,25 +959,25 @@ class Native:
         ]
         self._unsafe.ApplyModelUpdate.restype = ct.c_int32
 
-        self._unsafe.GetBestModelFeatureGroup.argtypes = [
+        self._unsafe.GetBestTermScores.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
-            # double * modelFeatureGroupTensorOut
+            # double * termScoresTensorOut
             ct.c_void_p,
         ]
-        self._unsafe.GetBestModelFeatureGroup.restype = ct.c_int32
+        self._unsafe.GetBestTermScores.restype = ct.c_int32
 
-        self._unsafe.GetCurrentModelFeatureGroup.argtypes = [
+        self._unsafe.GetCurrentTermScores.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexFeatureGroup
             ct.c_int64,
-            # double * modelFeatureGroupTensorOut
+            # double * termScoresTensorOut
             ct.c_void_p,
         ]
-        self._unsafe.GetCurrentModelFeatureGroup.restype = ct.c_int32
+        self._unsafe.GetCurrentTermScores.restype = ct.c_int32
 
         self._unsafe.FreeBooster.argtypes = [
             # void * boosterHandle
@@ -1248,8 +1248,8 @@ class Booster(AbstractContextManager):
     def get_best_model(self):
         model = []
         for term_idx in range(len(self.term_features)):
-            model_term = self._get_best_term(term_idx)
-            model.append(model_term)
+            term_scores = self._get_best_term_scores(term_idx)
+            model.append(term_scores)
 
         return model
 
@@ -1257,8 +1257,8 @@ class Booster(AbstractContextManager):
     def get_current_model(self):
         model = []
         for term_idx in range(len(self.term_features)):
-            model_term = self._get_current_term(term_idx)
-            model.append(model_term)
+            term_scores = self._get_current_term_scores(term_idx)
+            model.append(term_scores)
 
         return model
 
@@ -1274,7 +1274,7 @@ class Booster(AbstractContextManager):
 
         return splits
 
-    def _get_best_term(self, term_idx):
+    def _get_best_term_scores(self, term_idx):
         """ Returns best model/function according to validation set
             for a given feature group.
 
@@ -1294,24 +1294,24 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
-        model_term = np.empty(shape, dtype=np.float64, order="C")
+        term_scores = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = native._unsafe.GetBestModelFeatureGroup(
+        return_code = native._unsafe.GetBestTermScores(
             self._booster_handle, 
             term_idx, 
-            Native._make_pointer(model_term, np.float64, len(shape)),
+            Native._make_pointer(term_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetBestModelFeatureGroup")
+            raise Native._get_native_exception(return_code, "GetBestTermScores")
 
         n_dimensions = len(self.term_features[term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        model_term = np.ascontiguousarray(np.transpose(model_term, tuple(temp_transpose)))
-        return model_term
+        term_scores = np.ascontiguousarray(np.transpose(term_scores, tuple(temp_transpose)))
+        return term_scores
 
-    def _get_current_term(self, term_idx):
+    def _get_current_term_scores(self, term_idx):
         """ Returns current model/function according to validation set
             for a given feature group.
 
@@ -1331,22 +1331,22 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
-        model_term = np.empty(shape, dtype=np.float64, order="C")
+        term_scores = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = native._unsafe.GetCurrentModelFeatureGroup(
+        return_code = native._unsafe.GetCurrentTermScores(
             self._booster_handle, 
             term_idx, 
-            Native._make_pointer(model_term, np.float64, len(shape)),
+            Native._make_pointer(term_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetCurrentModelFeatureGroup")
+            raise Native._get_native_exception(return_code, "GetCurrentTermScores")
 
         n_dimensions = len(self.term_features[term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        model_term = np.ascontiguousarray(np.transpose(model_term, tuple(temp_transpose)))
-        return model_term
+        term_scores = np.ascontiguousarray(np.transpose(term_scores, tuple(temp_transpose)))
+        return term_scores
 
     def _get_term_update_splits_dimension(self, dimension_index):
         if self._term_shapes is None:  # pragma: no cover
@@ -1388,27 +1388,27 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[self._term_idx]
-        term_update = np.empty(shape, dtype=np.float64, order="C")
+        update_scores = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = native._unsafe.GetModelUpdateExpanded(
+        return_code = native._unsafe.GetTermUpdateExpanded(
             self._booster_handle, 
-            Native._make_pointer(term_update, np.float64, len(shape)),
+            Native._make_pointer(update_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetModelUpdateExpanded")
+            raise Native._get_native_exception(return_code, "GetTermUpdateExpanded")
 
         n_dimensions = len(self.term_features[self._term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        term_update = np.ascontiguousarray(np.transpose(term_update, tuple(temp_transpose)))
-        return term_update
+        update_scores = np.ascontiguousarray(np.transpose(update_scores, tuple(temp_transpose)))
+        return update_scores
 
-    def set_term_update_expanded(self, term_idx, term_update):
+    def set_term_update_expanded(self, term_idx, update_scores):
         self._term_idx = -1
 
         if self._term_shapes is None:  # pragma: no cover
-            if term_update is None:  # pragma: no cover
+            if update_scores is None:  # pragma: no cover
                 self._term_idx = term_idx
                 return
             raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
@@ -1419,19 +1419,19 @@ class Booster(AbstractContextManager):
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        term_update = np.ascontiguousarray(np.transpose(term_update, tuple(temp_transpose)))
+        update_scores = np.ascontiguousarray(np.transpose(update_scores, tuple(temp_transpose)))
 
-        if shape != term_update.shape:  # pragma: no cover
+        if shape != update_scores.shape:  # pragma: no cover
             raise ValueError("incorrect tensor shape in call to set_term_update_expanded")
 
         native = Native.get_native_singleton()
-        return_code = native._unsafe.SetModelUpdateExpanded(
+        return_code = native._unsafe.SetTermUpdateExpanded(
             self._booster_handle, 
             term_idx, 
-            Native._make_pointer(term_update, np.float64, len(shape)),
+            Native._make_pointer(update_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "SetModelUpdateExpanded")
+            raise Native._get_native_exception(return_code, "SetTermUpdateExpanded")
 
         self._term_idx = term_idx
 

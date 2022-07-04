@@ -198,22 +198,22 @@ get_best_model_feature_group <- function(booster_handle, index_feature_group) {
    stopifnot(class(booster_handle) == "externalptr")
    index_feature_group <- as.double(index_feature_group)
 
-   model_feature_group_tensor <- .Call(GetBestModelFeatureGroup_R, booster_handle, index_feature_group)
-   if(is.null(model_feature_group_tensor)) {
-      stop("error in GetBestModelFeatureGroup_R")
+   term_scores <- .Call(GetBestTermScores_R, booster_handle, index_feature_group)
+   if(is.null(term_scores)) {
+      stop("error in GetBestTermScores_R")
    }
-   return(model_feature_group_tensor)
+   return(term_scores)
 }
 
 get_current_model_feature_group <- function(booster_handle, index_feature_group) {
    stopifnot(class(booster_handle) == "externalptr")
    index_feature_group <- as.double(index_feature_group)
 
-   model_feature_group_tensor <- .Call(GetCurrentModelFeatureGroup_R, booster_handle, index_feature_group)
-   if(is.null(model_feature_group_tensor)) {
-      stop("error in GetCurrentModelFeatureGroup_R")
+   term_scores <- .Call(GetCurrentTermScores_R, booster_handle, index_feature_group)
+   if(is.null(term_scores)) {
+      stop("error in GetCurrentTermScores_R")
    }
-   return(model_feature_group_tensor)
+   return(term_scores)
 }
 
 free_boosting <- function(booster_handle) {

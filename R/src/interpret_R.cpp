@@ -1151,7 +1151,7 @@ SEXP ApplyModelUpdate_R(
    return ret;
 }
 
-SEXP GetBestModelFeatureGroup_R(
+SEXP GetBestTermScores_R(
    SEXP boosterHandleWrapped,
    SEXP indexFeatureGroup
 ) {
@@ -1161,7 +1161,7 @@ SEXP GetBestModelFeatureGroup_R(
    ErrorEbmType error;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
    const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
@@ -1173,18 +1173,18 @@ SEXP GetBestModelFeatureGroup_R(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
    if(!IsSingleDoubleVector(indexFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R !IsSingleDoubleVector(indexFeatureGroup)");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores_R !IsSingleDoubleVector(indexFeatureGroup)");
       return R_NilValue;
    }
    const double doubleIndex = REAL(indexFeatureGroup)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
    const size_t iFeatureGroup = static_cast<size_t>(doubleIndex);
    // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores_R pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup");
       return R_NilValue;
    }
 
@@ -1207,18 +1207,18 @@ SEXP GetBestModelFeatureGroup_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   error = GetBestModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   error = GetBestTermScores(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 
    UNPROTECT(1);
 
    if(Error_None != error) {
-      LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureGroup_R IntEbmType { 0 } != error");
+      LOG_0(TraceLevelWarning, "WARNING GetBestTermScores_R IntEbmType { 0 } != error");
       return R_NilValue;
    }
    return ret;
 }
 
-SEXP GetCurrentModelFeatureGroup_R(
+SEXP GetCurrentTermScores_R(
    SEXP boosterHandleWrapped,
    SEXP indexFeatureGroup
 ) {
@@ -1228,7 +1228,7 @@ SEXP GetCurrentModelFeatureGroup_R(
    ErrorEbmType error;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
    const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
@@ -1240,18 +1240,18 @@ SEXP GetCurrentModelFeatureGroup_R(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
    if(!IsSingleDoubleVector(indexFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R !IsSingleDoubleVector(indexFeatureGroup)");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R !IsSingleDoubleVector(indexFeatureGroup)");
       return R_NilValue;
    }
    const double doubleIndex = REAL(indexFeatureGroup)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
    const size_t iFeatureGroup = static_cast<size_t>(doubleIndex);
    // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup");
       return R_NilValue;
    }
 
@@ -1274,12 +1274,12 @@ SEXP GetCurrentModelFeatureGroup_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   error = GetCurrentModelFeatureGroup(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   error = GetCurrentTermScores(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
 
    UNPROTECT(1);
 
    if(Error_None != error) {
-      LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureGroup_R IntEbmType { 0 } != error");
+      LOG_0(TraceLevelWarning, "WARNING GetCurrentTermScores_R IntEbmType { 0 } != error");
       return R_NilValue;
    }
    return ret;
@@ -1627,8 +1627,8 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 14 },
    { "GenerateModelUpdate_R", (DL_FUNC)&GenerateModelUpdate_R, 5 },
    { "ApplyModelUpdate_R", (DL_FUNC)&ApplyModelUpdate_R, 1 },
-   { "GetBestModelFeatureGroup_R", (DL_FUNC)&GetBestModelFeatureGroup_R, 2 },
-   { "GetCurrentModelFeatureGroup_R", (DL_FUNC)& GetCurrentModelFeatureGroup_R, 2 },
+   { "GetBestTermScores_R", (DL_FUNC)&GetBestTermScores_R, 2 },
+   { "GetCurrentTermScores_R", (DL_FUNC)& GetCurrentTermScores_R, 2 },
    { "FreeBooster_R", (DL_FUNC)& FreeBooster_R, 1 },
    { "CreateClassificationInteractionDetector_R", (DL_FUNC)&CreateClassificationInteractionDetector_R, 7 },
    { "CreateRegressionInteractionDetector_R", (DL_FUNC)&CreateRegressionInteractionDetector_R, 6 },

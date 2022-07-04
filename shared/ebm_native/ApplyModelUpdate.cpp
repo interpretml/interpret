@@ -345,22 +345,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogGetModelUpdateExpandedParametersMessages = 10;
+static int g_cLogGetTermUpdateExpandedParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateExpanded(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTermUpdateExpanded(
    BoosterHandle boosterHandle,
-   double * modelFeatureGroupUpdateTensorOut
+   double * updateScoresTensorOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogGetModelUpdateExpandedParametersMessages,
+      &g_cLogGetTermUpdateExpandedParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "GetModelUpdateExpanded: "
+      "GetTermUpdateExpanded: "
       "boosterHandle=%p, "
-      "modelFeatureGroupUpdateTensorOut=%p"
+      "updateScoresTensorOut=%p"
       ,
       static_cast<void *>(boosterHandle),
-      static_cast<void *>(modelFeatureGroupUpdateTensorOut)
+      static_cast<void *>(updateScoresTensorOut)
    );
 
    ErrorEbmType error;
@@ -373,7 +373,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
 
    const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
    if(BoosterShell::k_illegalFeatureGroupIndex == iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateExpanded bad internal state.  No FeatureGroupIndex set");
+      LOG_0(TraceLevelError, "ERROR GetTermUpdateExpanded bad internal state.  No FeatureGroupIndex set");
       return Error_IllegalParamValue; // technically we're in an illegal state, but why split hairs
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -406,10 +406,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    }
    const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
-   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensorOut), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensorOut), cScores));
    EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cScores));
-   static_assert(sizeof(*modelFeatureGroupUpdateTensorOut) == sizeof(*aUpdateScores), "float mismatch");
-   memcpy(modelFeatureGroupUpdateTensorOut, aUpdateScores, sizeof(*aUpdateScores) * cScores);
+   static_assert(sizeof(*updateScoresTensorOut) == sizeof(*aUpdateScores), "float mismatch");
+   memcpy(updateScoresTensorOut, aUpdateScores, sizeof(*aUpdateScores) * cScores);
    return Error_None;
 }
 
@@ -417,25 +417,25 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogSetModelUpdateExpandedParametersMessages = 10;
+static int g_cLogSetTermUpdateExpandedParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetModelUpdateExpanded(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetTermUpdateExpanded(
    BoosterHandle boosterHandle,
    IntEbmType indexFeatureGroup,
-   double * modelFeatureGroupUpdateTensor
+   double * updateScoresTensor
 ) {
    LOG_COUNTED_N(
-      &g_cLogSetModelUpdateExpandedParametersMessages,
+      &g_cLogSetTermUpdateExpandedParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "SetModelUpdateExpanded: "
+      "SetTermUpdateExpanded: "
       "boosterHandle=%p, "
       "indexFeatureGroup=%" IntEbmTypePrintf ", "
-      "modelFeatureGroupUpdateTensor=%p"
+      "updateScoresTensor=%p"
       ,
       static_cast<void *>(boosterHandle),
       indexFeatureGroup,
-      static_cast<void *>(modelFeatureGroupUpdateTensor)
+      static_cast<void *>(updateScoresTensor)
    );
 
    ErrorEbmType error;
@@ -451,19 +451,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
 
    if(indexFeatureGroup < 0) {
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
-      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexFeatureGroup must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexFeatureGroup)) {
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexFeatureGroup is too high to index");
       return Error_IllegalParamValue;
    }
    const size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
-      LOG_0(TraceLevelError, "ERROR SetModelUpdateExpanded indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexFeatureGroup above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
    // pBoosterCore->GetFeatureGroups() can be null if 0 == pBoosterCore->m_cFeatureGroups, but we checked that condition above
@@ -498,9 +498,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetMode
    }
    FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cScores));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*modelFeatureGroupUpdateTensor), cScores));
-   static_assert(sizeof(*modelFeatureGroupUpdateTensor) == sizeof(*aUpdateScores), "float mismatch");
-   memcpy(aUpdateScores, modelFeatureGroupUpdateTensor, sizeof(*aUpdateScores) * cScores);
+   EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensor), cScores));
+   static_assert(sizeof(*updateScoresTensor) == sizeof(*aUpdateScores), "float mismatch");
+   memcpy(aUpdateScores, updateScoresTensor, sizeof(*aUpdateScores) * cScores);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
 

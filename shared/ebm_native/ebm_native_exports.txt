@@ -20,11 +20,11 @@
       CreateBoosterView;
       GenerateModelUpdate;
       GetModelUpdateSplits;
-      GetModelUpdateExpanded;
-      SetModelUpdateExpanded;
+      GetTermUpdateExpanded;
+      SetTermUpdateExpanded;
       ApplyModelUpdate;
-      GetBestModelFeatureGroup;
-      GetCurrentModelFeatureGroup;
+      GetBestTermScores;
+      GetCurrentTermScores;
       FreeBooster;
       CreateInteractionDetector;
       CalcInteractionStrength;
