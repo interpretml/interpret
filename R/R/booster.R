@@ -152,7 +152,7 @@ create_regression_booster <- function(
    return(booster_handle)
 }
 
-generate_model_update <- function(
+generate_term_update <- function(
    booster_handle, 
    index_feature_group, 
    learning_rate, 
@@ -166,7 +166,7 @@ generate_model_update <- function(
    max_leaves <- as.double(max_leaves)
 
    avg_gain <- .Call(
-      GenerateModelUpdate_R, 
+      GenerateTermUpdate_R, 
       booster_handle, 
       index_feature_group, 
       learning_rate, 
@@ -174,18 +174,18 @@ generate_model_update <- function(
       max_leaves
    )
    if(is.null(avg_gain)) {
-      stop("error in GenerateModelUpdate_R")
+      stop("error in GenerateTermUpdate_R")
    }
    return(avg_gain)
 }
 
-apply_model_update <- function(
+apply_term_update <- function(
    booster_handle
 ) {
    stopifnot(class(booster_handle) == "externalptr")
 
    validation_metric <- .Call(
-      ApplyModelUpdate_R, 
+      ApplyTermUpdate_R, 
       booster_handle
    )
    if(is.null(validation_metric)) {
@@ -353,7 +353,7 @@ cyclic_gradient_boost <- function(
 
       for(episode_index in 1:max_rounds) {
          for(feature_group_index in seq_along(feature_groups)) {
-            avg_gain <- generate_model_update(
+            avg_gain <- generate_term_update(
                ebm_booster$booster_handle, 
                feature_group_index - 1, 
                learning_rate, 
@@ -361,7 +361,7 @@ cyclic_gradient_boost <- function(
                max_leaves
             )
 
-            validation_metric <- apply_model_update(ebm_booster$booster_handle)
+            validation_metric <- apply_term_update(ebm_booster$booster_handle)
 
             if(validation_metric < min_metric) {
                min_metric <- validation_metric

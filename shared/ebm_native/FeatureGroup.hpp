@@ -42,10 +42,10 @@ class FeatureGroup final {
    size_t m_cSignificantDimensions;
    size_t m_iInputData;
    size_t m_cTensorBins;
-   int m_cLogEnterGenerateModelUpdateMessages;
-   int m_cLogExitGenerateModelUpdateMessages;
-   int m_cLogEnterApplyModelUpdateMessages;
-   int m_cLogExitApplyModelUpdateMessages;
+   int m_cLogEnterGenerateTermUpdateMessages;
+   int m_cLogExitGenerateTermUpdateMessages;
+   int m_cLogEnterApplyTermUpdateMessages;
+   int m_cLogExitApplyTermUpdateMessages;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_FeatureGroupEntry must be the last item in this struct
@@ -72,10 +72,10 @@ public:
    INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureGroup) noexcept {
       m_cDimensions = cFeatures;
       m_iInputData = iFeatureGroup;
-      m_cLogEnterGenerateModelUpdateMessages = 2;
-      m_cLogExitGenerateModelUpdateMessages = 2;
-      m_cLogEnterApplyModelUpdateMessages = 2;
-      m_cLogExitApplyModelUpdateMessages = 2;
+      m_cLogEnterGenerateTermUpdateMessages = 2;
+      m_cLogExitGenerateTermUpdateMessages = 2;
+      m_cLogEnterApplyTermUpdateMessages = 2;
+      m_cLogExitApplyTermUpdateMessages = 2;
    }
 
    static FeatureGroup * Allocate(const size_t cFeatures, const size_t iFeatureGroup) noexcept;
@@ -126,20 +126,20 @@ public:
       return ArrayToPointer(m_FeatureGroupEntry);
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogEnterGenerateModelUpdateMessages() noexcept {
-      return &m_cLogEnterGenerateModelUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogEnterGenerateTermUpdateMessages() noexcept {
+      return &m_cLogEnterGenerateTermUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitGenerateModelUpdateMessages() noexcept {
-      return &m_cLogExitGenerateModelUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogExitGenerateTermUpdateMessages() noexcept {
+      return &m_cLogExitGenerateTermUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogEnterApplyModelUpdateMessages() noexcept {
-      return &m_cLogEnterApplyModelUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogEnterApplyTermUpdateMessages() noexcept {
+      return &m_cLogEnterApplyTermUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitApplyModelUpdateMessages() noexcept {
-      return &m_cLogExitApplyModelUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogExitApplyTermUpdateMessages() noexcept {
+      return &m_cLogExitApplyTermUpdateMessages;
    }
 };
 static_assert(std::is_standard_layout<FeatureGroup>::value,

@@ -18,11 +18,11 @@
       ExtractTargetClasses;
       CreateBooster;
       CreateBoosterView;
-      GenerateModelUpdate;
-      GetModelUpdateSplits;
+      GenerateTermUpdate;
+      GetTermUpdateSplits;
       GetTermUpdateExpanded;
       SetTermUpdateExpanded;
-      ApplyModelUpdate;
+      ApplyTermUpdate;
       GetBestTermScores;
       GetCurrentTermScores;
       FreeBooster;

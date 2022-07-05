@@ -30,10 +30,10 @@ namespace DEFINED_ZONE_NAME {
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateTrainingZeroFeatures final {
+class ApplyTermUpdateTrainingZeroFeatures final {
 public:
 
-   ApplyModelUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
 
    static void Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
@@ -122,10 +122,10 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class ApplyModelUpdateTrainingZeroFeatures<2> final {
+class ApplyTermUpdateTrainingZeroFeatures<2> final {
 public:
 
-   ApplyModelUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
 
    static void Func(BoosterShell * const pBoosterShell) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -158,10 +158,10 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class ApplyModelUpdateTrainingZeroFeatures<k_regression> final {
+class ApplyTermUpdateTrainingZeroFeatures<k_regression> final {
 public:
 
-   ApplyModelUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
 
    static void Func(BoosterShell * const pBoosterShell) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -186,10 +186,10 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateTrainingZeroFeaturesTarget final {
+class ApplyTermUpdateTrainingZeroFeaturesTarget final {
 public:
 
-   ApplyModelUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
@@ -201,11 +201,11 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         ApplyModelUpdateTrainingZeroFeatures<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+         ApplyTermUpdateTrainingZeroFeatures<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pBoosterShell
          );
       } else {
-         ApplyModelUpdateTrainingZeroFeaturesTarget<
+         ApplyTermUpdateTrainingZeroFeaturesTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBoosterShell
@@ -215,10 +215,10 @@ public:
 };
 
 template<>
-class ApplyModelUpdateTrainingZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class ApplyTermUpdateTrainingZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   ApplyModelUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
@@ -226,15 +226,15 @@ public:
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      ApplyModelUpdateTrainingZeroFeatures<k_dynamicClassification>::Func(pBoosterShell);
+      ApplyTermUpdateTrainingZeroFeatures<k_dynamicClassification>::Func(pBoosterShell);
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
-class ApplyModelUpdateTrainingInternal final {
+class ApplyTermUpdateTrainingInternal final {
 public:
 
-   ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
       BoosterShell * const pBoosterShell,
@@ -364,10 +364,10 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<size_t compilerBitPack>
-class ApplyModelUpdateTrainingInternal<2, compilerBitPack> final {
+class ApplyTermUpdateTrainingInternal<2, compilerBitPack> final {
 public:
 
-   ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
       BoosterShell * const pBoosterShell,
@@ -448,10 +448,10 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<size_t compilerBitPack>
-class ApplyModelUpdateTrainingInternal<k_regression, compilerBitPack> final {
+class ApplyTermUpdateTrainingInternal<k_regression, compilerBitPack> final {
 public:
 
-   ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
       BoosterShell * const pBoosterShell,
@@ -523,10 +523,10 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateTrainingNormalTarget final {
+class ApplyTermUpdateTrainingNormalTarget final {
 public:
 
-   ApplyModelUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -541,12 +541,12 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
+         ApplyTermUpdateTrainingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
             pBoosterShell,
             pFeatureGroup
          );
       } else {
-         ApplyModelUpdateTrainingNormalTarget<
+         ApplyTermUpdateTrainingNormalTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBoosterShell,
@@ -557,10 +557,10 @@ public:
 };
 
 template<>
-class ApplyModelUpdateTrainingNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class ApplyTermUpdateTrainingNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   ApplyModelUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -571,7 +571,7 @@ public:
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      ApplyModelUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
+      ApplyTermUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
          pFeatureGroup
       );
@@ -579,10 +579,10 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
-class ApplyModelUpdateTrainingSIMDPacking final {
+class ApplyTermUpdateTrainingSIMDPacking final {
 public:
 
-   ApplyModelUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -594,12 +594,12 @@ public:
       EBM_ASSERT(runtimeBitPack <= k_cBitsForStorageType);
       static_assert(compilerBitPack <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerBitPack == runtimeBitPack) {
-         ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
+         ApplyTermUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
             pBoosterShell,
             pFeatureGroup
          );
       } else {
-         ApplyModelUpdateTrainingSIMDPacking<
+         ApplyTermUpdateTrainingSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
@@ -611,10 +611,10 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateTrainingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic> final {
+class ApplyTermUpdateTrainingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic> final {
 public:
 
-   ApplyModelUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -622,7 +622,7 @@ public:
    ) {
       EBM_ASSERT(1 <= pFeatureGroup->GetBitPack());
       EBM_ASSERT(pFeatureGroup->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
-      ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic>::Func(
+      ApplyTermUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
          pFeatureGroup
       );
@@ -630,10 +630,10 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateTrainingSIMDTarget final {
+class ApplyTermUpdateTrainingSIMDTarget final {
 public:
 
-   ApplyModelUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -648,7 +648,7 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         ApplyModelUpdateTrainingSIMDPacking<
+         ApplyTermUpdateTrainingSIMDPacking<
             compilerLearningTypeOrCountTargetClassesPossible,
             k_cItemsPerBitPackMax
          >::Func(
@@ -656,7 +656,7 @@ public:
             pFeatureGroup
          );
       } else {
-         ApplyModelUpdateTrainingSIMDTarget<
+         ApplyTermUpdateTrainingSIMDTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBoosterShell,
@@ -667,10 +667,10 @@ public:
 };
 
 template<>
-class ApplyModelUpdateTrainingSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class ApplyTermUpdateTrainingSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   ApplyModelUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
@@ -681,28 +681,28 @@ public:
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      ApplyModelUpdateTrainingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
+      ApplyTermUpdateTrainingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
          pBoosterShell,
          pFeatureGroup
       );
    }
 };
 
-extern void ApplyModelUpdateTraining(
+extern void ApplyTermUpdateTraining(
    BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup
 ) {
-   LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateTraining");
+   LOG_0(TraceLevelVerbose, "Entered ApplyTermUpdateTraining");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(0 == pFeatureGroup->GetCountSignificantDimensions()) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         ApplyModelUpdateTrainingZeroFeaturesTarget<2>::Func(pBoosterShell);
+         ApplyTermUpdateTrainingZeroFeaturesTarget<2>::Func(pBoosterShell);
       } else {
          EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-         ApplyModelUpdateTrainingZeroFeatures<k_regression>::Func(pBoosterShell);
+         ApplyTermUpdateTrainingZeroFeatures<k_regression>::Func(pBoosterShell);
       }
    } else {
       if(k_bUseSIMD) {
@@ -719,10 +719,10 @@ extern void ApplyModelUpdateTraining(
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-            ApplyModelUpdateTrainingSIMDTarget<2>::Func(pBoosterShell, pFeatureGroup);
+            ApplyTermUpdateTrainingSIMDTarget<2>::Func(pBoosterShell, pFeatureGroup);
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ApplyModelUpdateTrainingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
+            ApplyTermUpdateTrainingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pBoosterShell,
                pFeatureGroup
             );
@@ -735,10 +735,10 @@ extern void ApplyModelUpdateTraining(
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-            ApplyModelUpdateTrainingNormalTarget<2>::Func(pBoosterShell, pFeatureGroup);
+            ApplyTermUpdateTrainingNormalTarget<2>::Func(pBoosterShell, pFeatureGroup);
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ApplyModelUpdateTrainingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
+            ApplyTermUpdateTrainingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pBoosterShell,
                pFeatureGroup
             );
@@ -746,7 +746,7 @@ extern void ApplyModelUpdateTraining(
       }
    }
 
-   LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateTraining");
+   LOG_0(TraceLevelVerbose, "Exited ApplyTermUpdateTraining");
 }
 
 } // DEFINED_ZONE_NAME
