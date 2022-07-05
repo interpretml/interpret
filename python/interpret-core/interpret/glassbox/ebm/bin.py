@@ -1511,7 +1511,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", min_samples_bin=1, 
-        min_unique_continuous=3, epsilon=None, delta=None, composition=None, privacy_schema=None
+        min_unique_continuous=3, epsilon=None, delta=None, composition=None, privacy_schema=None, random_state=None,
     ):
         """ Initializes EBM preprocessor.
 
@@ -1525,6 +1525,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             epsilon: Privacy budget parameter. Only applicable when binning is "private".
             delta: Privacy budget parameter. Only applicable when binning is "private".
             privacy_schema: User specified min/max values for numeric features as dictionary. Only applicable when binning is "private".
+            random_state: Random state.
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -1536,6 +1537,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.delta = delta
         self.composition = composition
         self.privacy_schema = privacy_schema
+        self.random_state = random_state
 
     def fit(self, X, y=None, sample_weight=None):
         """ Fits transformer to provided samples.
@@ -1645,7 +1647,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     else:
                         min_val = bounds[0]
                         max_val = bounds[1]
-                    cuts, feature_bin_weights = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_val, max_val)
+                    cuts, feature_bin_weights = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_val, max_val, self.random_state)
                     feature_bin_weights.append(0)
                     feature_bin_weights = np.array(feature_bin_weights, dtype=np.float64)
                 else:
@@ -1686,7 +1688,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         raise ValueError(msg)
 
                     # TODO: clean up this hack that uses strings of the indexes
-                    keep_bins, old_feature_bin_weights = DPUtils.private_categorical_binning(X_col, sample_weight, noise_scale, max_bins - 1)
+                    keep_bins, old_feature_bin_weights = DPUtils.private_categorical_binning(X_col, sample_weight, noise_scale, max_bins - 1, self.random_state)
                     unknown_weight = 0
                     if keep_bins[-1] == 'DPOther':
                         unknown_weight = old_feature_bin_weights[-1]
@@ -1820,6 +1822,7 @@ def construct_bins(
     delta=None, 
     composition=None, 
     privacy_schema=None,
+    random_state=None,
 ):
     is_mains = True
     for max_bins in max_bins_leveled:
@@ -1833,7 +1836,8 @@ def construct_bins(
             epsilon, 
             delta, 
             composition, 
-            privacy_schema
+            privacy_schema,
+            random_state,
         )
         preprocessor.fit(X, None, sample_weight)
         if is_mains:

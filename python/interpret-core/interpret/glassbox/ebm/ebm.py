@@ -232,6 +232,10 @@ class BaseEBM(BaseEstimator):
             self.bin_budget_frac = bin_budget_frac
             self.privacy_schema = privacy_schema
 
+            if self.random_state is not None:
+                warn(f"Privacy violation: using a fixed random_state of {self.random_state} will cause deterministic noise additions."
+                        "This capability is only for debugging/testing. Set random_state to None to remove this warning.")
+
     def fit(self, X, y, sample_weight=None):  # noqa: C901
         """ Fits model to provided samples.
 
@@ -325,6 +329,7 @@ class BaseEBM(BaseEstimator):
             delta=bin_delta, 
             composition=composition,
             privacy_schema=privacy_schema,
+            random_state=self.random_state,
         )
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
@@ -373,7 +378,6 @@ class BaseEBM(BaseEstimator):
             interactions = 0
         else:
             noise_scale = None
-
             bin_data_weights = None
             boosting_flags = Native.GenerateUpdateOptions_Default
             inner_bags = self.inner_bags
@@ -390,9 +394,9 @@ class BaseEBM(BaseEstimator):
         for _ in range(self.outer_bags):
             bagged_seed = native.generate_deterministic_seed(bagged_seed, 1416147523)
             bag = EBMUtils.make_bag(
-                y, 
-                self.validation_size, 
-                bagged_seed, 
+                y,
+                self.validation_size,
+                bagged_seed,
                 is_classifier(self) and not is_differential_privacy
             )
             bags.append(bag)
@@ -1783,7 +1787,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42,
+        random_state=None,
         # Differential Privacy
         epsilon=1,
         delta=1e-5,
@@ -1939,7 +1943,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42,
+        random_state=None,
         # Differential Privacy
         epsilon=1,
         delta=1e-5,

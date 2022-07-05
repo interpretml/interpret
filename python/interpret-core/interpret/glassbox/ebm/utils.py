@@ -975,6 +975,8 @@ class EBMUtils:
         # negative numbers, so take the negative before the modulo if the number is negative.
         # https://torstencurdt.com/tech/posts/modulo-of-negative-numbers
 
+        if seed is None:
+            return None
         if 2147483647 <= seed:
             return seed % 2147483647
         if seed <= -2147483647:
@@ -1138,6 +1140,8 @@ class EBMUtils:
             no_change_run_length = 0
             bp_metric = np.inf
             _log.info("Start boosting")
+            native = Native.get_native_singleton()
+
             for episode_index in range(max_rounds):
                 if episode_index % 10 == 0:
                     _log.debug("Sweep Index {0}".format(episode_index))
@@ -1164,7 +1168,8 @@ class EBMUtils:
                             if s == 1: 
                                 continue # Skip cuts that fall on 0th (missing value) bin -- missing values not supported in DP
 
-                            noise = np.random.normal(0.0, noise_scale)
+                            # noise = np.random.normal(0.0, noise_scale)
+                            noise = native.generate_gaussian_random(random_state, noise_scale, 1)
                             noisy_update_tensor[f:s] = term_update_tensor[f:s] + noise
 
                             # Native code will be returning sums of residuals in slices, not averages.
@@ -1272,9 +1277,11 @@ class DPUtils:
         return root_scalar(f, bracket=[0, 500], method='brentq').root
 
     @staticmethod
-    def private_numeric_binning(col_data, sample_weight, noise_scale, max_bins, min_val, max_val):
+    def private_numeric_binning(col_data, sample_weight, noise_scale, max_bins, min_val, max_val, random_state=None):
+        native = Native.get_native_singleton()
         uniform_weights, uniform_edges = np.histogram(col_data, bins=max_bins*2, range=(min_val, max_val), weights=sample_weight)
-        noisy_weights = uniform_weights + np.random.normal(0, noise_scale, size=uniform_weights.shape[0])
+        # noisy_weights = uniform_weights + np.random.normal(0, noise_scale, size=uniform_weights.shape[0])        
+        noisy_weights = uniform_weights + native.generate_gaussian_random(random_seed=random_state, stddev=noise_scale, count=uniform_weights.shape[0])
         
         # Postprocess to ensure realistic bin values (min=0)
         noisy_weights = np.clip(noisy_weights, 0, None)
@@ -1311,13 +1318,15 @@ class DPUtils:
         return bin_cuts, bin_weights
 
     @staticmethod
-    def private_categorical_binning(col_data, sample_weight, noise_scale, max_bins):
+    def private_categorical_binning(col_data, sample_weight, noise_scale, max_bins, random_state=None):
+        native = Native.get_native_singleton()
         # Initialize estimate
         col_data = col_data.astype('U')
         uniq_vals, uniq_idxs = np.unique(col_data, return_inverse=True)
         weights = np.bincount(uniq_idxs, weights=sample_weight, minlength=len(uniq_vals))
 
-        weights = weights + np.random.normal(0, noise_scale, size=weights.shape[0])
+        # weights = weights + np.random.normal(0, noise_scale, size=weights.shape[0])
+        weights = weights + native.generate_gaussian_random(random_seed=random_state, stddev=noise_scale, count=weights.shape[0])
 
         # Postprocess to ensure realistic bin values (min=0)
         weights = np.clip(weights, 0, None)

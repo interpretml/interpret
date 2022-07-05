@@ -169,6 +169,8 @@ class Native:
         return val_array[0]
 
     def generate_deterministic_seed(self, random_seed, stage_randomization_mix):
+        if random_seed is None: # For cases when users want non-determinism (e.g differential privacy), seed will be None -- handle that here.
+            return None
         return self._unsafe.GenerateDeterministicSeed(random_seed, stage_randomization_mix)
 
     def generate_nondeterministic_seed(self):
