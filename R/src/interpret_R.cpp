@@ -604,7 +604,7 @@ SEXP CreateClassificationBooster_R(
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbmType countFeatureGroups = static_cast<IntEbmType>(cFeatureGroups);
+   const IntEbmType countTerms = static_cast<IntEbmType>(cFeatureGroups);
 
    const size_t cFeatureGroupsFeatureIndexesCheck = CountFeatureGroupsFeatureIndexes(cFeatureGroups, aFeatureGroupsDimensionCount);
    if(SIZE_MAX == cFeatureGroupsFeatureIndexesCheck) {
@@ -756,7 +756,7 @@ SEXP CreateClassificationBooster_R(
       countFeatures, 
       aFeaturesCategorical,
       aFeaturesBinCount,
-      countFeatureGroups, 
+      countTerms, 
       aFeatureGroupsDimensionCount,
       aFeatureGroupsFeatureIndexes,
       countTrainingSamples, 
@@ -853,7 +853,7 @@ SEXP CreateRegressionBooster_R(
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbmType countFeatureGroups = static_cast<IntEbmType>(cFeatureGroups);
+   const IntEbmType countTerms = static_cast<IntEbmType>(cFeatureGroups);
 
    const size_t cFeatureGroupsFeatureIndexesCheck = CountFeatureGroupsFeatureIndexes(cFeatureGroups, aFeatureGroupsDimensionCount);
    if(SIZE_MAX == cFeatureGroupsFeatureIndexesCheck) {
@@ -995,7 +995,7 @@ SEXP CreateRegressionBooster_R(
       countFeatures,
       aFeaturesCategorical,
       aFeaturesBinCount,
-      countFeatureGroups,
+      countTerms,
       aFeatureGroupsDimensionCount,
       aFeatureGroupsFeatureIndexes,
       countTrainingSamples, 
@@ -1027,13 +1027,13 @@ SEXP CreateRegressionBooster_R(
 
 SEXP GenerateTermUpdate_R(
    SEXP boosterHandleWrapped,
-   SEXP indexFeatureGroup,
+   SEXP indexTerm,
    SEXP learningRate,
    SEXP countSamplesRequiredForChildSplitMin,
    SEXP leavesMax
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped);
-   EBM_ASSERT(nullptr != indexFeatureGroup);
+   EBM_ASSERT(nullptr != indexTerm);
    EBM_ASSERT(nullptr != learningRate);
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
    EBM_ASSERT(nullptr != leavesMax);
@@ -1051,11 +1051,11 @@ SEXP GenerateTermUpdate_R(
       return R_NilValue;
    }
 
-   if(!IsSingleDoubleVector(indexFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsSingleDoubleVector(indexFeatureGroup)");
+   if(!IsSingleDoubleVector(indexTerm)) {
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsSingleDoubleVector(indexTerm)");
       return R_NilValue;
    }
-   double doubleIndex = REAL(indexFeatureGroup)[0];
+   double doubleIndex = REAL(indexTerm)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
       LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
@@ -1153,10 +1153,10 @@ SEXP ApplyTermUpdate_R(
 
 SEXP GetBestTermScores_R(
    SEXP boosterHandleWrapped,
-   SEXP indexFeatureGroup
+   SEXP indexTerm
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
-   EBM_ASSERT(nullptr != indexFeatureGroup); // shouldn't be possible
+   EBM_ASSERT(nullptr != indexTerm); // shouldn't be possible
 
    ErrorEbmType error;
 
@@ -1172,11 +1172,11 @@ SEXP GetBestTermScores_R(
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-   if(!IsSingleDoubleVector(indexFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GetBestTermScores_R !IsSingleDoubleVector(indexFeatureGroup)");
+   if(!IsSingleDoubleVector(indexTerm)) {
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores_R !IsSingleDoubleVector(indexTerm)");
       return R_NilValue;
    }
-   const double doubleIndex = REAL(indexFeatureGroup)[0];
+   const double doubleIndex = REAL(indexTerm)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
       LOG_0(TraceLevelError, "ERROR GetBestTermScores_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
@@ -1220,10 +1220,10 @@ SEXP GetBestTermScores_R(
 
 SEXP GetCurrentTermScores_R(
    SEXP boosterHandleWrapped,
-   SEXP indexFeatureGroup
+   SEXP indexTerm
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped); // shouldn't be possible
-   EBM_ASSERT(nullptr != indexFeatureGroup); // shouldn't be possible
+   EBM_ASSERT(nullptr != indexTerm); // shouldn't be possible
 
    ErrorEbmType error;
 
@@ -1239,11 +1239,11 @@ SEXP GetCurrentTermScores_R(
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-   if(!IsSingleDoubleVector(indexFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R !IsSingleDoubleVector(indexFeatureGroup)");
+   if(!IsSingleDoubleVector(indexTerm)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R !IsSingleDoubleVector(indexTerm)");
       return R_NilValue;
    }
-   const double doubleIndex = REAL(indexFeatureGroup)[0];
+   const double doubleIndex = REAL(indexTerm)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
       LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;

@@ -888,7 +888,7 @@ class Native:
             ct.c_void_p,
             # double * initScores
             ct.c_void_p,
-            # int64_t countFeatureGroups
+            # int64_t countTerms
             ct.c_int64,
             # int64_t * dimensionCounts
             ct.c_void_p,
@@ -906,7 +906,7 @@ class Native:
         self._unsafe.GenerateTermUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # int64_t indexFeatureGroup
+            # int64_t indexTerm
             ct.c_int64,
             # GenerateUpdateOptionsType options 
             ct.c_int64,
@@ -944,7 +944,7 @@ class Native:
         self._unsafe.SetTermUpdateExpanded.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # int64_t indexFeatureGroup
+            # int64_t indexTerm
             ct.c_int64,
             # double * updateScoresTensor
             ct.c_void_p,
@@ -962,7 +962,7 @@ class Native:
         self._unsafe.GetBestTermScores.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # int64_t indexFeatureGroup
+            # int64_t indexTerm
             ct.c_int64,
             # double * termScoresTensorOut
             ct.c_void_p,
@@ -972,7 +972,7 @@ class Native:
         self._unsafe.GetCurrentTermScores.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # int64_t indexFeatureGroup
+            # int64_t indexTerm
             ct.c_int64,
             # double * termScoresTensorOut
             ct.c_void_p,
@@ -1066,10 +1066,10 @@ class Booster(AbstractContextManager):
     def __enter__(self):
         log.info("Booster allocation start")
 
-        feature_counts = np.empty(len(self.term_features), ct.c_int64)
+        dimension_counts = np.empty(len(self.term_features), ct.c_int64)
         feature_indexes = []
         for term_idx, feature_idxs in enumerate(self.term_features):
-            feature_counts.itemset(term_idx, len(feature_idxs))
+            dimension_counts.itemset(term_idx, len(feature_idxs))
             feature_indexes.extend(feature_idxs)
         feature_indexes = np.array(feature_indexes, ct.c_int64)
 
@@ -1137,8 +1137,8 @@ class Booster(AbstractContextManager):
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),
-            len(feature_counts),
-            Native._make_pointer(feature_counts, np.int64),
+            len(dimension_counts),
+            Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
             Native._make_pointer(self.optional_temp_params, np.float64, 1, True),

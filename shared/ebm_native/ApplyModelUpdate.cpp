@@ -421,7 +421,7 @@ static int g_cLogSetTermUpdateExpandedParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetTermUpdateExpanded(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
+   IntEbmType indexTerm,
    double * updateScoresTensor
 ) {
    LOG_COUNTED_N(
@@ -430,11 +430,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetTerm
       TraceLevelVerbose,
       "SetTermUpdateExpanded: "
       "boosterHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "indexTerm=%" IntEbmTypePrintf ", "
       "updateScoresTensor=%p"
       ,
       static_cast<void *>(boosterHandle),
-      indexFeatureGroup,
+      indexTerm,
       static_cast<void *>(updateScoresTensor)
    );
 
@@ -449,21 +449,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetTerm
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
 
-   if(indexFeatureGroup < 0) {
+   if(indexTerm < 0) {
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
-      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexFeatureGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexTerm must be positive");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexTerm)) {
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   const size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   const size_t iFeatureGroup = static_cast<size_t>(indexTerm);
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
-      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
    // pBoosterCore->GetFeatureGroups() can be null if 0 == pBoosterCore->m_cFeatureGroups, but we checked that condition above

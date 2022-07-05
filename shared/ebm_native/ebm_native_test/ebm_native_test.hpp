@@ -312,8 +312,8 @@ class TestApi {
 
    std::vector<BoolEbmType> m_featuresNominal;
    std::vector<IntEbmType> m_featuresBinCount;
-   std::vector<IntEbmType> m_featureGroupsDimensionCount;
-   std::vector<IntEbmType> m_featureGroupsFeatureIndexes;
+   std::vector<IntEbmType> m_dimensionCounts;
+   std::vector<IntEbmType> m_featureIndexes;
 
    std::vector<std::vector<size_t>> m_countBinsByFeatureGroup;
 
@@ -367,7 +367,7 @@ public:
    ~TestApi();
 
    inline size_t GetFeatureGroupsCount() const {
-      return m_featureGroupsDimensionCount.size();
+      return m_dimensionCounts.size();
    }
 
    void AddFeatures(const std::vector<FeatureTest> features);
@@ -377,7 +377,7 @@ public:
    void InitializeBoosting(const IntEbmType countInnerBags = k_countInnerBagsDefault);
    
    BoostRet Boost(
-      const IntEbmType indexFeatureGroup,
+      const IntEbmType indexTerm,
       const GenerateUpdateOptionsType options = GenerateUpdateOptions_Default,
       const double learningRate = k_learningRateDefault,
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault,

@@ -288,13 +288,13 @@ void TestApi::AddFeatureGroups(const std::vector<std::vector<size_t>> featureGro
    }
 
    for(const std::vector<size_t> & oneFeatureGroup : featureGroups) {
-      m_featureGroupsDimensionCount.push_back(oneFeatureGroup.size());
+      m_dimensionCounts.push_back(oneFeatureGroup.size());
       std::vector<size_t> countBins;
       for(const size_t oneIndex : oneFeatureGroup) {
          if(m_featuresBinCount.size() <= oneIndex) {
             exit(1);
          }
-         m_featureGroupsFeatureIndexes.push_back(oneIndex);
+         m_featureIndexes.push_back(oneIndex);
          countBins.push_back(static_cast<size_t>(m_featuresBinCount[oneIndex]));
       }
       m_countBinsByFeatureGroup.push_back(countBins);
@@ -671,9 +671,9 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       pDataSet,
       0 == bag.size() ? nullptr : &bag[0],
       0 == allScores.size() ? nullptr : &allScores[0],
-      m_featureGroupsDimensionCount.size(),
-      0 == m_featureGroupsDimensionCount.size() ? nullptr : &m_featureGroupsDimensionCount[0],
-      0 == m_featureGroupsFeatureIndexes.size() ? nullptr : &m_featureGroupsFeatureIndexes[0],
+      m_dimensionCounts.size(),
+      0 == m_dimensionCounts.size() ? nullptr : &m_dimensionCounts[0],
+      0 == m_featureIndexes.size() ? nullptr : &m_featureIndexes[0],
       countInnerBags,
       nullptr,
       &m_boosterHandle
@@ -693,7 +693,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
 }
 
 BoostRet TestApi::Boost(
-   const IntEbmType indexFeatureGroup,
+   const IntEbmType indexTerm,
    const GenerateUpdateOptionsType options,
    const double learningRate,
    const IntEbmType countSamplesRequiredForChildSplitMin,
@@ -704,10 +704,10 @@ BoostRet TestApi::Boost(
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(indexFeatureGroup < IntEbmType { 0 }) {
+   if(indexTerm < IntEbmType { 0 }) {
       exit(1);
    }
-   if(m_featureGroupsDimensionCount.size() <= static_cast<size_t>(indexFeatureGroup)) {
+   if(m_dimensionCounts.size() <= static_cast<size_t>(indexTerm)) {
       exit(1);
    }
    if(std::isnan(learningRate)) {
@@ -725,7 +725,7 @@ BoostRet TestApi::Boost(
 
    error = GenerateTermUpdate(
       m_boosterHandle,
-      indexFeatureGroup,
+      indexTerm,
       options,
       learningRate,
       countSamplesRequiredForChildSplitMin,
@@ -739,7 +739,7 @@ BoostRet TestApi::Boost(
       // if sums are on, then we MUST change the model update
 
       size_t cUpdateScores = GetVectorLength(m_learningTypeOrCountTargetClasses);
-      std::vector<size_t> & countBinsByFeatureGroup = m_countBinsByFeatureGroup[static_cast<size_t>(indexFeatureGroup)];
+      std::vector<size_t> & countBinsByFeatureGroup = m_countBinsByFeatureGroup[static_cast<size_t>(indexTerm)];
 
       for(size_t iDimension = 0; iDimension < countBinsByFeatureGroup.size(); ++iDimension) {
          size_t cBins = countBinsByFeatureGroup[iDimension];
@@ -751,7 +751,7 @@ BoostRet TestApi::Boost(
 
       error = SetTermUpdateExpanded(
          m_boosterHandle,
-         indexFeatureGroup,
+         indexTerm,
          aUpdateScores
       );
 
@@ -812,7 +812,7 @@ void TestApi::GetBestTermScoresRaw(const size_t iFeatureGroup, double * const aM
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
+   if(m_dimensionCounts.size() <= iFeatureGroup) {
       exit(1);
    }
    error = GetBestTermScores(m_boosterHandle, iFeatureGroup, aModelValues);
@@ -861,7 +861,7 @@ void TestApi::GetCurrentTermScoresRaw(const size_t iFeatureGroup, double * const
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
+   if(m_dimensionCounts.size() <= iFeatureGroup) {
       exit(1);
    }
    error = GetCurrentTermScores(m_boosterHandle, iFeatureGroup, aModelValues);

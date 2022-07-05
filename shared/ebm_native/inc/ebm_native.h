@@ -382,7 +382,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Crea
    const void * dataSet,
    const BagEbmType * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
-   IntEbmType countFeatureGroups,
+   IntEbmType countTerms,
    const IntEbmType * dimensionCounts,
    const IntEbmType * featureIndexes,
    IntEbmType countInnerBags,
@@ -395,7 +395,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Crea
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GenerateTermUpdate(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
+   IntEbmType indexTerm,
    GenerateUpdateOptionsType options, 
    double learningRate, 
    IntEbmType countSamplesRequiredForChildSplitMin, 
@@ -414,7 +414,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetT
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetTermUpdateExpanded(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
+   IntEbmType indexTerm,
    double * updateScoresTensor
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyTermUpdate(
@@ -423,12 +423,12 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Appl
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestTermScores(
    BoosterHandle boosterHandle, 
-   IntEbmType indexFeatureGroup,
+   IntEbmType indexTerm,
    double * termScoresTensorOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentTermScores(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
+   IntEbmType indexTerm,
    double * termScoresTensorOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBooster(

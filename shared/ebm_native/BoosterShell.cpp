@@ -182,7 +182,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    const void * dataSet,
    const BagEbmType * bag,
    const double * initScores,
-   IntEbmType countFeatureGroups,
+   IntEbmType countTerms,
    const IntEbmType * dimensionCounts,
    const IntEbmType * featureIndexes,
    IntEbmType countInnerBags,
@@ -196,7 +196,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       "dataSet=%p, "
       "bag=%p, "
       "initScores=%p, "
-      "countFeatureGroups=%" IntEbmTypePrintf ", "
+      "countTerms=%" IntEbmTypePrintf ", "
       "dimensionCounts=%p, "
       "featureIndexes=%p, "
       "countInnerBags=%" IntEbmTypePrintf ", "
@@ -207,7 +207,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
       static_cast<const void *>(initScores),
-      countFeatureGroups,
+      countTerms,
       static_cast<const void *>(dimensionCounts),
       static_cast<const void *>(featureIndexes),
       countInnerBags,
@@ -228,16 +228,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_IllegalParamValue;
    }
 
-   if(countFeatureGroups < IntEbmType { 0 }) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster countFeatureGroups must be positive");
+   if(countTerms < IntEbmType { 0 }) {
+      LOG_0(TraceLevelError, "ERROR CreateBooster countTerms must be positive");
       return Error_IllegalParamValue;
    }
-   if(IntEbmType { 0 } != countFeatureGroups && nullptr == dimensionCounts) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countFeatureGroups");
+   if(IntEbmType { 0 } != countTerms && nullptr == dimensionCounts) {
+      LOG_0(TraceLevelError, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countTerms");
       return Error_IllegalParamValue;
    }
    // it's legal for featureIndexes to be null if there are no features indexed by our feature groups
-   // dimensionCounts can have zero features, so it could be legal for this to be null even if 0 < countFeatureGroups
+   // dimensionCounts can have zero features, so it could be legal for this to be null even if 0 < countTerms
 
    if(countInnerBags < IntEbmType { 0 }) {
       // 0 means use the full set. 1 means make a single bag which is useless, but allowed for comparison purposes
@@ -245,9 +245,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_UserParamValue;
    }
 
-   if(IsConvertError<size_t>(countFeatureGroups)) {
+   if(IsConvertError<size_t>(countTerms)) {
       // the caller should not have been able to allocate memory for dimensionCounts if this wasn't fittable in size_t
-      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countFeatureGroups)");
+      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countTerms)");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(countInnerBags)) {
@@ -257,7 +257,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_OutOfMemory;
    }
 
-   size_t cFeatureGroups = static_cast<size_t>(countFeatureGroups);
+   size_t cFeatureGroups = static_cast<size_t>(countTerms);
    size_t cInnerBags = static_cast<size_t>(countInnerBags);
 
    BoosterShell * const pBoosterShell = BoosterShell::Create();
@@ -352,18 +352,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestTermScores(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
+   IntEbmType indexTerm,
    double * termScoresTensorOut
 ) {
    LOG_N(
       TraceLevelInfo,
       "Entered GetBestTermScores: "
       "boosterHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "indexTerm=%" IntEbmTypePrintf ", "
       "termScoresTensorOut=%p, "
       ,
       static_cast<void *>(boosterHandle),
-      indexFeatureGroup,
+      indexTerm,
       static_cast<void *>(termScoresTensorOut)
    );
 
@@ -373,20 +373,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       return Error_IllegalParamValue;
    }
 
-   if(indexFeatureGroup < 0) {
-      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexFeatureGroup must be positive");
+   if(indexTerm < 0) {
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm must be positive");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   size_t iFeatureGroup = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
 
@@ -445,18 +445,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentTermScores(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
+   IntEbmType indexTerm,
    double * termScoresTensorOut
 ) {
    LOG_N(
       TraceLevelInfo,
       "Entered GetCurrentTermScores: "
       "boosterHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "indexTerm=%" IntEbmTypePrintf ", "
       "termScoresTensorOut=%p, "
       ,
       static_cast<void *>(boosterHandle),
-      indexFeatureGroup,
+      indexTerm,
       static_cast<void *>(termScoresTensorOut)
    );
 
@@ -466,20 +466,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       return Error_IllegalParamValue;
    }
 
-   if(indexFeatureGroup < 0) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexFeatureGroup must be positive");
+   if(indexTerm < 0) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm must be positive");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   size_t iFeatureGroup = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
 

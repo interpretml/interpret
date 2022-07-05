@@ -1021,7 +1021,7 @@ static int g_cLogGenerateTermUpdateParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GenerateTermUpdate(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
+   IntEbmType indexTerm,
    GenerateUpdateOptionsType options,
    double learningRate,
    IntEbmType countSamplesRequiredForChildSplitMin,
@@ -1034,7 +1034,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       TraceLevelVerbose,
       "GenerateTermUpdate: "
       "boosterHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "indexTerm=%" IntEbmTypePrintf ", "
       "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
       "learningRate=%le, "
       "countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", "
@@ -1042,7 +1042,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       "avgGainOut=%p"
       ,
       static_cast<void *>(boosterHandle),
-      indexFeatureGroup,
+      indexTerm,
       static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
       learningRate,
       countSamplesRequiredForChildSplitMin,
@@ -1067,30 +1067,30 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
 
-   if(indexFeatureGroup < 0) {
+   if(indexTerm < 0) {
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = double { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexFeatureGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexTerm must be positive");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = double { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   size_t iFeatureGroup = static_cast<size_t>(indexTerm);
    if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = double { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
-   // this is true because 0 < pBoosterCore->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
+   // this is true because 0 < pBoosterCore->m_cFeatureGroups since our caller needs to pass in a valid indexTerm to this function
    EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
 
    LOG_COUNTED_0(
