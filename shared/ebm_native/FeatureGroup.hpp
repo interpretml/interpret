@@ -44,8 +44,8 @@ class FeatureGroup final {
    size_t m_cTensorBins;
    int m_cLogEnterGenerateTermUpdateMessages;
    int m_cLogExitGenerateTermUpdateMessages;
-   int m_cLogEnterApplyModelUpdateMessages;
-   int m_cLogExitApplyModelUpdateMessages;
+   int m_cLogEnterApplyTermUpdateMessages;
+   int m_cLogExitApplyTermUpdateMessages;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_FeatureGroupEntry must be the last item in this struct
@@ -74,8 +74,8 @@ public:
       m_iInputData = iFeatureGroup;
       m_cLogEnterGenerateTermUpdateMessages = 2;
       m_cLogExitGenerateTermUpdateMessages = 2;
-      m_cLogEnterApplyModelUpdateMessages = 2;
-      m_cLogExitApplyModelUpdateMessages = 2;
+      m_cLogEnterApplyTermUpdateMessages = 2;
+      m_cLogExitApplyTermUpdateMessages = 2;
    }
 
    static FeatureGroup * Allocate(const size_t cFeatures, const size_t iFeatureGroup) noexcept;
@@ -134,12 +134,12 @@ public:
       return &m_cLogExitGenerateTermUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogEnterApplyModelUpdateMessages() noexcept {
-      return &m_cLogEnterApplyModelUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogEnterApplyTermUpdateMessages() noexcept {
+      return &m_cLogEnterApplyTermUpdateMessages;
    }
 
-   INLINE_ALWAYS int * GetPointerCountLogExitApplyModelUpdateMessages() noexcept {
-      return &m_cLogExitApplyModelUpdateMessages;
+   INLINE_ALWAYS int * GetPointerCountLogExitApplyTermUpdateMessages() noexcept {
+      return &m_cLogExitApplyTermUpdateMessages;
    }
 };
 static_assert(std::is_standard_layout<FeatureGroup>::value,

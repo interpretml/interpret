@@ -20,10 +20,10 @@ EXPORTS
   CreateBooster
   CreateBoosterView
   GenerateTermUpdate
-  GetModelUpdateSplits
+  GetTermUpdateSplits
   GetTermUpdateExpanded
   SetTermUpdateExpanded
-  ApplyModelUpdate
+  ApplyTermUpdate
   GetBestTermScores
   GetCurrentTermScores
   FreeBooster

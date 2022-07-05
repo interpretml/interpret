@@ -24,21 +24,21 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void ApplyModelUpdateTraining(
+extern void ApplyTermUpdateTraining(
    BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup
 );
 
-extern double ApplyModelUpdateValidation(
+extern double ApplyTermUpdateValidation(
    BoosterShell * const pBoosterShell,
    const FeatureGroup * const pFeatureGroup
 );
 
-static ErrorEbmType ApplyModelUpdateInternal(
+static ErrorEbmType ApplyTermUpdateInternal(
    BoosterShell * const pBoosterShell,
    double * const pValidationMetricReturn
 ) {
-   LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateInternal");
+   LOG_0(TraceLevelVerbose, "Entered ApplyTermUpdateInternal");
 
    ErrorEbmType error;
 
@@ -79,7 +79,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
    pBoosterCore->GetCurrentModel()[iFeatureGroup]->AddExpandedWithBadValueProtection(aUpdateScores);
 
    if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
-      ApplyModelUpdateTraining(pBoosterShell, pFeatureGroup);
+      ApplyTermUpdateTraining(pBoosterShell, pFeatureGroup);
    }
 
    double modelMetric = 0.0;
@@ -95,7 +95,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
       // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      modelMetric = ApplyModelUpdateValidation(pBoosterShell, pFeatureGroup);
+      modelMetric = ApplyTermUpdateValidation(pBoosterShell, pFeatureGroup);
 
       EBM_ASSERT(!std::isnan(modelMetric)); // NaNs can happen, but we should have converted them
       EBM_ASSERT(!std::isinf(modelMetric)); // +infinity can happen, but we should have converted it
@@ -118,7 +118,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
                if(nullptr != pValidationMetricReturn) {
                   *pValidationMetricReturn = double { 0 };
                }
-               LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateInternal with memory allocation error in copy");
+               LOG_0(TraceLevelVerbose, "Exited ApplyTermUpdateInternal with memory allocation error in copy");
                return error;
             }
             ++iModel;
@@ -129,7 +129,7 @@ static ErrorEbmType ApplyModelUpdateInternal(
       *pValidationMetricReturn = modelMetric;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateInternal");
+   LOG_0(TraceLevelVerbose, "Exited ApplyTermUpdateInternal");
    return Error_None;
 }
 
@@ -137,18 +137,18 @@ static ErrorEbmType ApplyModelUpdateInternal(
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogApplyModelUpdateParametersMessages = 10;
+static int g_cLogApplyTermUpdateParametersMessages = 10;
 
 // TODO: validationMetricOut should be an average
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelUpdate(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyTermUpdate(
    BoosterHandle boosterHandle,
    double * validationMetricOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogApplyModelUpdateParametersMessages,
+      &g_cLogApplyTermUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "ApplyModelUpdate: "
+      "ApplyTermUpdate: "
       "boosterHandle=%p, "
       "validationMetricOut=%p"
       ,
@@ -172,7 +172,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = 0.0;
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate bad internal state.  No FeatureGroupIndex set");
+      LOG_0(TraceLevelError, "ERROR ApplyTermUpdate bad internal state.  No FeatureGroupIndex set");
       return Error_IllegalParamValue;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -181,10 +181,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
    EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
 
    LOG_COUNTED_0(
-      pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterApplyModelUpdateMessages(),
+      pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterApplyTermUpdateMessages(),
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered ApplyModelUpdate"
+      "Entered ApplyTermUpdate"
    );
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
@@ -196,15 +196,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
       }
       pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
       LOG_COUNTED_0(
-         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
+         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyTermUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelUpdate. runtimeLearningTypeOrCountTargetClasses <= 1"
+         "Exited ApplyTermUpdate. runtimeLearningTypeOrCountTargetClasses <= 1"
       );
       return Error_None;
    }
 
-   error = ApplyModelUpdateInternal(
+   error = ApplyTermUpdateInternal(
       pBoosterShell,
       validationMetricOut
    );
@@ -212,7 +212,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
    pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
 
    if(Error_None != error) {
-      LOG_N(TraceLevelWarning, "WARNING ApplyModelUpdate: return=%" ErrorEbmTypePrintf, error);
+      LOG_N(TraceLevelWarning, "WARNING ApplyTermUpdate: return=%" ErrorEbmTypePrintf, error);
    }
 
    if(nullptr != validationMetricOut) {
@@ -221,20 +221,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
       // both log loss and RMSE need to be above zero.  We previously zero any values below zero, which can happen due to floating point instability.
       EBM_ASSERT(0.0 <= *validationMetricOut);
       LOG_COUNTED_N(
-         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
+         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyTermUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelUpdate: "
+         "Exited ApplyTermUpdate: "
          "*validationMetricOut=%le"
          , 
          *validationMetricOut
       );
    } else {
       LOG_COUNTED_0(
-         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelUpdateMessages(),
+         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyTermUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelUpdate"
+         "Exited ApplyTermUpdate"
       );
    }
    return error;
@@ -244,19 +244,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMo
 // getting the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static int g_cLogGetModelUpdateSplitsParametersMessages = 10;
+static int g_cLogGetTermUpdateSplitsParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetModelUpdateSplits(
+EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTermUpdateSplits(
    BoosterHandle boosterHandle,
    IntEbmType indexDimension,
    IntEbmType * countSplitsInOut,
    IntEbmType * splitIndexesOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogGetModelUpdateSplitsParametersMessages,
+      &g_cLogGetTermUpdateSplitsParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "GetModelUpdateSplits: "
+      "GetTermUpdateSplits: "
       "boosterHandle=%p, "
       "indexDimension=%" IntEbmTypePrintf ", "
       "countSplitsInOut=%p"
@@ -269,7 +269,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    );
 
    if(nullptr == countSplitsInOut) {
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits countSplitsInOut cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits countSplitsInOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
@@ -283,7 +283,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
    if(BoosterShell::k_illegalFeatureGroupIndex == iFeatureGroup) {
       *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits bad internal state.  No FeatureGroupIndex set");
+      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits bad internal state.  No FeatureGroupIndex set");
       return Error_IllegalParamValue;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -294,12 +294,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
 
    if(indexDimension < 0) {
       *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits indexDimension must be positive");
+      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits indexDimension must be positive");
       return Error_IllegalParamValue;
    }
    if(static_cast<IntEbmType>(pFeatureGroup->GetCountDimensions()) <= indexDimension) {
       *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits indexDimension above the number of dimensions that we have");
+      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits indexDimension above the number of dimensions that we have");
       return Error_IllegalParamValue;
    }
    const size_t iDimension = static_cast<size_t>(indexDimension);
@@ -308,7 +308,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    // cBins started from IntEbmType, so we should be able to convert back safely
    if(*countSplitsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
       *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits bad split array length");
+      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits bad split array length");
       return Error_IllegalParamValue;
    }
 
@@ -317,7 +317,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetMode
    if(0 != cSplits) {
       if(nullptr == splitIndexesOut) {
          *countSplitsInOut = IntEbmType { 0 };
-         LOG_0(TraceLevelError, "ERROR GetModelUpdateSplits splitIndexesOut cannot be nullptr");
+         LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits splitIndexesOut cannot be nullptr");
          return Error_IllegalParamValue;
       }
 

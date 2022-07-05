@@ -179,13 +179,13 @@ generate_term_update <- function(
    return(avg_gain)
 }
 
-apply_model_update <- function(
+apply_term_update <- function(
    booster_handle
 ) {
    stopifnot(class(booster_handle) == "externalptr")
 
    validation_metric <- .Call(
-      ApplyModelUpdate_R, 
+      ApplyTermUpdate_R, 
       booster_handle
    )
    if(is.null(validation_metric)) {
@@ -361,7 +361,7 @@ cyclic_gradient_boost <- function(
                max_leaves
             )
 
-            validation_metric <- apply_model_update(ebm_booster$booster_handle)
+            validation_metric <- apply_term_update(ebm_booster$booster_handle)
 
             if(validation_metric < min_metric) {
                min_metric <- validation_metric

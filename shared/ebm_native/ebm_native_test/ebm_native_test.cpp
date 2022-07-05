@@ -761,7 +761,7 @@ BoostRet TestApi::Boost(
          exit(1);
       }
    }
-   error = ApplyModelUpdate(
+   error = ApplyTermUpdate(
       m_boosterHandle,
       &validationMetric
    );

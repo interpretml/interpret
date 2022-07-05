@@ -1124,7 +1124,7 @@ SEXP GenerateTermUpdate_R(
    return ret;
 }
 
-SEXP ApplyModelUpdate_R(
+SEXP ApplyTermUpdate_R(
    SEXP boosterHandleWrapped
 ) {
    EBM_ASSERT(nullptr != boosterHandleWrapped);
@@ -1132,16 +1132,16 @@ SEXP ApplyModelUpdate_R(
    ErrorEbmType error;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
-      LOG_0(TraceLevelError, "ERROR ApplyModelUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
+      LOG_0(TraceLevelError, "ERROR ApplyTermUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
    const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
-   // we don't use boosterHandle in this function, so let ApplyModelUpdate check if it's null or invalid
+   // we don't use boosterHandle in this function, so let ApplyTermUpdate check if it's null or invalid
 
    double validationMetric;
-   error = ApplyModelUpdate(boosterHandle, &validationMetric);
+   error = ApplyTermUpdate(boosterHandle, &validationMetric);
    if(Error_None != error) {
-      LOG_0(TraceLevelWarning, "WARNING ApplyModelUpdate_R ApplyModelUpdate returned error code");
+      LOG_0(TraceLevelWarning, "WARNING ApplyTermUpdate_R ApplyTermUpdate returned error code");
       return R_NilValue;
    }
 
@@ -1626,7 +1626,7 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 15 },
    { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 14 },
    { "GenerateTermUpdate_R", (DL_FUNC)&GenerateTermUpdate_R, 5 },
-   { "ApplyModelUpdate_R", (DL_FUNC)&ApplyModelUpdate_R, 1 },
+   { "ApplyTermUpdate_R", (DL_FUNC)&ApplyTermUpdate_R, 1 },
    { "GetBestTermScores_R", (DL_FUNC)&GetBestTermScores_R, 2 },
    { "GetCurrentTermScores_R", (DL_FUNC)& GetCurrentTermScores_R, 2 },
    { "FreeBooster_R", (DL_FUNC)& FreeBooster_R, 1 },
