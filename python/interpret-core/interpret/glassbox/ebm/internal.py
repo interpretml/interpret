@@ -903,7 +903,7 @@ class Native:
         ]
         self._unsafe.CreateBooster.restype = ct.c_int32
 
-        self._unsafe.GenerateModelUpdate.argtypes = [
+        self._unsafe.GenerateTermUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexFeatureGroup
@@ -919,7 +919,7 @@ class Native:
             # double * avgGainOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.GenerateModelUpdate.restype = ct.c_int32
+        self._unsafe.GenerateTermUpdate.restype = ct.c_int32
 
         self._unsafe.GetModelUpdateSplits.argtypes = [
             # void * boosterHandle
@@ -1202,7 +1202,7 @@ class Booster(AbstractContextManager):
         n_features = len(self.term_features[term_idx])
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
-        return_code = native._unsafe.GenerateModelUpdate(
+        return_code = native._unsafe.GenerateTermUpdate(
             self._booster_handle, 
             term_idx,
             boosting_flags,
@@ -1212,7 +1212,7 @@ class Booster(AbstractContextManager):
             ct.byref(avg_gain),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GenerateModelUpdate")
+            raise Native._get_native_exception(return_code, "GenerateTermUpdate")
             
         self._term_idx = term_idx
 

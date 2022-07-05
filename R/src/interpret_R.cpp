@@ -1025,7 +1025,7 @@ SEXP CreateRegressionBooster_R(
    return boosterHandleWrapped;
 }
 
-SEXP GenerateModelUpdate_R(
+SEXP GenerateTermUpdate_R(
    SEXP boosterHandleWrapped,
    SEXP indexFeatureGroup,
    SEXP learningRate,
@@ -1041,7 +1041,7 @@ SEXP GenerateModelUpdate_R(
    ErrorEbmType error;
 
    if(EXTPTRSXP != TYPEOF(boosterHandleWrapped)) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R EXTPTRSXP != TYPEOF(boosterHandleWrapped)");
       return R_NilValue;
    }
    const BoosterHandle boosterHandle = static_cast<BoosterHandle>(R_ExternalPtrAddr(boosterHandleWrapped));
@@ -1052,24 +1052,24 @@ SEXP GenerateModelUpdate_R(
    }
 
    if(!IsSingleDoubleVector(indexFeatureGroup)) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R !IsSingleDoubleVector(indexFeatureGroup)");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsSingleDoubleVector(indexFeatureGroup)");
       return R_NilValue;
    }
    double doubleIndex = REAL(indexFeatureGroup)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
    const size_t iFeatureGroup = static_cast<size_t>(doubleIndex);
 
    if(!IsSingleDoubleVector(learningRate)) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R !IsSingleDoubleVector(learningRate)");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsSingleDoubleVector(learningRate)");
       return R_NilValue;
    }
    const double learningRateLocal = REAL(learningRate)[0];
 
    if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
    }
    double doubleCountSamplesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
@@ -1078,10 +1078,10 @@ SEXP GenerateModelUpdate_R(
    if(std::isnan(doubleCountSamplesRequiredForChildSplitMin) ||
       static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountSamplesRequiredForChildSplitMin
       ) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate_R countSamplesRequiredForChildSplitMin overflow");
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate_R countSamplesRequiredForChildSplitMin overflow");
       countEbmSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
    } else if(doubleCountSamplesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate_R countSamplesRequiredForChildSplitMin underflow");
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate_R countSamplesRequiredForChildSplitMin underflow");
       countEbmSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
       countEbmSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
@@ -1090,21 +1090,21 @@ SEXP GenerateModelUpdate_R(
    size_t cDimensions;
    const IntEbmType * aLeavesMax;
    if(ConvertDoublesToIndexes(leavesMax, &cDimensions, &aLeavesMax)) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R ConvertDoublesToIndexes(leavesMax, &cDimensions, &aLeavesMax)");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R ConvertDoublesToIndexes(leavesMax, &cDimensions, &aLeavesMax)");
       return R_NilValue;
    }
    if(pBoosterShell->GetBoosterCore()->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R pBoosterShell->GetBoosterCore()->GetCountFeatureGroups() <= iFeatureGroup");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R pBoosterShell->GetBoosterCore()->GetCountFeatureGroups() <= iFeatureGroup");
       return R_NilValue;
    }
    if(cDimensions < pBoosterShell->GetBoosterCore()->GetFeatureGroups()[iFeatureGroup]->GetCountDimensions()) {
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate_R cDimensions < pBoosterShell->GetBoosterCore()->GetFeatureGroups()[iFeatureGroup]->GetCountDimensions()");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R cDimensions < pBoosterShell->GetBoosterCore()->GetFeatureGroups()[iFeatureGroup]->GetCountDimensions()");
       return R_NilValue;
    }
 
    double avgGain;
 
-   error = GenerateModelUpdate(
+   error = GenerateTermUpdate(
       boosterHandle,
       static_cast<IntEbmType>(iFeatureGroup),
       GenerateUpdateOptions_Default,
@@ -1114,7 +1114,7 @@ SEXP GenerateModelUpdate_R(
       &avgGain
    );
    if(Error_None != error) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate_R BoostingStep returned error code");
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate_R BoostingStep returned error code");
       return R_NilValue;
    }
 
@@ -1625,7 +1625,7 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "SampleWithoutReplacement_R", (DL_FUNC)&SampleWithoutReplacement_R, 4 },
    { "CreateClassificationBooster_R", (DL_FUNC)&CreateClassificationBooster_R, 15 },
    { "CreateRegressionBooster_R", (DL_FUNC)&CreateRegressionBooster_R, 14 },
-   { "GenerateModelUpdate_R", (DL_FUNC)&GenerateModelUpdate_R, 5 },
+   { "GenerateTermUpdate_R", (DL_FUNC)&GenerateTermUpdate_R, 5 },
    { "ApplyModelUpdate_R", (DL_FUNC)&ApplyModelUpdate_R, 1 },
    { "GetBestTermScores_R", (DL_FUNC)&GetBestTermScores_R, 2 },
    { "GetCurrentTermScores_R", (DL_FUNC)& GetCurrentTermScores_R, 2 },

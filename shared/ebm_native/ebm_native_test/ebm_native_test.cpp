@@ -723,7 +723,7 @@ BoostRet TestApi::Boost(
    double gainAvg = std::numeric_limits<double>::quiet_NaN();
    double validationMetric = std::numeric_limits<double>::quiet_NaN();
 
-   error = GenerateModelUpdate(
+   error = GenerateTermUpdate(
       m_boosterHandle,
       indexFeatureGroup,
       options,

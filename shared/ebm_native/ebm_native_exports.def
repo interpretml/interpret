@@ -19,7 +19,7 @@ EXPORTS
   ExtractTargetClasses
   CreateBooster
   CreateBoosterView
-  GenerateModelUpdate
+  GenerateTermUpdate
   GetModelUpdateSplits
   GetTermUpdateExpanded
   SetTermUpdateExpanded
