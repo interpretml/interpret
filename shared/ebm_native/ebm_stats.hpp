@@ -21,7 +21,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// TODO: before applying a model update for classification, check to see that the probability implied by the 
+// TODO: before applying a term score update for classification, check to see that the probability implied by the 
 //       logit exceeds 1/number_of_samples in either the positive or negative direction. If it does, then modify 
 //       the update so that the probability does not exceed a certainty of 1/number_of_samples, since we 
 //       really can't make statements of probability beyond close to that threshold (make this a tunable option)
@@ -183,7 +183,7 @@ constexpr FloatBig k_gainMin = 0;
 //     values greater than sqrt(max_float), or if several rounds of boosting 
 //     leads to large square errors, then we'll overflow to +infinity in 
 //     ComputeSingleSampleSquaredErrorRegressionFromGradient. This won't infect any of our existing training sample 
-//     scores, or model graphs, but it will lead to us returning to our caller a +infinity mean squared 
+//     scores, or term graphs, but it will lead to us returning to our caller a +infinity mean squared 
 //     error value.  The normal response to any big mean squared error would be for our caller to terminate 
 //     via early stopping, which is a fine outcome.  If the caller ignores the +infinity mean squared error, 
 //     then they can continue to boost without issues, although all the validation scores will end up as NaN.
@@ -198,7 +198,7 @@ constexpr FloatBig k_gainMin = 0;
 //     but close to +-max_float, the sumGradient can reach +-infinity 
 //     since they are a sum.  After sumGradient reaches +-infinity, we'll get a graph update with a 
 //     +infinity, and some samples with +-infinity scores.  Then, on the next feature that we boost on, 
-//     we'll calculate a model update for some samples inside ComputeSinglePartitionUpdate 
+//     we'll calculate a term score update for some samples inside ComputeSinglePartitionUpdate 
 //     as +-infinity/sumHessian, which will be +-infinity (of the same sign). Then, when we go to calculate 
 //     our new sample scores, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), which will 
 //     result in NaN.  After that, everything melts down to NaN.  The user just needs to not give us such 
@@ -221,9 +221,9 @@ constexpr FloatBig k_gainMin = 0;
 //     BUT, reaching logits in the range of 709 is almost impossible without adversarial inputs since boosting
 //     will always be working hard to push the error toward zero on the training set.
 //     MORE INFO on why logits of 709 are virtually impossible:
-//     For computing the model update, when gradient is close to zero, at the limit the sums used in the 
-//     model update of sumGradients/sumHessians are mathematically at worst +-1 (before applying the learningRate):
-//     Segment_model_update = sumGradients / sumHessians => 
+//     For computing the term score update, when gradient is close to zero, at the limit the sums used in the 
+//     term score update of sumGradients/sumHessians are mathematically at worst +-1 (before applying the learningRate):
+//     Segment_term_score_update = sumGradients / sumHessians => 
 //     gradient / [gradient * (1 - gradient)] => gradient / [gradient * (1)] => 1
 //     When our predictor is very certain, but wrong, we get gradients like -1, and 1.  In those 
 //     cases we have a big numerator (relatively) and a small denominator, so those cases are weighted extra heavily, 
@@ -281,7 +281,7 @@ constexpr FloatBig k_gainMin = 0;
 //   ok since there is more resolution for floating points around zero.  For binary classification we can 
 //   flip the sign of the logits and make large ones small and small ones large somehow since they are the reciprocal,
 //   but we'd rather not add more computation for that.
-// - after we've decided on a model update, we can check to see what the probability predicted would be with 
+// - after we've decided on a term score update, we can check to see what the probability predicted would be with 
 //   just this 1 feature (we'd need to know the intercept if we wanted to do this better) and if that probability 
 //   was beyond the 1/number_of_samples or (number_of_samples-1)/number_of_samples probability range, then we can 
 //   be pretty confident that the algorithm is being wildly optimistic, since we have insufficient data to 
@@ -323,9 +323,9 @@ constexpr FloatBig k_gainMin = 0;
 //   70,900 rounds of boosting!
 // - when we have a bin with zero samples of a particular class, we might get some interesting results.  This needs
 //   more exploration (TODO, explore this)
-// - In the future (TODO: this needs to be completed) we're going to only update a feature_group update when 
+// - In the future (TODO: this needs to be completed) we're going to only update a term when 
 //   it improves the overall log loss, so bins with low counts of a class won't be able to hijack the algorithm 
-//   as a whole since the algorithm will just turn off feature_groups with bad predictions for the validation set
+//   as a whole since the algorithm will just turn off terms with bad predictions for the validation set
 // - useful resources:
 //   - comparing floats -> https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 //   - details on float representations -> https://www.volkerschatz.com/science/float.html
@@ -399,10 +399,10 @@ public:
       // when we use this hessian term retuned inside ComputeSinglePartitionUpdate, if there was only
       //   a single hessian term, or multiple similar ones, at the limit we'd get the following for the following inputs:
       //   boosting is working propertly and we're close to zero error:
-      //     - slice_model_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => 
+      //     - slice_term_score_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => 
       //       gradient / [gradient * (1)] => +-1  but we multiply this by the learningRate of 0.01 (default), to get +-0.01               
       //   when boosting is making a mistake, but is certain about it's prediction:
-      //     - slice_model_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => +-1 / [1 * (0)] => 
+      //     - slice_term_score_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)] => +-1 / [1 * (0)] => 
       //       +-infinity
       //       but this shouldn't really happen inside the training set, because as the error gets bigger our boosting algorithm will correct corse by
       //       updating in the opposite direction.  Divergence to infinity is a possibility in the validation set, but the training set pushes it's error to 
@@ -410,7 +410,7 @@ public:
       //       divergence, but that seems unlikely in a normal dataset
       //   our resulting function looks like this:
       // 
-      //  small_model_update
+      //  small_term_score_update
       //          |     *
       //          |     *
       //          |     *
@@ -505,7 +505,7 @@ public:
       // for regression, sumGradient can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
       //   +-std::numeric_limits<FloatBig>::max(), the sumGradient can reach +-infinity since they are a sum.
       //   After sumGradient reaches +-infinity, we'll get a graph update with a +infinity, and some samples with +-infinity scores
-      //   Then, on the next feature that we boost on, we'll calculate a model update for some samples  
+      //   Then, on the next feature that we boost on, we'll calculate a term score update for some samples  
       //   inside ComputeSinglePartitionUpdate as +-infinity/sumHessian, which will be +-infinity (of the same sign). 
       //   Then, when we go to calculate our new sample scores, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), 
       //   which will result in NaN.  After that, everything melts down to NaN.  The user just needs to not give us such high regression targets.
@@ -577,7 +577,7 @@ public:
       // even if we trim inputs of +-infinity from the user to std::numeric_limits<FloatBig>::max() or std::numeric_limits<FloatBig>::lowest(), 
       // we'll still reach +-infinity if we add a bunch of them together, so sumGradient can reach +-infinity.
       // After sumGradient reaches +-infinity, we'll get an update and some samples with +-infinity scores
-      // Then, on the next feature we boost on, we'll calculate an model update for some samples (inside this function) as 
+      // Then, on the next feature we boost on, we'll calculate an term score update for some samples (inside this function) as 
       // +-infinity/sumHessian, which will be +-infinity (of the same sign).  Then, when we go to find our new sample scores, we'll
       // subtract +infinity-(+infinity) or -infinity-(-infinity), which will result in NaN.  After that, everything melts down to NaN.
 
@@ -596,7 +596,7 @@ public:
    WARNING_POP
 
    INLINE_ALWAYS static FloatBig ComputeSinglePartitionUpdateGradientSum(const FloatBig sumGradient) {
-      // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per feature_group boost
+      // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per term boost
 
       return sumGradient;
    }
@@ -765,7 +765,7 @@ public:
       //   other logit terms in sumExp, and this would only happen after many many rounds of boosting (see above about 70,900 rounds of boosting).
       // - if probability was slightly larger than 1, we shouldn't expect a crash.  What would happen is that in our next call to CalculateHessianFromGradientBinaryClassification, we
       //   would find our denomiator term as a negative number (normally it MUST be positive).  If that happens, then later when we go to compute the
-      //   small model update, we'll inadvertently flip the sign of the update, but since CalculateHessianFromGradientBinaryClassification was close to the discontinuity at 0,
+      //   small term score update, we'll inadvertently flip the sign of the update, but since CalculateHessianFromGradientBinaryClassification was close to the discontinuity at 0,
       //   we know that the update should have a value of 1 * learningRate = 0.01 for default input parameters.  This means that even in the very very
       //   very unlikely case that we flip our sign due to numericacy error, which only happens after an unreasonable number of boosting rounds, we'll
       //   flip the sign on a minor update to the logits.  We can tollerate this sign flip and next round we're not likely to see the same sign flip, so

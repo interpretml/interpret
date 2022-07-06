@@ -102,29 +102,29 @@ void InteractionFinalizer(SEXP interactionHandleWrapped) {
    }
 }
 
-size_t CountFeatureGroupsFeatureIndexes(const size_t cFeatureGroups, const IntEbmType * const aFeatureGroupsDimensionCount) {
-   EBM_ASSERT(nullptr != aFeatureGroupsDimensionCount);
+size_t CountTotalDimensions(const size_t cTerms, const IntEbmType * const acTermDimensions) {
+   EBM_ASSERT(nullptr != acTermDimensions);
 
-   size_t cFeatureGroupsFeatureIndexes = size_t { 0 };
-   if(0 != cFeatureGroups) {
-      const IntEbmType * pFeatureGroupDimensionCount = aFeatureGroupsDimensionCount;
-      const IntEbmType * const pFeatureGroupDimensionCountEnd = aFeatureGroupsDimensionCount + cFeatureGroups;
+   size_t cTotalDimensions = size_t { 0 };
+   if(0 != cTerms) {
+      const IntEbmType * pcTermDimensions = acTermDimensions;
+      const IntEbmType * const pcTermDimensionsEnd = acTermDimensions + cTerms;
       do {
-         const IntEbmType countDimensions = *pFeatureGroupDimensionCount;
+         const IntEbmType countDimensions = *pcTermDimensions;
          if(IsConvertError<size_t>(countDimensions)) {
-            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsFeatureIndexes IsConvertError<size_t>(countDimensions)");
+            LOG_0(TraceLevelError, "ERROR CountTotalDimensions IsConvertError<size_t>(countDimensions)");
             return SIZE_MAX;
          }
          const size_t cDimensions = static_cast<size_t>(countDimensions);
-         if(IsAddError(cFeatureGroupsFeatureIndexes, cDimensions)) {
-            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsFeatureIndexes IsAddError(cFeatureGroupsFeatureIndexes, cDimensions)");
+         if(IsAddError(cTotalDimensions, cDimensions)) {
+            LOG_0(TraceLevelError, "ERROR CountTotalDimensions IsAddError(cTotalDimensions, cDimensions)");
             return SIZE_MAX;
          }
-         cFeatureGroupsFeatureIndexes += cDimensions;
-         ++pFeatureGroupDimensionCount;
-      } while(pFeatureGroupDimensionCountEnd != pFeatureGroupDimensionCount);
+         cTotalDimensions += cDimensions;
+         ++pcTermDimensions;
+      } while(pcTermDimensionsEnd != pcTermDimensions);
    }
-   return cFeatureGroupsFeatureIndexes;
+   return cTotalDimensions;
 }
 
 bool ConvertLogicalsToBools(const SEXP items, size_t * const pcItems, const BoolEbmType ** const pRet) {
@@ -524,8 +524,8 @@ SEXP CreateClassificationBooster_R(
    SEXP countTargetClasses,
    SEXP featuresCategorical,
    SEXP featuresBinCount,
-   SEXP featureGroupsDimensionCount,
-   SEXP featureGroupsFeatureIndexes,
+   SEXP dimensionCounts,
+   SEXP featureIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingWeights,
@@ -540,8 +540,8 @@ SEXP CreateClassificationBooster_R(
    EBM_ASSERT(nullptr != countTargetClasses);
    EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
-   EBM_ASSERT(nullptr != featureGroupsDimensionCount);
-   EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
+   EBM_ASSERT(nullptr != dimensionCounts);
+   EBM_ASSERT(nullptr != featureIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingWeights);
@@ -597,29 +597,29 @@ SEXP CreateClassificationBooster_R(
       return R_NilValue;
    }
 
-   size_t cFeatureGroups;
-   const IntEbmType * aFeatureGroupsDimensionCount;
-   if(ConvertDoublesToIndexes(featureGroupsDimensionCount, &cFeatureGroups, &aFeatureGroupsDimensionCount)) {
+   size_t cTerms;
+   const IntEbmType * acTermDimensions;
+   if(ConvertDoublesToIndexes(dimensionCounts, &cTerms, &acTermDimensions)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbmType countTerms = static_cast<IntEbmType>(cFeatureGroups);
+   const IntEbmType countTerms = static_cast<IntEbmType>(cTerms);
 
-   const size_t cFeatureGroupsFeatureIndexesCheck = CountFeatureGroupsFeatureIndexes(cFeatureGroups, aFeatureGroupsDimensionCount);
-   if(SIZE_MAX == cFeatureGroupsFeatureIndexesCheck) {
+   const size_t cTotalDimensionsCheck = CountTotalDimensions(cTerms, acTermDimensions);
+   if(SIZE_MAX == cTotalDimensionsCheck) {
       // we've already logged any errors
       return R_NilValue;
    }
 
-   size_t cFeatureGroupsFeatureIndexesActual;
-   const IntEbmType * aFeatureGroupsFeatureIndexes;
-   if(ConvertDoublesToIndexes(featureGroupsFeatureIndexes, &cFeatureGroupsFeatureIndexesActual, &aFeatureGroupsFeatureIndexes)) {
+   size_t cTotalDimensionsActual;
+   const IntEbmType * aiTermFeatures;
+   if(ConvertDoublesToIndexes(featureIndexes, &cTotalDimensionsActual, &aiTermFeatures)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck");
+   if(cTotalDimensionsActual != cTotalDimensionsCheck) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cTotalDimensionsActual != cTotalDimensionsCheck");
       return R_NilValue;
    }
 
@@ -757,8 +757,8 @@ SEXP CreateClassificationBooster_R(
       aFeaturesCategorical,
       aFeaturesBinCount,
       countTerms, 
-      aFeatureGroupsDimensionCount,
-      aFeatureGroupsFeatureIndexes,
+      acTermDimensions,
+      aiTermFeatures,
       countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
@@ -791,8 +791,8 @@ SEXP CreateRegressionBooster_R(
    SEXP randomSeed,
    SEXP featuresCategorical,
    SEXP featuresBinCount,
-   SEXP featureGroupsDimensionCount,
-   SEXP featureGroupsFeatureIndexes,
+   SEXP dimensionCounts,
+   SEXP featureIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingWeights,
@@ -806,8 +806,8 @@ SEXP CreateRegressionBooster_R(
    EBM_ASSERT(nullptr != randomSeed);
    EBM_ASSERT(nullptr != featuresCategorical);
    EBM_ASSERT(nullptr != featuresBinCount);
-   EBM_ASSERT(nullptr != featureGroupsDimensionCount);
-   EBM_ASSERT(nullptr != featureGroupsFeatureIndexes);
+   EBM_ASSERT(nullptr != dimensionCounts);
+   EBM_ASSERT(nullptr != featureIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingWeights);
@@ -846,29 +846,29 @@ SEXP CreateRegressionBooster_R(
       return R_NilValue;
    }
 
-   size_t cFeatureGroups;
-   const IntEbmType * aFeatureGroupsDimensionCount;
-   if(ConvertDoublesToIndexes(featureGroupsDimensionCount, &cFeatureGroups, &aFeatureGroupsDimensionCount)) {
+   size_t cTerms;
+   const IntEbmType * acTermDimensions;
+   if(ConvertDoublesToIndexes(dimensionCounts, &cTerms, &acTermDimensions)) {
       // we've already logged any errors
       return R_NilValue;
    }
    // the validity of this conversion was checked in ConvertDoublesToIndexes(...)
-   const IntEbmType countTerms = static_cast<IntEbmType>(cFeatureGroups);
+   const IntEbmType countTerms = static_cast<IntEbmType>(cTerms);
 
-   const size_t cFeatureGroupsFeatureIndexesCheck = CountFeatureGroupsFeatureIndexes(cFeatureGroups, aFeatureGroupsDimensionCount);
-   if(SIZE_MAX == cFeatureGroupsFeatureIndexesCheck) {
+   const size_t cTotalDimensionsCheck = CountTotalDimensions(cTerms, acTermDimensions);
+   if(SIZE_MAX == cTotalDimensionsCheck) {
       // we've already logged any errors
       return R_NilValue;
    }
 
-   size_t cFeatureGroupsFeatureIndexesActual;
-   const IntEbmType * aFeatureGroupsFeatureIndexes;
-   if(ConvertDoublesToIndexes(featureGroupsFeatureIndexes, &cFeatureGroupsFeatureIndexesActual, &aFeatureGroupsFeatureIndexes)) {
+   size_t cTotalDimensionsActual;
+   const IntEbmType * aiTermFeatures;
+   if(ConvertDoublesToIndexes(featureIndexes, &cTotalDimensionsActual, &aiTermFeatures)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cFeatureGroupsFeatureIndexesActual != cFeatureGroupsFeatureIndexesCheck");
+   if(cTotalDimensionsActual != cTotalDimensionsCheck) {
+      LOG_0(TraceLevelError, "ERROR CreateRegressionBooster_R cTotalDimensionsActual != cTotalDimensionsCheck");
       return R_NilValue;
    }
 
@@ -996,8 +996,8 @@ SEXP CreateRegressionBooster_R(
       aFeaturesCategorical,
       aFeaturesBinCount,
       countTerms,
-      aFeatureGroupsDimensionCount,
-      aFeatureGroupsFeatureIndexes,
+      acTermDimensions,
+      aiTermFeatures,
       countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
@@ -1060,7 +1060,7 @@ SEXP GenerateTermUpdate_R(
       LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
-   const size_t iFeatureGroup = static_cast<size_t>(doubleIndex);
+   const size_t iTerm = static_cast<size_t>(doubleIndex);
 
    if(!IsSingleDoubleVector(learningRate)) {
       LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R !IsSingleDoubleVector(learningRate)");
@@ -1093,12 +1093,12 @@ SEXP GenerateTermUpdate_R(
       LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R ConvertDoublesToIndexes(leavesMax, &cDimensions, &aLeavesMax)");
       return R_NilValue;
    }
-   if(pBoosterShell->GetBoosterCore()->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R pBoosterShell->GetBoosterCore()->GetCountFeatureGroups() <= iFeatureGroup");
+   if(pBoosterShell->GetBoosterCore()->GetCountTerms() <= iTerm) {
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R pBoosterShell->GetBoosterCore()->GetCountTerms() <= iTerm");
       return R_NilValue;
    }
-   if(cDimensions < pBoosterShell->GetBoosterCore()->GetFeatureGroups()[iFeatureGroup]->GetCountDimensions()) {
-      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R cDimensions < pBoosterShell->GetBoosterCore()->GetFeatureGroups()[iFeatureGroup]->GetCountDimensions()");
+   if(cDimensions < pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetCountDimensions()) {
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate_R cDimensions < pBoosterShell->GetBoosterCore()->GetTerms()[iTerm]->GetCountDimensions()");
       return R_NilValue;
    }
 
@@ -1106,7 +1106,7 @@ SEXP GenerateTermUpdate_R(
 
    error = GenerateTermUpdate(
       boosterHandle,
-      static_cast<IntEbmType>(iFeatureGroup),
+      static_cast<IntEbmType>(iTerm),
       GenerateUpdateOptions_Default,
       learningRateLocal,
       countEbmSamplesRequiredForChildSplitMin,
@@ -1181,25 +1181,25 @@ SEXP GetBestTermScores_R(
       LOG_0(TraceLevelError, "ERROR GetBestTermScores_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
-   const size_t iFeatureGroup = static_cast<size_t>(doubleIndex);
-   // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
-   if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetBestTermScores_R pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup");
+   const size_t iTerm = static_cast<size_t>(doubleIndex);
+   // we check that iTerm can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
+   if(pBoosterCore->GetCountTerms() <= iTerm) {
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores_R pBoosterCore->GetCountTerms() <= iTerm");
       return R_NilValue;
    }
 
    size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cScores *= cBins;
-         ++pFeatureGroupEntry;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         ++pTermEntry;
+      } while(pTermEntriesEnd != pTermEntry);
    }
    if(IsConvertError<R_xlen_t>(cScores)) {
       return R_NilValue;
@@ -1207,7 +1207,7 @@ SEXP GetBestTermScores_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   error = GetBestTermScores(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   error = GetBestTermScores(boosterHandle, static_cast<IntEbmType>(iTerm), REAL(ret));
 
    UNPROTECT(1);
 
@@ -1248,25 +1248,25 @@ SEXP GetCurrentTermScores_R(
       LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
-   const size_t iFeatureGroup = static_cast<size_t>(doubleIndex);
-   // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
-   if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup");
+   const size_t iTerm = static_cast<size_t>(doubleIndex);
+   // we check that iTerm can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
+   if(pBoosterCore->GetCountTerms() <= iTerm) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores_R pBoosterCore->GetCountTerms() <= iTerm");
       return R_NilValue;
    }
 
    size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cScores *= cBins;
-         ++pFeatureGroupEntry;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         ++pTermEntry;
+      } while(pTermEntriesEnd != pTermEntry);
    }
    if(IsConvertError<R_xlen_t>(cScores)) {
       return R_NilValue;
@@ -1274,7 +1274,7 @@ SEXP GetCurrentTermScores_R(
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
-   error = GetCurrentTermScores(boosterHandle, static_cast<IntEbmType>(iFeatureGroup), REAL(ret));
+   error = GetCurrentTermScores(boosterHandle, static_cast<IntEbmType>(iTerm), REAL(ret));
 
    UNPROTECT(1);
 

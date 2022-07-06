@@ -27,7 +27,7 @@ class DataSetBoosting final {
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
-   size_t m_cFeatureGroups;
+   size_t m_cTerms;
 
 public:
 
@@ -42,7 +42,7 @@ public:
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
       m_cSamples = 0;
-      m_cFeatureGroups = 0;
+      m_cTerms = 0;
    }
 
    void Destruct();
@@ -58,8 +58,8 @@ public:
       const BagEbmType * const aBag,
       const double * const aInitScores,
       const size_t cSetSamples,
-      const size_t cFeatureGroups,
-      const FeatureGroup * const * const apFeatureGroup
+      const size_t cTerms,
+      const Term * const * const apTerms
    );
 
    INLINE_ALWAYS FloatFast * GetGradientsAndHessiansPointer() {
@@ -78,18 +78,18 @@ public:
       EBM_ASSERT(nullptr != m_aTargetData);
       return m_aTargetData;
    }
-   // TODO: we can change this to take the GetIndexInputData() value directly, which we get from a loop index
-   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const FeatureGroup * const pFeatureGroup) const {
-      EBM_ASSERT(nullptr != pFeatureGroup);
-      EBM_ASSERT(pFeatureGroup->GetIndexInputData() < m_cFeatureGroups);
+   // TODO: we can change this to take the GetIndexTerm() value directly, which we get from a loop index
+   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const Term * const pTerm) const {
+      EBM_ASSERT(nullptr != pTerm);
+      EBM_ASSERT(pTerm->GetIndexTerm() < m_cTerms);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pFeatureGroup->GetIndexInputData()];
+      return m_aaInputData[pTerm->GetIndexTerm()];
    }
    INLINE_ALWAYS size_t GetCountSamples() const {
       return m_cSamples;
    }
-   INLINE_ALWAYS size_t GetCountFeatureGroups() const {
-      return m_cFeatureGroups;
+   INLINE_ALWAYS size_t GetCountTerms() const {
+      return m_cTerms;
    }
 };
 static_assert(std::is_standard_layout<DataSetBoosting>::value,

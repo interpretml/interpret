@@ -538,8 +538,8 @@ public:
          cVectorLength * sizeof(*aSumHistogramTargetEntry)
       );
 
-      CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
-         pBoosterShell->GetOverwritableModelUpdate();
+      CompressibleTensor * const pInnerTermUpdate =
+         pBoosterShell->GetInnerTermUpdate();
 
       size_t cLeaves;
       const int retExamine = ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
@@ -554,7 +554,7 @@ public:
          // any negative gain means there was an overflow.  Let the caller decide if they want to ignore it
          *pTotalGain = UNLIKELY(retExamine < 0) ? std::numeric_limits<double>::infinity() : 0.0;
 
-         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension, 0);
+         error = pInnerTermUpdate->SetCountSplits(iDimension, 0);
          if(UNLIKELY(Error_None != error)) {
             // already logged
             return error;
@@ -562,7 +562,7 @@ public:
 
          // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cVectorLength
          if(bClassification) {
-            FloatFast * const aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
+            FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             FloatBig zeroLogit = 0;
@@ -589,7 +589,7 @@ public:
             const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
                pRootTreeNode->GetHistogramTargetEntry()[0].m_sumGradients, weightTotal
             );
-            FloatFast * aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
+            FloatFast * aUpdateScores = pInnerTermUpdate->GetScoresPointer();
             aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
          }
 
@@ -612,13 +612,13 @@ public:
                )->IsSplittable()
          );
 
-         error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension, 1);
+         error = pInnerTermUpdate->SetCountSplits(iDimension, 1);
          if(UNLIKELY(Error_None != error)) {
             // already logged
             return error;
          }
 
-         ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension);
+         ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
          pSplits[0] = pRootTreeNode->AFTER_GetSplitValue();
 
          // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cVectorLength
@@ -637,7 +637,7 @@ public:
 
          const auto * pHistogramTargetEntryRightChild = pRightChild->GetHistogramTargetEntry();
 
-         FloatFast * const aUpdateScores = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
+         FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
          if(bClassification) {
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -880,7 +880,7 @@ public:
          return Error_UnexpectedInternal;
       }
 
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimension, cLeaves - size_t { 1 });
+      error = pInnerTermUpdate->SetCountSplits(iDimension, cLeaves - size_t { 1 });
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
@@ -889,22 +889,22 @@ public:
          LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cVectorLength, cLeaves)");
          return Error_OutOfMemory;
       }
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * cLeaves);
+      error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * cLeaves);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
       }
-      ActiveDataType * pSplits = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension);
-      FloatFast * pUpdateScore = pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer();
+      ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
+      FloatFast * pUpdateScore = pInnerTermUpdate->GetScoresPointer();
 
       LOG_0(TraceLevelVerbose, "Entered Flatten");
       Flatten<bClassification>(pRootTreeNode, &pSplits, &pUpdateScore, cVectorLength);
       LOG_0(TraceLevelVerbose, "Exited Flatten");
 
-      EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension) <= pSplits);
-      EBM_ASSERT(static_cast<size_t>(pSplits - pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimension)) == cLeaves - 1);
-      EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer() < pUpdateScore);
-      EBM_ASSERT(static_cast<size_t>(pUpdateScore - pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()) == cVectorLength * cLeaves);
+      EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension) <= pSplits);
+      EBM_ASSERT(static_cast<size_t>(pSplits - pInnerTermUpdate->GetSplitPointer(iDimension)) == cLeaves - 1);
+      EBM_ASSERT(pInnerTermUpdate->GetScoresPointer() < pUpdateScore);
+      EBM_ASSERT(static_cast<size_t>(pUpdateScore - pInnerTermUpdate->GetScoresPointer()) == cVectorLength * cLeaves);
 
       return Error_None;
    }

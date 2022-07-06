@@ -38,7 +38,7 @@ namespace DEFINED_ZONE_NAME {
 // NO m_cScoreCapacity -> we have a function that calculates the maximum capacity and we allocate it all at the start
 // NO m_cVectorLength -> we don't need to pass this arround from process to process since it's global info and can be passed to the individual functions
 // NO m_cDimensionsMax -> we pre-determine the maximum size and always allocate the max max size
-// NO m_cDimensions; -> we can pass in the FeatureGroup object to know the # of dimensions
+// NO m_cDimensions; -> we can pass in the Term object to know the # of dimensions
 // FloatFast m_values[]; // a space for our values
 // UIntEbmType DIMENSION_1_SPLIT_POINTS
 // UIntEbmType DIMENSION_1_BIN_COUNT -> we find this by traversing the 0th dimension items
@@ -52,7 +52,7 @@ namespace DEFINED_ZONE_NAME {
 // Reasons:
 //   - our super-parallel algorithm needs to split up the data and have separate processing cores process their data
 //     their outputs will be partial histograms. After a single cores does the tree buiding, that core will need to 
-//     push the model updates to all the children nodes
+//     push the term score updates to all the children nodes
 //   - in an MPI environment, or a Spark cluster, or in a GPU, we'll need to pass this data structure between nodes, 
 //     so it will need to be memcopy-able, which means no pointers (use 64-bit offsets), and it means that the data 
 //     needs to be in a single contiguous byte array
@@ -70,22 +70,22 @@ namespace DEFINED_ZONE_NAME {
 //     3) memcpy all the dimension split information to the new end of our data space to give us room
 //     4) Expand and merge the values using the non-changed dimension info
 //     5) Expand the dimension into upwards starting from the Nth dimension at the top and working downwards
-//   - the maximum number of splits is part of the feature_group definition, so we don't need to store that and pass 
+//   - the maximum number of splits is part of the term definition, so we don't need to store that and pass 
 //     that reduntant information arround. We do store the current number of splits because that changes.  This data 
-//     structure should therefore have a dependency on the feature_group definition since we'll need to read the 
-//     maximum number of splits.  The pointer to the feature_group class can be passed in via the stack to any 
+//     structure should therefore have a dependency on the term definition since we'll need to read the 
+//     maximum number of splits.  The pointer to the term class can be passed in via the stack to any 
 //     function that needs that information
 //   - use 64 bit values for all offsets, since nobody will ever need more than 64 bits 
 //     (you need a non-trivial amount of mass even if you store one bit per atom) and we might pass these 
 //     between 64 and 32 bit processes, but a few 64 bit offsets won't be a problem even for a 32-bit process.
 //   - EXPANDING:
-//     - eventually all our tensors will be expanded when doing the model update, because we want to use array lookups 
-//       instead of binary search when applying the model (array lookup is a huge speed boost over binary search)
-//     - we can return a non-expanded model to the caller.  We will provide an expand function to expand it if the
+//     - eventually all our tensors will be expanded when doing the term score update, because we want to use array lookups 
+//       instead of binary search when applying the term scores (array lookup is a huge speed boost over binary search)
+//     - we can return a non-expanded term score tensor to the caller.  We will provide an expand function to expand it if the
 //       caller wants to examine the tensor themselves
 //     - we might as well also flip to epanded mode whenever all dimensions are fully expanded, even when we think
-//       we have a compressed model. For things like bools or low numbers of splits this could be frequent, and the 
-//       non-compressed model is actually smaller when all dimensions have been expanded
+//       we have a compressed tensor. For things like bools or low numbers of splits this could be frequent, and the 
+//       non-compressed tensor is actually smaller when all dimensions have been expanded
 //     - once we've been expanded, we no longer need the split points since the split points are just incrementing integers
 
 class CompressibleTensor final {
@@ -178,7 +178,7 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    // TODO: In the future we'll be splitting our work into small data owned by
-   // a node in a distributed system.  After each node calculates it's model update (represented by this
+   // a node in a distributed system.  After each node calculates it's term score update (represented by this
    // CompressibleTensor class), we'll need to reduce them accross all nodes, before adding together all the
    // CompressibleTensor classes and sending back a full update to the Nodes.  Since we'll be ferrying info
    // back and forth, we'll want to keep it in a more compressed format keeping split and not expanding
@@ -197,7 +197,7 @@ public:
    ErrorEbmType EnsureScoreCapacity(const size_t cScores);
    ErrorEbmType Copy(const CompressibleTensor & rhs);
    bool MultiplyAndCheckForIssues(const double v);
-   ErrorEbmType Expand(const FeatureGroup * const pFeatureGroup);
+   ErrorEbmType Expand(const Term * const pTerm);
    void AddExpandedWithBadValueProtection(const FloatFast * const aFromValues);
    ErrorEbmType Add(const CompressibleTensor & rhs);
 

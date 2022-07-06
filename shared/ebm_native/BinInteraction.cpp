@@ -35,7 +35,7 @@ public:
 
    BinInteractionInternal() = delete; // this is a static class.  Do not construct
 
-   static void Func(InteractionShell * const pInteractionShell, const FeatureGroup * const pFeatureGroup) {
+   static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
       LOG_0(TraceLevelVerbose, "Entered BinInteractionInternal");
@@ -60,8 +60,8 @@ public:
 
       const FloatFast * pWeight = pDataSet->GetWeights();
 
-      EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions()); // for interactions, we just return 0 for interactions with zero features
-      const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(pTerm->GetCountDimensions() == pTerm->GetCountSignificantDimensions()); // for interactions, we just return 0 for interactions with zero features
+      const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= cDimensions); // for interactions, we just return 0 for interactions with zero features
 
 #ifndef NDEBUG
@@ -87,7 +87,7 @@ public:
          size_t iBucket = 0;
          size_t iDimension = 0;
          do {
-            const Feature * const pInputFeature = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature;
+            const Feature * const pInputFeature = pTerm->GetTermEntries()[iDimension].m_pFeature;
             const size_t cBins = pInputFeature->GetCountBins();
             // interactions return interaction score of zero earlier on any useless dimensions
             // we strip dimensions from the tensors with 1 bin, so if 1 bin was accepted here, we'd need to strip
@@ -173,18 +173,18 @@ public:
 
    BinInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const FeatureGroup * const pFeatureGroup) {
+   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension for interactions");
       static_assert(cCompilerDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      const size_t cRuntimeDimensions = pFeatureGroup->GetCountSignificantDimensions();
+      const size_t cRuntimeDimensions = pTerm->GetCountSignificantDimensions();
 
       EBM_ASSERT(1 <= cRuntimeDimensions);
       EBM_ASSERT(cRuntimeDimensions <= k_cDimensionsMax);
       if(cCompilerDimensionsPossible == cRuntimeDimensions) {
-         BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, pFeatureGroup);
+         BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible>::Func(pInteractionShell, pTerm);
       } else {
-         BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, pFeatureGroup);
+         BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible + 1>::Func(pInteractionShell, pTerm);
       }
    }
 };
@@ -195,10 +195,10 @@ public:
 
    BinInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const FeatureGroup * const pFeatureGroup) {
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
-      EBM_ASSERT(pFeatureGroup->GetCountSignificantDimensions() <= k_cDimensionsMax);
-      BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(pInteractionShell, pFeatureGroup);
+   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
+      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
+      EBM_ASSERT(pTerm->GetCountSignificantDimensions() <= k_cDimensionsMax);
+      BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(pInteractionShell, pTerm);
    }
 };
 
@@ -208,7 +208,7 @@ public:
 
    BinInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const FeatureGroup * const pFeatureGroup) {
+   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
@@ -218,9 +218,9 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         BinInteractionDimensions<compilerLearningTypeOrCountTargetClassesPossible, 2>::Func(pInteractionShell, pFeatureGroup);
+         BinInteractionDimensions<compilerLearningTypeOrCountTargetClassesPossible, 2>::Func(pInteractionShell, pTerm);
       } else {
-         BinInteractionTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(pInteractionShell, pFeatureGroup);
+         BinInteractionTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(pInteractionShell, pTerm);
       }
    }
 };
@@ -231,25 +231,25 @@ public:
 
    BinInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const FeatureGroup * const pFeatureGroup) {
+   INLINE_ALWAYS static void Func(InteractionShell * const pInteractionShell, const Term * const pTerm) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
       EBM_ASSERT(IsClassification(pInteractionShell->GetInteractionCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pInteractionShell->GetInteractionCore()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      BinInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, pFeatureGroup);
+      BinInteractionDimensions<k_dynamicClassification, 2>::Func(pInteractionShell, pTerm);
    }
 };
 
-extern void BinInteraction(InteractionShell * const pInteractionShell, const FeatureGroup * const pFeatureGroup) {
+extern void BinInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm) {
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      BinInteractionTarget<2>::Func(pInteractionShell, pFeatureGroup);
+      BinInteractionTarget<2>::Func(pInteractionShell, pTerm);
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      BinInteractionDimensions<k_regression, 2>::Func(pInteractionShell, pFeatureGroup);
+      BinInteractionDimensions<k_regression, 2>::Func(pInteractionShell, pTerm);
    }
 }
 

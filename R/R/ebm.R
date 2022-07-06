@@ -22,9 +22,9 @@
 
 # S3 data structures
 
-ebm_feature_group <- function(feature_indexes) {
+ebm_term <- function(feature_indexes) {
    feature_indexes <- as.double(feature_indexes)
-   ret <- structure(list(feature_indexes = feature_indexes), class = "ebm_feature_group")
+   ret <- structure(list(feature_indexes = feature_indexes), class = "ebm_term")
    return(ret)
 }
 
@@ -97,8 +97,8 @@ ebm_classify <- function(
       X_binned[, i_feature] <- discretized
    }
 
-   # create the feature_groups for the mains
-   feature_groups <- lapply(1:n_features, function(i) { ebm_feature_group(i) })
+   # create the terms for the mains
+   terms <- lapply(1:n_features, function(i) { ebm_term(i) })
 
    term_scores <- vector("list")
    for(col_name in col_names) {
@@ -131,7 +131,7 @@ ebm_classify <- function(
          n_classes,
          features_categorical,
          features_bin_count,
-         feature_groups,
+         terms,
          X_train,
          y_train,
          NULL,
@@ -161,8 +161,8 @@ ebm_classify <- function(
    }
 
    # TODO PK : we're going to need to modify this structure in the future to handle interaction terms by making
-   #           the additivie_terms by feature_group index instead of by feature name.  And also change the
-   #           cuts to be per-feature_group as well to support stage fitting in the future
+   #           the additivie_terms by term index instead of by feature name.  And also change the
+   #           cuts to be per-term as well to support stage fitting in the future
    #           For now though, this is just a simple and nice way to present it since we just support mains
 
    model <- structure(list(cuts = cuts, term_scores = term_scores), class = "ebm_model")

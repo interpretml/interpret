@@ -243,7 +243,7 @@ bool CompressibleTensor::MultiplyAndCheckForIssues(const double v) {
    return !!bBad;
 }
 
-ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup) {
+ErrorEbmType CompressibleTensor::Expand(const Term * const pTerm) {
    // checking the max isn't really the best here, but doing this right seems pretty complicated
    static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<ActiveDataType>::max() &&
       0 == std::numeric_limits<ActiveDataType>::min(), "bad AcitveDataType size");
@@ -258,11 +258,11 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
       return Error_None;
    }
 
-   EBM_ASSERT(nullptr != pFeatureGroup);
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   EBM_ASSERT(nullptr != pTerm);
+   const size_t cDimensions = pTerm->GetCountDimensions();
    if(size_t { 0 } != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry1 + cDimensions;
+      const TermEntry * pTermEntry1 = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = pTermEntry1 + cDimensions;
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
       const DimensionInfo * pDimensionFirst1 = GetDimensions();
@@ -271,10 +271,10 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
 
       // first, get basic counts of how many splits and scores we'll have in our final result
       do {
-         const size_t cBins = pFeatureGroupEntry1->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry1->m_pFeature->GetCountBins();
 
          // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack 
-         // featureGroupsFeatureIndexes and in CalcInteractionStrength for interactions
+         // featureIndexes and in CalcInteractionStrength for interactions
          EBM_ASSERT(!IsMultiplyError(cNewScores, cBins));
          cNewScores *= cBins;
 
@@ -291,8 +291,8 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
 
          ++pDimensionFirst1;
          ++pDimensionInfoStackFirst;
-         ++pFeatureGroupEntry1;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry1);
+         ++pTermEntry1;
+      } while(pTermEntriesEnd != pTermEntry1);
       
       if(size_t { 0 } == cNewScores) {
          // there's a really degenerate case where we have zero training and zero validation samples, and the user 
@@ -395,10 +395,10 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
          EBM_ASSERT(pScoreTop == m_aScores);
          EBM_ASSERT(pScore1 == m_aScores + m_cVectorLength);
 
-         const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
+         const TermEntry * pTermEntry2 = pTerm->GetTermEntries();
          size_t iDimension = 0;
          do {
-            const size_t cBins = pFeatureGroupEntry2->m_pFeature->GetCountBins();
+            const size_t cBins = pTermEntry2->m_pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
             const size_t cSplits = cBins - size_t { 1 };
             const DimensionInfo * const pDimension = &aDimension1[iDimension];
@@ -420,8 +420,8 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
                } while(cSplits != iSplit);
             }
             ++iDimension;
-            ++pFeatureGroupEntry2;
-         } while(pFeatureGroupEntryEnd != pFeatureGroupEntry2);
+            ++pTermEntry2;
+         } while(pTermEntriesEnd != pTermEntry2);
       }
    }
    m_bExpanded = true;
@@ -450,7 +450,7 @@ void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatFast * con
       // if we get a -infinity, then just make our value the minimum
       // these changes will make us out of sync with the updates to our logits, but it should be at the extremes anyways
       // so, not much real loss there.  Also, if we have NaN, or +-infinity in an update, we'll be stopping boosting soon
-      // but we want to preserve the best model that we had
+      // but we want to preserve the best term scores that we had
 
       FloatFast score = *pFromScore;
       score = std::isnan(score) ? FloatFast { 0 } : score;
@@ -552,7 +552,7 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
          p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
       }
       pDimensionInfoStackFirst->m_cNewSplits = cNewSingleDimensionSplits;
-      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes and in 
+      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureIndexes and in 
       // CalcInteractionStrength for interactions
       EBM_ASSERT(!IsMultiplyError(cNewScores, cNewSingleDimensionSplits + 1));
       cNewScores *= cNewSingleDimensionSplits + 1;

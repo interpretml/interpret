@@ -79,7 +79,7 @@ namespace DEFINED_ZONE_NAME {
 //                  represenation that is just features without feature groups.  This representation will be compressed per feature.
 //                  and will include a reverse index to work back to the original unsorted indexes
 //                  We'll generate the main/interaction training dataset from that directly when python passes us the train/validation set indexes and 
-//                  the feature_groups.  We'll also generate train/validation duplicates of this dataset for interaction detection 
+//                  the terms.  We'll also generate train/validation duplicates of this dataset for interaction detection 
 //                  (but for interactions we don't need the reverse index lookup)
 //   - OBSERVATION: We should be able to completely preserve sparse data representations without expanding them, although we can also detect when dense 
 //                  features should be sparsified in our own dataset

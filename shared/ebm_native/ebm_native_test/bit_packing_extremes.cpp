@@ -20,7 +20,7 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(k_learningTypeRegression);
             test.AddFeatures({ FeatureTest(cBins) });
-            test.AddFeatureGroups({ { 0 } });
+            test.AddTerms({ { 0 } });
 
             std::vector<TestSample> trainingSamples;
             std::vector<TestSample> validationSamples;
@@ -52,7 +52,7 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(2, 0);
             test.AddFeatures({ FeatureTest(cBins) });
-            test.AddFeatureGroups({ { 0 } });
+            test.AddTerms({ { 0 } });
 
             std::vector<TestSample> trainingSamples;
             std::vector<TestSample> validationSamples;

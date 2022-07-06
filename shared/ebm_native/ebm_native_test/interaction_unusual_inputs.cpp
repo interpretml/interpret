@@ -69,7 +69,7 @@ TEST_CASE("features with 0 states, interaction") {
    CHECK(0 == validationMetric);
 }
 
-TEST_CASE("FeatureGroup with zero features, interaction, regression") {
+TEST_CASE("Term with zero features, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddInteractionSamples({ TestSample({}, 10) });
@@ -78,7 +78,7 @@ TEST_CASE("FeatureGroup with zero features, interaction, regression") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with zero features, interaction, binary") {
+TEST_CASE("Term with zero features, interaction, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddInteractionSamples({ TestSample({}, 0) });
@@ -87,7 +87,7 @@ TEST_CASE("FeatureGroup with zero features, interaction, binary") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with zero features, interaction, multiclass") {
+TEST_CASE("Term with zero features, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
    test.AddInteractionSamples({ TestSample({}, 0) });
@@ -96,7 +96,7 @@ TEST_CASE("FeatureGroup with zero features, interaction, multiclass") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with one feature with one state, interaction, regression") {
+TEST_CASE("Term with one feature with one state, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionSamples({ TestSample({ 0 }, 10) });
@@ -105,7 +105,7 @@ TEST_CASE("FeatureGroup with one feature with one state, interaction, regression
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with one feature with one state, interaction, binary") {
+TEST_CASE("Term with one feature with one state, interaction, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionSamples({ TestSample({ 0 }, 0) });
@@ -114,7 +114,7 @@ TEST_CASE("FeatureGroup with one feature with one state, interaction, binary") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with one feature with one state, interaction, multiclass") {
+TEST_CASE("Term with one feature with one state, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionSamples({ TestSample({ 0 }, 0) });
@@ -422,7 +422,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
-   test2.AddFeatureGroups({ { 0, 1 } });
+   test2.AddTerms({ { 0, 1 } });
    test2.AddTrainingSamples({
       TestSample({ 0, 0 }, 3, 232.24),
       TestSample({ 0, 1 }, 11, 12.124),

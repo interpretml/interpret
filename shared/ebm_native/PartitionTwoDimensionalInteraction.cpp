@@ -37,7 +37,7 @@ public:
 
    static double Func(
       InteractionCore * const pInteractionCore,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       const InteractionOptionsType options,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
@@ -71,13 +71,13 @@ public:
       auto * const pTotals11 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
       // for interactions we return an interaction score of 0 if any of the dimensions are useless
-      EBM_ASSERT(2 == pFeatureGroup->GetCountDimensions());
-      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(2 == pTerm->GetCountDimensions());
+      EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions());
 
       // we return an interaction score of 0 if any features are useless before calling here
-      EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions());
-      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
-      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->GetCountBins();
+      EBM_ASSERT(pTerm->GetCountDimensions() == pTerm->GetCountSignificantDimensions());
+      const size_t cBinsDimension1 = pTerm->GetTermEntries()[0].m_pFeature->GetCountBins();
+      const size_t cBinsDimension2 = pTerm->GetTermEntries()[1].m_pFeature->GetCountBins();
 
       // any pair with a feature with 1 cBins returns an interaction score of 0
       EBM_ASSERT(2 <= cBinsDimension1);
@@ -103,10 +103,10 @@ public:
          do {
             aiStart[1] = iBin2;
 
-            EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+            EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
             TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                learningTypeOrCountTargetClasses,
-               pFeatureGroup,
+               pTerm,
                aHistogramBuckets,
                aiStart,
                0x00,
@@ -117,10 +117,10 @@ public:
 #endif // NDEBUG
                );
             if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals00->GetCountSamplesInBucket())) {
-               EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+               EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                   learningTypeOrCountTargetClasses,
-                  pFeatureGroup,
+                  pTerm,
                   aHistogramBuckets,
                   aiStart,
                   0x01,
@@ -131,10 +131,10 @@ public:
 #endif // NDEBUG
                   );
                if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals01->GetCountSamplesInBucket())) {
-                  EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+                  EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                   TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                      learningTypeOrCountTargetClasses,
-                     pFeatureGroup,
+                     pTerm,
                      aHistogramBuckets,
                      aiStart,
                      0x02,
@@ -145,10 +145,10 @@ public:
 #endif // NDEBUG
                      );
                   if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals10->GetCountSamplesInBucket())) {
-                     EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+                     EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                         learningTypeOrCountTargetClasses,
-                        pFeatureGroup,
+                        pTerm,
                         aHistogramBuckets,
                         aiStart,
                         0x03,
@@ -396,7 +396,7 @@ public:
 
    INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       const InteractionOptionsType options,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
@@ -416,7 +416,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          return PartitionTwoDimensionalInteractionInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pInteractionCore,
-            pFeatureGroup,
+            pTerm,
             options,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
@@ -429,7 +429,7 @@ public:
       } else {
          return PartitionTwoDimensionalInteractionTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pInteractionCore,
-            pFeatureGroup,
+            pTerm,
             options,
             cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
@@ -451,7 +451,7 @@ public:
 
    INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       const InteractionOptionsType options,
       const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
@@ -468,7 +468,7 @@ public:
 
       return PartitionTwoDimensionalInteractionInternal<k_dynamicClassification>::Func(
          pInteractionCore,
-         pFeatureGroup,
+         pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -483,7 +483,7 @@ public:
 
 extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
@@ -498,7 +498,7 @@ extern double PartitionTwoDimensionalInteraction(
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       return PartitionTwoDimensionalInteractionTarget<2>::Func(
          pInteractionCore,
-         pFeatureGroup,
+         pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -512,7 +512,7 @@ extern double PartitionTwoDimensionalInteraction(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       return PartitionTwoDimensionalInteractionInternal<k_regression>::Func(
          pInteractionCore,
-         pFeatureGroup,
+         pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,

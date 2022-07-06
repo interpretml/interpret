@@ -12,7 +12,7 @@ static const TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
 TEST_CASE("zero learning rate, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
-   test.AddFeatureGroups({ {} });
+   test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 10) });
    test.AddValidationSamples({ TestSample({}, 12) });
    test.InitializeBoosting();
@@ -20,13 +20,13 @@ TEST_CASE("zero learning rate, boosting, regression") {
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_Default, 0).validationMetric;
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_Default, 0).validationMetric;
          CHECK_APPROX(validationMetric, 144);
-         termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+         termScore = test.GetCurrentTermScore(iTerm, {}, 0);
          CHECK_APPROX(termScore, 0);
 
-         termScore = test.GetBestTermScore(iFeatureGroup, {}, 0);
+         termScore = test.GetBestTermScore(iTerm, {}, 0);
          CHECK_APPROX(termScore, 0);
       }
    }
@@ -35,7 +35,7 @@ TEST_CASE("zero learning rate, boosting, regression") {
 TEST_CASE("zero learning rate, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
-   test.AddFeatureGroups({ {} });
+   test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
    test.AddValidationSamples({ TestSample({}, 0) });
    test.InitializeBoosting();
@@ -43,17 +43,17 @@ TEST_CASE("zero learning rate, boosting, binary") {
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_Default, 0).validationMetric;
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_Default, 0).validationMetric;
          CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
-         termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+         termScore = test.GetCurrentTermScore(iTerm, {}, 0);
          CHECK_APPROX(termScore, 0);
-         termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1);
+         termScore = test.GetCurrentTermScore(iTerm, {}, 1);
          CHECK_APPROX(termScore, 0);
 
-         termScore = test.GetBestTermScore(iFeatureGroup, {}, 0);
+         termScore = test.GetBestTermScore(iTerm, {}, 0);
          CHECK_APPROX(termScore, 0);
-         termScore = test.GetBestTermScore(iFeatureGroup, {}, 1);
+         termScore = test.GetBestTermScore(iTerm, {}, 1);
          CHECK_APPROX(termScore, 0);
       }
    }
@@ -62,7 +62,7 @@ TEST_CASE("zero learning rate, boosting, binary") {
 TEST_CASE("zero learning rate, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
-   test.AddFeatureGroups({ {} });
+   test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
    test.AddValidationSamples({ TestSample({}, 0) });
    test.InitializeBoosting();
@@ -70,21 +70,21 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_Default, 0).validationMetric;
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_Default, 0).validationMetric;
          CHECK_APPROX_TOLERANCE(validationMetric, 1.0986122886681098, double { 1e-1 });
-         termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+         termScore = test.GetCurrentTermScore(iTerm, {}, 0);
          CHECK_APPROX(termScore, 0);
-         termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1);
+         termScore = test.GetCurrentTermScore(iTerm, {}, 1);
          CHECK_APPROX(termScore, 0);
-         termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 2);
+         termScore = test.GetCurrentTermScore(iTerm, {}, 2);
          CHECK_APPROX(termScore, 0);
 
-         termScore = test.GetBestTermScore(iFeatureGroup, {}, 0);
+         termScore = test.GetBestTermScore(iTerm, {}, 0);
          CHECK_APPROX(termScore, 0);
-         termScore = test.GetBestTermScore(iFeatureGroup, {}, 1);
+         termScore = test.GetBestTermScore(iTerm, {}, 1);
          CHECK_APPROX(termScore, 0);
-         termScore = test.GetBestTermScore(iFeatureGroup, {}, 2);
+         termScore = test.GetBestTermScore(iTerm, {}, 2);
          CHECK_APPROX(termScore, 0);
       }
    }
@@ -93,7 +93,7 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
 TEST_CASE("negative learning rate, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
-   test.AddFeatureGroups({ {} });
+   test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 10) });
    test.AddValidationSamples({ TestSample({}, 12) });
    test.InitializeBoosting();
@@ -101,16 +101,16 @@ TEST_CASE("negative learning rate, boosting, regression") {
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_Default, -k_learningRateDefault).validationMetric;
-         if(0 == iFeatureGroup && 0 == iEpoch) {
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_Default, -k_learningRateDefault).validationMetric;
+         if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 146.41);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 0);
             CHECK_APPROX(termScore, -0.1000000000000000);
          }
-         if(0 == iFeatureGroup && 1 == iEpoch) {
+         if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 148.864401);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 0);
             CHECK_APPROX(termScore, -0.2010000000000000);
          }
       }
@@ -123,7 +123,7 @@ TEST_CASE("negative learning rate, boosting, regression") {
 TEST_CASE("negative learning rate, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
-   test.AddFeatureGroups({ {} });
+   test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
    test.AddValidationSamples({ TestSample({}, 0) });
    test.InitializeBoosting();
@@ -131,20 +131,20 @@ TEST_CASE("negative learning rate, boosting, binary") {
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 50; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_Default, -k_learningRateDefault).validationMetric;
-         if(0 == iFeatureGroup && 0 == iEpoch) {
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_Default, -k_learningRateDefault).validationMetric;
+         if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.70319717972663420, double { 1e-1 });
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 0);
             CHECK_APPROX(termScore, 0);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 1);
             CHECK_APPROX_TOLERANCE(termScore, 0.020000000000000000, double { 1.5e-1 });
          }
-         if(0 == iFeatureGroup && 1 == iEpoch) {
+         if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.71345019889199235, double { 1e-1 });
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 0);
             CHECK_APPROX(termScore, 0);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 1);
             CHECK_APPROX_TOLERANCE(termScore, 0.040202013400267564, double { 1.5e-1 });
          }
       }
@@ -160,7 +160,7 @@ TEST_CASE("negative learning rate, boosting, binary") {
 TEST_CASE("negative learning rate, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
-   test.AddFeatureGroups({ {} });
+   test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
    test.AddValidationSamples({ TestSample({}, 0) });
    test.InitializeBoosting();
@@ -168,22 +168,22 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 20; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_Default, -k_learningRateDefault).validationMetric;
-         if(0 == iFeatureGroup && 0 == iEpoch) {
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_Default, -k_learningRateDefault).validationMetric;
+         if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.1288361512023379, double { 1e-1 });
-            const double zeroLogit = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1) - zeroLogit;
+            const double zeroLogit = test.GetCurrentTermScore(iTerm, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
             CHECK_APPROX(termScore, 0.04500000000000000);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 2) - zeroLogit;
+            termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
             CHECK_APPROX(termScore, 0.04500000000000000);
          }
-         if(0 == iFeatureGroup && 1 == iEpoch) {
+         if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.1602122411839852, double { 1e-1 });
-            const double zeroLogit = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1) - zeroLogit;
+            const double zeroLogit = test.GetCurrentTermScore(iTerm, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
             CHECK_APPROX_TOLERANCE(termScore, 0.091033038217642897, double { 1e-2 });
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 2) - zeroLogit;
+            termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
             CHECK_APPROX_TOLERANCE(termScore, 0.091033038217642897, double { 1e-2 });
          }
       }
@@ -202,7 +202,7 @@ TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
 
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
       TestSample({ 0 }, 10),
       TestSample({ 1 }, 10),
@@ -221,7 +221,7 @@ TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
 TEST_CASE("weights are proportional, boosting, regression") {
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2) });
-   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
       TestSample({ 0 }, 10, FloatTickIncrementTest(0.3)),
       TestSample({ 1 }, 10, 0.3),
@@ -239,7 +239,7 @@ TEST_CASE("weights are proportional, boosting, regression") {
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2) });
-   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
       TestSample({ 0 }, 10, FloatTickIncrementTest(2)),
       TestSample({ 1 }, 10, 2),
@@ -257,7 +257,7 @@ TEST_CASE("weights are proportional, boosting, regression") {
 
    TestApi test3 = TestApi(k_learningTypeRegression);
    test3.AddFeatures({ FeatureTest(2) });
-   test3.AddFeatureGroups({ { 0 } });
+   test3.AddTerms({ { 0 } });
    test3.AddTrainingSamples({
       TestSample({ 0 }, 10, 0),
       TestSample({ 1 }, 10, 0),
@@ -282,7 +282,7 @@ TEST_CASE("weights are proportional, boosting, regression") {
 TEST_CASE("weights are proportional, boosting, binary") {
    TestApi test1 = TestApi(2);
    test1.AddFeatures({ FeatureTest(2) });
-   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
       TestSample({ 0 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 1 }, 0, 0.3),
@@ -300,7 +300,7 @@ TEST_CASE("weights are proportional, boosting, binary") {
 
    TestApi test2 = TestApi(2);
    test2.AddFeatures({ FeatureTest(2) });
-   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
       TestSample({ 0 }, 1, FloatTickIncrementTest(2)),
       TestSample({ 1 }, 1, 2),
@@ -318,7 +318,7 @@ TEST_CASE("weights are proportional, boosting, binary") {
 
    TestApi test3 = TestApi(2);
    test3.AddFeatures({ FeatureTest(2) });
-   test3.AddFeatureGroups({ { 0 } });
+   test3.AddTerms({ { 0 } });
    test3.AddTrainingSamples({
       TestSample({ 0 }, 0, 0),
       TestSample({ 1 }, 0, 0),
@@ -343,7 +343,7 @@ TEST_CASE("weights are proportional, boosting, binary") {
 TEST_CASE("weights are proportional, boosting, multiclass") {
    TestApi test1 = TestApi(3);
    test1.AddFeatures({ FeatureTest(2) });
-   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
       TestSample({ 0 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 1 }, 0, 0.3),
@@ -361,7 +361,7 @@ TEST_CASE("weights are proportional, boosting, multiclass") {
 
    TestApi test2 = TestApi(3);
    test2.AddFeatures({ FeatureTest(2) });
-   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
       TestSample({ 0 }, 1, FloatTickIncrementTest(2)),
       TestSample({ 1 }, 1, 2),
@@ -379,7 +379,7 @@ TEST_CASE("weights are proportional, boosting, multiclass") {
 
    TestApi test3 = TestApi(3);
    test3.AddFeatures({ FeatureTest(2) });
-   test3.AddFeatureGroups({ { 0 } });
+   test3.AddTerms({ { 0 } });
    test3.AddTrainingSamples({
       TestSample({ 0 }, 2, 0),
       TestSample({ 1 }, 2, 0),
@@ -404,7 +404,7 @@ TEST_CASE("weights are proportional, boosting, multiclass") {
 TEST_CASE("weights totals equivalence, boosting, regression") {
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2) });
-   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
       TestSample({ 0 }, 10, 0.15),
       TestSample({ 0 }, 10, 0.15),
@@ -422,7 +422,7 @@ TEST_CASE("weights totals equivalence, boosting, regression") {
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2) });
-   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
       TestSample({ 0 }, 10, 0.5),
       TestSample({ 1 }, 12, 2),
@@ -444,7 +444,7 @@ TEST_CASE("weights totals equivalence, boosting, regression") {
 TEST_CASE("weights totals equivalence, boosting, binary") {
    TestApi test1 = TestApi(2);
    test1.AddFeatures({ FeatureTest(2) });
-   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
       TestSample({ 0 }, 0, 0.15),
       TestSample({ 0 }, 0, 0.15),
@@ -462,7 +462,7 @@ TEST_CASE("weights totals equivalence, boosting, binary") {
 
    TestApi test2 = TestApi(2);
    test2.AddFeatures({ FeatureTest(2) });
-   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
       TestSample({ 0 }, 0, 0.5),
       TestSample({ 1 }, 1, 2),
@@ -485,7 +485,7 @@ TEST_CASE("weights totals equivalence, boosting, binary") {
 TEST_CASE("weights totals equivalence, boosting, multiclass") {
    TestApi test1 = TestApi(3);
    test1.AddFeatures({ FeatureTest(2) });
-   test1.AddFeatureGroups({ { 0 } });
+   test1.AddTerms({ { 0 } });
    test1.AddTrainingSamples({
       TestSample({ 0 }, 0, 0.15),
       TestSample({ 0 }, 0, 0.15),
@@ -503,7 +503,7 @@ TEST_CASE("weights totals equivalence, boosting, multiclass") {
 
    TestApi test2 = TestApi(3);
    test2.AddFeatures({ FeatureTest(2) });
-   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
       TestSample({ 0 }, 0, 0.5),
       TestSample({ 1 }, 2, 2),
@@ -532,7 +532,7 @@ TEST_CASE("one leavesMax, boosting, regression") {
 
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
       TestSample({ 0 }, 10),
       TestSample({ 1 }, 10),
@@ -551,7 +551,7 @@ TEST_CASE("one leavesMax, boosting, regression") {
 TEST_CASE("Zero training samples, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({});
    test.AddValidationSamples({ TestSample({ 1 }, 12) });
    test.InitializeBoosting();
@@ -569,7 +569,7 @@ TEST_CASE("Zero training samples, boosting, regression") {
 TEST_CASE("Zero training samples, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({});
    test.AddValidationSamples({ TestSample({ 1 }, 0) });
    test.InitializeBoosting();
@@ -591,7 +591,7 @@ TEST_CASE("Zero training samples, boosting, binary") {
 TEST_CASE("Zero training samples, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({});
    test.AddValidationSamples({ TestSample({ 1 }, 0) });
    test.InitializeBoosting();
@@ -616,7 +616,7 @@ TEST_CASE("Zero training samples, boosting, multiclass") {
 TEST_CASE("Zero validation samples, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({ TestSample({ 1 }, 10) });
    test.AddValidationSamples({});
    test.InitializeBoosting();
@@ -624,7 +624,7 @@ TEST_CASE("Zero validation samples, boosting, regression") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric = test.Boost(0).validationMetric;
       CHECK(0 == validationMetric);
-      // the current model will continue to update, even though we have no way of evaluating it
+      // the current term will continue to update, even though we have no way of evaluating it
       double termScore;
       termScore = test.GetCurrentTermScore(0, { 0 }, 0);
       if(0 == iEpoch) {
@@ -635,7 +635,7 @@ TEST_CASE("Zero validation samples, boosting, regression") {
       }
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 0));
 
-      // the best model doesn't update since we don't have any basis to validate any changes
+      // the best term doesn't update since we don't have any basis to validate any changes
       termScore = test.GetBestTermScore(0, { 0 }, 0);
       CHECK_APPROX(termScore, 0);
       CHECK_APPROX(termScore, test.GetBestTermScore(0, { 1 }, 0));
@@ -645,7 +645,7 @@ TEST_CASE("Zero validation samples, boosting, regression") {
 TEST_CASE("Zero validation samples, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({ TestSample({ 1 }, 0) });
    test.AddValidationSamples({});
    test.InitializeBoosting();
@@ -653,7 +653,7 @@ TEST_CASE("Zero validation samples, boosting, binary") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric = test.Boost(0).validationMetric;
       CHECK(0 == validationMetric);
-      // the current model will continue to update, even though we have no way of evaluating it
+      // the current term will continue to update, even though we have no way of evaluating it
       double termScore;
 
       termScore = test.GetCurrentTermScore(0, { 0 }, 0);
@@ -669,7 +669,7 @@ TEST_CASE("Zero validation samples, boosting, binary") {
       }
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 1));
 
-      // the best model doesn't update since we don't have any basis to validate any changes
+      // the best term doesn't update since we don't have any basis to validate any changes
       termScore = test.GetBestTermScore(0, { 0 }, 0);
       CHECK_APPROX(termScore, 0);
       CHECK_APPROX(termScore, test.GetBestTermScore(0, { 1 }, 0));
@@ -683,7 +683,7 @@ TEST_CASE("Zero validation samples, boosting, binary") {
 TEST_CASE("Zero validation samples, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({ TestSample({ 1 }, 0) });
    test.AddValidationSamples({});
    test.InitializeBoosting();
@@ -691,7 +691,7 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       double validationMetric = test.Boost(0).validationMetric;
       CHECK(0 == validationMetric);
-      // the current model will continue to update, even though we have no way of evaluating it
+      // the current term will continue to update, even though we have no way of evaluating it
       double termScore;
       if(0 == iEpoch) {
          const double zeroLogit = test.GetCurrentTermScore(0, { 0 }, 0);
@@ -713,7 +713,7 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
          CHECK_APPROX_TOLERANCE(termScore, -0.089007468617193456, double { 1e-2 });
          CHECK_APPROX(termScore, test.GetCurrentTermScore(0, { 1 }, 2) - zeroLogit);
       }
-      // the best model doesn't update since we don't have any basis to validate any changes
+      // the best term doesn't update since we don't have any basis to validate any changes
       termScore = test.GetBestTermScore(0, { 0 }, 0);
       CHECK_APPROX(termScore, 0);
       CHECK_APPROX(termScore, test.GetBestTermScore(0, { 1 }, 0));
@@ -730,7 +730,7 @@ TEST_CASE("features with 0 states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(0) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({});
    test.AddValidationSamples({});
    test.InitializeBoosting();
@@ -741,13 +741,13 @@ TEST_CASE("features with 0 states, boosting") {
    double termScores[1];
 
    // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure 
-   // calling to get the models doesn't crash
+   // calling to get the term doesn't crash
    termScores[0] = 9.99;
    test.GetBestTermScoresRaw(0, termScores);
-   CHECK(9.99 == termScores[0]); // the model is a tensor with zero values since one of the dimensions is non-existant
+   CHECK(9.99 == termScores[0]); // the term is a tensor with zero values since one of the dimensions is non-existant
    termScores[0] = 9.99;
    test.GetCurrentTermScoresRaw(0, termScores);
-   CHECK(9.99 == termScores[0]); // the model is a tensor with zero values since one of the dimensions is non-existant
+   CHECK(9.99 == termScores[0]); // the term is a tensor with zero values since one of the dimensions is non-existant
 }
 
 
@@ -758,7 +758,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
       FeatureTest(2),
       FeatureTest(2)
       });
-   test0.AddFeatureGroups({ { 0 }, { 1 }, { 2 } });
+   test0.AddTerms({ { 0 }, { 1 }, { 2 } });
    test0.AddTrainingSamples({ TestSample({ 0, 1, 1 }, 10) });
    test0.AddValidationSamples({ TestSample({ 0, 1, 1 }, 12) });
    test0.InitializeBoosting();
@@ -769,7 +769,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
       FeatureTest(1),
       FeatureTest(2)
       });
-   test1.AddFeatureGroups({ { 0 }, { 1 }, { 2 } });
+   test1.AddTerms({ { 0 }, { 1 }, { 2 } });
    test1.AddTrainingSamples({ TestSample({ 1, 0, 1 }, 10) });
    test1.AddValidationSamples({ TestSample({ 1, 0, 1 }, 12) });
    test1.InitializeBoosting();
@@ -780,7 +780,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
       FeatureTest(2),
       FeatureTest(1)
       });
-   test2.AddFeatureGroups({ { 0 }, { 1 }, { 2 } });
+   test2.AddTerms({ { 0 }, { 1 }, { 2 } });
    test2.AddTrainingSamples({ TestSample({ 1, 1, 0 }, 10) });
    test2.AddValidationSamples({ TestSample({ 1, 1, 0 }, 12) });
    test2.InitializeBoosting();
@@ -834,46 +834,46 @@ TEST_CASE("features with 1 state in various positions, boosting") {
    }
 }
 
-TEST_CASE("zero FeatureGroups, boosting, regression") {
+TEST_CASE("zero terms, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
-   test.AddFeatureGroups({});
+   test.AddTerms({});
    test.AddTrainingSamples({ TestSample({}, 10) });
    test.AddValidationSamples({ TestSample({}, 12) });
    test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
-   // boosting isn't legal since we'd need to specify an featureGroup index
+   // boosting isn't legal since we'd need to specify a term index
 }
 
-TEST_CASE("zero FeatureGroups, boosting, binary") {
+TEST_CASE("zero terms, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
-   test.AddFeatureGroups({});
+   test.AddTerms({});
    test.AddTrainingSamples({ TestSample({}, 1) });
    test.AddValidationSamples({ TestSample({}, 1) });
    test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
-   // boosting isn't legal since we'd need to specify an featureGroup index
+   // boosting isn't legal since we'd need to specify a term index
 }
 
-TEST_CASE("zero FeatureGroups, boosting, multiclass") {
+TEST_CASE("zero terms, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
-   test.AddFeatureGroups({});
+   test.AddTerms({});
    test.AddTrainingSamples({ TestSample({}, 2) });
    test.AddValidationSamples({ TestSample({}, 2) });
    test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
-   // boosting isn't legal since we'd need to specify an featureGroup index
+   // boosting isn't legal since we'd need to specify a term index
 }
 
-TEST_CASE("FeatureGroup with zero features, boosting, regression") {
+TEST_CASE("Term with zero features, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
-   test.AddFeatureGroups({ {} });
+   test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 10) });
    test.AddValidationSamples({ TestSample({}, 12) });
    test.InitializeBoosting();
@@ -881,16 +881,16 @@ TEST_CASE("FeatureGroup with zero features, boosting, regression") {
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup).validationMetric;
-         if(0 == iFeatureGroup && 0 == iEpoch) {
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm).validationMetric;
+         if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 141.61);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 0);
             CHECK_APPROX(termScore, 0.1000000000000000);
          }
-         if(0 == iFeatureGroup && 1 == iEpoch) {
+         if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 139.263601);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 0);
             CHECK_APPROX(termScore, 0.1990000000000000);
          }
       }
@@ -900,10 +900,10 @@ TEST_CASE("FeatureGroup with zero features, boosting, regression") {
    CHECK_APPROX(termScore, 9.9995682875258822);
 }
 
-TEST_CASE("FeatureGroup with zero features, boosting, binary") {
+TEST_CASE("Term with zero features, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
-   test.AddFeatureGroups({ {} });
+   test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
    test.AddValidationSamples({ TestSample({}, 0) });
    test.InitializeBoosting();
@@ -911,20 +911,20 @@ TEST_CASE("FeatureGroup with zero features, boosting, binary") {
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup).validationMetric;
-         if(0 == iFeatureGroup && 0 == iEpoch) {
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm).validationMetric;
+         if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.68319717972663419, double { 1e-1 });
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 0);
             CHECK_APPROX(termScore, 0);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 1);
             CHECK_APPROX_TOLERANCE(termScore, -0.020000000000000000, double { 1e-1 });
          }
-         if(0 == iFeatureGroup && 1 == iEpoch) {
+         if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.67344419889200957, double { 1e-1 });
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 0);
             CHECK_APPROX(termScore, 0);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 1);
             CHECK_APPROX_TOLERANCE(termScore, -0.039801986733067563, double { 1e-1 });
          }
       }
@@ -936,10 +936,10 @@ TEST_CASE("FeatureGroup with zero features, boosting, binary") {
    CHECK_APPROX_TOLERANCE(termScore, -10.696601122148364, double { 1e-2 });
 }
 
-TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
+TEST_CASE("Term with zero features, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
-   test.AddFeatureGroups({ {} });
+   test.AddTerms({ {} });
    test.AddTrainingSamples({ TestSample({}, 0) });
    test.AddValidationSamples({ TestSample({}, 0) });
    test.InitializeBoosting();
@@ -947,22 +947,22 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
    double validationMetric = double { std::numeric_limits<double>::quiet_NaN() };
    double termScore = double { std::numeric_limits<double>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup).validationMetric;
-         if(0 == iFeatureGroup && 0 == iEpoch) {
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm).validationMetric;
+         if(0 == iTerm && 0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0688384008227103, double { 1e-1 });
-            double zeroLogit = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1) - zeroLogit;
+            double zeroLogit = test.GetCurrentTermScore(iTerm, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
             CHECK_APPROX(termScore, -0.04500000000000000);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 2) - zeroLogit;
+            termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
             CHECK_APPROX(termScore, -0.04500000000000000);
          }
-         if(0 == iFeatureGroup && 1 == iEpoch) {
+         if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0401627411809615, double { 1e-1 });
-            double zeroLogit = test.GetCurrentTermScore(iFeatureGroup, {}, 0);
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 1) - zeroLogit;
+            double zeroLogit = test.GetCurrentTermScore(iTerm, {}, 0);
+            termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
             CHECK_APPROX_TOLERANCE(termScore, -0.089007468617193456, double { 1e-2 });
-            termScore = test.GetCurrentTermScore(iFeatureGroup, {}, 2) - zeroLogit;
+            termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
             CHECK_APPROX_TOLERANCE(termScore, -0.089007468617193456, double { 1e-2 });
          }
       }
@@ -975,151 +975,151 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
    CHECK_APPROX_TOLERANCE(termScore, -20.875723973004794, double { 1e-3 });
 }
 
-TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, regression") {
+TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, regression") {
    TestApi testZeroDimensions = TestApi(k_learningTypeRegression);
    testZeroDimensions.AddFeatures({});
-   testZeroDimensions.AddFeatureGroups({ {} });
+   testZeroDimensions.AddTerms({ {} });
    testZeroDimensions.AddTrainingSamples({ TestSample({}, 10) });
    testZeroDimensions.AddValidationSamples({ TestSample({}, 12) });
    testZeroDimensions.InitializeBoosting();
 
    TestApi testOneState = TestApi(k_learningTypeRegression);
    testOneState.AddFeatures({ FeatureTest(1) });
-   testOneState.AddFeatureGroups({ { 0 } });
+   testOneState.AddTerms({ { 0 } });
    testOneState.AddTrainingSamples({ TestSample({ 0 }, 10) });
    testOneState.AddValidationSamples({ TestSample({ 0 }, 12) });
    testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(k_learningTypeRegression);
    testTwoStates.AddFeatures({ FeatureTest(2) });
-   testTwoStates.AddFeatureGroups({ { 0 } });
+   testTwoStates.AddTerms({ { 0 } });
    testTwoStates.AddTrainingSamples({ TestSample({ 1 }, 10) });
    testTwoStates.AddValidationSamples({ TestSample({ 1 }, 12) });
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroDimensions.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
-      assert(testZeroDimensions.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
-      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroDimensions.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         double validationMetricZeroDimensions = testZeroDimensions.Boost(iFeatureGroup).validationMetric;
-         double validationMetricOneState = testOneState.Boost(iFeatureGroup).validationMetric;
+      assert(testZeroDimensions.GetCountTerms() == testOneState.GetCountTerms());
+      assert(testZeroDimensions.GetCountTerms() == testTwoStates.GetCountTerms());
+      for(size_t iTerm = 0; iTerm < testZeroDimensions.GetCountTerms(); ++iTerm) {
+         double validationMetricZeroDimensions = testZeroDimensions.Boost(iTerm).validationMetric;
+         double validationMetricOneState = testOneState.Boost(iTerm).validationMetric;
          CHECK_APPROX(validationMetricZeroDimensions, validationMetricOneState);
-         double validationMetricTwoStates = testTwoStates.Boost(iFeatureGroup).validationMetric;
+         double validationMetricTwoStates = testTwoStates.Boost(iTerm).validationMetric;
          CHECK_APPROX(validationMetricZeroDimensions, validationMetricTwoStates);
 
-         double termScoreZeroDimensions = testZeroDimensions.GetCurrentTermScore(iFeatureGroup, {}, 0);
-         double termScoreOneState = testOneState.GetCurrentTermScore(iFeatureGroup, { 0 }, 0);
+         double termScoreZeroDimensions = testZeroDimensions.GetCurrentTermScore(iTerm, {}, 0);
+         double termScoreOneState = testOneState.GetCurrentTermScore(iTerm, { 0 }, 0);
          CHECK_APPROX(termScoreZeroDimensions, termScoreOneState);
-         double termScoreTwoStates = testTwoStates.GetCurrentTermScore(iFeatureGroup, { 1 }, 0);
+         double termScoreTwoStates = testTwoStates.GetCurrentTermScore(iTerm, { 1 }, 0);
          CHECK_APPROX(termScoreZeroDimensions, termScoreTwoStates);
       }
    }
 }
 
-TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, binary") {
+TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, binary") {
    TestApi testZeroDimensions = TestApi(2, 0);
    testZeroDimensions.AddFeatures({});
-   testZeroDimensions.AddFeatureGroups({ {} });
+   testZeroDimensions.AddTerms({ {} });
    testZeroDimensions.AddTrainingSamples({ TestSample({}, 0) });
    testZeroDimensions.AddValidationSamples({ TestSample({}, 0) });
    testZeroDimensions.InitializeBoosting();
 
    TestApi testOneState = TestApi(2, 0);
    testOneState.AddFeatures({ FeatureTest(1) });
-   testOneState.AddFeatureGroups({ { 0 } });
+   testOneState.AddTerms({ { 0 } });
    testOneState.AddTrainingSamples({ TestSample({ 0 }, 0) });
    testOneState.AddValidationSamples({ TestSample({ 0 }, 0) });
    testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(2, 0);
    testTwoStates.AddFeatures({ FeatureTest(2) });
-   testTwoStates.AddFeatureGroups({ { 0 } });
+   testTwoStates.AddTerms({ { 0 } });
    testTwoStates.AddTrainingSamples({ TestSample({ 1 }, 0) });
    testTwoStates.AddValidationSamples({ TestSample({ 1 }, 0) });
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroDimensions.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
-      assert(testZeroDimensions.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
-      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroDimensions.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         double validationMetricZeroDimensions = testZeroDimensions.Boost(iFeatureGroup).validationMetric;
-         double validationMetricOneState = testOneState.Boost(iFeatureGroup).validationMetric;
+      assert(testZeroDimensions.GetCountTerms() == testOneState.GetCountTerms());
+      assert(testZeroDimensions.GetCountTerms() == testTwoStates.GetCountTerms());
+      for(size_t iTerm = 0; iTerm < testZeroDimensions.GetCountTerms(); ++iTerm) {
+         double validationMetricZeroDimensions = testZeroDimensions.Boost(iTerm).validationMetric;
+         double validationMetricOneState = testOneState.Boost(iTerm).validationMetric;
          CHECK_APPROX(validationMetricZeroDimensions, validationMetricOneState);
-         double validationMetricTwoStates = testTwoStates.Boost(iFeatureGroup).validationMetric;
+         double validationMetricTwoStates = testTwoStates.Boost(iTerm).validationMetric;
          CHECK_APPROX(validationMetricZeroDimensions, validationMetricTwoStates);
 
-         double termScoreZeroDimensions0 = testZeroDimensions.GetCurrentTermScore(iFeatureGroup, {}, 0);
-         double termScoreOneState0 = testOneState.GetCurrentTermScore(iFeatureGroup, { 0 }, 0);
+         double termScoreZeroDimensions0 = testZeroDimensions.GetCurrentTermScore(iTerm, {}, 0);
+         double termScoreOneState0 = testOneState.GetCurrentTermScore(iTerm, { 0 }, 0);
          CHECK_APPROX(termScoreZeroDimensions0, termScoreOneState0);
-         double termScoreTwoStates0 = testTwoStates.GetCurrentTermScore(iFeatureGroup, { 1 }, 0);
+         double termScoreTwoStates0 = testTwoStates.GetCurrentTermScore(iTerm, { 1 }, 0);
          CHECK_APPROX(termScoreZeroDimensions0, termScoreTwoStates0);
 
-         double termScoreZeroDimensions1 = testZeroDimensions.GetCurrentTermScore(iFeatureGroup, {}, 1);
-         double termScoreOneState1 = testOneState.GetCurrentTermScore(iFeatureGroup, { 0 }, 1);
+         double termScoreZeroDimensions1 = testZeroDimensions.GetCurrentTermScore(iTerm, {}, 1);
+         double termScoreOneState1 = testOneState.GetCurrentTermScore(iTerm, { 0 }, 1);
          CHECK_APPROX(termScoreZeroDimensions1, termScoreOneState1);
-         double termScoreTwoStates1 = testTwoStates.GetCurrentTermScore(iFeatureGroup, { 1 }, 1);
+         double termScoreTwoStates1 = testTwoStates.GetCurrentTermScore(iTerm, { 1 }, 1);
          CHECK_APPROX(termScoreZeroDimensions1, termScoreTwoStates1);
       }
    }
 }
 
-TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, multiclass") {
+TEST_CASE("Term with one feature with one or two states is the exact same as zero terms, boosting, multiclass") {
    TestApi testZeroDimensions = TestApi(3);
    testZeroDimensions.AddFeatures({});
-   testZeroDimensions.AddFeatureGroups({ {} });
+   testZeroDimensions.AddTerms({ {} });
    testZeroDimensions.AddTrainingSamples({ TestSample({}, 0) });
    testZeroDimensions.AddValidationSamples({ TestSample({}, 0) });
    testZeroDimensions.InitializeBoosting();
 
    TestApi testOneState = TestApi(3);
    testOneState.AddFeatures({ FeatureTest(1) });
-   testOneState.AddFeatureGroups({ { 0 } });
+   testOneState.AddTerms({ { 0 } });
    testOneState.AddTrainingSamples({ TestSample({ 0 }, 0) });
    testOneState.AddValidationSamples({ TestSample({ 0 }, 0) });
    testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(3);
    testTwoStates.AddFeatures({ FeatureTest(2) });
-   testTwoStates.AddFeatureGroups({ { 0 } });
+   testTwoStates.AddTerms({ { 0 } });
    testTwoStates.AddTrainingSamples({ TestSample({ 1 }, 0) });
    testTwoStates.AddValidationSamples({ TestSample({ 1 }, 0) });
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroDimensions.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
-      assert(testZeroDimensions.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
-      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroDimensions.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         double validationMetricZeroDimensions = testZeroDimensions.Boost(iFeatureGroup).validationMetric;
-         double validationMetricOneState = testOneState.Boost(iFeatureGroup).validationMetric;
+      assert(testZeroDimensions.GetCountTerms() == testOneState.GetCountTerms());
+      assert(testZeroDimensions.GetCountTerms() == testTwoStates.GetCountTerms());
+      for(size_t iTerm = 0; iTerm < testZeroDimensions.GetCountTerms(); ++iTerm) {
+         double validationMetricZeroDimensions = testZeroDimensions.Boost(iTerm).validationMetric;
+         double validationMetricOneState = testOneState.Boost(iTerm).validationMetric;
          CHECK_APPROX(validationMetricZeroDimensions, validationMetricOneState);
-         double validationMetricTwoStates = testTwoStates.Boost(iFeatureGroup).validationMetric;
+         double validationMetricTwoStates = testTwoStates.Boost(iTerm).validationMetric;
          CHECK_APPROX(validationMetricZeroDimensions, validationMetricTwoStates);
 
-         double termScoreZeroDimensions0 = testZeroDimensions.GetCurrentTermScore(iFeatureGroup, {}, 0);
-         double termScoreOneState0 = testOneState.GetCurrentTermScore(iFeatureGroup, { 0 }, 0);
+         double termScoreZeroDimensions0 = testZeroDimensions.GetCurrentTermScore(iTerm, {}, 0);
+         double termScoreOneState0 = testOneState.GetCurrentTermScore(iTerm, { 0 }, 0);
          CHECK_APPROX(termScoreZeroDimensions0, termScoreOneState0);
-         double termScoreTwoStates0 = testTwoStates.GetCurrentTermScore(iFeatureGroup, { 1 }, 0);
+         double termScoreTwoStates0 = testTwoStates.GetCurrentTermScore(iTerm, { 1 }, 0);
          CHECK_APPROX(termScoreZeroDimensions0, termScoreTwoStates0);
 
-         double termScoreZeroDimensions1 = testZeroDimensions.GetCurrentTermScore(iFeatureGroup, {}, 1);
-         double termScoreOneState1 = testOneState.GetCurrentTermScore(iFeatureGroup, { 0 }, 1);
+         double termScoreZeroDimensions1 = testZeroDimensions.GetCurrentTermScore(iTerm, {}, 1);
+         double termScoreOneState1 = testOneState.GetCurrentTermScore(iTerm, { 0 }, 1);
          CHECK_APPROX(termScoreZeroDimensions1, termScoreOneState1);
-         double termScoreTwoStates1 = testTwoStates.GetCurrentTermScore(iFeatureGroup, { 1 }, 1);
+         double termScoreTwoStates1 = testTwoStates.GetCurrentTermScore(iTerm, { 1 }, 1);
          CHECK_APPROX(termScoreZeroDimensions1, termScoreTwoStates1);
 
-         double termScoreZeroDimensions2 = testZeroDimensions.GetCurrentTermScore(iFeatureGroup, {}, 2);
-         double termScoreOneState2 = testOneState.GetCurrentTermScore(iFeatureGroup, { 0 }, 2);
+         double termScoreZeroDimensions2 = testZeroDimensions.GetCurrentTermScore(iTerm, {}, 2);
+         double termScoreOneState2 = testOneState.GetCurrentTermScore(iTerm, { 0 }, 2);
          CHECK_APPROX(termScoreZeroDimensions2, termScoreOneState2);
-         double termScoreTwoStates2 = testTwoStates.GetCurrentTermScore(iFeatureGroup, { 1 }, 2);
+         double termScoreTwoStates2 = testTwoStates.GetCurrentTermScore(iTerm, { 1 }, 2);
          CHECK_APPROX(termScoreZeroDimensions2, termScoreTwoStates2);
       }
    }
 }
 
-TEST_CASE("3 dimensional featureGroup with one dimension reduced in different ways, boosting, regression") {
+TEST_CASE("3 dimensional term with one dimension reduced in different ways, boosting, regression") {
    TestApi test0 = TestApi(k_learningTypeRegression);
    test0.AddFeatures({ FeatureTest(1), FeatureTest(2), FeatureTest(2) });
-   test0.AddFeatureGroups({ { 0, 1, 2 } });
+   test0.AddTerms({ { 0, 1, 2 } });
    test0.AddTrainingSamples({
       TestSample({ 0, 0, 0 }, 9),
       TestSample({ 0, 1, 0 }, 10),
@@ -1131,7 +1131,7 @@ TEST_CASE("3 dimensional featureGroup with one dimension reduced in different wa
 
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(1), FeatureTest(2) });
-   test1.AddFeatureGroups({ { 0, 1, 2 } });
+   test1.AddTerms({ { 0, 1, 2 } });
    test1.AddTrainingSamples({
       TestSample({ 0, 0, 0 }, 9),
       TestSample({ 0, 0, 1 }, 10),
@@ -1143,7 +1143,7 @@ TEST_CASE("3 dimensional featureGroup with one dimension reduced in different wa
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2), FeatureTest(1) });
-   test2.AddFeatureGroups({ { 0, 1, 2 } });
+   test2.AddTerms({ { 0, 1, 2 } });
    test2.AddTrainingSamples({
       TestSample({ 0, 0, 0 }, 9),
       TestSample({ 1, 0, 0 }, 10),
@@ -1154,33 +1154,33 @@ TEST_CASE("3 dimensional featureGroup with one dimension reduced in different wa
    test2.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(test0.GetFeatureGroupsCount() == test1.GetFeatureGroupsCount());
-      assert(test0.GetFeatureGroupsCount() == test2.GetFeatureGroupsCount());
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test0.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         double validationMetric0 = test0.Boost(iFeatureGroup).validationMetric;
-         double validationMetric1 = test1.Boost(iFeatureGroup).validationMetric;
+      assert(test0.GetCountTerms() == test1.GetCountTerms());
+      assert(test0.GetCountTerms() == test2.GetCountTerms());
+      for(size_t iTerm = 0; iTerm < test0.GetCountTerms(); ++iTerm) {
+         double validationMetric0 = test0.Boost(iTerm).validationMetric;
+         double validationMetric1 = test1.Boost(iTerm).validationMetric;
          CHECK_APPROX(validationMetric0, validationMetric1);
-         double validationMetric2 = test2.Boost(iFeatureGroup).validationMetric;
+         double validationMetric2 = test2.Boost(iTerm).validationMetric;
          CHECK_APPROX(validationMetric0, validationMetric2);
 
-         double termScore01 = test0.GetCurrentTermScore(iFeatureGroup, { 0, 0, 0 }, 0);
-         double termScore02 = test0.GetCurrentTermScore(iFeatureGroup, { 0, 0, 1 }, 0);
-         double termScore03 = test0.GetCurrentTermScore(iFeatureGroup, { 0, 1, 0 }, 0);
-         double termScore04 = test0.GetCurrentTermScore(iFeatureGroup, { 0, 1, 1 }, 0);
+         double termScore01 = test0.GetCurrentTermScore(iTerm, { 0, 0, 0 }, 0);
+         double termScore02 = test0.GetCurrentTermScore(iTerm, { 0, 0, 1 }, 0);
+         double termScore03 = test0.GetCurrentTermScore(iTerm, { 0, 1, 0 }, 0);
+         double termScore04 = test0.GetCurrentTermScore(iTerm, { 0, 1, 1 }, 0);
 
-         double termScore11 = test1.GetCurrentTermScore(iFeatureGroup, { 0, 0, 0 }, 0);
-         double termScore12 = test1.GetCurrentTermScore(iFeatureGroup, { 1, 0, 0 }, 0);
-         double termScore13 = test1.GetCurrentTermScore(iFeatureGroup, { 0, 0, 1 }, 0);
-         double termScore14 = test1.GetCurrentTermScore(iFeatureGroup, { 1, 0, 1 }, 0);
+         double termScore11 = test1.GetCurrentTermScore(iTerm, { 0, 0, 0 }, 0);
+         double termScore12 = test1.GetCurrentTermScore(iTerm, { 1, 0, 0 }, 0);
+         double termScore13 = test1.GetCurrentTermScore(iTerm, { 0, 0, 1 }, 0);
+         double termScore14 = test1.GetCurrentTermScore(iTerm, { 1, 0, 1 }, 0);
          CHECK_APPROX(termScore11, termScore01);
          CHECK_APPROX(termScore12, termScore02);
          CHECK_APPROX(termScore13, termScore03);
          CHECK_APPROX(termScore14, termScore04);
 
-         double termScore21 = test2.GetCurrentTermScore(iFeatureGroup, { 0, 0, 0 }, 0);
-         double termScore22 = test2.GetCurrentTermScore(iFeatureGroup, { 0, 1, 0 }, 0);
-         double termScore23 = test2.GetCurrentTermScore(iFeatureGroup, { 1, 0, 0 }, 0);
-         double termScore24 = test2.GetCurrentTermScore(iFeatureGroup, { 1, 1, 0 }, 0);
+         double termScore21 = test2.GetCurrentTermScore(iTerm, { 0, 0, 0 }, 0);
+         double termScore22 = test2.GetCurrentTermScore(iTerm, { 0, 1, 0 }, 0);
+         double termScore23 = test2.GetCurrentTermScore(iTerm, { 1, 0, 0 }, 0);
+         double termScore24 = test2.GetCurrentTermScore(iTerm, { 1, 1, 0 }, 0);
          CHECK_APPROX(termScore21, termScore01);
          CHECK_APPROX(termScore22, termScore02);
          CHECK_APPROX(termScore23, termScore03);
@@ -1196,7 +1196,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
 
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(4) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
       TestSample({ 0 }, 0),
       TestSample({ 1 }, 1),
@@ -1207,17 +1207,17 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         double validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         double validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
          if(0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0340957641601563f, double { 1e-1 });
 
-            double zeroLogit = test.GetCurrentTermScore(iFeatureGroup, { 1 }, 0);
+            double zeroLogit = test.GetCurrentTermScore(iTerm, { 1 }, 0);
 
-            double termScore1 = test.GetCurrentTermScore(iFeatureGroup, { 1 }, 1) - zeroLogit;
+            double termScore1 = test.GetCurrentTermScore(iTerm, { 1 }, 1) - zeroLogit;
             CHECK_APPROX(termScore1, 0.0f);
 
-            double termScore2 = test.GetCurrentTermScore(iFeatureGroup, { 1 }, 2) - zeroLogit;
+            double termScore2 = test.GetCurrentTermScore(iTerm, { 1 }, 2) - zeroLogit;
             CHECK_APPROX(termScore2, -0.0225f);
          }
       }
@@ -1231,7 +1231,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
 
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(4) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
       TestSample({ 0 }, 0),
       TestSample({ 1 }, 1),
@@ -1242,20 +1242,20 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         double validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         double validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
          if(0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0986122886681098, double { 1e-1 });
 
             // we set our update to zero since this is for sums so we need to set it to something
 
-            double termScore0 = test.GetCurrentTermScore(iFeatureGroup, { 1 }, 0);
+            double termScore0 = test.GetCurrentTermScore(iTerm, { 1 }, 0);
             CHECK_APPROX(termScore0, 0.0f);
 
-            double termScore1 = test.GetCurrentTermScore(iFeatureGroup, { 1 }, 1);
+            double termScore1 = test.GetCurrentTermScore(iTerm, { 1 }, 1);
             CHECK_APPROX(termScore1, 0.0f);
 
-            double termScore2 = test.GetCurrentTermScore(iFeatureGroup, { 1 }, 2);
+            double termScore2 = test.GetCurrentTermScore(iTerm, { 1 }, 2);
             CHECK_APPROX(termScore2, 0.0f);
          }
       }
@@ -1272,7 +1272,7 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
 
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(cStates), FeatureTest(1), FeatureTest(cStates) });
-   test.AddFeatureGroups({ { 0, 1, 2 } });
+   test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
    for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
       for(IntEbmType i2 = 0; i2 < cStates; ++i2) {
@@ -1293,8 +1293,8 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
 
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
       }
    }
 
@@ -1329,7 +1329,7 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
 
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) });
-   test.AddFeatureGroups({ { 0, 1, 2 } });
+   test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
    for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
       for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
@@ -1351,8 +1351,8 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
 
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
       }
    }
    CHECK(validationMetric <= 0.0091562298922079986 * 1.4);
@@ -1388,7 +1388,7 @@ TEST_CASE("Random splitting, pure tripples, regression") {
 
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(cStates), FeatureTest(cStates), FeatureTest(cStates) });
-   test.AddFeatureGroups({ { 0, 1, 2 } });
+   test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
    for(IntEbmType i0 = 0; i0 < cStates; ++i0) {
       for(IntEbmType i1 = 0; i1 < cStates; ++i1) {
@@ -1410,8 +1410,8 @@ TEST_CASE("Random splitting, pure tripples, regression") {
 
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
       }
    }
 
@@ -1443,7 +1443,7 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
 
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(k_cStates), FeatureTest(k_cStates), FeatureTest(k_cStates) });
-   test.AddFeatureGroups({ { 0, 1, 2 } });
+   test.AddTerms({ { 0, 1, 2 } });
    std::vector<TestSample> samples;
    for(IntEbmType i0 = 0; i0 < k_cStates; ++i0) {
       for(IntEbmType i1 = 0; i1 < k_cStates; ++i1) {
@@ -1465,9 +1465,9 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
 
    double validationMetric = double { 0 };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
          validationMetric = test.Boost(
-            iFeatureGroup, 
+            iTerm, 
             GenerateUpdateOptions_RandomSplits, 
             k_learningRateDefault,
             k_countSamplesRequiredForChildSplitMin,
@@ -1508,7 +1508,7 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
 
    TestApi test = TestApi(2);
    test.AddFeatures({ FeatureTest(1) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
       TestSample({ 0 }, 0),
       TestSample({ 0 }, 0),
@@ -1521,17 +1521,17 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
 
    double validationMetric = 0;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         validationMetric = test.Boost(iFeatureGroup, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         validationMetric = test.Boost(iTerm, GenerateUpdateOptions_RandomSplits | GenerateUpdateOptions_GradientSums, k_learningRateDefault, k_countSamplesRequiredForChildSplitMinDefault, k_leavesMax).validationMetric;
          if(0 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 0.69314718055994529, double { 1e-1 });
 
             // we set our update to zero since we're getting the sum
 
-            double termScore0 = test.GetCurrentTermScore(iFeatureGroup, { 0 }, 0);
+            double termScore0 = test.GetCurrentTermScore(iTerm, { 0 }, 0);
             CHECK_APPROX(termScore0, 0.0);
 
-            double termScore1 = test.GetCurrentTermScore(iFeatureGroup, { 0 }, 1);
+            double termScore1 = test.GetCurrentTermScore(iTerm, { 0 }, 1);
             CHECK_APPROX(termScore1, 0.0);
          }
       }
@@ -1549,7 +1549,7 @@ TEST_CASE("zero gain, boosting, regression") {
 
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
    test.AddTrainingSamples({
       TestSample({ 0 }, 10.75, 1.5),
       TestSample({ 1 }, 10.75, 2.25),
@@ -1568,7 +1568,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
 
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
-   test1.AddFeatureGroups({ { 0, 1 } });
+   test1.AddTerms({ { 0, 1 } });
    test1.AddTrainingSamples({
       TestSample({ 0, 0 }, 10.75, 1.5),
       TestSample({ 0, 1 }, 10.75, 2.25),
@@ -1581,7 +1581,7 @@ TEST_CASE("pair and main gain identical, boosting, regression") {
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2) });
-   test2.AddFeatureGroups({ { 0 } });
+   test2.AddTerms({ { 0 } });
    test2.AddTrainingSamples({
       TestSample({ 0 }, 10.75, 1.5 + 2.25),
       TestSample({ 1 }, 11.25, 3.25 + 4.5),

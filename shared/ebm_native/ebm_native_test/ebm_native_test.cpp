@@ -18,12 +18,12 @@
 //   (stops the current test, but we could just terminate), INFO (print to log file)
 // Don't implement this since it would be harder to do: SUBCASE
 
-// TODO : add test for the condition where we overflow the small model update to NaN or +-infinity for regression by using exteme regression values and in 
+// TODO : add test for the condition where we overflow the term update to NaN or +-infinity for regression by using exteme regression values and in 
 //   classification by using certainty situations with big learning rates
-// TODO : add test for the condition where we overflow the result of adding the small model update to the existing model NaN or +-infinity for regression 
+// TODO : add test for the condition where we overflow the result of adding the term update to the existing term NaN or +-infinity for regression 
 //   by using exteme regression values and in classification by using certainty situations with big learning rates
-// TODO : add test for the condition where we overflow the validation regression or classification scores without overflowing the model update or the 
-//   model tensors.  We can do this by having two extreme features that will overflow together
+// TODO : add test for the condition where we overflow the validation regression or classification scores without overflowing the term update or the 
+//   term tensors.  We can do this by having two extreme features that will overflow together
 
 // TODO: write a test to compare gain from single vs multi-dimensional splitting (they use the same underlying function, so if we make a pair where one 
 //    feature has duplicates for all 0 and 1 values, then the split if we control it should give us the same gain
@@ -131,8 +131,8 @@ extern bool IsApproxEqual(const double value, const double expected, const doubl
 }
 
 const double * TestApi::GetTermScores(
-   const size_t iFeatureGroup,
-   const double * const pModelFeatureGroup,
+   const size_t iTerm,
+   const double * const aTermScores,
    const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures
 ) const {
    if(Stage::InitializedBoosting != m_stage) {
@@ -140,10 +140,10 @@ const double * TestApi::GetTermScores(
    }
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
 
-   if(m_countBinsByFeatureGroup.size() <= iFeatureGroup) {
+   if(m_termBinCounts.size() <= iTerm) {
       exit(1);
    }
-   const std::vector<size_t> countBins = m_countBinsByFeatureGroup[iFeatureGroup];
+   const std::vector<size_t> countBins = m_termBinCounts[iTerm];
 
    const size_t cDimensions = perDimensionIndexArrayForBinnedFeatures.size();
    if(cDimensions != countBins.size()) {
@@ -158,18 +158,18 @@ const double * TestApi::GetTermScores(
       iValue += perDimensionIndexArrayForBinnedFeatures[iDimension] * multiple;
       multiple *= countBins[iDimension];
    }
-   return &pModelFeatureGroup[iValue];
+   return &aTermScores[iValue];
 }
 
 double TestApi::GetTermScore(
-   const size_t iFeatureGroup,
-   const double * const pModelFeatureGroup,
+   const size_t iTerm,
+   const double * const aTermScores,
    const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
    const size_t iTargetClassOrZero
 ) const {
    const double * const aScores = GetTermScores(
-      iFeatureGroup, 
-      pModelFeatureGroup, 
+      iTerm, 
+      aTermScores,
       perDimensionIndexArrayForBinnedFeatures
    );
    if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
@@ -275,41 +275,41 @@ void TestApi::AddFeatures(const std::vector<FeatureTest> features) {
    }
 
    for(const FeatureTest & oneFeature : features) {
-      m_featuresNominal.push_back(oneFeature.m_bNominal ? EBM_TRUE : EBM_FALSE);
-      m_featuresBinCount.push_back(oneFeature.m_countBins);
+      m_featureNominals.push_back(oneFeature.m_bNominal ? EBM_TRUE : EBM_FALSE);
+      m_featureBinCounts.push_back(oneFeature.m_countBins);
    }
 
    m_stage = Stage::FeaturesAdded;
 }
 
-void TestApi::AddFeatureGroups(const std::vector<std::vector<size_t>> featureGroups) {
+void TestApi::AddTerms(const std::vector<std::vector<size_t>> termFeatures) {
    if(Stage::FeaturesAdded != m_stage) {
       exit(1);
    }
 
-   for(const std::vector<size_t> & oneFeatureGroup : featureGroups) {
-      m_dimensionCounts.push_back(oneFeatureGroup.size());
+   for(const std::vector<size_t> & termFeatureIndexes : termFeatures) {
+      m_dimensionCounts.push_back(termFeatureIndexes.size());
       std::vector<size_t> countBins;
-      for(const size_t oneIndex : oneFeatureGroup) {
-         if(m_featuresBinCount.size() <= oneIndex) {
+      for(const size_t indexFeature : termFeatureIndexes) {
+         if(m_featureBinCounts.size() <= indexFeature) {
             exit(1);
          }
-         m_featureIndexes.push_back(oneIndex);
-         countBins.push_back(static_cast<size_t>(m_featuresBinCount[oneIndex]));
+         m_featureIndexes.push_back(indexFeature);
+         countBins.push_back(static_cast<size_t>(m_featureBinCounts[indexFeature]));
       }
-      m_countBinsByFeatureGroup.push_back(countBins);
+      m_termBinCounts.push_back(countBins);
    }
 
-   m_stage = Stage::FeatureGroupsAdded;
+   m_stage = Stage::TermsAdded;
 }
 
 void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
-   if(Stage::FeatureGroupsAdded != m_stage) {
+   if(Stage::TermsAdded != m_stage) {
       exit(1);
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatures = m_featureBinCounts.size();
 
       const bool bNullPredictionScores = 0 == samples[0].m_priorScore.size();
       m_bNullTrainingPredictionScores = bNullPredictionScores;
@@ -426,7 +426,7 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -448,7 +448,7 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatures = m_featureBinCounts.size();
       const bool bNullPredictionScores = 0 == samples[0].m_priorScore.size();
       m_bNullValidationPredictionScores = bNullPredictionScores;
 
@@ -564,7 +564,7 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -591,7 +591,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    }
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
-   const size_t cFeatures = m_featuresBinCount.size();
+   const size_t cFeatures = m_featureBinCounts.size();
    const size_t cTrainingSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_trainingClassificationTargets.size() : m_trainingRegressionTargets.size();
    const size_t cValidationSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_validationClassificationTargets.size() : m_validationRegressionTargets.size();
 
@@ -616,7 +616,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       std::vector<IntEbmType> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
 
-      size += SizeFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      size += SizeFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
    std::vector<double> allWeights(m_trainingWeights);
@@ -644,7 +644,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       std::vector<IntEbmType> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
 
-      error = FillFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      error = FillFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
    }
 
    error = FillWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0], size, pDataSet);
@@ -736,13 +736,13 @@ BoostRet TestApi::Boost(
       exit(1);
    }
    if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-      // if sums are on, then we MUST change the model update
+      // if sums are on, then we MUST change the term update
 
       size_t cUpdateScores = GetVectorLength(m_learningTypeOrCountTargetClasses);
-      std::vector<size_t> & countBinsByFeatureGroup = m_countBinsByFeatureGroup[static_cast<size_t>(indexTerm)];
+      std::vector<size_t> & dimensionBinCounts = m_termBinCounts[static_cast<size_t>(indexTerm)];
 
-      for(size_t iDimension = 0; iDimension < countBinsByFeatureGroup.size(); ++iDimension) {
-         size_t cBins = countBinsByFeatureGroup[iDimension];
+      for(size_t iDimension = 0; iDimension < dimensionBinCounts.size(); ++iDimension) {
+         size_t cBins = dimensionBinCounts[iDimension];
          cUpdateScores *= cBins;
       }
 
@@ -773,7 +773,7 @@ BoostRet TestApi::Boost(
 }
 
 double TestApi::GetBestTermScore(
-   const size_t iFeatureGroup, 
+   const size_t iTerm, 
    const std::vector<size_t> indexes, 
    const size_t iScore
 ) const {
@@ -783,46 +783,46 @@ double TestApi::GetBestTermScore(
       exit(1);
    }
 
-   if(m_countBinsByFeatureGroup.size() <= iFeatureGroup) {
+   if(m_termBinCounts.size() <= iTerm) {
       exit(1);
    }
-   const std::vector<size_t> countBins = m_countBinsByFeatureGroup[iFeatureGroup];
+   const std::vector<size_t> dimensionBinCounts = m_termBinCounts[iTerm];
 
-   const size_t cDimensions = countBins.size();
+   const size_t cDimensions = dimensionBinCounts.size();
    size_t multiple = GetVectorLength(m_learningTypeOrCountTargetClasses);
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      multiple *= countBins[iDimension];
+      multiple *= dimensionBinCounts[iDimension];
    }
 
-   std::vector<double> model;
-   model.resize(multiple);
+   std::vector<double> termScores;
+   termScores.resize(multiple);
 
-   error = GetBestTermScores(m_boosterHandle, iFeatureGroup, &model[0]);
+   error = GetBestTermScores(m_boosterHandle, iTerm, &termScores[0]);
    if(Error_None != error) {
       exit(1);
    }
 
-   const double termScore = GetTermScore(iFeatureGroup, &model[0], indexes, iScore);
+   const double termScore = GetTermScore(iTerm, &termScores[0], indexes, iScore);
    return termScore;
 }
 
-void TestApi::GetBestTermScoresRaw(const size_t iFeatureGroup, double * const aModelValues) const {
+void TestApi::GetBestTermScoresRaw(const size_t iTerm, double * const aTermScores) const {
    ErrorEbmType error;
 
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_dimensionCounts.size() <= iFeatureGroup) {
+   if(m_dimensionCounts.size() <= iTerm) {
       exit(1);
    }
-   error = GetBestTermScores(m_boosterHandle, iFeatureGroup, aModelValues);
+   error = GetBestTermScores(m_boosterHandle, iTerm, aTermScores);
    if(Error_None != error) {
       exit(1);
    }
 }
 
 double TestApi::GetCurrentTermScore(
-   const size_t iFeatureGroup,
+   const size_t iTerm,
    const std::vector<size_t> indexes,
    const size_t iScore
 ) const {
@@ -832,39 +832,39 @@ double TestApi::GetCurrentTermScore(
       exit(1);
    }
 
-   if(m_countBinsByFeatureGroup.size() <= iFeatureGroup) {
+   if(m_termBinCounts.size() <= iTerm) {
       exit(1);
    }
-   const std::vector<size_t> countBins = m_countBinsByFeatureGroup[iFeatureGroup];
+   const std::vector<size_t> dimensionBinCounts = m_termBinCounts[iTerm];
 
-   const size_t cDimensions = countBins.size();
+   const size_t cDimensions = dimensionBinCounts.size();
    size_t multiple = GetVectorLength(m_learningTypeOrCountTargetClasses);
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      multiple *= countBins[iDimension];
+      multiple *= dimensionBinCounts[iDimension];
    }
 
-   std::vector<double> model;
-   model.resize(multiple);
+   std::vector<double> termScores;
+   termScores.resize(multiple);
 
-   error = GetCurrentTermScores(m_boosterHandle, iFeatureGroup, &model[0]);
+   error = GetCurrentTermScores(m_boosterHandle, iTerm, &termScores[0]);
    if(Error_None != error) {
       exit(1);
    }
 
-   const double termScore = GetTermScore(iFeatureGroup, &model[0], indexes, iScore);
+   const double termScore = GetTermScore(iTerm, &termScores[0], indexes, iScore);
    return termScore;
 }
 
-void TestApi::GetCurrentTermScoresRaw(const size_t iFeatureGroup, double * const aModelValues) const {
+void TestApi::GetCurrentTermScoresRaw(const size_t iTerm, double * const aTermScores) const {
    ErrorEbmType error;
 
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_dimensionCounts.size() <= iFeatureGroup) {
+   if(m_dimensionCounts.size() <= iTerm) {
       exit(1);
    }
-   error = GetCurrentTermScores(m_boosterHandle, iFeatureGroup, aModelValues);
+   error = GetCurrentTermScores(m_boosterHandle, iTerm, aTermScores);
    if(Error_None != error) {
       exit(1);
    }
@@ -876,7 +876,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatures = m_featureBinCounts.size();
       const bool bNullPredictionScores = 0 == samples[0].m_priorScore.size();
       m_bNullInteractionPredictionScores = bNullPredictionScores;
 
@@ -994,7 +994,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -1018,7 +1018,7 @@ void TestApi::InitializeInteraction() {
    }
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
-   const size_t cFeatures = m_featuresBinCount.size();
+   const size_t cFeatures = m_featureBinCounts.size();
    const size_t cSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_interactionClassificationTargets.size() : m_interactionRegressionTargets.size();
 
    if(m_bNullInteractionPredictionScores) {
@@ -1031,7 +1031,7 @@ void TestApi::InitializeInteraction() {
    IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
    for(size_t i = 0; i < cFeatures; ++i) {
       std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
-      size += SizeFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      size += SizeFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
    size += SizeWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0]);
@@ -1048,7 +1048,7 @@ void TestApi::InitializeInteraction() {
 
    for(size_t i = 0; i < cFeatures; ++i) {
       std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
-      error = FillFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      error = FillFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
    }
 
    error = FillWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0], size, pDataSet);
@@ -1084,7 +1084,7 @@ void TestApi::InitializeInteraction() {
 }
 
 double TestApi::TestCalcInteractionStrength(
-   const std::vector<IntEbmType> featuresInGroup, 
+   const std::vector<IntEbmType> features, 
    const InteractionOptionsType options,
    const IntEbmType countSamplesRequiredForChildSplitMin
 ) const {
@@ -1093,11 +1093,11 @@ double TestApi::TestCalcInteractionStrength(
    if(Stage::InitializedInteraction != m_stage) {
       exit(1);
    }
-   for(const IntEbmType oneFeatureIndex : featuresInGroup) {
+   for(const IntEbmType oneFeatureIndex : features) {
       if(oneFeatureIndex < IntEbmType { 0 }) {
          exit(1);
       }
-      if(m_featuresBinCount.size() <= static_cast<size_t>(oneFeatureIndex)) {
+      if(m_featureBinCounts.size() <= static_cast<size_t>(oneFeatureIndex)) {
          exit(1);
       }
    }
@@ -1105,8 +1105,8 @@ double TestApi::TestCalcInteractionStrength(
    double avgInteractionStrength = double { 0 };
    error = CalcInteractionStrength(
       m_interactionHandle,
-      featuresInGroup.size(),
-      0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
+      features.size(),
+      0 == features.size() ? nullptr : &features[0],
       options,
       countSamplesRequiredForChildSplitMin,
       &avgInteractionStrength

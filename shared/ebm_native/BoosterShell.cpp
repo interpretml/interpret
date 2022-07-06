@@ -32,8 +32,8 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    LOG_0(TraceLevelInfo, "Entered BoosterShell::Free");
 
    if(nullptr != pBoosterShell) {
-      CompressibleTensor::Free(pBoosterShell->m_pSmallChangeToModelAccumulatedFromSamplingSets);
-      CompressibleTensor::Free(pBoosterShell->m_pSmallChangeToModelOverwriteSingleSamplingSet);
+      CompressibleTensor::Free(pBoosterShell->m_pTermUpdate);
+      CompressibleTensor::Free(pBoosterShell->m_pInnerTermUpdate);
       free(pBoosterShell->m_aThreadByteBuffer1Fast);
       free(pBoosterShell->m_aThreadByteBuffer1Big);
       free(pBoosterShell->m_aThreadByteBuffer2);
@@ -75,13 +75,13 @@ ErrorEbmType BoosterShell::FillAllocations() {
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    const size_t cBytesPerItem = GetHistogramTargetEntrySize<FloatBig>(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       
-   m_pSmallChangeToModelAccumulatedFromSamplingSets = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
-   if(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets) {
+   m_pTermUpdate = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
+   if(nullptr == m_pTermUpdate) {
       goto failed_allocation;
    }
 
-   m_pSmallChangeToModelOverwriteSingleSamplingSet = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
-   if(nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet) {
+   m_pInnerTermUpdate = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
+   if(nullptr == m_pInnerTermUpdate) {
       goto failed_allocation;
    }
 
@@ -257,7 +257,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_OutOfMemory;
    }
 
-   size_t cFeatureGroups = static_cast<size_t>(countTerms);
+   size_t cTerms = static_cast<size_t>(countTerms);
    size_t cInnerBags = static_cast<size_t>(countInnerBags);
 
    BoosterShell * const pBoosterShell = BoosterShell::Create();
@@ -269,7 +269,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
 
    error = BoosterCore::Create(
       pBoosterShell,
-      cFeatureGroups,
+      cTerms,
       cInnerBags,
       optionalTempParams,
       dimensionCounts,
@@ -382,10 +382,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   size_t iFeatureGroup = static_cast<size_t>(indexTerm);
+   size_t iTerm = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
+   if(pBoosterCore->GetCountTerms() <= iTerm) {
       LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
@@ -395,7 +395,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
-      LOG_0(TraceLevelInfo, "Exited GetBestTermScores no model");
+      LOG_0(TraceLevelInfo, "Exited GetBestTermScores no scores");
       return Error_None;
    }
 
@@ -404,34 +404,34 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       return Error_IllegalParamValue;
    }
 
-   // if pBoosterCore->GetFeatureGroups() is nullptr, then m_cFeatureGroups was 0, but we checked above that 
-   // iFeatureGroup was less than cFeatureGroups
-   EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
+   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
+   // iTerm was less than cTerms
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const size_t cDimensions = pTerm->GetCountDimensions();
    size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cScores, cBins));
          cScores *= cBins;
-         ++pFeatureGroupEntry;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         ++pTermEntry;
+      } while(pTermEntriesEnd != pTermEntry);
    }
 
    // if pBoosterCore->GetBestModel() is nullptr, then either:
-   //    1) m_cFeatureGroups was 0, but we checked above that iFeatureGroup was less than cFeatureGroups
+   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
    //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
-   CompressibleTensor * const pBestModel = pBoosterCore->GetBestModel()[iFeatureGroup];
-   EBM_ASSERT(nullptr != pBestModel);
-   EBM_ASSERT(pBestModel->GetExpanded()); // the model should have been expanded at startup
-   FloatFast * const aTermScores = pBestModel->GetScoresPointer();
+   CompressibleTensor * const pBestTermTensor = pBoosterCore->GetBestModel()[iTerm];
+   EBM_ASSERT(nullptr != pBestTermTensor);
+   EBM_ASSERT(pBestTermTensor->GetExpanded()); // the tensor should have been expanded at startup
+   FloatFast * const aTermScores = pBestTermTensor->GetScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
    EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cScores));
@@ -475,10 +475,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   size_t iFeatureGroup = static_cast<size_t>(indexTerm);
+   size_t iTerm = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
+   if(pBoosterCore->GetCountTerms() <= iTerm) {
       LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
@@ -488,7 +488,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
-      LOG_0(TraceLevelInfo, "Exited GetCurrentTermScores no model");
+      LOG_0(TraceLevelInfo, "Exited GetCurrentTermScores no scores");
       return Error_None;
    }
 
@@ -497,34 +497,34 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       return Error_IllegalParamValue;
    }
 
-   // if pBoosterCore->GetFeatureGroups() is nullptr, then m_cFeatureGroups was 0, but we checked above that 
-   // iFeatureGroup was less than cFeatureGroups
-   EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
+   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
+   // iTerm was less than cTerms
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const size_t cDimensions = pTerm->GetCountDimensions();
    size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cScores, cBins));
          cScores *= cBins;
-         ++pFeatureGroupEntry;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         ++pTermEntry;
+      } while(pTermEntriesEnd != pTermEntry);
    }
 
    // if pBoosterCore->GetCurrentModel() is nullptr, then either:
-   //    1) m_cFeatureGroups was 0, but we checked above that iFeatureGroup was less than cFeatureGroups
+   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
    //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
 
-   CompressibleTensor * const pCurrentModel = pBoosterCore->GetCurrentModel()[iFeatureGroup];
-   EBM_ASSERT(nullptr != pCurrentModel);
-   EBM_ASSERT(pCurrentModel->GetExpanded()); // the model should have been expanded at startup
-   FloatFast * const aTermScores = pCurrentModel->GetScoresPointer();
+   CompressibleTensor * const pCurrentTermTensor = pBoosterCore->GetCurrentModel()[iTerm];
+   EBM_ASSERT(nullptr != pCurrentTermTensor);
+   EBM_ASSERT(pCurrentTermTensor->GetExpanded()); // the tensor should have been expanded at startup
+   FloatFast * const aTermScores = pCurrentTermTensor->GetScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
    EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cScores));

@@ -154,7 +154,7 @@ public:
 
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       HistogramBucketBase * pBucketAuxiliaryBuildZoneBase,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
@@ -184,9 +184,9 @@ public:
       //       based and then having a stack based pointer system like the RandomSplitState class in PartitionRandomBoostingInternal
       //       to handle any dimensions at the 3rd level and above.  We'll never need to make any additional checks 
       //       on main memory until we reach the 3rd dimension which should be enough for any performance geek
-      const size_t cSignificantDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountSignificantDimensions());
+      const size_t cSignificantDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= cSignificantDimensions);
-      EBM_ASSERT(cSignificantDimensions <= pFeatureGroup->GetCountDimensions());
+      EBM_ASSERT(cSignificantDimensions <= pTerm->GetCountDimensions());
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -199,13 +199,13 @@ public:
       FastTotalState fastTotalState[k_cDimensionsMax];
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
       {
-         const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
+         const TermEntry * pTermEntry = pTerm->GetTermEntries();
+         const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
          size_t multiply = 1;
          do {
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, aHistogramBucketsEndDebug);
 
-            const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+            const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
             // cBins can only be 0 if there are zero training and zero validation samples
             // we don't boost or allow interaction updates if there are zero training samples
             EBM_ASSERT(1 <= cBins);
@@ -248,8 +248,8 @@ public:
                multiply *= cBins;
                ++pFastTotalStateInitialize;
             }
-            ++pFeatureGroupEntry;
-         } while(LIKELY(pFeatureGroupEntryEnd != pFeatureGroupEntry));
+            ++pTermEntry;
+         } while(LIKELY(pTermEntriesEnd != pTermEntry));
       }
       EBM_ASSERT(pFastTotalStateInitialize == &fastTotalState[cSignificantDimensions]);
 
@@ -293,7 +293,7 @@ public:
             }
             TensorTotalsSumDebugSlow<bClassification>(
                runtimeLearningTypeOrCountTargetClasses,
-               pFeatureGroup,
+               pTerm,
                aHistogramBucketsDebugCopy,
                aiStart,
                aiLast,
@@ -344,7 +344,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       HistogramBucketBase * pBucketAuxiliaryBuildZone,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -355,14 +355,14 @@ public:
       static_assert(1 <= cCompilerDimensionsPossible, "can't have less than 1 dimension");
       static_assert(cCompilerDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      const size_t cRuntimeDimensions = pFeatureGroup->GetCountSignificantDimensions();
+      const size_t cRuntimeDimensions = pTerm->GetCountSignificantDimensions();
 
       EBM_ASSERT(1 <= cRuntimeDimensions);
       EBM_ASSERT(cRuntimeDimensions <= k_cDimensionsMax);
       if(cCompilerDimensionsPossible == cRuntimeDimensions) {
          TensorTotalsBuildInternal<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            pFeatureGroup,
+            pTerm,
             pBucketAuxiliaryBuildZone,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -373,7 +373,7 @@ public:
       } else {
          TensorTotalsBuildDimensions<compilerLearningTypeOrCountTargetClasses, cCompilerDimensionsPossible + 1>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            pFeatureGroup,
+            pTerm,
             pBucketAuxiliaryBuildZone,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -393,7 +393,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       HistogramBucketBase * pBucketAuxiliaryBuildZone,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -401,11 +401,11 @@ public:
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
-      EBM_ASSERT(pFeatureGroup->GetCountSignificantDimensions() <= k_cDimensionsMax);
+      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
+      EBM_ASSERT(pTerm->GetCountSignificantDimensions() <= k_cDimensionsMax);
       TensorTotalsBuildInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(
          runtimeLearningTypeOrCountTargetClasses,
-         pFeatureGroup,
+         pTerm,
          pBucketAuxiliaryBuildZone,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -424,7 +424,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       HistogramBucketBase * pBucketAuxiliaryBuildZone,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -441,7 +441,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          TensorTotalsBuildDimensions<compilerLearningTypeOrCountTargetClassesPossible, 2>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            pFeatureGroup,
+            pTerm,
             pBucketAuxiliaryBuildZone,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -452,7 +452,7 @@ public:
       } else {
          TensorTotalsBuildTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            pFeatureGroup,
+            pTerm,
             pBucketAuxiliaryBuildZone,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -472,7 +472,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       HistogramBucketBase * pBucketAuxiliaryBuildZone,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -487,7 +487,7 @@ public:
 
       TensorTotalsBuildDimensions<k_dynamicClassification, 2>::Func(
          runtimeLearningTypeOrCountTargetClasses,
-         pFeatureGroup,
+         pTerm,
          pBucketAuxiliaryBuildZone,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -500,7 +500,7 @@ public:
 
 extern void TensorTotalsBuild(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    HistogramBucketBase * pBucketAuxiliaryBuildZone,
    HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -511,7 +511,7 @@ extern void TensorTotalsBuild(
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       TensorTotalsBuildTarget<2>::Func(
          runtimeLearningTypeOrCountTargetClasses,
-         pFeatureGroup,
+         pTerm,
          pBucketAuxiliaryBuildZone,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -523,7 +523,7 @@ extern void TensorTotalsBuild(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       TensorTotalsBuildDimensions<k_regression, 2>::Func(
          runtimeLearningTypeOrCountTargetClasses,
-         pFeatureGroup,
+         pTerm,
          pBucketAuxiliaryBuildZone,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -543,18 +543,18 @@ extern void TensorTotalsBuild(
 //};
 //
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//void BuildFastTotals(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureGroup * const pFeatureGroup, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets) {
+//void BuildFastTotals(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const Term * const pTerm, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets) {
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
-//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountDimensions());
+//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
-//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureGroup->GetCountDimensions(); ++iDimensionDebug) {
-//      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionDebug].m_pFeature->m_cBins;
+//   for(size_t iDimensionDebug = 0; iDimensionDebug < pTerm->GetCountDimensions(); ++iDimensionDebug) {
+//      const size_t cBins = pTerm->GetTermEntries()[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cBins;
 //   }
@@ -575,11 +575,11 @@ extern void TensorTotalsBuild(
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-//   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pFeatureGroupEntry) {
+//   const TermEntry * pTermEntry = pTerm->GetTermEntries();
+//   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pTermEntry) {
 //      pCurrentIndexAndCountBinsInitialize->m_iCur = 0;
-//      EBM_ASSERT(2 <= pFeatureGroupEntry->m_pFeature->m_cBins);
-//      pCurrentIndexAndCountBinsInitialize->m_cBins = pFeatureGroupEntry->m_pFeature->m_cBins;
+//      EBM_ASSERT(2 <= pTermEntry->m_pFeature->m_cBins);
+//      pCurrentIndexAndCountBinsInitialize->m_cBins = pTermEntry->m_pFeature->m_cBins;
 //   }
 //
 //   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
@@ -638,7 +638,7 @@ extern void TensorTotalsBuild(
 //            aiStart[iDebugDimension] = 0;
 //            aiLast[iDebugDimension] = currentIndexAndCountBins[iDebugDimension].m_iCur;
 //         }
-//         TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBucketsDebugCopy, aiStart, aiLast, pDebugBucket);
+//         TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aHistogramBucketsDebugCopy, aiStart, aiLast, pDebugBucket);
 //         EBM_ASSERT(pDebugBucket->GetCountSamplesInBucket() == pHistogramBucket->GetCountSamplesInBucket());
 //
 //         free(aHistogramBucketsDebugCopy);
@@ -672,18 +672,18 @@ extern void TensorTotalsBuild(
 //};
 //
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//void BuildFastTotals(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureGroup * const pFeatureGroup, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets) {
+//void BuildFastTotals(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const Term * const pTerm, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets) {
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
-//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountDimensions());
+//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
-//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureGroup->GetCountDimensions(); ++iDimensionDebug) {
-//      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionDebug].m_pFeature->m_cBins;
+//   for(size_t iDimensionDebug = 0; iDimensionDebug < pTerm->GetCountDimensions(); ++iDimensionDebug) {
+//      const size_t cBins = pTerm->GetTermEntries()[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cBins;
 //   }
@@ -704,12 +704,12 @@ extern void TensorTotalsBuild(
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+//   const TermEntry * pTermEntry = pTerm->GetTermEntries();
 //   ptrdiff_t multipleTotalInitialize = -1;
-//   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pFeatureGroupEntry) {
+//   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pTermEntry) {
 //      pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
-//      EBM_ASSERT(2 <= pFeatureGroupEntry->m_pFeature->m_cBins);
-//      multipleTotalInitialize *= static_cast<ptrdiff_t>(pFeatureGroupEntry->m_pFeature->m_cBins);
+//      EBM_ASSERT(2 <= pTermEntry->m_pFeature->m_cBins);
+//      multipleTotalInitialize *= static_cast<ptrdiff_t>(pTermEntry->m_pFeature->m_cBins);
 //      pCurrentIndexAndCountBinsInitialize->multipleTotal = multipleTotalInitialize;
 //   }
 //
@@ -771,7 +771,7 @@ extern void TensorTotalsBuild(
 //            aiLast[iDebugDimension] = static_cast<size_t>(currentIndexAndCountBins[iDebugDimension].multipliedIndexCur / multipleTotalDebug);
 //            multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
 //         }
-//         TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBucketsDebugCopy, aiStart, aiLast, pDebugBucket);
+//         TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aHistogramBucketsDebugCopy, aiStart, aiLast, pDebugBucket);
 //         EBM_ASSERT(pDebugBucket->GetCountSamplesInBucket() == pHistogramBucket->GetCountSamplesInBucket());
 //         free(aHistogramBucketsDebugCopy);
 //      }
@@ -808,7 +808,7 @@ extern void TensorTotalsBuild(
 //   ptrdiff_t m_multipleTotal;
 //};
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//void BuildFastTotalsZeroMemoryIncrease(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureGroup * const pFeatureGroup, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets
+//void BuildFastTotalsZeroMemoryIncrease(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const Term * const pTerm, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets
 //#ifndef NDEBUG
 //   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
 //#endif // NDEBUG
@@ -817,7 +817,7 @@ extern void TensorTotalsBuild(
 //
 //   DO: ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
-//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountDimensions());
+//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
 //   EBM_ASSERT(1 <= cDimensions);
 //
 //   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
@@ -829,14 +829,14 @@ extern void TensorTotalsBuild(
 //   ptrdiff_t multipleTotalInitialize = -1;
 //   {
 //      CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins;
-//      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+//      const TermEntry * pTermEntry = pTerm->GetTermEntries();
 //      EBM_ASSERT(1 <= cDimensions);
 //      do {
 //         pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
-//         EBM_ASSERT(1 <= pFeatureGroupEntry->m_pFeature->m_cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
-//         multipleTotalInitialize *= static_cast<ptrdiff_t>(pFeatureGroupEntry->m_pFeature->m_cBins);
+//         EBM_ASSERT(1 <= pTermEntry->m_pFeature->m_cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
+//         multipleTotalInitialize *= static_cast<ptrdiff_t>(pTermEntry->m_pFeature->m_cBins);
 //         pCurrentIndexAndCountBinsInitialize->multipleTotal = multipleTotalInitialize;
-//         ++pFeatureGroupEntry;
+//         ++pTermEntry;
 //         ++pCurrentIndexAndCountBinsInitialize;
 //      } while(LIKELY(pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize));
 //   }
@@ -935,7 +935,7 @@ extern void TensorTotalsBuild(
 //         aiLast[iDebugDimension] = static_cast<size_t>((0 == iDebugDimension ? multipliedIndexCur0 : currentIndexAndCountBins[iDebugDimension].multipliedIndexCur) / multipleTotalDebug);
 //         multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
 //      }
-//      TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBucketsDebugCopy, aiStart, aiLast, pDebugBucket);
+//      TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aHistogramBucketsDebugCopy, aiStart, aiLast, pDebugBucket);
 //      EBM_ASSERT(pDebugBucket->GetCountSamplesInBucket() == pHistogramBucket->GetCountSamplesInBucket());
 //#endif // NDEBUG
 //
@@ -978,15 +978,15 @@ extern void TensorTotalsBuild(
 
 
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-//bool BoostMultiDimensionalPaulAlgorithm(BoosterShell<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const FeatureGroup * const pFeatureGroup, SegmentedRegion<ActiveDataType, FloatBig> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
-//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = BinDataSet<compilerLearningTypeOrCountTargetClasses>(pThreadState, pFeatureGroup, pTrainingSet, pTargetFeature);
+//bool BoostMultiDimensionalPaulAlgorithm(BoosterShell<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pThreadState, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const Term * const pTerm, SegmentedRegion<ActiveDataType, FloatBig> * const pInnerTermUpdate) {
+//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = BinDataSet<compilerLearningTypeOrCountTargetClasses>(pThreadState, pTerm, pTrainingSet, pTargetFeature);
 //   if(UNLIKELY(nullptr == aHistogramBuckets)) {
 //      return true;
 //   }
 //
-//   BuildFastTotals(pTargetFeature, pFeatureGroup, aHistogramBuckets);
+//   BuildFastTotals(pTargetFeature, pTerm, aHistogramBuckets);
 //
-//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pFeatureGroup->GetCountDimensions());
+//   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
 //   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
@@ -998,26 +998,26 @@ extern void TensorTotalsBuild(
 //      DO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pThreadState
 //      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * aDynamicHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket * ));
 //
-//      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->m_cBins;
-//      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->m_cBins;
+//      const size_t cBinsDimension1 = pTerm->GetTermEntries()[0].m_pFeature->m_cBins;
+//      const size_t cBinsDimension2 = pTerm->GetTermEntries()[1].m_pFeature->m_cBins;
 //
 //      FloatBig bestSplittingScore = FloatBig { -std::numeric_limits<FloatBig>::infinity() };
 //
-//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(0, 1)) {
+//      if(pInnerTermUpdate->SetCountSplits(0, 1)) {
 //         free(aDynamicHistogramBuckets);
 //#ifndef NDEBUG
 //         free(aHistogramBucketsDebugCopy);
 //#endif // NDEBUG
 //         return true;
 //      }
-//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(1, 1)) {
+//      if(pInnerTermUpdate->SetCountSplits(1, 1)) {
 //         free(aDynamicHistogramBuckets);
 //#ifndef NDEBUG
 //         free(aHistogramBucketsDebugCopy);
 //#endif // NDEBUG
 //         return true;
 //      }
-//      if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureScoreCapacity(cVectorLength * 4)) {
+//      if(pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * 4)) {
 //         free(aDynamicHistogramBuckets);
 //#ifndef NDEBUG
 //         free(aHistogramBucketsDebugCopy);
@@ -1041,25 +1041,25 @@ extern void TensorTotalsBuild(
 //            aiStart[1] = 0;
 //            aiLast[0] = iBin1;
 //            aiLast[1] = iBin2;
-//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBuckets, aiStart, aiLast, pTotalsLowLow);
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aHistogramBuckets, aiStart, aiLast, pTotalsLowLow);
 //
 //            aiStart[0] = iBin1 + 1;
 //            aiStart[1] = 0;
 //            aiLast[0] = cBinsDimension1 - 1;
 //            aiLast[1] = iBin2;
-//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBuckets, aiStart, aiLast, pTotalsHighLow);
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aHistogramBuckets, aiStart, aiLast, pTotalsHighLow);
 //
 //            aiStart[0] = 0;
 //            aiStart[1] = iBin2 + 1;
 //            aiLast[0] = iBin1;
 //            aiLast[1] = cBinsDimension2 - 1;
-//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBuckets, aiStart, aiLast, pTotalsLowHigh);
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aHistogramBuckets, aiStart, aiLast, pTotalsLowHigh);
 //
 //            aiStart[0] = iBin1 + 1;
 //            aiStart[1] = iBin2 + 1;
 //            aiLast[0] = cBinsDimension1 - 1;
 //            aiLast[1] = cBinsDimension2 - 1;
-//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBuckets, aiStart, aiLast, pTotalsHighHigh);
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(runtimeLearningTypeOrCountTargetClasses, pTerm, aHistogramBuckets, aiStart, aiLast, pTotalsHighHigh);
 //
 //            // LOW LOW
 //            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
@@ -1075,8 +1075,8 @@ extern void TensorTotalsBuild(
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = iBin1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
+//               pInnerTermUpdate->GetSplitPointer(0)[0] = iBin1;
+//               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FloatBig predictionTarget;
@@ -1094,10 +1094,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[0 * cVectorLength + iVector] = predictionTarget;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[0 * cVectorLength + iVector] = predictionTarget;
+//                  pInnerTermUpdate->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
 //               }
 //            }
 //
@@ -1118,8 +1118,8 @@ extern void TensorTotalsBuild(
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = iBin1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
+//               pInnerTermUpdate->GetSplitPointer(0)[0] = iBin1;
+//               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FloatBig predictionTarget;
@@ -1137,10 +1137,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[1 * cVectorLength + iVector] = predictionTarget;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[1 * cVectorLength + iVector] = predictionTarget;
+//                  pInnerTermUpdate->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
 //               }
 //            }
 //
@@ -1161,8 +1161,8 @@ extern void TensorTotalsBuild(
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = iBin1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
+//               pInnerTermUpdate->GetSplitPointer(0)[0] = iBin1;
+//               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FloatBig predictionTarget;
@@ -1180,10 +1180,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[2 * cVectorLength + iVector] = predictionTarget;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[2 * cVectorLength + iVector] = predictionTarget;
+//                  pInnerTermUpdate->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
 //               }
 //            }
 //
@@ -1203,8 +1203,8 @@ extern void TensorTotalsBuild(
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(0)[0] = iBin1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(1)[0] = iBin2;
+//               pInnerTermUpdate->GetSplitPointer(0)[0] = iBin1;
+//               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FloatBig predictionTarget;
@@ -1222,10 +1222,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
-//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetScoresPointer()[3 * cVectorLength + iVector] = predictionTarget;
+//                  pInnerTermUpdate->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[3 * cVectorLength + iVector] = predictionTarget;
 //               }
 //            }
 //

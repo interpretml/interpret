@@ -24,7 +24,7 @@
 #include "ebm_stats.hpp"
 // feature includes
 #include "Feature.hpp"
-// FeatureGroup.h depends on FeatureInternal.h
+// FeatureGroup.hpp depends on FeatureInternal.h
 #include "FeatureGroup.hpp"
 // dataset depends on features
 #include "DataSetBoosting.hpp"
@@ -70,13 +70,13 @@ INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
    return k_cBitsForStorageType / cBits;
 }
 
-void BoosterCore::DeleteCompressibleTensors(const size_t cFeatureGroups, CompressibleTensor ** const apCompressibleTensors) {
+void BoosterCore::DeleteCompressibleTensors(const size_t cTerms, CompressibleTensor ** const apCompressibleTensors) {
    LOG_0(TraceLevelInfo, "Entered DeleteCompressibleTensors");
 
    if(UNLIKELY(nullptr != apCompressibleTensors)) {
-      EBM_ASSERT(0 < cFeatureGroups);
+      EBM_ASSERT(0 < cTerms);
       CompressibleTensor ** ppCompressibleTensors = apCompressibleTensors;
-      const CompressibleTensor * const * const ppCompressibleTensorsEnd = &apCompressibleTensors[cFeatureGroups];
+      const CompressibleTensor * const * const ppCompressibleTensorsEnd = &apCompressibleTensors[cTerms];
       do {
          CompressibleTensor::Free(*ppCompressibleTensors);
          ++ppCompressibleTensors;
@@ -87,43 +87,43 @@ void BoosterCore::DeleteCompressibleTensors(const size_t cFeatureGroups, Compres
 }
 
 ErrorEbmType BoosterCore::InitializeCompressibleTensors(
-   const size_t cFeatureGroups, 
-   const FeatureGroup * const * const apFeatureGroups, 
+   const size_t cTerms, 
+   const Term * const * const apTerms, 
    const size_t cVectorLength,
    CompressibleTensor *** papCompressibleTensorsOut)
 {
    LOG_0(TraceLevelInfo, "Entered InitializeCompressibleTensors");
 
-   EBM_ASSERT(0 < cFeatureGroups);
-   EBM_ASSERT(nullptr != apFeatureGroups);
+   EBM_ASSERT(0 < cTerms);
+   EBM_ASSERT(nullptr != apTerms);
    EBM_ASSERT(1 <= cVectorLength);
    EBM_ASSERT(nullptr != papCompressibleTensorsOut);
    EBM_ASSERT(nullptr == *papCompressibleTensorsOut);
 
    ErrorEbmType error;
 
-   CompressibleTensor ** const apCompressibleTensors = EbmMalloc<CompressibleTensor *>(cFeatureGroups);
+   CompressibleTensor ** const apCompressibleTensors = EbmMalloc<CompressibleTensor *>(cTerms);
    if(UNLIKELY(nullptr == apCompressibleTensors)) {
       LOG_0(TraceLevelWarning, "WARNING InitializeCompressibleTensors nullptr == apCompressibleTensors");
       return Error_OutOfMemory;
    }
-   for(size_t i = 0; i < cFeatureGroups; ++i) {
-      apCompressibleTensors[i] = nullptr;
+   for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
+      apCompressibleTensors[iTerm] = nullptr;
    }
    *papCompressibleTensorsOut = apCompressibleTensors; // transfer ownership for future deletion
 
    CompressibleTensor ** ppCompressibleTensors = apCompressibleTensors;
-   for(size_t iFeatureGroup = 0; iFeatureGroup < cFeatureGroups; ++iFeatureGroup) {
-      const FeatureGroup * const pFeatureGroup = apFeatureGroups[iFeatureGroup];
+   for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
+      const Term * const pTerm = apTerms[iTerm];
       CompressibleTensor * const pCompressibleTensors = 
-         CompressibleTensor::Allocate(pFeatureGroup->GetCountDimensions(), cVectorLength);
+         CompressibleTensor::Allocate(pTerm->GetCountDimensions(), cVectorLength);
       if(UNLIKELY(nullptr == pCompressibleTensors)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeCompressibleTensors nullptr == pCompressibleTensors");
          return Error_OutOfMemory;
       }
       *ppCompressibleTensors = pCompressibleTensors; // transfer ownership for future deletion
 
-      error = pCompressibleTensors->Expand(pFeatureGroup);
+      error = pCompressibleTensors->Expand(pTerm);
       if(Error_None != error) {
          // already logged
          return error;
@@ -167,11 +167,11 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
 
 ErrorEbmType BoosterCore::Create(
    BoosterShell * const pBoosterShell,
-   const size_t cFeatureGroups,
+   const size_t cTerms,
    const size_t cSamplingSets,
    const double * const optionalTempParams,
-   const IntEbmType * const aFeatureGroupsDimensionCounts,
-   const IntEbmType * const aFeatureGroupsFeatureIndexes, 
+   const IntEbmType * const acTermDimensions,
+   const IntEbmType * const aiTermFeatures, 
    const unsigned char * const pDataSetShared,
    const BagEbmType * const aBag,
    const double * const aInitScores
@@ -307,15 +307,15 @@ ErrorEbmType BoosterCore::Create(
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    size_t cBytesArrayEquivalentSplitMax = 0;
 
-   EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentModel);
-   EBM_ASSERT(nullptr == pBoosterCore->m_apBestModel);
+   EBM_ASSERT(nullptr == pBoosterCore->m_apCurrentTermTensors);
+   EBM_ASSERT(nullptr == pBoosterCore->m_apBestTermTensors);
 
    LOG_0(TraceLevelInfo, "BoosterCore::Create starting feature group processing");
-   if(0 != cFeatureGroups) {
-      pBoosterCore->m_cFeatureGroups = cFeatureGroups;
-      pBoosterCore->m_apFeatureGroups = FeatureGroup::AllocateFeatureGroups(cFeatureGroups);
-      if(UNLIKELY(nullptr == pBoosterCore->m_apFeatureGroups)) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create 0 != m_cFeatureGroups && nullptr == m_apFeatureGroups");
+   if(0 != cTerms) {
+      pBoosterCore->m_cTerms = cTerms;
+      pBoosterCore->m_apTerms = Term::AllocateTerms(cTerms);
+      if(UNLIKELY(nullptr == pBoosterCore->m_apTerms)) {
+         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create 0 != m_cTerms && nullptr == m_apTerms");
          return Error_OutOfMemory;
       }
 
@@ -325,10 +325,10 @@ ErrorEbmType BoosterCore::Create(
       }
       const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cVectorLength);
 
-      const IntEbmType * pFeatureGroupFeatureIndexes = aFeatureGroupsFeatureIndexes;
-      size_t iFeatureGroup = 0;
+      const IntEbmType * piTermFeature = aiTermFeatures;
+      size_t iTerm = 0;
       do {
-         const IntEbmType countDimensions = aFeatureGroupsDimensionCounts[iFeatureGroup];
+         const IntEbmType countDimensions = acTermDimensions[iTerm];
          if(countDimensions < IntEbmType { 0 }) {
             LOG_0(TraceLevelError, "ERROR BoosterCore::Create countDimensions cannot be negative");
             return Error_IllegalParamValue;
@@ -338,13 +338,13 @@ ErrorEbmType BoosterCore::Create(
             return Error_OutOfMemory;
          }
          const size_t cDimensions = static_cast<size_t>(countDimensions);
-         FeatureGroup * const pFeatureGroup = FeatureGroup::Allocate(cDimensions, iFeatureGroup);
-         if(nullptr == pFeatureGroup) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == pFeatureGroup");
+         Term * const pTerm = Term::Allocate(cDimensions, iTerm);
+         if(nullptr == pTerm) {
+            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == pTerm");
             return Error_OutOfMemory;
          }
          // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
-         pBoosterCore->m_apFeatureGroups[iFeatureGroup] = pFeatureGroup;
+         pBoosterCore->m_apTerms[iTerm] = pTerm;
 
          size_t cSignificantDimensions = 0;
          ptrdiff_t cItemsPerBitPack = k_cItemsPerBitPackNone;
@@ -352,27 +352,27 @@ ErrorEbmType BoosterCore::Create(
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(TraceLevelInfo, "INFO BoosterCore::Create empty feature group");
          } else {
-            if(nullptr == pFeatureGroupFeatureIndexes) {
-               LOG_0(TraceLevelError, "ERROR BoosterCore::Create aFeatureGroupsFeatureIndexes is null when there are FeatureGroups with non-zero numbers of features");
+            if(nullptr == piTermFeature) {
+               LOG_0(TraceLevelError, "ERROR BoosterCore::Create aiTermFeatures is null when there are Terms with non-zero numbers of features");
                return Error_IllegalParamValue;
             }
             size_t cEquivalentSplits = 1;
-            FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-            FeatureGroupEntry * pFeatureGroupEntryEnd = pFeatureGroupEntry + cDimensions;
+            TermEntry * pTermEntry = pTerm->GetTermEntries();
+            TermEntry * pTermEntriesEnd = pTermEntry + cDimensions;
             do {
-               const IntEbmType indexFeatureInterop = *pFeatureGroupFeatureIndexes;
-               if(indexFeatureInterop < 0) {
-                  LOG_0(TraceLevelError, "ERROR BoosterCore::Create aFeatureGroupsFeatureIndexes value cannot be negative");
+               const IntEbmType indexFeature = *piTermFeature;
+               if(indexFeature < 0) {
+                  LOG_0(TraceLevelError, "ERROR BoosterCore::Create aiTermFeatures value cannot be negative");
                   return Error_IllegalParamValue;
                }
-               if(IsConvertError<size_t>(indexFeatureInterop)) {
-                  LOG_0(TraceLevelError, "ERROR BoosterCore::Create aFeatureGroupsFeatureIndexes value too big to reference memory");
+               if(IsConvertError<size_t>(indexFeature)) {
+                  LOG_0(TraceLevelError, "ERROR BoosterCore::Create aiTermFeatures value too big to reference memory");
                   return Error_IllegalParamValue;
                }
-               const size_t iFeature = static_cast<size_t>(indexFeatureInterop);
+               const size_t iFeature = static_cast<size_t>(indexFeature);
 
                if(cFeatures <= iFeature) {
-                  LOG_0(TraceLevelError, "ERROR BoosterCore::Create aFeatureGroupsFeatureIndexes value must be less than the number of features");
+                  LOG_0(TraceLevelError, "ERROR BoosterCore::Create aiTermFeatures value must be less than the number of features");
                   return Error_IllegalParamValue;
                }
 
@@ -380,7 +380,7 @@ ErrorEbmType BoosterCore::Create(
                EBM_ASSERT(nullptr != pBoosterCore->m_aFeatures);
 
                Feature * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
-               pFeatureGroupEntry->m_pFeature = pInputFeature;
+               pTermEntry->m_pFeature = pInputFeature;
 
                const size_t cBins = pInputFeature->GetCountBins();
                if(LIKELY(size_t { 1 } < cBins)) {
@@ -398,9 +398,9 @@ ErrorEbmType BoosterCore::Create(
                   LOG_0(TraceLevelInfo, "INFO BoosterCore::Create feature group with no useful features");
                }
 
-               ++pFeatureGroupFeatureIndexes;
-               ++pFeatureGroupEntry;
-            } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+               ++piTermFeature;
+               ++pTermEntry;
+            } while(pTermEntriesEnd != pTermEntry);
 
             if(LIKELY(0 != cSignificantDimensions)) {
                EBM_ASSERT(1 < cTensorBins);
@@ -426,22 +426,22 @@ ErrorEbmType BoosterCore::Create(
                cItemsPerBitPack = static_cast<ptrdiff_t>(GetCountItemsBitPacked(cBitsRequiredMin));
             }
          }
-         pFeatureGroup->SetCountTensorBins(cTensorBins);
-         pFeatureGroup->SetCountSignificantFeatures(cSignificantDimensions);
-         pFeatureGroup->SetBitPack(cItemsPerBitPack);
+         pTerm->SetCountTensorBins(cTensorBins);
+         pTerm->SetCountSignificantFeatures(cSignificantDimensions);
+         pTerm->SetBitPack(cItemsPerBitPack);
 
-         ++iFeatureGroup;
-      } while(iFeatureGroup < cFeatureGroups);
+         ++iTerm;
+      } while(iTerm < cTerms);
 
       if(!bClassification || ptrdiff_t { 2 } <= runtimeLearningTypeOrCountTargetClasses) {
-         error = InitializeCompressibleTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apCurrentModel);
+         error = InitializeCompressibleTensors(cTerms, pBoosterCore->m_apTerms, cVectorLength, &pBoosterCore->m_apCurrentTermTensors);
          if(Error_None != error) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentModel");
+            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
             return error;
          }
-         error = InitializeCompressibleTensors(cFeatureGroups, pBoosterCore->m_apFeatureGroups, cVectorLength, &pBoosterCore->m_apBestModel);
+         error = InitializeCompressibleTensors(cTerms, pBoosterCore->m_apTerms, cVectorLength, &pBoosterCore->m_apBestTermTensors);
          if(Error_None != error) {
-            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apBestModel");
+            LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apBestTermTensors");
             return error;
          }
       }
@@ -461,8 +461,8 @@ ErrorEbmType BoosterCore::Create(
       aBag,
       aInitScores,
       cTrainingSamples,
-      cFeatureGroups,
-      pBoosterCore->m_apFeatureGroups
+      cTerms,
+      pBoosterCore->m_apTerms
    );
    if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create m_trainingSet.Initialize");
@@ -480,8 +480,8 @@ ErrorEbmType BoosterCore::Create(
       aBag,
       aInitScores,
       cValidationSamples,
-      cFeatureGroups,
-      pBoosterCore->m_apFeatureGroups
+      cTerms,
+      pBoosterCore->m_apTerms
    );
    if(Error_None != error) {
       LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create m_validationSet.Initialize");

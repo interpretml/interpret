@@ -226,7 +226,7 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
 TEST_CASE("test random number generator equivalency") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureGroups({ { 0 } });
+   test.AddTerms({ { 0 } });
 
    std::vector<TestSample> samples;
    for(int i = 0; i < 1000; ++i) {
@@ -239,8 +239,8 @@ TEST_CASE("test random number generator equivalency") {
    test.InitializeBoosting(2);
 
    for(int iEpoch = 0; iEpoch < 100; ++iEpoch) {
-      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
-         test.Boost(iFeatureGroup);
+      for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
+         test.Boost(iTerm);
       }
    }
 

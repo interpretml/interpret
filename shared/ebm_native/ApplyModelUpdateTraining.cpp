@@ -14,7 +14,7 @@
 
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp"
-// FeatureGroup.h depends on FeatureInternal.h
+// FeatureGroup.hpp depends on FeatureInternal.h
 #include "FeatureGroup.hpp"
 // dataset depends on features
 #include "DataSetBoosting.hpp"
@@ -57,7 +57,7 @@ public:
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
       FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
@@ -133,7 +133,7 @@ public:
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
       FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
@@ -169,7 +169,7 @@ public:
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
       // no hessian for regression
@@ -238,7 +238,7 @@ public:
 
    static void Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
@@ -260,9 +260,9 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
 
-      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pFeatureGroup->GetBitPack());
+      const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetBitPack());
       EBM_ASSERT(1 <= cItemsPerBitPack);
       EBM_ASSERT(cItemsPerBitPack <= k_cBitsForStorageType);
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPack);
@@ -270,11 +270,11 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
       FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
+      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pTerm);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
 
@@ -371,15 +371,15 @@ public:
 
    static void Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
+      const size_t runtimeBitPack = pTerm->GetBitPack();
       DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -389,11 +389,11 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
       FloatFast * pGradientAndHessian = pTrainingSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
+      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pTerm);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatFast * pSampleScore = pTrainingSet->GetSampleScores();
 
@@ -455,15 +455,15 @@ public:
 
    static void Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
+      const size_t runtimeBitPack = pTerm->GetBitPack();
       DataSetBoosting * const pTrainingSet = pBoosterCore->GetTrainingSet();
 
       const size_t cSamples = pTrainingSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -473,12 +473,12 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
       EBM_ASSERT(nullptr != aUpdateScores);
 
       // No hessians for regression
       FloatFast * pGradient = pTrainingSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
+      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pTerm);
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pGradientTrueEnd = pGradient + cSamples;
@@ -530,7 +530,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
@@ -543,14 +543,14 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          ApplyTermUpdateTrainingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       } else {
          ApplyTermUpdateTrainingNormalTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       }
    }
@@ -564,7 +564,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
@@ -573,7 +573,7 @@ public:
 
       ApplyTermUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
-         pFeatureGroup
+         pTerm
       );
    }
 };
@@ -586,9 +586,9 @@ public:
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
-      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
+      const size_t runtimeBitPack = pTerm->GetBitPack();
 
       EBM_ASSERT(1 <= runtimeBitPack);
       EBM_ASSERT(runtimeBitPack <= k_cBitsForStorageType);
@@ -596,7 +596,7 @@ public:
       if(compilerBitPack == runtimeBitPack) {
          ApplyTermUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       } else {
          ApplyTermUpdateTrainingSIMDPacking<
@@ -604,7 +604,7 @@ public:
             GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       }
    }
@@ -618,13 +618,13 @@ public:
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
-      EBM_ASSERT(1 <= pFeatureGroup->GetBitPack());
-      EBM_ASSERT(pFeatureGroup->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
+      EBM_ASSERT(1 <= pTerm->GetBitPack());
+      EBM_ASSERT(pTerm->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
       ApplyTermUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
-         pFeatureGroup
+         pTerm
       );
    }
 };
@@ -637,7 +637,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
@@ -653,14 +653,14 @@ public:
             k_cItemsPerBitPackMax
          >::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       } else {
          ApplyTermUpdateTrainingSIMDTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       }
    }
@@ -674,7 +674,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
@@ -683,21 +683,21 @@ public:
 
       ApplyTermUpdateTrainingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackMax>::Func(
          pBoosterShell,
-         pFeatureGroup
+         pTerm
       );
    }
 };
 
 extern void ApplyTermUpdateTraining(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup
+   const Term * const pTerm
 ) {
    LOG_0(TraceLevelVerbose, "Entered ApplyTermUpdateTraining");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
-   if(0 == pFeatureGroup->GetCountSignificantDimensions()) {
+   if(0 == pTerm->GetCountSignificantDimensions()) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          ApplyTermUpdateTrainingZeroFeaturesTarget<2>::Func(pBoosterShell);
       } else {
@@ -719,12 +719,12 @@ extern void ApplyTermUpdateTraining(
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-            ApplyTermUpdateTrainingSIMDTarget<2>::Func(pBoosterShell, pFeatureGroup);
+            ApplyTermUpdateTrainingSIMDTarget<2>::Func(pBoosterShell, pTerm);
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             ApplyTermUpdateTrainingSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pBoosterShell,
-               pFeatureGroup
+               pTerm
             );
          }
       } else {
@@ -735,12 +735,12 @@ extern void ApplyTermUpdateTraining(
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-            ApplyTermUpdateTrainingNormalTarget<2>::Func(pBoosterShell, pFeatureGroup);
+            ApplyTermUpdateTrainingNormalTarget<2>::Func(pBoosterShell, pTerm);
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             ApplyTermUpdateTrainingInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pBoosterShell,
-               pFeatureGroup
+               pTerm
             );
          }
       }

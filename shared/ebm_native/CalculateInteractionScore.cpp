@@ -30,11 +30,11 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinInteraction(InteractionShell * const pInteractionShell, const FeatureGroup * const pFeatureGroup);
+extern void BinInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm);
 
 extern void TensorTotalsBuild(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    HistogramBucketBase * pBucketAuxiliaryBuildZone,
    HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -45,7 +45,7 @@ extern void TensorTotalsBuild(
 
 extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
@@ -59,7 +59,7 @@ extern double PartitionTwoDimensionalInteraction(
 static ErrorEbmType CalcInteractionStrengthInternal(
    InteractionShell * const pInteractionShell,
    InteractionCore * const pInteractionCore,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
    double * const pInteractionStrengthAvgOut
@@ -74,16 +74,16 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    LOG_0(TraceLevelVerbose, "Entered CalcInteractionStrengthInternal");
 
    // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
-   EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions());
+   EBM_ASSERT(1 <= pTerm->GetCountDimensions());
+   EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
+   EBM_ASSERT(pTerm->GetCountDimensions() == pTerm->GetCountSignificantDimensions());
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
-   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
+   const TermEntry * pTermEntry = pTerm->GetTermEntries();
+   const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
    do {
-      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
       // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // our tensor code strips out features with 1 bin, and we'd need to do that here too if cBins was 1
       EBM_ASSERT(size_t { 2 } <= cBins);
@@ -106,8 +106,8 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
       EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
 
-      ++pFeatureGroupEntry;
-   } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+      ++pTermEntry;
+   } while(pTermEntriesEnd != pTermEntry);
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
@@ -140,7 +140,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    pInteractionShell->SetHistogramBucketsEndDebugFast(aHistogramBucketsEndDebugFast);
 #endif // NDEBUG
 
-   BinInteraction(pInteractionShell, pFeatureGroup);
+   BinInteraction(pInteractionShell, pTerm);
 
    const size_t cAuxillaryBucketsForSplitting = 4;
    const size_t cAuxillaryBuckets =
@@ -194,7 +194,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 
    TensorTotalsBuild(
       runtimeLearningTypeOrCountTargetClasses,
-      pFeatureGroup,
+      pTerm,
       pAuxiliaryBucketZone,
       aHistogramBucketsBig
 #ifndef NDEBUG
@@ -203,12 +203,12 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 #endif // NDEBUG
    );
 
-   if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
+   if(2 == pTerm->GetCountSignificantDimensions()) {
       LOG_0(TraceLevelVerbose, "CalcInteractionStrengthInternal Starting bin sweep loop");
 
       double bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
-         pFeatureGroup,
+         pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
@@ -253,7 +253,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal 2 != pFeatureGroup->GetCountSignificantDimensions()");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal 2 != pTerm->GetCountSignificantDimensions()");
 
       // TODO: handle this better
       if(nullptr != pInteractionStrengthAvgOut) {
@@ -360,26 +360,26 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    }
    size_t cDimensions = static_cast<size_t>(countDimensions);
 
-   FeatureGroup featureGroup;
-   FeatureGroupEntry * pFeatureGroupEntry = featureGroup.GetFeatureGroupEntries();
+   Term term;
+   TermEntry * pTermEntry = term.GetTermEntries();
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
    const Feature * const aFeatures = pInteractionCore->GetFeatures();
-   const IntEbmType * pFeatureIndexes = featureIndexes;
-   const IntEbmType * const pFeatureIndexesEnd = featureIndexes + cDimensions;
+   const IntEbmType * piFeature = featureIndexes;
+   const IntEbmType * const piFeaturesEnd = featureIndexes + cDimensions;
    size_t cTensorBins = 1;
    do {
       // TODO: merge this loop with the one below inside the internal function
 
-      const IntEbmType indexFeatureInterop = *pFeatureIndexes;
-      if(indexFeatureInterop < IntEbmType { 0 }) {
+      const IntEbmType indexFeature = *piFeature;
+      if(indexFeature < IntEbmType { 0 }) {
          LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes value cannot be negative");
          return Error_IllegalParamValue;
       }
-      if(static_cast<IntEbmType>(pInteractionCore->GetCountFeatures()) <= indexFeatureInterop) {
+      if(static_cast<IntEbmType>(pInteractionCore->GetCountFeatures()) <= indexFeature) {
          LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes value must be less than the number of features");
          return Error_IllegalParamValue;
       }
-      const size_t iFeature = static_cast<size_t>(indexFeatureInterop);
+      const size_t iFeature = static_cast<size_t>(indexFeature);
       const Feature * const pFeature = &aFeatures[iFeature];
       const size_t cBins = pFeature->GetCountBins();
       if(cBins <= size_t { 1 }) {
@@ -395,14 +395,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
       }
       cTensorBins *= cBins;
 
-      pFeatureGroupEntry->m_pFeature = pFeature;
-      ++pFeatureGroupEntry;
+      pTermEntry->m_pFeature = pFeature;
+      ++pTermEntry;
 
-      ++pFeatureIndexes;
-   } while(pFeatureIndexesEnd != pFeatureIndexes);
-   featureGroup.Initialize(cDimensions, 0);
-   featureGroup.SetCountTensorBins(cTensorBins);
-   featureGroup.SetCountSignificantFeatures(cDimensions); // if we get past the loop below this will be true
+      ++piFeature;
+   } while(piFeaturesEnd != piFeature);
+   term.Initialize(cDimensions, 0);
+   term.SetCountTensorBins(cTensorBins);
+   term.SetCountSignificantFeatures(cDimensions); // if we get past the loop below this will be true
 
    if(size_t { 0 } == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
@@ -427,7 +427,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    error = CalcInteractionStrengthInternal(
       pInteractionShell,
       pInteractionCore,
-      &featureGroup,
+      &term,
       options,
       cSamplesRequiredForChildSplitMin,
       avgInteractionStrengthOut

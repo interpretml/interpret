@@ -24,9 +24,9 @@ struct CrossEntropyMulticlassMultitaskLoss : public MulticlassMultitaskLoss {
    // co-locating them in memory is advantageous.  In C++ we can stack them as an array of 3 + 4 = 7 scores together
    // within each cell of the tensors.  Our public interface should probably separate these into separate tensors
    // when we transition our C layer interface boundary.  In the higher level interface, these would be accessed as:
-   // score[index_target][index_feature_group][dimension1, dimension2, dimension3, ... , index_class]
+   // score[index_target][index_term][dimension1, dimension2, dimension3, ... , index_class]
    // whereas in C++ we'd store them as:
-   // score[index_feature_group][dimension1, dimension2, dimension3, ... , index_target;index_class]
+   // score[index_term][dimension1, dimension2, dimension3, ... , index_target;index_class]
    //
    // To do this properly, we'd need to accept from the caller a count of targets, and then have an array with the
    // count of classes for each target.  We can mirror that information here by using the special template overrides 

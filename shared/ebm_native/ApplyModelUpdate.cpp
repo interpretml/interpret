@@ -13,7 +13,7 @@
 
 #include "ebm_internal.hpp"
 
-// FeatureGroup.h depends on FeatureInternal.h
+// FeatureGroup.hpp depends on FeatureInternal.h
 #include "FeatureGroup.hpp"
 
 #include "BoosterCore.hpp"
@@ -26,12 +26,12 @@ namespace DEFINED_ZONE_NAME {
 
 extern void ApplyTermUpdateTraining(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup
+   const Term * const pTerm
 );
 
 extern double ApplyTermUpdateValidation(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup
+   const Term * const pTerm
 );
 
 static ErrorEbmType ApplyTermUpdateInternal(
@@ -43,10 +43,10 @@ static ErrorEbmType ApplyTermUpdateInternal(
    ErrorEbmType error;
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
+   const size_t iTerm = pBoosterShell->GetTermIndex();
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-   error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
+   error = pBoosterShell->GetTermUpdate()->Expand(pTerm);
    if(Error_None != error) {
       if(nullptr != pValidationMetricReturn) {
          *pValidationMetricReturn = double { 0 };
@@ -54,19 +54,19 @@ static ErrorEbmType ApplyTermUpdateInternal(
       return error;
    }
 
-   // m_apCurrentModel can be null if there are no featureGroups (but we have an feature group index), 
+   // m_apCurrentTermTensors can be null if there are no terms (but we have an feature group index), 
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
-   // m_apCurrentModel can be null if there are no featureGroups (but we have an feature group index), 
+   // m_apCurrentTermTensors can be null if there are no terms (but we have an feature group index), 
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
-   const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+   const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
 
    // our caller can give us one of these bad types of inputs:
    //  1) NaN values
    //  2) +-infinity
-   //  3) numbers that are fine, but when added to our existing model overflow to +-infinity
+   //  3) numbers that are fine, but when added to our existing term scores overflow to +-infinity
    // Our caller should really just not pass us the first two, but it's hard for our caller to protect against giving us values that won't overflow
    // so we should have some reasonable way to handle them.  If we were meant to overflow, logits or regression values at the maximum/minimum values
    // of doubles should be so close to infinity that it won't matter, and then you can at least graph them without overflowing to special values
@@ -74,12 +74,12 @@ static ErrorEbmType ApplyTermUpdateInternal(
    // an overflow to +-infinity.  We just ignore those overflows, because checking for them would add branches that we don't want, and we can just
    // propagate +-infinity and NaN values to the point where we get a metric and that should cause our client to stop boosting when our metric
    // overlfows and gets converted to the maximum value which will mean the metric won't be changing or improving after that.
-   // This is an acceptable compromise.  We protect our models since the user might want to extract them AFTER we overlfow our measurment metric
-   // so we don't want to overflow the values to NaN or +-infinity there, and it's very cheap for us to check for overflows when applying the model
-   pBoosterCore->GetCurrentModel()[iFeatureGroup]->AddExpandedWithBadValueProtection(aUpdateScores);
+   // This is an acceptable compromise.  We protect our term scores since the user might want to extract them AFTER we overlfow our measurment metric
+   // so we don't want to overflow the values to NaN or +-infinity there, and it's very cheap for us to check for overflows when applying the term score updates
+   pBoosterCore->GetCurrentModel()[iTerm]->AddExpandedWithBadValueProtection(aUpdateScores);
 
    if(0 != pBoosterCore->GetTrainingSet()->GetCountSamples()) {
-      ApplyTermUpdateTraining(pBoosterShell, pFeatureGroup);
+      ApplyTermUpdateTraining(pBoosterShell, pTerm);
    }
 
    double modelMetric = 0.0;
@@ -90,12 +90,12 @@ static ErrorEbmType ApplyTermUpdateInternal(
       // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
       // us with zero count validation sets
 
-      // if the count of training samples is zero, don't update the best model (it will stay as all zeros), and we don't need to update our 
+      // if the count of training samples is zero, don't update the best term scores (it will stay as all zeros), and we don't need to update our 
       // non-existant training set either C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, 
       // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      modelMetric = ApplyTermUpdateValidation(pBoosterShell, pFeatureGroup);
+      modelMetric = ApplyTermUpdateValidation(pBoosterShell, pTerm);
 
       EBM_ASSERT(!std::isnan(modelMetric)); // NaNs can happen, but we should have converted them
       EBM_ASSERT(!std::isinf(modelMetric)); // +infinity can happen, but we should have converted it
@@ -110,10 +110,10 @@ static ErrorEbmType ApplyTermUpdateInternal(
 
          // TODO : in the future don't copy over all CompressibleTensors.  We only need to copy the ones that changed, which we can detect if we 
          // use a linked list and array lookup for the same data structure
-         size_t iModel = 0;
-         size_t iModelEnd = pBoosterCore->GetCountFeatureGroups();
+         size_t iTermCopy = 0;
+         size_t iTermCopyEnd = pBoosterCore->GetCountTerms();
          do {
-            error = pBoosterCore->GetBestModel()[iModel]->Copy(*pBoosterCore->GetCurrentModel()[iModel]);
+            error = pBoosterCore->GetBestModel()[iTermCopy]->Copy(*pBoosterCore->GetCurrentModel()[iTermCopy]);
             if(Error_None != error) {
                if(nullptr != pValidationMetricReturn) {
                   *pValidationMetricReturn = double { 0 };
@@ -121,8 +121,8 @@ static ErrorEbmType ApplyTermUpdateInternal(
                LOG_0(TraceLevelVerbose, "Exited ApplyTermUpdateInternal with memory allocation error in copy");
                return error;
             }
-            ++iModel;
-         } while(iModel != iModelEnd);
+            ++iTermCopy;
+         } while(iTermCopy != iTermCopyEnd);
       }
    }
    if(nullptr != pValidationMetricReturn) {
@@ -167,36 +167,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyTe
       return Error_IllegalParamValue;
    }
 
-   const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
-   if(BoosterShell::k_illegalFeatureGroupIndex == iFeatureGroup) {
+   const size_t iTerm = pBoosterShell->GetTermIndex();
+   if(BoosterShell::k_illegalTermIndex == iTerm) {
       if(LIKELY(nullptr != validationMetricOut)) {
          *validationMetricOut = 0.0;
       }
-      LOG_0(TraceLevelError, "ERROR ApplyTermUpdate bad internal state.  No FeatureGroupIndex set");
+      LOG_0(TraceLevelError, "ERROR ApplyTermUpdate bad internal state.  No Term index set");
       return Error_IllegalParamValue;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
-   EBM_ASSERT(iFeatureGroup < pBoosterCore->GetCountFeatureGroups());
-   EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
+   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
    LOG_COUNTED_0(
-      pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterApplyTermUpdateMessages(),
+      pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogEnterApplyTermUpdateMessages(),
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered ApplyTermUpdate"
    );
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
-      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
+      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The term scores are a tensor with zero 
       // length array logits, which means for our representation that we have zero items in the array total.
       // since we can predit the output with 100% accuracy, our log loss is 0.
       if(nullptr != validationMetricOut) {
          *validationMetricOut = 0.0;
       }
-      pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
+      pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       LOG_COUNTED_0(
-         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyTermUpdateMessages(),
+         pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
          "Exited ApplyTermUpdate. runtimeLearningTypeOrCountTargetClasses <= 1"
@@ -209,7 +209,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyTe
       validationMetricOut
    );
 
-   pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
+   pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
 
    if(Error_None != error) {
       LOG_N(TraceLevelWarning, "WARNING ApplyTermUpdate: return=%" ErrorEbmTypePrintf, error);
@@ -221,7 +221,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyTe
       // both log loss and RMSE need to be above zero.  We previously zero any values below zero, which can happen due to floating point instability.
       EBM_ASSERT(0.0 <= *validationMetricOut);
       LOG_COUNTED_N(
-         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyTermUpdateMessages(),
+         pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
          "Exited ApplyTermUpdate: "
@@ -231,7 +231,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyTe
       );
    } else {
       LOG_COUNTED_0(
-         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyTermUpdateMessages(),
+         pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitApplyTermUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
          "Exited ApplyTermUpdate"
@@ -280,31 +280,31 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTerm
       return Error_IllegalParamValue;
    }
 
-   const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
-   if(BoosterShell::k_illegalFeatureGroupIndex == iFeatureGroup) {
+   const size_t iTerm = pBoosterShell->GetTermIndex();
+   if(BoosterShell::k_illegalTermIndex == iTerm) {
       *countSplitsInOut = IntEbmType { 0 };
-      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits bad internal state.  No FeatureGroupIndex set");
+      LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits bad internal state.  No Term index set");
       return Error_IllegalParamValue;
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
-   EBM_ASSERT(iFeatureGroup < pBoosterCore->GetCountFeatureGroups());
-   EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
+   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    if(indexDimension < 0) {
       *countSplitsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits indexDimension must be positive");
       return Error_IllegalParamValue;
    }
-   if(static_cast<IntEbmType>(pFeatureGroup->GetCountDimensions()) <= indexDimension) {
+   if(static_cast<IntEbmType>(pTerm->GetCountDimensions()) <= indexDimension) {
       *countSplitsInOut = IntEbmType { 0 };
       LOG_0(TraceLevelError, "ERROR GetTermUpdateSplits indexDimension above the number of dimensions that we have");
       return Error_IllegalParamValue;
    }
    const size_t iDimension = static_cast<size_t>(indexDimension);
 
-   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
+   const size_t cBins = pTerm->GetTermEntries()[iDimension].m_pFeature->GetCountBins();
    // cBins started from IntEbmType, so we should be able to convert back safely
    if(*countSplitsInOut != static_cast<IntEbmType>(cBins - size_t { 1 })) {
       *countSplitsInOut = IntEbmType { 0 };
@@ -312,7 +312,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTerm
       return Error_IllegalParamValue;
    }
 
-   const size_t cSplits = pBoosterShell->GetAccumulatedModelUpdate()->GetCountSplits(iDimension);
+   const size_t cSplits = pBoosterShell->GetTermUpdate()->GetCountSplits(iDimension);
    EBM_ASSERT(cSplits < cBins);
    if(0 != cSplits) {
       if(nullptr == splitIndexesOut) {
@@ -321,7 +321,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTerm
          return Error_IllegalParamValue;
       }
 
-      const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetAccumulatedModelUpdate()->GetSplitPointer(iDimension);
+      const ActiveDataType * pSplitIndexesFrom = pBoosterShell->GetTermUpdate()->GetSplitPointer(iDimension);
       IntEbmType * pSplitIndexesTo = splitIndexesOut;
       IntEbmType * pSplitIndexesToEnd = splitIndexesOut + cSplits;
       do {
@@ -371,40 +371,40 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTerm
       return Error_IllegalParamValue;
    }
 
-   const size_t iFeatureGroup = pBoosterShell->GetFeatureGroupIndex();
-   if(BoosterShell::k_illegalFeatureGroupIndex == iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetTermUpdateExpanded bad internal state.  No FeatureGroupIndex set");
+   const size_t iTerm = pBoosterShell->GetTermIndex();
+   if(BoosterShell::k_illegalTermIndex == iTerm) {
+      LOG_0(TraceLevelError, "ERROR GetTermUpdateExpanded bad internal state.  No Term index set");
       return Error_IllegalParamValue; // technically we're in an illegal state, but why split hairs
    }
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
-   EBM_ASSERT(iFeatureGroup < pBoosterCore->GetCountFeatureGroups());
-   EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
+   EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
       return Error_None;
    }
 
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   error = pBoosterShell->GetTermUpdate()->Expand(pTerm);
    if(Error_None != error) {
       return error;
    }
 
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   const size_t cDimensions = pTerm->GetCountDimensions();
    size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cScores, cBins));
          cScores *= cBins;
-         ++pFeatureGroupEntry;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         ++pTermEntry;
+      } while(pTermEntriesEnd != pTermEntry);
    }
-   const FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+   const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
    EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensorOut), cScores));
    EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cScores));
@@ -450,53 +450,53 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetTerm
    EBM_ASSERT(nullptr != pBoosterCore);
 
    if(indexTerm < 0) {
-      pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
+      pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexTerm must be positive");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(indexTerm)) {
-      pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
+      pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   const size_t iFeatureGroup = static_cast<size_t>(indexTerm);
-   if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
+   const size_t iTerm = static_cast<size_t>(indexTerm);
+   if(pBoosterCore->GetCountTerms() <= iTerm) {
+      pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       LOG_0(TraceLevelError, "ERROR SetTermUpdateExpanded indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
-   // pBoosterCore->GetFeatureGroups() can be null if 0 == pBoosterCore->m_cFeatureGroups, but we checked that condition above
-   EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
+   // pBoosterCore->GetTerms() can be null if 0 == pBoosterCore->m_cTerms, but we checked that condition above
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
-      pBoosterShell->SetFeatureGroupIndex(iFeatureGroup);
+      pBoosterShell->SetTermIndex(iTerm);
       return Error_None;
    }
 
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   error = pBoosterShell->GetAccumulatedModelUpdate()->Expand(pFeatureGroup);
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   error = pBoosterShell->GetTermUpdate()->Expand(pTerm);
    if(Error_None != error) {
       // already logged
-      pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
+      pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
       return error;
    }
 
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   const size_t cDimensions = pTerm->GetCountDimensions();
    const size_t cVectorLength = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    size_t cScores = cVectorLength;
    if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
          EBM_ASSERT(!IsMultiplyError(cScores, cBins));
          cScores *= cBins;
-         ++pFeatureGroupEntry;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         ++pTermEntry;
+      } while(pTermEntriesEnd != pTermEntry);
    }
-   FloatFast * const aUpdateScores = pBoosterShell->GetAccumulatedModelUpdate()->GetScoresPointer();
+   FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cScores));
    EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensor), cScores));
    static_assert(sizeof(*updateScoresTensor) == sizeof(*aUpdateScores), "float mismatch");
@@ -519,7 +519,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetTerm
 
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-   pBoosterShell->SetFeatureGroupIndex(iFeatureGroup);
+   pBoosterShell->SetTermIndex(iTerm);
 
    return Error_None;
 }

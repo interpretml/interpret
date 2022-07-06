@@ -389,6 +389,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Crea
    const double * optionalTempParams,
    BoosterHandle * boosterHandleOut
 );
+// TODO: we might need a function to set the booster's internal random seed so that a booster view 
+// can either use the same seed as the original booster, or diverge on some new random sequence path
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBoosterView(
    BoosterHandle boosterHandle,
    BoosterHandle * boosterHandleViewOut

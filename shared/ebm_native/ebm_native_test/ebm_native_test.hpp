@@ -298,7 +298,7 @@ class TestApi {
    enum class Stage {
       Beginning, 
       FeaturesAdded, 
-      FeatureGroupsAdded, 
+      TermsAdded, 
       TrainingAdded, 
       ValidationAdded, 
       InitializedBoosting, 
@@ -310,12 +310,12 @@ class TestApi {
    const ptrdiff_t m_learningTypeOrCountTargetClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<BoolEbmType> m_featuresNominal;
-   std::vector<IntEbmType> m_featuresBinCount;
+   std::vector<BoolEbmType> m_featureNominals;
+   std::vector<IntEbmType> m_featureBinCounts;
    std::vector<IntEbmType> m_dimensionCounts;
    std::vector<IntEbmType> m_featureIndexes;
 
-   std::vector<std::vector<size_t>> m_countBinsByFeatureGroup;
+   std::vector<std::vector<size_t>> m_termBinCounts;
 
    std::vector<double> m_trainingRegressionTargets;
    std::vector<IntEbmType> m_trainingClassificationTargets;
@@ -346,14 +346,14 @@ class TestApi {
    InteractionHandle m_interactionHandle;
 
    const double * GetTermScores(
-      const size_t iFeatureGroup,
-      const double * const pModelFeatureGroup,
+      const size_t iTerm,
+      const double * const aTermScores,
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures)
       const;
 
    double GetTermScore(
-      const size_t iFeatureGroup,
-      const double * const pModelFeatureGroup,
+      const size_t iTerm,
+      const double * const aTermScores,
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
       const size_t iTargetClassOrZero)
       const;
@@ -366,12 +366,12 @@ public:
    );
    ~TestApi();
 
-   inline size_t GetFeatureGroupsCount() const {
+   inline size_t GetCountTerms() const {
       return m_dimensionCounts.size();
    }
 
    void AddFeatures(const std::vector<FeatureTest> features);
-   void AddFeatureGroups(const std::vector<std::vector<size_t>> featureGroups);
+   void AddTerms(const std::vector<std::vector<size_t>> termFeatures);
    void AddTrainingSamples(const std::vector<TestSample> samples);
    void AddValidationSamples(const std::vector<TestSample> samples);
    void InitializeBoosting(const IntEbmType countInnerBags = k_countInnerBagsDefault);
@@ -385,27 +385,27 @@ public:
    );
 
    double GetBestTermScore(
-      const size_t iFeatureGroup, 
+      const size_t iTerm, 
       const std::vector<size_t> indexes, 
       const size_t iScore
    ) const;
    
-   void GetBestTermScoresRaw(const size_t iFeatureGroup, double * const aModelValues) const;
+   void GetBestTermScoresRaw(const size_t iTerm, double * const aTermScores) const;
 
    double GetCurrentTermScore(
-      const size_t iFeatureGroup,
+      const size_t iTerm,
       const std::vector<size_t> indexes,
       const size_t iScore
    ) const;
 
-   void GetCurrentTermScoresRaw(const size_t iFeatureGroup, double * const aModelValues) const;
+   void GetCurrentTermScoresRaw(const size_t iTerm, double * const aTermScores) const;
 
    void AddInteractionSamples(const std::vector<TestSample> samples);
 
    void InitializeInteraction();
 
    double TestCalcInteractionStrength(
-      const std::vector<IntEbmType> featuresInGroup, 
+      const std::vector<IntEbmType> features, 
       const InteractionOptionsType options = InteractionOptions_Default,
       const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault
    ) const;

@@ -31,10 +31,10 @@ class BoosterShell final {
    size_t m_handleVerification; // this needs to be at the top and make it pointer sized to keep best alignment
 
    BoosterCore * m_pBoosterCore;
-   size_t m_iFeatureGroup;
+   size_t m_iTerm;
 
-   CompressibleTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
-   CompressibleTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   CompressibleTensor * m_pTermUpdate;
+   CompressibleTensor * m_pInnerTermUpdate;
 
    RandomDeterministic m_randomDeterministic;
 
@@ -68,14 +68,14 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   constexpr static size_t k_illegalFeatureGroupIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
+   constexpr static size_t k_illegalTermIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
 
    INLINE_ALWAYS void InitializeUnfailing() {
       m_handleVerification = k_handleVerificationOk;
       m_pBoosterCore = nullptr;
-      m_iFeatureGroup = k_illegalFeatureGroupIndex;
-      m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
-      m_pSmallChangeToModelOverwriteSingleSamplingSet = nullptr;
+      m_iTerm = k_illegalTermIndex;
+      m_pTermUpdate = nullptr;
+      m_pInnerTermUpdate = nullptr;
       m_aThreadByteBuffer1Fast = nullptr;
       m_cThreadByteBufferCapacity1Fast = 0;
       m_aThreadByteBuffer1Big = nullptr;
@@ -124,20 +124,20 @@ public:
       m_pBoosterCore = pBoosterCore;
    }
 
-   INLINE_ALWAYS size_t GetFeatureGroupIndex() {
-      return m_iFeatureGroup;
+   INLINE_ALWAYS size_t GetTermIndex() {
+      return m_iTerm;
    }
 
-   INLINE_ALWAYS void SetFeatureGroupIndex(const size_t val) {
-      m_iFeatureGroup = val;
+   INLINE_ALWAYS void SetTermIndex(const size_t iTerm) {
+      m_iTerm = iTerm;
    }
 
-   INLINE_ALWAYS CompressibleTensor * GetAccumulatedModelUpdate() {
-      return m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   INLINE_ALWAYS CompressibleTensor * GetTermUpdate() {
+      return m_pTermUpdate;
    }
 
-   INLINE_ALWAYS CompressibleTensor * GetOverwritableModelUpdate() {
-      return m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   INLINE_ALWAYS CompressibleTensor * GetInnerTermUpdate() {
+      return m_pInnerTermUpdate;
    }
 
    INLINE_ALWAYS RandomDeterministic * GetRandomDeterministic() {

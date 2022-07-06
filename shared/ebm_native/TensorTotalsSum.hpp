@@ -29,23 +29,23 @@ namespace DEFINED_ZONE_NAME {
 template<bool bClassification>
 void TensorTotalsSumDebugSlow(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const HistogramBucket<FloatBig, bClassification> * const aHistogramBuckets,
    const size_t * const aiStart,
    const size_t * const aiLast,
    HistogramBucket<FloatBig, bClassification> * const pRet
 ) {
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions()); // why bother getting totals if we just have 1 bin
+   EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions()); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
 
    size_t iTensorBin = 0;
    size_t valueMultipleInitialize = 1;
    size_t iDimensionInitialize = 0;
 
-   const FeatureGroupEntry * pFeatureGroupEntryInit = pFeatureGroup->GetFeatureGroupEntries();
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntryInit + pFeatureGroup->GetCountDimensions();
+   const TermEntry * pTermEntryInit = pTerm->GetTermEntries();
+   const TermEntry * const pTermEntriesEnd = pTermEntryInit + pTerm->GetCountDimensions();
    do {
-      const size_t cBins = pFeatureGroupEntryInit->m_pFeature->GetCountBins();
+      const size_t cBins = pTermEntryInit->m_pFeature->GetCountBins();
       // cBins can only be 0 if there are zero training and zero validation samples
       // we don't boost or allow interaction updates if there are zero training samples
       EBM_ASSERT(size_t { 1 } <= cBins);
@@ -61,8 +61,8 @@ void TensorTotalsSumDebugSlow(
          aiDimensions[iDimensionInitialize] = aiStart[iDimensionInitialize];
          ++iDimensionInitialize;
       }
-      ++pFeatureGroupEntryInit;
-   } while(pFeatureGroupEntryEnd != pFeatureGroupEntryInit);
+      ++pTermEntryInit;
+   } while(pTermEntriesEnd != pTermEntryInit);
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    // we've allocated this, so it should fit
@@ -70,7 +70,7 @@ void TensorTotalsSumDebugSlow(
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
    pRet->Zero(cBytesPerHistogramBucket);
 
-   const size_t cSignficantDimensions = pFeatureGroup->GetCountSignificantDimensions();
+   const size_t cSignficantDimensions = pTerm->GetCountSignificantDimensions();
 
    while(true) {
       const auto * const pHistogramBucket =
@@ -80,7 +80,7 @@ void TensorTotalsSumDebugSlow(
 
       size_t iDimension = 0;
       size_t valueMultipleLoop = 1;
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+      const TermEntry * pTermEntry = pTerm->GetTermEntries();
       while(aiDimensions[iDimension] == aiLast[iDimension]) {
          EBM_ASSERT(aiStart[iDimension] <= aiLast[iDimension]);
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -89,11 +89,11 @@ void TensorTotalsSumDebugSlow(
 
          size_t cBins;
          do {
-            cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+            cBins = pTermEntry->m_pFeature->GetCountBins();
             // cBins can only be 0 if there are zero training and zero validation samples
             // we don't boost or allow interaction updates if there are zero training samples
             EBM_ASSERT(size_t { 1 } <= cBins);
-            ++pFeatureGroupEntry;
+            ++pTermEntry;
          } while(cBins <= size_t { 1 }); // skip anything with 1 bin
 
          EBM_ASSERT(!IsMultiplyError(valueMultipleLoop, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -113,7 +113,7 @@ void TensorTotalsSumDebugSlow(
 template<bool bClassification>
 void TensorTotalsCompareDebug(
    const HistogramBucket<FloatBig, bClassification> * const aHistogramBuckets,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const size_t * const aiPoint,
    const size_t directionVector,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -127,12 +127,12 @@ void TensorTotalsCompareDebug(
    size_t aiLast[k_cDimensionsMax];
    size_t directionVectorDestroy = directionVector;
 
-   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
+   const TermEntry * pTermEntry = pTerm->GetTermEntries();
+   const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
 
    size_t iDimensionDebug = 0;
    do {
-      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
       // cBins can only be 0 if there are zero training and zero validation samples
       // we don't boost or allow interaction updates if there are zero training samples
       EBM_ASSERT(size_t { 1 } <= cBins);
@@ -147,15 +147,15 @@ void TensorTotalsCompareDebug(
          directionVectorDestroy >>= 1;
          ++iDimensionDebug;
       }
-      ++pFeatureGroupEntry;
-   } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+      ++pTermEntry;
+   } while(pTermEntriesEnd != pTermEntry);
 
    auto * const pComparison2 = EbmMalloc<HistogramBucket<FloatBig, bClassification>>(1, cBytesPerHistogramBucket);
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
       TensorTotalsSumDebugSlow<bClassification>(
          runtimeLearningTypeOrCountTargetClasses,
-         pFeatureGroup,
+         pTerm,
          aHistogramBuckets,
          aiStart,
          aiLast,
@@ -172,7 +172,7 @@ void TensorTotalsCompareDebug(
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
 void TensorTotalsSum(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
    const size_t * const aiPoint,
    const size_t directionVector,
@@ -207,15 +207,15 @@ void TensorTotalsSum(
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
-   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[pFeatureGroup->GetCountDimensions()];
+   const TermEntry * pTermEntry = pTerm->GetTermEntries();
+   EBM_ASSERT(1 <= pTerm->GetCountDimensions());
+   const TermEntry * const pTermEntriesEnd = &pTermEntry[pTerm->GetCountDimensions()];
    const size_t * piPointInitialize = aiPoint;
 
    if(0 == directionVector) {
-      // we would require a check in our inner loop below to handle the case of zero FeatureGroupEntry items, so let's handle it separetly here instead
+      // we would require a check in our inner loop below to handle the case of zero TermEntry items, so let's handle it separetly here instead
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // cBins can only be 0 if there are zero training and zero validation samples
          // we don't boost or allow interaction updates if there are zero training samples
          EBM_ASSERT(size_t { 1 } <= cBins);
@@ -229,8 +229,8 @@ void TensorTotalsSum(
             multipleTotalInitialize *= cBins;
             ++piPointInitialize;
          }
-         ++pFeatureGroupEntry;
-      } while(LIKELY(pFeatureGroupEntryEnd != pFeatureGroupEntry));
+         ++pTermEntry;
+      } while(LIKELY(pTermEntriesEnd != pTermEntry));
       const auto * const pHistogramBucket = 
          GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, startingOffset);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
@@ -255,7 +255,7 @@ void TensorTotalsSum(
    {
       size_t directionVectorDestroy = directionVector;
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // cBins can only be 0 if there are zero training and zero validation samples
          // we don't boost or allow interaction updates if there are zero training samples
          EBM_ASSERT(size_t { 1 } <= cBins);
@@ -278,8 +278,8 @@ void TensorTotalsSum(
             ++piPointInitialize;
             directionVectorDestroy >>= 1;
          }
-         ++pFeatureGroupEntry;
-      } while(LIKELY(pFeatureGroupEntryEnd != pFeatureGroupEntry));
+         ++pTermEntry;
+      } while(LIKELY(pTermEntriesEnd != pTermEntry));
    }
    const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cAllBits < k_cBitsForSizeT);
@@ -325,7 +325,7 @@ void TensorTotalsSum(
    if(nullptr != aHistogramBucketsDebugCopy) {
       TensorTotalsCompareDebug<bClassification>(
          aHistogramBucketsDebugCopy,
-         pFeatureGroup,
+         pTerm,
          aiPoint,
          directionVector,
          runtimeLearningTypeOrCountTargetClasses,
