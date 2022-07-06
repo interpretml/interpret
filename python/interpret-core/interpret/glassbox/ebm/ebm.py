@@ -232,8 +232,8 @@ class BaseEBM(BaseEstimator):
             self.bin_budget_frac = bin_budget_frac
             self.privacy_schema = privacy_schema
 
-            if self.random_state is not None:
-                warn(f"Privacy violation: using a fixed random_state of {self.random_state} will cause deterministic noise additions."
+            if random_state is not None:
+                warn(f"Privacy violation: using a fixed random_state of {random_state} will cause deterministic noise additions."
                         "This capability is only for debugging/testing. Set random_state to None to remove this warning.")
 
     def fit(self, X, y, sample_weight=None):  # noqa: C901
@@ -316,6 +316,8 @@ class BaseEBM(BaseEstimator):
 
             bin_levels = [self.max_bins, self.max_interaction_bins]
 
+        init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
+
         binning_result = construct_bins(
             X=X,
             sample_weight=sample_weight,
@@ -329,7 +331,7 @@ class BaseEBM(BaseEstimator):
             delta=bin_delta, 
             composition=composition,
             privacy_schema=privacy_schema,
-            random_state=self.random_state,
+            random_state=init_seed,
         )
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
@@ -385,14 +387,12 @@ class BaseEBM(BaseEstimator):
             early_stopping_tolerance = self.early_stopping_tolerance
             interactions = self.interactions
 
-        init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
-
         native = Native.get_native_singleton()
         bagged_seed = init_seed
         bag_weights = []
         bags = []
         for _ in range(self.outer_bags):
-            bagged_seed = native.generate_deterministic_seed(bagged_seed, 1416147523)
+            bagged_seed = native.generate_deterministic_seed(bagged_seed, 886321150)
             bag = EBMUtils.make_bag(
                 y,
                 self.validation_size,
@@ -429,7 +429,7 @@ class BaseEBM(BaseEstimator):
         bagged_seed = init_seed
         parallel_args = []
         for idx in range(self.outer_bags):
-            bagged_seed = native.generate_deterministic_seed(bagged_seed, 1416147523)
+            bagged_seed = native.generate_deterministic_seed(bagged_seed, 13098686)
             parallel_args.append(
                 (
                     dataset,
@@ -568,7 +568,7 @@ class BaseEBM(BaseEstimator):
             bagged_seed = init_seed
             parallel_args = []
             for idx in range(self.outer_bags):
-                bagged_seed = native.generate_deterministic_seed(bagged_seed, 1416147523)
+                bagged_seed = native.generate_deterministic_seed(bagged_seed, 521040308)
                 parallel_args.append(
                     (
                         dataset,
