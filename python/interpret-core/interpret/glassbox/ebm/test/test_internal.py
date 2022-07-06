@@ -7,6 +7,8 @@ import numpy as np
 import ctypes as ct
 from contextlib import closing
 
+from scipy.stats import normaltest, shapiro
+
 import pytest
 
 
@@ -67,3 +69,22 @@ def test_suggest_graph_bound_no_cuts():
     (low_graph_bound, high_graph_bound) = native.suggest_graph_bounds(cuts, 24, 76)
     assert low_graph_bound == 24
     assert high_graph_bound == 76
+
+def test_gaussian_random_number_generator():
+    # Tests normality of the gaussian RNG with shapiro and D'Agostino/Pearson's tests. 
+    # Caution: can fail with extremely low probability. TODO: Harsha calculate this failure prob.
+
+    stddevs = [1, 2]
+    n_iter = 1000
+
+    native = Native.get_native_singleton()
+
+    for std in stddevs:
+        norm_results, shapiro_results = [], []
+        for i in range(n_iter):
+            rands = native.generate_gaussian_random(None, std, count=1000)
+            norm_results.append(normaltest(rands).pvalue > 0.05)
+            shapiro_results.append(shapiro(rands).pvalue > 0.05)
+
+        assert 0.9 < np.mean(norm_results) < 0.99
+        assert 0.9 < np.mean(shapiro_results) < 0.99
