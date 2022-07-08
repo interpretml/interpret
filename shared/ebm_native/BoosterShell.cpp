@@ -32,8 +32,8 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    LOG_0(TraceLevelInfo, "Entered BoosterShell::Free");
 
    if(nullptr != pBoosterShell) {
-      CompressibleTensor::Free(pBoosterShell->m_pTermUpdate);
-      CompressibleTensor::Free(pBoosterShell->m_pInnerTermUpdate);
+      Tensor::Free(pBoosterShell->m_pTermUpdate);
+      Tensor::Free(pBoosterShell->m_pInnerTermUpdate);
       free(pBoosterShell->m_aThreadByteBuffer1Fast);
       free(pBoosterShell->m_aThreadByteBuffer1Big);
       free(pBoosterShell->m_aThreadByteBuffer2);
@@ -75,12 +75,12 @@ ErrorEbmType BoosterShell::FillAllocations() {
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    const size_t cBytesPerItem = GetHistogramTargetEntrySize<FloatBig>(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       
-   m_pTermUpdate = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
+   m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cVectorLength);
    if(nullptr == m_pTermUpdate) {
       goto failed_allocation;
    }
 
-   m_pInnerTermUpdate = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
+   m_pInnerTermUpdate = Tensor::Allocate(k_cDimensionsMax, cVectorLength);
    if(nullptr == m_pInnerTermUpdate) {
       goto failed_allocation;
    }
@@ -428,7 +428,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
    //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
-   CompressibleTensor * const pBestTermTensor = pBoosterCore->GetBestModel()[iTerm];
+   Tensor * const pBestTermTensor = pBoosterCore->GetBestModel()[iTerm];
    EBM_ASSERT(nullptr != pBestTermTensor);
    EBM_ASSERT(pBestTermTensor->GetExpanded()); // the tensor should have been expanded at startup
    FloatFast * const aTermScores = pBestTermTensor->GetScoresPointer();
@@ -521,7 +521,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
    //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
 
-   CompressibleTensor * const pCurrentTermTensor = pBoosterCore->GetCurrentModel()[iTerm];
+   Tensor * const pCurrentTermTensor = pBoosterCore->GetCurrentModel()[iTerm];
    EBM_ASSERT(nullptr != pCurrentTermTensor);
    EBM_ASSERT(pCurrentTermTensor->GetExpanded()); // the tensor should have been expanded at startup
    FloatFast * const aTermScores = pCurrentTermTensor->GetScoresPointer();

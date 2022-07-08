@@ -538,7 +538,7 @@ public:
          cVectorLength * sizeof(*aSumHistogramTargetEntry)
       );
 
-      CompressibleTensor * const pInnerTermUpdate =
+      Tensor * const pInnerTermUpdate =
          pBoosterShell->GetInnerTermUpdate();
 
       size_t cLeaves;

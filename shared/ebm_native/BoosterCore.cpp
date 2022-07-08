@@ -70,69 +70,69 @@ INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
    return k_cBitsForStorageType / cBits;
 }
 
-void BoosterCore::DeleteCompressibleTensors(const size_t cTerms, CompressibleTensor ** const apCompressibleTensors) {
-   LOG_0(TraceLevelInfo, "Entered DeleteCompressibleTensors");
+void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) {
+   LOG_0(TraceLevelInfo, "Entered DeleteTensors");
 
-   if(UNLIKELY(nullptr != apCompressibleTensors)) {
+   if(UNLIKELY(nullptr != apTensors)) {
       EBM_ASSERT(0 < cTerms);
-      CompressibleTensor ** ppCompressibleTensors = apCompressibleTensors;
-      const CompressibleTensor * const * const ppCompressibleTensorsEnd = &apCompressibleTensors[cTerms];
+      Tensor ** ppTensor = apTensors;
+      const Tensor * const * const ppTensorsEnd = &apTensors[cTerms];
       do {
-         CompressibleTensor::Free(*ppCompressibleTensors);
-         ++ppCompressibleTensors;
-      } while(ppCompressibleTensorsEnd != ppCompressibleTensors);
-      free(apCompressibleTensors);
+         Tensor::Free(*ppTensor);
+         ++ppTensor;
+      } while(ppTensorsEnd != ppTensor);
+      free(apTensors);
    }
-   LOG_0(TraceLevelInfo, "Exited DeleteCompressibleTensors");
+   LOG_0(TraceLevelInfo, "Exited DeleteTensors");
 }
 
-ErrorEbmType BoosterCore::InitializeCompressibleTensors(
+ErrorEbmType BoosterCore::InitializeTensors(
    const size_t cTerms, 
    const Term * const * const apTerms, 
    const size_t cVectorLength,
-   CompressibleTensor *** papCompressibleTensorsOut)
+   Tensor *** papTensorsOut)
 {
-   LOG_0(TraceLevelInfo, "Entered InitializeCompressibleTensors");
+   LOG_0(TraceLevelInfo, "Entered InitializeTensors");
 
    EBM_ASSERT(0 < cTerms);
    EBM_ASSERT(nullptr != apTerms);
    EBM_ASSERT(1 <= cVectorLength);
-   EBM_ASSERT(nullptr != papCompressibleTensorsOut);
-   EBM_ASSERT(nullptr == *papCompressibleTensorsOut);
+   EBM_ASSERT(nullptr != papTensorsOut);
+   EBM_ASSERT(nullptr == *papTensorsOut);
 
    ErrorEbmType error;
 
-   CompressibleTensor ** const apCompressibleTensors = EbmMalloc<CompressibleTensor *>(cTerms);
-   if(UNLIKELY(nullptr == apCompressibleTensors)) {
-      LOG_0(TraceLevelWarning, "WARNING InitializeCompressibleTensors nullptr == apCompressibleTensors");
+   Tensor ** const apTensors = EbmMalloc<Tensor *>(cTerms);
+   if(UNLIKELY(nullptr == apTensors)) {
+      LOG_0(TraceLevelWarning, "WARNING InitializeTensors nullptr == apTensors");
       return Error_OutOfMemory;
    }
    for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
-      apCompressibleTensors[iTerm] = nullptr;
+      apTensors[iTerm] = nullptr;
    }
-   *papCompressibleTensorsOut = apCompressibleTensors; // transfer ownership for future deletion
+   *papTensorsOut = apTensors; // transfer ownership for future deletion
 
-   CompressibleTensor ** ppCompressibleTensors = apCompressibleTensors;
+   Tensor ** ppTensor = apTensors;
    for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
       const Term * const pTerm = apTerms[iTerm];
-      CompressibleTensor * const pCompressibleTensors = 
-         CompressibleTensor::Allocate(pTerm->GetCountDimensions(), cVectorLength);
-      if(UNLIKELY(nullptr == pCompressibleTensors)) {
-         LOG_0(TraceLevelWarning, "WARNING InitializeCompressibleTensors nullptr == pCompressibleTensors");
+      Tensor * const pTensors = 
+         Tensor::Allocate(pTerm->GetCountDimensions(), cVectorLength);
+      if(UNLIKELY(nullptr == pTensors)) {
+         LOG_0(TraceLevelWarning, "WARNING InitializeTensors nullptr == pTensors");
          return Error_OutOfMemory;
       }
-      *ppCompressibleTensors = pCompressibleTensors; // transfer ownership for future deletion
+      *ppTensor = pTensors; // transfer ownership for future deletion
 
-      error = pCompressibleTensors->Expand(pTerm);
+      error = pTensors->Expand(pTerm);
       if(Error_None != error) {
          // already logged
          return error;
       }
 
-      ++ppCompressibleTensors;
+      ++ppTensor;
    }
 
-   LOG_0(TraceLevelInfo, "Exited InitializeCompressibleTensors");
+   LOG_0(TraceLevelInfo, "Exited InitializeTensors");
    return Error_None;
 }
 
@@ -434,12 +434,12 @@ ErrorEbmType BoosterCore::Create(
       } while(iTerm < cTerms);
 
       if(!bClassification || ptrdiff_t { 2 } <= runtimeLearningTypeOrCountTargetClasses) {
-         error = InitializeCompressibleTensors(cTerms, pBoosterCore->m_apTerms, cVectorLength, &pBoosterCore->m_apCurrentTermTensors);
+         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cVectorLength, &pBoosterCore->m_apCurrentTermTensors);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
             return error;
          }
-         error = InitializeCompressibleTensors(cTerms, pBoosterCore->m_apTerms, cVectorLength, &pBoosterCore->m_apBestTermTensors);
+         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cVectorLength, &pBoosterCore->m_apBestTermTensors);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apBestTermTensors");
             return error;

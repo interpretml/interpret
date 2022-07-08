@@ -108,7 +108,7 @@ static ErrorEbmType ApplyTermUpdateInternal(
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
          pBoosterCore->SetBestModelMetric(modelMetric);
 
-         // TODO : in the future don't copy over all CompressibleTensors.  We only need to copy the ones that changed, which we can detect if we 
+         // TODO : in the future don't copy over all Tensors.  We only need to copy the ones that changed, which we can detect if we 
          // use a linked list and array lookup for the same data structure
          size_t iTermCopy = 0;
          size_t iTermCopyEnd = pBoosterCore->GetCountTerms();

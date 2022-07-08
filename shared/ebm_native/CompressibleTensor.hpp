@@ -26,7 +26,7 @@ namespace DEFINED_ZONE_NAME {
 // TODO: we need to radically change this data structure so that we can efficiently pass it between machines in a 
 // cluster AND within/between a GPU/CPU.  This stucture should be:
 //
-// IntEbmType m_cBytes; // our caller can fetch the memory size of this CompressibleTensor and memcpy it over the network
+// IntEbmType m_cBytes; // our caller can fetch the memory size of this Tensor and memcpy it over the network
 //// The first thing our caller should do is call into the C++ to fix the endian nature of this struct
 //// 0x3333333333333333 non-expanded, big endian
 //// 0x2222222222222222 non-expanded, little endian
@@ -88,7 +88,7 @@ namespace DEFINED_ZONE_NAME {
 //       non-compressed tensor is actually smaller when all dimensions have been expanded
 //     - once we've been expanded, we no longer need the split points since the split points are just incrementing integers
 
-class CompressibleTensor final {
+class Tensor final {
    struct DimensionInfoStack final {
       DimensionInfoStack() = default; // preserve our POD status
       ~DimensionInfoStack() = default; // preserve our POD status
@@ -172,15 +172,15 @@ class CompressibleTensor final {
 
 public:
 
-   CompressibleTensor() = default; // preserve our POD status
-   ~CompressibleTensor() = default; // preserve our POD status
+   Tensor() = default; // preserve our POD status
+   ~Tensor() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    // TODO: In the future we'll be splitting our work into small data owned by
    // a node in a distributed system.  After each node calculates it's term score update (represented by this
-   // CompressibleTensor class), we'll need to reduce them accross all nodes, before adding together all the
-   // CompressibleTensor classes and sending back a full update to the Nodes.  Since we'll be ferrying info
+   // Tensor class), we'll need to reduce them accross all nodes, before adding together all the
+   // Tensor classes and sending back a full update to the Nodes.  Since we'll be ferrying info
    // back and forth, we'll want to keep it in a more compressed format keeping split and not expanding
    // to a direct indexable tensor until after recieved by the nodes.  We'll NEED to keep the entire strucutre
    // as a single continuous chunk of memory.  At the very start will be our regular struct (containing the
@@ -190,19 +190,19 @@ public:
    // need to grow and then we can directly move each dimension pointed to object without needing to move the full
    // values array.
 
-   static void Free(CompressibleTensor * const pCompressibleTensor);
-   static CompressibleTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength);
+   static void Free(Tensor * const pTensor);
+   static Tensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength);
    void Reset();
    ErrorEbmType SetCountSplits(const size_t iDimension, const size_t cSplits);
    ErrorEbmType EnsureScoreCapacity(const size_t cScores);
-   ErrorEbmType Copy(const CompressibleTensor & rhs);
+   ErrorEbmType Copy(const Tensor & rhs);
    bool MultiplyAndCheckForIssues(const double v);
    ErrorEbmType Expand(const Term * const pTerm);
    void AddExpandedWithBadValueProtection(const FloatFast * const aFromValues);
-   ErrorEbmType Add(const CompressibleTensor & rhs);
+   ErrorEbmType Add(const Tensor & rhs);
 
 #ifndef NDEBUG
-   bool IsEqual(const CompressibleTensor & rhs) const;
+   bool IsEqual(const Tensor & rhs) const;
 #endif // NDEBUG
 
    INLINE_ALWAYS bool GetExpanded() {
@@ -228,11 +228,11 @@ public:
       return m_aScores;
    }
 };
-static_assert(std::is_standard_layout<CompressibleTensor>::value,
+static_assert(std::is_standard_layout<Tensor>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<CompressibleTensor>::value,
+static_assert(std::is_trivial<Tensor>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<CompressibleTensor>::value,
+static_assert(std::is_pod<Tensor>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 } // DEFINED_ZONE_NAME

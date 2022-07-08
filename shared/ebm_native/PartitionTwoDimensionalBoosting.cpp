@@ -200,7 +200,7 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseBig();
-      CompressibleTensor * const pInnerTermUpdate =
+      Tensor * const pInnerTermUpdate =
          pBoosterShell->GetInnerTermUpdate();
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();

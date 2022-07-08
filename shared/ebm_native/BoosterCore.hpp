@@ -55,8 +55,8 @@ class BoosterCore final {
    FloatBig m_validationWeightTotal;
    FloatFast * m_aValidationWeights;
 
-   CompressibleTensor ** m_apCurrentTermTensors;
-   CompressibleTensor ** m_apBestTermTensors;
+   Tensor ** m_apCurrentTermTensors;
+   Tensor ** m_apBestTermTensors;
 
    double m_bestModelMetric;
 
@@ -65,13 +65,13 @@ class BoosterCore final {
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
 
-   static void DeleteCompressibleTensors(const size_t cTerms, CompressibleTensor ** const apCompressibleTensors);
+   static void DeleteTensors(const size_t cTerms, Tensor ** const apTensors);
 
-   static ErrorEbmType InitializeCompressibleTensors(
+   static ErrorEbmType InitializeTensors(
       const size_t cTerms,
       const Term * const * const apTerms,
       const size_t cVectorLength,
-      CompressibleTensor *** papCompressibleTensorsOut
+      Tensor *** papTensorsOut
    );
 
    INLINE_ALWAYS ~BoosterCore() {
@@ -87,8 +87,8 @@ class BoosterCore final {
 
       free(m_aFeatures);
 
-      DeleteCompressibleTensors(m_cTerms, m_apCurrentTermTensors);
-      DeleteCompressibleTensors(m_cTerms, m_apBestTermTensors);
+      DeleteTensors(m_cTerms, m_apCurrentTermTensors);
+      DeleteTensors(m_cTerms, m_apBestTermTensors);
    };
 
    WARNING_PUSH
@@ -163,11 +163,11 @@ public:
       return m_aValidationWeights;
    }
 
-   INLINE_ALWAYS CompressibleTensor * const * GetCurrentModel() const {
+   INLINE_ALWAYS Tensor * const * GetCurrentModel() const {
       return m_apCurrentTermTensors;
    }
 
-   INLINE_ALWAYS CompressibleTensor * const * GetBestModel() const {
+   INLINE_ALWAYS Tensor * const * GetBestModel() const {
       return m_apBestTermTensors;
    }
 

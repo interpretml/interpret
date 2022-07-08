@@ -152,7 +152,7 @@ static ErrorEbmType BoostZeroDimensional(
    // TODO: we can exit here back to python to allow caller modification to our histograms
 
 
-   CompressibleTensor * const pInnerTermUpdate = 
+   Tensor * const pInnerTermUpdate = 
       pBoosterShell->GetInnerTermUpdate();
    FloatFast * aUpdateScores = pInnerTermUpdate->GetScoresPointer();
    if(bClassification) {

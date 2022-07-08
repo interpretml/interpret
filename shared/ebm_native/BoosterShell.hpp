@@ -33,8 +33,8 @@ class BoosterShell final {
    BoosterCore * m_pBoosterCore;
    size_t m_iTerm;
 
-   CompressibleTensor * m_pTermUpdate;
-   CompressibleTensor * m_pInnerTermUpdate;
+   Tensor * m_pTermUpdate;
+   Tensor * m_pInnerTermUpdate;
 
    RandomDeterministic m_randomDeterministic;
 
@@ -132,11 +132,11 @@ public:
       m_iTerm = iTerm;
    }
 
-   INLINE_ALWAYS CompressibleTensor * GetTermUpdate() {
+   INLINE_ALWAYS Tensor * GetTermUpdate() {
       return m_pTermUpdate;
    }
 
-   INLINE_ALWAYS CompressibleTensor * GetInnerTermUpdate() {
+   INLINE_ALWAYS Tensor * GetInnerTermUpdate() {
       return m_pInnerTermUpdate;
    }
 

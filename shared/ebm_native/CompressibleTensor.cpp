@@ -22,7 +22,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
+Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
    EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
    EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless
 
@@ -33,26 +33,26 @@ CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, c
    const size_t cScoreCapacity = k_initialScoreCapacity * cVectorLength;
 
    // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
-   const size_t cBytesCompressibleTensor = sizeof(CompressibleTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
-   CompressibleTensor * const pCompressibleTensor = EbmMalloc<CompressibleTensor>(1, cBytesCompressibleTensor);
-   if(UNLIKELY(nullptr == pCompressibleTensor)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pCompressibleTensor");
+   const size_t cBytesTensor = sizeof(Tensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
+   Tensor * const pTensor = EbmMalloc<Tensor>(1, cBytesTensor);
+   if(UNLIKELY(nullptr == pTensor)) {
+      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pTensor");
       return nullptr;
    }
 
-   pCompressibleTensor->m_cVectorLength = cVectorLength;
-   pCompressibleTensor->m_cDimensionsMax = cDimensionsMax;
-   pCompressibleTensor->m_cDimensions = cDimensionsMax;
-   pCompressibleTensor->m_cScoreCapacity = cScoreCapacity;
-   pCompressibleTensor->m_bExpanded = false;
+   pTensor->m_cVectorLength = cVectorLength;
+   pTensor->m_cDimensionsMax = cDimensionsMax;
+   pTensor->m_cDimensions = cDimensionsMax;
+   pTensor->m_cScoreCapacity = cScoreCapacity;
+   pTensor->m_bExpanded = false;
 
    FloatFast * const aScores = EbmMalloc<FloatFast>(cScoreCapacity);
    if(UNLIKELY(nullptr == aScores)) {
       LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aScores");
-      free(pCompressibleTensor); // don't need to call the full Free(*) yet
+      free(pTensor); // don't need to call the full Free(*) yet
       return nullptr;
    }
-   pCompressibleTensor->m_aScores = aScores;
+   pTensor->m_aScores = aScores;
    // we only need to set the base case to zero, not our entire initial allocation
    // we checked for cVectorLength * k_initialScoreCapacity * sizeof(FloatFast), and 1 <= k_initialScoreCapacity, 
    // so sizeof(FloatFast) * cVectorLength can't overflow
@@ -61,7 +61,7 @@ CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, c
    }
 
    if(0 != cDimensionsMax) {
-      DimensionInfo * pDimension = pCompressibleTensor->GetDimensions();
+      DimensionInfo * pDimension = pTensor->GetDimensions();
       size_t iDimension = 0;
       do {
          pDimension->m_cSplits = 0;
@@ -71,13 +71,13 @@ CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, c
          ++iDimension;
       } while(iDimension < cDimensionsMax);
 
-      pDimension = pCompressibleTensor->GetDimensions();
+      pDimension = pTensor->GetDimensions();
       iDimension = 0;
       do {
          ActiveDataType * const aSplits = EbmMalloc<ActiveDataType>(k_initialSplitCapacity);
          if(UNLIKELY(nullptr == aSplits)) {
             LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aSplits");
-            Free(pCompressibleTensor); // free everything!
+            Free(pTensor); // free everything!
             return nullptr;
          }
          pDimension->m_aSplits = aSplits;
@@ -85,25 +85,25 @@ CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, c
          ++iDimension;
       } while(iDimension < cDimensionsMax);
    }
-   return pCompressibleTensor;
+   return pTensor;
 }
 
-void CompressibleTensor::Free(CompressibleTensor * const pCompressibleTensor) {
-   if(LIKELY(nullptr != pCompressibleTensor)) {
-      free(pCompressibleTensor->m_aScores);
-      if(LIKELY(0 != pCompressibleTensor->m_cDimensionsMax)) {
-         const DimensionInfo * pDimensionInfo = pCompressibleTensor->GetDimensions();
-         const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pCompressibleTensor->m_cDimensionsMax];
+void Tensor::Free(Tensor * const pTensor) {
+   if(LIKELY(nullptr != pTensor)) {
+      free(pTensor->m_aScores);
+      if(LIKELY(0 != pTensor->m_cDimensionsMax)) {
+         const DimensionInfo * pDimensionInfo = pTensor->GetDimensions();
+         const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pTensor->m_cDimensionsMax];
          do {
             free(pDimensionInfo->m_aSplits);
             ++pDimensionInfo;
          } while(pDimensionInfoEnd != pDimensionInfo);
       }
-      free(pCompressibleTensor);
+      free(pTensor);
    }
 }
 
-void CompressibleTensor::Reset() {
+void Tensor::Reset() {
    DimensionInfo * pDimensionInfo = GetDimensions();
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       pDimensionInfo[iDimension].m_cSplits = 0;
@@ -116,7 +116,7 @@ void CompressibleTensor::Reset() {
    m_bExpanded = false;
 }
 
-ErrorEbmType CompressibleTensor::SetCountSplits(const size_t iDimension, const size_t cSplits) {
+ErrorEbmType Tensor::SetCountSplits(const size_t iDimension, const size_t cSplits) {
    EBM_ASSERT(iDimension < m_cDimensions);
    DimensionInfo * const pDimension = &GetDimensions()[iDimension];
    // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
@@ -152,7 +152,7 @@ ErrorEbmType CompressibleTensor::SetCountSplits(const size_t iDimension, const s
    return Error_None;
 }
 
-ErrorEbmType CompressibleTensor::EnsureScoreCapacity(const size_t cScores) {
+ErrorEbmType Tensor::EnsureScoreCapacity(const size_t cScores) {
    if(UNLIKELY(m_cScoreCapacity < cScores)) {
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
@@ -182,7 +182,7 @@ ErrorEbmType CompressibleTensor::EnsureScoreCapacity(const size_t cScores) {
    return Error_None;
 }
 
-ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
+ErrorEbmType Tensor::Copy(const Tensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
    ErrorEbmType error;
@@ -215,7 +215,7 @@ ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
    return Error_None;
 }
 
-bool CompressibleTensor::MultiplyAndCheckForIssues(const double v) {
+bool Tensor::MultiplyAndCheckForIssues(const double v) {
    const FloatFast vFloat = SafeConvertFloat<FloatFast>(v);
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
 
@@ -243,7 +243,7 @@ bool CompressibleTensor::MultiplyAndCheckForIssues(const double v) {
    return !!bBad;
 }
 
-ErrorEbmType CompressibleTensor::Expand(const Term * const pTerm) {
+ErrorEbmType Tensor::Expand(const Term * const pTerm) {
    // checking the max isn't really the best here, but doing this right seems pretty complicated
    static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<ActiveDataType>::max() &&
       0 == std::numeric_limits<ActiveDataType>::min(), "bad AcitveDataType size");
@@ -328,11 +328,11 @@ ErrorEbmType CompressibleTensor::Expand(const Term * const pTerm) {
                *pScoreTop = *pScore1Move;
             } while(pScoreTopEnd != pScoreTop);
 
-            // For a single dimensional CompressibleTensor checking here is best.  
+            // For a single dimensional Tensor checking here is best.  
             // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
             // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
             // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
-            // multi-dimensioncal CompressibleTensors
+            // multi-dimensioncal Tensors
             if(UNLIKELY(aScores == pScoreTop)) {
                // we've written our final tensor cell, so we're done
                break;
@@ -430,7 +430,7 @@ ErrorEbmType CompressibleTensor::Expand(const Term * const pTerm) {
    return Error_None;
 }
 
-void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScores) {
+void Tensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScores) {
    EBM_ASSERT(m_bExpanded);
    size_t cItems = m_cVectorLength;
 
@@ -469,7 +469,7 @@ void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatFast * con
    } while(pToScoresEnd != pToScore);
 }
 
-ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
+ErrorEbmType Tensor::Add(const Tensor & rhs) {
    ErrorEbmType error;
 
    DimensionInfoStack dimensionStack[k_cDimensionsMax];
@@ -593,11 +593,11 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
          *pScoreTop = *pScore1Move + *pScore2Move;
       } while(pScoreTopEnd != pScoreTop);
 
-      // For a single dimensional CompressibleTensor checking here is best.  
+      // For a single dimensional Tensor checking here is best.  
       // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack,
       // thus eliminating the check on most loops.  We'll spend most of our time working on single features though, so we optimize for that case, 
       // but if we special cased the single dimensional case, then we would want to move this check into the loop below in the case 
-      // of multi-dimensioncal CompressibleTensors
+      // of multi-dimensioncal Tensors
       if(UNLIKELY(aScores == pScoreTop)) {
          // we've written our final tensor cell, so we're done
          break;
@@ -708,7 +708,7 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
          EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->m_aSplits) <= static_cast<size_t>(pTopCur - pDimension1Cur->m_aSplits));
 
          if(UNLIKELY(pTopCur == p1Cur)) {
-            // since we've finished the rhs splits, our CompressibleTensor already has the right splits in place, so all we need is to add the score
+            // since we've finished the rhs splits, our Tensor already has the right splits in place, so all we need is to add the score
             // of the last region in rhs to our remaining scores
             break;
          }
@@ -748,7 +748,7 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
 }
 
 #ifndef NDEBUG
-bool CompressibleTensor::IsEqual(const CompressibleTensor & rhs) const {
+bool Tensor::IsEqual(const Tensor & rhs) const {
    if(m_cDimensions != rhs.m_cDimensions) {
       return false;
    }

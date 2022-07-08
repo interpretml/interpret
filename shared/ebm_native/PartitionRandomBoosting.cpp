@@ -73,7 +73,7 @@ public:
       EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
 
-      CompressibleTensor * const pInnerTermUpdate =
+      Tensor * const pInnerTermUpdate =
          pBoosterShell->GetInnerTermUpdate();
 
       const IntEbmType * pLeavesMax1 = aLeavesMax;
