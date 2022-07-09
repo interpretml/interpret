@@ -350,7 +350,7 @@ class BaseEBM(BaseEstimator):
             term_features = [(int(x),) for x in self.mains]
 
         if is_differential_privacy:
-             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
+            # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             domain_size = 1 if is_classifier(self) else max_target - min_target
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
             training_eps = self.epsilon - bin_eps
@@ -465,7 +465,7 @@ class BaseEBM(BaseEstimator):
 
         if n_classes > 2:
             if isinstance(interactions, int):
-               if interactions != 0:
+                if interactions != 0:
                     warn("Detected multiclass problem. Forcing interactions to 0. Multiclass interactions work except for global visualizations, so the line below setting interactions to zero can be disabled if you know what you are doing.")
                     interactions = 0
             elif len(interactions) != 0:
