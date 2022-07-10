@@ -23,7 +23,7 @@ namespace DEFINED_ZONE_NAME {
 static int g_cLogEnterGenerateGaussianRandomCountParametersMessages = 25;
 static int g_cLogExitGenerateGaussianRandomCountParametersMessages = 25;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GenerateGaussianRandom(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateGaussianRandom(
    BoolEbmType isDeterministic,
    SeedEbmType randomSeed,
    double stddev,

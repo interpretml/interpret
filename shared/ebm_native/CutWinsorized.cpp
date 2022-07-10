@@ -34,7 +34,7 @@ static int g_cLogEnterCutWinsorizedParametersMessages = 25;
 static int g_cLogExitCutWinsorizedParametersMessages = 25;
 
 // TODO: add this as a python/R option "winsorized"
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutWinsorized(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutWinsorized(
    IntEbmType countSamples,
    const double * featureValues,
    IntEbmType * countCutsInOut,

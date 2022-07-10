@@ -301,7 +301,7 @@ static bool FloatToFullString(const double val, char * const str) noexcept {
 
 // lastly, since there are no integers in JSON (everything is a double), we should eliminate the difference
 // between float64 and integers when numbers can be represented as unique integers.  WE should convert the float
-// 4.0 therefore to "4" for any number that meets the criteria: "floor(x) == x && abs(x) <= SAFE_FLOAT64_AS_INT_MAX"
+// 4.0 therefore to "4" for any number that meets the criteria: "floor(x) == x && abs(x) <= SAFE_FLOAT64_AS_INT64_MAX"
 
 extern IntEbmType GetCountCharactersPerFloat() {
    // for calling FloatsToStrings the caller needs to allocate this many bytes per float in the string buffer
@@ -862,7 +862,7 @@ extern size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, dou
    return cSamplesWithoutMissing;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType countCuts,
    double lowestCut,
    double highestCut,
@@ -1331,7 +1331,7 @@ static double Mean(const size_t cSamples, const double * const aFeatureValues, c
 static int g_cLogEnterGetHistogramCutCountParametersMessages = 25;
 static int g_cLogExitGetHistogramCutCountParametersMessages = 25;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistogramCutCount(
+EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION GetHistogramCutCount(
    IntEbmType countSamples,
    const double * featureValues,
    IntEbmType strategy
@@ -1395,7 +1395,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetHistog
             // use Sturges' formula if we have a numeracy issue with our data. countSturgesBins pretty much can't fail
             countBins = std::ceil(countSturgesBins);
          }
-         ret = double { FLOAT64_TO_INT_MAX } < countBins ? IntEbmType { FLOAT64_TO_INT_MAX } : static_cast<IntEbmType>(countBins);
+         ret = double { FLOAT64_TO_INT64_MAX } < countBins ? IntEbmType { FLOAT64_TO_INT64_MAX } : static_cast<IntEbmType>(countBins);
          EBM_ASSERT(1 <= ret); // since our formula started from 1 and added
          --ret; // # of cuts is one less than the number of bins
       }

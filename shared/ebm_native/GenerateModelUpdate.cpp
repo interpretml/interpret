@@ -1019,7 +1019,7 @@ static ErrorEbmType GenerateTermUpdateInternal(
 static int g_cLogGenerateTermUpdateParametersMessages = 10;
 
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GenerateTermUpdate(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    BoosterHandle boosterHandle,
    IntEbmType indexTerm,
    GenerateUpdateOptionsType options,

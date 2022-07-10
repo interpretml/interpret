@@ -128,7 +128,7 @@ namespace DEFINED_ZONE_NAME {
 //       transpose_8192 = 6.26907
 //       transpose_16384 = 7.73406
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION DiscretizeOne(
+EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION DiscretizeOne(
    const double featureValue,
    IntEbmType countCuts,
    const double * cutsLowerBoundInclusive
@@ -218,7 +218,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
 static int g_cLogEnterDiscretizeParametersMessages = 25;
 static int g_cLogExitDiscretizeParametersMessages = 25;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const double * featureValues,
    IntEbmType countCuts,

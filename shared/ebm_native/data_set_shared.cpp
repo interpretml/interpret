@@ -1101,7 +1101,7 @@ return_bad:;
    return Error_IllegalParamValue;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataSetHeader(
+EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeDataSetHeader(
    IntEbmType countFeatures,
    IntEbmType countWeights,
    IntEbmType countTargets
@@ -1109,7 +1109,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeDataS
    return AppendHeader(countFeatures, countWeights, countTargets, 0, nullptr);
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDataSetHeader(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillDataSetHeader(
    IntEbmType countFeatures,
    IntEbmType countWeights,
    IntEbmType countTargets,
@@ -1138,7 +1138,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillDat
    return static_cast<ErrorEbmType>(ret);
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeFeature(
+EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeFeature(
    IntEbmType countBins,
    BoolEbmType missing,
    BoolEbmType unknown,
@@ -1158,7 +1158,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeFeatu
    );
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillFeature(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillFeature(
    IntEbmType countBins,
    BoolEbmType missing,
    BoolEbmType unknown,
@@ -1206,7 +1206,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillFea
    return static_cast<ErrorEbmType>(ret);
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeWeight(
+EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeWeight(
    IntEbmType countSamples,
    const double * weights
 ) {
@@ -1218,7 +1218,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeWeigh
    );
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillWeight(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillWeight(
    IntEbmType countSamples,
    const double * weights,
    IntEbmType countBytesAllocated,
@@ -1258,7 +1258,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillWei
    return static_cast<ErrorEbmType>(ret);
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeClassificationTarget(
+EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeClassificationTarget(
    IntEbmType countTargetClasses,
    IntEbmType countSamples,
    const IntEbmType * targets
@@ -1273,7 +1273,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeClass
    );
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillClassificationTarget(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillClassificationTarget(
    IntEbmType countTargetClasses,
    IntEbmType countSamples,
    const IntEbmType * targets,
@@ -1316,7 +1316,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillCla
    return static_cast<ErrorEbmType>(ret);
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegressionTarget(
+EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION SizeRegressionTarget(
    IntEbmType countSamples,
    const double * targets
 ) {
@@ -1330,7 +1330,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SizeRegre
    );
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION FillRegressionTarget(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION FillRegressionTarget(
    IntEbmType countSamples,
    const double * targets,
    IntEbmType countBytesAllocated,
@@ -1526,7 +1526,7 @@ extern ErrorEbmType GetDataSetSharedHeader(
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ExtractDataSetHeader(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractDataSetHeader(
    const void * dataSet,
    IntEbmType * countSamplesOut,
    IntEbmType * countFeaturesOut,
@@ -1650,7 +1650,7 @@ extern const void * GetDataSetSharedFeature(
    return pRet;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ExtractBinCounts(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractBinCounts(
    const void * dataSet,
    IntEbmType countFeaturesVerify,
    IntEbmType * binCountsOut
@@ -1809,7 +1809,7 @@ extern const void * GetDataSetSharedTarget(
    return pRet;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ExtractTargetClasses(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ExtractTargetClasses(
    const void * dataSet,
    IntEbmType countTargetsVerify,
    IntEbmType * classCountsOut

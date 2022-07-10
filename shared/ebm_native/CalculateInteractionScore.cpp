@@ -275,7 +275,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 // race then it just doesn't get decremented as quickly, which we can live with
 static int g_cLogCalcInteractionStrengthParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInteractionStrength(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle,
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,

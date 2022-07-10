@@ -2451,7 +2451,7 @@ INLINE_RELEASE_UNTEMPLATED static size_t GetUncuttableRangeLengthMin(
 static int g_cLogEnterCutQuantileParametersMessages = 25;
 static int g_cLogExitCutQuantileParametersMessages = 25;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CutQuantile(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CutQuantile(
    IntEbmType countSamples,
    const double * featureValues,
    IntEbmType countSamplesPerBinMin,

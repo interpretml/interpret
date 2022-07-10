@@ -177,7 +177,7 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBooster(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    SeedEbmType randomSeed,
    const void * dataSet,
    const BagEbmType * bag,
@@ -297,7 +297,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBoosterView(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
    BoosterHandle boosterHandle,
    BoosterHandle * boosterHandleViewOut
 ) {
@@ -350,7 +350,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestTermScores(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
    BoosterHandle boosterHandle,
    IntEbmType indexTerm,
    double * termScoresTensorOut
@@ -443,7 +443,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentTermScores(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
    BoosterHandle boosterHandle,
    IntEbmType indexTerm,
    double * termScoresTensorOut
@@ -536,7 +536,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
+EBM_API_BODY void EBM_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeBooster: boosterHandle=%p", static_cast<void *>(boosterHandle));

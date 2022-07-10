@@ -56,7 +56,7 @@ extern void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, con
 #pragma optimize("", on)
 #endif // _MSC_VER
 
-void EBM_NATIVE_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
+void EBM_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
    const size_t cChars = strlen(message); // test that the string memory is accessible
    UNUSED(cChars);
    if(traceLevel <= TraceLevelOff) {

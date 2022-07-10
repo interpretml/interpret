@@ -314,7 +314,7 @@ TEST_CASE("FloatTickIncrementInternal and FloatTickDecrementInternal") {
 
 #endif // UNDEFINED_TEST_TICK_HIGHER
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CleanFloats(IntEbmType count, double * valsInOut) {
+EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbmType count, double * valsInOut) {
    // this function converts extended precision values, if they are present, into non-extended precision values by 
    // virtue of passing them in via arrays stored in memory, and it also converts subnormal values into zero, 
    // per EBM spec requirements.  It also converts negative zeros into zeros.
@@ -340,7 +340,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION CleanFloats(Int
    }
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUniform(
+EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
    IntEbmType countSamples,
    const double * featureValues,
    IntEbmType countDesiredCuts,

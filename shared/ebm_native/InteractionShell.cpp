@@ -85,7 +85,7 @@ HistogramBucketBase * InteractionShell::GetHistogramBucketBaseBig(size_t cBytesR
    return aBuffer;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbmType * bag,
    const double * initScores, // only samples with non-zeros in the bag are included
@@ -145,7 +145,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateI
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
+EBM_API_BODY void EBM_CALLING_CONVENTION FreeInteractionDetector(
    InteractionHandle interactionHandle
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeInteractionDetector: interactionHandle=%p", static_cast<void *>(interactionHandle));

@@ -35,7 +35,7 @@ namespace DEFINED_ZONE_NAME {
 // an init function and just use a single function that modifies the 16 character string?
 // We need to also provide utilities to generate normal distributions using the random number
 
-EBM_NATIVE_IMPORT_EXPORT_BODY SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateDeterministicSeed(
+EBM_API_BODY SeedEbmType EBM_CALLING_CONVENTION GenerateDeterministicSeed(
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix
 ) {
@@ -47,7 +47,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY SeedEbmType EBM_NATIVE_CALLING_CONVENTION Generate
    return ret;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GenerateNondeterministicSeed(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateNondeterministicSeed(
    SeedEbmType * randomSeedOut
 ) {
    if(UNLIKELY(nullptr == randomSeedOut)) {
@@ -74,7 +74,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
 static int g_cLogEnterSampleWithoutReplacementParametersMessages = 5;
 static int g_cLogExitSampleWithoutReplacementParametersMessages = 5;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
    BoolEbmType isDeterministic,
    SeedEbmType randomSeed,
    IntEbmType countTrainingSamples,
@@ -189,7 +189,7 @@ static int g_cLogExitStratifiedSamplingWithoutReplacementParametersMessages = 5;
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countTrainingSamples,

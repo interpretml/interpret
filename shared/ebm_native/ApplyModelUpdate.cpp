@@ -140,7 +140,7 @@ static ErrorEbmType ApplyTermUpdateInternal(
 static int g_cLogApplyTermUpdateParametersMessages = 10;
 
 // TODO: validationMetricOut should be an average
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyTermUpdate(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION ApplyTermUpdate(
    BoosterHandle boosterHandle,
    double * validationMetricOut
 ) {
@@ -246,7 +246,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION ApplyTe
 // times than desired, but we can live with that
 static int g_cLogGetTermUpdateSplitsParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTermUpdateSplits(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateSplits(
    BoosterHandle boosterHandle,
    IntEbmType indexDimension,
    IntEbmType * countSplitsInOut,
@@ -347,7 +347,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTerm
 // times than desired, but we can live with that
 static int g_cLogGetTermUpdateExpandedParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTermUpdateExpanded(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateExpanded(
    BoosterHandle boosterHandle,
    double * updateScoresTensorOut
 ) {
@@ -419,7 +419,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetTerm
 // times than desired, but we can live with that
 static int g_cLogSetTermUpdateExpandedParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION SetTermUpdateExpanded(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdateExpanded(
    BoosterHandle boosterHandle,
    IntEbmType indexTerm,
    double * updateScoresTensor

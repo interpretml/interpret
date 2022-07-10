@@ -346,7 +346,7 @@ TEST_CASE("CutUniform, stress test reproducible") {
    // this is a really crappy Middle-square random number generator so that we can replicate it in any language
    for(iTest = 0; iTest < 20000; ++iTest) {
       seed = floor((seed * seed) / 11.0);
-      seed = seed - floor(seed / 94906263) * 94906263; // floor(sqrt(SAFE_FLOAT64_AS_INT_MAX))
+      seed = seed - floor(seed / 94906263) * 94906263; // floor(sqrt(SAFE_FLOAT64_AS_INT64_MAX))
       testVal = static_cast<IntEbmType>(seed);
 
       checkVal = testVal % cInteresting;
