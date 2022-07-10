@@ -241,12 +241,12 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
    m_learningTypeOrCountTargetClasses(learningTypeOrCountTargetClasses),
    m_iZeroClassificationLogit(iZeroClassificationLogit),
    m_bNullTrainingWeights(true),
-   m_bNullTrainingPredictionScores(true),
+   m_bNullTrainingInitScores(true),
    m_bNullValidationWeights(true),
-   m_bNullValidationPredictionScores(true),
+   m_bNullValidationInitScores(true),
    m_boosterHandle(nullptr),
    m_bNullInteractionWeights(true),
-   m_bNullInteractionPredictionScores(true),
+   m_bNullInteractionInitScores(true),
    m_interactionHandle(nullptr) 
 {
    if(IsClassification(learningTypeOrCountTargetClasses)) {
@@ -311,8 +311,8 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
    if(0 != cSamples) {
       const size_t cFeatures = m_featureBinCounts.size();
 
-      const bool bNullPredictionScores = 0 == samples[0].m_priorScore.size();
-      m_bNullTrainingPredictionScores = bNullPredictionScores;
+      const bool bNullInitScores = 0 == samples[0].m_initScores.size();
+      m_bNullTrainingInitScores = bNullInitScores;
 
       const bool bNullWeights = samples[0].m_bNullWeight;
       m_bNullTrainingWeights = bNullWeights;
@@ -321,7 +321,7 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != (0 == oneSample.m_priorScore.size())) {
+         if(bNullInitScores != (0 == oneSample.m_initScores.size())) {
             exit(1);
          }
          if(bNullWeights != oneSample.m_bNullWeight) {
@@ -343,12 +343,12 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
                exit(1);
             }
             m_trainingClassificationTargets.push_back(targetInt);
-            if(!bNullPredictionScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_priorScore.size()) {
+            if(!bNullInitScores) {
+               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_initScores.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const double oneLogit : oneSample.m_priorScore) {
+               for(const double oneLogit : oneSample.m_initScores) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -359,20 +359,20 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_trainingPredictionScores.push_back(oneLogit);
+                        m_trainingInitScores.push_back(oneLogit);
                      } else {
-                        m_trainingPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_trainingInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_trainingPredictionScores.push_back(oneLogit - oneSample.m_priorScore[0]);
+                           m_trainingInitScores.push_back(oneLogit - oneSample.m_initScores[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_trainingPredictionScores.push_back(
-                              oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                           m_trainingInitScores.push_back(
+                              oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
@@ -381,20 +381,20 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
 #ifdef REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_trainingPredictionScores.push_back(oneLogit - oneSample.m_logits[0]);
+                           m_trainingInitScores.push_back(oneLogit - oneSample.m_logits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_trainingPredictionScores.push_back(
+                           m_trainingInitScores.push_back(
                               oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
                         }
                      }
 #else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_trainingPredictionScores.push_back(oneLogit);
+                        m_trainingInitScores.push_back(oneLogit);
                      } else {
-                        m_trainingPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_trainingInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #endif // REDUCE_MULTICLASS_LOGITS
                   }
@@ -403,15 +403,15 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
             }
          } else {
             m_trainingRegressionTargets.push_back(target);
-            if(!bNullPredictionScores) {
-               const double score = oneSample.m_priorScore[0];
+            if(!bNullInitScores) {
+               const double score = oneSample.m_initScores[0];
                if(std::isnan(score)) {
                   exit(1);
                }
                if(std::isinf(score)) {
                   exit(1);
                }
-               m_trainingPredictionScores.push_back(score);
+               m_trainingInitScores.push_back(score);
             }
          }
          if(!bNullWeights) {
@@ -449,8 +449,8 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
       const size_t cFeatures = m_featureBinCounts.size();
-      const bool bNullPredictionScores = 0 == samples[0].m_priorScore.size();
-      m_bNullValidationPredictionScores = bNullPredictionScores;
+      const bool bNullInitScores = 0 == samples[0].m_initScores.size();
+      m_bNullValidationInitScores = bNullInitScores;
 
       const bool bNullWeights = samples[0].m_bNullWeight;
       m_bNullValidationWeights = bNullWeights;
@@ -459,7 +459,7 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != (0 == oneSample.m_priorScore.size())) {
+         if(bNullInitScores != (0 == oneSample.m_initScores.size())) {
             exit(1);
          }
          if(bNullWeights != oneSample.m_bNullWeight) {
@@ -481,12 +481,12 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
                exit(1);
             }
             m_validationClassificationTargets.push_back(targetInt);
-            if(!bNullPredictionScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_priorScore.size()) {
+            if(!bNullInitScores) {
+               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_initScores.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const double oneLogit : oneSample.m_priorScore) {
+               for(const double oneLogit : oneSample.m_initScores) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -497,20 +497,20 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_validationPredictionScores.push_back(oneLogit);
+                        m_validationInitScores.push_back(oneLogit);
                      } else {
-                        m_validationPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_validationInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_validationPredictionScores.push_back(oneLogit - oneSample.m_priorScore[0]);
+                           m_validationInitScores.push_back(oneLogit - oneSample.m_initScores[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_validationPredictionScores.push_back(
-                              oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                           m_validationInitScores.push_back(
+                              oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
@@ -519,20 +519,20 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
 #ifdef REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_validationPredictionScores.push_back(oneLogit - oneSample.m_logits[0]);
+                           m_validationInitScores.push_back(oneLogit - oneSample.m_logits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_validationPredictionScores.push_back(
+                           m_validationInitScores.push_back(
                               oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
                         }
                      }
 #else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_validationPredictionScores.push_back(oneLogit);
+                        m_validationInitScores.push_back(oneLogit);
                      } else {
-                        m_validationPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_validationInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #endif // REDUCE_MULTICLASS_LOGITS
                   }
@@ -541,15 +541,15 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
             }
          } else {
             m_validationRegressionTargets.push_back(target);
-            if(!bNullPredictionScores) {
-               const double score = oneSample.m_priorScore[0];
+            if(!bNullInitScores) {
+               const double score = oneSample.m_initScores[0];
                if(std::isnan(score)) {
                   exit(1);
                }
                if(std::isinf(score)) {
                   exit(1);
                }
-               m_validationPredictionScores.push_back(score);
+               m_validationInitScores.push_back(score);
             }
          }
          if(!bNullWeights) {
@@ -595,11 +595,11 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    const size_t cTrainingSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_trainingClassificationTargets.size() : m_trainingRegressionTargets.size();
    const size_t cValidationSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_validationClassificationTargets.size() : m_validationRegressionTargets.size();
 
-   if(m_bNullTrainingPredictionScores) {
-      m_trainingPredictionScores.resize(cVectorLength * cTrainingSamples);
+   if(m_bNullTrainingInitScores) {
+      m_trainingInitScores.resize(cVectorLength * cTrainingSamples);
    }
-   if(m_bNullValidationPredictionScores) {
-      m_validationPredictionScores.resize(cVectorLength * cValidationSamples);
+   if(m_bNullValidationInitScores) {
+      m_validationInitScores.resize(cVectorLength * cValidationSamples);
    }
    if(m_bNullTrainingWeights) {
       m_trainingWeights.resize(cTrainingSamples);
@@ -663,8 +663,8 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    bag.insert(bag.end(), cTrainingSamples, 1);
    bag.insert(bag.end(), cValidationSamples, -1);
 
-   std::vector<double> allScores(m_trainingPredictionScores);
-   allScores.insert(allScores.end(), m_validationPredictionScores.begin(), m_validationPredictionScores.end());
+   std::vector<double> allScores(m_trainingInitScores);
+   allScores.insert(allScores.end(), m_validationInitScores.begin(), m_validationInitScores.end());
 
    error = CreateBooster(
       k_randomSeed,
@@ -877,8 +877,8 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
       const size_t cFeatures = m_featureBinCounts.size();
-      const bool bNullPredictionScores = 0 == samples[0].m_priorScore.size();
-      m_bNullInteractionPredictionScores = bNullPredictionScores;
+      const bool bNullInitScores = 0 == samples[0].m_initScores.size();
+      m_bNullInteractionInitScores = bNullInitScores;
 
       const bool bNullWeights = samples[0].m_bNullWeight;
       m_bNullInteractionWeights = bNullWeights;
@@ -887,7 +887,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != (0 == oneSample.m_priorScore.size())) {
+         if(bNullInitScores != (0 == oneSample.m_initScores.size())) {
             exit(1);
          }
          if(bNullWeights != oneSample.m_bNullWeight) {
@@ -909,13 +909,13 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
                exit(1);
             }
             m_interactionClassificationTargets.push_back(targetInt);
-            if(!bNullPredictionScores) {
+            if(!bNullInitScores) {
                if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) !=
-                  oneSample.m_priorScore.size()) {
+                  oneSample.m_initScores.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const double oneLogit : oneSample.m_priorScore) {
+               for(const double oneLogit : oneSample.m_initScores) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -926,21 +926,21 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_interactionPredictionScores.push_back(oneLogit);
+                        m_interactionInitScores.push_back(oneLogit);
                      } else {
-                        m_interactionPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_interactionInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_interactionPredictionScores.push_back(
-                              oneLogit - oneSample.m_priorScore[0]);
+                           m_interactionInitScores.push_back(
+                              oneLogit - oneSample.m_initScores[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_interactionPredictionScores.push_back(
-                              oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                           m_interactionInitScores.push_back(
+                              oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
@@ -949,20 +949,20 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
 #ifdef REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_interactionPredictionScores.push_back(oneLogit - oneSample.m_logits[0]);
+                           m_interactionInitScores.push_back(oneLogit - oneSample.m_logits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_interactionPredictionScores.push_back(
+                           m_interactionInitScores.push_back(
                               oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
                         }
                      }
 #else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_interactionPredictionScores.push_back(oneLogit);
+                        m_interactionInitScores.push_back(oneLogit);
                      } else {
-                        m_interactionPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_interactionInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #endif // REDUCE_MULTICLASS_LOGITS
                   }
@@ -971,15 +971,15 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
             }
          } else {
             m_interactionRegressionTargets.push_back(target);
-            if(!bNullPredictionScores) {
-               const double score = oneSample.m_priorScore[0];
+            if(!bNullInitScores) {
+               const double score = oneSample.m_initScores[0];
                if(std::isnan(score)) {
                   exit(1);
                }
                if(std::isinf(score)) {
                   exit(1);
                }
-               m_interactionPredictionScores.push_back(score);
+               m_interactionInitScores.push_back(score);
             }
          }
          if(!bNullWeights) {
@@ -1021,8 +1021,8 @@ void TestApi::InitializeInteraction() {
    const size_t cFeatures = m_featureBinCounts.size();
    const size_t cSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_interactionClassificationTargets.size() : m_interactionRegressionTargets.size();
 
-   if(m_bNullInteractionPredictionScores) {
-      m_interactionPredictionScores.resize(cVectorLength * cSamples);
+   if(m_bNullInteractionInitScores) {
+      m_interactionInitScores.resize(cVectorLength * cSamples);
    }
    if(m_bNullInteractionWeights) {
       m_interactionWeights.resize(cSamples);
@@ -1065,7 +1065,7 @@ void TestApi::InitializeInteraction() {
    error = CreateInteractionDetector(
       pDataSet,
       0 == bag.size() ? nullptr : &bag[0],
-      0 == m_interactionPredictionScores.size() ? nullptr : &m_interactionPredictionScores[0],
+      0 == m_interactionInitScores.size() ? nullptr : &m_interactionInitScores[0],
       nullptr,
       &m_interactionHandle
    );

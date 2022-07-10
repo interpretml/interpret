@@ -43,8 +43,8 @@ struct TreeNodeData<true> {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      const HistogramBucket<FloatBig, true> * m_pHistogramBucketEntryFirst;
-      const HistogramBucket<FloatBig, true> * m_pHistogramBucketEntryLast;
+      const Bin<FloatBig, true> * m_pBinFirst;
+      const Bin<FloatBig, true> * m_pBinLast;
       size_t m_cSamples;
    };
    static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
@@ -115,26 +115,26 @@ struct TreeNodeData<true> {
       m_weight = weight;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatBig, true> * BEFORE_GetHistogramBucketEntryFirst() const {
+   INLINE_ALWAYS const Bin<FloatBig, true> * BEFORE_GetBinFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
+      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinFirst;
    }
-   INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryFirst(
-      const HistogramBucket<FloatBig, true> * const pHistogramBucketEntryFirst)
+   INLINE_ALWAYS void BEFORE_SetBinFirst(
+      const Bin<FloatBig, true> * const pBinFirst)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryFirst;
+      m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinFirst = pBinFirst;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatBig, true> * BEFORE_GetHistogramBucketEntryLast() const {
+   INLINE_ALWAYS const Bin<FloatBig, true> * BEFORE_GetBinLast() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
+      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinLast;
    }
-   INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryLast(
-      const HistogramBucket<FloatBig, true> * const pHistogramBucketEntryLast)
+   INLINE_ALWAYS void BEFORE_SetBinLast(
+      const Bin<FloatBig, true> * const pBinLast)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
+      m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinLast = pBinLast;
    }
 
    INLINE_ALWAYS const TreeNode<true> * AFTER_GetTreeNodeChildren() const {
@@ -227,8 +227,8 @@ struct TreeNodeData<false> {
       void * operator new(std::size_t) = delete; // we only use malloc/free in this library
       void operator delete (void *) = delete; // we only use malloc/free in this library
 
-      const HistogramBucket<FloatBig, false> * m_pHistogramBucketEntryFirst;
-      const HistogramBucket<FloatBig, false> * m_pHistogramBucketEntryLast;
+      const Bin<FloatBig, false> * m_pBinFirst;
+      const Bin<FloatBig, false> * m_pBinLast;
    };
    static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -296,26 +296,26 @@ struct TreeNodeData<false> {
       m_weight = weight;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatBig, false> * BEFORE_GetHistogramBucketEntryFirst() const {
+   INLINE_ALWAYS const Bin<FloatBig, false> * BEFORE_GetBinFirst() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
+      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinFirst;
    }
-   INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryFirst(
-      const HistogramBucket<FloatBig, false> * const pHistogramBucketEntryFirst)
+   INLINE_ALWAYS void BEFORE_SetBinFirst(
+      const Bin<FloatBig, false> * const pBinFirst)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryFirst;
+      m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinFirst = pBinFirst;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatBig, false> * BEFORE_GetHistogramBucketEntryLast() const {
+   INLINE_ALWAYS const Bin<FloatBig, false> * BEFORE_GetBinLast() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
+      return m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinLast;
    }
-   INLINE_ALWAYS void BEFORE_SetHistogramBucketEntryLast(
-      const HistogramBucket<FloatBig, false> * const pHistogramBucketEntryLast)
+   INLINE_ALWAYS void BEFORE_SetBinLast(
+      const Bin<FloatBig, false> * const pBinLast)
    {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
+      m_UNION.m_beforeExaminationForPossibleSplitting.m_pBinLast = pBinLast;
    }
 
    INLINE_ALWAYS const TreeNode<false> * AFTER_GetTreeNodeChildren() const {
@@ -408,8 +408,8 @@ public:
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    INLINE_ALWAYS bool IsSplittable() const {
-      return this->BEFORE_GetHistogramBucketEntryLast() != 
-         this->BEFORE_GetHistogramBucketEntryFirst();
+      return this->BEFORE_GetBinLast() != 
+         this->BEFORE_GetBinFirst();
    }
 
    INLINE_ALWAYS FloatBig EXTRACT_GAIN_BEFORE_SPLITTING() {

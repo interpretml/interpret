@@ -30,10 +30,10 @@ template<bool bClassification>
 void TensorTotalsSumDebugSlow(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const Term * const pTerm,
-   const HistogramBucket<FloatBig, bClassification> * const aHistogramBuckets,
+   const Bin<FloatBig, bClassification> * const aBins,
    const size_t * const aiStart,
    const size_t * const aiLast,
-   HistogramBucket<FloatBig, bClassification> * const pRet
+   Bin<FloatBig, bClassification> * const pRet
 ) {
    EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions()); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
@@ -66,17 +66,17 @@ void TensorTotalsSumDebugSlow(
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    // we've allocated this, so it should fit
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength));
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
-   pRet->Zero(cBytesPerHistogramBucket);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength));
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   pRet->Zero(cBytesPerBin);
 
    const size_t cSignficantDimensions = pTerm->GetCountSignificantDimensions();
 
    while(true) {
-      const auto * const pHistogramBucket =
-         GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iTensorBin);
+      const auto * const pBin =
+         IndexBin(cBytesPerBin, aBins, iTensorBin);
 
-      pRet->Add(*pHistogramBucket, cVectorLength);
+      pRet->Add(*pBin, cVectorLength);
 
       size_t iDimension = 0;
       size_t valueMultipleLoop = 1;
@@ -112,16 +112,16 @@ void TensorTotalsSumDebugSlow(
 
 template<bool bClassification>
 void TensorTotalsCompareDebug(
-   const HistogramBucket<FloatBig, bClassification> * const aHistogramBuckets,
+   const Bin<FloatBig, bClassification> * const aBins,
    const Term * const pTerm,
    const size_t * const aiPoint,
    const size_t directionVector,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const HistogramBucket<FloatBig, bClassification> * const pComparison
+   const Bin<FloatBig, bClassification> * const pComparison
 ) {
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
 
    size_t aiStart[k_cDimensionsMax];
    size_t aiLast[k_cDimensionsMax];
@@ -150,18 +150,18 @@ void TensorTotalsCompareDebug(
       ++pTermEntry;
    } while(pTermEntriesEnd != pTermEntry);
 
-   auto * const pComparison2 = EbmMalloc<HistogramBucket<FloatBig, bClassification>>(1, cBytesPerHistogramBucket);
+   auto * const pComparison2 = EbmMalloc<Bin<FloatBig, bClassification>>(1, cBytesPerBin);
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
       TensorTotalsSumDebugSlow<bClassification>(
          runtimeLearningTypeOrCountTargetClasses,
          pTerm,
-         aHistogramBuckets,
+         aBins,
          aiStart,
          aiLast,
          pComparison2
          );
-      EBM_ASSERT(pComparison->GetCountSamplesInBucket() == pComparison2->GetCountSamplesInBucket());
+      EBM_ASSERT(pComparison->GetCountSamples() == pComparison2->GetCountSamples());
       free(pComparison2);
    }
 }
@@ -173,13 +173,13 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDim
 void TensorTotalsSum(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const Term * const pTerm,
-   const HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
+   const Bin<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBins,
    const size_t * const aiPoint,
    const size_t directionVector,
-   HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
+   Bin<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
 #ifndef NDEBUG
-   , const HistogramBucket<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
+   , const Bin<FloatBig, IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aBinsDebugCopy
+   , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    struct TotalsDimension {
@@ -202,8 +202,8 @@ void TensorTotalsSum(
       runtimeLearningTypeOrCountTargetClasses
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
@@ -231,11 +231,11 @@ void TensorTotalsSum(
          }
          ++pTermEntry;
       } while(LIKELY(pTermEntriesEnd != pTermEntry));
-      const auto * const pHistogramBucket = 
-         GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, startingOffset);
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-      pRet->Copy(*pHistogramBucket, cVectorLength);
+      const auto * const pBin = 
+         IndexBin(cBytesPerBin, aBins, startingOffset);
+      ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
+      ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
+      pRet->Copy(*pBin, cVectorLength);
       return;
    }
 
@@ -284,7 +284,7 @@ void TensorTotalsSum(
    const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cAllBits < k_cBitsForSizeT);
 
-   pRet->Zero(cBytesPerHistogramBucket);
+   pRet->Zero(cBytesPerBin);
 
    size_t permuteVector = 0;
    do {
@@ -302,29 +302,29 @@ void TensorTotalsSum(
          // outer body and then we eliminate a bunch of unpredictable branches AND a bunch of adds and a lot of other stuff.  If we allow 
          // ourselves to come at the vector from either size (0,0,...,0,0) or (1,1,...,1,1) then we only need to hardcode 63/2 loops.
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
-      // TODO : eliminate this multiplication of cBytesPerHistogramBucket by offsetPointer by multiplying both the startingOffset and the 
-      // m_cLast & m_cIncrement values by cBytesPerHistogramBucket.  We can eliminate this multiplication each loop!
-      const auto * const pHistogramBucket =
-         GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, offsetPointer);
-      // TODO : we can eliminate this really bad unpredictable branch if we use conditional negation on the values in pHistogramBucket.  
+      // TODO : eliminate this multiplication of cBytesPerBin by offsetPointer by multiplying both the startingOffset and the 
+      // m_cLast & m_cIncrement values by cBytesPerBin.  We can eliminate this multiplication each loop!
+      const auto * const pBin =
+         IndexBin(cBytesPerBin, aBins, offsetPointer);
+      // TODO : we can eliminate this really bad unpredictable branch if we use conditional negation on the values in pBin.  
       // We can pass in a bool that indicates if we should take the negation value or the original at each step 
       // (so we don't need to store it beyond one value either).  We would then have an Add(bool bSubtract, ...) function
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-         pRet->Subtract(*pHistogramBucket, cVectorLength);
+         ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
+         ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
+         pRet->Subtract(*pBin, cVectorLength);
       } else {
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-         pRet->Add(*pHistogramBucket, cVectorLength);
+         ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
+         ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
+         pRet->Add(*pBin, cVectorLength);
       }
       ++permuteVector;
    } while(LIKELY(0 == (permuteVector >> cAllBits)));
 
 #ifndef NDEBUG
-   if(nullptr != aHistogramBucketsDebugCopy) {
+   if(nullptr != aBinsDebugCopy) {
       TensorTotalsCompareDebug<bClassification>(
-         aHistogramBucketsDebugCopy,
+         aBinsDebugCopy,
          pTerm,
          aiPoint,
          directionVector,

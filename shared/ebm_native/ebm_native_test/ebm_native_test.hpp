@@ -192,7 +192,7 @@ public:
    const double m_target;
    const bool m_bNullWeight;
    const double m_weight;
-   const std::vector<double> m_priorScore;
+   const std::vector<double> m_initScores;
 
    inline TestSample(const std::vector<IntEbmType> binnedDataPerFeatureArray, const double target) :
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
@@ -205,13 +205,13 @@ public:
       const std::vector<IntEbmType> binnedDataPerFeatureArray, 
       const double target,
       const double weight,
-      const std::vector<double> priorScore = {}
+      const std::vector<double> initScores = {}
    ) :
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_target(target),
       m_bNullWeight(false),
       m_weight(weight),
-      m_priorScore(priorScore) {
+      m_initScores(initScores) {
    }
 };
 
@@ -321,17 +321,17 @@ class TestApi {
    std::vector<IntEbmType> m_trainingClassificationTargets;
    std::vector<IntEbmType> m_trainingBinnedData;
    std::vector<double> m_trainingWeights;
-   std::vector<double> m_trainingPredictionScores;
+   std::vector<double> m_trainingInitScores;
    bool m_bNullTrainingWeights;
-   bool m_bNullTrainingPredictionScores;
+   bool m_bNullTrainingInitScores;
 
    std::vector<double> m_validationRegressionTargets;
    std::vector<IntEbmType> m_validationClassificationTargets;
    std::vector<IntEbmType> m_validationBinnedData;
    std::vector<double> m_validationWeights;
-   std::vector<double> m_validationPredictionScores;
+   std::vector<double> m_validationInitScores;
    bool m_bNullValidationWeights;
-   bool m_bNullValidationPredictionScores;
+   bool m_bNullValidationInitScores;
 
    BoosterHandle m_boosterHandle;
 
@@ -339,9 +339,9 @@ class TestApi {
    std::vector<IntEbmType> m_interactionClassificationTargets;
    std::vector<IntEbmType> m_interactionBinnedData;
    std::vector<double> m_interactionWeights;
-   std::vector<double> m_interactionPredictionScores;
+   std::vector<double> m_interactionInitScores;
    bool m_bNullInteractionWeights;
-   bool m_bNullInteractionPredictionScores;
+   bool m_bNullInteractionInitScores;
 
    InteractionHandle m_interactionHandle;
 

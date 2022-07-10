@@ -40,8 +40,8 @@ public:
 
       LOG_0(TraceLevelVerbose, "Entered BinInteractionInternal");
 
-      HistogramBucketBase * const aHistogramBucketBase = pInteractionShell->GetHistogramBucketBaseFast();
-      auto * const aHistogramBuckets = aHistogramBucketBase->GetHistogramBucket<FloatFast, bClassification>();
+      BinBase * const aBinsBase = pInteractionShell->GetBinBaseFast();
+      auto * const aBins = aBinsBase->Specialize<FloatFast, bClassification>();
 
       InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -51,8 +51,8 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatFast>(bClassification, cVectorLength);
+      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cVectorLength);
 
       const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
       const FloatFast * pGradientAndHessian = pDataSet->GetGradientsAndHessiansPointer();
@@ -83,8 +83,8 @@ public:
          // TODO : we can elminate the inner vector loop for regression at least, and also if we add a templated bool for binary class.  Propegate this change 
          //   to all places that we loop on the vector
 
-         size_t cBuckets = 1;
-         size_t iBucket = 0;
+         size_t cTensorBins = 1;
+         size_t iTensorBin = 0;
          size_t iDimension = 0;
          do {
             const Feature * const pInputFeature = pTerm->GetTermEntries()[iDimension].m_pFeature;
@@ -99,15 +99,15 @@ public:
             EBM_ASSERT(!IsConvertError<size_t>(iBinOriginal));
             size_t iBin = static_cast<size_t>(iBinOriginal);
             EBM_ASSERT(iBin < cBins);
-            iBucket += cBuckets * iBin;
-            cBuckets *= cBins;
+            iTensorBin += cTensorBins * iBin;
+            cTensorBins *= cBins;
             ++iDimension;
          } while(iDimension < cDimensions);
 
-         auto * pHistogramBucketEntry = 
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, pInteractionShell->GetHistogramBucketsEndDebugFast());
-         pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + 1);
+         auto * pBin = 
+            IndexBin(cBytesPerBin, aBins, iTensorBin);
+         ASSERT_BIN_OK(cBytesPerBin, pBin, pInteractionShell->GetBinsFastEndDebug());
+         pBin->SetCountSamples(pBin->GetCountSamples() + 1);
          FloatFast weight = 1;
          if(nullptr != pWeight) {
             weight = *pWeight;
@@ -116,9 +116,9 @@ public:
             weightTotalDebug += weight;
 #endif // NDEBUG
          }
-         pHistogramBucketEntry->SetWeightInBucket(pHistogramBucketEntry->GetWeightInBucket() + weight);
+         pBin->SetWeight(pBin->GetWeight() + weight);
 
-         auto * const pHistogramTargetEntry = pHistogramBucketEntry->GetHistogramTargetEntry();
+         auto * const pHistogramTargetEntry = pBin->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatFast gradient = *pGradientAndHessian;

@@ -120,35 +120,35 @@ failed_allocation:;
    return Error_OutOfMemory;
 }
 
-HistogramBucketBase * BoosterShell::GetHistogramBucketBaseFast(size_t cBytesRequired) {
-   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1Fast;
+BinBase * BoosterShell::GetBinBaseFast(size_t cBytesRequired) {
+   BinBase * aBuffer = m_aThreadByteBuffer1Fast;
    if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
       cBytesRequired <<= 1;
       m_cThreadByteBufferCapacity1Fast = cBytesRequired;
       LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
 
       free(aBuffer);
-      aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
+      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
       m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetHistogramBucketBaseFast OutOfMemory");
+         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetBinBaseFast OutOfMemory");
       }
    }
    return aBuffer;
 }
 
-HistogramBucketBase * BoosterShell::GetHistogramBucketBaseBig(size_t cBytesRequired) {
-   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1Big;
+BinBase * BoosterShell::GetBinBaseBig(size_t cBytesRequired) {
+   BinBase * aBuffer = m_aThreadByteBuffer1Big;
    if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
       cBytesRequired <<= 1;
       m_cThreadByteBufferCapacity1Big = cBytesRequired;
       LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
 
       free(aBuffer);
-      aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
+      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
       m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetHistogramBucketBaseBig OutOfMemory");
+         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetBinBaseBig OutOfMemory");
       }
    }
    return aBuffer;

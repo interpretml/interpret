@@ -22,14 +22,14 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<typename TFloat, bool bClassification>
-struct HistogramBucket;
+struct Bin;
 
 template<bool bClassification>
 struct TreeSweep final {
 private:
    size_t m_cBestSamplesLeft;
    FloatBig m_bestWeightLeft;
-   const HistogramBucket<FloatBig, bClassification> * m_pBestHistogramBucketEntry;
+   const Bin<FloatBig, bClassification> * m_pBestBin;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_aBestHistogramTargetEntry must be the last item in this struct
@@ -61,12 +61,12 @@ public:
       m_bestWeightLeft = bestWeightLeft;
    }
 
-   INLINE_ALWAYS const HistogramBucket<FloatBig, bClassification> * GetBestHistogramBucketEntry() const {
-      return m_pBestHistogramBucketEntry;
+   INLINE_ALWAYS const Bin<FloatBig, bClassification> * GetBestBin() const {
+      return m_pBestBin;
    }
 
-   INLINE_ALWAYS void SetBestHistogramBucketEntry(const HistogramBucket<FloatBig, bClassification> * pBestHistogramBucketEntry) {
-      m_pBestHistogramBucketEntry = pBestHistogramBucketEntry;
+   INLINE_ALWAYS void SetBestBin(const Bin<FloatBig, bClassification> * pBestBin) {
+      m_pBestBin = pBestBin;
    }
 
    INLINE_ALWAYS HistogramTargetEntry<FloatBig, bClassification> * GetBestHistogramTargetEntry() {

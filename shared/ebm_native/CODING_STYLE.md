@@ -67,7 +67,7 @@
       region as the rest of the per-sample or per-bin or per-TreeNode data.  The struct hack requires using POD
       structures and those are incompatible with C++ classes, so for many data structures we end up using
       raw pointers to arrays of these POD structs.  Adding RAII wrappers arround these would add complexity.
-    - In the future we plan to implement MPI data transfers to outside processes.  Classes like HistogramBucket
+    - In the future we plan to implement MPI data transfers to outside processes.  Classes like Bin
       and Tensor will need to be is_trivially_copyable compatible, which again means that we'll have
       non-C++ compatible structs.
     - We're writing a lot of performance critical code here. Templated iterators and complicated classes often

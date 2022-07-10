@@ -35,11 +35,11 @@ extern void BinInteraction(InteractionShell * const pInteractionShell, const Ter
 extern void TensorTotalsBuild(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const Term * const pTerm,
-   HistogramBucketBase * pBucketAuxiliaryBuildZone,
-   HistogramBucketBase * const aHistogramBuckets
+   BinBase * aAuxiliaryBinsBase,
+   BinBase * const aBinsBase
 #ifndef NDEBUG
-   , HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
+   , BinBase * const aBinsBaseDebugCopy
+   , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 );
 
@@ -48,11 +48,11 @@ extern double PartitionTwoDimensionalInteraction(
    const Term * const pTerm,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
-   HistogramBucketBase * pAuxiliaryBucketZone,
-   HistogramBucketBase * const aHistogramBuckets
+   BinBase * aAuxiliaryBinsBase,
+   BinBase * const aBinsBase
 #ifndef NDEBUG
-   , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
+   , const BinBase * const aBinsBaseDebugCopy
+   , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 );
 
@@ -78,8 +78,8 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
    EBM_ASSERT(pTerm->GetCountDimensions() == pTerm->GetCountSignificantDimensions());
 
-   size_t cAuxillaryBucketsForBuildFastTotals = 0;
-   size_t cTotalBucketsMainSpace = 1;
+   size_t cAuxillaryBinsForBuildFastTotals = 0;
+   size_t cTotalBinsMainSpace = 1;
    const TermEntry * pTermEntry = pTerm->GetTermEntries();
    const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
    do {
@@ -87,119 +87,119 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // our tensor code strips out features with 1 bin, and we'd need to do that here too if cBins was 1
       EBM_ASSERT(size_t { 2 } <= cBins);
-      // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
-      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-      // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation 
-      // that cTotalBucketsMainSpace would not overflow
-      EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
+      // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBinsForBuildFastTotals
+      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
+      EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
+      // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than cTotalBinsMainSpace, and we checked at allocation 
+      // that cTotalBinsMainSpace would not overflow
+      EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace));
       // this can overflow, but if it does then we're guaranteed to catch the overflow via the multiplication check below
-      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-      if(IsMultiplyError(cTotalBucketsMainSpace, cBins)) {
+      cAuxillaryBinsForBuildFastTotals += cTotalBinsMainSpace;
+      if(IsMultiplyError(cTotalBinsMainSpace, cBins)) {
          // unlike in the boosting code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what group of features our caller will give us for calculating the interaction scores,
          // so we need to check if our caller gave us a tensor that overflows multiplication
-         LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cTotalBucketsMainSpace, cBins)");
+         LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cTotalBinsMainSpace, cBins)");
          return Error_OutOfMemory;
       }
-      cTotalBucketsMainSpace *= cBins;
-      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
+      cTotalBinsMainSpace *= cBins;
+      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
+      EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
 
       ++pTermEntry;
    } while(pTermEntriesEnd != pTermEntry);
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(GetHistogramBucketSizeOverflow<FloatFast>(bClassification, cVectorLength) || 
-      GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)) 
+   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || 
+      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)) 
    {
       LOG_0(
          TraceLevelWarning,
-         "WARNING CalcInteractionStrengthInternal GetHistogramBucketSizeOverflow overflow"
+         "WARNING CalcInteractionStrengthInternal IsOverflowBinSize overflow"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucketFast = GetHistogramBucketSize<FloatFast>(bClassification, cVectorLength);
-   if(IsMultiplyError(cBytesPerHistogramBucketFast, cTotalBucketsMainSpace)) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBucketsMainSpace)");
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)) {
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsMainSpace)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBufferFast = cBytesPerHistogramBucketFast * cTotalBucketsMainSpace;
+   const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBinsMainSpace;
 
    // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
-   HistogramBucketBase * const aHistogramBucketsFast = pInteractionShell->GetHistogramBucketBaseFast(cBytesBufferFast);
-   if(UNLIKELY(nullptr == aHistogramBucketsFast)) {
+   BinBase * const aBinsFast = pInteractionShell->GetBinBaseFast(cBytesBufferFast);
+   if(UNLIKELY(nullptr == aBinsFast)) {
       // already logged
       return Error_OutOfMemory;
    }
-   aHistogramBucketsFast->Zero(cBytesPerHistogramBucketFast, cTotalBucketsMainSpace);
+   aBinsFast->Zero(cBytesPerBinFast, cTotalBinsMainSpace);
 
 #ifndef NDEBUG
-   const unsigned char * const aHistogramBucketsEndDebugFast = reinterpret_cast<unsigned char *>(aHistogramBucketsFast) + cBytesBufferFast;
-   pInteractionShell->SetHistogramBucketsEndDebugFast(aHistogramBucketsEndDebugFast);
+   const unsigned char * const pBinsFastEndDebug = reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast;
+   pInteractionShell->SetBinsFastEndDebug(pBinsFastEndDebug);
 #endif // NDEBUG
 
    BinInteraction(pInteractionShell, pTerm);
 
-   const size_t cAuxillaryBucketsForSplitting = 4;
-   const size_t cAuxillaryBuckets =
-      cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
-   if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
+   const size_t cAuxillaryBinsForSplitting = 4;
+   const size_t cAuxillaryBins =
+      cAuxillaryBinsForBuildFastTotals < cAuxillaryBinsForSplitting ? cAuxillaryBinsForSplitting : cAuxillaryBinsForBuildFastTotals;
+   if(IsAddError(cTotalBinsMainSpace, cAuxillaryBins)) {
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsAddError(cTotalBinsMainSpace, cAuxillaryBins)");
       return Error_OutOfMemory;
    }
 
-   const size_t cTotalBucketsBig = cTotalBucketsMainSpace + cAuxillaryBuckets;
+   const size_t cTotalBinsBig = cTotalBinsMainSpace + cAuxillaryBins;
 
-   const size_t cBytesPerHistogramBucketBig = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
-   if(IsMultiplyError(cBytesPerHistogramBucketBig, cTotalBucketsBig)) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBucketsBig)");
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsBig)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBufferBig = cBytesPerHistogramBucketBig * cTotalBucketsBig;
+   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBinsBig;
 
-   HistogramBucketBase * const aHistogramBucketsBig = pInteractionShell->GetHistogramBucketBaseBig(cBytesBufferBig);
-   if(UNLIKELY(nullptr == aHistogramBucketsBig)) {
+   BinBase * const aBinsBig = pInteractionShell->GetBinBaseBig(cBytesBufferBig);
+   if(UNLIKELY(nullptr == aBinsBig)) {
       // already logged
       return Error_OutOfMemory;
    }
-   aHistogramBucketsBig->Zero(cBytesPerHistogramBucketBig, cAuxillaryBuckets, cTotalBucketsMainSpace);
+   aBinsBig->Zero(cBytesPerBinBig, cAuxillaryBins, cTotalBinsMainSpace);
 
 #ifndef NDEBUG
-   const unsigned char * const aHistogramBucketsEndDebugBig = reinterpret_cast<unsigned char *>(aHistogramBucketsBig) + cBytesBufferBig;
+   const unsigned char * const pBinsBigEndDebug = reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig;
 #endif // NDEBUG
 
    // TODO: put this into it's own function that converts our fast floats to big floats
    static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
-   memcpy(aHistogramBucketsBig, aHistogramBucketsFast, cBytesBufferFast);
+   memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
 
 
    // TODO: we can exit here back to python to allow caller modification to our histograms
 
 
 #ifndef NDEBUG
-   // make a copy of the original binned buckets for debugging purposes
-   HistogramBucketBase * const aHistogramBucketsDebugCopy =
-      EbmMalloc<HistogramBucketBase>(cTotalBucketsMainSpace, cBytesPerHistogramBucketBig);
-   if(nullptr != aHistogramBucketsDebugCopy) {
+   // make a copy of the original bins for debugging purposes
+   BinBase * const aBinsDebugCopy =
+      EbmMalloc<BinBase>(cTotalBinsMainSpace, cBytesPerBinBig);
+   if(nullptr != aBinsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTotalBucketsMainSpace * cBytesPerHistogramBucketBig;
-      memcpy(aHistogramBucketsDebugCopy, aHistogramBucketsBig, cBytesBufferDebug);
+      const size_t cBytesBufferDebug = cTotalBinsMainSpace * cBytesPerBinBig;
+      memcpy(aBinsDebugCopy, aBinsBig, cBytesBufferDebug);
    }
 #endif // NDEBUG
 
-   HistogramBucketBase * pAuxiliaryBucketZone =
-      GetHistogramBucketByIndex(cBytesPerHistogramBucketBig, aHistogramBucketsBig, cTotalBucketsMainSpace);
+   BinBase * aAuxiliaryBins =
+      IndexBin(cBytesPerBinBig, aBinsBig, cTotalBinsMainSpace);
 
    TensorTotalsBuild(
       runtimeLearningTypeOrCountTargetClasses,
       pTerm,
-      pAuxiliaryBucketZone,
-      aHistogramBucketsBig
+      aAuxiliaryBins,
+      aBinsBig
 #ifndef NDEBUG
-      , aHistogramBucketsDebugCopy
-      , aHistogramBucketsEndDebugBig
+      , aBinsDebugCopy
+      , pBinsBigEndDebug
 #endif // NDEBUG
    );
 
@@ -211,11 +211,11 @@ static ErrorEbmType CalcInteractionStrengthInternal(
          pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
-         aHistogramBucketsBig
+         aAuxiliaryBins,
+         aBinsBig
 #ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebugBig
+         , aBinsDebugCopy
+         , pBinsBigEndDebug
 #endif // NDEBUG
       );
 
@@ -264,7 +264,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    }
 
 #ifndef NDEBUG
-   free(aHistogramBucketsDebugCopy);
+   free(aBinsDebugCopy);
 #endif // NDEBUG
 
    LOG_0(TraceLevelVerbose, "Exited CalcInteractionStrengthInternal");

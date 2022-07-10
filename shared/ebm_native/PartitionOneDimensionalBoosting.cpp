@@ -144,8 +144,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       aSumHistogramTargetEntryRight[iVector] = pHistogramTargetEntryInit[iVector];
    }
 
-   auto * pHistogramBucketEntryCur = pTreeNode->BEFORE_GetHistogramBucketEntryFirst();
-   const auto * const pHistogramBucketEntryLast = pTreeNode->BEFORE_GetHistogramBucketEntryLast();
+   auto * pBinCur = pTreeNode->BEFORE_GetBinFirst();
+   const auto * const pBinLast = pTreeNode->BEFORE_GetBinLast();
 
    EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
@@ -160,11 +160,11 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pRightChildInit->SetExaminedForPossibleSplitting(false);
 #endif // NDEBUG
 
-   pLeftChildInit->BEFORE_SetHistogramBucketEntryFirst(pHistogramBucketEntryCur);
-   pRightChildInit->BEFORE_SetHistogramBucketEntryLast(pHistogramBucketEntryLast);
+   pLeftChildInit->BEFORE_SetBinFirst(pBinCur);
+   pRightChildInit->BEFORE_SetBinLast(pBinLast);
 
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
    EBM_ASSERT(!GetTreeSweepSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cVectorLength);
 
@@ -181,11 +181,11 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(0 <= k_gainMin);
    FloatBig BEST_gain = k_gainMin; // it must at least be this, and maybe it needs to be more
    EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
-   EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
+   EBM_ASSERT(pBinLast != pBinCur); // we wouldn't call this function on a non-splittable node
    do {
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, pBoosterShell->GetHistogramBucketsEndDebugBig());
+      ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetBinsBigEndDebug());
 
-      const size_t CHANGE_cSamples = pHistogramBucketEntryCur->GetCountSamplesInBucket();
+      const size_t CHANGE_cSamples = pBinCur->GetCountSamples();
       cSamplesRight -= CHANGE_cSamples;
       if(UNLIKELY(cSamplesRight < cSamplesRequiredForChildSplitMin)) {
          break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
@@ -193,11 +193,11 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       cSamplesLeft += CHANGE_cSamples;
 
 
-      const FloatBig CHANGE_weight = pHistogramBucketEntryCur->GetWeightInBucket();
+      const FloatBig CHANGE_weight = pBinCur->GetWeight();
       weightRight -= CHANGE_weight;
       weightLeft += CHANGE_weight;
 
-      const auto * pHistogramTargetEntry = pHistogramBucketEntryCur->GetHistogramTargetEntry();
+      const auto * pHistogramTargetEntry = pBinCur->GetHistogramTargetEntry();
 
       if(LIKELY(cSamplesRequiredForChildSplitMin <= cSamplesLeft)) {
          EBM_ASSERT(0 < cSamplesRight);
@@ -255,8 +255,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             // pushed to zero, so we can get very low numbers here eventually.  As an approximation, we should just take the assumption that if two 
             // numbers which have mathematically equality, end up with different gains due to floating point computation issues, that the error will 
             // be roughtly symetric such that either the first or the last could be chosen, which is fine for us since we just want to ensure 
-            // randomized picking. Having two mathematically identical gains is pretty rare in any case, except for the situation where one bucket 
-            // has bins with zero samples, but in that case we'll have floating point equality too since we'll be adding zero to the floating 
+            // randomized picking. Having two mathematically identical gains is pretty rare in any case, except for the situation where multiple bins
+            // have zero samples, but in that case we'll have floating point equality too since we'll be adding zero to the floating 
             // points values, which is an exact operation.
             //
             // TODO : implement the randomized splitting described for interaction effect, which can be done the same although we might want to 
@@ -269,7 +269,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             pTreeSweepCur = UNPREDICTABLE(BEST_gain == gain) ? pTreeSweepCur : pTreeSweepStart;
             BEST_gain = gain;
 
-            pTreeSweepCur->SetBestHistogramBucketEntry(pHistogramBucketEntryCur);
+            pTreeSweepCur->SetBestBin(pBinCur);
             pTreeSweepCur->SetCountBestSamplesLeft(cSamplesLeft);
             pTreeSweepCur->SetBestWeightLeft(weightLeft);
             memcpy(
@@ -295,8 +295,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             }
          }
       }
-      pHistogramBucketEntryCur = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
-   } while(pHistogramBucketEntryLast != pHistogramBucketEntryCur);
+      pBinCur = IndexBin(cBytesPerBin, pBinCur, 1);
+   } while(pBinLast != pBinCur);
 
    if(UNLIKELY(pTreeSweepStart == pTreeSweepCur)) {
       // no valid splits found
@@ -357,21 +357,21 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    TreeNode<bClassification> * const pLeftChild = 
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-   const auto * const BEST_pHistogramBucketEntry = pTreeSweepStart->GetBestHistogramBucketEntry();
-   pLeftChild->BEFORE_SetHistogramBucketEntryLast(BEST_pHistogramBucketEntry);
+   const auto * const BEST_pBin = pTreeSweepStart->GetBestBin();
+   pLeftChild->BEFORE_SetBinLast(BEST_pBin);
    const size_t BEST_cSamplesLeft = pTreeSweepStart->GetCountBestSamplesLeft();
    pLeftChild->AMBIGUOUS_SetCountSamples(BEST_cSamplesLeft);
 
    const FloatBig BEST_weightLeft = pTreeSweepStart->GetBestWeightLeft();
    pLeftChild->SetWeight(BEST_weightLeft);
 
-   const auto * const BEST_pHistogramBucketEntryNext = 
-      GetHistogramBucketByIndex(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
-   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, pBoosterShell->GetHistogramBucketsEndDebugBig());
+   const auto * const BEST_pBinNext = 
+      IndexBin(cBytesPerBin, BEST_pBin, 1);
+   ASSERT_BIN_OK(cBytesPerBin, BEST_pBinNext, pBoosterShell->GetBinsBigEndDebug());
 
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-   pRightChild->BEFORE_SetHistogramBucketEntryFirst(BEST_pHistogramBucketEntryNext);
+   pRightChild->BEFORE_SetBinFirst(BEST_pBinNext);
    const size_t cSamplesParent = pTreeNode->AMBIGUOUS_GetCountSamples();
    // if there were zero samples in the entire dataset then we shouldn't have found a split worth making and we 
    // should have handled the empty dataset earlier
@@ -414,13 +414,13 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pTreeNode->AFTER_SetTreeNodeChildren(pTreeNodeChildrenAvailableStorageSpaceCur);
    pTreeNode->AFTER_SetSplitGain(BEST_gain);
 
-   HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseBig();
-   const auto * const aHistogramBucket = aHistogramBucketBase->GetHistogramBucket<FloatBig, bClassification>();
+   BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
+   const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
-   EBM_ASSERT(reinterpret_cast<const char *>(aHistogramBucket) <= reinterpret_cast<const char *>(BEST_pHistogramBucketEntry));
-   EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) % cBytesPerHistogramBucket);
-   pTreeNode->AFTER_SetSplitValue((reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - 
-      reinterpret_cast<const char *>(aHistogramBucket)) / cBytesPerHistogramBucket);
+   EBM_ASSERT(reinterpret_cast<const char *>(aBins) <= reinterpret_cast<const char *>(BEST_pBin));
+   EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pBin) - reinterpret_cast<const char *>(aBins)) % cBytesPerBin);
+   pTreeNode->AFTER_SetSplitValue((reinterpret_cast<const char *>(BEST_pBin) - 
+      reinterpret_cast<const char *>(aBins)) / cBytesPerBin);
 
    LOG_N(
       TraceLevelVerbose,
@@ -450,7 +450,7 @@ public:
 
    static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
-      const size_t cHistogramBuckets,
+      const size_t cBins,
       const size_t cSamplesTotal,
       const FloatBig weightTotal,
       const size_t iDimension,
@@ -462,9 +462,9 @@ public:
 
       ErrorEbmType error;
 
-      HistogramBucketBase * const aHistogramBucketBase = pBoosterShell->GetHistogramBucketBaseBig();
-      const auto * const aHistogramBucket = 
-         aHistogramBucketBase->GetHistogramBucket<FloatBig, bClassification>();
+      BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
+      const auto * const aBins = 
+         aBinsBase->Specialize<FloatBig, bClassification>();
 
       HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
          pBoosterShell->GetSumHistogramTargetEntryArray();
@@ -482,7 +482,7 @@ public:
 
       EBM_ASSERT(nullptr != pTotalGain);
       EBM_ASSERT(1 <= cSamplesTotal); // filter these out at the start where we can handle this case easily
-      EBM_ASSERT(2 <= cHistogramBuckets); // filter these out at the start where we can handle this case easily
+      EBM_ASSERT(2 <= cBins); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(2 <= cLeavesMax); // filter these out at the start where we can handle this case easily
 
       // there will be at least one split
@@ -492,8 +492,8 @@ public:
          return Error_OutOfMemory; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
       }
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
 
    retry_with_bigger_tree_node_children_array:
 
@@ -519,14 +519,14 @@ public:
       pRootTreeNode->SetExaminedForPossibleSplitting(false);
 #endif // NDEBUG
 
-      pRootTreeNode->BEFORE_SetHistogramBucketEntryFirst(aHistogramBucket);
-      pRootTreeNode->BEFORE_SetHistogramBucketEntryLast(
-         GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucket, cHistogramBuckets - 1)
+      pRootTreeNode->BEFORE_SetBinFirst(aBins);
+      pRootTreeNode->BEFORE_SetBinLast(
+         IndexBin(cBytesPerBin, aBins, cBins - 1)
       );
-      ASSERT_BINNED_BUCKET_OK(
-         cBytesPerHistogramBucket,
-         pRootTreeNode->BEFORE_GetHistogramBucketEntryLast(),
-         pBoosterShell->GetHistogramBucketsEndDebugBig()
+      ASSERT_BIN_OK(
+         cBytesPerBin,
+         pRootTreeNode->BEFORE_GetBinLast(),
+         pBoosterShell->GetBinsBigEndDebug()
       );
       pRootTreeNode->AMBIGUOUS_SetCountSamples(cSamplesTotal);
       pRootTreeNode->SetWeight(weightTotal);
@@ -601,10 +601,10 @@ public:
       EBM_ASSERT(!std::isinf(pRootTreeNode->AFTER_GetSplitGain()));
       EBM_ASSERT(0 <= pRootTreeNode->AFTER_GetSplitGain());
 
-      if(UNPREDICTABLE(PREDICTABLE(2 == cLeavesMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
+      if(UNPREDICTABLE(PREDICTABLE(2 == cLeavesMax) || UNPREDICTABLE(2 == cBins))) {
          // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
 
-         EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<bClassification>(
+         EBM_ASSERT(2 != cBins || !GetLeftTreeNodeChild<bClassification>(
             pRootTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode)->IsSplittable() &&
             !GetRightTreeNodeChild<bClassification>(
                pRootTreeNode->AFTER_GetTreeNodeChildren(),
@@ -912,7 +912,7 @@ public:
 
 extern ErrorEbmType PartitionOneDimensionalBoosting(
    BoosterShell * const pBoosterShell,
-   const size_t cHistogramBuckets,
+   const size_t cBins,
    const size_t cSamplesTotal,
    const FloatBig weightTotal,
    const size_t iDimension,
@@ -931,7 +931,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
          error = PartitionOneDimensionalBoostingInternal<2>::Func(
             pBoosterShell,
-            cHistogramBuckets,
+            cBins,
             cSamplesTotal,
             weightTotal,
             iDimension,
@@ -942,7 +942,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
       } else {
          error = PartitionOneDimensionalBoostingInternal<k_dynamicClassification>::Func(
             pBoosterShell,
-            cHistogramBuckets,
+            cBins,
             cSamplesTotal,
             weightTotal,
             iDimension,
@@ -955,7 +955,7 @@ extern ErrorEbmType PartitionOneDimensionalBoosting(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       error = PartitionOneDimensionalBoostingInternal<k_regression>::Func(
          pBoosterShell,
-         cHistogramBuckets,
+         cBins,
          cSamplesTotal,
          weightTotal,
          iDimension,

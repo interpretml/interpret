@@ -19,7 +19,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct HistogramBucketBase;
+struct BinBase;
 class InteractionCore;
 
 class InteractionShell final {
@@ -29,17 +29,17 @@ class InteractionShell final {
 
    InteractionCore * m_pInteractionCore;
 
-   HistogramBucketBase * m_aThreadByteBuffer1Fast;
+   BinBase * m_aThreadByteBuffer1Fast;
    size_t m_cThreadByteBufferCapacity1Fast;
 
-   HistogramBucketBase * m_aThreadByteBuffer1Big;
+   BinBase * m_aThreadByteBuffer1Big;
    size_t m_cThreadByteBufferCapacity1Big;
 
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
 
 #ifndef NDEBUG
-   const unsigned char * m_aHistogramBucketsEndDebugFast;
+   const unsigned char * m_pBinsFastEndDebug;
 #endif // NDEBUG
 
 public:
@@ -107,27 +107,27 @@ public:
       return &m_cLogExitMessages;
    }
 
-   HistogramBucketBase * GetHistogramBucketBaseFast(size_t cBytesRequired);
+   BinBase * GetBinBaseFast(size_t cBytesRequired);
 
-   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBaseFast() {
+   INLINE_ALWAYS BinBase * GetBinBaseFast() {
       // call this if the histograms were already allocated and we just need the pointer
       return m_aThreadByteBuffer1Fast;
    }
 
-   HistogramBucketBase * GetHistogramBucketBaseBig(size_t cBytesRequired);
+   BinBase * GetBinBaseBig(size_t cBytesRequired);
 
-   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBaseBig() {
+   INLINE_ALWAYS BinBase * GetBinBaseBig() {
       // call this if the histograms were already allocated and we just need the pointer
       return m_aThreadByteBuffer1Big;
    }
 
 #ifndef NDEBUG
-   INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebugFast() const {
-      return m_aHistogramBucketsEndDebugFast;
+   INLINE_ALWAYS const unsigned char * GetBinsFastEndDebug() const {
+      return m_pBinsFastEndDebug;
    }
 
-   INLINE_ALWAYS void SetHistogramBucketsEndDebugFast(const unsigned char * const val) {
-      m_aHistogramBucketsEndDebugFast = val;
+   INLINE_ALWAYS void SetBinsFastEndDebug(const unsigned char * const pBinsFastEndDebug) {
+      m_pBinsFastEndDebug = pBinsFastEndDebug;
    }
 #endif // NDEBUG
 };

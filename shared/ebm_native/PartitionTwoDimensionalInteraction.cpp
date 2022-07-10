@@ -40,21 +40,21 @@ public:
       const Term * const pTerm,
       const InteractionOptionsType options,
       const size_t cSamplesRequiredForChildSplitMin,
-      HistogramBucketBase * pAuxiliaryBucketZoneBase,
-      HistogramBucketBase * const aHistogramBucketsBase
+      BinBase * aAuxiliaryBinsBase,
+      BinBase * const aBinsBase
 #ifndef NDEBUG
-      , const HistogramBucketBase * const aHistogramBucketsDebugCopyBase
-      , const unsigned char * const aHistogramBucketsEndDebug
+      , const BinBase * const aBinsBaseDebugCopy
+      , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      auto * const pAuxiliaryBucketZone = pAuxiliaryBucketZoneBase->GetHistogramBucket<FloatBig, bClassification>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
 
-      auto * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<FloatBig, bClassification>();
+      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
 #ifndef NDEBUG
-      auto * const aHistogramBucketsDebugCopy = aHistogramBucketsDebugCopyBase->GetHistogramBucket<FloatBig, bClassification>();
+      auto * const aBinsDebugCopy = aBinsBaseDebugCopy->Specialize<FloatBig, bClassification>();
 #endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -63,12 +63,12 @@ public:
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
 
-      auto * const pTotals00 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
-      auto * const pTotals01 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
-      auto * const pTotals10 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
-      auto * const pTotals11 = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
+      auto * const pTotals00 = IndexBin(cBytesPerBin, aAuxiliaryBins, 0);
+      auto * const pTotals01 = IndexBin(cBytesPerBin, aAuxiliaryBins, 1);
+      auto * const pTotals10 = IndexBin(cBytesPerBin, aAuxiliaryBins, 2);
+      auto * const pTotals11 = IndexBin(cBytesPerBin, aAuxiliaryBins, 3);
 
       // for interactions we return an interaction score of 0 if any of the dimensions are useless
       EBM_ASSERT(2 == pTerm->GetCountDimensions());
@@ -107,67 +107,67 @@ public:
             TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                learningTypeOrCountTargetClasses,
                pTerm,
-               aHistogramBuckets,
+               aBins,
                aiStart,
                0x00,
                pTotals00
 #ifndef NDEBUG
-               , aHistogramBucketsDebugCopy
-               , aHistogramBucketsEndDebug
+               , aBinsDebugCopy
+               , pBinsEndDebug
 #endif // NDEBUG
                );
-            if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals00->GetCountSamplesInBucket())) {
+            if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals00->GetCountSamples())) {
                EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                   learningTypeOrCountTargetClasses,
                   pTerm,
-                  aHistogramBuckets,
+                  aBins,
                   aiStart,
                   0x01,
                   pTotals01
 #ifndef NDEBUG
-                  , aHistogramBucketsDebugCopy
-                  , aHistogramBucketsEndDebug
+                  , aBinsDebugCopy
+                  , pBinsEndDebug
 #endif // NDEBUG
                   );
-               if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals01->GetCountSamplesInBucket())) {
+               if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals01->GetCountSamples())) {
                   EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                   TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                      learningTypeOrCountTargetClasses,
                      pTerm,
-                     aHistogramBuckets,
+                     aBins,
                      aiStart,
                      0x02,
                      pTotals10
 #ifndef NDEBUG
-                     , aHistogramBucketsDebugCopy
-                     , aHistogramBucketsEndDebug
+                     , aBinsDebugCopy
+                     , pBinsEndDebug
 #endif // NDEBUG
                      );
-                  if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals10->GetCountSamplesInBucket())) {
+                  if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals10->GetCountSamples())) {
                      EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                         learningTypeOrCountTargetClasses,
                         pTerm,
-                        aHistogramBuckets,
+                        aBins,
                         aiStart,
                         0x03,
                         pTotals11
 #ifndef NDEBUG
-                        , aHistogramBucketsDebugCopy
-                        , aHistogramBucketsEndDebug
+                        , aBinsDebugCopy
+                        , pBinsEndDebug
 #endif // NDEBUG
                         );
-                     if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals11->GetCountSamplesInBucket())) {
+                     if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals11->GetCountSamples())) {
 #ifndef NDEBUG
                         bAnySplits = true;
 #endif // NDEBUG
                         FloatBig gain = 0;
 
-                        FloatBig weight00 = pTotals00->GetWeightInBucket();
-                        FloatBig weight01 = pTotals01->GetWeightInBucket();
-                        FloatBig weight10 = pTotals10->GetWeightInBucket();
-                        FloatBig weight11 = pTotals11->GetWeightInBucket();
+                        FloatBig weight00 = pTotals00->GetWeight();
+                        FloatBig weight01 = pTotals01->GetWeight();
+                        FloatBig weight10 = pTotals10->GetWeight();
+                        FloatBig weight11 = pTotals11->GetWeight();
 
                         auto * const pHistogramEntry00 = pTotals00->GetHistogramTargetEntry();
                         auto * const pHistogramEntry01 = pTotals01->GetHistogramTargetEntry();
@@ -345,13 +345,13 @@ public:
          // gain. All the splits we've analyzed so far though had the same non-split partial gain, so we subtract it here
          // instead of inside the loop.
 
-         // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
-         // which contains the totals of all buckets
+         // the bin before the aAuxiliaryBinsBase is the last summation bin of aBinsBase, 
+         // which contains the totals of all bins
          const auto * const pTotal =
-            reinterpret_cast<const HistogramBucket<FloatBig, bClassification> *>(
-               reinterpret_cast<const char *>(pAuxiliaryBucketZoneBase) - cBytesPerHistogramBucket);
+            reinterpret_cast<const Bin<FloatBig, bClassification> *>(
+               reinterpret_cast<const char *>(aAuxiliaryBinsBase) - cBytesPerBin);
 
-         const FloatBig weightAll = pTotal->GetWeightInBucket();
+         const FloatBig weightAll = pTotal->GetWeight();
 
          const auto * const pHistogramEntryTotal = pTotal->GetHistogramTargetEntry();
 
@@ -367,7 +367,7 @@ public:
          }
 
          // bestGain should be positive, or NaN, BUT it can be slightly negative due to floating point noise
-         // it could also be -inf if the parent/total bucket overflows, but the children parts did not.
+         // it could also be -inf if the parent/total bin overflows, but the children parts did not.
          // bestGain can also be substantially negative if we didn't find any legal cuts and 
          // then we subtracted the base partial gain here from zero
 
@@ -399,11 +399,11 @@ public:
       const Term * const pTerm,
       const InteractionOptionsType options,
       const size_t cSamplesRequiredForChildSplitMin,
-      HistogramBucketBase * pAuxiliaryBucketZone,
-      HistogramBucketBase * const aHistogramBuckets
+      BinBase * aAuxiliaryBinsBase,
+      BinBase * const aBinsBase
 #ifndef NDEBUG
-      , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-      , const unsigned char * const aHistogramBucketsEndDebug
+      , const BinBase * const aBinsBaseDebugCopy
+      , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
@@ -419,11 +419,11 @@ public:
             pTerm,
             options,
             cSamplesRequiredForChildSplitMin,
-            pAuxiliaryBucketZone,
-            aHistogramBuckets
+            aAuxiliaryBinsBase,
+            aBinsBase
 #ifndef NDEBUG
-            , aHistogramBucketsDebugCopy
-            , aHistogramBucketsEndDebug
+            , aBinsBaseDebugCopy
+            , pBinsEndDebug
 #endif // NDEBUG
          );
       } else {
@@ -432,11 +432,11 @@ public:
             pTerm,
             options,
             cSamplesRequiredForChildSplitMin,
-            pAuxiliaryBucketZone,
-            aHistogramBuckets
+            aAuxiliaryBinsBase,
+            aBinsBase
 #ifndef NDEBUG
-            , aHistogramBucketsDebugCopy
-            , aHistogramBucketsEndDebug
+            , aBinsBaseDebugCopy
+            , pBinsEndDebug
 #endif // NDEBUG
          );
       }
@@ -454,11 +454,11 @@ public:
       const Term * const pTerm,
       const InteractionOptionsType options,
       const size_t cSamplesRequiredForChildSplitMin,
-      HistogramBucketBase * pAuxiliaryBucketZone,
-      HistogramBucketBase * const aHistogramBuckets
+      BinBase * aAuxiliaryBinsBase,
+      BinBase * const aBinsBase
 #ifndef NDEBUG
-      , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-      , const unsigned char * const aHistogramBucketsEndDebug
+      , const BinBase * const aBinsBaseDebugCopy
+      , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
@@ -471,11 +471,11 @@ public:
          pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
-         aHistogramBuckets
+         aAuxiliaryBinsBase,
+         aBinsBase
 #ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebug
+         , aBinsBaseDebugCopy
+         , pBinsEndDebug
 #endif // NDEBUG
       );
    }
@@ -486,11 +486,11 @@ extern double PartitionTwoDimensionalInteraction(
    const Term * const pTerm,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
-   HistogramBucketBase * pAuxiliaryBucketZone,
-   HistogramBucketBase * const aHistogramBuckets
+   BinBase * aAuxiliaryBinsBase,
+   BinBase * const aBinsBase
 #ifndef NDEBUG
-   , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
+   , const BinBase * const aBinsBaseDebugCopy
+   , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -501,11 +501,11 @@ extern double PartitionTwoDimensionalInteraction(
          pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
-         aHistogramBuckets
+         aAuxiliaryBinsBase,
+         aBinsBase
 #ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebug
+         , aBinsBaseDebugCopy
+         , pBinsEndDebug
 #endif // NDEBUG
       );
    } else {
@@ -515,11 +515,11 @@ extern double PartitionTwoDimensionalInteraction(
          pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
-         aHistogramBuckets
+         aAuxiliaryBinsBase,
+         aBinsBase
 #ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebug
+         , aBinsBaseDebugCopy
+         , pBinsEndDebug
 #endif // NDEBUG
       );
    }

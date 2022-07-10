@@ -27,14 +27,14 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class SumHistogramBucketsInternal final {
+class SumBinsInternal final {
 public:
 
-   SumHistogramBucketsInternal() = delete; // this is a static class.  Do not construct
+   SumBinsInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
       BoosterShell * const pBoosterShell,
-      const size_t cHistogramBuckets
+      const size_t cBins
 #ifndef NDEBUG
       , const size_t cSamplesTotal
       , const FloatBig weightTotal
@@ -48,14 +48,14 @@ public:
       HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
          pBoosterShell->GetSumHistogramTargetEntryArray();
 
-      HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBaseBig();
+      BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
 
-      const auto * const aHistogramBuckets = 
-         aHistogramBucketsBase->GetHistogramBucket<FloatBig, bClassification>();
+      const auto * const aBins = 
+         aBinsBase->Specialize<FloatBig, bClassification>();
       auto * const aSumHistogramTargetEntry =
          aSumHistogramTargetEntryBase->GetHistogramTargetEntry<FloatBig, bClassification>();
 
-      EBM_ASSERT(2 <= cHistogramBuckets); // we pre-filter out features with only one bucket
+      EBM_ASSERT(2 <= cBins); // we pre-filter out features with only one bin
 
 #ifndef NDEBUG
       size_t cSamplesTotalDebug = 0;
@@ -67,22 +67,22 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<FloatBig>(bClassification, cVectorLength);
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
 
-      const auto * pCopyFrom = aHistogramBuckets;
+      const auto * pCopyFrom = aBins;
       const auto * pCopyFromEnd = 
-         GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, cHistogramBuckets);
+         IndexBin(cBytesPerBin, aBins, cBins);
 
-      // we do a lot more work in the PartitionOneDimensionalBoosting function per binned bucket entry, so if we can compress it by any amount, then it will probably be a win
-      // for binned bucket arrays that have a small set of labels, this loop will be fast and result in no movements.  For binned bucket arrays that are long 
+      // we do a lot more work in the PartitionOneDimensionalBoosting function per target entry, so if we can compress it by any amount, then it will probably be a win
+      // for bin arrays that have a small set of labels, this loop will be fast and result in no movements.  For bin arrays that are long 
       // and have many different labels, we are more likley to find bins with zero items, and that's where we get a win by compressing it down to just the 
-      // non-zero binned buckets, even though this requires one more member variable in the binned bucket array
+      // non-zero bins, even though this requires one more member variable in the bins array
       do {
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, pBoosterShell->GetHistogramBucketsEndDebugBig());
+         ASSERT_BIN_OK(cBytesPerBin, pCopyFrom, pBoosterShell->GetBinsBigEndDebug());
 #ifndef NDEBUG
-         cSamplesTotalDebug += pCopyFrom->GetCountSamplesInBucket();
-         weightTotalDebug += pCopyFrom->GetWeightInBucket();
+         cSamplesTotalDebug += pCopyFrom->GetCountSamples();
+         weightTotalDebug += pCopyFrom->GetWeight();
 #endif // NDEBUG
 
          const auto * pHistogramTargetEntry = pCopyFrom->GetHistogramTargetEntry();
@@ -101,42 +101,42 @@ public:
             aSumHistogramTargetEntry[iVector].Add(pHistogramTargetEntry[iVector]);
          }
 
-         pCopyFrom = GetHistogramBucketByIndex(cBytesPerHistogramBucket, pCopyFrom, 1);
+         pCopyFrom = IndexBin(cBytesPerBin, pCopyFrom, 1);
       } while(pCopyFromEnd != pCopyFrom);
-      EBM_ASSERT(0 == (reinterpret_cast<const char *>(pCopyFrom) - reinterpret_cast<const char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
+      EBM_ASSERT(0 == (reinterpret_cast<const char *>(pCopyFrom) - reinterpret_cast<const char *>(aBins)) % cBytesPerBin);
 
       EBM_ASSERT(cSamplesTotal == cSamplesTotalDebug);
       EBM_ASSERT(weightTotalDebug * 0.999 <= weightTotal && weightTotal <= weightTotalDebug * 1.0001);
    }
 };
 
-extern void SumHistogramBuckets(
+extern void SumBins(
    BoosterShell * const pBoosterShell,
-   const size_t cHistogramBuckets
+   const size_t cBins
 #ifndef NDEBUG
    , const size_t cSamplesTotal
    , const FloatBig weightTotal
 #endif // NDEBUG
 ) {
-   LOG_0(TraceLevelVerbose, "Entered SumHistogramBuckets");
+   LOG_0(TraceLevelVerbose, "Entered SumBins");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         SumHistogramBucketsInternal<2>::Func(
+         SumBinsInternal<2>::Func(
             pBoosterShell,
-            cHistogramBuckets
+            cBins
 #ifndef NDEBUG
             , cSamplesTotal
             , weightTotal
 #endif // NDEBUG
          );
       } else {
-         SumHistogramBucketsInternal<k_dynamicClassification>::Func(
+         SumBinsInternal<k_dynamicClassification>::Func(
             pBoosterShell,
-            cHistogramBuckets
+            cBins
 #ifndef NDEBUG
             , cSamplesTotal
             , weightTotal
@@ -145,9 +145,9 @@ extern void SumHistogramBuckets(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      SumHistogramBucketsInternal<k_regression>::Func(
+      SumBinsInternal<k_regression>::Func(
          pBoosterShell,
-         cHistogramBuckets
+         cBins
 #ifndef NDEBUG
          , cSamplesTotal
          , weightTotal
@@ -155,7 +155,7 @@ extern void SumHistogramBuckets(
       );
    }
 
-   LOG_0(TraceLevelVerbose, "Exited SumHistogramBuckets");
+   LOG_0(TraceLevelVerbose, "Exited SumBins");
 }
 
 } // DEFINED_ZONE_NAME
