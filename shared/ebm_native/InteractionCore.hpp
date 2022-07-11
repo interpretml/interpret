@@ -90,8 +90,8 @@ public:
       InteractionShell * const pInteractionShell,
       const unsigned char * const pDataSetShared,
       const BagEbmType * const aBag,
-      const FloatEbmType * const aPredictorScores,
-      const FloatEbmType * const optionalTempParams
+      const double * const aInitScores,
+      const double * const optionalTempParams
    );
 };
 

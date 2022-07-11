@@ -2,27 +2,27 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-convert_feature_groups_to_c <- function(feature_groups) {
+convert_terms_to_c <- function(terms) {
    n_feature_indexes <- 0
-   for (feature_group in feature_groups) {
-      n_feature_indexes <- n_feature_indexes + length(feature_group$feature_indexes)
+   for (term in terms) {
+      n_feature_indexes <- n_feature_indexes + length(term$feature_indexes)
    }
 
-   feature_groups_feature_count <- vector("numeric", length(feature_groups))
-   feature_groups_feature_indexes <- vector("numeric", n_feature_indexes)
+   feature_counts <- vector("numeric", length(terms))
+   feature_indexes <- vector("numeric", n_feature_indexes)
    index_indexes <- 1
 
-   for (index_feature_group in seq_along(feature_groups)) {
-      feature_group <- feature_groups[[index_feature_group]]
-      feature_indexes_in_group <- feature_group$feature_indexes
-      feature_groups_feature_count[[index_feature_group]] <- length(feature_indexes_in_group)
+   for (index_term in seq_along(terms)) {
+      term <- terms[[index_term]]
+      term_feature_indexes <- term$feature_indexes
+      feature_counts[[index_term]] <- length(term_feature_indexes)
 
-      for(feature_index in feature_indexes_in_group) {
-         feature_groups_feature_indexes[[index_indexes]] <- feature_index - 1
+      for(feature_index in term_feature_indexes) {
+         feature_indexes[[index_indexes]] <- feature_index - 1
          index_indexes <- index_indexes + 1
       }
    }
-   return(list(feature_groups_feature_count = feature_groups_feature_count, feature_groups_feature_indexes = feature_groups_feature_indexes))
+   return(list(feature_counts = feature_counts, feature_indexes = feature_indexes))
 }
 
 create_classification_booster <- function(
@@ -30,39 +30,39 @@ create_classification_booster <- function(
    count_target_classes, 
    features_categorical,
    features_bin_count,
-   feature_groups_feature_count, 
-   feature_groups_feature_indexes, 
+   feature_counts, 
+   feature_indexes, 
    training_binned_data, 
    training_targets, 
    training_weights, 
-   training_predictor_scores, 
+   training_init_scores, 
    validation_binned_data, 
    validation_targets, 
    validation_weights, 
-   validation_predictor_scores, 
+   validation_init_scores, 
    count_inner_bags
 ) {
    random_seed <- as.integer(random_seed)
    count_target_classes <- as.double(count_target_classes)
    features_categorical <- as.logical(features_categorical)
    features_bin_count <- as.double(features_bin_count)
-   feature_groups_feature_count <- as.double(feature_groups_feature_count)
-   feature_groups_feature_indexes <- as.double(feature_groups_feature_indexes)
+   feature_counts <- as.double(feature_counts)
+   feature_indexes <- as.double(feature_indexes)
    training_binned_data <- as.double(training_binned_data)
    training_targets <- as.double(training_targets)
    if(!is.null(training_weights)) {
       training_weights <- as.double(training_weights)
    }
-   if(!is.null(training_predictor_scores)) {
-      training_predictor_scores <- as.double(training_predictor_scores)
+   if(!is.null(training_init_scores)) {
+      training_init_scores <- as.double(training_init_scores)
    }
    validation_binned_data <- as.double(validation_binned_data)
    validation_targets <- as.double(validation_targets)
    if(!is.null(validation_weights)) {
       validation_weights <- as.double(validation_weights)
    }
-   if(!is.null(validation_predictor_scores)) {
-      validation_predictor_scores <- as.double(validation_predictor_scores)
+   if(!is.null(validation_init_scores)) {
+      validation_init_scores <- as.double(validation_init_scores)
    }
    count_inner_bags <- as.integer(count_inner_bags)
 
@@ -72,16 +72,16 @@ create_classification_booster <- function(
       count_target_classes, 
       features_categorical,
       features_bin_count,
-      feature_groups_feature_count, 
-      feature_groups_feature_indexes, 
+      feature_counts, 
+      feature_indexes, 
       training_binned_data, 
       training_targets, 
       training_weights, 
-      training_predictor_scores, 
+      training_init_scores, 
       validation_binned_data, 
       validation_targets, 
       validation_weights, 
-      validation_predictor_scores, 
+      validation_init_scores, 
       count_inner_bags
    )
    if(is.null(booster_handle)) {
@@ -94,38 +94,38 @@ create_regression_booster <- function(
    random_seed,
    features_categorical,
    features_bin_count,
-   feature_groups_feature_count, 
-   feature_groups_feature_indexes, 
+   feature_counts, 
+   feature_indexes, 
    training_binned_data, 
    training_targets, 
    training_weights, 
-   training_predictor_scores, 
+   training_init_scores, 
    validation_binned_data, 
    validation_targets, 
    validation_weights, 
-   validation_predictor_scores, 
+   validation_init_scores, 
    count_inner_bags
 ) {
    random_seed <- as.integer(random_seed)
    features_categorical <- as.logical(features_categorical)
    features_bin_count <- as.double(features_bin_count)
-   feature_groups_feature_count <- as.double(feature_groups_feature_count)
-   feature_groups_feature_indexes <- as.double(feature_groups_feature_indexes)
+   feature_counts <- as.double(feature_counts)
+   feature_indexes <- as.double(feature_indexes)
    training_binned_data <- as.double(training_binned_data)
    training_targets <- as.double(training_targets)
    if(!is.null(training_weights)) {
       training_weights <- as.double(training_weights)
    }
-   if(!is.null(training_predictor_scores)) {
-      training_predictor_scores <- as.double(training_predictor_scores)
+   if(!is.null(training_init_scores)) {
+      training_init_scores <- as.double(training_init_scores)
    }
    validation_binned_data <- as.double(validation_binned_data)
    validation_targets <- as.double(validation_targets)
    if(!is.null(validation_weights)) {
       validation_weights <- as.double(validation_weights)
    }
-   if(!is.null(validation_predictor_scores)) {
-      validation_predictor_scores <- as.double(validation_predictor_scores)
+   if(!is.null(validation_init_scores)) {
+      validation_init_scores <- as.double(validation_init_scores)
    }
    count_inner_bags <- as.integer(count_inner_bags)
 
@@ -134,16 +134,16 @@ create_regression_booster <- function(
       random_seed,
       features_categorical,
       features_bin_count,
-      feature_groups_feature_count, 
-      feature_groups_feature_indexes, 
+      feature_counts, 
+      feature_indexes, 
       training_binned_data, 
       training_targets, 
       training_weights, 
-      training_predictor_scores, 
+      training_init_scores, 
       validation_binned_data, 
       validation_targets, 
       validation_weights, 
-      validation_predictor_scores, 
+      validation_init_scores, 
       count_inner_bags
    )
    if(is.null(booster_handle)) {
@@ -152,40 +152,40 @@ create_regression_booster <- function(
    return(booster_handle)
 }
 
-generate_model_update <- function(
+generate_term_update <- function(
    booster_handle, 
-   index_feature_group, 
+   index_term, 
    learning_rate, 
    count_samples_required_for_child_split_min, 
    max_leaves
 ) {
    stopifnot(class(booster_handle) == "externalptr")
-   index_feature_group <- as.double(index_feature_group)
+   index_term <- as.double(index_term)
    learning_rate <- as.double(learning_rate)
    count_samples_required_for_child_split_min <- as.double(count_samples_required_for_child_split_min)
    max_leaves <- as.double(max_leaves)
 
    avg_gain <- .Call(
-      GenerateModelUpdate_R, 
+      GenerateTermUpdate_R, 
       booster_handle, 
-      index_feature_group, 
+      index_term, 
       learning_rate, 
       count_samples_required_for_child_split_min, 
       max_leaves
    )
    if(is.null(avg_gain)) {
-      stop("error in GenerateModelUpdate_R")
+      stop("error in GenerateTermUpdate_R")
    }
    return(avg_gain)
 }
 
-apply_model_update <- function(
+apply_term_update <- function(
    booster_handle
 ) {
    stopifnot(class(booster_handle) == "externalptr")
 
    validation_metric <- .Call(
-      ApplyModelUpdate_R, 
+      ApplyTermUpdate_R, 
       booster_handle
    )
    if(is.null(validation_metric)) {
@@ -194,26 +194,26 @@ apply_model_update <- function(
    return(validation_metric)
 }
 
-get_best_model_feature_group <- function(booster_handle, index_feature_group) {
+get_best_term_scores <- function(booster_handle, index_term) {
    stopifnot(class(booster_handle) == "externalptr")
-   index_feature_group <- as.double(index_feature_group)
+   index_term <- as.double(index_term)
 
-   model_feature_group_tensor <- .Call(GetBestModelFeatureGroup_R, booster_handle, index_feature_group)
-   if(is.null(model_feature_group_tensor)) {
-      stop("error in GetBestModelFeatureGroup_R")
+   term_scores <- .Call(GetBestTermScores_R, booster_handle, index_term)
+   if(is.null(term_scores)) {
+      stop("error in GetBestTermScores_R")
    }
-   return(model_feature_group_tensor)
+   return(term_scores)
 }
 
-get_current_model_feature_group <- function(booster_handle, index_feature_group) {
+get_current_term_scores <- function(booster_handle, index_term) {
    stopifnot(class(booster_handle) == "externalptr")
-   index_feature_group <- as.double(index_feature_group)
+   index_term <- as.double(index_term)
 
-   model_feature_group_tensor <- .Call(GetCurrentModelFeatureGroup_R, booster_handle, index_feature_group)
-   if(is.null(model_feature_group_tensor)) {
-      stop("error in GetCurrentModelFeatureGroup_R")
+   term_scores <- .Call(GetCurrentTermScores_R, booster_handle, index_term)
+   if(is.null(term_scores)) {
+      stop("error in GetCurrentTermScores_R")
    }
-   return(model_feature_group_tensor)
+   return(term_scores)
 }
 
 free_boosting <- function(booster_handle) {
@@ -223,16 +223,16 @@ free_boosting <- function(booster_handle) {
 
 get_best_model <- function(booster) {
    model <- lapply(
-      seq_along(booster$feature_groups), 
-      function(i) { get_best_model_feature_group(booster$booster_handle, i - 1) }
+      seq_along(booster$terms), 
+      function(i) { get_best_term_scores(booster$booster_handle, i - 1) }
    )
    return(model)
 }
 
 get_current_model <- function(booster) {
    model <- lapply(
-      seq_along(booster$feature_groups), 
-      function(i) { get_current_model_feature_group(booster$booster_handle, i - 1) }
+      seq_along(booster$terms), 
+      function(i) { get_current_term_scores(booster$booster_handle, i - 1) }
    )
    return(model)
 }
@@ -242,19 +242,19 @@ booster <- function(
    n_classes,
    features_categorical,
    features_bin_count,
-   feature_groups,
+   terms,
    X_train,
    y_train,
    weights_train, 
-   scores_train,
+   init_scores_train,
    X_val,
    y_val,
    weights_val, 
-   scores_val,
+   init_scores_val,
    inner_bags,
    random_state
 ) {
-   c_structs <- convert_feature_groups_to_c(feature_groups)
+   c_structs <- convert_terms_to_c(terms)
 
    if(model_type == "classification") {
       booster_handle <- create_classification_booster(
@@ -262,16 +262,16 @@ booster <- function(
          n_classes, 
          features_categorical,
          features_bin_count,
-         c_structs$feature_groups_feature_count, 
-         c_structs$feature_groups_feature_indexes, 
+         c_structs$feature_counts, 
+         c_structs$feature_indexes, 
          X_train, 
          y_train, 
          weights_train, 
-         scores_train, 
+         init_scores_train, 
          X_val, 
          y_val, 
          weights_val, 
-         scores_val, 
+         init_scores_val, 
          inner_bags
       )
    } else if(model_type == "regression") {
@@ -279,16 +279,16 @@ booster <- function(
          random_state,
          features_categorical,
          features_bin_count,
-         c_structs$feature_groups_feature_count, 
-         c_structs$feature_groups_feature_indexes, 
+         c_structs$feature_counts, 
+         c_structs$feature_indexes, 
          X_train, 
          y_train, 
          weights_train, 
-         scores_train, 
+         init_scores_train, 
          X_val, 
          y_val, 
          weights_val, 
-         scores_val, 
+         init_scores_val, 
          inner_bags
       )
    } else {
@@ -298,7 +298,7 @@ booster <- function(
    self <- structure(list(
       model_type = model_type, 
       n_classes = n_classes, 
-      feature_groups = feature_groups, 
+      terms = terms, 
       booster_handle = booster_handle
    ), class = "booster")
    return(self)
@@ -309,15 +309,15 @@ cyclic_gradient_boost <- function(
    n_classes,
    features_categorical,
    features_bin_count,
-   feature_groups,
+   terms,
    X_train,
    y_train,
    weights_train, 
-   scores_train,
+   init_scores_train,
    X_val,
    y_val,
    weights_val, 
-   scores_val,
+   init_scores_val,
    inner_bags,
    learning_rate,
    min_samples_leaf, 
@@ -335,15 +335,15 @@ cyclic_gradient_boost <- function(
       n_classes,
       features_categorical,
       features_bin_count,
-      feature_groups,
+      terms,
       X_train,
       y_train,
       weights_train, 
-      scores_train,
+      init_scores_train,
       X_val,
       y_val,
       weights_val, 
-      scores_val,
+      init_scores_val,
       inner_bags,
       random_state
    )
@@ -352,16 +352,16 @@ cyclic_gradient_boost <- function(
       bp_metric <- Inf
 
       for(episode_index in 1:max_rounds) {
-         for(feature_group_index in seq_along(feature_groups)) {
-            avg_gain <- generate_model_update(
+         for(term_index in seq_along(terms)) {
+            avg_gain <- generate_term_update(
                ebm_booster$booster_handle, 
-               feature_group_index - 1, 
+               term_index - 1, 
                learning_rate, 
                min_samples_leaf, 
                max_leaves
             )
 
-            validation_metric <- apply_model_update(ebm_booster$booster_handle)
+            validation_metric <- apply_term_update(ebm_booster$booster_handle)
 
             if(validation_metric < min_metric) {
                min_metric <- validation_metric

@@ -7,102 +7,10 @@ import numpy as np
 import ctypes as ct
 from contextlib import closing
 
+from scipy.stats import normaltest, shapiro
+
 import pytest
 
-@pytest.mark.skip(reason="test_booster_internals needs to be updated")
-def test_booster_internals():
-    with Booster(
-        model_type="classification",
-        n_classes=2,
-        features_categorical=np.array([0], dtype=ct.c_int64, order="C"), 
-        features_bin_count=np.array([2], dtype=ct.c_int64, order="C"),
-        term_features=[[0]],
-        X_train=np.array([[0]], dtype=ct.c_int64, order="C"),
-        y_train=np.array([0], dtype=ct.c_int64, order="C"),
-        w_train=np.array([1], dtype=np.float64, order="C"),
-        scores_train=None,
-        X_val=np.array([[0]], dtype=ct.c_int64, order="C"),
-        y_val=np.array([0], dtype=ct.c_int64, order="C"),
-        w_val=np.array([1], dtype=np.float64, order="C"),
-        scores_val=None,
-        n_inner_bags=0,
-        random_state=42,
-        optional_temp_params=None,
-    ) as booster:
-        avg_gain = booster.generate_term_update(
-            term_idx=0,
-            generate_update_options=Native.GenerateUpdateOptions_Default,
-            learning_rate=0.01,
-            min_samples_leaf=2,
-            max_leaves=np.array([2], dtype=ct.c_int64, order="C"),
-        )
-        assert avg_gain == 0
-
-        splits = booster.get_term_update_splits()
-        assert len(splits) == 1
-        assert len(splits[0]) == 0
-
-        term_update = booster.get_term_update_expanded()
-        assert len(term_update.shape) == 1
-        assert term_update.shape[0] == 2
-        assert term_update[0] < 0
-
-        booster.set_term_update_expanded(0, term_update)
-
-        metric = booster.apply_term_update()
-        assert 0 < metric
-
-        model = booster.get_best_model()
-        assert len(model) == 1
-        assert len(model[0].shape) == 1
-        assert model[0].shape[0] == 2
-        assert model[0][0] < 0
-
-
-@pytest.mark.skip(reason="test_one_class needs to be updated")
-def test_one_class():
-    with Booster(
-        model_type="classification",
-        n_classes=1,
-        features_categorical=np.array([0], dtype=ct.c_int64, order="C"), 
-        features_bin_count=np.array([2], dtype=ct.c_int64, order="C"),
-        term_features=[[0]],
-        X_train=np.array([[0, 1, 0]], dtype=ct.c_int64, order="C"),
-        y_train=np.array([0, 0, 0], dtype=ct.c_int64, order="C"),
-        w_train=np.array([1, 1, 1], dtype=np.float64, order="C"),
-        scores_train=None,
-        X_val=np.array([[1, 0, 1]], dtype=ct.c_int64, order="C"),
-        y_val=np.array([0, 0, 0], dtype=ct.c_int64, order="C"),
-        w_val=np.array([1, 1, 1], dtype=np.float64, order="C"),
-        scores_val=None,
-        n_inner_bags=0,
-        random_state=42,
-        optional_temp_params=None,
-    ) as booster:
-        avg_gain = booster.generate_term_update(
-            term_idx=0,
-            generate_update_options=Native.GenerateUpdateOptions_Default,
-            learning_rate=0.01,
-            min_samples_leaf=2,
-            max_leaves=np.array([2], dtype=ct.c_int64, order="C"),
-        )
-        assert avg_gain == 0
-
-        splits = booster.get_term_update_splits()
-        assert len(splits) == 1
-        assert len(splits[0]) == 0
-
-        term_update = booster.get_term_update_expanded()
-        assert term_update is None
-
-        booster.set_term_update_expanded(0, term_update)
-
-        metric = booster.apply_term_update()
-        assert metric == 0
-
-        model = booster.get_best_model()
-        assert len(model) == 1
-        assert model[0] is None
 
 def test_hist():
     np.random.seed(0)
@@ -161,3 +69,22 @@ def test_suggest_graph_bound_no_cuts():
     (low_graph_bound, high_graph_bound) = native.suggest_graph_bounds(cuts, 24, 76)
     assert low_graph_bound == 24
     assert high_graph_bound == 76
+
+def test_gaussian_random_number_generator():
+    # Tests normality of the gaussian RNG with shapiro and D'Agostino/Pearson's tests. 
+    # Caution: can fail with extremely low probability. TODO: Harsha calculate this failure prob.
+
+    stddevs = [1, 2]
+    n_iter = 1000
+
+    native = Native.get_native_singleton()
+
+    for std in stddevs:
+        norm_results, shapiro_results = [], []
+        for i in range(n_iter):
+            rands = native.generate_gaussian_random(None, std, count=1000)
+            norm_results.append(normaltest(rands).pvalue > 0.05)
+            shapiro_results.append(shapiro(rands).pvalue > 0.05)
+
+        assert 0.9 < np.mean(norm_results) < 0.99
+        assert 0.9 < np.mean(shapiro_results) < 0.99

@@ -19,7 +19,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct HistogramBucketBase;
+struct BinBase;
 class InteractionCore;
 
 class InteractionShell final {
@@ -29,11 +29,18 @@ class InteractionShell final {
 
    InteractionCore * m_pInteractionCore;
 
-   HistogramBucketBase * m_aThreadByteBuffer1;
-   size_t m_cThreadByteBufferCapacity1;
+   BinBase * m_aThreadByteBuffer1Fast;
+   size_t m_cThreadByteBufferCapacity1Fast;
+
+   BinBase * m_aThreadByteBuffer1Big;
+   size_t m_cThreadByteBufferCapacity1Big;
 
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
+
+#ifndef NDEBUG
+   const unsigned char * m_pBinsFastEndDebug;
+#endif // NDEBUG
 
 public:
 
@@ -46,8 +53,11 @@ public:
       m_handleVerification = k_handleVerificationOk;
       m_pInteractionCore = nullptr;
 
-      m_aThreadByteBuffer1 = nullptr;
-      m_cThreadByteBufferCapacity1 = 0;
+      m_aThreadByteBuffer1Fast = nullptr;
+      m_cThreadByteBufferCapacity1Fast = 0;
+
+      m_aThreadByteBuffer1Big = nullptr;
+      m_cThreadByteBufferCapacity1Big = 0;
 
       m_cLogEnterMessages = 1000;
       m_cLogExitMessages = 1000;
@@ -97,8 +107,29 @@ public:
       return &m_cLogExitMessages;
    }
 
-   HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);
+   BinBase * GetBinBaseFast(size_t cBytesRequired);
 
+   INLINE_ALWAYS BinBase * GetBinBaseFast() {
+      // call this if the histograms were already allocated and we just need the pointer
+      return m_aThreadByteBuffer1Fast;
+   }
+
+   BinBase * GetBinBaseBig(size_t cBytesRequired);
+
+   INLINE_ALWAYS BinBase * GetBinBaseBig() {
+      // call this if the histograms were already allocated and we just need the pointer
+      return m_aThreadByteBuffer1Big;
+   }
+
+#ifndef NDEBUG
+   INLINE_ALWAYS const unsigned char * GetBinsFastEndDebug() const {
+      return m_pBinsFastEndDebug;
+   }
+
+   INLINE_ALWAYS void SetBinsFastEndDebug(const unsigned char * const pBinsFastEndDebug) {
+      m_pBinsFastEndDebug = pBinsFastEndDebug;
+   }
+#endif // NDEBUG
 };
 static_assert(std::is_standard_layout<InteractionShell>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

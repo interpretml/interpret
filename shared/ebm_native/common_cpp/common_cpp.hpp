@@ -6,8 +6,9 @@
 #define COMMON_CPP_HPP
 
 #include <limits> // numeric_limits
-#include <type_traits> // std::is_standard_layout, std::is_integral
-#include <math.h> // std::nextafter
+#include <type_traits> // std::is_integral, std::enable_if, std::is_signed
+#include <stddef.h> // size_t, ptrdiff_t
+#include <stdlib.h> // malloc
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -85,106 +86,6 @@ INLINE_ALWAYS constexpr static T EbmMin(T v1, T v2) noexcept {
 template<typename T>
 INLINE_ALWAYS constexpr static T EbmMax(T v1, T v2) noexcept {
    return UNPREDICTABLE(v1 < v2) ? v2 : v1;
-}
-
-// TODO: use these instead of nextafter everywhere we can use them
-INLINE_ALWAYS static double TickHigher(double v) noexcept {
-   // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
-
-   EBM_ASSERT(!isnan(v));
-   EBM_ASSERT(!isinf(v));
-   EBM_ASSERT(std::numeric_limits<double>::max() != v);
-
-   if(LIKELY(std::numeric_limits<double>::min() <= v || v < -std::numeric_limits<double>::min())) {
-#if NEVER
-
-      // this version can be used when porting to another programming language that doesn't have nextafter
-
-      constexpr double k_denormToNorm = 4503599627370496.0;
-      static_assert(k_denormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
-         "bad min to denorm_min ratio");
-      // go to twice as high because otherwise rounding can come into play in the last bit after the addition
-      if(fabs(v) < 2 * k_denormToNorm * std::numeric_limits<double>::min()) {
-         v *= k_denormToNorm;
-         double tick = std::numeric_limits<double>::min();
-         double ret;
-         do {
-            ret = v + tick;
-            tick *= double { 2.0 };
-         } while(v == ret);
-         return ret / k_denormToNorm;
-      } else {
-         double tick = std::numeric_limits<double>::min();
-         double ret;
-         do {
-            ret = v + tick;
-            tick *= double { 2.0 };
-         } while(v == ret);
-         return ret;
-      }
-
-#else  // NEVER
-
-      // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
-      return ::nextafter(v, std::numeric_limits<double>::max());
-
-#endif // NEVER
-   } else if(-std::numeric_limits<double>::min() == v) {
-      return double { 0 };
-   } else {
-      return std::numeric_limits<double>::min();
-   }
-}
-INLINE_ALWAYS static double TickLower(double v) noexcept {
-   // this function properly handles subnormals by skipping over them on all systems regardless of the FP unit flags.
-
-   EBM_ASSERT(!isnan(v));
-   EBM_ASSERT(!isinf(v));
-   EBM_ASSERT(std::numeric_limits<double>::lowest() != v);
-
-   if(LIKELY(v <= -std::numeric_limits<double>::min() || std::numeric_limits<double>::min() < v)) {
-#if NEVER
-
-      // this version can be used when porting to another programming language that doesn't have nextafter
-
-      constexpr double k_denormToNorm = 4503599627370496.0;
-      static_assert(k_denormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
-         "bad min to denorm_min ratio");
-      // go to twice as high because otherwise rounding can come into play in the last bit after the subtraction
-      if(fabs(v) < 2 * k_denormToNorm * std::numeric_limits<double>::min()) {
-         v *= k_denormToNorm;
-         double tick = std::numeric_limits<double>::min();
-         double ret;
-         do {
-            ret = v - tick;
-            tick *= double { 2.0 };
-         } while(v == ret);
-         return ret / k_denormToNorm;
-      } else {
-         double tick = std::numeric_limits<double>::min();
-         double ret;
-         do {
-            ret = v - tick;
-            tick *= double { 2.0 };
-         } while(v == ret);
-         return ret;
-      }
-
-#else  // NEVER
-
-      // I have found nextafter fails badly with subnormals.  It doesn't advance!  We disallow all subnormals.
-      return ::nextafter(v, std::numeric_limits<double>::lowest());
-
-#endif // NEVER
-   } else if(std::numeric_limits<double>::min() == v) {
-      return double { 0 };
-   } else {
-      return -std::numeric_limits<double>::min();
-   }
-}
-INLINE_ALWAYS static double Denormalize(const double v) noexcept {
-   return v <= -std::numeric_limits<double>::min() ||
-      std::numeric_limits<double>::min() <= v ? v : double { 0 };
 }
 
 // use SFINAE to compile time specialize IsConvertError
@@ -460,6 +361,18 @@ static_assert(CountBitsRequiredPositiveMax<int16_t>() == 15, "automated test wit
 static_assert(CountBitsRequiredPositiveMax<int32_t>() == 31, "automated test with compiler");
 static_assert(CountBitsRequiredPositiveMax<int64_t>() == 63, "automated test with compiler");
 
+template<typename T>
+INLINE_ALWAYS constexpr static T MaxFromCountBits(const size_t cBits) noexcept {
+   return 0 == cBits ? T { 0 } : (MaxFromCountBits<T>(cBits - 1) << 1 | T { 1 });
+}
+static_assert(MaxFromCountBits<uint8_t>(0) == 0, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(1) == 1, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(2) == 3, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(3) == 7, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(4) == 15, "automated test with compiler");
+static_assert(MaxFromCountBits<uint8_t>(8) == 255, "automated test with compiler");
+static_assert(MaxFromCountBits<uint64_t>(64) == uint64_t { 18446744073709551615u }, "automated test with compiler");
+
 constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 
 // It is impossible for us to have tensors with more than k_cDimensionsMax dimensions.  
@@ -469,10 +382,10 @@ constexpr static size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>()
 // will have more bins, and thus will be restricted to even less dimensions. If all dimensions had the minimum 
 // of two bins, we would need 2^N cells stored in the tensor.  If the tensor contained cells
 // of 1 byte and filled all memory on a 64 bit machine, then we could not have more than 64 dimensions.
-// On a real system, we can't fill all memory, and our interface requires tensors of FloatEbmType, so we  
-// can subtract bits for the # of bytes used in a FloatEbmType and subtract 1 more because we cannot use all memory.
+// On a real system, we can't fill all memory, and our interface requires tensors of double, so we  
+// can subtract bits for the # of bytes used in a double and subtract 1 more because we cannot use all memory.
 constexpr static size_t k_cDimensionsMax = 
-   k_cBitsForSizeT - CountBitsRequired(sizeof(FloatEbmType) / sizeof(uint8_t) - 1) - 1;
+   k_cBitsForSizeT - CountBitsRequired(sizeof(double) / sizeof(uint8_t) - 1) - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
 WARNING_PUSH

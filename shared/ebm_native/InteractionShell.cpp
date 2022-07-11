@@ -25,7 +25,8 @@ void InteractionShell::Free(InteractionShell * const pInteractionShell) {
    LOG_0(TraceLevelInfo, "Entered InteractionShell::Free");
 
    if(nullptr != pInteractionShell) {
-      free(pInteractionShell->m_aThreadByteBuffer1);
+      free(pInteractionShell->m_aThreadByteBuffer1Fast);
+      free(pInteractionShell->m_aThreadByteBuffer1Big);
       InteractionCore::Free(pInteractionShell->m_pInteractionCore);
       
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -50,40 +51,57 @@ InteractionShell * InteractionShell::Create() {
    return pNew;
 }
 
-HistogramBucketBase * InteractionShell::GetHistogramBucketBase(size_t cBytesRequired) {
-   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
-   if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
+BinBase * InteractionShell::GetBinBaseFast(size_t cBytesRequired) {
+   BinBase * aBuffer = m_aThreadByteBuffer1Fast;
+   if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
       cBytesRequired <<= 1;
-      m_cThreadByteBufferCapacity1 = cBytesRequired;
-      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1 to %zu", cBytesRequired);
+      m_cThreadByteBufferCapacity1Fast = cBytesRequired;
+      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
 
       free(aBuffer);
-      aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
-      m_aThreadByteBuffer1 = aBuffer; // store it before checking it incase it's null so that we don't free old memory
+      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
+      m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING InteractionShell::GetHistogramBucketBase OutOfMemory");
+         LOG_0(TraceLevelWarning, "WARNING InteractionShell::GetBinBaseFast OutOfMemory");
       }
    }
    return aBuffer;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateInteractionDetector(
+BinBase * InteractionShell::GetBinBaseBig(size_t cBytesRequired) {
+   BinBase * aBuffer = m_aThreadByteBuffer1Big;
+   if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
+      cBytesRequired <<= 1;
+      m_cThreadByteBufferCapacity1Big = cBytesRequired;
+      LOG_N(TraceLevelInfo, "Growing InteractionShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
+
+      free(aBuffer);
+      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
+      m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
+      if(nullptr == aBuffer) {
+         LOG_0(TraceLevelWarning, "WARNING InteractionShell::GetBinBaseBig OutOfMemory");
+      }
+   }
+   return aBuffer;
+}
+
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateInteractionDetector(
    const void * dataSet,
    const BagEbmType * bag,
-   const FloatEbmType * predictorScores, // only samples with non-zeros in the bag are included
-   const FloatEbmType * optionalTempParams,
+   const double * initScores, // only samples with non-zeros in the bag are included
+   const double * optionalTempParams,
    InteractionHandle * interactionHandleOut
 ) {
    LOG_N(TraceLevelInfo, "Entered CreateInteractionDetector: "
       "dataSet=%p, "
       "bag=%p, "
-      "predictorScores=%p, "
+      "initScores=%p, "
       "optionalTempParams=%p, "
       "interactionHandleOut=%p"
       ,
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
-      static_cast<const void *>(predictorScores),
+      static_cast<const void *>(initScores),
       static_cast<const void *>(optionalTempParams),
       static_cast<const void *>(interactionHandleOut)
    );
@@ -111,7 +129,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateI
       pInteractionShell,
       static_cast<const unsigned char *>(dataSet),
       bag,
-      predictorScores,
+      initScores,
       optionalTempParams
    );
    if(Error_None != error) {
@@ -127,7 +145,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateI
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteractionDetector(
+EBM_API_BODY void EBM_CALLING_CONVENTION FreeInteractionDetector(
    InteractionHandle interactionHandle
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeInteractionDetector: interactionHandle=%p", static_cast<void *>(interactionHandle));

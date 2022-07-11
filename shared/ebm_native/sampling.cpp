@@ -12,6 +12,7 @@
 
 #include "data_set_shared.hpp"
 #include "RandomStream.hpp"
+#include "RandomNondeterministic.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -34,23 +35,47 @@ namespace DEFINED_ZONE_NAME {
 // an init function and just use a single function that modifies the 16 character string?
 // We need to also provide utilities to generate normal distributions using the random number
 
-EBM_NATIVE_IMPORT_EXPORT_BODY SeedEbmType EBM_NATIVE_CALLING_CONVENTION GenerateRandomNumber(
+EBM_API_BODY SeedEbmType EBM_CALLING_CONVENTION GenerateDeterministicSeed(
    SeedEbmType randomSeed,
    SeedEbmType stageRandomizationMix
 ) {
-   RandomStream randomStream;
+   RandomDeterministic randomDeterministic;
    // this is a bit inefficient in that we go through a complete regeneration of the internal state,
    // but it gives us a simple interface
-   randomStream.InitializeSigned(randomSeed, stageRandomizationMix);
-   SeedEbmType ret = randomStream.NextSeed();
+   randomDeterministic.InitializeSigned(randomSeed, stageRandomizationMix);
+   SeedEbmType ret = randomDeterministic.NextSeed();
    return ret;
 }
+
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateNondeterministicSeed(
+   SeedEbmType * randomSeedOut
+) {
+   if(UNLIKELY(nullptr == randomSeedOut)) {
+      LOG_0(TraceLevelError, "ERROR GenerateNondeterministicSeed nullptr == randomSeedOut");
+      return Error_IllegalParamValue;
+   }
+
+   try {
+      RandomNondeterministic<uint32_t> randomGenerator;
+      const SeedEbmType ret = randomGenerator.NextSeed();
+      *randomSeedOut = ret;
+   } catch(const std::bad_alloc &) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateNondeterministicSeed Out of memory in std::random_device");
+      return Error_OutOfMemory;
+   } catch(...) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateNondeterministicSeed Unknown error in std::random_device");
+      return Error_UnexpectedInternal;
+   }
+   return Error_None;
+}
+
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
 static int g_cLogEnterSampleWithoutReplacementParametersMessages = 5;
 static int g_cLogExitSampleWithoutReplacementParametersMessages = 5;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutReplacement(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SampleWithoutReplacement(
+   BoolEbmType isDeterministic,
    SeedEbmType randomSeed,
    IntEbmType countTrainingSamples,
    IntEbmType countValidationSamples,
@@ -61,11 +86,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
       TraceLevelInfo,
       TraceLevelVerbose,
       "Entered SampleWithoutReplacement: "
+      "isDeterministic=%s, "
       "randomSeed=%" SeedEbmTypePrintf ", "
       "countTrainingSamples=%" IntEbmTypePrintf ", "
       "countValidationSamples=%" IntEbmTypePrintf ", "
       "sampleCountsOut=%p"
       ,
+      ObtainTruth(isDeterministic),
       randomSeed,
       countTrainingSamples,
       countValidationSamples,
@@ -74,57 +101,76 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
 
    if(UNLIKELY(nullptr == sampleCountsOut)) {
       LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement nullptr == sampleCountsOut");
-      return;
+      return Error_IllegalParamValue;
    }
 
    if(UNLIKELY(countTrainingSamples < IntEbmType { 0 })) {
       LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countTrainingSamples < IntEbmType { 0 }");
-      return;
+      return Error_IllegalParamValue;
    }
    if(UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsConvertError<size_t>(countTrainingSamples)");
-      return;
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement IsConvertError<size_t>(countTrainingSamples)");
+      return Error_IllegalParamValue;
    }
    const size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
 
    if(UNLIKELY(countValidationSamples < IntEbmType { 0 })) {
       LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement countValidationSamples < IntEbmType { 0 }");
-      return;
+      return Error_IllegalParamValue;
    }
    if(UNLIKELY(IsConvertError<size_t>(countValidationSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsConvertError<size_t>(countValidationSamples)");
-      return;
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement IsConvertError<size_t>(countValidationSamples)");
+      return Error_IllegalParamValue;
    }
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
 
    if(UNLIKELY(IsAddError(cTrainingSamples, cValidationSamples))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsAddError(cTrainingSamples, cValidationSamples)");
-      return;
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement IsAddError(cTrainingSamples, cValidationSamples)");
+      return Error_IllegalParamValue;
    }
    size_t cSamplesRemaining = cTrainingSamples + cValidationSamples;
    if(UNLIKELY(size_t { 0 } == cSamplesRemaining)) {
       // there's nothing for us to fill the array with
-      return;
+      return Error_None;
    }
    if(UNLIKELY(IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining))) {
-      LOG_0(TraceLevelWarning, "WARNING SampleWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining)");
-      return;
+      LOG_0(TraceLevelError, "ERROR SampleWithoutReplacement IsMultiplyError(sizeof(*sampleCountsOut), cSamplesRemaining)");
+      return Error_IllegalParamValue;
    }
 
    size_t cTrainingRemaining = cTrainingSamples;
 
-   RandomStream randomStream;
-   randomStream.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
-
    BagEbmType * pSampleCountsOut = sampleCountsOut;
-   do {
-      const size_t iRandom = randomStream.Next(cSamplesRemaining);
-      const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
-      cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
-      *pSampleCountsOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
-      ++pSampleCountsOut;
-      --cSamplesRemaining;
-   } while(0 != cSamplesRemaining);
+   if(EBM_FALSE != isDeterministic) {
+      RandomDeterministic randomGenerator;
+      randomGenerator.InitializeUnsigned(randomSeed, k_samplingWithoutReplacementRandomizationMix);
+      do {
+         const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
+         const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
+         cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
+         *pSampleCountsOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
+         ++pSampleCountsOut;
+         --cSamplesRemaining;
+      } while(0 != cSamplesRemaining);
+   } else {
+      try {
+         RandomNondeterministic<size_t> randomGenerator;
+         do {
+            const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
+            const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
+            cTrainingRemaining = UNPREDICTABLE(bTrainingSample) ? cTrainingRemaining - size_t { 1 } : cTrainingRemaining;
+            *pSampleCountsOut = UNPREDICTABLE(bTrainingSample) ? BagEbmType { 1 } : BagEbmType { -1 };
+            ++pSampleCountsOut;
+            --cSamplesRemaining;
+         } while(0 != cSamplesRemaining);
+      } catch(const std::bad_alloc &) {
+         LOG_0(TraceLevelWarning, "WARNING GenerateGaussianRandom Out of memory in std::random_device");
+         return Error_OutOfMemory;
+      } catch(...) {
+         LOG_0(TraceLevelWarning, "WARNING GenerateGaussianRandom Unknown error in std::random_device");
+         return Error_UnexpectedInternal;
+      }
+   }
    EBM_ASSERT(0 == cTrainingRemaining); // this should be all used up too now
 
    LOG_COUNTED_0(
@@ -133,6 +179,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SampleWithoutRe
       TraceLevelVerbose,
       "Exited SampleWithoutReplacement"
    );
+   return Error_None;
 }
 
 
@@ -142,7 +189,7 @@ static int g_cLogExitStratifiedSamplingWithoutReplacementParametersMessages = 5;
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION StratifiedSamplingWithoutReplacement(
    SeedEbmType randomSeed,
    IntEbmType countTargetClasses,
    IntEbmType countTrainingSamples,
@@ -336,8 +383,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
       return Error_OutOfMemory;
    }
 
-   RandomStream randomStream;
-   randomStream.InitializeUnsigned(randomSeed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
+   RandomDeterministic randomDeterministic;
+   randomDeterministic.InitializeUnsigned(randomSeed, k_stratifiedSamplingWithoutReplacementRandomizationMix);
 
    for (size_t iLeftover = 0; iLeftover < globalLeftover; iLeftover++) {
       double maxImprovement = std::numeric_limits<double>::lowest();
@@ -381,7 +428,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
 
       // If more than one class has the same max improvement, randomly select between the classes
       // to give the leftover to.
-      size_t iRandom = randomStream.Next(mostImprovedClassesSize);
+      size_t iRandom = randomDeterministic.NextFast(mostImprovedClassesSize);
       size_t classToImprove = *(pMostImprovedClasses + iRandom);
       (pTargetSamplingCounts + classToImprove)->m_cTraining++;
    }
@@ -402,7 +449,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Stratif
    for (size_t iSample = 0; iSample < cSamples; iSample++) {
       TargetSamplingCounts* pTargetSample = pTargetSamplingCounts + targets[iSample];
       EBM_ASSERT(pTargetSample->m_cTotalRemaining > 0);
-      const size_t iRandom = randomStream.Next(pTargetSample->m_cTotalRemaining);
+      const size_t iRandom = randomDeterministic.NextFast(pTargetSample->m_cTotalRemaining);
       const bool bTrainingSample = UNPREDICTABLE(iRandom < pTargetSample->m_cTraining);
 
       if (UNPREDICTABLE(bTrainingSample)) {
@@ -501,14 +548,14 @@ INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
    const BagEbmType direction,
    const size_t cAllSamples,
    const BagEbmType * pBag,
-   const FloatEbmType * pWeights
+   const FloatFast * pWeights
 ) {
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(1 <= cAllSamples);
    EBM_ASSERT(nullptr != pWeights);
 
-   FloatEbmType firstWeight = std::numeric_limits<FloatEbmType>::quiet_NaN();
-   const FloatEbmType * const pWeightsEnd = pWeights + cAllSamples;
+   FloatFast firstWeight = std::numeric_limits<FloatFast>::quiet_NaN();
+   const FloatFast * const pWeightsEnd = pWeights + cAllSamples;
    const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
       BagEbmType countBagged = 1;
@@ -519,7 +566,7 @@ INLINE_RELEASE_UNTEMPLATED static bool CheckWeightsEqual(
       if(BagEbmType { 0 } != countBagged) {
          const bool isItemTraining = BagEbmType { 0 } < countBagged;
          if(isLoopTraining == isItemTraining) {
-            const FloatEbmType weight = *pWeights;
+            const FloatFast weight = *pWeights;
             // this relies on the property that NaN is not equal to everything, including NaN
             if(UNLIKELY(firstWeight != weight)) {
                if(!std::isnan(firstWeight)) {
@@ -542,7 +589,7 @@ extern ErrorEbmType ExtractWeights(
    const size_t cAllSamples,
    const BagEbmType * const aBag,
    const size_t cSetSamples,
-   FloatEbmType ** ppWeightsOut
+   FloatFast ** ppWeightsOut
 ) {
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
@@ -552,11 +599,11 @@ extern ErrorEbmType ExtractWeights(
    EBM_ASSERT(nullptr != ppWeightsOut);
    EBM_ASSERT(nullptr == *ppWeightsOut);
 
-   const FloatEbmType * const aWeights = GetDataSetSharedWeight(pDataSetShared, 0);
+   const FloatFast * const aWeights = GetDataSetSharedWeight(pDataSetShared, 0);
    EBM_ASSERT(nullptr != aWeights);
    if(!CheckWeightsEqual(direction, cAllSamples, aBag, aWeights)) {
       const size_t cBytes = sizeof(*aWeights) * cSetSamples;
-      FloatEbmType * const aRet = static_cast<FloatEbmType *>(malloc(cBytes));
+      FloatFast * const aRet = static_cast<FloatFast *>(malloc(cBytes));
       if(UNLIKELY(nullptr == aRet)) {
          LOG_0(TraceLevelWarning, "WARNING ExtractWeights nullptr == aRet");
          return Error_OutOfMemory;
@@ -564,9 +611,9 @@ extern ErrorEbmType ExtractWeights(
       *ppWeightsOut = aRet;
 
       const BagEbmType * pBag = aBag;
-      const FloatEbmType * pWeightFrom = aWeights;
-      FloatEbmType * pWeightTo = aRet;
-      FloatEbmType * pWeightToEnd = aRet + cSetSamples;
+      const FloatFast * pWeightFrom = aWeights;
+      FloatFast * pWeightTo = aRet;
+      FloatFast * pWeightToEnd = aRet + cSetSamples;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
          BagEbmType countBagged = 1;
@@ -577,7 +624,7 @@ extern ErrorEbmType ExtractWeights(
          if(BagEbmType { 0 } != countBagged) {
             const bool isItemTraining = BagEbmType { 0 } < countBagged;
             if(isLoopTraining == isItemTraining) {
-               const FloatEbmType weight = *pWeightFrom;
+               const FloatFast weight = *pWeightFrom;
                do {
                   EBM_ASSERT(pWeightTo < pWeightToEnd);
                   *pWeightTo = weight;

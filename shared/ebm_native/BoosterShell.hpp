@@ -22,7 +22,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-struct HistogramBucketBase;
+struct BinBase;
 class BoosterCore;
 
 class BoosterShell final {
@@ -31,22 +31,25 @@ class BoosterShell final {
    size_t m_handleVerification; // this needs to be at the top and make it pointer sized to keep best alignment
 
    BoosterCore * m_pBoosterCore;
-   size_t m_iFeatureGroup;
+   size_t m_iTerm;
 
-   CompressibleTensor * m_pSmallChangeToModelAccumulatedFromSamplingSets;
-   CompressibleTensor * m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   Tensor * m_pTermUpdate;
+   Tensor * m_pInnerTermUpdate;
 
-   RandomStream m_randomStream;
+   RandomDeterministic m_randomDeterministic;
 
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
-   HistogramBucketBase * m_aThreadByteBuffer1;
-   size_t m_cThreadByteBufferCapacity1;
+   BinBase * m_aThreadByteBuffer1Fast;
+   size_t m_cThreadByteBufferCapacity1Fast;
+
+   BinBase * m_aThreadByteBuffer1Big;
+   size_t m_cThreadByteBufferCapacity1Big;
 
    void * m_aThreadByteBuffer2;
    size_t m_cThreadByteBufferCapacity2;
 
-   FloatEbmType * m_aTempFloatVector;
+   FloatFast * m_aTempFloatVector;
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
    HistogramTargetEntryBase * m_aSumHistogramTargetEntry;
@@ -54,7 +57,8 @@ class BoosterShell final {
    HistogramTargetEntryBase * m_aSumHistogramTargetEntryRight;
 
 #ifndef NDEBUG
-   const unsigned char * m_aHistogramBucketsEndDebug;
+   const unsigned char * m_pBinsFastEndDebug;
+   const unsigned char * m_pBinsBigEndDebug;
 #endif // NDEBUG
 
 public:
@@ -64,16 +68,18 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   constexpr static size_t k_illegalFeatureGroupIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
+   constexpr static size_t k_illegalTermIndex = size_t { static_cast<size_t>(ptrdiff_t { -1 }) };
 
    INLINE_ALWAYS void InitializeUnfailing() {
       m_handleVerification = k_handleVerificationOk;
       m_pBoosterCore = nullptr;
-      m_iFeatureGroup = k_illegalFeatureGroupIndex;
-      m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
-      m_pSmallChangeToModelOverwriteSingleSamplingSet = nullptr;
-      m_aThreadByteBuffer1 = nullptr;
-      m_cThreadByteBufferCapacity1 = 0;
+      m_iTerm = k_illegalTermIndex;
+      m_pTermUpdate = nullptr;
+      m_pInnerTermUpdate = nullptr;
+      m_aThreadByteBuffer1Fast = nullptr;
+      m_cThreadByteBufferCapacity1Fast = 0;
+      m_aThreadByteBuffer1Big = nullptr;
+      m_cThreadByteBufferCapacity1Big = 0;
       m_aThreadByteBuffer2 = nullptr;
       m_cThreadByteBufferCapacity2 = 0;
       m_aTempFloatVector = nullptr;
@@ -118,31 +124,38 @@ public:
       m_pBoosterCore = pBoosterCore;
    }
 
-   INLINE_ALWAYS size_t GetFeatureGroupIndex() {
-      return m_iFeatureGroup;
+   INLINE_ALWAYS size_t GetTermIndex() {
+      return m_iTerm;
    }
 
-   INLINE_ALWAYS void SetFeatureGroupIndex(const size_t val) {
-      m_iFeatureGroup = val;
+   INLINE_ALWAYS void SetTermIndex(const size_t iTerm) {
+      m_iTerm = iTerm;
    }
 
-   INLINE_ALWAYS CompressibleTensor * GetAccumulatedModelUpdate() {
-      return m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   INLINE_ALWAYS Tensor * GetTermUpdate() {
+      return m_pTermUpdate;
    }
 
-   INLINE_ALWAYS CompressibleTensor * GetOverwritableModelUpdate() {
-      return m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   INLINE_ALWAYS Tensor * GetInnerTermUpdate() {
+      return m_pInnerTermUpdate;
    }
 
-   INLINE_ALWAYS RandomStream * GetRandomStream() {
-      return &m_randomStream;
+   INLINE_ALWAYS RandomDeterministic * GetRandomDeterministic() {
+      return &m_randomDeterministic;
    }
 
-   HistogramBucketBase * GetHistogramBucketBase(size_t cBytesRequired);
+   BinBase * GetBinBaseFast(size_t cBytesRequired);
 
-   INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketBase() {
+   INLINE_ALWAYS BinBase * GetBinBaseFast() {
       // call this if the histograms were already allocated and we just need the pointer
-      return m_aThreadByteBuffer1;
+      return m_aThreadByteBuffer1Fast;
+   }
+
+   BinBase * GetBinBaseBig(size_t cBytesRequired);
+
+   INLINE_ALWAYS BinBase * GetBinBaseBig() {
+      // call this if the histograms were already allocated and we just need the pointer
+      return m_aThreadByteBuffer1Big;
    }
 
    ErrorEbmType GrowThreadByteBuffer2(const size_t cByteBoundaries);
@@ -155,7 +168,7 @@ public:
       return m_cThreadByteBufferCapacity2;
    }
 
-   INLINE_ALWAYS FloatEbmType * GetTempFloatVector() {
+   INLINE_ALWAYS FloatFast * GetTempFloatVector() {
       return m_aTempFloatVector;
    }
 
@@ -168,22 +181,30 @@ public:
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntryLeft() {
-      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntryLeft);
+   INLINE_ALWAYS HistogramTargetEntry<FloatBig, bClassification> * GetSumHistogramTargetEntryLeft() {
+      return static_cast<HistogramTargetEntry<FloatBig, bClassification> *>(m_aSumHistogramTargetEntryLeft);
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetSumHistogramTargetEntryRight() {
-      return static_cast<HistogramTargetEntry<bClassification> *>(m_aSumHistogramTargetEntryRight);
+   INLINE_ALWAYS HistogramTargetEntry<FloatBig, bClassification> * GetSumHistogramTargetEntryRight() {
+      return static_cast<HistogramTargetEntry<FloatBig, bClassification> *>(m_aSumHistogramTargetEntryRight);
    }
 
 #ifndef NDEBUG
-   INLINE_ALWAYS const unsigned char * GetHistogramBucketsEndDebug() const {
-      return m_aHistogramBucketsEndDebug;
+   INLINE_ALWAYS const unsigned char * GetBinsFastEndDebug() const {
+      return m_pBinsFastEndDebug;
    }
 
-   INLINE_ALWAYS void SetHistogramBucketsEndDebug(const unsigned char * const val) {
-      m_aHistogramBucketsEndDebug = val;
+   INLINE_ALWAYS void SetBinsFastEndDebug(const unsigned char * const pBinsFastEndDebug) {
+      m_pBinsFastEndDebug = pBinsFastEndDebug;
+   }
+
+   INLINE_ALWAYS const unsigned char * GetBinsBigEndDebug() const {
+      return m_pBinsBigEndDebug;
+   }
+
+   INLINE_ALWAYS void SetBinsBigEndDebug(const unsigned char * const pBinsBigEndDebug) {
+      m_pBinsBigEndDebug = pBinsBigEndDebug;
    }
 #endif // NDEBUG
 };

@@ -29,7 +29,24 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type 
+
+template<typename TTo, typename TFrom>
+INLINE_ALWAYS static TTo SafeConvertFloat(const TFrom val) {
+   // TODO: call this function from anywhere we convert floats of any kind
+
+   // In some IEEE-754 compatible implementations, you can get a float exception when converting a float64
+   // to a float32 when the result overflows to +-inf or (maybe underflow?).  This is likely to be a compiler
+   // specific thing and controlled by the floating point unit flags.  For now let's just do the conversion
+   // and if it becomes a problem in the future with over/under flow then explicitly check the range before
+   // making it a +-inf manually.  The caller can check the results for +-inf.
+
+   // TODO: If we end up manually checking bounds, then change this so that it doesn't do any checks if TFrom is a float64 or if both are float32
+   // TODO: test the overflow/underflow scenario on our compilers to see if they behave well, and check documentation
+
+   return static_cast<TTo>(val);
+}
+
+// TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the data type 
 //   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  
 //   Perhaps take the sqrt of the minimal change from 1?
 // when comparing floating point numbers, check this info out: https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
@@ -39,17 +56,17 @@ namespace DEFINED_ZONE_NAME {
 
 // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small 
 // negative values close to zero that might occur due to numeric instability
-constexpr static FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest();
-constexpr static FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
-constexpr static FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
-constexpr static FloatEbmType k_epsilonGradient = 1e-7;
+constexpr static FloatBig k_illegalGainFloat = std::numeric_limits<FloatBig>::lowest();
+constexpr static double k_illegalGainDouble = std::numeric_limits<double>::lowest();
+constexpr static FloatBig k_epsilonNegativeGainAllowed = FloatBig { -1e-7 };
+constexpr static FloatFast k_epsilonGradient = FloatFast { 1e-7 };
 #if defined(FAST_EXP) || defined(FAST_LOG)
 // with the approximate exp function we can expect a bit of noise.  We might need to increase this further
-constexpr static FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-1;
+constexpr static FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast { 1e-1 };
 #else // defined(FAST_EXP) || defined(FAST_LOG)
-constexpr static FloatEbmType k_epsilonGradientForBinaryToMulticlass = 1e-7;
+constexpr static FloatFast k_epsilonGradientForBinaryToMulticlass = FloatFast { 1e-7 };
 #endif // defined(FAST_EXP) || defined(FAST_LOG)
-constexpr static FloatEbmType k_epsilonLogLoss = 1e-7;
+constexpr static FloatFast k_epsilonLogLoss = FloatFast { 1e-7 };
 
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be 
 // that setting it too high increases compile time and module size
@@ -103,30 +120,64 @@ INLINE_ALWAYS constexpr static size_t GetNextCountItemsBitPacked(const size_t cI
 constexpr static bool k_bUseSIMD = false;
 constexpr static bool k_bUseLogitboost = false;
 
+//template<typename T>
+//static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
+//   // floats have 23 bits of mantissa, so if you add 2^23 of them, the average value is below the threshold where
+//   // it adds to the sum total value even by the smallest amount.  When that happens the sum stops advancing.
+//   // This function solves that problem by breaking the loop into 3 sections, which allows us to go back to zero where
+//   // floats have more resolution
+//
+//   EBM_ASSERT(nullptr != pVals);
+//   T totalOuter = T { 0 };
+//   while(size_t { 0 } != cVals) {
+//      T totalMid = T { 0 };
+//      do {
+//         EBM_ASSERT(0 != cVals);
+//         const size_t cInner = ((cVals - 1) % k_cFloatSumLimit) + 1;
+//         cVals -= cInner;
+//         EBM_ASSERT(0 == cVals % k_cFloatSumLimit);
+//         const T * const pValsEnd = pVals + cInner;
+//         T totalInner = T { 0 };
+//         do {
+//            const T val = *pVals;
+//            if(val < T { 0 }) {
+//               return std::numeric_limits<T>::lowest();
+//            }
+//            totalInner += val;
+//            ++pVals;
+//         } while(pValsEnd != pVals);
+//         totalMid += totalInner;
+//         EBM_ASSERT(0 == cVals % k_cFloatSumLimit);
+//      } while(size_t { 0 } != (cVals / k_cFloatSumLimit) % k_cFloatSumLimit);
+//      totalOuter += totalMid;
+//   }
+//   return totalOuter;
+//}
+
 template<typename T>
-static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
+static FloatBig AddPositiveFloatsSafeBig(size_t cVals, const T * pVals) {
    // floats have 23 bits of mantissa, so if you add 2^23 of them, the average value is below the threshold where
    // it adds to the sum total value even by the smallest amount.  When that happens the sum stops advancing.
    // This function solves that problem by breaking the loop into 3 sections, which allows us to go back to zero where
    // floats have more resolution
 
    EBM_ASSERT(nullptr != pVals);
-   T totalOuter = T { 0 };
+   FloatBig totalOuter = 0;
    while(size_t { 0 } != cVals) {
-      T totalMid = T { 0 };
+      FloatBig totalMid = 0;
       do {
          EBM_ASSERT(0 != cVals);
          const size_t cInner = ((cVals - 1) % k_cFloatSumLimit) + 1;
          cVals -= cInner;
          EBM_ASSERT(0 == cVals % k_cFloatSumLimit);
          const T * const pValsEnd = pVals + cInner;
-         T totalInner = T { 0 };
+         FloatBig totalInner = 0;
          do {
             const T val = *pVals;
-            if(val < T { 0 }) {
-               return std::numeric_limits<T>::lowest();
+            if(val < 0) {
+               return std::numeric_limits<FloatBig>::lowest();
             }
-            totalInner += val;
+            totalInner += SafeConvertFloat<FloatBig>(val);
             ++pVals;
          } while(pValsEnd != pVals);
          totalMid += totalInner;
@@ -135,6 +186,30 @@ static T AddPositiveFloatsSafe(size_t cVals, const T * pVals) {
       totalOuter += totalMid;
    }
    return totalOuter;
+}
+
+extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept;
+extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept;
+
+INLINE_ALWAYS static double FloatTickIncrement(const double val) noexcept {
+   // we use an array in the call to FloatTickIncrementInternal to chop off any extended precision bits that might be in the float
+   double deprecisioned[1];
+   deprecisioned[0] = val;
+   return FloatTickIncrementInternal(deprecisioned);
+}
+INLINE_ALWAYS static double FloatTickDecrement(const double val) noexcept {
+   // we use an array in the call to FloatTickDecrementInternal to chop off any extended precision bits that might be in the float
+   double deprecisioned[1];
+   deprecisioned[0] = val;
+   return FloatTickDecrementInternal(deprecisioned);
+}
+// TODO: call this throughout our code to remove subnormals
+INLINE_ALWAYS static double CleanFloat(const double val) noexcept {
+   // we use an array in the call to CleanFloats to chop off any extended precision bits that might be in the float
+   double deprecisioned[1];
+   deprecisioned[0] = val;
+   CleanFloats(1, deprecisioned);
+   return deprecisioned[0];
 }
 
 //#define ZERO_FIRST_MULTICLASS_LOGIT

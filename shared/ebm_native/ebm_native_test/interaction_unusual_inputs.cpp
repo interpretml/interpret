@@ -15,7 +15,7 @@ TEST_CASE("Zero interaction samples, interaction, regression") {
    test.AddInteractionSamples({});
    test.InitializeInteraction();
 
-   FloatEbmType metricReturn = test.TestCalcInteractionStrength({ 0 });
+   double metricReturn = test.TestCalcInteractionStrength({ 0 });
    CHECK(0 == metricReturn);
 }
 
@@ -25,7 +25,7 @@ TEST_CASE("Zero interaction samples, interaction, binary") {
    test.AddInteractionSamples({});
    test.InitializeInteraction();
 
-   FloatEbmType metricReturn = test.TestCalcInteractionStrength({ 0 });
+   double metricReturn = test.TestCalcInteractionStrength({ 0 });
    CHECK(0 == metricReturn);
 }
 
@@ -35,7 +35,7 @@ TEST_CASE("Zero interaction samples, interaction, multiclass") {
    test.AddInteractionSamples({});
    test.InitializeInteraction();
 
-   FloatEbmType metricReturn = test.TestCalcInteractionStrength({ 0 });
+   double metricReturn = test.TestCalcInteractionStrength({ 0 });
    CHECK(0 == metricReturn);
 }
 
@@ -45,7 +45,7 @@ TEST_CASE("classification with 0 possible target states, interaction") {
    test.AddInteractionSamples({});
    test.InitializeInteraction();
 
-   FloatEbmType validationMetric = test.TestCalcInteractionStrength({ 0 });
+   double validationMetric = test.TestCalcInteractionStrength({ 0 });
    CHECK(0 == validationMetric);
 }
 
@@ -55,7 +55,7 @@ TEST_CASE("classification with 1 possible target, interaction") {
    test.AddInteractionSamples({ TestSample({ 1 }, 0) });
    test.InitializeInteraction();
 
-   FloatEbmType validationMetric = test.TestCalcInteractionStrength({ 0 });
+   double validationMetric = test.TestCalcInteractionStrength({ 0 });
    CHECK(0 == validationMetric);
 }
 
@@ -65,61 +65,61 @@ TEST_CASE("features with 0 states, interaction") {
    test.AddInteractionSamples({});
    test.InitializeInteraction();
 
-   FloatEbmType validationMetric = test.TestCalcInteractionStrength({ 0 });
+   double validationMetric = test.TestCalcInteractionStrength({ 0 });
    CHECK(0 == validationMetric);
 }
 
-TEST_CASE("FeatureGroup with zero features, interaction, regression") {
+TEST_CASE("Term with zero features, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddInteractionSamples({ TestSample({}, 10) });
    test.InitializeInteraction();
-   FloatEbmType metricReturn = test.TestCalcInteractionStrength({});
+   double metricReturn = test.TestCalcInteractionStrength({});
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with zero features, interaction, binary") {
+TEST_CASE("Term with zero features, interaction, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddInteractionSamples({ TestSample({}, 0) });
    test.InitializeInteraction();
-   FloatEbmType metricReturn = test.TestCalcInteractionStrength({});
+   double metricReturn = test.TestCalcInteractionStrength({});
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with zero features, interaction, multiclass") {
+TEST_CASE("Term with zero features, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
    test.AddInteractionSamples({ TestSample({}, 0) });
    test.InitializeInteraction();
-   FloatEbmType metricReturn = test.TestCalcInteractionStrength({});
+   double metricReturn = test.TestCalcInteractionStrength({});
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with one feature with one state, interaction, regression") {
+TEST_CASE("Term with one feature with one state, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionSamples({ TestSample({ 0 }, 10) });
    test.InitializeInteraction();
-   FloatEbmType metricReturn = test.TestCalcInteractionStrength({ 0 });
+   double metricReturn = test.TestCalcInteractionStrength({ 0 });
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with one feature with one state, interaction, binary") {
+TEST_CASE("Term with one feature with one state, interaction, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionSamples({ TestSample({ 0 }, 0) });
    test.InitializeInteraction();
-   FloatEbmType metricReturn = test.TestCalcInteractionStrength({ 0 });
+   double metricReturn = test.TestCalcInteractionStrength({ 0 });
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureGroup with one feature with one state, interaction, multiclass") {
+TEST_CASE("Term with one feature with one state, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionSamples({ TestSample({ 0 }, 0) });
    test.InitializeInteraction();
-   FloatEbmType metricReturn = test.TestCalcInteractionStrength({ 0 });
+   double metricReturn = test.TestCalcInteractionStrength({ 0 });
    CHECK(0 == metricReturn);
 }
 
@@ -127,24 +127,24 @@ TEST_CASE("weights are proportional, interaction, regression") {
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({ 
-      TestSample({ 0, 0 }, 10.1, std::nextafter(0.3, 100)),
+      TestSample({ 0, 0 }, 10.1, FloatTickIncrementTest(0.3)),
       TestSample({ 0, 1 }, 20.2, 0.3),
       TestSample({ 1, 0 }, 30.3, 0.3),
       TestSample({ 1, 1 }, 40.4, 0.3),
       });
    test1.InitializeInteraction();
-   FloatEbmType metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
-      TestSample({ 0, 0 }, 10.1, std::nextafter(2, 100)),
+      TestSample({ 0, 0 }, 10.1, FloatTickIncrementTest(2)),
       TestSample({ 0, 1 }, 20.2, 2),
       TestSample({ 1, 0 }, 30.3, 2),
       TestSample({ 1, 1 }, 40.4, 2),
       });
    test2.InitializeInteraction();
-   FloatEbmType metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
    TestApi test3 = TestApi(k_learningTypeRegression);
    test3.AddFeatures({ FeatureTest(2), FeatureTest(2) });
@@ -155,7 +155,7 @@ TEST_CASE("weights are proportional, interaction, regression") {
       TestSample({ 1, 1 }, 40.4, 0),
       });
    test3.InitializeInteraction();
-   FloatEbmType metricReturn3 = test3.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn3 = test3.TestCalcInteractionStrength({ 0, 1 });
 
    CHECK_APPROX(metricReturn1, metricReturn2);
    CHECK_APPROX(metricReturn1, metricReturn3);
@@ -165,24 +165,24 @@ TEST_CASE("weights are proportional, interaction, binary") {
    TestApi test1 = TestApi(2);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
-      TestSample({ 0, 0 }, 0, std::nextafter(0.3, 100)),
+      TestSample({ 0, 0 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 0, 1 }, 1, 0.3),
       TestSample({ 1, 0 }, 1, 0.3),
       TestSample({ 1, 1 }, 0, 0.3),
       });
    test1.InitializeInteraction();
-   FloatEbmType metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestApi test2 = TestApi(2);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
-      TestSample({ 0, 0 }, 0, std::nextafter(2, 100)),
+      TestSample({ 0, 0 }, 0, FloatTickIncrementTest(2)),
       TestSample({ 0, 1 }, 1, 2),
       TestSample({ 1, 0 }, 1, 2),
       TestSample({ 1, 1 }, 0, 2),
       });
    test2.InitializeInteraction();
-   FloatEbmType metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
    TestApi test3 = TestApi(2);
    test3.AddFeatures({ FeatureTest(2), FeatureTest(2) });
@@ -193,7 +193,7 @@ TEST_CASE("weights are proportional, interaction, binary") {
       TestSample({ 1, 1 }, 0, 0),
       });
    test3.InitializeInteraction();
-   FloatEbmType metricReturn3 = test3.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn3 = test3.TestCalcInteractionStrength({ 0, 1 });
 
    CHECK_APPROX(metricReturn1, metricReturn2);
    CHECK_APPROX(metricReturn1, metricReturn3);
@@ -203,24 +203,24 @@ TEST_CASE("weights are proportional, interaction, multiclass") {
    TestApi test1 = TestApi(3);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test1.AddInteractionSamples({
-      TestSample({ 0, 0 }, 0, std::nextafter(0.3, 100)),
+      TestSample({ 0, 0 }, 0, FloatTickIncrementTest(0.3)),
       TestSample({ 0, 1 }, 1, 0.3),
       TestSample({ 1, 0 }, 2, 0.3),
       TestSample({ 1, 1 }, 0, 0.3),
       });
    test1.InitializeInteraction();
-   FloatEbmType metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestApi test2 = TestApi(3);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
    test2.AddInteractionSamples({
-      TestSample({ 0, 0 }, 0, std::nextafter(2, 100)),
+      TestSample({ 0, 0 }, 0, FloatTickIncrementTest(2)),
       TestSample({ 0, 1 }, 1, 2),
       TestSample({ 1, 0 }, 2, 2),
       TestSample({ 1, 1 }, 0, 2),
       });
    test2.InitializeInteraction();
-   FloatEbmType metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
    TestApi test3 = TestApi(3);
    test3.AddFeatures({ FeatureTest(2), FeatureTest(2) });
@@ -231,7 +231,7 @@ TEST_CASE("weights are proportional, interaction, multiclass") {
       TestSample({ 1, 1 }, 0, 0),
       });
    test3.InitializeInteraction();
-   FloatEbmType metricReturn3 = test3.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn3 = test3.TestCalcInteractionStrength({ 0, 1 });
 
    CHECK_APPROX(metricReturn1, metricReturn2);
    CHECK_APPROX(metricReturn1, metricReturn3);
@@ -248,7 +248,7 @@ TEST_CASE("weights totals equivalence, interaction, regression") {
       TestSample({ 1, 1 }, 40.4, 0.3),
       });
    test1.InitializeInteraction();
-   FloatEbmType metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
@@ -260,7 +260,7 @@ TEST_CASE("weights totals equivalence, interaction, regression") {
       TestSample({ 1, 1 }, 40.4, 2),
       });
    test2.InitializeInteraction();
-   FloatEbmType metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
    CHECK_APPROX(metricReturn1, metricReturn2);
 }
@@ -276,7 +276,7 @@ TEST_CASE("weights totals equivalence, interaction, binary") {
       TestSample({ 1, 1 }, 0, 0.3),
       });
    test1.InitializeInteraction();
-   FloatEbmType metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestApi test2 = TestApi(2);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
@@ -288,7 +288,7 @@ TEST_CASE("weights totals equivalence, interaction, binary") {
       TestSample({ 1, 1 }, 0, 1),
       });
    test2.InitializeInteraction();
-   FloatEbmType metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
    CHECK_APPROX(metricReturn1, metricReturn2);
 }
@@ -304,7 +304,7 @@ TEST_CASE("weights totals equivalence, interaction, multiclass") {
       TestSample({ 1, 1 }, 0, 0.3),
       });
    test1.InitializeInteraction();
-   FloatEbmType metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 });
 
    TestApi test2 = TestApi(3);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
@@ -316,7 +316,7 @@ TEST_CASE("weights totals equivalence, interaction, multiclass") {
       TestSample({ 1, 1 }, 0, 2),
       });
    test2.InitializeInteraction();
-   FloatEbmType metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
+   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 });
 
    CHECK_APPROX(metricReturn1, metricReturn2);
 }
@@ -346,7 +346,7 @@ TEST_CASE("purified interaction strength with impure inputs should be zero, inte
       });
 
    test1.InitializeInteraction();
-   FloatEbmType metricReturn = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionOptions_Pure);
+   double metricReturn = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionOptions_Pure);
 
    CHECK(0 <= metricReturn && metricReturn < 0.0000001);
 }
@@ -374,7 +374,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
       TestSample({ 1, 1 }, -8.0, 5),
       });
    test1.InitializeInteraction();
-   FloatEbmType metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionOptions_Pure);
+   double metricReturn1 = test1.TestCalcInteractionStrength({ 0, 1 }, InteractionOptions_Pure);
 
    // to the pure input we add on one   axis: 3, 5
    // to the pure input we add on other axis: 7, 11
@@ -397,7 +397,7 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
       TestSample({ 1, 1 }, -8.0 + (5.0 + 7.0), 5),
       });
    test2.InitializeInteraction();
-   FloatEbmType metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 }, InteractionOptions_Pure);
+   double metricReturn2 = test2.TestCalcInteractionStrength({ 0, 1 }, InteractionOptions_Pure);
 
    CHECK_APPROX(metricReturn1, metricReturn2);
 }
@@ -415,14 +415,14 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
       TestSample({ 1, 1 }, 7, 1.355),
       });
    test1.InitializeInteraction();
-   const FloatEbmType interactionStrength = test1.TestCalcInteractionStrength({ 0, 1 });
+   const double interactionStrength = test1.TestCalcInteractionStrength({ 0, 1 });
 
    // we have a 2x2 matrix for boosting, which means there is only 1 cut point and it is known
    // so the gain should be from going from a singularity to the 4 quadrants
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2) });
-   test2.AddFeatureGroups({ { 0, 1 } });
+   test2.AddTerms({ { 0, 1 } });
    test2.AddTrainingSamples({
       TestSample({ 0, 0 }, 3, 232.24),
       TestSample({ 0, 1 }, 11, 12.124),
@@ -431,7 +431,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
       });
    test2.AddValidationSamples({});
    test2.InitializeBoosting(0);
-   const FloatEbmType gainAvg = test2.Boost(0).gainAvg;
+   const double gainAvg = test2.Boost(0).gainAvg;
 
    CHECK_APPROX(interactionStrength, gainAvg);
 }

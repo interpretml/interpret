@@ -14,7 +14,7 @@
 
 #include "approximate_math.hpp"
 #include "ebm_stats.hpp"
-// FeatureGroup.h depends on FeatureInternal.h
+// FeatureGroup.hpp depends on FeatureInternal.h
 #include "FeatureGroup.hpp"
 // dataset depends on features
 #include "DataSetBoosting.hpp"
@@ -30,24 +30,24 @@ namespace DEFINED_ZONE_NAME {
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateValidationZeroFeatures final {
+class ApplyTermUpdateValidationZeroFeatures final {
 public:
 
-   ApplyModelUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   static FloatEbmType Func(BoosterShell * const pBoosterShell) {
+   static double Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const FloatEbmType * pWeight = pBoosterCore->GetValidationWeights();
+      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
 #ifndef NDEBUG
-      FloatEbmType weightTotalDebug = 0;
+      FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -58,50 +58,50 @@ public:
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
-      FloatEbmType sumLogLoss = FloatEbmType { 0 };
+      FloatFast sumLogLoss = 0;
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
-      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples * cVectorLength;
+      FloatFast * pSampleScore = pValidationSet->GetSampleScores();
+      const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cVectorLength;
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
 
-         const FloatEbmType * pValues = aModelFeatureGroupUpdateTensor;
-         FloatEbmType itemExp = FloatEbmType { 0 };
-         FloatEbmType sumExp = FloatEbmType { 0 };
+         const FloatFast * pUpdateScore = aUpdateScores;
+         FloatFast itemExp = 0;
+         FloatFast sumExp = 0;
          size_t iVector = 0;
          do {
             // TODO : because there is only one bin for a zero feature feature group, we could move these values to the stack where the
             // compiler could reason about their visibility and optimize small arrays into registers
-            const FloatEbmType smallChangeToPredictorScores = *pValues;
-            ++pValues;
-            // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+            const FloatFast updateScore = *pUpdateScore;
+            ++pUpdateScore;
+            // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
+            const FloatFast sampleScore = *pSampleScore + updateScore;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                if(size_t { 0 } == iVector) {
-                  EBM_ASSERT(0 == smallChangeToPredictorScores);
-                  EBM_ASSERT(0 == predictorScore);
+                  EBM_ASSERT(0 == updateScore);
+                  EBM_ASSERT(0 == sampleScore);
                }
             }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            *pPredictorScores = predictorScore;
-            ++pPredictorScores;
-            const FloatEbmType oneExp = ExpForLogLossMulticlass<false>(predictorScore);
+            *pSampleScore = sampleScore;
+            ++pSampleScore;
+            const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
             itemExp = iVector == targetData ? oneExp : itemExp;
             sumExp += oneExp;
             ++iVector;
          } while(iVector < cVectorLength);
-         const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(
+         const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(
             sumExp,
             itemExp
          );
 
          EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
 
-         FloatEbmType weight = FloatEbmType { 1 };
+         FloatFast weight = 1;
          if(nullptr != pWeight) {
             // TODO: template this check away
             weight = *pWeight;
@@ -111,55 +111,55 @@ public:
 #endif // NDEBUG
          }
          sumLogLoss += sampleLogLoss * weight;
-      } while(pPredictorScoresEnd != pPredictorScores);
-      const FloatEbmType totalWeight = pBoosterCore->GetValidationWeightTotal();
+      } while(pSampleScoresEnd != pSampleScore);
+      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(0 < totalWeight);
       EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
          weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
 
-      return sumLogLoss / totalWeight;
+      return static_cast<double>(sumLogLoss) / static_cast<double>(totalWeight);
    }
 };
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class ApplyModelUpdateValidationZeroFeatures<2> final {
+class ApplyTermUpdateValidationZeroFeatures<2> final {
 public:
 
-   ApplyModelUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   static FloatEbmType Func(BoosterShell * const pBoosterShell) {
+   static double Func(BoosterShell * const pBoosterShell) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
-      const FloatEbmType * pWeight = pBoosterCore->GetValidationWeights();
+      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
 #ifndef NDEBUG
-      FloatEbmType weightTotalDebug = 0;
+      FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
-      FloatEbmType sumLogLoss = 0;
+      FloatFast sumLogLoss = 0;
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
-      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples;
-      const FloatEbmType smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[0];
+      FloatFast * pSampleScore = pValidationSet->GetSampleScores();
+      const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples;
+      const FloatFast updateScore = aUpdateScores[0];
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
-         // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
-         *pPredictorScores = predictorScore;
-         ++pPredictorScores;
-         const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
-         EBM_ASSERT(std::isnan(sampleLogLoss) || FloatEbmType { 0 } <= sampleLogLoss);
+         // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
+         const FloatFast sampleScore = *pSampleScore + updateScore;
+         *pSampleScore = sampleScore;
+         ++pSampleScore;
+         const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
+         EBM_ASSERT(std::isnan(sampleLogLoss) || 0 <= sampleLogLoss);
 
-         FloatEbmType weight = FloatEbmType { 1 };
+         FloatFast weight = 1;
          if(nullptr != pWeight) {
             // TODO: template this check away
             weight = *pWeight;
@@ -169,51 +169,51 @@ public:
 #endif // NDEBUG
          }
          sumLogLoss += sampleLogLoss * weight;
-      } while(pPredictorScoresEnd != pPredictorScores);
-      const FloatEbmType totalWeight = pBoosterCore->GetValidationWeightTotal();
+      } while(pSampleScoresEnd != pSampleScore);
+      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(0 < totalWeight);
       EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
          weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
 
-      return sumLogLoss / totalWeight;
+      return static_cast<double>(sumLogLoss) / static_cast<double>(totalWeight);
    }
 };
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class ApplyModelUpdateValidationZeroFeatures<k_regression> final {
+class ApplyTermUpdateValidationZeroFeatures<k_regression> final {
 public:
 
-   ApplyModelUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
 
-   static FloatEbmType Func(BoosterShell * const pBoosterShell) {
+   static double Func(BoosterShell * const pBoosterShell) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
-      const FloatEbmType * pWeight = pBoosterCore->GetValidationWeights();
+      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
 #ifndef NDEBUG
-      FloatEbmType weightTotalDebug = 0;
+      FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
-      FloatEbmType sumSquareError = FloatEbmType { 0 };
+      FloatFast sumSquareError = 0;
       // no hessians for regression
-      FloatEbmType * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
-      const FloatEbmType * const pGradientsEnd = pGradient + cSamples;
-      const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
+      FloatFast * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
+      const FloatFast * const pGradientsEnd = pGradient + cSamples;
+      const FloatFast updateScore = aUpdateScores[0];
       do {
-         // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
-         const FloatEbmType singleSampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
-         EBM_ASSERT(std::isnan(singleSampleSquaredError) || FloatEbmType { 0 } <= singleSampleSquaredError);
+         // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
+         const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
+         const FloatFast singleSampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
+         EBM_ASSERT(std::isnan(singleSampleSquaredError) || 0 <= singleSampleSquaredError);
 
-         FloatEbmType weight = FloatEbmType { 1 };
+         FloatFast weight = 1;
          if(nullptr != pWeight) {
             // TODO: template this check away
             weight = *pWeight;
@@ -226,24 +226,24 @@ public:
          *pGradient = gradient;
          ++pGradient;
       } while(pGradientsEnd != pGradient);
-      const FloatEbmType totalWeight = pBoosterCore->GetValidationWeightTotal();
+      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(0 < totalWeight);
       EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
          weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
 
-      return sumSquareError / totalWeight;
+      return static_cast<double>(sumSquareError) / static_cast<double>(totalWeight);
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateValidationZeroFeaturesTarget final {
+class ApplyTermUpdateValidationZeroFeaturesTarget final {
 public:
 
-   ApplyModelUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(BoosterShell * const pBoosterShell) {
+   INLINE_ALWAYS static double Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
 
@@ -253,11 +253,11 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return ApplyModelUpdateValidationZeroFeatures<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+         return ApplyTermUpdateValidationZeroFeatures<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pBoosterShell
          );
       } else {
-         return ApplyModelUpdateValidationZeroFeaturesTarget<
+         return ApplyTermUpdateValidationZeroFeaturesTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBoosterShell
@@ -267,44 +267,44 @@ public:
 };
 
 template<>
-class ApplyModelUpdateValidationZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class ApplyTermUpdateValidationZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   ApplyModelUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(BoosterShell * const pBoosterShell) {
+   INLINE_ALWAYS static double Func(BoosterShell * const pBoosterShell) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return ApplyModelUpdateValidationZeroFeatures<k_dynamicClassification>::Func(pBoosterShell);
+      return ApplyTermUpdateValidationZeroFeatures<k_dynamicClassification>::Func(pBoosterShell);
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
-class ApplyModelUpdateValidationInternal final {
+class ApplyTermUpdateValidationInternal final {
 public:
 
-   ApplyModelUpdateValidationInternal() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationInternal() = delete; // this is a static class.  Do not construct
 
-   static FloatEbmType Func(
+   static double Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
+      const size_t runtimeBitPack = pTerm->GetBitPack();
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const FloatEbmType * pWeight = pBoosterCore->GetValidationWeights();
+      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
 #ifndef NDEBUG
-      FloatEbmType weightTotalDebug = 0;
+      FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -314,7 +314,7 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -324,25 +324,25 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      FloatEbmType sumLogLoss = FloatEbmType { 0 };
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureGroup);
+      FloatFast sumLogLoss = 0;
+      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pTerm);
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
+      FloatFast * pSampleScore = pValidationSet->GetSampleScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples * cVectorLength;
-      const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
-      const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
+      const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples * cVectorLength;
+      const FloatFast * pSampleScoresExit = pSampleScoresTrueEnd;
+      const FloatFast * pSampleScoresInnerEnd = pSampleScoresTrueEnd;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1) * cVectorLength;
-      EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
-      EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
+      pSampleScoresExit = pSampleScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1) * cVectorLength;
+      EBM_ASSERT(pSampleScore < pSampleScoresExit);
+      EBM_ASSERT(pSampleScoresExit < pSampleScoresTrueEnd);
 
       do {
-         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPack * cVectorLength;
-         // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
+         pSampleScoresInnerEnd = pSampleScore + cItemsPerBitPack * cVectorLength;
+         // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
@@ -353,40 +353,40 @@ public:
             ++pTargetData;
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
-            const FloatEbmType * pValues = &aModelFeatureGroupUpdateTensor[iTensorBin * cVectorLength];
-            FloatEbmType itemExp = FloatEbmType { 0 };
-            FloatEbmType sumExp = FloatEbmType { 0 };
+            const FloatFast * pUpdateScore = &aUpdateScores[iTensorBin * cVectorLength];
+            FloatFast itemExp = 0;
+            FloatFast sumExp = 0;
             size_t iVector = 0;
             do {
-               const FloatEbmType smallChangeToPredictorScores = *pValues;
-               ++pValues;
-               // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-               const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+               const FloatFast updateScore = *pUpdateScore;
+               ++pUpdateScore;
+               // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
+               const FloatFast sampleScore = *pSampleScore + updateScore;
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                   if(size_t { 0 } == iVector) {
-                     EBM_ASSERT(0 == smallChangeToPredictorScores);
-                     EBM_ASSERT(0 == predictorScore);
+                     EBM_ASSERT(0 == updateScore);
+                     EBM_ASSERT(0 == sampleScore);
                   }
                }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               *pPredictorScores = predictorScore;
-               ++pPredictorScores;
-               const FloatEbmType oneExp = ExpForLogLossMulticlass<false>(predictorScore);
+               *pSampleScore = sampleScore;
+               ++pSampleScore;
+               const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
                itemExp = iVector == targetData ? oneExp : itemExp;
                sumExp += oneExp;
                ++iVector;
             } while(iVector < cVectorLength);
-            const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(
+            const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(
                sumExp,
                itemExp
             );
 
             EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
 
-            FloatEbmType weight = FloatEbmType { 1 };
+            FloatFast weight = 1;
             if(nullptr != pWeight) {
                // TODO: template this check away
                weight = *pWeight;
@@ -397,51 +397,51 @@ public:
             }
             sumLogLoss += sampleLogLoss * weight;
             iTensorBinCombined >>= cBitsPerItemMax;
-         } while(pPredictorScoresInnerEnd != pPredictorScores);
-      } while(pPredictorScoresExit != pPredictorScores);
+         } while(pSampleScoresInnerEnd != pSampleScore);
+      } while(pSampleScoresExit != pSampleScore);
 
       // first time through?
-      if(pPredictorScoresTrueEnd != pPredictorScores) {
-         pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-         pPredictorScoresExit = pPredictorScoresTrueEnd;
+      if(pSampleScoresTrueEnd != pSampleScore) {
+         pSampleScoresInnerEnd = pSampleScoresTrueEnd;
+         pSampleScoresExit = pSampleScoresTrueEnd;
          goto one_last_loop;
       }
-      const FloatEbmType totalWeight = pBoosterCore->GetValidationWeightTotal();
+      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(0 < totalWeight);
       EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
          weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
 
-      return sumLogLoss / totalWeight;
+      return static_cast<double>(sumLogLoss) / static_cast<double>(totalWeight);
    }
 };
 
 #ifndef EXPAND_BINARY_LOGITS
 template<size_t compilerBitPack>
-class ApplyModelUpdateValidationInternal<2, compilerBitPack> final {
+class ApplyTermUpdateValidationInternal<2, compilerBitPack> final {
 public:
 
-   ApplyModelUpdateValidationInternal() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationInternal() = delete; // this is a static class.  Do not construct
 
-   static FloatEbmType Func(
+   static double Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
-      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
+      const size_t runtimeBitPack = pTerm->GetBitPack();
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const FloatEbmType * pWeight = pBoosterCore->GetValidationWeights();
+      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
 #ifndef NDEBUG
-      FloatEbmType weightTotalDebug = 0;
+      FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -451,25 +451,25 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      FloatEbmType sumLogLoss = FloatEbmType { 0 };
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureGroup);
+      FloatFast sumLogLoss = 0;
+      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pTerm);
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
+      FloatFast * pSampleScore = pValidationSet->GetSampleScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples;
-      const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
-      const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
+      const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples;
+      const FloatFast * pSampleScoresExit = pSampleScoresTrueEnd;
+      const FloatFast * pSampleScoresInnerEnd = pSampleScoresTrueEnd;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1);
-      EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
-      EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
+      pSampleScoresExit = pSampleScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1);
+      EBM_ASSERT(pSampleScore < pSampleScoresExit);
+      EBM_ASSERT(pSampleScoresExit < pSampleScoresTrueEnd);
 
       do {
-         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPack;
-         // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
+         pSampleScoresInnerEnd = pSampleScore + cItemsPerBitPack;
+         // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
@@ -481,16 +481,16 @@ public:
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatEbmType smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[iTensorBin];
-            // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
-            *pPredictorScores = predictorScore;
-            ++pPredictorScores;
-            const FloatEbmType sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
+            const FloatFast updateScore = aUpdateScores[iTensorBin];
+            // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
+            const FloatFast sampleScore = *pSampleScore + updateScore;
+            *pSampleScore = sampleScore;
+            ++pSampleScore;
+            const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossBinaryClassification(sampleScore, targetData);
 
-            EBM_ASSERT(std::isnan(sampleLogLoss) || FloatEbmType { 0 } <= sampleLogLoss);
+            EBM_ASSERT(std::isnan(sampleLogLoss) || 0 <= sampleLogLoss);
 
-            FloatEbmType weight = FloatEbmType { 1 };
+            FloatFast weight = 1;
             if(nullptr != pWeight) {
                // TODO: template this check away
                weight = *pWeight;
@@ -502,51 +502,51 @@ public:
             sumLogLoss += sampleLogLoss * weight;
 
             iTensorBinCombined >>= cBitsPerItemMax;
-         } while(pPredictorScoresInnerEnd != pPredictorScores);
-      } while(pPredictorScoresExit != pPredictorScores);
+         } while(pSampleScoresInnerEnd != pSampleScore);
+      } while(pSampleScoresExit != pSampleScore);
 
       // first time through?
-      if(pPredictorScoresTrueEnd != pPredictorScores) {
-         pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-         pPredictorScoresExit = pPredictorScoresTrueEnd;
+      if(pSampleScoresTrueEnd != pSampleScore) {
+         pSampleScoresInnerEnd = pSampleScoresTrueEnd;
+         pSampleScoresExit = pSampleScoresTrueEnd;
          goto one_last_loop;
       }
-      const FloatEbmType totalWeight = pBoosterCore->GetValidationWeightTotal();
+      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(0 < totalWeight);
       EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
          weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
 
-      return sumLogLoss / totalWeight;
+      return static_cast<double>(sumLogLoss) / static_cast<double>(totalWeight);
    }
 };
 #endif // EXPAND_BINARY_LOGITS
 
 template<size_t compilerBitPack>
-class ApplyModelUpdateValidationInternal<k_regression, compilerBitPack> final {
+class ApplyTermUpdateValidationInternal<k_regression, compilerBitPack> final {
 public:
 
-   ApplyModelUpdateValidationInternal() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationInternal() = delete; // this is a static class.  Do not construct
 
-   static FloatEbmType Func(
+   static double Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-      const FloatEbmType * const aModelFeatureGroupUpdateTensor = pBoosterShell->GetAccumulatedModelUpdate()->GetValuePointer();
-      EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor);
+      const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
 
-      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
+      const size_t runtimeBitPack = pTerm->GetBitPack();
       DataSetBoosting * const pValidationSet = pBoosterCore->GetValidationSet();
-      const FloatEbmType * pWeight = pBoosterCore->GetValidationWeights();
+      const FloatFast * pWeight = pBoosterCore->GetValidationWeights();
 #ifndef NDEBUG
-      FloatEbmType weightTotalDebug = 0;
+      FloatFast weightTotalDebug = 0;
 #endif // NDEBUG
 
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, runtimeBitPack);
       EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -556,15 +556,15 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      FloatEbmType sumSquareError = FloatEbmType { 0 };
+      FloatFast sumSquareError = 0;
       // no hessians for regression
-      FloatEbmType * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureGroup);
+      FloatFast * pGradient = pValidationSet->GetGradientsAndHessiansPointer();
+      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pTerm);
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pGradientsTrueEnd = pGradient + cSamples;
-      const FloatEbmType * pGradientsExit = pGradientsTrueEnd;
-      const FloatEbmType * pGradientsInnerEnd = pGradientsTrueEnd;
+      const FloatFast * const pGradientsTrueEnd = pGradient + cSamples;
+      const FloatFast * pGradientsExit = pGradientsTrueEnd;
+      const FloatFast * pGradientsInnerEnd = pGradientsTrueEnd;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
@@ -574,7 +574,7 @@ public:
 
       do {
          pGradientsInnerEnd = pGradient + cItemsPerBitPack;
-         // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
+         // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
@@ -583,13 +583,13 @@ public:
          do {
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
-            // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, smallChangeToPrediction);
-            const FloatEbmType sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
-            EBM_ASSERT(std::isnan(sampleSquaredError) || FloatEbmType { 0 } <= sampleSquaredError);
+            const FloatFast updateScore = aUpdateScores[iTensorBin];
+            // this will apply a small fix to our existing ValidationSampleScores, either positive or negative, whichever is needed
+            const FloatFast gradient = EbmStats::ComputeGradientRegressionMSEFromOriginalGradient(*pGradient, updateScore);
+            const FloatFast sampleSquaredError = EbmStats::ComputeSingleSampleSquaredErrorRegressionFromGradient(gradient);
+            EBM_ASSERT(std::isnan(sampleSquaredError) || 0 <= sampleSquaredError);
 
-            FloatEbmType weight = FloatEbmType { 1 };
+            FloatFast weight = 1;
             if(nullptr != pWeight) {
                // TODO: template this check away
                weight = *pWeight;
@@ -612,26 +612,26 @@ public:
          pGradientsExit = pGradientsTrueEnd;
          goto one_last_loop;
       }
-      const FloatEbmType totalWeight = pBoosterCore->GetValidationWeightTotal();
+      const FloatBig totalWeight = pBoosterCore->GetValidationWeightTotal();
 
-      EBM_ASSERT(FloatEbmType { 0 } < totalWeight);
+      EBM_ASSERT(0 < totalWeight);
       EBM_ASSERT(nullptr == pWeight || totalWeight * 0.999 <= weightTotalDebug &&
          weightTotalDebug <= 1.001 * totalWeight);
-      EBM_ASSERT(nullptr != pWeight || static_cast<FloatEbmType>(cSamples) == totalWeight);
+      EBM_ASSERT(nullptr != pWeight || static_cast<FloatBig>(cSamples) == totalWeight);
 
-      return sumSquareError / totalWeight;
+      return static_cast<double>(sumSquareError) / static_cast<double>(totalWeight);
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateValidationNormalTarget final {
+class ApplyTermUpdateValidationNormalTarget final {
 public:
 
-   ApplyModelUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
@@ -642,106 +642,106 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
+         return ApplyTermUpdateValidationInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackDynamic>::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       } else {
-         return ApplyModelUpdateValidationNormalTarget<
+         return ApplyTermUpdateValidationNormalTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       }
    }
 };
 
 template<>
-class ApplyModelUpdateValidationNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class ApplyTermUpdateValidationNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   ApplyModelUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return ApplyModelUpdateValidationInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
+      return ApplyTermUpdateValidationInternal<k_dynamicClassification, k_cItemsPerBitPackDynamic>::Func(
          pBoosterShell,
-         pFeatureGroup
+         pTerm
       );
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerBitPack>
-class ApplyModelUpdateValidationSIMDPacking final {
+class ApplyTermUpdateValidationSIMDPacking final {
 public:
 
-   ApplyModelUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
-      const size_t runtimeBitPack = pFeatureGroup->GetBitPack();
+      const size_t runtimeBitPack = pTerm->GetBitPack();
 
       EBM_ASSERT(1 <= runtimeBitPack);
       EBM_ASSERT(runtimeBitPack <= k_cBitsForStorageType);
       static_assert(compilerBitPack <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerBitPack == runtimeBitPack) {
-         return ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
+         return ApplyTermUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, compilerBitPack>::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       } else {
-         return ApplyModelUpdateValidationSIMDPacking<
+         return ApplyTermUpdateValidationSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerBitPack)
          >::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       }
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateValidationSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic> final {
+class ApplyTermUpdateValidationSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackDynamic> final {
 public:
 
-   ApplyModelUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
-      EBM_ASSERT(1 <= pFeatureGroup->GetBitPack());
-      EBM_ASSERT(pFeatureGroup->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
-      return ApplyModelUpdateValidationInternal<
+      EBM_ASSERT(1 <= pTerm->GetBitPack());
+      EBM_ASSERT(pTerm->GetBitPack() <= static_cast<ptrdiff_t>(k_cBitsForStorageType));
+      return ApplyTermUpdateValidationInternal<
          compilerLearningTypeOrCountTargetClasses, 
          k_cItemsPerBitPackDynamic
       >::Func(
          pBoosterShell,
-         pFeatureGroup
+         pTerm
       );
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateValidationSIMDTarget final {
+class ApplyTermUpdateValidationSIMDTarget final {
 public:
 
-   ApplyModelUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
@@ -752,65 +752,65 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return ApplyModelUpdateValidationSIMDPacking<
+         return ApplyTermUpdateValidationSIMDPacking<
             compilerLearningTypeOrCountTargetClassesPossible,
             k_cItemsPerBitPackMax
          >::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       } else {
-         return ApplyModelUpdateValidationSIMDTarget<
+         return ApplyTermUpdateValidationSIMDTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pBoosterShell,
-            pFeatureGroup
+            pTerm
          );
       }
    }
 };
 
 template<>
-class ApplyModelUpdateValidationSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
+class ApplyTermUpdateValidationSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
 
-   ApplyModelUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
+   ApplyTermUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup
+      const Term * const pTerm
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
       EBM_ASSERT(IsClassification(pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pBoosterShell->GetBoosterCore()->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return ApplyModelUpdateValidationSIMDPacking<
+      return ApplyTermUpdateValidationSIMDPacking<
          k_dynamicClassification,
          k_cItemsPerBitPackMax
       >::Func(
          pBoosterShell,
-         pFeatureGroup
+         pTerm
       );
    }
 };
 
-extern FloatEbmType ApplyModelUpdateValidation(
+extern double ApplyTermUpdateValidation(
    BoosterShell * const pBoosterShell, 
-   const FeatureGroup * const pFeatureGroup
+   const Term * const pTerm
 ) {
-   LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateValidation");
+   LOG_0(TraceLevelVerbose, "Entered ApplyTermUpdateValidation");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
-   FloatEbmType ret;
-   if(0 == pFeatureGroup->GetCountSignificantDimensions()) {
+   double ret;
+   if(0 == pTerm->GetCountSignificantDimensions()) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         ret = ApplyModelUpdateValidationZeroFeaturesTarget<2>::Func(pBoosterShell);
+         ret = ApplyTermUpdateValidationZeroFeaturesTarget<2>::Func(pBoosterShell);
       } else {
          EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-         ret = ApplyModelUpdateValidationZeroFeatures<k_regression>::Func(pBoosterShell);
+         ret = ApplyTermUpdateValidationZeroFeatures<k_regression>::Func(pBoosterShell);
       }
    } else {
       if(k_bUseSIMD) {
@@ -827,15 +827,15 @@ extern FloatEbmType ApplyModelUpdateValidation(
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-            ret = ApplyModelUpdateValidationSIMDTarget<2>::Func(
+            ret = ApplyTermUpdateValidationSIMDTarget<2>::Func(
                pBoosterShell,
-               pFeatureGroup
+               pTerm
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ret = ApplyModelUpdateValidationSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
+            ret = ApplyTermUpdateValidationSIMDPacking<k_regression, k_cItemsPerBitPackMax>::Func(
                pBoosterShell,
-               pFeatureGroup
+               pTerm
             );
          }
       } else {
@@ -846,15 +846,15 @@ extern FloatEbmType ApplyModelUpdateValidation(
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
 
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-            ret = ApplyModelUpdateValidationNormalTarget<2>::Func(
+            ret = ApplyTermUpdateValidationNormalTarget<2>::Func(
                pBoosterShell,
-               pFeatureGroup
+               pTerm
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ret = ApplyModelUpdateValidationInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
+            ret = ApplyTermUpdateValidationInternal<k_regression, k_cItemsPerBitPackDynamic>::Func(
                pBoosterShell,
-               pFeatureGroup
+               pTerm
             );
          }
       }
@@ -864,13 +864,13 @@ extern FloatEbmType ApplyModelUpdateValidation(
    // comparing to max is a good way to check for +infinity without using infinity, which can be problematic on
    // some compilers with some compiler settings.  Using <= helps avoid optimization away because the compiler
    // might assume that nothing is larger than max if it thinks there's no +infinity
-   if(UNLIKELY(UNLIKELY(std::isnan(ret)) || UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= ret))) {
-      // set the metric so high that this round of boosting will be rejected.  The worst metric is std::numeric_limits<FloatEbmType>::max(),
+   if(UNLIKELY(UNLIKELY(std::isnan(ret)) || UNLIKELY(std::numeric_limits<double>::max() <= ret))) {
+      // set the metric so high that this round of boosting will be rejected.  The worst metric is std::numeric_limits<FloatFast>::max(),
       // Set it to that so that this round of boosting won't be accepted if our caller is using early stopping
-      ret = std::numeric_limits<FloatEbmType>::max();
+      ret = std::numeric_limits<double>::max();
    } else {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         if(UNLIKELY(ret < FloatEbmType { 0 })) {
+         if(UNLIKELY(ret < 0)) {
             // regression can't be negative since squares are pretty well insulated from ever doing that
 
             // Multiclass can return small negative numbers, so we need to clean up the value retunred so that it isn't negative
@@ -883,15 +883,15 @@ extern FloatEbmType ApplyModelUpdateValidation(
 
             // because of floating point inexact reasons, ComputeSingleSampleLogLossMulticlass can return a negative number
             // so correct this before we return.  Any negative numbers were really meant to be zero
-            ret = FloatEbmType { 0 };
+            ret = 0;
          }
       }
    }
    EBM_ASSERT(!std::isnan(ret));
    EBM_ASSERT(!std::isinf(ret));
-   EBM_ASSERT(FloatEbmType { 0 } <= ret);
+   EBM_ASSERT(0 <= ret);
 
-   LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateValidation");
+   LOG_0(TraceLevelVerbose, "Exited ApplyTermUpdateValidation");
 
    return ret;
 }

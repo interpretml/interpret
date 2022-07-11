@@ -35,29 +35,26 @@ public:
 
    PartitionTwoDimensionalInteractionInternal() = delete; // this is a static class.  Do not construct
 
-   static FloatEbmType Func(
+   static double Func(
       InteractionCore * const pInteractionCore,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       const InteractionOptionsType options,
       const size_t cSamplesRequiredForChildSplitMin,
-      HistogramBucketBase * pAuxiliaryBucketZoneBase,
-      HistogramBucketBase * const aHistogramBucketsBase
+      BinBase * aAuxiliaryBinsBase,
+      BinBase * const aBinsBase
 #ifndef NDEBUG
-      , const HistogramBucketBase * const aHistogramBucketsDebugCopyBase
-      , const unsigned char * const aHistogramBucketsEndDebug
+      , const BinBase * const aBinsBaseDebugCopy
+      , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pAuxiliaryBucketZone =
-         pAuxiliaryBucketZoneBase->GetHistogramBucket<bClassification>();
+      auto * const aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets =
-         aHistogramBucketsBase->GetHistogramBucket<bClassification>();
+      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
 #ifndef NDEBUG
-      const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy =
-         aHistogramBucketsDebugCopyBase->GetHistogramBucket<bClassification>();
+      auto * const aBinsDebugCopy = aBinsBaseDebugCopy->Specialize<FloatBig, bClassification>();
 #endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -66,25 +63,21 @@ public:
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
 
-      HistogramBucket<bClassification> * const pTotals00 =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
-      HistogramBucket<bClassification> * const pTotals01 =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
-      HistogramBucket<bClassification> * const pTotals10 =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
-      HistogramBucket<bClassification> * const pTotals11 =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
+      auto * const pTotals00 = IndexBin(cBytesPerBin, aAuxiliaryBins, 0);
+      auto * const pTotals01 = IndexBin(cBytesPerBin, aAuxiliaryBins, 1);
+      auto * const pTotals10 = IndexBin(cBytesPerBin, aAuxiliaryBins, 2);
+      auto * const pTotals11 = IndexBin(cBytesPerBin, aAuxiliaryBins, 3);
 
       // for interactions we return an interaction score of 0 if any of the dimensions are useless
-      EBM_ASSERT(2 == pFeatureGroup->GetCountDimensions());
-      EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions());
+      EBM_ASSERT(2 == pTerm->GetCountDimensions());
+      EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions());
 
       // we return an interaction score of 0 if any features are useless before calling here
-      EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions());
-      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
-      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->GetCountBins();
+      EBM_ASSERT(pTerm->GetCountDimensions() == pTerm->GetCountSignificantDimensions());
+      const size_t cBinsDimension1 = pTerm->GetTermEntries()[0].m_pFeature->GetCountBins();
+      const size_t cBinsDimension2 = pTerm->GetTermEntries()[1].m_pFeature->GetCountBins();
 
       // any pair with a feature with 1 cBins returns an interaction score of 0
       EBM_ASSERT(2 <= cBinsDimension1);
@@ -97,7 +90,7 @@ public:
 #endif // NDEBUG
 
       // if a negative value were to occur, then it would be due to numeric instability, so clip it to zero here
-      FloatEbmType bestGain = FloatEbmType { 0 };
+      FloatBig bestGain = 0;
 
       size_t aiStart[k_cDimensionsMax];
 
@@ -110,80 +103,76 @@ public:
          do {
             aiStart[1] = iBin2;
 
-            EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+            EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
             TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                learningTypeOrCountTargetClasses,
-               pFeatureGroup,
-               aHistogramBuckets,
+               pTerm,
+               aBins,
                aiStart,
                0x00,
                pTotals00
 #ifndef NDEBUG
-               , aHistogramBucketsDebugCopy
-               , aHistogramBucketsEndDebug
+               , aBinsDebugCopy
+               , pBinsEndDebug
 #endif // NDEBUG
                );
-            if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals00->GetCountSamplesInBucket())) {
-               EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+            if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals00->GetCountSamples())) {
+               EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                   learningTypeOrCountTargetClasses,
-                  pFeatureGroup,
-                  aHistogramBuckets,
+                  pTerm,
+                  aBins,
                   aiStart,
                   0x01,
                   pTotals01
 #ifndef NDEBUG
-                  , aHistogramBucketsDebugCopy
-                  , aHistogramBucketsEndDebug
+                  , aBinsDebugCopy
+                  , pBinsEndDebug
 #endif // NDEBUG
                   );
-               if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals01->GetCountSamplesInBucket())) {
-                  EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+               if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals01->GetCountSamples())) {
+                  EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                   TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                      learningTypeOrCountTargetClasses,
-                     pFeatureGroup,
-                     aHistogramBuckets,
+                     pTerm,
+                     aBins,
                      aiStart,
                      0x02,
                      pTotals10
 #ifndef NDEBUG
-                     , aHistogramBucketsDebugCopy
-                     , aHistogramBucketsEndDebug
+                     , aBinsDebugCopy
+                     , pBinsEndDebug
 #endif // NDEBUG
                      );
-                  if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals10->GetCountSamplesInBucket())) {
-                     EBM_ASSERT(2 == pFeatureGroup->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+                  if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals10->GetCountSamples())) {
+                     EBM_ASSERT(2 == pTerm->GetCountSignificantDimensions()); // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
                      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                         learningTypeOrCountTargetClasses,
-                        pFeatureGroup,
-                        aHistogramBuckets,
+                        pTerm,
+                        aBins,
                         aiStart,
                         0x03,
                         pTotals11
 #ifndef NDEBUG
-                        , aHistogramBucketsDebugCopy
-                        , aHistogramBucketsEndDebug
+                        , aBinsDebugCopy
+                        , pBinsEndDebug
 #endif // NDEBUG
                         );
-                     if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals11->GetCountSamplesInBucket())) {
+                     if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotals11->GetCountSamples())) {
 #ifndef NDEBUG
                         bAnySplits = true;
 #endif // NDEBUG
-                        FloatEbmType gain = 0;
+                        FloatBig gain = 0;
 
-                        FloatEbmType weight00 = pTotals00->GetWeightInBucket();
-                        FloatEbmType weight01 = pTotals01->GetWeightInBucket();
-                        FloatEbmType weight10 = pTotals10->GetWeightInBucket();
-                        FloatEbmType weight11 = pTotals11->GetWeightInBucket();
+                        FloatBig weight00 = pTotals00->GetWeight();
+                        FloatBig weight01 = pTotals01->GetWeight();
+                        FloatBig weight10 = pTotals10->GetWeight();
+                        FloatBig weight11 = pTotals11->GetWeight();
 
-                        HistogramTargetEntry<bClassification> * const pHistogramEntry00 =
-                           pTotals00->GetHistogramTargetEntry();
-                        HistogramTargetEntry<bClassification> * const pHistogramEntry01 =
-                           pTotals01->GetHistogramTargetEntry();
-                        HistogramTargetEntry<bClassification> * const pHistogramEntry10 =
-                           pTotals10->GetHistogramTargetEntry();
-                        HistogramTargetEntry<bClassification> * const pHistogramEntry11 =
-                           pTotals11->GetHistogramTargetEntry();
+                        auto * const pHistogramEntry00 = pTotals00->GetHistogramTargetEntry();
+                        auto * const pHistogramEntry01 = pTotals01->GetHistogramTargetEntry();
+                        auto * const pHistogramEntry10 = pTotals10->GetHistogramTargetEntry();
+                        auto * const pHistogramEntry11 = pTotals11->GetHistogramTargetEntry();
 
                         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -193,20 +182,20 @@ public:
 
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
-                           const FloatEbmType n00 = pHistogramEntry00[iVector].m_sumGradients;
-                           const FloatEbmType d00 = bUseLogitBoost ?
+                           const FloatBig n00 = pHistogramEntry00[iVector].m_sumGradients;
+                           const FloatBig d00 = bUseLogitBoost ?
                               pHistogramEntry00[iVector].GetSumHessians() : weight00;
 
-                           const FloatEbmType n01 = pHistogramEntry01[iVector].m_sumGradients;
-                           const FloatEbmType d01 = bUseLogitBoost ?
+                           const FloatBig n01 = pHistogramEntry01[iVector].m_sumGradients;
+                           const FloatBig d01 = bUseLogitBoost ?
                               pHistogramEntry01[iVector].GetSumHessians() : weight01;
 
-                           const FloatEbmType n10 = pHistogramEntry10[iVector].m_sumGradients;
-                           const FloatEbmType d10 = bUseLogitBoost ?
+                           const FloatBig n10 = pHistogramEntry10[iVector].m_sumGradients;
+                           const FloatBig d10 = bUseLogitBoost ?
                               pHistogramEntry10[iVector].GetSumHessians() : weight10;
 
-                           const FloatEbmType n11 = pHistogramEntry11[iVector].m_sumGradients;
-                           const FloatEbmType d11 = bUseLogitBoost ?
+                           const FloatBig n11 = pHistogramEntry11[iVector].m_sumGradients;
+                           const FloatBig d11 = bUseLogitBoost ?
                               pHistogramEntry11[iVector].GetSumHessians() : weight11;
 
                            if(0 != (InteractionOptions_Pure & options)) {
@@ -266,40 +255,39 @@ public:
 
                               // if any of the denominators (weights) are zero then the purified gain will be
                               // zero.  Handle it here to avoid division by zero
-                              if(FloatEbmType { 0 } != d00 && FloatEbmType { 0 } != d01 && 
-                                 FloatEbmType { 0 } != d10 && FloatEbmType { 0 } != d11) {
+                              if(0 != d00 && 0 != d01 && 0 != d10 && 0 != d11) {
 
                                  // TODO: instead of checking the denominators for zero above, can we do it earlier?
                                  // If we're using hessians then we'd need it here, but we aren't using them yet
 
                                  // calculate what the full updates would be for non-purified:
                                  // u = update (non-purified)
-                                 const FloatEbmType u00 = n00 / d00;
-                                 const FloatEbmType u01 = n01 / d01;
-                                 const FloatEbmType u10 = n10 / d10;
-                                 const FloatEbmType u11 = n11 / d11;
+                                 const FloatBig u00 = n00 / d00;
+                                 const FloatBig u01 = n01 / d01;
+                                 const FloatBig u10 = n10 / d10;
+                                 const FloatBig u11 = n11 / d11;
 
                                  // common part of equations (positive for 00 & 11 equations, negative for 01 and 10)
-                                 const FloatEbmType common = u00 - u01 - u10 + u11;
+                                 const FloatBig common = u00 - u01 - u10 + u11;
 
                                  // p = purified update
-                                 const FloatEbmType p00 = common / (FloatEbmType { 1 } + d00 / d01 + d00 / d10 + d00 / d11);
-                                 const FloatEbmType p01 = common / (FloatEbmType { -1 } - d01 / d00 - d01 / d10 - d01 / d11);
-                                 const FloatEbmType p10 = common / (FloatEbmType { -1 } - d10 / d00 - d10 / d01 - d10 / d11);
-                                 const FloatEbmType p11 = common / (FloatEbmType { 1 } + d11 / d00 + d11 / d01 + d11 / d10);
+                                 const FloatBig p00 = common / (FloatBig { 1 } + d00 / d01 + d00 / d10 + d00 / d11);
+                                 const FloatBig p01 = common / (FloatBig { -1 } - d01 / d00 - d01 / d10 - d01 / d11);
+                                 const FloatBig p10 = common / (FloatBig { -1 } - d10 / d00 - d10 / d01 - d10 / d11);
+                                 const FloatBig p11 = common / (FloatBig { 1 } + d11 / d00 + d11 / d01 + d11 / d10);
 
                                  // g = gain
-                                 const FloatEbmType g00 = EbmStats::CalcPartialGainFromUpdate(p00, d00);
-                                 const FloatEbmType g01 = EbmStats::CalcPartialGainFromUpdate(p01, d01);
-                                 const FloatEbmType g10 = EbmStats::CalcPartialGainFromUpdate(p10, d10);
-                                 const FloatEbmType g11 = EbmStats::CalcPartialGainFromUpdate(p11, d11);
+                                 const FloatBig g00 = EbmStats::CalcPartialGainFromUpdate(p00, d00);
+                                 const FloatBig g01 = EbmStats::CalcPartialGainFromUpdate(p01, d01);
+                                 const FloatBig g10 = EbmStats::CalcPartialGainFromUpdate(p10, d10);
+                                 const FloatBig g11 = EbmStats::CalcPartialGainFromUpdate(p11, d11);
 
 #ifndef NDEBUG
                                  // r = reconsituted numerator (after purification)
-                                 const FloatEbmType r00 = p00 * d00;
-                                 const FloatEbmType r01 = p01 * d01;
-                                 const FloatEbmType r10 = p10 * d10;
-                                 const FloatEbmType r11 = p11 * d11;
+                                 const FloatBig r00 = p00 * d00;
+                                 const FloatBig r01 = p01 * d01;
+                                 const FloatBig r10 = p10 * d10;
+                                 const FloatBig r11 = p11 * d11;
 
                                  // purification means summing any direction gives us zero
                                  EBM_ASSERT(std::abs(r00 + r01) < 0.001);
@@ -329,7 +317,7 @@ public:
                               gain += EbmStats::CalcPartialGain(n11, d11);
                            }
                         }
-                        EBM_ASSERT(std::isnan(gain) || FloatEbmType { 0 } <= gain); // sumations of positive numbers should be positive
+                        EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumations of positive numbers should be positive
 
                         // If we get a NaN result, we'd like to propagate it by making bestGain NaN.  
                         // The rules for NaN values say that non equality comparisons are all false so, 
@@ -349,7 +337,7 @@ public:
       } while(iBin1 < cBinsDimension1 - 1);
 
       // we start from zero, so bestGain can't be negative here
-      EBM_ASSERT(std::isnan(bestGain) || FloatEbmType { 0 } <= bestGain);
+      EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
 
       if(0 == (InteractionOptions_Pure & options)) {
          // if we are detecting impure interaction then so far we have only calculated the children partial gain 
@@ -357,16 +345,15 @@ public:
          // gain. All the splits we've analyzed so far though had the same non-split partial gain, so we subtract it here
          // instead of inside the loop.
 
-         // the bucket before the pAuxiliaryBucketZoneBase is the last summation bucket of aHistogramBucketsBase, 
-         // which contains the totals of all buckets
-         const HistogramBucket<bClassification> * const pTotal =
-            reinterpret_cast<const HistogramBucket<bClassification> *>(
-               reinterpret_cast<const char *>(pAuxiliaryBucketZoneBase) - cBytesPerHistogramBucket);
+         // the bin before the aAuxiliaryBinsBase is the last summation bin of aBinsBase, 
+         // which contains the totals of all bins
+         const auto * const pTotal =
+            reinterpret_cast<const Bin<FloatBig, bClassification> *>(
+               reinterpret_cast<const char *>(aAuxiliaryBinsBase) - cBytesPerBin);
 
-         const FloatEbmType weightAll = pTotal->GetWeightInBucket();
+         const FloatBig weightAll = pTotal->GetWeight();
 
-         const HistogramTargetEntry<bClassification> * const pHistogramEntryTotal =
-            pTotal->GetHistogramTargetEntry();
+         const auto * const pHistogramEntryTotal = pTotal->GetHistogramTargetEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -380,7 +367,7 @@ public:
          }
 
          // bestGain should be positive, or NaN, BUT it can be slightly negative due to floating point noise
-         // it could also be -inf if the parent/total bucket overflows, but the children parts did not.
+         // it could also be -inf if the parent/total bin overflows, but the children parts did not.
          // bestGain can also be substantially negative if we didn't find any legal cuts and 
          // then we subtracted the base partial gain here from zero
 
@@ -392,12 +379,12 @@ public:
          // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative gain.
 
          EBM_ASSERT(std::isnan(bestGain) ||
-            -std::numeric_limits<FloatEbmType>::infinity() == bestGain ||
+            -std::numeric_limits<FloatBig>::infinity() == bestGain ||
             k_epsilonNegativeGainAllowed <= bestGain || !bAnySplits);
       }
 
       // we clean up bestGain in the caller, since this function is templated and created many times
-      return bestGain;
+      return static_cast<double>(bestGain);
    }
 };
 
@@ -407,16 +394,16 @@ public:
 
    PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       const InteractionOptionsType options,
       const size_t cSamplesRequiredForChildSplitMin,
-      HistogramBucketBase * pAuxiliaryBucketZone,
-      HistogramBucketBase * const aHistogramBuckets
+      BinBase * aAuxiliaryBinsBase,
+      BinBase * const aBinsBase
 #ifndef NDEBUG
-      , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-      , const unsigned char * const aHistogramBucketsEndDebug
+      , const BinBase * const aBinsBaseDebugCopy
+      , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
@@ -429,27 +416,27 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          return PartitionTwoDimensionalInteractionInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pInteractionCore,
-            pFeatureGroup,
+            pTerm,
             options,
             cSamplesRequiredForChildSplitMin,
-            pAuxiliaryBucketZone,
-            aHistogramBuckets
+            aAuxiliaryBinsBase,
+            aBinsBase
 #ifndef NDEBUG
-            , aHistogramBucketsDebugCopy
-            , aHistogramBucketsEndDebug
+            , aBinsBaseDebugCopy
+            , pBinsEndDebug
 #endif // NDEBUG
          );
       } else {
          return PartitionTwoDimensionalInteractionTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pInteractionCore,
-            pFeatureGroup,
+            pTerm,
             options,
             cSamplesRequiredForChildSplitMin,
-            pAuxiliaryBucketZone,
-            aHistogramBuckets
+            aAuxiliaryBinsBase,
+            aBinsBase
 #ifndef NDEBUG
-            , aHistogramBucketsDebugCopy
-            , aHistogramBucketsEndDebug
+            , aBinsBaseDebugCopy
+            , pBinsEndDebug
 #endif // NDEBUG
          );
       }
@@ -462,16 +449,16 @@ public:
 
    PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_ALWAYS static FloatEbmType Func(
+   INLINE_ALWAYS static double Func(
       InteractionCore * const pInteractionCore,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       const InteractionOptionsType options,
       const size_t cSamplesRequiredForChildSplitMin,
-      HistogramBucketBase * pAuxiliaryBucketZone,
-      HistogramBucketBase * const aHistogramBuckets
+      BinBase * aAuxiliaryBinsBase,
+      BinBase * const aBinsBase
 #ifndef NDEBUG
-      , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-      , const unsigned char * const aHistogramBucketsEndDebug
+      , const BinBase * const aBinsBaseDebugCopy
+      , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
@@ -481,29 +468,29 @@ public:
 
       return PartitionTwoDimensionalInteractionInternal<k_dynamicClassification>::Func(
          pInteractionCore,
-         pFeatureGroup,
+         pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
-         aHistogramBuckets
+         aAuxiliaryBinsBase,
+         aBinsBase
 #ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebug
+         , aBinsBaseDebugCopy
+         , pBinsEndDebug
 #endif // NDEBUG
       );
    }
 };
 
-extern FloatEbmType PartitionTwoDimensionalInteraction(
+extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
-   HistogramBucketBase * pAuxiliaryBucketZone,
-   HistogramBucketBase * const aHistogramBuckets
+   BinBase * aAuxiliaryBinsBase,
+   BinBase * const aBinsBase
 #ifndef NDEBUG
-   , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
+   , const BinBase * const aBinsBaseDebugCopy
+   , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 ) {
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -511,28 +498,28 @@ extern FloatEbmType PartitionTwoDimensionalInteraction(
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       return PartitionTwoDimensionalInteractionTarget<2>::Func(
          pInteractionCore,
-         pFeatureGroup,
+         pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
-         aHistogramBuckets
+         aAuxiliaryBinsBase,
+         aBinsBase
 #ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebug
+         , aBinsBaseDebugCopy
+         , pBinsEndDebug
 #endif // NDEBUG
       );
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       return PartitionTwoDimensionalInteractionInternal<k_regression>::Func(
          pInteractionCore,
-         pFeatureGroup,
+         pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
-         aHistogramBuckets
+         aAuxiliaryBinsBase,
+         aBinsBase
 #ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebug
+         , aBinsBaseDebugCopy
+         , pBinsEndDebug
 #endif // NDEBUG
       );
    }

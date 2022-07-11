@@ -22,9 +22,9 @@
 
 # S3 data structures
 
-ebm_feature_group <- function(feature_indexes) {
+ebm_term <- function(feature_indexes) {
    feature_indexes <- as.double(feature_indexes)
-   ret <- structure(list(feature_indexes = feature_indexes), class = "ebm_feature_group")
+   ret <- structure(list(feature_indexes = feature_indexes), class = "ebm_term")
    return(ret)
 }
 
@@ -97,12 +97,12 @@ ebm_classify <- function(
       X_binned[, i_feature] <- discretized
    }
 
-   # create the feature_groups for the mains
-   feature_groups <- lapply(1:n_features, function(i) { ebm_feature_group(i) })
+   # create the terms for the mains
+   terms <- lapply(1:n_features, function(i) { ebm_term(i) })
 
-   additive_terms <- vector("list")
+   term_scores <- vector("list")
    for(col_name in col_names) {
-      additive_terms[[col_name]] <- vector("numeric", length(cuts[[col_name]]) + 1)
+      term_scores[[col_name]] <- vector("numeric", length(cuts[[col_name]]) + 1)
    }
 
    sample_counts <- vector("numeric", length(y))
@@ -113,11 +113,11 @@ ebm_classify <- function(
    validation_size <- ceiling(length(y) * validation_size)
    train_size <- length(y) - validation_size
 
-   scores_train <- vector("numeric", num_scores * train_size)
-   scores_val <- vector("numeric", num_scores * validation_size)
+   init_scores_train <- vector("numeric", num_scores * train_size)
+   init_scores_val <- vector("numeric", num_scores * validation_size)
 
    for(i_outer_bag in 1:outer_bags) {
-      random_state <- generate_random_number(random_state, 1416147523)
+      random_state <- generate_deterministic_seed(random_state, 1416147523)
       # WARNING: sample_counts is modified in-place
       sample_without_replacement(random_state, train_size, validation_size, sample_counts)
 
@@ -131,15 +131,15 @@ ebm_classify <- function(
          n_classes,
          features_categorical,
          features_bin_count,
-         feature_groups,
+         terms,
          X_train,
          y_train,
          NULL,
-         scores_train,
+         init_scores_train,
          X_val,
          y_val,
          NULL,
-         scores_val,
+         init_scores_val,
          inner_bags,
          learning_rate,
          min_samples_leaf, 
@@ -150,22 +150,22 @@ ebm_classify <- function(
          random_state
       )
       for(i_feature in 1:n_features) {
-         additive_terms[[col_names[i_feature]]] <- 
-            additive_terms[[col_names[i_feature]]] + result_list$model_update[[i_feature]]
+         term_scores[[col_names[i_feature]]] <- 
+            term_scores[[col_names[i_feature]]] + result_list$model_update[[i_feature]]
       }
    }
    for(col_name in col_names) {
-      additive_terms[[col_name]] <- additive_terms[[col_name]] / outer_bags
+      term_scores[[col_name]] <- term_scores[[col_name]] / outer_bags
       # for now, zero all missing values
-      additive_terms[[col_name]][0] = 0
+      term_scores[[col_name]][0] = 0
    }
 
    # TODO PK : we're going to need to modify this structure in the future to handle interaction terms by making
-   #           the additivie_terms by feature_group index instead of by feature name.  And also change the
-   #           cuts to be per-feature_group as well to support stage fitting in the future
+   #           the additivie_terms by term index instead of by feature name.  And also change the
+   #           cuts to be per-term as well to support stage fitting in the future
    #           For now though, this is just a simple and nice way to present it since we just support mains
 
-   model <- structure(list(cuts = cuts, additive_terms = additive_terms), class = "ebm_model")
+   model <- structure(list(cuts = cuts, term_scores = term_scores), class = "ebm_model")
    return(model)
 }
 
@@ -192,8 +192,8 @@ ebm_predict_proba <- function (model, X) {
       # WARNING: discretized is modified in-place
       discretize(X_feature, model$cuts[[col_name]], discretized)
 
-      additive_terms <- model$additive_terms[[col_name]]
-      update_scores <- additive_terms[discretized + 1]
+      term_scores <- model$term_scores[[col_name]]
+      update_scores <- term_scores[discretized + 1]
       scores <- scores + update_scores
    }
 
@@ -203,7 +203,7 @@ ebm_predict_proba <- function (model, X) {
 
 ebm_show <- function (model, name) {
    cuts <- model$cuts[[name]]
-   additive_terms <- model$additive_terms[[name]]
+   term_scores <- model$term_scores[[name]]
 
    if(0 == length(cuts)) {
       # plot seems to overflow if the values are higher
@@ -225,7 +225,7 @@ ebm_show <- function (model, name) {
 
    x <- append(append(low_val, rep(cuts, each = 2)), high_val)
    # remove the missing bin at the start
-   y <- rep(additive_terms[2:length(additive_terms)], each = 2)
+   y <- rep(term_scores[2:length(term_scores)], each = 2)
 
    graphics::plot(x, y, type = "l", lty = 1, main = name, xlab="", ylab="score")
 }

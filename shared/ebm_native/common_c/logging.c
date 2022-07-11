@@ -37,7 +37,7 @@ static const char g_traceInfoString[] = "INFO";
 static const char g_traceVerboseString[] = "VERBOSE";
 static const char g_traceIllegalString[] = "ILLEGAL";
 
-EBM_NATIVE_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel) {
+EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbmType traceLevel) {
    switch(traceLevel) {
    case TraceLevelOff:
       return g_traceOffString;
@@ -56,7 +56,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY const char * EBM_NATIVE_CALLING_CONVENTION GetTrac
 
 // TODO: combine SetLogMessageFunction and SetTraceLevel and verify logMessageFunction hasn't changed.  if set to something new turn off logging!
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
+EBM_API_BODY void EBM_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
    assert(NULL != logMessageFunction);
    assert(NULL == g_pLogMessageFunc); /* "SetLogMessageFunction should only be called once" */
    assert(TraceLevelOff == g_traceLevel);
@@ -64,7 +64,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFu
    g_pLogMessageFunc = logMessageFunction;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel) {
+EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbmType traceLevel) {
    if(traceLevel < TraceLevelOff || TraceLevelVerbose < traceLevel || NULL == g_pLogMessageFunc) {
       // call SetLogMessageFunction before calling SetTraceLevel unless we're keeping tracing off
       g_traceLevel = TraceLevelOff;

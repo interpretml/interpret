@@ -162,11 +162,43 @@ class Native:
 
         self._unsafe.SetTraceLevel(trace_level)
 
-    def flush_subnormals_to_zero(self, val):
-        return self._unsafe.FlushSubnormalsToZero(val)
+    def clean_float(self, val):
+        # the EBM spec does not allow subnormal floats to be in the model definition, so flush them to zero
+        val_array = np.array([val], np.float64)
+        self._unsafe.CleanFloats(len(val_array), Native._make_pointer(val_array, np.float64))
+        return val_array[0]
 
-    def generate_random_number(self, random_seed, stage_randomization_mix):
-        return self._unsafe.GenerateRandomNumber(random_seed, stage_randomization_mix)
+    def generate_deterministic_seed(self, random_seed, stage_randomization_mix):
+        if random_seed is None: # For cases when users want non-determinism (e.g differential privacy), seed will be None -- handle that here.
+            return None
+        return self._unsafe.GenerateDeterministicSeed(random_seed, stage_randomization_mix)
+
+    def generate_nondeterministic_seed(self):
+        random_seed = ct.c_int32(0)
+        return_code = self._unsafe.GenerateNondeterministicSeed(ct.byref(random_seed))
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "GenerateNondeterministicSeed")
+
+        return random_seed.value
+
+    def generate_gaussian_random(self, random_seed, stddev, count):
+        is_deterministic = random_seed is not None
+        random_seed = 0 if random_seed is None else random_seed
+        random_numbers = np.empty(count, dtype=np.float64, order="C")
+
+        return_code = self._unsafe.GenerateGaussianRandom(
+            is_deterministic,
+            random_seed,
+            stddev,
+            count,
+            Native._make_pointer(random_numbers, np.float64)
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "GenerateGaussianRandom")
+
+        return random_numbers
 
     def sample_without_replacement(
         self, 
@@ -175,18 +207,23 @@ class Native:
         count_validation_samples
     ):
         count_samples = count_training_samples + count_validation_samples
-        random_seed = ct.c_int32(random_seed)
+        is_deterministic = random_seed is not None
+        random_seed = 0 if random_seed is None else random_seed
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
 
         sample_counts_out = np.empty(count_samples, dtype=np.int8, order="C")
 
-        self._unsafe.SampleWithoutReplacement(
+        return_code = self._unsafe.SampleWithoutReplacement(
+            is_deterministic,
             random_seed,
             count_training_samples,
             count_validation_samples,
             Native._make_pointer(sample_counts_out, np.int8),
         )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SampleWithoutReplacement")
 
         return sample_counts_out
 
@@ -203,7 +240,11 @@ class Native:
         if len(targets) != count_samples:
             raise ValueError("count_training_samples + count_validation_samples should be equal to len(targets)")
 
-        random_seed = ct.c_int32(random_seed)
+        if random_seed is None:
+            # We don't call this function in differential privacy, so use a non-deterministic seed
+            # to generate non-deterministic outputs since it doesn't need to be cryptographically secure
+            random_seed = self.generate_nondeterministic_seed()
+
         count_target_classes = ct.c_int64(count_target_classes)
         count_training_samples = ct.c_int64(count_training_samples)
         count_validation_samples = ct.c_int64(count_validation_samples)
@@ -530,22 +571,45 @@ class Native:
         ]
         self._unsafe.SetTraceLevel.restype = None
 
-
-        self._unsafe.FlushSubnormalsToZero.argtypes = [
-            # double value
-            ct.c_double,
+        self._unsafe.CleanFloats.argtypes = [
+            # int64_t count
+            ct.c_int64,
+            # double * valsInOut
+            ct.c_void_p,
         ]
-        self._unsafe.FlushSubnormalsToZero.restype = ct.c_double
+        self._unsafe.CleanFloats.restype = None
 
-        self._unsafe.GenerateRandomNumber.argtypes = [
+        self._unsafe.GenerateDeterministicSeed.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
             # int64_t stageRandomizationMix
             ct.c_int32,
         ]
-        self._unsafe.GenerateRandomNumber.restype = ct.c_int32
+        self._unsafe.GenerateDeterministicSeed.restype = ct.c_int32
+
+        self._unsafe.GenerateNondeterministicSeed.argtypes = [
+            # int32_t * randomSeedOut
+            ct.POINTER(ct.c_int32),
+        ]
+        self._unsafe.GenerateNondeterministicSeed.restype = ct.c_int32
+
+        self._unsafe.GenerateGaussianRandom.argtypes = [
+            # int64_t isDeterministic
+            ct.c_int64,
+            # int32_t randomSeed
+            ct.c_int32,
+            # double stddev
+            ct.c_double,
+            # int64_t count
+            ct.c_int64,
+            # double * randomOut
+            ct.c_void_p,
+        ]
+        self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
 
         self._unsafe.SampleWithoutReplacement.argtypes = [
+            # int64_t isDeterministic
+            ct.c_int64,
             # int32_t randomSeed
             ct.c_int32,
             # int64_t countTrainingSamples
@@ -555,7 +619,7 @@ class Native:
             # int8_t * sampleCountsOut
             ct.c_void_p,
         ]
-        self._unsafe.SampleWithoutReplacement.restype = None
+        self._unsafe.SampleWithoutReplacement.restype = ct.c_int32
 
         self._unsafe.StratifiedSamplingWithoutReplacement.argtypes = [
             # int32_t randomSeed
@@ -721,7 +785,7 @@ class Native:
         self._unsafe.SizeWeight.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # FloatEbmType * weights
+            # double * weights
             ct.c_void_p,
         ]
         self._unsafe.SizeWeight.restype = ct.c_int64
@@ -729,7 +793,7 @@ class Native:
         self._unsafe.FillWeight.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # FloatEbmType * weights
+            # double * weights
             ct.c_void_p,
             # int64_t countBytesAllocated
             ct.c_int64,
@@ -765,7 +829,7 @@ class Native:
         self._unsafe.SizeRegressionTarget.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # FloatEbmType * targets
+            # double * targets
             ct.c_void_p,
         ]
         self._unsafe.SizeRegressionTarget.restype = ct.c_int64
@@ -773,7 +837,7 @@ class Native:
         self._unsafe.FillRegressionTarget.argtypes = [
             # int64_t countSamples
             ct.c_int64,
-            # FloatEbmType * targets
+            # double * targets
             ct.c_void_p,
             # int64_t countBytesAllocated
             ct.c_int64,
@@ -817,19 +881,6 @@ class Native:
         self._unsafe.ExtractTargetClasses.restype = ct.c_int32
 
 
-        self._unsafe.Softmax.argtypes = [
-            # int64_t countTargetClasses
-            ct.c_int64,
-            # int64_t countSamples
-            ct.c_int64,
-            # double * logits
-            ct.c_void_p,
-            # double * probabilitiesOut
-            ct.c_void_p,
-        ]
-        self._unsafe.Softmax.restype = ct.c_int32
-
-
         self._unsafe.CreateBooster.argtypes = [
             # int32_t randomSeed
             ct.c_int32,
@@ -837,9 +888,9 @@ class Native:
             ct.c_void_p,
             # int8_t * bag
             ct.c_void_p,
-            # double * predictorScores
+            # double * initScores
             ct.c_void_p,
-            # int64_t countFeatureGroups
+            # int64_t countTerms
             ct.c_int64,
             # int64_t * dimensionCounts
             ct.c_void_p,
@@ -854,10 +905,10 @@ class Native:
         ]
         self._unsafe.CreateBooster.restype = ct.c_int32
 
-        self._unsafe.GenerateModelUpdate.argtypes = [
+        self._unsafe.GenerateTermUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # int64_t indexFeatureGroup
+            # int64_t indexTerm
             ct.c_int64,
             # GenerateUpdateOptionsType options 
             ct.c_int64,
@@ -870,9 +921,9 @@ class Native:
             # double * avgGainOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.GenerateModelUpdate.restype = ct.c_int32
+        self._unsafe.GenerateTermUpdate.restype = ct.c_int32
 
-        self._unsafe.GetModelUpdateSplits.argtypes = [
+        self._unsafe.GetTermUpdateSplits.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # int64_t indexDimension
@@ -882,53 +933,53 @@ class Native:
             # int64_t * splitIndexesOut
             ct.c_void_p,
         ]
-        self._unsafe.GetModelUpdateSplits.restype = ct.c_int32
+        self._unsafe.GetTermUpdateSplits.restype = ct.c_int32
 
-        self._unsafe.GetModelUpdateExpanded.argtypes = [
+        self._unsafe.GetTermUpdateExpanded.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # double * modelFeatureGroupUpdateTensorOut
+            # double * updateScoresTensorOut
             ct.c_void_p,
         ]
-        self._unsafe.GetModelUpdateExpanded.restype = ct.c_int32
+        self._unsafe.GetTermUpdateExpanded.restype = ct.c_int32
 
-        self._unsafe.SetModelUpdateExpanded.argtypes = [
+        self._unsafe.SetTermUpdateExpanded.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # int64_t indexFeatureGroup
+            # int64_t indexTerm
             ct.c_int64,
-            # double * modelFeatureGroupUpdateTensor
+            # double * updateScoresTensor
             ct.c_void_p,
         ]
-        self._unsafe.SetModelUpdateExpanded.restype = ct.c_int32
+        self._unsafe.SetTermUpdateExpanded.restype = ct.c_int32
 
-        self._unsafe.ApplyModelUpdate.argtypes = [
+        self._unsafe.ApplyTermUpdate.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
             # double * validationMetricOut
             ct.POINTER(ct.c_double),
         ]
-        self._unsafe.ApplyModelUpdate.restype = ct.c_int32
+        self._unsafe.ApplyTermUpdate.restype = ct.c_int32
 
-        self._unsafe.GetBestModelFeatureGroup.argtypes = [
+        self._unsafe.GetBestTermScores.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # int64_t indexFeatureGroup
+            # int64_t indexTerm
             ct.c_int64,
-            # double * modelFeatureGroupTensorOut
+            # double * termScoresTensorOut
             ct.c_void_p,
         ]
-        self._unsafe.GetBestModelFeatureGroup.restype = ct.c_int32
+        self._unsafe.GetBestTermScores.restype = ct.c_int32
 
-        self._unsafe.GetCurrentModelFeatureGroup.argtypes = [
+        self._unsafe.GetCurrentTermScores.argtypes = [
             # void * boosterHandle
             ct.c_void_p,
-            # int64_t indexFeatureGroup
+            # int64_t indexTerm
             ct.c_int64,
-            # double * modelFeatureGroupTensorOut
+            # double * termScoresTensorOut
             ct.c_void_p,
         ]
-        self._unsafe.GetCurrentModelFeatureGroup.restype = ct.c_int32
+        self._unsafe.GetCurrentTermScores.restype = ct.c_int32
 
         self._unsafe.FreeBooster.argtypes = [
             # void * boosterHandle
@@ -942,7 +993,7 @@ class Native:
             ct.c_void_p,
             # int8_t * bag
             ct.c_void_p,
-            # double * predictorScores
+            # double * initScores
             ct.c_void_p,
             # double * optionalTempParams
             ct.c_void_p,
@@ -981,7 +1032,7 @@ class Booster(AbstractContextManager):
         self,
         dataset,
         bag,
-        scores,
+        init_scores,
         term_features,
         n_inner_bags,
         random_state,
@@ -993,7 +1044,7 @@ class Booster(AbstractContextManager):
         Args:
             dataset: binned data in a compressed native form
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
-            scores: predictions from a prior predictor
+            init_scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
                 there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
@@ -1005,7 +1056,7 @@ class Booster(AbstractContextManager):
 
         self.dataset = dataset
         self.bag = bag
-        self.scores = scores
+        self.init_scores = init_scores
         self.term_features = term_features
         self.n_inner_bags = n_inner_bags
         self.random_state = random_state
@@ -1017,10 +1068,10 @@ class Booster(AbstractContextManager):
     def __enter__(self):
         log.info("Booster allocation start")
 
-        feature_counts = np.empty(len(self.term_features), ct.c_int64)
+        dimension_counts = np.empty(len(self.term_features), ct.c_int64)
         feature_indexes = []
         for term_idx, feature_idxs in enumerate(self.term_features):
-            feature_counts.itemset(term_idx, len(feature_idxs))
+            dimension_counts.itemset(term_idx, len(feature_idxs))
             feature_indexes.extend(feature_idxs)
         feature_indexes = np.array(feature_indexes, ct.c_int64)
 
@@ -1057,23 +1108,39 @@ class Booster(AbstractContextManager):
                 raise ValueError("bag should be len(n_samples)")
             n_scores = np.count_nonzero(self.bag)
 
-        if self.scores is not None:
+        if self.init_scores is not None:
             if n_class_scores > 1:
-                if self.scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"scores should have {n_class_scores} scores")
+                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                    raise ValueError(f"init_scores should have {n_class_scores} scores")
 
-            if self.scores.shape[0] != n_scores:  # pragma: no cover
-                raise ValueError("scores should have the same length as the number of non-zero bag entries")
+            if self.init_scores.shape[0] != n_scores:  # pragma: no cover
+                raise ValueError("init_scores should have the same length as the number of non-zero bag entries")
+
+        random_seed = self.random_state
+        if random_seed is None:
+            # We use the seed for three things during boosting, and none of them requires 
+            # a cryptographically secure random number generator.  We use the seed for:
+            #   - Creating inner bags. Inner bags are not used in DP-EBMs
+            #   - Deciding ties in regular boosting, but we use random boosting in DP-EBMs, which doesn't have ties
+            #   - Deciding split points during random boosting. The DP-EBM proof doesn't rely on the perfect 
+            #     randomness of the chosen split points. It only relies on the fact that the splits are 
+            #     chosen independently of the data. We could allow an attacker to choose the split points, 
+            #     and privacy would be preserved provided the attacker was not able to look at the data when 
+            #     choosing the splits.
+            #
+            # Since we do not need high-quality non-determinism, generate a non-deterministic seed
+            #
+            random_seed = native.generate_nondeterministic_seed()
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
-            self.random_state,
+            random_seed,
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
-            Native._make_pointer(self.scores, np.float64, 2 if n_class_scores > 1 else 1, True),
-            len(feature_counts),
-            Native._make_pointer(feature_counts, np.int64),
+            Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),
+            len(dimension_counts),
+            Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
             Native._make_pointer(self.optional_temp_params, np.float64, 1, True),
@@ -1137,7 +1204,7 @@ class Booster(AbstractContextManager):
         n_features = len(self.term_features[term_idx])
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
-        return_code = native._unsafe.GenerateModelUpdate(
+        return_code = native._unsafe.GenerateTermUpdate(
             self._booster_handle, 
             term_idx,
             boosting_flags,
@@ -1147,7 +1214,7 @@ class Booster(AbstractContextManager):
             ct.byref(avg_gain),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GenerateModelUpdate")
+            raise Native._get_native_exception(return_code, "GenerateTermUpdate")
             
         self._term_idx = term_idx
 
@@ -1170,12 +1237,12 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         metric_output = ct.c_double(0.0)
-        return_code = native._unsafe.ApplyModelUpdate(
+        return_code = native._unsafe.ApplyTermUpdate(
             self._booster_handle, 
             ct.byref(metric_output),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "ApplyModelUpdate")
+            raise Native._get_native_exception(return_code, "ApplyTermUpdate")
 
         # log.debug("Boosting step end")
         return metric_output.value
@@ -1183,8 +1250,8 @@ class Booster(AbstractContextManager):
     def get_best_model(self):
         model = []
         for term_idx in range(len(self.term_features)):
-            model_term = self._get_best_term(term_idx)
-            model.append(model_term)
+            term_scores = self._get_best_term_scores(term_idx)
+            model.append(term_scores)
 
         return model
 
@@ -1192,8 +1259,8 @@ class Booster(AbstractContextManager):
     def get_current_model(self):
         model = []
         for term_idx in range(len(self.term_features)):
-            model_term = self._get_current_term(term_idx)
-            model.append(model_term)
+            term_scores = self._get_current_term_scores(term_idx)
+            model.append(term_scores)
 
         return model
 
@@ -1209,7 +1276,7 @@ class Booster(AbstractContextManager):
 
         return splits
 
-    def _get_best_term(self, term_idx):
+    def _get_best_term_scores(self, term_idx):
         """ Returns best model/function according to validation set
             for a given feature group.
 
@@ -1229,24 +1296,24 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
-        model_term = np.empty(shape, dtype=np.float64, order="C")
+        term_scores = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = native._unsafe.GetBestModelFeatureGroup(
+        return_code = native._unsafe.GetBestTermScores(
             self._booster_handle, 
             term_idx, 
-            Native._make_pointer(model_term, np.float64, len(shape)),
+            Native._make_pointer(term_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetBestModelFeatureGroup")
+            raise Native._get_native_exception(return_code, "GetBestTermScores")
 
         n_dimensions = len(self.term_features[term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        model_term = np.ascontiguousarray(np.transpose(model_term, tuple(temp_transpose)))
-        return model_term
+        term_scores = np.ascontiguousarray(np.transpose(term_scores, tuple(temp_transpose)))
+        return term_scores
 
-    def _get_current_term(self, term_idx):
+    def _get_current_term_scores(self, term_idx):
         """ Returns current model/function according to validation set
             for a given feature group.
 
@@ -1266,22 +1333,22 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
-        model_term = np.empty(shape, dtype=np.float64, order="C")
+        term_scores = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = native._unsafe.GetCurrentModelFeatureGroup(
+        return_code = native._unsafe.GetCurrentTermScores(
             self._booster_handle, 
             term_idx, 
-            Native._make_pointer(model_term, np.float64, len(shape)),
+            Native._make_pointer(term_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetCurrentModelFeatureGroup")
+            raise Native._get_native_exception(return_code, "GetCurrentTermScores")
 
         n_dimensions = len(self.term_features[term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        model_term = np.ascontiguousarray(np.transpose(model_term, tuple(temp_transpose)))
-        return model_term
+        term_scores = np.ascontiguousarray(np.transpose(term_scores, tuple(temp_transpose)))
+        return term_scores
 
     def _get_term_update_splits_dimension(self, dimension_index):
         if self._term_shapes is None:  # pragma: no cover
@@ -1298,14 +1365,14 @@ class Booster(AbstractContextManager):
         splits = np.empty(count_splits, dtype=np.int64, order="C")
         count_splits = ct.c_int64(count_splits)
 
-        return_code = native._unsafe.GetModelUpdateSplits(
+        return_code = native._unsafe.GetTermUpdateSplits(
             self._booster_handle, 
             dimension_index, 
             ct.byref(count_splits), 
             Native._make_pointer(splits, np.int64),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetModelUpdateSplits")
+            raise Native._get_native_exception(return_code, "GetTermUpdateSplits")
 
         splits = splits[:count_splits.value]
         return splits
@@ -1323,27 +1390,27 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[self._term_idx]
-        term_update = np.empty(shape, dtype=np.float64, order="C")
+        update_scores = np.empty(shape, dtype=np.float64, order="C")
 
-        return_code = native._unsafe.GetModelUpdateExpanded(
+        return_code = native._unsafe.GetTermUpdateExpanded(
             self._booster_handle, 
-            Native._make_pointer(term_update, np.float64, len(shape)),
+            Native._make_pointer(update_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "GetModelUpdateExpanded")
+            raise Native._get_native_exception(return_code, "GetTermUpdateExpanded")
 
         n_dimensions = len(self.term_features[self._term_idx])
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        term_update = np.ascontiguousarray(np.transpose(term_update, tuple(temp_transpose)))
-        return term_update
+        update_scores = np.ascontiguousarray(np.transpose(update_scores, tuple(temp_transpose)))
+        return update_scores
 
-    def set_term_update_expanded(self, term_idx, term_update):
+    def set_term_update_expanded(self, term_idx, update_scores):
         self._term_idx = -1
 
         if self._term_shapes is None:  # pragma: no cover
-            if term_update is None:  # pragma: no cover
+            if update_scores is None:  # pragma: no cover
                 self._term_idx = term_idx
                 return
             raise ValueError("a tensor with 1 class or less would be empty since the predictions would always be the same")
@@ -1354,19 +1421,19 @@ class Booster(AbstractContextManager):
         temp_transpose = [*range(n_dimensions - 1, -1, -1)]
         if len(shape) != n_dimensions: # multiclass
             temp_transpose.append(len(temp_transpose))
-        term_update = np.ascontiguousarray(np.transpose(term_update, tuple(temp_transpose)))
+        update_scores = np.ascontiguousarray(np.transpose(update_scores, tuple(temp_transpose)))
 
-        if shape != term_update.shape:  # pragma: no cover
+        if shape != update_scores.shape:  # pragma: no cover
             raise ValueError("incorrect tensor shape in call to set_term_update_expanded")
 
         native = Native.get_native_singleton()
-        return_code = native._unsafe.SetModelUpdateExpanded(
+        return_code = native._unsafe.SetTermUpdateExpanded(
             self._booster_handle, 
             term_idx, 
-            Native._make_pointer(term_update, np.float64, len(shape)),
+            Native._make_pointer(update_scores, np.float64, len(shape)),
         )
         if return_code:  # pragma: no cover
-            raise Native._get_native_exception(return_code, "SetModelUpdateExpanded")
+            raise Native._get_native_exception(return_code, "SetTermUpdateExpanded")
 
         self._term_idx = term_idx
 
@@ -1381,7 +1448,7 @@ class InteractionDetector(AbstractContextManager):
         self, 
         dataset,
         bag,
-        scores,
+        init_scores,
         optional_temp_params,
     ):
 
@@ -1390,7 +1457,7 @@ class InteractionDetector(AbstractContextManager):
         Args:
             dataset: binned data in a compressed native form
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
-            scores: predictions from a prior predictor
+            init_scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
                 there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
@@ -1400,7 +1467,7 @@ class InteractionDetector(AbstractContextManager):
 
         self.dataset = dataset
         self.bag = bag
-        self.scores = scores
+        self.init_scores = init_scores
         self.optional_temp_params = optional_temp_params
 
     def __enter__(self):
@@ -1425,20 +1492,20 @@ class InteractionDetector(AbstractContextManager):
                 raise ValueError("bag should be len(n_samples)")
             n_scores = np.count_nonzero(self.bag)
 
-        if self.scores is not None:
+        if self.init_scores is not None:
             if n_class_scores > 1:
-                if self.scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"scores should have {n_class_scores} scores")
+                if self.init_scores.shape[1] != n_class_scores:  # pragma: no cover
+                    raise ValueError(f"init_scores should have {n_class_scores} scores")
 
-            if self.scores.shape[0] != n_scores:  # pragma: no cover
-                raise ValueError("scores should have the same length as the number of non-zero bag entries")
+            if self.init_scores.shape[0] != n_scores:  # pragma: no cover
+                raise ValueError("init_scores should have the same length as the number of non-zero bag entries")
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateInteractionDetector(
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, 1, True),
-            Native._make_pointer(self.scores, np.float64, 2 if n_class_scores > 1 else 1, True),
+            Native._make_pointer(self.init_scores, np.float64, 2 if n_class_scores > 1 else 1, True),
             Native._make_pointer(self.optional_temp_params, np.float64, 1, True),
             ct.byref(interaction_handle),
         )

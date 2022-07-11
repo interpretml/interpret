@@ -12,7 +12,7 @@ static const TestPriority k_filePriority = TestPriority::CutQuantile;
 
 class CompareFloatWithNan final {
 public:
-   inline bool operator() (const FloatEbmType & lhs, const FloatEbmType & rhs) const noexcept {
+   inline bool operator() (const double & lhs, const double & rhs) const noexcept {
       // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
       // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
 
@@ -34,21 +34,21 @@ void TestQuantileBinning(
    const bool bSmart,
    const size_t cCutsMax,
    const size_t cSamplesPerBinMin,
-   const std::vector<FloatEbmType> featureValues,
-   const std::vector<FloatEbmType> expectedCuts
+   const std::vector<double> featureValues,
+   const std::vector<double> expectedCuts
 ) {
    ErrorEbmType error;
 
    const IntEbmType countCutsMax = cCutsMax;
    const IntEbmType countSamplesPerBinMin = cSamplesPerBinMin;
 
-   constexpr FloatEbmType illegalVal = FloatEbmType { -888.88 };
-   std::vector<FloatEbmType> cutsLowerBoundInclusive(cCutsMax + 2, illegalVal); // allocate values at ends
+   constexpr double illegalVal = double { -888.88 };
+   std::vector<double> cutsLowerBoundInclusive(cCutsMax + 2, illegalVal); // allocate values at ends
 
-   std::vector<FloatEbmType> featureValues1(featureValues);
-   std::vector<FloatEbmType> featureValues2(featureValues);
+   std::vector<double> featureValues1(featureValues);
+   std::vector<double> featureValues2(featureValues);
    std::transform(featureValues2.begin(), featureValues2.end(), featureValues2.begin(), 
-      [](FloatEbmType & val) { return -val; });
+      [](double & val) { return -val; });
 
    IntEbmType countCuts = countCutsMax;
    error = CutQuantile(
@@ -108,8 +108,8 @@ TEST_CASE("CutQuantile, 0 samples") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { };
-   const std::vector<FloatEbmType> expectedCuts { };
+   const std::vector<double> featureValues { };
+   const std::vector<double> expectedCuts { };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -127,8 +127,8 @@ TEST_CASE("CutQuantile, only missing") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::quiet_NaN(), std::numeric_limits<FloatEbmType>::signaling_NaN() };
-   const std::vector<FloatEbmType> expectedCuts {};
+   const std::vector<double> featureValues { std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::signaling_NaN() };
+   const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -146,8 +146,8 @@ TEST_CASE("CutQuantile, zero cuts") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 0;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { 1, 2 };
-   const std::vector<FloatEbmType> expectedCuts {};
+   const std::vector<double> featureValues { 1, 2 };
+   const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -165,8 +165,8 @@ TEST_CASE("CutQuantile, too small") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 5 };
-   const std::vector<FloatEbmType> expectedCuts {};
+   const std::vector<double> featureValues { 5 };
+   const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -184,8 +184,8 @@ TEST_CASE("CutQuantile, positive and +infinity") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { 11, std::numeric_limits<FloatEbmType>::infinity() };
-   const std::vector<FloatEbmType> expectedCuts { 4e+154 };
+   const std::vector<double> featureValues { 11, std::numeric_limits<double>::infinity() };
+   const std::vector<double> expectedCuts { 4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -203,8 +203,8 @@ TEST_CASE("CutQuantile, positive and +max") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { 11, std::numeric_limits<FloatEbmType>::max() };
-   const std::vector<FloatEbmType> expectedCuts { 4e+154 };
+   const std::vector<double> featureValues { 11, std::numeric_limits<double>::max() };
+   const std::vector<double> expectedCuts { 4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -222,8 +222,8 @@ TEST_CASE("CutQuantile, one and +max minus one tick backwards") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { FloatEbmType { 1 }, std::nextafter(std::numeric_limits<FloatEbmType>::max(), FloatEbmType { 0 }) };
-   const std::vector<FloatEbmType> expectedCuts { 1e+154 };
+   const std::vector<double> featureValues { double { 1 }, FloatTickDecrementTest(std::numeric_limits<double>::max()) };
+   const std::vector<double> expectedCuts { 1e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -241,8 +241,8 @@ TEST_CASE("CutQuantile, zero and +max") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { 0, std::numeric_limits<FloatEbmType>::max() };
-   const std::vector<FloatEbmType> expectedCuts { 9e+307 };
+   const std::vector<double> featureValues { 0, std::numeric_limits<double>::max() };
+   const std::vector<double> expectedCuts { 9e+307 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -260,8 +260,8 @@ TEST_CASE("CutQuantile, negative and +max") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { -11, std::numeric_limits<FloatEbmType>::max() };
-   const std::vector<FloatEbmType> expectedCuts { 0 };
+   const std::vector<double> featureValues { -11, std::numeric_limits<double>::max() };
+   const std::vector<double> expectedCuts { 0 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -279,8 +279,8 @@ TEST_CASE("CutQuantile, negative and -infinity") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { -11, -std::numeric_limits<FloatEbmType>::infinity() };
-   const std::vector<FloatEbmType> expectedCuts { -4e+154 };
+   const std::vector<double> featureValues { -11, -std::numeric_limits<double>::infinity() };
+   const std::vector<double> expectedCuts { -4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -298,8 +298,8 @@ TEST_CASE("CutQuantile, negative and lowest") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { -11, std::numeric_limits<FloatEbmType>::lowest() };
-   const std::vector<FloatEbmType> expectedCuts { -4e+154 };
+   const std::vector<double> featureValues { -11, std::numeric_limits<double>::lowest() };
+   const std::vector<double> expectedCuts { -4e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -317,8 +317,8 @@ TEST_CASE("CutQuantile, -1 and lowest plus one tick backwards") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { FloatEbmType { -1 }, std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }) };
-   const std::vector<FloatEbmType> expectedCuts { -1e+154 };
+   const std::vector<double> featureValues { double { -1 }, FloatTickIncrementTest(std::numeric_limits<double>::lowest()) };
+   const std::vector<double> expectedCuts { -1e+154 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -336,8 +336,8 @@ TEST_CASE("CutQuantile, zero and lowest") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { 0, std::numeric_limits<FloatEbmType>::lowest() };
-   const std::vector<FloatEbmType> expectedCuts { -9e+307 };
+   const std::vector<double> featureValues { 0, std::numeric_limits<double>::lowest() };
+   const std::vector<double> expectedCuts { -9e+307 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -355,8 +355,8 @@ TEST_CASE("CutQuantile, positive and lowest") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { 11, std::numeric_limits<FloatEbmType>::lowest() };
-   const std::vector<FloatEbmType> expectedCuts { 0 };
+   const std::vector<double> featureValues { 11, std::numeric_limits<double>::lowest() };
+   const std::vector<double> expectedCuts { 0 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -374,8 +374,8 @@ TEST_CASE("CutQuantile, cuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 0, 1, 2, 3 };
-   const std::vector<FloatEbmType> expectedCuts { 1.5 };
+   const std::vector<double> featureValues { 0, 1, 2, 3 };
+   const std::vector<double> expectedCuts { 1.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -393,8 +393,8 @@ TEST_CASE("CutQuantile, cuttable (first interior check not cuttable)") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 3;
-   const std::vector<FloatEbmType> featureValues { 0, 1, 5, 5, 7, 8, 9 };
-   const std::vector<FloatEbmType> expectedCuts { 6 };
+   const std::vector<double> featureValues { 0, 1, 5, 5, 7, 8, 9 };
+   const std::vector<double> expectedCuts { 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -412,8 +412,8 @@ TEST_CASE("CutQuantile, cuttable except middle isn't available") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 3;
-   const std::vector<FloatEbmType> featureValues { 0, 1, 5, 5, 8, 9 };
-   const std::vector<FloatEbmType> expectedCuts { };
+   const std::vector<double> featureValues { 0, 1, 5, 5, 8, 9 };
+   const std::vector<double> expectedCuts { };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -431,8 +431,8 @@ TEST_CASE("CutQuantile, uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 5, 5, 5, 5 };
-   const std::vector<FloatEbmType> expectedCuts {};
+   const std::vector<double> featureValues { 5, 5, 5, 5 };
+   const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -450,8 +450,8 @@ TEST_CASE("CutQuantile, left+uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 5, 5, 5 };
-   const std::vector<FloatEbmType> expectedCuts {};
+   const std::vector<double> featureValues { 1, 5, 5, 5 };
+   const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -469,8 +469,8 @@ TEST_CASE("CutQuantile, uncuttable+right") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 5, 5, 5, 9 };
-   const std::vector<FloatEbmType> expectedCuts {};
+   const std::vector<double> featureValues { 5, 5, 5, 9 };
+   const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -488,8 +488,8 @@ TEST_CASE("CutQuantile, left+uncuttable+right") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 5, 5, 9 };
-   const std::vector<FloatEbmType> expectedCuts {};
+   const std::vector<double> featureValues { 1, 5, 5, 9 };
+   const std::vector<double> expectedCuts {};
 
    TestQuantileBinning(
       testCaseHidden,
@@ -507,8 +507,8 @@ TEST_CASE("CutQuantile, uncuttable+uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 4, 4, 6, 6 };
-   const std::vector<FloatEbmType> expectedCuts { 5 };
+   const std::vector<double> featureValues { 4, 4, 6, 6 };
+   const std::vector<double> expectedCuts { 5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -526,8 +526,8 @@ TEST_CASE("CutQuantile, left+uncuttable+uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 4, 4, 6, 6, 6 };
-   const std::vector<FloatEbmType> expectedCuts { 5 };
+   const std::vector<double> featureValues { 1, 4, 4, 6, 6, 6 };
+   const std::vector<double> expectedCuts { 5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -545,8 +545,8 @@ TEST_CASE("CutQuantile, uncuttable+uncuttable+right") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 4, 4, 6, 6, 6, 9 };
-   const std::vector<FloatEbmType> expectedCuts { 5 };
+   const std::vector<double> featureValues { 4, 4, 6, 6, 6, 9 };
+   const std::vector<double> expectedCuts { 5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -564,8 +564,8 @@ TEST_CASE("CutQuantile, uncuttable+mid+uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 4, 4, 4, 5, 6, 6 };
-   const std::vector<FloatEbmType> expectedCuts { 4.5 };
+   const std::vector<double> featureValues { 4, 4, 4, 5, 6, 6 };
+   const std::vector<double> expectedCuts { 4.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -583,8 +583,8 @@ TEST_CASE("CutQuantile, left+uncuttable+mid+uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 4, 4, 5, 6, 6 };
-   const std::vector<FloatEbmType> expectedCuts { 4.5 };
+   const std::vector<double> featureValues { 1, 4, 4, 5, 6, 6 };
+   const std::vector<double> expectedCuts { 4.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -602,8 +602,8 @@ TEST_CASE("CutQuantile, uncuttable+mid+uncuttable+right") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 4, 4, 5, 6, 6, 9 };
-   const std::vector<FloatEbmType> expectedCuts { 5.5 };
+   const std::vector<double> featureValues { 4, 4, 5, 6, 6, 9 };
+   const std::vector<double> expectedCuts { 5.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -621,8 +621,8 @@ TEST_CASE("CutQuantile, uncuttable+cuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 5, 5, 7, 8 };
-   const std::vector<FloatEbmType> expectedCuts { 6 };
+   const std::vector<double> featureValues { 5, 5, 7, 8 };
+   const std::vector<double> expectedCuts { 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -640,8 +640,8 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 5, 5, 5, 7, 8 };
-   const std::vector<FloatEbmType> expectedCuts { 6 };
+   const std::vector<double> featureValues { 1, 5, 5, 5, 7, 8 };
+   const std::vector<double> expectedCuts { 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -659,8 +659,8 @@ TEST_CASE("CutQuantile, cuttable+uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5 };
-   const std::vector<FloatEbmType> expectedCuts { 4 };
+   const std::vector<double> featureValues { 2, 3, 5, 5 };
+   const std::vector<double> expectedCuts { 4 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -678,8 +678,8 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+right") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 2, 3, 5, 5, 7 };
-   const std::vector<FloatEbmType> expectedCuts { 4 };
+   const std::vector<double> featureValues { 1, 2, 3, 5, 5, 7 };
+   const std::vector<double> expectedCuts { 4 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -697,8 +697,8 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5, 7, 8 };
-   const std::vector<FloatEbmType> expectedCuts { 4, 6 };
+   const std::vector<double> featureValues { 2, 3, 5, 5, 7, 8 };
+   const std::vector<double> expectedCuts { 4, 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -716,8 +716,8 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 2, 2, 4, 6, 8, 8 };
-   const std::vector<FloatEbmType> expectedCuts { 3, 7 };
+   const std::vector<double> featureValues { 2, 2, 4, 6, 8, 8 };
+   const std::vector<double> expectedCuts { 3, 7 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -735,8 +735,8 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 2, 2, 4, 5, 6, 8, 8 };
-   const std::vector<FloatEbmType> expectedCuts { 3, 7 };
+   const std::vector<double> featureValues { 1, 2, 2, 4, 5, 6, 8, 8 };
+   const std::vector<double> expectedCuts { 3, 7 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -754,8 +754,8 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+right") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 2, 2, 2, 4, 6, 8, 8, 9 };
-   const std::vector<FloatEbmType> expectedCuts { 3, 7 };
+   const std::vector<double> featureValues { 2, 2, 2, 4, 6, 8, 8, 9 };
+   const std::vector<double> expectedCuts { 3, 7 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -773,8 +773,8 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+right") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 2, 2, 4, 6, 8, 8, 9 };
-   const std::vector<FloatEbmType> expectedCuts { 3, 7 };
+   const std::vector<double> featureValues { 1, 2, 2, 4, 6, 8, 8, 9 };
+   const std::vector<double> expectedCuts { 3, 7 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -792,8 +792,8 @@ TEST_CASE("CutQuantile, uncuttable+cuttable+uncuttable+cuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 1, 2, 3, 5, 5, 7, 8 };
-   const std::vector<FloatEbmType> expectedCuts { 1.5, 4, 6 };
+   const std::vector<double> featureValues { 1, 1, 2, 3, 5, 5, 7, 8 };
+   const std::vector<double> expectedCuts { 1.5, 4, 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -811,8 +811,8 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 0, 1, 1, 2, 3, 5, 5, 5, 7, 8 };
-   const std::vector<FloatEbmType> expectedCuts { 1.5, 4, 6 };
+   const std::vector<double> featureValues { 0, 1, 1, 2, 3, 5, 5, 5, 7, 8 };
+   const std::vector<double> expectedCuts { 1.5, 4, 6 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -830,8 +830,8 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5, 7, 8, 9, 9 };
-   const std::vector<FloatEbmType> expectedCuts { 4, 6, 8.5 };
+   const std::vector<double> featureValues { 2, 3, 5, 5, 7, 8, 9, 9 };
+   const std::vector<double> expectedCuts { 4, 6, 8.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -849,8 +849,8 @@ TEST_CASE("CutQuantile, cuttable+uncuttable+cuttable+uncuttable+right") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5, 5, 7, 8, 9, 9, 10 };
-   const std::vector<FloatEbmType> expectedCuts { 4, 6, 8.5 };
+   const std::vector<double> featureValues { 2, 3, 5, 5, 5, 7, 8, 9, 9, 10 };
+   const std::vector<double> expectedCuts { 4, 6, 8.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -868,8 +868,8 @@ TEST_CASE("CutQuantile, left+uncuttable+cuttable+uncuttable+cuttable+uncuttable+
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
-   const std::vector<FloatEbmType> expectedCuts { 3.5, 4.5, 7.5 };
+   const std::vector<double> featureValues { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
+   const std::vector<double> expectedCuts { 3.5, 4.5, 7.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -887,19 +887,19 @@ TEST_CASE("CutQuantile, infinities") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 
-      -std::numeric_limits<FloatEbmType>::infinity(),
-      std::numeric_limits<FloatEbmType>::lowest(),
-      std::numeric_limits<FloatEbmType>::max(),
-      std::numeric_limits<FloatEbmType>::infinity(),
-      std::numeric_limits<FloatEbmType>::quiet_NaN(),
-      -std::numeric_limits<FloatEbmType>::infinity(),
-      std::numeric_limits<FloatEbmType>::lowest(),
-      std::numeric_limits<FloatEbmType>::max(),
-      std::numeric_limits<FloatEbmType>::infinity(),
-      std::numeric_limits<FloatEbmType>::signaling_NaN(),
+   const std::vector<double> featureValues { 
+      -std::numeric_limits<double>::infinity(),
+      std::numeric_limits<double>::lowest(),
+      std::numeric_limits<double>::max(),
+      std::numeric_limits<double>::infinity(),
+      std::numeric_limits<double>::quiet_NaN(),
+      -std::numeric_limits<double>::infinity(),
+      std::numeric_limits<double>::lowest(),
+      std::numeric_limits<double>::max(),
+      std::numeric_limits<double>::infinity(),
+      std::numeric_limits<double>::signaling_NaN(),
    };
-   const std::vector<FloatEbmType> expectedCuts { 0 };
+   const std::vector<double> expectedCuts { 0 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -925,10 +925,10 @@ TEST_CASE("CutQuantile, average segment sizes that requires the ceiling instead 
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 26;
    constexpr size_t cSamplesPerBinMin = 2;
-   const std::vector<FloatEbmType> featureValues { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
+   const std::vector<double> featureValues { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
       13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 
       27, 27, 28, 28, 29, 29, 30, 30 };
-   const std::vector<FloatEbmType> expectedCuts { 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 
+   const std::vector<double> expectedCuts { 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 
       11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 24.5, 26.5, 28.5 };
    TestQuantileBinning(
       testCaseHidden,
@@ -946,8 +946,8 @@ TEST_CASE("CutQuantile, reversibility, 2") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { -1, 1 };
-   const std::vector<FloatEbmType> expectedCuts { 0 };
+   const std::vector<double> featureValues { -1, 1 };
+   const std::vector<double> expectedCuts { 0 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -965,8 +965,8 @@ TEST_CASE("CutQuantile, reversibility, 3") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { -2, 1, 2 };
-   const std::vector<FloatEbmType> expectedCuts { 0, 1.5 };
+   const std::vector<double> featureValues { -2, 1, 2 };
+   const std::vector<double> expectedCuts { 0, 1.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -984,8 +984,8 @@ TEST_CASE("CutQuantile, reversibility") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { -2, -1, 1, 2 };
-   const std::vector<FloatEbmType> expectedCuts { -1.5, 0, 1.5 };
+   const std::vector<double> featureValues { -2, -1, 1, 2 };
+   const std::vector<double> expectedCuts { -1.5, 0, 1.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1003,8 +1003,8 @@ TEST_CASE("CutQuantile, imbalanced") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { -3, -1, 2, 3 };
-   const std::vector<FloatEbmType> expectedCuts { -2, 0, 2.5 };
+   const std::vector<double> featureValues { -3, -1, 2, 3 };
+   const std::vector<double> expectedCuts { -2, 0, 2.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1022,8 +1022,8 @@ TEST_CASE("CutQuantile, extreme tails") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::lowest(), 1, 2, 3, std::numeric_limits<FloatEbmType>::max() };
-   const std::vector<FloatEbmType> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
+   const std::vector<double> featureValues { std::numeric_limits<double>::lowest(), 1, 2, 3, std::numeric_limits<double>::max() };
+   const std::vector<double> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1041,8 +1041,8 @@ TEST_CASE("CutQuantile, far tails") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { -1, 1, 2, 3, 5 };
-   const std::vector<FloatEbmType> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
+   const std::vector<double> featureValues { -1, 1, 2, 3, 5 };
+   const std::vector<double> expectedCuts { 0.5, 1.5, 2.5, 3.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1060,8 +1060,8 @@ TEST_CASE("CutQuantile, close tails") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { 0.9, 1, 2, 3, 3.1 };
-   const std::vector<FloatEbmType> expectedCuts { 0.95, 1.5, 2.5, 3.05 };
+   const std::vector<double> featureValues { 0.9, 1, 2, 3, 3.1 };
+   const std::vector<double> expectedCuts { 0.95, 1.5, 2.5, 3.05 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1079,8 +1079,8 @@ TEST_CASE("CutQuantile, non-smart") {
    constexpr bool bSmart = false;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::lowest(), 0, 1000, 10000000, std::numeric_limits<FloatEbmType>::max() };
-   const std::vector<FloatEbmType> expectedCuts { -8.9884656743115785e+307, 500, 5000500, 8.9884656743115785e+307 };
+   const std::vector<double> featureValues { std::numeric_limits<double>::lowest(), 0, 1000, 10000000, std::numeric_limits<double>::max() };
+   const std::vector<double> expectedCuts { -8.9884656743115785e+307, 500, 5000500, 8.9884656743115785e+307 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -1098,17 +1098,17 @@ TEST_CASE("CutQuantile, overflow interpretable ends") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues {
-      std::numeric_limits<FloatEbmType>::lowest(),
-      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }),
-      std::nextafter(std::numeric_limits<FloatEbmType>::max(), FloatEbmType { 0 }),
-      std::numeric_limits<FloatEbmType>::max()
+   const std::vector<double> featureValues {
+      std::numeric_limits<double>::lowest(),
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
+      FloatTickDecrementTest(std::numeric_limits<double>::max()),
+      std::numeric_limits<double>::max()
    };
 
-   const std::vector<FloatEbmType> expectedCuts {
-      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }),
+   const std::vector<double> expectedCuts {
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
       0,
-      std::numeric_limits<FloatEbmType>::max()
+      std::numeric_limits<double>::max()
    };
 
    TestQuantileBinning(
@@ -1127,15 +1127,15 @@ TEST_CASE("CutQuantile, maximum non-overflow interpretable ends") {
    constexpr bool bSmart = true;
    constexpr size_t cCutsMax = 1000;
    constexpr size_t cSamplesPerBinMin = 1;
-   const std::vector<FloatEbmType> featureValues {
-      std::numeric_limits<FloatEbmType>::lowest(),
-      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }),
-      std::numeric_limits<FloatEbmType>::max() - std::nextafter(std::numeric_limits<FloatEbmType>::max(), FloatEbmType { 0 }),
-      std::numeric_limits<FloatEbmType>::max()
+   const std::vector<double> featureValues {
+      std::numeric_limits<double>::lowest(),
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
+      std::numeric_limits<double>::max() - FloatTickDecrementTest(std::numeric_limits<double>::max()),
+      std::numeric_limits<double>::max()
    };
 
-   const std::vector<FloatEbmType> expectedCuts {
-      std::nextafter(std::numeric_limits<FloatEbmType>::lowest(), FloatEbmType { 0 }),
+   const std::vector<double> expectedCuts {
+      FloatTickIncrementTest(std::numeric_limits<double>::lowest()),
       0,
       2.0000000000000001e+300
    };
@@ -1156,21 +1156,21 @@ TEST_CASE("CutQuantile, stress test the guarantee of one cut per CuttingRange, b
    constexpr size_t cInteriorRanges = 3;
    constexpr size_t cRemoveCuts = 1;
 
-   std::vector<FloatEbmType> featureValues(3 + cInteriorRanges * cItemsPerRange, 0);
-   std::vector<FloatEbmType> expectedCuts;
+   std::vector<double> featureValues(3 + cInteriorRanges * cItemsPerRange, 0);
+   std::vector<double> expectedCuts;
 
    featureValues[0] = 0;
    for(size_t iRange = 0; iRange < cInteriorRanges; ++iRange) {
       for(size_t i = 1 + cItemsPerRange * iRange; i < 1 + (cItemsPerRange * (iRange + 1)); ++i) {
          const size_t iRangePlusOne = iRange + size_t { 1 };
-         featureValues[i] = static_cast<FloatEbmType>(iRangePlusOne);
+         featureValues[i] = static_cast<double>(iRangePlusOne);
       }
-      expectedCuts.push_back(FloatEbmType { 0.5 } + static_cast<FloatEbmType>(iRange));
+      expectedCuts.push_back(double { 0.5 } + static_cast<double>(iRange));
    }
-   expectedCuts.push_back(FloatEbmType { 0.5 } + static_cast<FloatEbmType>(cInteriorRanges));
+   expectedCuts.push_back(double { 0.5 } + static_cast<double>(cInteriorRanges));
 
-   featureValues[cInteriorRanges * cItemsPerRange + 1] = static_cast<FloatEbmType>(1 + cInteriorRanges);
-   featureValues[cInteriorRanges * cItemsPerRange + 2] = static_cast<FloatEbmType>(1 + cInteriorRanges);
+   featureValues[cInteriorRanges * cItemsPerRange + 1] = static_cast<double>(1 + cInteriorRanges);
+   featureValues[cInteriorRanges * cItemsPerRange + 2] = static_cast<double>(1 + cInteriorRanges);
 
    static bool bOne = 1 == cRemoveCuts;
    static bool bTwo = 2 == cRemoveCuts;
@@ -1210,9 +1210,9 @@ TEST_CASE("CutQuantile, randomized fairness check") {
    constexpr bool bSmart = true;
    constexpr IntEbmType countSamplesPerBinMin = 1;
    constexpr IntEbmType countSamples = 100;
-   FloatEbmType featureValues[countSamples]; // preserve these for debugging purposes
-   FloatEbmType featureValuesForward[countSamples];
-   FloatEbmType featureValuesReversed[countSamples];
+   double featureValues[countSamples]; // preserve these for debugging purposes
+   double featureValuesForward[countSamples];
+   double featureValuesReversed[countSamples];
 
    constexpr IntEbmType randomMaxMax = countSamples - 1; // this doesn't need to be exactly countSamples - 1, but this number gives us chunky sets
    size_t cutHistogram[randomMaxMax];
@@ -1221,8 +1221,8 @@ TEST_CASE("CutQuantile, randomized fairness check") {
    static_assert(1 == cCutHistogram % 2, "cutHistogram must have a center value that is perfectly in the middle");
 
    constexpr size_t cCuts = 9;
-   FloatEbmType cutsLowerBoundInclusiveForward[cCuts];
-   FloatEbmType cutsLowerBoundInclusiveReversed[cCuts];
+   double cutsLowerBoundInclusiveForward[cCuts];
+   double cutsLowerBoundInclusiveReversed[cCuts];
 
    memset(cutHistogram, 0, sizeof(cutHistogram));
 
@@ -1232,11 +1232,11 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          for(size_t iSample = 0; iSample < countSamples; ++iSample) {
             bool bMissing = 0 == randomStream.Next(countSamples); // some datasetes will have zero missing values, some will have 1 or more
             size_t iRandom = randomStream.Next(randomMax + 1) + 1;
-            featureValues[iSample] = bMissing ? std::numeric_limits<FloatEbmType>::quiet_NaN() : static_cast<FloatEbmType>(iRandom);
+            featureValues[iSample] = bMissing ? std::numeric_limits<double>::quiet_NaN() : static_cast<double>(iRandom);
          }
 
          size_t countMissingValuesExpected = 0;
-         const FloatEbmType * pFeatureValue = featureValues;
+         const double * pFeatureValue = featureValues;
          while(pFeatureValue != featureValues + countSamples) {
             if(std::isnan(*pFeatureValue)) {
                ++countMissingValuesExpected;
@@ -1270,7 +1270,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          //);
 
          std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
-            [](FloatEbmType & val) { return -val; });
+            [](double & val) { return -val; });
 
          IntEbmType countCutsReversed = static_cast<IntEbmType>(cCuts);
          error = CutQuantile(
@@ -1294,17 +1294,17 @@ TEST_CASE("CutQuantile, randomized fairness check") {
          const size_t iShiftToMiddle = iHistogramExactMiddle - iCutExactMiddle;
          const size_t cCutsReturned = static_cast<size_t>(countCutsForward);
          for(size_t iCutPoint = 0; iCutPoint < cCutsReturned; ++iCutPoint) {
-            const FloatEbmType cutPointForward = cutsLowerBoundInclusiveForward[iCutPoint];
+            const double cutPointForward = cutsLowerBoundInclusiveForward[iCutPoint];
             if(countCutsForward == countCutsReversed) {
-               const FloatEbmType cutPointReversed = -cutsLowerBoundInclusiveReversed[cCutsReturned - 1 - iCutPoint];
+               const double cutPointReversed = -cutsLowerBoundInclusiveReversed[cCutsReturned - 1 - iCutPoint];
 
-               const FloatEbmType cutPointForwardNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointForward);
-               const FloatEbmType cutPointReversedNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointReversed);
+               const double cutPointForwardNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointForward);
+               const double cutPointReversedNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointReversed);
 
                CHECK_APPROX(cutPointForwardNext, cutPointReversedNext);
             }
             // cutPoint can be a number between 0.5 and (randomMax - 0.5)
-            const size_t iCut = static_cast<size_t>(std::round(cutPointForward - FloatEbmType { 1.5 }));
+            const size_t iCut = static_cast<size_t>(std::round(cutPointForward - double { 1.5 }));
             const size_t iSymetricCut = iShiftToMiddle + iCut;
             assert(iSymetricCut < cCutHistogram);
             if(iSymetricCut < cCutHistogram) {
@@ -1329,7 +1329,7 @@ TEST_CASE("CutQuantile, randomized fairness check") {
    }
    const size_t cMax = std::max(cBottomTotal, cTopTotal);
    const size_t cMin = std::min(cBottomTotal, cTopTotal);
-   const FloatEbmType ratio = static_cast<FloatEbmType>(cMin) / static_cast<FloatEbmType>(cMax);
+   const double ratio = static_cast<double>(cMin) / static_cast<double>(cMax);
    CHECK(0.97 <= ratio || 0 == cMax);
 }
 
@@ -1351,12 +1351,12 @@ TEST_CASE("CutQuantile, chunky randomized check") {
 
    constexpr size_t randomValMax = 70; // the min is 1 since the value doesn't really matter
 
-   FloatEbmType cutsLowerBoundInclusiveForward[cCutsMax];
-   FloatEbmType cutsLowerBoundInclusiveReversed[cCutsMax];
+   double cutsLowerBoundInclusiveForward[cCutsMax];
+   double cutsLowerBoundInclusiveReversed[cCutsMax];
 
-   FloatEbmType featureValues[cSamplesMax]; // preserve these for debugging purposes
-   FloatEbmType featureValuesForward[cSamplesMax];
-   FloatEbmType featureValuesReversed[cSamplesMax];
+   double featureValues[cSamplesMax]; // preserve these for debugging purposes
+   double featureValuesForward[cSamplesMax];
+   double featureValuesReversed[cSamplesMax];
 
    for(size_t iIteration = 0; iIteration < 30000; ++iIteration) {
       const size_t cSamples = randomStream.Next(cSamplesMax - cSamplesMin + 1) + cSamplesMin;
@@ -1365,7 +1365,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
 
       const size_t denominator = cCuts + size_t { 1 };
       const size_t cLongBinLength = static_cast<size_t>(
-         std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(denominator)));
+         std::ceil(static_cast<double>(cSamples) / static_cast<double>(denominator)));
 
       memset(featureValues, 0, sizeof(featureValues));
 
@@ -1375,7 +1375,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          size_t cItems = randomStream.Next(cLongBinLength) + cLongBinLength;
          size_t val = randomStream.Next(randomValMax) + 1;
          for(size_t iItem = 0; iItem < cItems; ++iItem) {
-            featureValues[i % cSamples] = static_cast<FloatEbmType>(val);
+            featureValues[i % cSamples] = static_cast<double>(val);
             ++i;
          }
       }
@@ -1384,19 +1384,19 @@ TEST_CASE("CutQuantile, chunky randomized check") {
          size_t cItems = randomStream.Next(cLongBinLength);
          size_t val = randomStream.Next(randomValMax) + 1;
          for(size_t iItem = 0; iItem < cItems; ++iItem) {
-            featureValues[i % cSamples] = static_cast<FloatEbmType>(val);
+            featureValues[i % cSamples] = static_cast<double>(val);
             ++i;
          }
       }
       for(size_t iSample = 0; iSample < cSamples; ++iSample) {
          if(0 == featureValues[iSample]) {
             const size_t randomPlusOne = randomStream.Next(randomValMax) + size_t { 1 };
-            featureValues[iSample] = static_cast<FloatEbmType>(randomPlusOne);
+            featureValues[iSample] = static_cast<double>(randomPlusOne);
          }
       }
 
       size_t countMissingValuesExpected = 0;
-      const FloatEbmType * pFeatureValue = featureValues;
+      const double * pFeatureValue = featureValues;
       while(pFeatureValue != featureValues + cSamples) {
          if(std::isnan(*pFeatureValue)) {
             ++countMissingValuesExpected;
@@ -1420,7 +1420,7 @@ TEST_CASE("CutQuantile, chunky randomized check") {
       CHECK(Error_None == error);
 
       std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
-         [](FloatEbmType & val) { return -val; });
+         [](double & val) { return -val; });
 
       IntEbmType countCutsReversed = static_cast<IntEbmType>(cCuts);
       error = CutQuantile(
@@ -1439,11 +1439,11 @@ TEST_CASE("CutQuantile, chunky randomized check") {
 
          const size_t cCutsReturned = static_cast<size_t>(countCutsForward);
          for(size_t iCutPoint = 0; iCutPoint < cCutsReturned; ++iCutPoint) {
-            const FloatEbmType cutPointForward = cutsLowerBoundInclusiveForward[iCutPoint];
-            const FloatEbmType cutPointReversed = -cutsLowerBoundInclusiveReversed[cCutsReturned - 1 - iCutPoint];
+            const double cutPointForward = cutsLowerBoundInclusiveForward[iCutPoint];
+            const double cutPointReversed = -cutsLowerBoundInclusiveReversed[cCutsReturned - 1 - iCutPoint];
 
-            const FloatEbmType cutPointForwardNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointForward);
-            const FloatEbmType cutPointReversedNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointReversed);
+            const double cutPointForwardNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointForward);
+            const double cutPointReversedNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointReversed);
 
             CHECK_APPROX(cutPointForwardNext, cutPointReversedNext);
          }

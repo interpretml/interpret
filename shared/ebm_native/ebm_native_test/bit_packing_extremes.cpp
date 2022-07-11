@@ -20,7 +20,7 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(k_learningTypeRegression);
             test.AddFeatures({ FeatureTest(cBins) });
-            test.AddFeatureGroups({ { 0 } });
+            test.AddTerms({ { 0 } });
 
             std::vector<TestSample> trainingSamples;
             std::vector<TestSample> validationSamples;
@@ -32,10 +32,10 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
             test.AddValidationSamples(validationSamples);
             test.InitializeBoosting();
 
-            FloatEbmType validationMetric = test.Boost(0).validationMetric;
+            double validationMetric = test.Boost(0).validationMetric;
             CHECK_APPROX(validationMetric, 62.8849);
-            FloatEbmType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
-            CHECK_APPROX(modelValue, 0.07);
+            double termScore = test.GetCurrentTermScore(0, { static_cast<size_t>(cBins - 1) }, 0);
+            CHECK_APPROX(termScore, 0.07);
          }
       }
    }
@@ -52,7 +52,7 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(2, 0);
             test.AddFeatures({ FeatureTest(cBins) });
-            test.AddFeatureGroups({ { 0 } });
+            test.AddTerms({ { 0 } });
 
             std::vector<TestSample> trainingSamples;
             std::vector<TestSample> validationSamples;
@@ -64,14 +64,14 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
             test.AddValidationSamples(validationSamples);
             test.InitializeBoosting();
 
-            FloatEbmType validationMetric = test.Boost(0).validationMetric;
+            double validationMetric = test.Boost(0).validationMetric;
             CHECK_APPROX_TOLERANCE(validationMetric, 0.70319717972663420, double { 1e-1 });
 
-            FloatEbmType modelValue;
-            modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
-            CHECK_APPROX(modelValue, 0);
-            modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 1);
-            CHECK_APPROX_TOLERANCE(modelValue, -0.02, double { 1e-1 });
+            double termScore;
+            termScore = test.GetCurrentTermScore(0, { static_cast<size_t>(cBins - 1) }, 0);
+            CHECK_APPROX(termScore, 0);
+            termScore = test.GetCurrentTermScore(0, { static_cast<size_t>(cBins - 1) }, 1);
+            CHECK_APPROX_TOLERANCE(termScore, -0.02, double { 1e-1 });
          }
       }
    }
@@ -96,7 +96,7 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
             test.AddInteractionSamples(samples);
             test.InitializeInteraction();
 
-            FloatEbmType metric = test.TestCalcInteractionStrength({ 0, 1 });
+            double metric = test.TestCalcInteractionStrength({ 0, 1 });
             CHECK_APPROX(metric, 0);
          }
       }
@@ -122,7 +122,7 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
             test.AddInteractionSamples(samples);
             test.InitializeInteraction();
 
-            FloatEbmType metric = test.TestCalcInteractionStrength({ 0, 1 });
+            double metric = test.TestCalcInteractionStrength({ 0, 1 });
 
             CHECK_APPROX(metric, 0);
          }

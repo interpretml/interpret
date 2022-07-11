@@ -22,46 +22,46 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
+Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
    EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
    EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless
 
-   if(IsMultiplyError(k_initialValueCapacity, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(k_initialValueCapacity, cVectorLength)");
+   if(IsMultiplyError(k_initialScoreCapacity, cVectorLength)) {
+      LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(k_initialScoreCapacity, cVectorLength)");
       return nullptr;
    }
-   const size_t cValueCapacity = k_initialValueCapacity * cVectorLength;
+   const size_t cScoreCapacity = k_initialScoreCapacity * cVectorLength;
 
    // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
-   const size_t cBytesCompressibleTensor = sizeof(CompressibleTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
-   CompressibleTensor * const pCompressibleTensor = EbmMalloc<CompressibleTensor>(1, cBytesCompressibleTensor);
-   if(UNLIKELY(nullptr == pCompressibleTensor)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pCompressibleTensor");
+   const size_t cBytesTensor = sizeof(Tensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
+   Tensor * const pTensor = EbmMalloc<Tensor>(1, cBytesTensor);
+   if(UNLIKELY(nullptr == pTensor)) {
+      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pTensor");
       return nullptr;
    }
 
-   pCompressibleTensor->m_cVectorLength = cVectorLength;
-   pCompressibleTensor->m_cDimensionsMax = cDimensionsMax;
-   pCompressibleTensor->m_cDimensions = cDimensionsMax;
-   pCompressibleTensor->m_cValueCapacity = cValueCapacity;
-   pCompressibleTensor->m_bExpanded = false;
+   pTensor->m_cVectorLength = cVectorLength;
+   pTensor->m_cDimensionsMax = cDimensionsMax;
+   pTensor->m_cDimensions = cDimensionsMax;
+   pTensor->m_cScoreCapacity = cScoreCapacity;
+   pTensor->m_bExpanded = false;
 
-   FloatEbmType * const aValues = EbmMalloc<FloatEbmType>(cValueCapacity);
-   if(UNLIKELY(nullptr == aValues)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
-      free(pCompressibleTensor); // don't need to call the full Free(*) yet
+   FloatFast * const aScores = EbmMalloc<FloatFast>(cScoreCapacity);
+   if(UNLIKELY(nullptr == aScores)) {
+      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aScores");
+      free(pTensor); // don't need to call the full Free(*) yet
       return nullptr;
    }
-   pCompressibleTensor->m_aValues = aValues;
+   pTensor->m_aScores = aScores;
    // we only need to set the base case to zero, not our entire initial allocation
-   // we checked for cVectorLength * k_initialValueCapacity * sizeof(FloatEbmType), and 1 <= k_initialValueCapacity, 
-   // so sizeof(FloatEbmType) * cVectorLength can't overflow
+   // we checked for cVectorLength * k_initialScoreCapacity * sizeof(FloatFast), and 1 <= k_initialScoreCapacity, 
+   // so sizeof(FloatFast) * cVectorLength can't overflow
    for(size_t i = 0; i < cVectorLength; ++i) {
-      aValues[i] = FloatEbmType { 0 };
+      aScores[i] = 0;
    }
 
    if(0 != cDimensionsMax) {
-      DimensionInfo * pDimension = pCompressibleTensor->GetDimensions();
+      DimensionInfo * pDimension = pTensor->GetDimensions();
       size_t iDimension = 0;
       do {
          pDimension->m_cSplits = 0;
@@ -71,13 +71,13 @@ CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, c
          ++iDimension;
       } while(iDimension < cDimensionsMax);
 
-      pDimension = pCompressibleTensor->GetDimensions();
+      pDimension = pTensor->GetDimensions();
       iDimension = 0;
       do {
          ActiveDataType * const aSplits = EbmMalloc<ActiveDataType>(k_initialSplitCapacity);
          if(UNLIKELY(nullptr == aSplits)) {
             LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aSplits");
-            Free(pCompressibleTensor); // free everything!
+            Free(pTensor); // free everything!
             return nullptr;
          }
          pDimension->m_aSplits = aSplits;
@@ -85,25 +85,25 @@ CompressibleTensor * CompressibleTensor::Allocate(const size_t cDimensionsMax, c
          ++iDimension;
       } while(iDimension < cDimensionsMax);
    }
-   return pCompressibleTensor;
+   return pTensor;
 }
 
-void CompressibleTensor::Free(CompressibleTensor * const pCompressibleTensor) {
-   if(LIKELY(nullptr != pCompressibleTensor)) {
-      free(pCompressibleTensor->m_aValues);
-      if(LIKELY(0 != pCompressibleTensor->m_cDimensionsMax)) {
-         const DimensionInfo * pDimensionInfo = pCompressibleTensor->GetDimensions();
-         const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pCompressibleTensor->m_cDimensionsMax];
+void Tensor::Free(Tensor * const pTensor) {
+   if(LIKELY(nullptr != pTensor)) {
+      free(pTensor->m_aScores);
+      if(LIKELY(0 != pTensor->m_cDimensionsMax)) {
+         const DimensionInfo * pDimensionInfo = pTensor->GetDimensions();
+         const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pTensor->m_cDimensionsMax];
          do {
             free(pDimensionInfo->m_aSplits);
             ++pDimensionInfo;
          } while(pDimensionInfoEnd != pDimensionInfo);
       }
-      free(pCompressibleTensor);
+      free(pTensor);
    }
 }
 
-void CompressibleTensor::Reset() {
+void Tensor::Reset() {
    DimensionInfo * pDimensionInfo = GetDimensions();
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       pDimensionInfo[iDimension].m_cSplits = 0;
@@ -111,12 +111,12 @@ void CompressibleTensor::Reset() {
    // we only need to set the base case to zero
    // this can't overflow since we previously allocated this memory
    for(size_t i = 0; i < m_cVectorLength; ++i) {
-      m_aValues[i] = FloatEbmType { 0 };
+      m_aScores[i] = 0;
    }
    m_bExpanded = false;
 }
 
-ErrorEbmType CompressibleTensor::SetCountSplits(const size_t iDimension, const size_t cSplits) {
+ErrorEbmType Tensor::SetCountSplits(const size_t iDimension, const size_t cSplits) {
    EBM_ASSERT(iDimension < m_cDimensions);
    DimensionInfo * const pDimension = &GetDimensions()[iDimension];
    // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
@@ -152,37 +152,37 @@ ErrorEbmType CompressibleTensor::SetCountSplits(const size_t iDimension, const s
    return Error_None;
 }
 
-ErrorEbmType CompressibleTensor::EnsureValueCapacity(const size_t cValues) {
-   if(UNLIKELY(m_cValueCapacity < cValues)) {
+ErrorEbmType Tensor::EnsureScoreCapacity(const size_t cScores) {
+   if(UNLIKELY(m_cScoreCapacity < cScores)) {
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
-      if(IsAddError(cValues, cValues >> 1)) {
-         LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsAddError(cValues, cValues >> 1)");
+      if(IsAddError(cScores, cScores >> 1)) {
+         LOG_0(TraceLevelWarning, "WARNING EnsureScoreCapacity IsAddError(cScores, cScores >> 1)");
          return Error_OutOfMemory;
       }
-      // just increase it by 50% since we don't expect to grow our values often after an initial period, and realloc takes some of the cost of growing away
-      size_t cNewValueCapacity = cValues + (cValues >> 1);
-      LOG_N(TraceLevelInfo, "EnsureValueCapacity Growing to size %zu", cNewValueCapacity);
+      // just increase it by 50% since we don't expect to grow our scores often after an initial period, and realloc takes some of the cost of growing away
+      size_t cNewScoreCapacity = cScores + (cScores >> 1);
+      LOG_N(TraceLevelInfo, "EnsureScoreCapacity Growing to size %zu", cNewScoreCapacity);
 
-      if(IsMultiplyError(sizeof(FloatEbmType), cNewValueCapacity)) {
-         LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(FloatEbmType), cNewValueCapacity)");
+      if(IsMultiplyError(sizeof(FloatFast), cNewScoreCapacity)) {
+         LOG_0(TraceLevelWarning, "WARNING EnsureScoreCapacity IsMultiplyError(sizeof(FloatFast), cNewScoreCapacity)");
          return Error_OutOfMemory;
       }
-      size_t cBytes = sizeof(FloatEbmType) * cNewValueCapacity;
-      FloatEbmType * const aNewValues = static_cast<FloatEbmType *>(realloc(m_aValues, cBytes));
-      if(UNLIKELY(nullptr == aNewValues)) {
+      size_t cBytes = sizeof(FloatFast) * cNewScoreCapacity;
+      FloatFast * const aNewScores = static_cast<FloatFast *>(realloc(m_aScores, cBytes));
+      if(UNLIKELY(nullptr == aNewScores)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
-         LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity nullptr == aNewValues");
+         LOG_0(TraceLevelWarning, "WARNING EnsureScoreCapacity nullptr == aNewScores");
          return Error_OutOfMemory;
       }
-      m_aValues = aNewValues;
-      m_cValueCapacity = cNewValueCapacity;
+      m_aScores = aNewScores;
+      m_cScoreCapacity = cNewScoreCapacity;
    } // never shrink our array unless the user chooses to Trim()
    return Error_None;
 }
 
-ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
+ErrorEbmType Tensor::Copy(const Tensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
    ErrorEbmType error;
@@ -190,12 +190,12 @@ ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
    const DimensionInfo * pRhsDimensionInfo = rhs.GetDimensions();
 
-   size_t cValues = m_cVectorLength;
+   size_t cScores = m_cVectorLength;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       const DimensionInfo * const pDimension = &pRhsDimensionInfo[iDimension];
       size_t cSplits = pDimension->m_cSplits;
-      EBM_ASSERT(!IsMultiplyError(cValues, cSplits + 1)); // we're copying this memory, so multiplication can't overflow
-      cValues *= (cSplits + 1);
+      EBM_ASSERT(!IsMultiplyError(cScores, cSplits + 1)); // we're copying this memory, so multiplication can't overflow
+      cScores *= (cSplits + 1);
       error = SetCountSplits(iDimension, cSplits);
       if(UNLIKELY(Error_None != error)) {
          LOG_0(TraceLevelWarning, "WARNING Copy SetCountSplits(iDimension, cSplits)");
@@ -204,34 +204,34 @@ ErrorEbmType CompressibleTensor::Copy(const CompressibleTensor & rhs) {
       EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cSplits)); // we're copying this memory, so multiplication can't overflow
       memcpy(pThisDimensionInfo[iDimension].m_aSplits, pDimension->m_aSplits, sizeof(ActiveDataType) * cSplits);
    }
-   error = EnsureValueCapacity(cValues);
+   error = EnsureScoreCapacity(cScores);
    if(UNLIKELY(Error_None != error)) {
       // already logged
       return error;
    }
-   EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType), cValues)); // we're copying this memory, so multiplication can't overflow
-   memcpy(m_aValues, rhs.m_aValues, sizeof(FloatEbmType) * cValues);
+   EBM_ASSERT(!IsMultiplyError(sizeof(FloatFast), cScores)); // we're copying this memory, so multiplication can't overflow
+   memcpy(m_aScores, rhs.m_aScores, sizeof(FloatFast) * cScores);
    m_bExpanded = rhs.m_bExpanded;
    return Error_None;
 }
 
-bool CompressibleTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
-
+bool Tensor::MultiplyAndCheckForIssues(const double v) {
+   const FloatFast vFloat = SafeConvertFloat<FloatFast>(v);
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
 
-   size_t cValues = 1;
+   size_t cScores = m_cVectorLength;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       // we're accessing existing memory, so it can't overflow
-      EBM_ASSERT(!IsMultiplyError(cValues, pThisDimensionInfo[iDimension].m_cSplits + 1));
-      cValues *= pThisDimensionInfo[iDimension].m_cSplits + 1;
+      EBM_ASSERT(!IsMultiplyError(cScores, pThisDimensionInfo[iDimension].m_cSplits + 1));
+      cScores *= pThisDimensionInfo[iDimension].m_cSplits + 1;
    }
 
-   FloatEbmType * pCur = &m_aValues[0];
-   FloatEbmType * pEnd = &m_aValues[cValues * m_cVectorLength];
+   FloatFast * pCur = &m_aScores[0];
+   FloatFast * pEnd = &m_aScores[cScores];
    int bBad = 0;
-   // we always have 1 value, even if we have zero splits
+   // we always have 1 score, even if we have zero splits
    do {
-      const FloatEbmType val = *pCur * v;
+      const FloatFast val = *pCur * vFloat;
       // TODO: these can be done with bitwise operators, which would be good for SIMD.  Check to see what assembly this turns into.
       // since both NaN and +-infinity have the exponential as FF, and no other values do, the best optimized assembly would test the exponential 
       // bits for FF and then OR a 1 if the test is true and 0 if the test is false
@@ -243,7 +243,7 @@ bool CompressibleTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
    return !!bBad;
 }
 
-ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup) {
+ErrorEbmType Tensor::Expand(const Term * const pTerm) {
    // checking the max isn't really the best here, but doing this right seems pretty complicated
    static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<ActiveDataType>::max() &&
       0 == std::numeric_limits<ActiveDataType>::min(), "bad AcitveDataType size");
@@ -258,30 +258,30 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
       return Error_None;
    }
 
-   EBM_ASSERT(nullptr != pFeatureGroup);
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   EBM_ASSERT(nullptr != pTerm);
+   const size_t cDimensions = pTerm->GetCountDimensions();
    if(size_t { 0 } != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry1 + cDimensions;
+      const TermEntry * pTermEntry1 = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = pTermEntry1 + cDimensions;
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
       const DimensionInfo * pDimensionFirst1 = GetDimensions();
-      size_t cValues1 = 1;
-      size_t cNewValues = 1;
+      size_t cScores1 = m_cVectorLength;
+      size_t cNewScores = m_cVectorLength;
 
-      // first, get basic counts of how many splits and values we'll have in our final result
+      // first, get basic counts of how many splits and scores we'll have in our final result
       do {
-         const size_t cBins = pFeatureGroupEntry1->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry1->m_pFeature->GetCountBins();
 
          // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack 
-         // featureGroupsFeatureIndexes and in CalcInteractionStrength for interactions
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cBins));
-         cNewValues *= cBins;
+         // featureIndexes and in CalcInteractionStrength for interactions
+         EBM_ASSERT(!IsMultiplyError(cNewScores, cBins));
+         cNewScores *= cBins;
 
          const size_t cSplits1 = pDimensionFirst1->m_cSplits;
 
-         EBM_ASSERT(!IsMultiplyError(cValues1, cSplits1 + 1)); // this is accessing existing memory, so it can't overflow
-         cValues1 *= cSplits1 + 1;
+         EBM_ASSERT(!IsMultiplyError(cScores1, cSplits1 + 1)); // this is accessing existing memory, so it can't overflow
+         cScores1 *= cSplits1 + 1;
 
          pDimensionInfoStackFirst->m_pSplit1 = &pDimensionFirst1->m_aSplits[cSplits1];
 
@@ -291,55 +291,49 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
 
          ++pDimensionFirst1;
          ++pDimensionInfoStackFirst;
-         ++pFeatureGroupEntry1;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry1);
+         ++pTermEntry1;
+      } while(pTermEntriesEnd != pTermEntry1);
       
-      if(size_t { 0 } == cNewValues) {
+      if(size_t { 0 } == cNewScores) {
          // there's a really degenerate case where we have zero training and zero validation samples, and the user 
          // specifies zero bins which is legal since there are no bins in the training or validation, in this case
          // the tensor has zero bins in one dimension, so there are zero bins in the entire tensor.
          LOG_0(TraceLevelWarning, "WARNING Expand Zero sized tensor");
       } else {
-         if(IsMultiplyError(m_cVectorLength, cNewValues)) {
-            LOG_0(TraceLevelWarning, "WARNING Expand IsMultiplyError(m_cVectorLength, cNewValues)");
-            return Error_OutOfMemory;
-         }
-         const size_t cVectoredNewValues = m_cVectorLength * cNewValues;
-         // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
-         error = EnsureValueCapacity(cVectoredNewValues);
+         // call EnsureScoreCapacity before using the m_aScores pointer since m_aScores might change inside EnsureScoreCapacity
+         error = EnsureScoreCapacity(cNewScores);
          if(UNLIKELY(Error_None != error)) {
             // already logged
             return error;
          }
 
-         FloatEbmType * const aValues = m_aValues;
+         FloatFast * const aScores = m_aScores;
          const DimensionInfo * const aDimension1 = GetDimensions();
 
-         EBM_ASSERT(cValues1 <= cNewValues);
-         EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
-         const FloatEbmType * pValue1 = &aValues[m_cVectorLength * cValues1];
-         FloatEbmType * pValueTop = &aValues[cVectoredNewValues];
+         EBM_ASSERT(cScores1 <= cNewScores);
+         const FloatFast * pScore1 = &aScores[cScores1];
+         FloatFast * pScoreTop = &aScores[cNewScores];
 
-         // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
-         // existing values which we still need to copy first do the values because we need to refer to the old splits when making decisions about 
+         // traverse the scores in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
+         // existing scores which we still need to copy first do the scores because we need to refer to the old splits when making decisions about 
          // where to move next
          while(true) {
-            const FloatEbmType * pValue1Move = pValue1;
-            const FloatEbmType * const pValueTopEnd = pValueTop - m_cVectorLength;
+            const FloatFast * pScore1Move = pScore1;
+            const FloatFast * const pScoreTopEnd = pScoreTop - m_cVectorLength;
             do {
-               --pValue1Move;
-               --pValueTop;
-               EBM_ASSERT(aValues <= pValue1Move);
-               EBM_ASSERT(aValues <= pValueTop);
-               *pValueTop = *pValue1Move;
-            } while(pValueTopEnd != pValueTop);
+               --pScore1Move;
+               --pScoreTop;
+               EBM_ASSERT(aScores <= pScore1Move);
+               EBM_ASSERT(aScores <= pScoreTop);
+               *pScoreTop = *pScore1Move;
+            } while(pScoreTopEnd != pScoreTop);
 
-            // For a single dimensional CompressibleTensor checking here is best.  
+            // For a single dimensional Tensor checking here is best.  
             // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
             // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
             // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
-            // multi-dimensioncal CompressibleTensors
-            if(UNLIKELY(aValues == pValueTop)) {
+            // multi-dimensioncal Tensors
+            if(UNLIKELY(aScores == pScoreTop)) {
                // we've written our final tensor cell, so we're done
                break;
             }
@@ -367,7 +361,7 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
 
                   const bool bMove = UNPREDICTABLE(iSplit2 <= d1);
                   pDimensionInfoStackSecond->m_pSplit1 = bMove ? pSplit1MinusOne : pSplit1;
-                  pValue1 = bMove ? pValue1 - multiplication1 : pValue1;
+                  pScore1 = bMove ? pScore1 - multiplication1 : pScore1;
 
                   pDimensionInfoStackSecond->m_iSplit2 = iSplit2;
                   break;
@@ -376,16 +370,16 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
                      pDimensionInfoStackSecond->m_iSplit2 = iSplit2 - 1;
                      break;
                   } else {
-                     pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
+                     pScore1 -= multiplication1; // put us before the beginning.  We'll add the full row first
 
                      const size_t cSplits1 = pDimensionSecond1->m_cSplits;
 
-                     // we're already allocated values, so this is accessing what we've already allocated, so it must not overflow
+                     // we're already allocated scores, so this is accessing what we've already allocated, so it must not overflow
                      EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cSplits1));
                      multiplication1 *= 1 + cSplits1;
 
                      // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
-                     pValue1 += multiplication1;
+                     pScore1 += multiplication1;
 
                      pDimensionInfoStackSecond->m_pSplit1 = &aSplits1[cSplits1];
                      pDimensionInfoStackSecond->m_iSplit2 = pDimensionInfoStackSecond->m_cNewSplits;
@@ -398,13 +392,13 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
             }
          }
 
-         EBM_ASSERT(pValueTop == m_aValues);
-         EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength);
+         EBM_ASSERT(pScoreTop == m_aScores);
+         EBM_ASSERT(pScore1 == m_aScores + m_cVectorLength);
 
-         const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
+         const TermEntry * pTermEntry2 = pTerm->GetTermEntries();
          size_t iDimension = 0;
          do {
-            const size_t cBins = pFeatureGroupEntry2->m_pFeature->GetCountBins();
+            const size_t cBins = pTermEntry2->m_pFeature->GetCountBins();
             EBM_ASSERT(size_t { 1 } <= cBins); // we exited above on tensors with zero bins in any dimension
             const size_t cSplits = cBins - size_t { 1 };
             const DimensionInfo * const pDimension = &aDimension1[iDimension];
@@ -426,8 +420,8 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
                } while(cSplits != iSplit);
             }
             ++iDimension;
-            ++pFeatureGroupEntry2;
-         } while(pFeatureGroupEntryEnd != pFeatureGroupEntry2);
+            ++pTermEntry2;
+         } while(pTermEntriesEnd != pTermEntry2);
       }
    }
    m_bExpanded = true;
@@ -436,7 +430,7 @@ ErrorEbmType CompressibleTensor::Expand(const FeatureGroup * const pFeatureGroup
    return Error_None;
 }
 
-void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues) {
+void Tensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScores) {
    EBM_ASSERT(m_bExpanded);
    size_t cItems = m_cVectorLength;
 
@@ -447,35 +441,35 @@ void CompressibleTensor::AddExpandedWithBadValueProtection(const FloatEbmType * 
       cItems *= aDimension[iDimension].m_cSplits + 1;
    }
 
-   const FloatEbmType * pFromValue = aFromValues;
-   FloatEbmType * pToValue = m_aValues;
-   const FloatEbmType * const pToValueEnd = m_aValues + cItems;
+   const FloatFast * pFromScore = aFromScores;
+   FloatFast * pToScore = m_aScores;
+   const FloatFast * const pToScoresEnd = m_aScores + cItems;
    do {
       // if we get a NaN value, then just consider it a no-op zero
       // if we get a +infinity, then just make our value the maximum
       // if we get a -infinity, then just make our value the minimum
       // these changes will make us out of sync with the updates to our logits, but it should be at the extremes anyways
       // so, not much real loss there.  Also, if we have NaN, or +-infinity in an update, we'll be stopping boosting soon
-      // but we want to preserve the best model that we had
+      // but we want to preserve the best term scores that we had
 
-      FloatEbmType val = *pFromValue;
-      val = std::isnan(val) ? FloatEbmType { 0 } : val;
-      val = *pToValue + val;
+      FloatFast score = *pFromScore;
+      score = std::isnan(score) ? FloatFast { 0 } : score;
+      score = *pToScore + score;
       // this is a check for -infinity, without the -infinity value since some compilers make that illegal
       // even so far as to make isinf always FALSE with some compiler flags
       // include the equals case so that the compiler is less likely to optimize that out
-      val = val <= std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
+      score = score <= std::numeric_limits<FloatFast>::lowest() ? std::numeric_limits<FloatFast>::lowest() : score;
       // this is a check for +infinity, without the +infinity value since some compilers make that illegal
       // even so far as to make isinf always FALSE with some compiler flags
       // include the equals case so that the compiler is less likely to optimize that out
-      val = std::numeric_limits<FloatEbmType>::max() <= val ? std::numeric_limits<FloatEbmType>::max() : val;
-      *pToValue = val;
-      ++pFromValue;
-      ++pToValue;
-   } while(pToValueEnd != pToValue);
+      score = std::numeric_limits<FloatFast>::max() <= score ? std::numeric_limits<FloatFast>::max() : score;
+      *pToScore = score;
+      ++pFromScore;
+      ++pToScore;
+   } while(pToScoresEnd != pToScore);
 }
 
-ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
+ErrorEbmType Tensor::Add(const Tensor & rhs) {
    ErrorEbmType error;
 
    DimensionInfoStack dimensionStack[k_cDimensionsMax];
@@ -483,12 +477,12 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
    if(0 == m_cDimensions) {
-      EBM_ASSERT(1 <= m_cValueCapacity);
-      EBM_ASSERT(nullptr != m_aValues);
+      EBM_ASSERT(1 <= m_cScoreCapacity);
+      EBM_ASSERT(nullptr != m_aScores);
 
-      FloatEbmType * pTo = &m_aValues[0];
-      const FloatEbmType * pFrom = &rhs.m_aValues[0];
-      const FloatEbmType * const pToEnd = &pTo[m_cVectorLength];
+      FloatFast * pTo = &m_aScores[0];
+      const FloatFast * pFrom = &rhs.m_aScores[0];
+      const FloatFast * const pToEnd = &pTo[m_cVectorLength];
       do {
          *pTo += *pFrom;
          ++pTo;
@@ -512,9 +506,9 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
    DimensionInfoStack * pDimensionInfoStackFirst = dimensionStack;
    const DimensionInfoStack * const pDimensionInfoStackEnd = &dimensionStack[m_cDimensions];
 
-   size_t cValues1 = 1;
-   size_t cValues2 = 1;
-   size_t cNewValues = 1;
+   size_t cScores1 = m_cVectorLength;
+   size_t cScores2 = m_cVectorLength;
+   size_t cNewScores = m_cVectorLength;
 
    EBM_ASSERT(0 < m_cDimensions);
    // first, get basic counts of how many splits and values we'll have in our final result
@@ -524,8 +518,8 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
       const size_t cSplits2 = pDimensionFirst2->m_cSplits;
       ActiveDataType * p2Cur = pDimensionFirst2->m_aSplits;
 
-      cValues1 *= cSplits1 + 1; // this can't overflow since we're counting existing allocated memory
-      cValues2 *= cSplits2 + 1; // this can't overflow since we're counting existing allocated memory
+      cScores1 *= cSplits1 + 1; // this can't overflow since we're counting existing allocated memory
+      cScores2 *= cSplits2 + 1; // this can't overflow since we're counting existing allocated memory
 
       ActiveDataType * const p1End = &p1Cur[cSplits1];
       ActiveDataType * const p2End = &p2Cur[cSplits2];
@@ -558,10 +552,10 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
          p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
       }
       pDimensionInfoStackFirst->m_cNewSplits = cNewSingleDimensionSplits;
-      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureGroupsFeatureIndexes and in 
+      // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureIndexes and in 
       // CalcInteractionStrength for interactions
-      EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionSplits + 1));
-      cNewValues *= cNewSingleDimensionSplits + 1;
+      EBM_ASSERT(!IsMultiplyError(cNewScores, cNewSingleDimensionSplits + 1));
+      cNewScores *= cNewSingleDimensionSplits + 1;
 
       ++pDimensionFirst1;
       ++pDimensionFirst2;
@@ -569,46 +563,42 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
       ++pDimensionInfoStackFirst;
    } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
-   if(IsMultiplyError(m_cVectorLength, cNewValues)) {
-      LOG_0(TraceLevelWarning, "WARNING Add IsMultiplyError(m_cVectorLength, cNewValues)");
-      return Error_OutOfMemory;
-   }
-   // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
-   error = EnsureValueCapacity(m_cVectorLength * cNewValues);
+   // call EnsureScoreCapacity before using the m_aScores pointer since m_aScores might change inside EnsureScoreCapacity
+   error = EnsureScoreCapacity(cNewScores);
    if(UNLIKELY(Error_None != error)) {
       // already logged
       return error;
    }
 
-   const FloatEbmType * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
+   const FloatFast * pScore2 = &rhs.m_aScores[cScores2];  // we're accessing allocated memory, so it can't overflow
    const DimensionInfo * const aDimension2 = rhs.GetDimensions();
 
-   FloatEbmType * const aValues = m_aValues;
+   FloatFast * const aScores = m_aScores;
    const DimensionInfo * const aDimension1 = GetDimensions();
 
-   const FloatEbmType * pValue1 = &aValues[m_cVectorLength * cValues1]; // we're accessing allocated memory, so it can't overflow
-   FloatEbmType * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
+   const FloatFast * pScore1 = &aScores[cScores1]; // we're accessing allocated memory, so it can't overflow
+   FloatFast * pScoreTop = &aScores[cNewScores]; // we're accessing allocated memory, so it can't overflow
 
-   // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our
-   // existing values which we still need to copy first do the values because we need to refer to the old splits when making decisions about where 
+   // traverse the scores in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our
+   // existing scores which we still need to copy first do the scores because we need to refer to the old splits when making decisions about where 
    // to move next
    while(true) {
-      const FloatEbmType * pValue1Move = pValue1;
-      const FloatEbmType * pValue2Move = pValue2;
-      const FloatEbmType * const pValueTopEnd = pValueTop - m_cVectorLength;
+      const FloatFast * pScore1Move = pScore1;
+      const FloatFast * pScore2Move = pScore2;
+      const FloatFast * const pScoreTopEnd = pScoreTop - m_cVectorLength;
       do {
-         --pValue1Move;
-         --pValue2Move;
-         --pValueTop;
-         *pValueTop = *pValue1Move + *pValue2Move;
-      } while(pValueTopEnd != pValueTop);
+         --pScore1Move;
+         --pScore2Move;
+         --pScoreTop;
+         *pScoreTop = *pScore1Move + *pScore2Move;
+      } while(pScoreTopEnd != pScoreTop);
 
-      // For a single dimensional CompressibleTensor checking here is best.  
+      // For a single dimensional Tensor checking here is best.  
       // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack,
       // thus eliminating the check on most loops.  We'll spend most of our time working on single features though, so we optimize for that case, 
       // but if we special cased the single dimensional case, then we would want to move this check into the loop below in the case 
-      // of multi-dimensioncal CompressibleTensors
-      if(UNLIKELY(aValues == pValueTop)) {
+      // of multi-dimensioncal Tensors
+      if(UNLIKELY(aScores == pScoreTop)) {
          // we've written our final tensor cell, so we're done
          break;
       }
@@ -637,25 +627,25 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
 
                const bool bMove1 = UNPREDICTABLE(d2 <= d1);
                pDimensionInfoStackSecond->m_pSplit1 = bMove1 ? pSplit1MinusOne : pSplit1;
-               pValue1 = bMove1 ? pValue1 - multiplication1 : pValue1;
+               pScore1 = bMove1 ? pScore1 - multiplication1 : pScore1;
 
                const bool bMove2 = UNPREDICTABLE(d1 <= d2);
                pDimensionInfoStackSecond->m_pSplit2 = bMove2 ? pSplit2MinusOne : pSplit2;
-               pValue2 = bMove2 ? pValue2 - multiplication2 : pValue2;
+               pScore2 = bMove2 ? pScore2 - multiplication2 : pScore2;
                break;
             } else {
-               pValue1 -= multiplication1;
+               pScore1 -= multiplication1;
                pDimensionInfoStackSecond->m_pSplit1 = pSplit1 - 1;
                break;
             }
          } else {
             if(UNPREDICTABLE(aSplits2 < pSplit2)) {
-               pValue2 -= multiplication2;
+               pScore2 -= multiplication2;
                pDimensionInfoStackSecond->m_pSplit2 = pSplit2 - 1;
                break;
             } else {
-               pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
-               pValue2 -= multiplication2; // put us before the beginning.  We'll add the full row first
+               pScore1 -= multiplication1; // put us before the beginning.  We'll add the full row first
+               pScore2 -= multiplication2; // put us before the beginning.  We'll add the full row first
 
                const size_t cSplits1 = pDimensionSecond1->m_cSplits;
                const size_t cSplits2 = pDimensionSecond2->m_cSplits;
@@ -666,9 +656,9 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
                multiplication2 *= 1 + cSplits2;
 
                // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
-               pValue1 += multiplication1;
+               pScore1 += multiplication1;
                // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
-               pValue2 += multiplication2;
+               pScore2 += multiplication2;
 
                pDimensionInfoStackSecond->m_pSplit1 = &aSplits1[cSplits1];
                pDimensionInfoStackSecond->m_pSplit2 = &aSplits2[cSplits2];
@@ -681,9 +671,9 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
       }
    }
 
-   EBM_ASSERT(pValueTop == m_aValues);
-   EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength);
-   EBM_ASSERT(pValue2 == rhs.m_aValues + m_cVectorLength);
+   EBM_ASSERT(pScoreTop == m_aScores);
+   EBM_ASSERT(pScore1 == m_aScores + m_cVectorLength);
+   EBM_ASSERT(pScore2 == rhs.m_aScores + m_cVectorLength);
 
    // now finally do the splits
 
@@ -696,7 +686,7 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
       const size_t cOriginalSplitsBeforeSetting = pDimension1Cur->m_cSplits;
 
       // this will increase our capacity, if required.  It will also change m_cSplits, so we get that before calling it.  
-      // SetCountSplits might change m_aValuesAndSplits, so we need to actually keep it here after getting m_cSplits but 
+      // SetCountSplits might change m_aScoresAndSplits, so we need to actually keep it here after getting m_cSplits but 
       // before set set all our pointers
       error = SetCountSplits(iDimension, cNewSplits);
       if(UNLIKELY(Error_None != error)) {
@@ -708,7 +698,7 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
       const ActiveDataType * p2Cur = &pDimension2Cur->m_aSplits[pDimension2Cur->m_cSplits];
       ActiveDataType * pTopCur = &pDimension1Cur->m_aSplits[cNewSplits];
 
-      // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values
+      // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing scores
       // which we still need to copy
       while(true) {
          EBM_ASSERT(pDimension1Cur->m_aSplits <= pTopCur);
@@ -718,8 +708,8 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
          EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->m_aSplits) <= static_cast<size_t>(pTopCur - pDimension1Cur->m_aSplits));
 
          if(UNLIKELY(pTopCur == p1Cur)) {
-            // since we've finished the rhs splits, our CompressibleTensor already has the right splits in place, so all we need is to add the value
-            // of the last region in rhs to our remaining values
+            // since we've finished the rhs splits, our Tensor already has the right splits in place, so all we need is to add the score
+            // of the last region in rhs to our remaining scores
             break;
          }
          // pTopCur is an index above pDimension1Cur->m_aSplits.  p2Cur is an index above pDimension2Cur->m_aSplits.  We want to decide if they
@@ -758,7 +748,7 @@ ErrorEbmType CompressibleTensor::Add(const CompressibleTensor & rhs) {
 }
 
 #ifndef NDEBUG
-bool CompressibleTensor::IsEqual(const CompressibleTensor & rhs) const {
+bool Tensor::IsEqual(const Tensor & rhs) const {
    if(m_cDimensions != rhs.m_cDimensions) {
       return false;
    }
@@ -766,7 +756,7 @@ bool CompressibleTensor::IsEqual(const CompressibleTensor & rhs) const {
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
    const DimensionInfo * pRhsDimensionInfo = rhs.GetDimensions();
 
-   size_t cValues = m_cVectorLength;
+   size_t cScores = m_cVectorLength;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       const DimensionInfo * const pDimension1 = &pThisDimensionInfo[iDimension];
       const DimensionInfo * const pDimension2 = &pRhsDimensionInfo[iDimension];
@@ -777,8 +767,8 @@ bool CompressibleTensor::IsEqual(const CompressibleTensor & rhs) const {
       }
 
       if(0 != cSplits) {
-         EBM_ASSERT(!IsMultiplyError(cValues, cSplits + 1)); // we're accessing allocated memory, so it can't overflow
-         cValues *= cSplits + 1;
+         EBM_ASSERT(!IsMultiplyError(cScores, cSplits + 1)); // we're accessing allocated memory, so it can't overflow
+         cScores *= cSplits + 1;
 
          const ActiveDataType * pD1Cur = pDimension1->m_aSplits;
          const ActiveDataType * pD2Cur = pDimension2->m_aSplits;
@@ -793,9 +783,9 @@ bool CompressibleTensor::IsEqual(const CompressibleTensor & rhs) const {
       }
    }
 
-   const FloatEbmType * pV1Cur = &m_aValues[0];
-   const FloatEbmType * pV2Cur = &rhs.m_aValues[0];
-   const FloatEbmType * const pV1End = pV1Cur + cValues;
+   const FloatFast * pV1Cur = &m_aScores[0];
+   const FloatFast * pV2Cur = &rhs.m_aScores[0];
+   const FloatFast * const pV1End = pV1Cur + cScores;
    do {
       if(UNLIKELY(*pV1Cur != *pV2Cur)) {
          return false;

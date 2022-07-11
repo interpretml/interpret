@@ -233,6 +233,10 @@ class BaseEBM(BaseEstimator):
             self.bin_budget_frac = bin_budget_frac
             self.privacy_schema = privacy_schema
 
+            if random_state is not None:
+                warn(f"Privacy violation: using a fixed random_state of {random_state} will cause deterministic noise additions."
+                        "This capability is only for debugging/testing. Set random_state to None to remove this warning.")
+
     def fit(self, X, y, sample_weight=None):  # noqa: C901
         """ Fits model to provided samples.
 
@@ -313,6 +317,8 @@ class BaseEBM(BaseEstimator):
 
             bin_levels = [self.max_bins, self.max_interaction_bins]
 
+        init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
+
         binning_result = construct_bins(
             X=X,
             sample_weight=sample_weight,
@@ -326,6 +332,7 @@ class BaseEBM(BaseEstimator):
             delta=bin_delta, 
             composition=composition,
             privacy_schema=privacy_schema,
+            random_state=init_seed,
         )
         feature_names_in = binning_result[0]
         feature_types_in = binning_result[1]
@@ -344,7 +351,7 @@ class BaseEBM(BaseEstimator):
             term_features = [(int(x),) for x in self.mains]
 
         if is_differential_privacy:
-             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
+            # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             domain_size = 1 if is_classifier(self) else max_target - min_target
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
             training_eps = self.epsilon - bin_eps
@@ -374,7 +381,6 @@ class BaseEBM(BaseEstimator):
             interactions = 0
         else:
             noise_scale = None
-
             bin_data_weights = None
             boosting_flags = Native.GenerateUpdateOptions_Default
             inner_bags = self.inner_bags
@@ -382,15 +388,18 @@ class BaseEBM(BaseEstimator):
             early_stopping_tolerance = self.early_stopping_tolerance
             interactions = self.interactions
 
-        init_seed = EBMUtils.normalize_initial_random_seed(self.random_state)
-
         native = Native.get_native_singleton()
         bagged_seed = init_seed
         bag_weights = []
         bags = []
         for _ in range(self.outer_bags):
-            bagged_seed = native.generate_random_number(bagged_seed, 1416147523)
-            bag = EBMUtils.make_bag(y, self.validation_size, bagged_seed, is_classifier(self))
+            bagged_seed = native.generate_deterministic_seed(bagged_seed, 886321150)
+            bag = EBMUtils.make_bag(
+                y,
+                self.validation_size,
+                bagged_seed,
+                is_classifier(self) and not is_differential_privacy
+            )
             bags.append(bag)
             if bag is None:
                 if sample_weight is None:
@@ -421,7 +430,7 @@ class BaseEBM(BaseEstimator):
         bagged_seed = init_seed
         parallel_args = []
         for idx in range(self.outer_bags):
-            bagged_seed = native.generate_random_number(bagged_seed, 1416147523)
+            bagged_seed = native.generate_deterministic_seed(bagged_seed, 13098686)
             parallel_args.append(
                 (
                     dataset,
@@ -457,7 +466,7 @@ class BaseEBM(BaseEstimator):
 
         if n_classes > 2:
             if isinstance(interactions, int):
-               if interactions != 0:
+                if interactions != 0:
                     warn("Detected multiclass problem. Forcing interactions to 0. Multiclass interactions work except for global visualizations, so the line below setting interactions to zero can be disabled if you know what you are doing.")
                     interactions = 0
             elif len(interactions) != 0:
@@ -562,7 +571,7 @@ class BaseEBM(BaseEstimator):
             bagged_seed = init_seed
             parallel_args = []
             for idx in range(self.outer_bags):
-                bagged_seed = native.generate_random_number(bagged_seed, 1416147523)
+                bagged_seed = native.generate_deterministic_seed(bagged_seed, 521040308)
                 parallel_args.append(
                     (
                         dataset,
@@ -604,9 +613,9 @@ class BaseEBM(BaseEstimator):
         # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
         _deduplicate_bins(bins)
 
-        bagged_additive_terms = (np.array([model[idx] for model in models], np.float64) for idx in range(len(term_features)))
+        bagged_scores = (np.array([model[idx] for model in models], np.float64) for idx in range(len(term_features)))
 
-        term_features, bagged_additive_terms = _order_terms(term_features, bagged_additive_terms)
+        term_features, bagged_scores = _order_terms(term_features, bagged_scores)
 
         if is_differential_privacy:
             # for now we only support mains for DP models
@@ -622,10 +631,10 @@ class BaseEBM(BaseEstimator):
                 term_features
             )
 
-        additive_terms, term_standard_deviations, intercept, bagged_additive_terms = _process_terms(
+        term_scores, term_standard_deviations, intercept, bagged_scores = _process_terms(
             n_classes, 
             n_samples, 
-            bagged_additive_terms, 
+            bagged_scores, 
             bin_weights,
             bag_weights
         )
@@ -668,8 +677,8 @@ class BaseEBM(BaseEstimator):
         # per-term
         self.term_features_ = term_features
         self.bin_weights_ = bin_weights
-        self.bagged_additive_terms_ = bagged_additive_terms
-        self.additive_terms_ = additive_terms
+        self.bagged_scores_ = bagged_scores
+        self.term_scores_ = term_scores
         self.term_standard_deviations_ = term_standard_deviations
 
         # general
@@ -680,14 +689,14 @@ class BaseEBM(BaseEstimator):
 
         return self
 
-    def _to_json(self, properties='interpretable'):
-        """ Converts the model to a JSON representation.
+    def _to_inner_jsonable(self, properties='interpretable'):
+        """ Converts the inner model to a JSONable representation.
 
         Args:
             properties: 'minimal', 'interpretable', 'mergeable', 'all'
 
         Returns:
-            JSON string
+            JSONable object
         """
 
         if properties == 'minimal':
@@ -705,19 +714,17 @@ class BaseEBM(BaseEstimator):
 
         j = {}
 
-        j['version'] = '1.0'
-
         # future-proof support for multi-output models
         outputs = []
         output = {}
         if is_classifier(self):
             if len(self.classes_) <= 2:
                 # include 1 class classification in the binary classification category and use -inf in the intercept
-                output['output_type'] = 'binary_classification'
+                output['output_type'] = 'binary'
             else:
-                # distinquish from binary classification so that we can support ordinal classification someday
+                # distinquish from binary classification so that we can support 'ordinal' classification someday
                 # https://en.wikipedia.org/wiki/Ordinal_regression
-                output['output_type'] = 'multinomial_classification'
+                output['output_type'] = 'multinomial'
             output['classes'] = self.classes_.tolist()
             output['link_function'] = 'logit' # logistic is the inverse link function for logit
         else:
@@ -892,37 +899,115 @@ class BaseEBM(BaseEstimator):
             features.append(feature)
         j['features'] = features
 
-        standard_deviations = getattr(self, 'term_standard_deviations_', None)
-        bagged_additive_terms = getattr(self, 'bagged_additive_terms_', None)
-        bin_counts = getattr(self, 'bin_counts_', None)
+        standard_deviations_all = getattr(self, 'term_standard_deviations_', None)
+        bagged_scores_all = getattr(self, 'bagged_scores_', None)
+        bin_counts_all = getattr(self, 'bin_counts_', None)
 
         terms = []
         for term_idx in range(len(self.term_features_)):
             term = {}
             term['term_features'] = [self.feature_names_in_[feature_idx] for feature_idx in self.term_features_[term_idx]]
-            term['scores'] = EBMUtils.jsonify_lists(self.additive_terms_[term_idx].tolist())
+            term['scores'] = EBMUtils.jsonify_lists(self.term_scores_[term_idx].tolist())
             if 1 <= level:
-                if standard_deviations is not None:
-                   term_standard_deviations = standard_deviations[term_idx] 
-                   if term_standard_deviations is not None:
-                        term['standard_deviations'] = EBMUtils.jsonify_lists(term_standard_deviations.tolist())
+                if standard_deviations_all is not None:
+                   standard_deviations = standard_deviations_all[term_idx] 
+                   if standard_deviations is not None:
+                        term['standard_deviations'] = EBMUtils.jsonify_lists(standard_deviations.tolist())
             if 2 <= level:
-                if bagged_additive_terms is not None:
-                   term_bagged_additive_terms = bagged_additive_terms[term_idx] 
-                   if term_bagged_additive_terms is not None:
-                        term['bagged_scores'] = EBMUtils.jsonify_lists(term_bagged_additive_terms.tolist())
+                if bagged_scores_all is not None:
+                   bagged_scores = bagged_scores_all[term_idx] 
+                   if bagged_scores is not None:
+                        term['bagged_scores'] = EBMUtils.jsonify_lists(bagged_scores.tolist())
             if 3 <= level:
-                if bin_counts is not None:
-                   term_bin_counts = bin_counts[term_idx] 
-                   if term_bin_counts is not None:
-                        term['bin_counts'] = term_bin_counts.tolist()
+                if bin_counts_all is not None:
+                   bin_counts = bin_counts_all[term_idx] 
+                   if bin_counts is not None:
+                        term['bin_counts'] = bin_counts.tolist()
             if 1 <= level:
                 term['bin_weights'] = EBMUtils.jsonify_lists(self.bin_weights_[term_idx].tolist())
             
             terms.append(term)
         j['terms'] = terms
 
-        return json.dumps(j, allow_nan=False, indent=2)
+        return j
+
+    def _to_outer_jsonable(self, properties='interpretable'):
+        """ Converts the outer model to a JSONable representation.
+
+        Args:
+            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+
+        Returns:
+            JSONable object
+        """
+
+        # NOTES: When recording edits to the EBM within a single file, we should:
+        #        1) Have the final EBM section first.  This allows people to diff two models and the diffs for 
+        #           the current model (the most important information) will be at the top. If people are comparing a 
+        #           non-edited model to an edited model then they will be comparing the non-edited model to the 
+        #           current model, which is what we want. When people open the file they'll see the current model, 
+        #           which will confuse people less.
+        #        2) Have the initial model LAST.  This will help separate the final and inital model spacially.
+        #           Someone examining the models won't accidentlly stray as easily from the current model into the 
+        #           initial model while examining them. This also helps prevent the diffing tool from getting
+        #           confused and diffing parts of the final model with parts of the initial model if there are
+        #           substantial changes. Two final models that have the same initial model should then have a large
+        #           unmodified section at the bottom, which the diffing tool should easily identify and keep
+        #           together as one block since diffing tools look for longest unmodified sections of text
+        #        3) The edits in the MIDDLE, starting from the LAST edit to the FIRST edit chronologically.
+        #           If two models are derrived from the same initial model, then they will share a common initial
+        #           block of text at the bottom of the file. If the two models share a few edits, then the shared edits
+        #           will be at the bottom and will therefore form a larger block of unmodified text along with the
+        #           initial model.  Since diff tools look for longest unmodified blocks, this will gobble up the initial 
+        #           model and the initial edits together first, and thus leave the final models for comparison with
+        #           eachother. All edits should have a bi-directional nature so someone could start
+        #           from the final model and work backwards to the initial model, or vice versa. The overall file
+        #           can then be viewed as a reverse chronological ordering from the final model back to its
+        #           original/initial model.
+        # - A non-edited EBM file should be saved with just the single JSON for the model and not an initial and 
+        #   final model.  The only section should be marked with the tag "ebm" so that tools that read in EBMs
+        #   Are compatible with both editied and non-edited files.  The tools will always look for the "ebm"
+        #   section, which will be in both non-edited EBMs and edited EBMs at the top.
+        # - The file would look like this for an edited EBMs:
+        #   {
+        #     "version": "1.0"
+        #     "ebm": { FINAL_EBM_JSON }
+        #     "edits": [
+        #       { NEWEST_EDIT_JSON },
+        #       { MID_EDITs_JSON },
+        #       { OLDEST_EDIT_JSON }
+        #     ]
+        #     "initial_ebm": { INITIAL_EBM_JSON }
+        #   }
+        # - The file would look like this for an unedited EBMs:
+        #   {
+        #     "version": "1.0"
+        #     "ebm": { EBM_JSON }
+        #   }
+        # - In python, we could contain these in attributes called "initial_ebm" which would contain a fully formed ebm
+        #   and "edits", which would contain a list of the edits.  These fields wouldn't be present in a scikit-learn
+        #   generated EBM, but would appear if the user edited the EBM, or if they loaded one that had edits.
+
+        inner = self._to_inner_jsonable(properties)
+
+        outer = {}
+        outer['version'] = '1.0'
+        outer['ebm'] = inner
+
+        return outer
+
+    def _to_json(self, properties='interpretable'):
+        """ Converts the model to a JSON representation.
+
+        Args:
+            properties: 'minimal', 'interpretable', 'mergeable', 'all'
+
+        Returns:
+            JSON string
+        """
+
+        outer = self._to_outer_jsonable(properties)
+        return json.dumps(outer, allow_nan=False, indent=2)
 
     def decision_function(self, X):
         """ Predict scores from model before calling the link function.
@@ -944,7 +1029,7 @@ class BaseEBM(BaseEstimator):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
+            self.term_scores_, 
             self.term_features_
         )
 
@@ -964,17 +1049,17 @@ class BaseEBM(BaseEstimator):
         check_is_fitted(self, "has_fitted_")
 
         mod_counts = remove_last2(getattr(self, 'bin_counts_', self.bin_weights_), self.bin_weights_)
-        mod_additive_terms = remove_last2(self.additive_terms_, self.bin_weights_)
+        mod_term_scores = remove_last2(self.term_scores_, self.bin_weights_)
         mod_term_standard_deviations = remove_last2(self.term_standard_deviations_, self.bin_weights_)
         for term_idx, feature_idxs in enumerate(self.term_features_):
-            mod_additive_terms[term_idx] = trim_tensor(mod_additive_terms[term_idx], trim_low=[True] * len(feature_idxs))
+            mod_term_scores[term_idx] = trim_tensor(mod_term_scores[term_idx], trim_low=[True] * len(feature_idxs))
             mod_term_standard_deviations[term_idx] = trim_tensor(mod_term_standard_deviations[term_idx], trim_low=[True] * len(feature_idxs))
             mod_counts[term_idx] = trim_tensor(mod_counts[term_idx], trim_low=[True] * len(feature_idxs))
 
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for errors, scores in zip(mod_term_standard_deviations, mod_additive_terms):
+        for errors, scores in zip(mod_term_standard_deviations, mod_term_scores):
             lower_bound = min(lower_bound, np.min(scores - errors))
             upper_bound = max(upper_bound, np.max(scores + errors))
 
@@ -991,7 +1076,7 @@ class BaseEBM(BaseEstimator):
         density_list = []
         keep_idxs = []
         for term_idx, feature_idxs in enumerate(self.term_features_):
-            model_graph = mod_additive_terms[term_idx]
+            model_graph = mod_term_scores[term_idx]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
             errors = mod_term_standard_deviations[term_idx]
@@ -1227,7 +1312,7 @@ class BaseEBM(BaseEstimator):
                 data_dicts.append(data_dict)
 
             for term_idx, binned_data in eval_terms(X, n_samples, self.feature_names_in_, self.feature_types_in_, self.bins_, self.term_features_):
-                scores = self.additive_terms_[term_idx][tuple(binned_data)]
+                scores = self.term_scores_[term_idx][tuple(binned_data)]
                 feature_idxs = self.term_features_[term_idx]
                 for row_idx in range(n_samples):
                     term_name = term_names[term_idx]
@@ -1238,25 +1323,25 @@ class BaseEBM(BaseEstimator):
                     else:
                         data_dicts[row_idx]["values"][term_idx] = ""
 
-            scores = ebm_decision_function(
+            sample_scores = ebm_decision_function(
                 X, 
                 n_samples, 
                 self.feature_names_in_, 
                 self.feature_types_in_, 
                 self.bins_, 
                 self.intercept_, 
-                self.additive_terms_, 
+                self.term_scores_, 
                 self.term_features_
             )
 
             if is_classifier(self):
                 # Handle binary classification case -- softmax only works with 0s appended
-                if scores.ndim == 1:
-                    scores = np.c_[np.zeros(scores.shape), scores]
+                if sample_scores.ndim == 1:
+                    sample_scores = np.c_[np.zeros(sample_scores.shape), sample_scores]
 
-                scores = softmax(scores)
+                sample_scores = softmax(sample_scores)
 
-            perf_dicts = gen_perf_dicts(scores, y, is_classifier(self))
+            perf_dicts = gen_perf_dicts(sample_scores, y, is_classifier(self))
             for row_idx in range(n_samples):
                 perf = None if perf_dicts is None else perf_dicts[row_idx]
                 perf_list.append(perf)
@@ -1264,9 +1349,9 @@ class BaseEBM(BaseEstimator):
 
         selector = gen_local_selector(data_dicts, is_classification=is_classifier(self))
 
-        additive_terms = remove_last2(self.additive_terms_, self.bin_weights_)
+        term_scores = remove_last2(self.term_scores_, self.bin_weights_)
         for term_idx, feature_idxs in enumerate(self.term_features_):
-            additive_terms[term_idx] = trim_tensor(additive_terms[term_idx], trim_low=[True] * len(feature_idxs))
+            term_scores[term_idx] = trim_tensor(term_scores[term_idx], trim_low=[True] * len(feature_idxs))
 
         internal_obj = {
             "overall": None,
@@ -1275,7 +1360,7 @@ class BaseEBM(BaseEstimator):
                 {
                     "explanation_type": "ebm_local",
                     "value": {
-                        "scores": additive_terms,
+                        "scores": term_scores,
                         "intercept": self.intercept_,
                         "perf": perf_list,
                     },
@@ -1320,29 +1405,29 @@ class BaseEBM(BaseEstimator):
                         return make_histogram_edges(min_val, max_val, histogram_bin_counts)
         return None
 
-    def get_importances(self, style='avg_weight'):
+    def get_importances(self, importance_type='avg_weight'):
         """ Provides the term importances
 
         Args:
-            style: the type of term importance requested ('avg_weight', 'min_max')
+            importance_type: the type of term importance requested ('avg_weight', 'min_max')
 
         Returns:
             An array term importances with one importance per additive term
         """
 
-        if style == 'avg_weight':
+        if importance_type == 'avg_weight':
             importances = np.empty(len(self.term_features_), np.float64)
             for i in range(len(self.term_features_)):
-                mean_abs_score = np.abs(self.additive_terms_[i])
+                mean_abs_score = np.abs(self.term_scores_[i])
                 if is_classifier(self) and 2 < len(self.classes_):
                     mean_abs_score = np.average(mean_abs_score, axis=-1)
                 mean_abs_score = np.average(mean_abs_score, weights=self.bin_weights_[i])
                 importances.itemset(i, mean_abs_score)
             return importances
-        elif style == 'min_max':
-            return np.array([np.max(tensor) - np.min(tensor) for tensor in self.additive_terms_], np.float64)
+        elif importance_type == 'min_max':
+            return np.array([np.max(tensor) - np.min(tensor) for tensor in self.term_scores_], np.float64)
         else:
-            raise ValueError(f"Unrecognized style: {style}")
+            raise ValueError(f"Unrecognized importance_type: {importance_type}")
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
@@ -1453,7 +1538,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
+            self.term_scores_, 
             self.term_features_
         )
 
@@ -1483,7 +1568,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
+            self.term_scores_, 
             self.term_features_
         )
 
@@ -1521,7 +1606,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
+            self.term_scores_, 
             self.term_features_
         )
 
@@ -1646,7 +1731,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
+            self.term_scores_, 
             self.term_features_
         )
 
@@ -1671,7 +1756,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
+            self.term_scores_, 
             self.term_features_
         )
 
@@ -1705,7 +1790,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42,
+        random_state=None,
         # Differential Privacy
         epsilon=1,
         delta=1e-5,
@@ -1790,7 +1875,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
+            self.term_scores_, 
             self.term_features_
         )
 
@@ -1820,7 +1905,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
+            self.term_scores_, 
             self.term_features_
         )
 
@@ -1861,7 +1946,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         max_leaves=3,
         # Overall
         n_jobs=-2,
-        random_state=42,
+        random_state=None,
         # Differential Privacy
         epsilon=1,
         delta=1e-5,
@@ -1946,7 +2031,7 @@ class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             self.feature_types_in_, 
             self.bins_, 
             self.intercept_, 
-            self.additive_terms_, 
+            self.term_scores_, 
             self.term_features_
         )
 

@@ -85,18 +85,18 @@ static const uint_fast64_t k_oneTimePadRandomSeed[64] {
    uint_fast64_t { 8350484291935387907U } // 64
 };
 
-uint_fast64_t RandomStream::GetOneTimePadConversion(uint_fast64_t seed) {
+uint_fast64_t RandomDeterministic::GetOneTimePadConversion(uint_fast64_t seed) {
    static_assert(CountBitsRequiredPositiveMax<uint64_t>() ==
       sizeof(k_oneTimePadRandomSeed) / sizeof(k_oneTimePadRandomSeed[0]),
       "the one time pad must have the same length as the number of bits"
-   );
+      );
    EBM_ASSERT(seed == static_cast<uint_fast64_t>(static_cast<uint64_t>(seed)));
 
    // this number generates a perfectly valid converted seed in a single pass if the user passes us a seed of zero
    uint_fast64_t result = uint_fast64_t { 0x6b79a38fd52c4e71 };
    const uint_fast64_t * pRandom = k_oneTimePadRandomSeed;
    do {
-      if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } & seed))) {
+      if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } &seed))) {
          result ^= *pRandom;
       }
       ++pRandom;
@@ -105,7 +105,7 @@ uint_fast64_t RandomStream::GetOneTimePadConversion(uint_fast64_t seed) {
    return result;
 }
 
-void RandomStream::Initialize(const uint64_t seed) {
+void RandomDeterministic::Initialize(const uint64_t seed) {
    constexpr uint_fast64_t initializeSeed = { 0xa75f138b4a162cfd };
 
    m_state1 = initializeSeed;
@@ -117,7 +117,7 @@ void RandomStream::Initialize(const uint64_t seed) {
 
    uint_fast64_t randomBits = originalRandomBits;
    // the lowest bit of our result needs to be 1 to make our number odd (per the paper)
-   uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } & randomBits) | uint_fast64_t { 1 };
+   uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } &randomBits) | uint_fast64_t { 1 };
    randomBits >>= 4; // remove the bits that we used
    // disallow zeros for our hex digits by ORing 1
    const uint_fast16_t disallowMapFuture = (uint_fast16_t { 1 } << sanitizedSeed) | uint_fast16_t { 1 };
@@ -154,7 +154,9 @@ void RandomStream::Initialize(const uint64_t seed) {
          randomBits >>= 4;
       } while(LIKELY(uint_fast64_t { 0 } != randomBits));
       // ok, this is sort of a two time pad I guess, but we shouldn't ever use it more than twice in real life
-      originalRandomBits = GetOneTimePadConversion(originalRandomBits ^ Rand64());
+      const uint_fast64_t top = static_cast<uint_fast64_t>(Rand32());
+      const uint_fast64_t bottom = static_cast<uint_fast64_t>(Rand32());
+      originalRandomBits = GetOneTimePadConversion(originalRandomBits ^ ((top << 32) | bottom));
       randomBits = originalRandomBits;
    }
 exit_loop:;

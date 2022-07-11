@@ -19,7 +19,7 @@
 #include "CompressibleTensor.hpp"
 // feature includes
 #include "Feature.hpp"
-// FeatureGroup.h depends on FeatureInternal.h
+// FeatureGroup.hpp depends on FeatureInternal.h
 #include "FeatureGroup.hpp"
 // dataset depends on features
 #include "DataSetBoosting.hpp"
@@ -47,31 +47,31 @@ class BoosterCore final {
    size_t m_cFeatures;
    Feature * m_aFeatures;
 
-   size_t m_cFeatureGroups;
-   FeatureGroup ** m_apFeatureGroups;
+   size_t m_cTerms;
+   Term ** m_apTerms;
 
    size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
-   FloatEbmType m_validationWeightTotal;
-   FloatEbmType * m_aValidationWeights;
+   FloatBig m_validationWeightTotal;
+   FloatFast * m_aValidationWeights;
 
-   CompressibleTensor ** m_apCurrentModel;
-   CompressibleTensor ** m_apBestModel;
+   Tensor ** m_apCurrentTermTensors;
+   Tensor ** m_apBestTermTensors;
 
-   FloatEbmType m_bestModelMetric;
+   double m_bestModelMetric;
 
    size_t m_cBytesArrayEquivalentSplitMax;
 
    DataSetBoosting m_trainingSet;
    DataSetBoosting m_validationSet;
 
-   static void DeleteCompressibleTensors(const size_t cFeatureGroups, CompressibleTensor ** const apCompressibleTensors);
+   static void DeleteTensors(const size_t cTerms, Tensor ** const apTensors);
 
-   static ErrorEbmType InitializeCompressibleTensors(
-      const size_t cFeatureGroups,
-      const FeatureGroup * const * const apFeatureGroups,
+   static ErrorEbmType InitializeTensors(
+      const size_t cTerms,
+      const Term * const * const apTerms,
       const size_t cVectorLength,
-      CompressibleTensor *** papCompressibleTensorsOut
+      Tensor *** papTensorsOut
    );
 
    INLINE_ALWAYS ~BoosterCore() {
@@ -83,12 +83,12 @@ class BoosterCore final {
       SamplingSet::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
       free(m_aValidationWeights);
 
-      FeatureGroup::FreeFeatureGroups(m_cFeatureGroups, m_apFeatureGroups);
+      Term::FreeTerms(m_cTerms, m_apTerms);
 
       free(m_aFeatures);
 
-      DeleteCompressibleTensors(m_cFeatureGroups, m_apCurrentModel);
-      DeleteCompressibleTensors(m_cFeatureGroups, m_apBestModel);
+      DeleteTensors(m_cTerms, m_apCurrentTermTensors);
+      DeleteTensors(m_cTerms, m_apBestTermTensors);
    };
 
    WARNING_PUSH
@@ -98,14 +98,14 @@ class BoosterCore final {
       m_runtimeLearningTypeOrCountTargetClasses(0),
       m_cFeatures(0),
       m_aFeatures(nullptr),
-      m_cFeatureGroups(0),
-      m_apFeatureGroups(nullptr),
+      m_cTerms(0),
+      m_apTerms(nullptr),
       m_cSamplingSets(0),
       m_apSamplingSets(nullptr),
       m_validationWeightTotal(0),
       m_aValidationWeights(nullptr),
-      m_apCurrentModel(nullptr),
-      m_apBestModel(nullptr),
+      m_apCurrentTermTensors(nullptr),
+      m_apBestTermTensors(nullptr),
       m_bestModelMetric(0),
       m_cBytesArrayEquivalentSplitMax(0)
    {
@@ -131,12 +131,12 @@ public:
       return m_cBytesArrayEquivalentSplitMax;
    }
 
-   INLINE_ALWAYS size_t GetCountFeatureGroups() const {
-      return m_cFeatureGroups;
+   INLINE_ALWAYS size_t GetCountTerms() const {
+      return m_cTerms;
    }
 
-   INLINE_ALWAYS FeatureGroup * const * GetFeatureGroups() const {
-      return m_apFeatureGroups;
+   INLINE_ALWAYS Term * const * GetTerms() const {
+      return m_apTerms;
    }
 
    INLINE_ALWAYS DataSetBoosting * GetTrainingSet() {
@@ -155,27 +155,27 @@ public:
       return m_apSamplingSets;
    }
 
-   INLINE_ALWAYS FloatEbmType GetValidationWeightTotal() const {
+   INLINE_ALWAYS FloatBig GetValidationWeightTotal() const {
       return m_validationWeightTotal;
    }
 
-   INLINE_ALWAYS const FloatEbmType * GetValidationWeights() const {
+   INLINE_ALWAYS const FloatFast * GetValidationWeights() const {
       return m_aValidationWeights;
    }
 
-   INLINE_ALWAYS CompressibleTensor * const * GetCurrentModel() const {
-      return m_apCurrentModel;
+   INLINE_ALWAYS Tensor * const * GetCurrentModel() const {
+      return m_apCurrentTermTensors;
    }
 
-   INLINE_ALWAYS CompressibleTensor * const * GetBestModel() const {
-      return m_apBestModel;
+   INLINE_ALWAYS Tensor * const * GetBestModel() const {
+      return m_apBestTermTensors;
    }
 
-   INLINE_ALWAYS FloatEbmType GetBestModelMetric() const {
+   INLINE_ALWAYS double GetBestModelMetric() const {
       return m_bestModelMetric;
    }
 
-   INLINE_ALWAYS void SetBestModelMetric(const FloatEbmType bestModelMetric) {
+   INLINE_ALWAYS void SetBestModelMetric(const double bestModelMetric) {
       m_bestModelMetric = bestModelMetric;
    }
 
@@ -183,14 +183,14 @@ public:
 
    static ErrorEbmType Create(
       BoosterShell * const pBoosterShell,
-      const size_t cFeatureGroups,
+      const size_t cTerms,
       const size_t cSamplingSets,
-      const FloatEbmType * const optionalTempParams,
-      const IntEbmType * const aFeatureGroupsDimensionCounts,
-      const IntEbmType * const aFeatureGroupsFeatureIndexes,
+      const double * const optionalTempParams,
+      const IntEbmType * const acTermDimensions,
+      const IntEbmType * const aiTermFeatures,
       const unsigned char * const pDataSetShared,
       const BagEbmType * const aBag,
-      const FloatEbmType * const aPredictorScores
+      const double * const aInitScores
    );
 };
 

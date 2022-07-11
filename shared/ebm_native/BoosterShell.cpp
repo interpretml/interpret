@@ -6,12 +6,15 @@
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
+#include <string.h> // memcpy
 
 #include "ebm_native.h"
 #include "logging.h"
 #include "zones.h"
 
 #include "ebm_internal.hpp"
+
+#include "RandomStream.hpp"
 
 #include "CompressibleTensor.hpp"
 
@@ -29,9 +32,10 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    LOG_0(TraceLevelInfo, "Entered BoosterShell::Free");
 
    if(nullptr != pBoosterShell) {
-      CompressibleTensor::Free(pBoosterShell->m_pSmallChangeToModelAccumulatedFromSamplingSets);
-      CompressibleTensor::Free(pBoosterShell->m_pSmallChangeToModelOverwriteSingleSamplingSet);
-      free(pBoosterShell->m_aThreadByteBuffer1);
+      Tensor::Free(pBoosterShell->m_pTermUpdate);
+      Tensor::Free(pBoosterShell->m_pInnerTermUpdate);
+      free(pBoosterShell->m_aThreadByteBuffer1Fast);
+      free(pBoosterShell->m_aThreadByteBuffer1Big);
       free(pBoosterShell->m_aThreadByteBuffer2);
       free(pBoosterShell->m_aSumHistogramTargetEntry);
       free(pBoosterShell->m_aSumHistogramTargetEntryLeft);
@@ -69,16 +73,15 @@ ErrorEbmType BoosterShell::FillAllocations() {
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = m_pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
-      sizeof(HistogramTargetEntry<true>) : sizeof(HistogramTargetEntry<false>);
-
-   m_pSmallChangeToModelAccumulatedFromSamplingSets = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
-   if(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets) {
+   const size_t cBytesPerItem = GetHistogramTargetEntrySize<FloatBig>(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+      
+   m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cVectorLength);
+   if(nullptr == m_pTermUpdate) {
       goto failed_allocation;
    }
 
-   m_pSmallChangeToModelOverwriteSingleSamplingSet = CompressibleTensor::Allocate(k_cDimensionsMax, cVectorLength);
-   if(nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet) {
+   m_pInnerTermUpdate = Tensor::Allocate(k_cDimensionsMax, cVectorLength);
+   if(nullptr == m_pInnerTermUpdate) {
       goto failed_allocation;
    }
 
@@ -97,7 +100,7 @@ ErrorEbmType BoosterShell::FillAllocations() {
       goto failed_allocation;
    }
 
-   m_aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
+   m_aTempFloatVector = EbmMalloc<FloatFast>(cVectorLength);
    if(nullptr == m_aTempFloatVector) {
       goto failed_allocation;
    }
@@ -117,18 +120,35 @@ failed_allocation:;
    return Error_OutOfMemory;
 }
 
-HistogramBucketBase * BoosterShell::GetHistogramBucketBase(size_t cBytesRequired) {
-   HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
-   if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
+BinBase * BoosterShell::GetBinBaseFast(size_t cBytesRequired) {
+   BinBase * aBuffer = m_aThreadByteBuffer1Fast;
+   if(UNLIKELY(m_cThreadByteBufferCapacity1Fast < cBytesRequired)) {
       cBytesRequired <<= 1;
-      m_cThreadByteBufferCapacity1 = cBytesRequired;
-      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1 to %zu", cBytesRequired);
+      m_cThreadByteBufferCapacity1Fast = cBytesRequired;
+      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1Fast to %zu", cBytesRequired);
 
       free(aBuffer);
-      aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(cBytesRequired));
-      m_aThreadByteBuffer1 = aBuffer; // store it before checking it incase it's null so that we don't free old memory
+      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
+      m_aThreadByteBuffer1Fast = aBuffer; // store it before checking it incase it's null so that we don't free old memory
       if(nullptr == aBuffer) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetHistogramBucketBase OutOfMemory");
+         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetBinBaseFast OutOfMemory");
+      }
+   }
+   return aBuffer;
+}
+
+BinBase * BoosterShell::GetBinBaseBig(size_t cBytesRequired) {
+   BinBase * aBuffer = m_aThreadByteBuffer1Big;
+   if(UNLIKELY(m_cThreadByteBufferCapacity1Big < cBytesRequired)) {
+      cBytesRequired <<= 1;
+      m_cThreadByteBufferCapacity1Big = cBytesRequired;
+      LOG_N(TraceLevelInfo, "Growing BoosterShell::ThreadByteBuffer1Big to %zu", cBytesRequired);
+
+      free(aBuffer);
+      aBuffer = static_cast<BinBase *>(EbmMalloc<void>(cBytesRequired));
+      m_aThreadByteBuffer1Big = aBuffer; // store it before checking it incase it's null so that we don't free old memory
+      if(nullptr == aBuffer) {
+         LOG_0(TraceLevelWarning, "WARNING BoosterShell::GetBinBaseBig OutOfMemory");
       }
    }
    return aBuffer;
@@ -157,16 +177,16 @@ ErrorEbmType BoosterShell::GrowThreadByteBuffer2(const size_t cByteBoundaries) {
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBooster(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBooster(
    SeedEbmType randomSeed,
    const void * dataSet,
    const BagEbmType * bag,
-   const FloatEbmType * predictorScores,
-   IntEbmType countFeatureGroups,
+   const double * initScores,
+   IntEbmType countTerms,
    const IntEbmType * dimensionCounts,
    const IntEbmType * featureIndexes,
    IntEbmType countInnerBags,
-   const FloatEbmType * optionalTempParams,
+   const double * optionalTempParams,
    BoosterHandle * boosterHandleOut
 ) {
    LOG_N(
@@ -175,8 +195,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       "randomSeed=%" SeedEbmTypePrintf ", "
       "dataSet=%p, "
       "bag=%p, "
-      "predictorScores=%p, "
-      "countFeatureGroups=%" IntEbmTypePrintf ", "
+      "initScores=%p, "
+      "countTerms=%" IntEbmTypePrintf ", "
       "dimensionCounts=%p, "
       "featureIndexes=%p, "
       "countInnerBags=%" IntEbmTypePrintf ", "
@@ -186,8 +206,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       randomSeed,
       static_cast<const void *>(dataSet),
       static_cast<const void *>(bag),
-      static_cast<const void *>(predictorScores),
-      countFeatureGroups,
+      static_cast<const void *>(initScores),
+      countTerms,
       static_cast<const void *>(dimensionCounts),
       static_cast<const void *>(featureIndexes),
       countInnerBags,
@@ -208,16 +228,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_IllegalParamValue;
    }
 
-   if(countFeatureGroups < IntEbmType { 0 }) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster countFeatureGroups must be positive");
+   if(countTerms < IntEbmType { 0 }) {
+      LOG_0(TraceLevelError, "ERROR CreateBooster countTerms must be positive");
       return Error_IllegalParamValue;
    }
-   if(IntEbmType { 0 } != countFeatureGroups && nullptr == dimensionCounts) {
-      LOG_0(TraceLevelError, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countFeatureGroups");
+   if(IntEbmType { 0 } != countTerms && nullptr == dimensionCounts) {
+      LOG_0(TraceLevelError, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countTerms");
       return Error_IllegalParamValue;
    }
    // it's legal for featureIndexes to be null if there are no features indexed by our feature groups
-   // dimensionCounts can have zero features, so it could be legal for this to be null even if 0 < countFeatureGroups
+   // dimensionCounts can have zero features, so it could be legal for this to be null even if 0 < countTerms
 
    if(countInnerBags < IntEbmType { 0 }) {
       // 0 means use the full set. 1 means make a single bag which is useless, but allowed for comparison purposes
@@ -225,9 +245,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_UserParamValue;
    }
 
-   if(IsConvertError<size_t>(countFeatureGroups)) {
+   if(IsConvertError<size_t>(countTerms)) {
       // the caller should not have been able to allocate memory for dimensionCounts if this wasn't fittable in size_t
-      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countFeatureGroups)");
+      LOG_0(TraceLevelError, "ERROR CreateBooster IsConvertError<size_t>(countTerms)");
       return Error_IllegalParamValue;
    }
    if(IsConvertError<size_t>(countInnerBags)) {
@@ -237,7 +257,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_OutOfMemory;
    }
 
-   size_t cFeatureGroups = static_cast<size_t>(countFeatureGroups);
+   size_t cTerms = static_cast<size_t>(countTerms);
    size_t cInnerBags = static_cast<size_t>(countInnerBags);
 
    BoosterShell * const pBoosterShell = BoosterShell::Create();
@@ -245,18 +265,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_OutOfMemory;
    }
 
-   pBoosterShell->GetRandomStream()->InitializeUnsigned(randomSeed, k_boosterRandomizationMix);
+   pBoosterShell->GetRandomDeterministic()->InitializeUnsigned(randomSeed, k_boosterRandomizationMix);
 
    error = BoosterCore::Create(
       pBoosterShell,
-      cFeatureGroups,
+      cTerms,
       cInnerBags,
       optionalTempParams,
       dimensionCounts,
       featureIndexes,
       static_cast<const unsigned char *>(dataSet),
       bag,
-      predictorScores
+      initScores
    );
    if(UNLIKELY(Error_None != error)) {
       BoosterShell::Free(pBoosterShell);
@@ -277,7 +297,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateBoosterView(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CreateBoosterView(
    BoosterHandle boosterHandle,
    BoosterHandle * boosterHandleViewOut
 ) {
@@ -311,7 +331,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
       return Error_OutOfMemory;
    }
 
-   pBoosterShellNew->GetRandomStream()->Initialize(*pBoosterShellOriginal->GetRandomStream());
+   pBoosterShellNew->GetRandomDeterministic()->Initialize(*pBoosterShellOriginal->GetRandomDeterministic());
 
    BoosterCore * const pBoosterCore = pBoosterShellOriginal->GetBoosterCore();
    pBoosterCore->AddReferenceCount();
@@ -330,21 +350,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CreateB
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
-   FloatEbmType * modelFeatureGroupTensorOut
+   IntEbmType indexTerm,
+   double * termScoresTensorOut
 ) {
    LOG_N(
       TraceLevelInfo,
-      "Entered GetBestModelFeatureGroup: "
+      "Entered GetBestTermScores: "
       "boosterHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
-      "modelFeatureGroupTensorOut=%p, "
+      "indexTerm=%" IntEbmTypePrintf ", "
+      "termScoresTensorOut=%p, "
       ,
       static_cast<void *>(boosterHandle),
-      indexFeatureGroup,
-      static_cast<void *>(modelFeatureGroupTensorOut)
+      indexTerm,
+      static_cast<void *>(termScoresTensorOut)
    );
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
@@ -353,20 +373,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       return Error_IllegalParamValue;
    }
 
-   if(indexFeatureGroup < 0) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup must be positive");
+   if(indexTerm < 0) {
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm must be positive");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   size_t iTerm = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
+   if(pBoosterCore->GetCountTerms() <= iTerm) {
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
 
@@ -375,67 +395,69 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetBest
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
-      LOG_0(TraceLevelInfo, "Exited GetBestModelFeatureGroup no model");
+      LOG_0(TraceLevelInfo, "Exited GetBestTermScores no scores");
       return Error_None;
    }
 
-   if(nullptr == modelFeatureGroupTensorOut) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup modelFeatureGroupTensorOut cannot be nullptr");
+   if(nullptr == termScoresTensorOut) {
+      LOG_0(TraceLevelError, "ERROR GetBestTermScores termScoresTensorOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
-   // if pBoosterCore->GetFeatureGroups() is nullptr, then m_cFeatureGroups was 0, but we checked above that 
-   // iFeatureGroup was less than cFeatureGroups
-   EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
+   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
+   // iTerm was less than cTerms
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
-   size_t cValues = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const size_t cDimensions = pTerm->GetCountDimensions();
+   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cValues, cBins));
-         cValues *= cBins;
-         ++pFeatureGroupEntry;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
+         cScores *= cBins;
+         ++pTermEntry;
+      } while(pTermEntriesEnd != pTermEntry);
    }
 
    // if pBoosterCore->GetBestModel() is nullptr, then either:
-   //    1) m_cFeatureGroups was 0, but we checked above that iFeatureGroup was less than cFeatureGroups
+   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
    //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
-   CompressibleTensor * const pBestModel = pBoosterCore->GetBestModel()[iFeatureGroup];
-   EBM_ASSERT(nullptr != pBestModel);
-   EBM_ASSERT(pBestModel->GetExpanded()); // the model should have been expanded at startup
-   FloatEbmType * const pValues = pBestModel->GetValuePointer();
-   EBM_ASSERT(nullptr != pValues);
+   Tensor * const pBestTermTensor = pBoosterCore->GetBestModel()[iTerm];
+   EBM_ASSERT(nullptr != pBestTermTensor);
+   EBM_ASSERT(pBestTermTensor->GetExpanded()); // the tensor should have been expanded at startup
+   FloatFast * const aTermScores = pBestTermTensor->GetScoresPointer();
+   EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
-   memcpy(modelFeatureGroupTensorOut, pValues, sizeof(*pValues) * cValues);
+   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cScores));
+   static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
+   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
 
-   LOG_0(TraceLevelInfo, "Exited GetBestModelFeatureGroup");
+   LOG_0(TraceLevelInfo, "Exited GetBestTermScores");
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
-   FloatEbmType * modelFeatureGroupTensorOut
+   IntEbmType indexTerm,
+   double * termScoresTensorOut
 ) {
    LOG_N(
       TraceLevelInfo,
-      "Entered GetCurrentModelFeatureGroup: "
+      "Entered GetCurrentTermScores: "
       "boosterHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
-      "modelFeatureGroupTensorOut=%p, "
+      "indexTerm=%" IntEbmTypePrintf ", "
+      "termScoresTensorOut=%p, "
       ,
       static_cast<void *>(boosterHandle),
-      indexFeatureGroup,
-      static_cast<void *>(modelFeatureGroupTensorOut)
+      indexTerm,
+      static_cast<void *>(termScoresTensorOut)
    );
 
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
@@ -444,20 +466,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       return Error_IllegalParamValue;
    }
 
-   if(indexFeatureGroup < 0) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup must be positive");
+   if(indexTerm < 0) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm must be positive");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   size_t iTerm = static_cast<size_t>(indexTerm);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
-   if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup above the number of feature groups that we have");
+   if(pBoosterCore->GetCountTerms() <= iTerm) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
 
@@ -466,53 +488,55 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GetCurr
       // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
       // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
       // model as having no logits, since the number of logits can be one less than the number of target classes.
-      LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureGroup no model");
+      LOG_0(TraceLevelInfo, "Exited GetCurrentTermScores no scores");
       return Error_None;
    }
 
-   if(nullptr == modelFeatureGroupTensorOut) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup modelFeatureGroupTensorOut cannot be nullptr");
+   if(nullptr == termScoresTensorOut) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentTermScores termScoresTensorOut cannot be nullptr");
       return Error_IllegalParamValue;
    }
 
-   // if pBoosterCore->GetFeatureGroups() is nullptr, then m_cFeatureGroups was 0, but we checked above that 
-   // iFeatureGroup was less than cFeatureGroups
-   EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
+   // if pBoosterCore->GetTerms() is nullptr, then m_cTerms was 0, but we checked above that 
+   // iTerm was less than cTerms
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
-   size_t cValues = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const size_t cDimensions = pTerm->GetCountDimensions();
+   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
-      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
+      const TermEntry * pTermEntry = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
-         const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+         const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cValues, cBins));
-         cValues *= cBins;
-         ++pFeatureGroupEntry;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
+         cScores *= cBins;
+         ++pTermEntry;
+      } while(pTermEntriesEnd != pTermEntry);
    }
 
    // if pBoosterCore->GetCurrentModel() is nullptr, then either:
-   //    1) m_cFeatureGroups was 0, but we checked above that iFeatureGroup was less than cFeatureGroups
+   //    1) m_cTerms was 0, but we checked above that iTerm was less than cTerms
    //    2) If m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0, but we checked for this above too
    EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
 
-   CompressibleTensor * const pCurrentModel = pBoosterCore->GetCurrentModel()[iFeatureGroup];
-   EBM_ASSERT(nullptr != pCurrentModel);
-   EBM_ASSERT(pCurrentModel->GetExpanded()); // the model should have been expanded at startup
-   FloatEbmType * const pValues = pCurrentModel->GetValuePointer();
-   EBM_ASSERT(nullptr != pValues);
+   Tensor * const pCurrentTermTensor = pBoosterCore->GetCurrentModel()[iTerm];
+   EBM_ASSERT(nullptr != pCurrentTermTensor);
+   EBM_ASSERT(pCurrentTermTensor->GetExpanded()); // the tensor should have been expanded at startup
+   FloatFast * const aTermScores = pCurrentTermTensor->GetScoresPointer();
+   EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*pValues), cValues));
-   memcpy(modelFeatureGroupTensorOut, pValues, sizeof(*pValues) * cValues);
+   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cScores));
+   static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
+   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
 
-   LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureGroup");
+   LOG_0(TraceLevelInfo, "Exited GetCurrentTermScores");
    return Error_None;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBooster(
+EBM_API_BODY void EBM_CALLING_CONVENTION FreeBooster(
    BoosterHandle boosterHandle
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeBooster: boosterHandle=%p", static_cast<void *>(boosterHandle));

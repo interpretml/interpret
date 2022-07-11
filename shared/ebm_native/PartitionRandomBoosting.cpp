@@ -38,10 +38,10 @@ public:
 
    static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
    ) {
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
@@ -64,21 +64,21 @@ public:
       );
 
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
 
-      HistogramBucketBase * const aHistogramBucketsBase = pBoosterShell->GetHistogramBucketBase();
-      HistogramBucket<bClassification> * const aHistogramBuckets = aHistogramBucketsBase->GetHistogramBucket<bClassification>();
+      BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
+      auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
 
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
-      EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
+      EBM_ASSERT(1 <= pTerm->GetCountDimensions());
 
-      CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet =
-         pBoosterShell->GetOverwritableModelUpdate();
+      Tensor * const pInnerTermUpdate =
+         pBoosterShell->GetInnerTermUpdate();
 
       const IntEbmType * pLeavesMax1 = aLeavesMax;
-      const FeatureGroupEntry * pFeatureGroupEntry1 = pFeatureGroup->GetFeatureGroupEntries();
-      const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry1 + pFeatureGroup->GetCountDimensions();
+      const TermEntry * pTermEntry1 = pTerm->GetTermEntries();
+      const TermEntry * const pTermEntriesEnd = pTermEntry1 + pTerm->GetCountDimensions();
       size_t cSlicesTotal = 0;
       size_t cSlicesPlusRandomMax = 0;
       size_t cCollapsedTensorCells = 1;
@@ -101,7 +101,7 @@ public:
             }
          }
 
-         const Feature * const pFeature = pFeatureGroupEntry1->m_pFeature;
+         const Feature * const pFeature = pTermEntry1->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
@@ -126,8 +126,8 @@ public:
             EBM_ASSERT(!IsMultiplyError(cCollapsedTensorCells, cSlices)); // our allocated histogram is bigger
             cCollapsedTensorCells *= cSlices;
          }
-         ++pFeatureGroupEntry1;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry1);
+         ++pTermEntry1;
+      } while(pTermEntriesEnd != pTermEntry1);
 
       // since we subtract 1 from cPossibleSplitLocations, we need to check that our final slice length isn't longer
       cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesTotal);
@@ -138,7 +138,7 @@ public:
       }
       const size_t cBytesSlicesPlusRandom = sizeof(size_t) * cSlicesPlusRandomMax;
 
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * cCollapsedTensorCells);
+      error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * cCollapsedTensorCells);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
@@ -149,8 +149,8 @@ public:
       const size_t cBytesSlices = sizeof(size_t) * cSlicesTotal;
 
       // promote to bytes
-      EBM_ASSERT(!IsMultiplyError(cBytesPerHistogramBucket, cCollapsedTensorCells)); // our allocated histogram is bigger
-      cCollapsedTensorCells *= cBytesPerHistogramBucket;
+      EBM_ASSERT(!IsMultiplyError(cBytesPerBin, cCollapsedTensorCells)); // our allocated histogram is bigger
+      cCollapsedTensorCells *= cBytesPerBin;
       if(IsAddError(cBytesSlices, cCollapsedTensorCells)) {
          LOG_0(TraceLevelWarning, "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
          return Error_OutOfMemory;
@@ -168,9 +168,9 @@ public:
       size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
 
       const IntEbmType * pLeavesMax2 = aLeavesMax;
-      RandomStream * const pRandomStream = pBoosterShell->GetRandomStream();
+      RandomDeterministic * const pRandomDeterministic = pBoosterShell->GetRandomDeterministic();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
-      const FeatureGroupEntry * pFeatureGroupEntry2 = pFeatureGroup->GetFeatureGroupEntries();
+      const TermEntry * pTermEntry2 = pTerm->GetTermEntries();
       do {
          size_t cTreeSplitsMax;
          if(nullptr == pLeavesMax2) {
@@ -190,7 +190,7 @@ public:
             }
          }
 
-         const Feature * const pFeature = pFeatureGroupEntry2->m_pFeature;
+         const Feature * const pFeature = pTermEntry2->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          size_t cPossibleSplitLocations = cBins - size_t { 1 };
@@ -212,7 +212,7 @@ public:
                EBM_ASSERT(1 <= cSplits);
                const size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cSplits;
                do {
-                  const size_t iRandom = pRandomStream->Next(cPossibleSplitLocations);
+                  const size_t iRandom = pRandomDeterministic->NextFast(cPossibleSplitLocations);
                   size_t * const pRandomSwap = pcItemsInNextSliceOrBytesInCurrentSlice2 + iRandom;
                   const size_t temp = *pRandomSwap;
                   *pRandomSwap = *pcItemsInNextSliceOrBytesInCurrentSlice2;
@@ -226,16 +226,16 @@ public:
             *pcItemsInNextSliceOrBytesInCurrentSlice2 = cBins; // index 1 past the last item
             ++pcItemsInNextSliceOrBytesInCurrentSlice2;
          }
-         ++pFeatureGroupEntry2;
-      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry2);
+         ++pTermEntry2;
+      } while(pTermEntriesEnd != pTermEntry2);
 
       const IntEbmType * pLeavesMax3 = aLeavesMax;
       const size_t * pcBytesInSliceEnd;
-      const FeatureGroupEntry * pFeatureGroupEntry3 = pFeatureGroup->GetFeatureGroupEntries();
+      const TermEntry * pTermEntry3 = pTerm->GetTermEntries();
       size_t * pcItemsInNextSliceOrBytesInCurrentSlice3 = acItemsInNextSliceOrBytesInCurrentSlice;
       size_t cBytesCollapsedTensor3;
       while(true) {
-         EBM_ASSERT(pFeatureGroupEntry3 < pFeatureGroupEntryEnd);
+         EBM_ASSERT(pTermEntry3 < pTermEntriesEnd);
 
          size_t cLeavesMax;
          if(nullptr == pLeavesMax3) {
@@ -256,15 +256,15 @@ public:
          }
 
          // the first dimension is special.  we put byte until next item into it instead of counts remaining
-         const Feature * const pFirstFeature = pFeatureGroupEntry3->m_pFeature;
-         ++pFeatureGroupEntry3;
+         const Feature * const pFirstFeature = pTermEntry3->m_pFeature;
+         ++pTermEntry3;
          const size_t cFirstBins = pFirstFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cFirstBins); // we don't boost on empty training sets
          if(size_t { 1 } < cFirstBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
             const size_t cFirstSlices = EbmMin(cLeavesMax, cFirstBins);
-            cBytesCollapsedTensor3 = cBytesPerHistogramBucket * cFirstSlices;
+            cBytesCollapsedTensor3 = cBytesPerBin * cFirstSlices;
 
             pcBytesInSliceEnd = acItemsInNextSliceOrBytesInCurrentSlice + cFirstSlices;
             size_t iPrev = size_t { 0 };
@@ -272,7 +272,7 @@ public:
                const size_t iCur = *pcItemsInNextSliceOrBytesInCurrentSlice3;
                EBM_ASSERT(iPrev < iCur);
                // turn these into bytes from the previous
-               *pcItemsInNextSliceOrBytesInCurrentSlice3 = (iCur - iPrev) * cBytesPerHistogramBucket;
+               *pcItemsInNextSliceOrBytesInCurrentSlice3 = (iCur - iPrev) * cBytesPerBin;
                iPrev = iCur;
                ++pcItemsInNextSliceOrBytesInCurrentSlice3;
             } while(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice3);
@@ -285,7 +285,7 @@ public:
 
       struct RandomSplitState {
          size_t         m_cItemsInSliceRemaining;
-         size_t         m_cBytesSubtractResetCollapsedHistogramBucket;
+         size_t         m_cBytesSubtractResetCollapsedBin;
 
          const size_t * m_pcItemsInNextSlice;
          const size_t * m_pcItemsInNextSliceEnd;
@@ -293,7 +293,7 @@ public:
       RandomSplitState randomSplitState[k_cDimensionsMax - size_t { 1 }]; // the first dimension is special cased
       RandomSplitState * pStateInit = &randomSplitState[0];
 
-      for(; pFeatureGroupEntryEnd != pFeatureGroupEntry3; ++pFeatureGroupEntry3) {
+      for(; pTermEntriesEnd != pTermEntry3; ++pTermEntry3) {
          size_t cLeavesMax;
          if(nullptr == pLeavesMax3) {
             cLeavesMax = size_t { 1 };
@@ -312,7 +312,7 @@ public:
             }
          }
 
-         const Feature * const pFeature = pFeatureGroupEntry3->m_pFeature;
+         const Feature * const pFeature = pTermEntry3->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
          if(size_t { 1 } < cBins) {
@@ -320,7 +320,7 @@ public:
 
             size_t cSlices = EbmMin(cLeavesMax, cBins);
 
-            pStateInit->m_cBytesSubtractResetCollapsedHistogramBucket = cBytesCollapsedTensor3;
+            pStateInit->m_cBytesSubtractResetCollapsedBin = cBytesCollapsedTensor3;
 
             EBM_ASSERT(!IsMultiplyError(cBytesCollapsedTensor3, cSlices)); // our allocated histogram is bigger
             cBytesCollapsedTensor3 *= cSlices;
@@ -347,13 +347,13 @@ public:
       }
 
       // put the histograms right after our slice array
-      HistogramBucket<bClassification> * const aCollapsedHistogramBuckets =
-         reinterpret_cast<HistogramBucket<bClassification> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
+      auto * const aCollapsedBins =
+         reinterpret_cast<Bin<FloatBig, bClassification> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
 
-      // TODO: move this into a helper function on the histogram bucket object that zeros N bytes (if we know the bytes).  Mostly as a warning to understand where we're using memset
+      // TODO: move this into a helper function on the Bin object that zeros N bytes (if we know the bytes).  Mostly as a warning to understand where we're using memset
 
       // C standard guarantees that zeroing integer types (size_t) is a zero, and IEEE 754 guarantees 
-      // that zeroing a floating point is zero.  Our HistogramBucket objects are POD and also only contain
+      // that zeroing a floating point is zero.  Our Bin objects are POD and also only contain
       // floating point types and size_t
       //
       // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
@@ -362,44 +362,44 @@ public:
       // integer type, the object representation where all the bits are zero shall be a representation 
       // of the value zero in that type.
       static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
-      memset(aCollapsedHistogramBuckets, 0, cBytesCollapsedTensor3);
-      const HistogramBucket<bClassification> * const pCollapsedHistogramBucketEnd =
-         reinterpret_cast<HistogramBucket<bClassification> *>(reinterpret_cast<char *>(aCollapsedHistogramBuckets) +
+      memset(aCollapsedBins, 0, cBytesCollapsedTensor3);
+      const auto * const pCollapsedBinEnd =
+         reinterpret_cast<Bin<FloatBig, bClassification> *>(reinterpret_cast<char *>(aCollapsedBins) +
             cBytesCollapsedTensor3);
 
       // we special case the first dimension, so drop it by subtracting
-      EBM_ASSERT(&randomSplitState[pFeatureGroup->GetCountSignificantDimensions() - size_t { 1 }] == pStateInit);
+      EBM_ASSERT(&randomSplitState[pTerm->GetCountSignificantDimensions() - size_t { 1 }] == pStateInit);
 
-      const HistogramBucket<bClassification> * pHistogramBucket = aHistogramBuckets;
-      HistogramBucket<bClassification> * pCollapsedHistogramBucket1 = aCollapsedHistogramBuckets;
+      const auto * pBin = aBins;
+      auto * pCollapsedBin1 = aCollapsedBins;
 
       {
       move_next_slice:;
 
          // for the first dimension, acItemsInNextSliceOrBytesInCurrentSlice contains the number of bytes to proceed 
-         // until the next pHistogramBucketSliceEnd point.  For the second dimension and higher, it contains a 
+         // until the next pBinSliceEnd point.  For the second dimension and higher, it contains a 
          // count of items for the NEXT slice.  The 0th element contains the count of items for the
          // 1st slice.  Yeah, it's pretty confusing, but it allows for some pretty compact code in this
          // super critical inner loop without overburdening the CPU registers when we execute the outer loop.
          const size_t * pcItemsInNextSliceOrBytesInCurrentSlice = acItemsInNextSliceOrBytesInCurrentSlice;
          do {
-            const HistogramBucket<bClassification> * const pHistogramBucketSliceEnd = 
-               reinterpret_cast<const HistogramBucket<bClassification> *>(
-               reinterpret_cast<const char *>(pHistogramBucket) + *pcItemsInNextSliceOrBytesInCurrentSlice);
+            const auto * const pBinSliceEnd =
+               reinterpret_cast<const Bin<FloatBig, bClassification> *>(
+               reinterpret_cast<const char *>(pBin) + *pcItemsInNextSliceOrBytesInCurrentSlice);
 
             do {
-               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, pBoosterShell->GetHistogramBucketsEndDebug());
-               pCollapsedHistogramBucket1->Add(*pHistogramBucket, cVectorLength);
+               ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetBinsBigEndDebug());
+               pCollapsedBin1->Add(*pBin, cVectorLength);
 
-               // we're walking through all buckets, so just move to the next one in the flat array, 
+               // we're walking through all bins, so just move to the next one in the flat array, 
                // with the knowledge that we'll figure out it's multi-dimenional index below
-               pHistogramBucket = 
-                  GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucket, 1);
+               pBin = 
+                  IndexBin(cBytesPerBin, pBin, 1);
 
-            } while(LIKELY(pHistogramBucketSliceEnd != pHistogramBucket));
+            } while(LIKELY(pBinSliceEnd != pBin));
 
-            pCollapsedHistogramBucket1 = 
-               GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCollapsedHistogramBucket1, 1);
+            pCollapsedBin1 = 
+               IndexBin(cBytesPerBin, pCollapsedBin1, 1);
 
             ++pcItemsInNextSliceOrBytesInCurrentSlice;
          } while(PREDICTABLE(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice));
@@ -412,9 +412,9 @@ public:
                // jump over it on the first loop, but I wasn't able to make the Visual Studio compiler do it
 
                pState->m_cItemsInSliceRemaining = cItemsInSliceRemaining;
-               pCollapsedHistogramBucket1 = reinterpret_cast<HistogramBucket<bClassification> *>(
-                  reinterpret_cast<char *>(pCollapsedHistogramBucket1) -
-                  pState->m_cBytesSubtractResetCollapsedHistogramBucket);
+               pCollapsedBin1 = reinterpret_cast<Bin<FloatBig, bClassification> *>(
+                  reinterpret_cast<char *>(pCollapsedBin1) -
+                  pState->m_cBytesSubtractResetCollapsedBin);
 
                goto move_next_slice;
             }
@@ -445,18 +445,18 @@ public:
       //      Then, before exiting, on the last one we collapse the collapsed tensor even more into just a single
       //      bin from which we can calculate the parent and subtract the best child from the parent.
       
-      //FloatEbmType gain;
-      //FloatEbmType gainParent = FloatEbmType { 0 };
-      FloatEbmType gain = FloatEbmType { 0 };
+      //FloatBig gain;
+      //FloatBig gainParent = FloatBig { 0 };
+      FloatBig gain = 0;
 
 
-      const FeatureGroupEntry * pFeatureGroupEntry4 = pFeatureGroup->GetFeatureGroupEntries();
+      const TermEntry * pTermEntry4 = pTerm->GetTermEntries();
       size_t iDimensionWrite = ~size_t { 0 }; // this is -1, but without the compiler warning
       size_t cBinsWrite;
       do {
-         cBinsWrite = pFeatureGroupEntry4->m_pFeature->GetCountBins();
+         cBinsWrite = pTermEntry4->m_pFeature->GetCountBins();
          ++iDimensionWrite;
-         ++pFeatureGroupEntry4;
+         ++pTermEntry4;
       } while(cBinsWrite <= size_t { 1 });
 
       const size_t * const pcBytesInSliceLast = pcBytesInSliceEnd - size_t { 1 };
@@ -464,7 +464,7 @@ public:
       const size_t cFirstSplits = pcBytesInSliceLast - acItemsInNextSliceOrBytesInCurrentSlice;
       // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 splits and 
       // one last item to indicate the termination point
-      error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimensionWrite, cFirstSplits);
+      error = pInnerTermUpdate->SetCountSplits(iDimensionWrite, cFirstSplits);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          free(pBuffer);
@@ -472,14 +472,14 @@ public:
       }
       const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
       if(LIKELY(size_t { 0 } != cFirstSplits)) {
-         ActiveDataType * pSplitFirst = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimensionWrite);
+         ActiveDataType * pSplitFirst = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
          // converting negative to positive number is defined behavior in C++ and uses twos compliment
          size_t iSplitFirst = static_cast<size_t>(ptrdiff_t { -1 });
          do {
             EBM_ASSERT(pcBytesInSlice2 < pcBytesInSliceLast);
             EBM_ASSERT(0 != *pcBytesInSlice2);
-            EBM_ASSERT(0 == *pcBytesInSlice2 % cBytesPerHistogramBucket);
-            iSplitFirst += *pcBytesInSlice2 / cBytesPerHistogramBucket;
+            EBM_ASSERT(0 == *pcBytesInSlice2 % cBytesPerBin);
+            iSplitFirst += *pcBytesInSlice2 / cBytesPerBin;
             *pSplitFirst = iSplitFirst;
             ++pSplitFirst;
             ++pcBytesInSlice2;
@@ -491,22 +491,22 @@ public:
       if(PREDICTABLE(pStateInit != pState)) {
          do {
             do {
-               cBinsWrite = pFeatureGroupEntry4->m_pFeature->GetCountBins();
+               cBinsWrite = pTermEntry4->m_pFeature->GetCountBins();
                ++iDimensionWrite;
-               ++pFeatureGroupEntry4;
+               ++pTermEntry4;
             } while(cBinsWrite <= size_t { 1 });
 
             ++pcBytesInSlice2; // we have one less split than we have slices, so move to the next one
 
             const size_t * pcItemsInNextSliceLast = pState->m_pcItemsInNextSliceEnd - size_t { 1 };
-            error = pSmallChangeToModelOverwriteSingleSamplingSet->SetCountSplits(iDimensionWrite, pcItemsInNextSliceLast - pcBytesInSlice2);
+            error = pInnerTermUpdate->SetCountSplits(iDimensionWrite, pcItemsInNextSliceLast - pcBytesInSlice2);
             if(Error_None != error) {
                // already logged
                free(pBuffer);
                return error;
             }
             if(pcItemsInNextSliceLast != pcBytesInSlice2) {
-               ActiveDataType * pSplit = pSmallChangeToModelOverwriteSingleSamplingSet->GetSplitPointer(iDimensionWrite);
+               ActiveDataType * pSplit = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
                size_t iSplit2 = *pcItemsInNextSliceLast - size_t { 1 };
                *pSplit = iSplit2;
                --pcItemsInNextSliceLast;
@@ -523,88 +523,83 @@ public:
          } while(PREDICTABLE(pStateInit != pState));
       }
 
-      FloatEbmType * pUpdate = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-      HistogramBucket<bClassification> * pCollapsedHistogramBucket2 = aCollapsedHistogramBuckets;
+      FloatFast * pUpdateScore = pInnerTermUpdate->GetScoresPointer();
+      auto * pCollapsedBin2 = aCollapsedBins;
 
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          do {
-            HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
-               pCollapsedHistogramBucket2->GetHistogramTargetEntry();
+            auto * const pHistogramTargetEntry = pCollapsedBin2->GetHistogramTargetEntry();
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iVector].m_sumGradients);
+               FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iVector].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                // for DP-EBMs, we can't zero one of the class scores as we can for logits since we're returning a sum
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               *pUpdate = update;
-               ++pUpdate;
+               *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
+               ++pUpdateScore;
             }
-            pCollapsedHistogramBucket2 = GetHistogramBucketByIndex<bClassification>(
-               cBytesPerHistogramBucket, pCollapsedHistogramBucket2, 1);
-         } while(pCollapsedHistogramBucketEnd != pCollapsedHistogramBucket2);
+            pCollapsedBin2 = IndexBin(cBytesPerBin, pCollapsedBin2, 1);
+         } while(pCollapsedBinEnd != pCollapsedBin2);
       } else {
          do {
-            const size_t cSamples = pCollapsedHistogramBucket2->GetCountSamplesInBucket();
+            const size_t cSamples = pCollapsedBin2->GetCountSamples();
             if(UNLIKELY(size_t { 0 } == cSamples)) {
                // TODO: this section can probably be eliminated since ComputeSinglePartitionUpdate now checks
                // for zero in the denominator, but I'm leaving it here to see how the removal of the 
-               // GetCountSamplesInBucket property works in the future in combination with the check on hessians
+               // GetCountSamples property works in the future in combination with the check on hessians
 
                // normally, we'd eliminate regions where the number of items was zero before putting down a split
                // but for random splits we can't know beforehand if there will be zero splits, so we need to check
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  FloatEbmType update = FloatEbmType { 0 };
-
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                   // if we eliminated the space for the logit, we'd need to eliminate one assignment here
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-                  *pUpdate = update;
-                  ++pUpdate;
+                  *pUpdateScore = 0;
+                  ++pUpdateScore;
                }
             } else {
-               HistogramTargetEntry<bClassification> * const pHistogramTargetEntry =
-                  pCollapsedHistogramBucket2->GetHistogramTargetEntry();
+               auto * const pHistogramTargetEntry = pCollapsedBin2->GetHistogramTargetEntry();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-               FloatEbmType zeroLogit = FloatEbmType { 0 };
+               FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  FloatEbmType update;
+                  FloatBig updateScore;
                   if(bClassification) {
-                     update = EbmStats::ComputeSinglePartitionUpdate(
+                     updateScore = EbmStats::ComputeSinglePartitionUpdate(
                         pHistogramTargetEntry[iVector].m_sumGradients,
                         pHistogramTargetEntry[iVector].GetSumHessians()
                      );
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                      if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
                         if(size_t { 0 } == iVector) {
-                           zeroLogit = update;
+                           zeroLogit = updateScore;
                         }
-                        update -= zeroLogit;
+                        updateScore -= zeroLogit;
                      }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
                   } else {
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                     update = EbmStats::ComputeSinglePartitionUpdate(
+                     updateScore = EbmStats::ComputeSinglePartitionUpdate(
                         pHistogramTargetEntry[iVector].m_sumGradients,
-                        pCollapsedHistogramBucket2->GetWeightInBucket()
+                        pCollapsedBin2->GetWeight()
                      );
                   }
-                  *pUpdate = update;
-                  ++pUpdate;
+                  *pUpdateScore = SafeConvertFloat<FloatFast>(updateScore);
+                  ++pUpdateScore;
                }
             }
-            pCollapsedHistogramBucket2 = GetHistogramBucketByIndex<bClassification>(
-               cBytesPerHistogramBucket, pCollapsedHistogramBucket2, 1);
-         } while(pCollapsedHistogramBucketEnd != pCollapsedHistogramBucket2);
+            pCollapsedBin2 = IndexBin(
+               cBytesPerBin, pCollapsedBin2, 1);
+         } while(pCollapsedBinEnd != pCollapsedBin2);
       }
 
       free(pBuffer);
-      *pTotalGain = gain;
+      *pTotalGain = static_cast<double>(gain);
       return Error_None;
    }
 };
@@ -617,10 +612,10 @@ public:
 
    INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
@@ -633,7 +628,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          return PartitionRandomBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pBoosterShell,
-            pFeatureGroup,
+            pTerm,
             options,
             aLeavesMax,
             pTotalGain
@@ -641,7 +636,7 @@ public:
       } else {
          return PartitionRandomBoostingTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pBoosterShell,
-            pFeatureGroup,
+            pTerm,
             options,
             aLeavesMax,
             pTotalGain
@@ -658,10 +653,10 @@ public:
 
    INLINE_ALWAYS static ErrorEbmType Func(
       BoosterShell * const pBoosterShell,
-      const FeatureGroup * const pFeatureGroup,
+      const Term * const pTerm,
       const GenerateUpdateOptionsType options,
       const IntEbmType * const aLeavesMax,
-      FloatEbmType * const pTotalGain
+      double * const pTotalGain
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
@@ -670,7 +665,7 @@ public:
 
       return PartitionRandomBoostingInternal<k_dynamicClassification>::Func(
          pBoosterShell,
-         pFeatureGroup,
+         pTerm,
          options,
          aLeavesMax,
          pTotalGain
@@ -680,10 +675,10 @@ public:
 
 extern ErrorEbmType PartitionRandomBoosting(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 ) {
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -691,7 +686,7 @@ extern ErrorEbmType PartitionRandomBoosting(
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       return PartitionRandomBoostingTarget<2>::Func(
          pBoosterShell,
-         pFeatureGroup,
+         pTerm,
          options,
          aLeavesMax,
          pTotalGain
@@ -700,7 +695,7 @@ extern ErrorEbmType PartitionRandomBoosting(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       return PartitionRandomBoostingInternal<k_regression>::Func(
          pBoosterShell,
-         pFeatureGroup,
+         pTerm,
          options,
          aLeavesMax,
          pTotalGain

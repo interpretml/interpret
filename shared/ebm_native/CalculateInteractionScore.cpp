@@ -6,6 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
+#include <string.h> // memcpy
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -29,35 +30,39 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void BinInteraction(
-   InteractionCore * const pInteractionCore,
-   const FeatureGroup * const pFeatureGroup,
-   HistogramBucketBase * const aHistogramBuckets
+extern void BinInteraction(InteractionShell * const pInteractionShell, const Term * const pTerm);
+
+extern void TensorTotalsBuild(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const Term * const pTerm,
+   BinBase * aAuxiliaryBinsBase,
+   BinBase * const aBinsBase
 #ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
+   , BinBase * const aBinsBaseDebugCopy
+   , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 );
 
-extern FloatEbmType PartitionTwoDimensionalInteraction(
+extern double PartitionTwoDimensionalInteraction(
    InteractionCore * const pInteractionCore,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
-   HistogramBucketBase * pAuxiliaryBucketZone,
-   HistogramBucketBase * const aHistogramBuckets
+   BinBase * aAuxiliaryBinsBase,
+   BinBase * const aBinsBase
 #ifndef NDEBUG
-   , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
+   , const BinBase * const aBinsBaseDebugCopy
+   , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 );
 
 static ErrorEbmType CalcInteractionStrengthInternal(
    InteractionShell * const pInteractionShell,
    InteractionCore * const pInteractionCore,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const InteractionOptionsType options,
    const size_t cSamplesRequiredForChildSplitMin,
-   FloatEbmType * const pInteractionStrengthAvgOut
+   double * const pInteractionStrengthAvgOut
 ) {
    // TODO : we NEVER use the hessian term (currently) in HistogramTargetEntry when calculating interaction scores, but we're spending time calculating 
    // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
@@ -69,140 +74,148 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    LOG_0(TraceLevelVerbose, "Entered CalcInteractionStrengthInternal");
 
    // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountDimensions());
-   EBM_ASSERT(1 <= pFeatureGroup->GetCountSignificantDimensions());
-   EBM_ASSERT(pFeatureGroup->GetCountDimensions() == pFeatureGroup->GetCountSignificantDimensions());
+   EBM_ASSERT(1 <= pTerm->GetCountDimensions());
+   EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
+   EBM_ASSERT(pTerm->GetCountDimensions() == pTerm->GetCountSignificantDimensions());
 
-   size_t cAuxillaryBucketsForBuildFastTotals = 0;
-   size_t cTotalBucketsMainSpace = 1;
-   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
+   size_t cAuxillaryBinsForBuildFastTotals = 0;
+   size_t cTotalBinsMainSpace = 1;
+   const TermEntry * pTermEntry = pTerm->GetTermEntries();
+   const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
    do {
-      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
       // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // our tensor code strips out features with 1 bin, and we'd need to do that here too if cBins was 1
       EBM_ASSERT(size_t { 2 } <= cBins);
-      // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
-      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-      // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation 
-      // that cTotalBucketsMainSpace would not overflow
-      EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
+      // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBinsForBuildFastTotals
+      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
+      EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
+      // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than cTotalBinsMainSpace, and we checked at allocation 
+      // that cTotalBinsMainSpace would not overflow
+      EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace));
       // this can overflow, but if it does then we're guaranteed to catch the overflow via the multiplication check below
-      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-      if(IsMultiplyError(cTotalBucketsMainSpace, cBins)) {
+      cAuxillaryBinsForBuildFastTotals += cTotalBinsMainSpace;
+      if(IsMultiplyError(cTotalBinsMainSpace, cBins)) {
          // unlike in the boosting code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what group of features our caller will give us for calculating the interaction scores,
          // so we need to check if our caller gave us a tensor that overflows multiplication
-         LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cTotalBucketsMainSpace, cBins)");
+         LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cTotalBinsMainSpace, cBins)");
          return Error_OutOfMemory;
       }
-      cTotalBucketsMainSpace *= cBins;
-      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
+      cTotalBinsMainSpace *= cBins;
+      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
+      EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
 
-      ++pFeatureGroupEntry;
-   } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
-
-   const size_t cAuxillaryBucketsForSplitting = 4;
-   const size_t cAuxillaryBuckets =
-      cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
-   if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
-      return Error_OutOfMemory;
-   }
-   const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
+      ++pTermEntry;
+   } while(pTermEntriesEnd != pTermEntry);
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || 
+      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)) 
+   {
       LOG_0(
          TraceLevelWarning,
-         "WARNING CalcInteractionStrengthInternal GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
+         "WARNING CalcInteractionStrengthInternal IsOverflowBinSize overflow"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)) {
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsMainSpace)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
+   const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBinsMainSpace;
 
    // this doesn't need to be freed since it's tracked and re-used by the class InteractionShell
-   HistogramBucketBase * const aHistogramBuckets = pInteractionShell->GetHistogramBucketBase(cBytesBuffer);
-   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+   BinBase * const aBinsFast = pInteractionShell->GetBinBaseFast(cBytesBufferFast);
+   if(UNLIKELY(nullptr == aBinsFast)) {
       // already logged
       return Error_OutOfMemory;
    }
+   aBinsFast->Zero(cBytesPerBinFast, cTotalBinsMainSpace);
 
-   if(bClassification) {
-      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<true> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   } else {
-      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<false> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
+#ifndef NDEBUG
+   const unsigned char * const pBinsFastEndDebug = reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast;
+   pInteractionShell->SetBinsFastEndDebug(pBinsFastEndDebug);
+#endif // NDEBUG
+
+   BinInteraction(pInteractionShell, pTerm);
+
+   const size_t cAuxillaryBinsForSplitting = 4;
+   const size_t cAuxillaryBins =
+      cAuxillaryBinsForBuildFastTotals < cAuxillaryBinsForSplitting ? cAuxillaryBinsForSplitting : cAuxillaryBinsForBuildFastTotals;
+   if(IsAddError(cTotalBinsMainSpace, cAuxillaryBins)) {
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsAddError(cTotalBinsMainSpace, cAuxillaryBins)");
+      return Error_OutOfMemory;
    }
 
-   HistogramBucketBase * pAuxiliaryBucketZone =
-      GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);
+   const size_t cTotalBinsBig = cTotalBinsMainSpace + cAuxillaryBins;
+
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsBig)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBinsBig;
+
+   BinBase * const aBinsBig = pInteractionShell->GetBinBaseBig(cBytesBufferBig);
+   if(UNLIKELY(nullptr == aBinsBig)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+   aBinsBig->Zero(cBytesPerBinBig, cAuxillaryBins, cTotalBinsMainSpace);
 
 #ifndef NDEBUG
-   const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
+   const unsigned char * const pBinsBigEndDebug = reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig;
 #endif // NDEBUG
 
-   BinInteraction(
-      pInteractionCore,
-      pFeatureGroup,
-      aHistogramBuckets
-#ifndef NDEBUG
-      , aHistogramBucketsEndDebug
-#endif // NDEBUG
-   );
+   // TODO: put this into it's own function that converts our fast floats to big floats
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
+   memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
+
+
+   // TODO: we can exit here back to python to allow caller modification to our histograms
+
 
 #ifndef NDEBUG
-   // make a copy of the original binned buckets for debugging purposes
-   HistogramBucketBase * const aHistogramBucketsDebugCopy =
-      EbmMalloc<HistogramBucketBase>(cTotalBucketsMainSpace, cBytesPerHistogramBucket);
-   if(nullptr != aHistogramBucketsDebugCopy) {
+   // make a copy of the original bins for debugging purposes
+   BinBase * const aBinsDebugCopy =
+      EbmMalloc<BinBase>(cTotalBinsMainSpace, cBytesPerBinBig);
+   if(nullptr != aBinsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTotalBucketsMainSpace * cBytesPerHistogramBucket;
-      memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
+      const size_t cBytesBufferDebug = cTotalBinsMainSpace * cBytesPerBinBig;
+      memcpy(aBinsDebugCopy, aBinsBig, cBytesBufferDebug);
    }
 #endif // NDEBUG
+
+   BinBase * aAuxiliaryBins =
+      IndexBin(cBytesPerBinBig, aBinsBig, cTotalBinsMainSpace);
 
    TensorTotalsBuild(
       runtimeLearningTypeOrCountTargetClasses,
-      pFeatureGroup,
-      pAuxiliaryBucketZone,
-      aHistogramBuckets
+      pTerm,
+      aAuxiliaryBins,
+      aBinsBig
 #ifndef NDEBUG
-      , aHistogramBucketsDebugCopy
-      , aHistogramBucketsEndDebug
+      , aBinsDebugCopy
+      , pBinsBigEndDebug
 #endif // NDEBUG
    );
 
-   if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
+   if(2 == pTerm->GetCountSignificantDimensions()) {
       LOG_0(TraceLevelVerbose, "CalcInteractionStrengthInternal Starting bin sweep loop");
 
-      FloatEbmType bestGain = PartitionTwoDimensionalInteraction(
+      double bestGain = PartitionTwoDimensionalInteraction(
          pInteractionCore,
-         pFeatureGroup,
+         pTerm,
          options,
          cSamplesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
-         aHistogramBuckets
+         aAuxiliaryBins,
+         aBinsBig
 #ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebug
+         , aBinsDebugCopy
+         , pBinsBigEndDebug
 #endif // NDEBUG
       );
 
@@ -210,16 +223,16 @@ static ErrorEbmType CalcInteractionStrengthInternal(
          // if totalWeight < 1 then bestGain could overflow to +inf, so do the division first
          const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
          EBM_ASSERT(nullptr != pDataSet);
-         const FloatEbmType totalWeight = pDataSet->GetWeightTotal();
-         EBM_ASSERT(FloatEbmType { 0 } < totalWeight); // if all are zeros we assume there are no weights and use the count
+         const double totalWeight = static_cast<double>(pDataSet->GetWeightTotal());
+         EBM_ASSERT(0 < totalWeight); // if all are zeros we assume there are no weights and use the count
          bestGain /= totalWeight;
 
-         if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<FloatEbmType>::max()))) {
+         if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<double>::max()))) {
             // We simplify our caller's handling by returning -lowest as our error indicator. -lowest will sort to being the
             // least important item, which is good, but it also signals an overflow without the weirness of NaNs.
-            EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<FloatEbmType>::infinity() == bestGain);
-            bestGain = k_illegalGain;
-         } else if(UNLIKELY(bestGain < FloatEbmType { 0 })) {
+            EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<double>::infinity() == bestGain);
+            bestGain = k_illegalGainDouble;
+         } else if(UNLIKELY(bestGain < 0)) {
             // gain can't mathematically be legally negative, but it can be here in the following situations:
             //   1) for impure interaction gain we subtract the parent partial gain, and there can be floating point
             //      noise that makes this slightly negative
@@ -230,8 +243,8 @@ static ErrorEbmType CalcInteractionStrengthInternal(
             //      here instead of inside the templated function.
 
             EBM_ASSERT(!std::isnan(bestGain));
-            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != bestGain);
-            bestGain = std::numeric_limits<FloatEbmType>::lowest() <= bestGain ? FloatEbmType { 0 } : k_illegalGain;
+            EBM_ASSERT(std::numeric_limits<double>::infinity() != bestGain);
+            bestGain = std::numeric_limits<double>::lowest() <= bestGain ? 0.0 : k_illegalGainDouble;
          } else {
             EBM_ASSERT(!std::isnan(bestGain));
             EBM_ASSERT(!std::isinf(bestGain));
@@ -240,18 +253,18 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal 2 != pFeatureGroup->GetCountSignificantDimensions()");
+      LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal 2 != pTerm->GetCountSignificantDimensions()");
 
       // TODO: handle this better
       if(nullptr != pInteractionStrengthAvgOut) {
          // for now, just return any interactions that have other than 2 dimensions as -inf, 
          // which means they won't be considered but indicates they were not handled
-         *pInteractionStrengthAvgOut = k_illegalGain;
+         *pInteractionStrengthAvgOut = k_illegalGainDouble;
       }
    }
 
 #ifndef NDEBUG
-   free(aHistogramBucketsDebugCopy);
+   free(aBinsDebugCopy);
 #endif // NDEBUG
 
    LOG_0(TraceLevelVerbose, "Exited CalcInteractionStrengthInternal");
@@ -262,13 +275,13 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 // race then it just doesn't get decremented as quickly, which we can live with
 static int g_cLogCalcInteractionStrengthParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInteractionStrength(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION CalcInteractionStrength(
    InteractionHandle interactionHandle,
    IntEbmType countDimensions,
    const IntEbmType * featureIndexes,
    InteractionOptionsType options,
    IntEbmType countSamplesRequiredForChildSplitMin,
-   FloatEbmType * avgInteractionStrengthOut
+   double * avgInteractionStrengthOut
 ) {
    LOG_COUNTED_N(
       &g_cLogCalcInteractionStrengthParametersMessages,
@@ -291,7 +304,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    );
 
    if(LIKELY(nullptr != avgInteractionStrengthOut)) {
-      *avgInteractionStrengthOut = k_illegalGain;
+      *avgInteractionStrengthOut = k_illegalGainDouble;
    }
 
    ErrorEbmType error;
@@ -329,7 +342,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
       if(IntEbmType { 0 } == countDimensions) {
          LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength empty feature list");
          if(LIKELY(nullptr != avgInteractionStrengthOut)) {
-            *avgInteractionStrengthOut = FloatEbmType { 0 };
+            *avgInteractionStrengthOut = 0.0;
          }
          return Error_None;
       } else {
@@ -347,46 +360,55 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    }
    size_t cDimensions = static_cast<size_t>(countDimensions);
 
-   FeatureGroup featureGroup;
-   featureGroup.Initialize(cDimensions, 0);
-   featureGroup.SetCountSignificantFeatures(cDimensions); // if we get past the loop below this will be true
-   FeatureGroupEntry * pFeatureGroupEntry = featureGroup.GetFeatureGroupEntries();
-
+   Term term;
+   TermEntry * pTermEntry = term.GetTermEntries();
    InteractionCore * const pInteractionCore = pInteractionShell->GetInteractionCore();
    const Feature * const aFeatures = pInteractionCore->GetFeatures();
-   const IntEbmType * pFeatureIndexes = featureIndexes;
-   const IntEbmType * const pFeatureIndexesEnd = featureIndexes + cDimensions;
+   const IntEbmType * piFeature = featureIndexes;
+   const IntEbmType * const piFeaturesEnd = featureIndexes + cDimensions;
+   size_t cTensorBins = 1;
    do {
-      const IntEbmType indexFeatureInterop = *pFeatureIndexes;
-      if(indexFeatureInterop < IntEbmType { 0 }) {
+      // TODO: merge this loop with the one below inside the internal function
+
+      const IntEbmType indexFeature = *piFeature;
+      if(indexFeature < IntEbmType { 0 }) {
          LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes value cannot be negative");
          return Error_IllegalParamValue;
       }
-      if(static_cast<IntEbmType>(pInteractionCore->GetCountFeatures()) <= indexFeatureInterop) {
+      if(static_cast<IntEbmType>(pInteractionCore->GetCountFeatures()) <= indexFeature) {
          LOG_0(TraceLevelError, "ERROR CalcInteractionStrength featureIndexes value must be less than the number of features");
          return Error_IllegalParamValue;
       }
-      const size_t iFeature = static_cast<size_t>(indexFeatureInterop);
+      const size_t iFeature = static_cast<size_t>(indexFeature);
       const Feature * const pFeature = &aFeatures[iFeature];
-      if(pFeature->GetCountBins() <= size_t { 1 }) {
+      const size_t cBins = pFeature->GetCountBins();
+      if(cBins <= size_t { 1 }) {
          LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength feature group contains a feature with only 1 bin");
          if(nullptr != avgInteractionStrengthOut) {
-            *avgInteractionStrengthOut = FloatEbmType { 0 };
+            *avgInteractionStrengthOut = double { 0 };
          }
          return Error_None;
       }
+      if(IsMultiplyError(cTensorBins, cBins)) {
+         LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrength IsMultiplyError(cTensorBins, cBins)");
+         return Error_OutOfMemory;
+      }
+      cTensorBins *= cBins;
 
-      pFeatureGroupEntry->m_pFeature = pFeature;
-      ++pFeatureGroupEntry;
+      pTermEntry->m_pFeature = pFeature;
+      ++pTermEntry;
 
-      ++pFeatureIndexes;
-   } while(pFeatureIndexesEnd != pFeatureIndexes);
+      ++piFeature;
+   } while(piFeaturesEnd != piFeature);
+   term.Initialize(cDimensions, 0);
+   term.SetCountTensorBins(cTensorBins);
+   term.SetCountSignificantFeatures(cDimensions); // if we get past the loop below this will be true
 
    if(size_t { 0 } == pInteractionCore->GetDataSetInteraction()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength zero samples");
       if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = FloatEbmType { 0 };
+         *avgInteractionStrengthOut = double { 0 };
       }
       return Error_None;
    }
@@ -396,7 +418,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    if(ptrdiff_t { 1 } == pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
       LOG_0(TraceLevelInfo, "INFO CalcInteractionStrength target with 1 class perfectly predicts the target");
       if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = FloatEbmType { 0 };
+         *avgInteractionStrengthOut = double { 0 };
       }
       return Error_None;
    }
@@ -405,7 +427,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    error = CalcInteractionStrengthInternal(
       pInteractionShell,
       pInteractionCore,
-      &featureGroup,
+      &term,
       options,
       cSamplesRequiredForChildSplitMin,
       avgInteractionStrengthOut
@@ -416,13 +438,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION CalcInt
    }
 
    if(nullptr != avgInteractionStrengthOut) {
-      EBM_ASSERT(k_illegalGain == *avgInteractionStrengthOut || FloatEbmType { 0 } <= *avgInteractionStrengthOut);
+      EBM_ASSERT(k_illegalGainDouble == *avgInteractionStrengthOut || double { 0 } <= *avgInteractionStrengthOut);
       LOG_COUNTED_N(
          pInteractionShell->GetPointerCountLogExitMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
          "Exited CalcInteractionStrength: "
-         "*avgInteractionStrengthOut=%" FloatEbmTypePrintf
+         "*avgInteractionStrengthOut=%le"
          , 
          *avgInteractionStrengthOut
       );

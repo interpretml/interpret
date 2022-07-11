@@ -21,13 +21,13 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class DataSetInteraction final {
-   FloatEbmType * m_aGradientsAndHessians;
+   FloatFast * m_aGradientsAndHessians;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
    size_t m_cFeatures;
 
-   FloatEbmType * m_aWeights;
-   FloatEbmType m_weightTotal;
+   FloatFast * m_aWeights;
+   FloatBig m_weightTotal;
 
 public:
 
@@ -52,20 +52,20 @@ public:
       const unsigned char * const pDataSetShared,
       const size_t cAllSamples,
       const BagEbmType * const aBag,
-      const FloatEbmType * const aPredictorScores,
+      const double * const aInitScores,
       const size_t cSetSamples,
       const size_t cWeights,
       const size_t cFeatures
    );
 
-   INLINE_ALWAYS const FloatEbmType * GetWeights() const {
+   INLINE_ALWAYS const FloatFast * GetWeights() const {
       return m_aWeights;
    }
-   INLINE_ALWAYS FloatEbmType GetWeightTotal() const {
+   INLINE_ALWAYS FloatBig GetWeightTotal() const {
       return m_weightTotal;
    }
 
-   INLINE_ALWAYS const FloatEbmType * GetGradientsAndHessiansPointer() const {
+   INLINE_ALWAYS const FloatFast * GetGradientsAndHessiansPointer() const {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }

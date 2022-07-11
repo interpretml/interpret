@@ -39,7 +39,7 @@ TEST_CASE("data_set_shared, zero features, three samples, regression") {
    ErrorEbmType error;
 
    constexpr IntEbmType k_cSamples = 3;
-   FloatEbmType targets[k_cSamples] { 0.3, 0.2, 0.1 };
+   double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
    part = SizeDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
@@ -103,7 +103,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, regression") {
    ErrorEbmType error;
    constexpr IntEbmType k_cSamples = 3;
    IntEbmType binnedData[k_cSamples] { 2, 1, 0 };
-   FloatEbmType targets[k_cSamples] { 0.3, 0.2, 0.1 };
+   double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
    part = SizeDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
@@ -301,8 +301,8 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, regression") 
    ErrorEbmType error;
 
    constexpr IntEbmType k_cSamples = 3;
-   FloatEbmType weights[k_cSamples] { 0.31, 0.21, 0.11 };
-   FloatEbmType targets[k_cSamples] { 0.3, 0.2, 0.1 };
+   double weights[k_cSamples] { 0.31, 0.21, 0.11 };
+   double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
    part = SizeDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
@@ -378,8 +378,8 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, regression") {
    ErrorEbmType error;
    constexpr IntEbmType k_cSamples = 3;
    IntEbmType binnedData[k_cSamples] { 2, 1, 0 };
-   FloatEbmType weights[k_cSamples] { 0.31, 0.21, 0.11 };
-   FloatEbmType targets[k_cSamples] { 0.3, 0.2, 0.1 };
+   double weights[k_cSamples] { 0.31, 0.21, 0.11 };
+   double targets[k_cSamples] { 0.3, 0.2, 0.1 };
 
    part = SizeDataSetHeader(2, 1, 1);
    CHECK(0 <= part);
@@ -454,7 +454,7 @@ TEST_CASE("data_set_shared, zero features, three samples, weights, classificatio
    ErrorEbmType error;
 
    constexpr IntEbmType k_cSamples = 3;
-   FloatEbmType weights[k_cSamples] { 0.31, 0.21, 0.11 };
+   double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    IntEbmType targets[k_cSamples] { 2, 1, 0 };
 
    part = SizeDataSetHeader(0, 1, 1);
@@ -530,7 +530,7 @@ TEST_CASE("data_set_shared, two features, 3 samples, weights, classification") {
    ErrorEbmType error;
    constexpr IntEbmType k_cSamples = 3;
    IntEbmType binnedData[k_cSamples] { 2, 1, 0 };
-   FloatEbmType weights[k_cSamples] { 0.31, 0.21, 0.11 };
+   double weights[k_cSamples] { 0.31, 0.21, 0.11 };
    IntEbmType targets[k_cSamples] { 2, 1, 0 };
 
    part = SizeDataSetHeader(2, 1, 1);

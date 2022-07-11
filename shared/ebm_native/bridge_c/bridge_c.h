@@ -33,7 +33,7 @@ struct ApplyValidationData {
    ptrdiff_t m_cRuntimeScores;
    ptrdiff_t m_cRuntimePack;
    BoolEbmType m_bHessianNeeded;
-   FloatEbmType m_metricOut;
+   double m_metricOut;
 };
 
 struct LossWrapper;
@@ -52,7 +52,7 @@ struct LossWrapper {
    // and it cannot be empty either since empty structures are not compliant in all C compilers
    // https://stackoverflow.com/questions/755305/empty-structure-in-c?rq=1
    void * m_pLoss;
-   FloatEbmType m_updateMultiple;
+   double m_updateMultiple;
    BoolEbmType m_bLossHasHessian;
    BoolEbmType m_bSuperSuperSpecialLossWhereTargetNotNeededOnlyMseLossQualifies;
    // these are C++ function pointer definitions that exist per-zone, and must remain hidden in the C interface

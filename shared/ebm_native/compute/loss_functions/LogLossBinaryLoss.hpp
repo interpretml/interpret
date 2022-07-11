@@ -31,9 +31,6 @@
 //      return -100000;
 //   }
 //
-//   INLINE_ALWAYS FloatEbmType GetUpdateMultiple() const noexcept override {
-//      return FloatEbmType { 1 };
-//   }
 //
 //};
 //

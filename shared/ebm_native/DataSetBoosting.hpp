@@ -22,12 +22,12 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class DataSetBoosting final {
-   FloatEbmType * m_aGradientsAndHessians;
-   FloatEbmType * m_aPredictorScores;
+   FloatFast * m_aGradientsAndHessians;
+   FloatFast * m_aSampleScores;
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
    size_t m_cSamples;
-   size_t m_cFeatureGroups;
+   size_t m_cTerms;
 
 public:
 
@@ -38,11 +38,11 @@ public:
 
    INLINE_ALWAYS void InitializeUnfailing() {
       m_aGradientsAndHessians = nullptr;
-      m_aPredictorScores = nullptr;
+      m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
       m_cSamples = 0;
-      m_cFeatureGroups = 0;
+      m_cTerms = 0;
    }
 
    void Destruct();
@@ -51,45 +51,45 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const bool bAllocateGradients,
       const bool bAllocateHessians,
-      const bool bAllocatePredictorScores,
+      const bool bAllocateSampleScores,
       const bool bAllocateTargetData,
       const unsigned char * const pDataSetShared,
       const BagEbmType direction,
       const BagEbmType * const aBag,
-      const FloatEbmType * const aPredictorScores,
+      const double * const aInitScores,
       const size_t cSetSamples,
-      const size_t cFeatureGroups,
-      const FeatureGroup * const * const apFeatureGroup
+      const size_t cTerms,
+      const Term * const * const apTerms
    );
 
-   INLINE_ALWAYS FloatEbmType * GetGradientsAndHessiansPointer() {
+   INLINE_ALWAYS FloatFast * GetGradientsAndHessiansPointer() {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS const FloatEbmType * GetGradientsAndHessiansPointer() const {
+   INLINE_ALWAYS const FloatFast * GetGradientsAndHessiansPointer() const {
       EBM_ASSERT(nullptr != m_aGradientsAndHessians);
       return m_aGradientsAndHessians;
    }
-   INLINE_ALWAYS FloatEbmType * GetPredictorScores() {
-      EBM_ASSERT(nullptr != m_aPredictorScores);
-      return m_aPredictorScores;
+   INLINE_ALWAYS FloatFast * GetSampleScores() {
+      EBM_ASSERT(nullptr != m_aSampleScores);
+      return m_aSampleScores;
    }
    INLINE_ALWAYS const StorageDataType * GetTargetDataPointer() const {
       EBM_ASSERT(nullptr != m_aTargetData);
       return m_aTargetData;
    }
-   // TODO: we can change this to take the GetIndexInputData() value directly, which we get from a loop index
-   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const FeatureGroup * const pFeatureGroup) const {
-      EBM_ASSERT(nullptr != pFeatureGroup);
-      EBM_ASSERT(pFeatureGroup->GetIndexInputData() < m_cFeatureGroups);
+   // TODO: we can change this to take the GetIndexTerm() value directly, which we get from a loop index
+   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const Term * const pTerm) const {
+      EBM_ASSERT(nullptr != pTerm);
+      EBM_ASSERT(pTerm->GetIndexTerm() < m_cTerms);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pFeatureGroup->GetIndexInputData()];
+      return m_aaInputData[pTerm->GetIndexTerm()];
    }
    INLINE_ALWAYS size_t GetCountSamples() const {
       return m_cSamples;
    }
-   INLINE_ALWAYS size_t GetCountFeatureGroups() const {
-      return m_cFeatureGroups;
+   INLINE_ALWAYS size_t GetCountTerms() const {
+      return m_cTerms;
    }
 };
 static_assert(std::is_standard_layout<DataSetBoosting>::value,

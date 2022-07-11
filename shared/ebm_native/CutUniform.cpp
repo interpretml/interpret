@@ -18,467 +18,620 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-// we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static int g_cLogEnterCutUniformParametersMessages = 25;
-static int g_cLogExitCutUniformParametersMessages = 25;
+// General float info: 
+//   https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+//   https://randomascii.wordpress.com/2017/06/19/sometimes-floating-point-math-is-perfect/
+//   https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
+//
+// This is a cross-language portable implementation of nextafter that skips over subnormals per the EBM spec.
+// 
+// FloatTickIncrementInternal and FloatTickDecrementInternal will return correct and reproducible results even if:
+//   - a subnormal input is given. We treat subnormals as equal to zero per the EBM spec
+//   - a subnormal is the next tick. We return zero in this case since the EBM spec skips over subnormals
+//   - "flush-to-zero" or "denormals-are-zero" ("subnormals-are-zero") is enabled on the CPU
+//   - a negative zero input is given
+//   - any of the allowed IEEE-754 rounding modes are chosen, since we do not round any values in these functions
+//   - we do not require that the CPU/compiler have correct rounding since we start from numbers that have
+//     exact representations in IEEE-754 and our operations generate new numbers that also have exact representations
+//   - our function would handle NaN, infinity inputs, and infinity outputs, but we don't ever pass these
+//     values into these functions in our program, so we do not need to make any guarantees on these
+//   - if the environment supports extended precision, we force the environment to round the value to its chosen
+//     non-extended precision value by passing inputs in via arrays which cannot contain the extra bits
+//     In C++ on Intel we also set compiler flags to only use the SSE2 registers which do not have extended 
+//     precision, unlike x87.  ARM does not use extended precision, AFAIK.
+//   - FloatTickIncrementInternal and FloatTickDecrementInternal do not make use of multiply and add semantics, 
+//     so any fused CPU instructions that use correct rounding on the final result are not used
+//
+// FloatTickIncrementInternal and FloatTickDecrementInternal have limited requirements to work properly.  We require 
+// that the numbers have IEEE-754 format, which has been the case for all common CPUs released since the 1980s.  
+// We require that the numbers in this file are converted to their exact IEEE-754 representation, which is a 
+// requirement by the IEEE-754 standard when numbers are provided with 17 digits of precision, which we provide.
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION CutUniform(
+constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // std::numeric_limits<double>::min()
+constexpr double k_maxNonInf = 1.7976931348623158e+308; // std::numeric_limits<double>::max()
+constexpr double k_nonDoubleable = 8.9884656743115795e+307; // if you double this power of two you get +inf
+constexpr double k_lastTick = 1.9958403095347198e+292; // the tick for numbers greater or equal to k_nonDoubleable
+constexpr double k_epsilon = 2.2204460492503131e-16; // std::numeric_limits<double>::epsilon()
+constexpr double k_subnormToNorm = 4503599627370496.0; // multiplying by this will move a subnormal into a normal
+
+static_assert(k_subnormToNorm == std::numeric_limits<double>::min() / std::numeric_limits<double>::denorm_min(),
+   "bad min to denorm_min ratio");
+static_assert(k_epsilon == std::numeric_limits<double>::epsilon(), "bad k_epsilon");
+static_assert(k_maxNonInf == std::numeric_limits<double>::max(), "bad k_maxNonInf");
+static_assert(k_minNonSubnormal == std::numeric_limits<double>::min(), "bad k_minNonSubnormal");
+static_assert(k_nonDoubleable + k_lastTick != k_nonDoubleable, "bad k_lastTick");
+static_assert(k_nonDoubleable + k_lastTick / 2 == k_nonDoubleable, "bad k_lastTick");
+static_assert(k_nonDoubleable - k_lastTick / 2 != k_nonDoubleable, "bad k_lastTick");
+static_assert(std::numeric_limits<double>::infinity() == k_nonDoubleable * 2, "bad k_nonDoubleable");
+static_assert(std::numeric_limits<double>::infinity() != (k_nonDoubleable - k_lastTick / 2) * 2, "bad k_nonDoubleable");
+
+extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept {
+   // This is a cross-language portable implementation of nextafter
+
+   double bound;
+   double tick;
+
+   // We pass values in as an array in order to force the elimination of any possible extended precision bits.
+   double val = deprecisioned[0];
+
+   // we would handle all of these special values, but we don't use them anywhere, so 
+   // simplify our cross-platform port testing by eliminating them as valid inputs
+   EBM_ASSERT(!std::isnan(val));
+   EBM_ASSERT(!std::isinf(val));
+   EBM_ASSERT(std::numeric_limits<double>::max() != val);
+
+   if(val < k_minNonSubnormal) {
+      if(-1.0 <= val) {
+         if(-k_minNonSubnormal <= val) {
+            if(-k_minNonSubnormal < val) {
+               return k_minNonSubnormal;
+            } else {
+               return 0.0;
+            }
+         }
+         // We cannot let tick enter the subnormal range since subnormals are spaced differently from normal floats.
+         // By shifting upwards through a multiple we can maintain the same spacing for the epsilons
+         
+         val *= k_subnormToNorm;
+         bound = -1.0 * k_subnormToNorm * 0.5;
+         tick = k_epsilon * k_subnormToNorm * 0.5;
+         while(bound <= val) {
+            bound *= 0.5;
+            tick *= 0.5;
+            EBM_ASSERT(std::numeric_limits<double>::min() <= tick);
+         }
+         return (val + tick) / k_subnormToNorm;
+      } else {
+         if(val < -k_nonDoubleable) {
+            // avoid hitting -infinity high by checking for the last doubling
+            return val + k_lastTick;
+         }
+         bound = -2.0;
+         tick = k_epsilon;
+         while(val < bound) {
+            bound *= 2.0;
+            tick *= 2.0;
+            EBM_ASSERT(!std::isinf(tick));
+         }
+         return val + tick;
+      }
+   } else {
+      if(val < 1.0) {
+         // We cannot let tick enter the subnormal range since subnormals are spaced differently from normal floats.
+         // By shifting upwards through a multiple we can maintain the same spacing for the epsilons
+
+         val *= k_subnormToNorm;
+         bound = 1.0 * k_subnormToNorm * 0.5;
+         tick = k_epsilon * k_subnormToNorm * 0.5;
+         while(val < bound) {
+            bound *= 0.5;
+            tick *= 0.5;
+            EBM_ASSERT(std::numeric_limits<double>::min() <= tick);
+         }
+         return (val + tick) / k_subnormToNorm;
+      } else {
+         if(k_nonDoubleable <= val) {
+            // avoid hitting +infinity high by checking for the last doubling
+            // also, if val is +inf we can't exit the loop below without this check
+            return val + k_lastTick;
+         }
+         bound = 2.0;
+         tick = k_epsilon;
+         while(bound <= val) {
+            bound *= 2.0;
+            tick *= 2.0;
+            EBM_ASSERT(!std::isinf(tick));
+         }
+         return val + tick;
+      }
+   }
+}
+
+extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept {
+   // This is a cross-language portable implementation of nextafter
+
+   double bound;
+   double tick;
+
+   // We pass values in as an array in order to force the elimination of any possible extended precision bits.
+   double val = deprecisioned[0];
+
+   // we would handle all of these special values, but we don't use them anywhere, so 
+   // simplify our cross-platform port testing by eliminating them as valid inputs
+   EBM_ASSERT(!std::isnan(val));
+   EBM_ASSERT(!std::isinf(val));
+   EBM_ASSERT(std::numeric_limits<double>::lowest() != val);
+
+   if(-k_minNonSubnormal < val) {
+      if(val <= 1.0) {
+         if(val <= k_minNonSubnormal) {
+            if(val < k_minNonSubnormal) {
+               return -k_minNonSubnormal;
+            } else {
+               return 0.0;
+            }
+         }
+         // We cannot let tick enter the subnormal range since subnormals are spaced differently from normal floats.
+         // By shifting upwards through a multiple we can maintain the same spacing for the epsilons
+
+         val *= k_subnormToNorm;
+         bound = 1.0 * k_subnormToNorm * 0.5;
+         tick = k_epsilon * k_subnormToNorm * 0.5;
+         while(val <= bound) {
+            bound *= 0.5;
+            tick *= 0.5;
+            EBM_ASSERT(std::numeric_limits<double>::min() <= tick);
+         }
+         return (val - tick) / k_subnormToNorm;
+      } else {
+         if(k_nonDoubleable < val) {
+            // avoid hitting +infinity high by checking for the last doubling
+            return val - k_lastTick;
+         }
+         bound = 2.0;
+         tick = k_epsilon;
+         while(bound < val) {
+            bound *= 2.0;
+            tick *= 2.0;
+            EBM_ASSERT(!std::isinf(tick));
+         }
+         return val - tick;
+      }
+   } else {
+      if(-1.0 < val) {
+         // We cannot let tick enter the subnormal range since subnormals are spaced differently from normal floats.
+         // By shifting upwards through a multiple we can maintain the same spacing for the epsilons
+
+         val *= k_subnormToNorm;
+         bound = -1.0 * k_subnormToNorm * 0.5;
+         tick = k_epsilon * k_subnormToNorm * 0.5;
+         while(bound < val) {
+            bound *= 0.5;
+            tick *= 0.5;
+            EBM_ASSERT(std::numeric_limits<double>::min() <= tick);
+         }
+         return (val - tick) / k_subnormToNorm;
+      } else {
+         if(val <= -k_nonDoubleable) {
+            // avoid hitting -infinity high by checking for the last doubling
+            // also, if our input was -inf and we allowed it, this would avoid an infinite loop
+            return val - k_lastTick;
+         }
+         bound = -2.0;
+         tick = k_epsilon;
+         while(val <= bound) {
+            bound *= 2.0;
+            tick *= 2.0;
+            EBM_ASSERT(!std::isinf(tick));
+         }
+         return val - tick;
+      }
+   }
+}
+
+#ifdef UNDEFINED_TEST_TICK_HIGHER
+
+TEST_CASE("FloatTickIncrementInternal and FloatTickDecrementInternal") {
+   double deprecisioned[1];
+
+   deprecisioned[0] = std::numeric_limits<double>::lowest();
+   CHECK(nextafter(std::numeric_limits<double>::lowest(), 0.0) == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::lowest(), 0.0);
+   CHECK(nextafter(nextafter(std::numeric_limits<double>::lowest(), 0.0), 0.0) == FloatTickIncrementInternal(deprecisioned));
+
+   deprecisioned[0] = nextafter(nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest()), std::numeric_limits<double>::lowest());
+   CHECK(nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest()) == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest());
+   CHECK(-std::numeric_limits<double>::min() == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = -std::numeric_limits<double>::min();
+   CHECK(0.0 == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = -DBL_TRUE_MIN;
+   CHECK(std::numeric_limits<double>::min() == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = 0.0;
+   CHECK(std::numeric_limits<double>::min() == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = DBL_TRUE_MIN;
+   CHECK(std::numeric_limits<double>::min() == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = std::numeric_limits<double>::min();
+   CHECK(nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max()) == FloatTickIncrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max());
+   CHECK(nextafter(nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max()), std::numeric_limits<double>::max()) == FloatTickIncrementInternal(deprecisioned));
+
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::max(), 0.0);
+   CHECK(std::numeric_limits<double>::max() == FloatTickIncrementInternal(deprecisioned));
+
+
+
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::lowest(), 0.0);
+   CHECK(std::numeric_limits<double>::lowest() == FloatTickDecrementInternal(deprecisioned));
+
+   deprecisioned[0] = nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest());
+   CHECK(nextafter(nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest()), std::numeric_limits<double>::lowest()) == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = -std::numeric_limits<double>::min();
+   CHECK(nextafter(-std::numeric_limits<double>::min(), std::numeric_limits<double>::lowest()) == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = -DBL_TRUE_MIN;
+   CHECK(-std::numeric_limits<double>::min() == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = 0.0;
+   CHECK(-std::numeric_limits<double>::min() == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = DBL_TRUE_MIN;
+   CHECK(-std::numeric_limits<double>::min() == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = std::numeric_limits<double>::min();
+   CHECK(0.0 == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max());
+   CHECK(std::numeric_limits<double>::min() == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = nextafter(nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max()), std::numeric_limits<double>::max());
+   CHECK(nextafter(std::numeric_limits<double>::min(), std::numeric_limits<double>::max()) == FloatTickDecrementInternal(deprecisioned));
+
+   deprecisioned[0] = nextafter(std::numeric_limits<double>::max(), 0.0);
+   CHECK(nextafter(nextafter(std::numeric_limits<double>::max(), 0.0), 0.0) == FloatTickDecrementInternal(deprecisioned));
+   deprecisioned[0] = std::numeric_limits<double>::max();
+   CHECK(nextafter(std::numeric_limits<double>::max(), 0.0) == FloatTickDecrementInternal(deprecisioned));
+
+   double base = 2 * std::numeric_limits<double>::min();
+   do {
+      double sweep = base;
+
+      for(int i = 0; i < 5; ++i) {
+         sweep = nextafter(sweep, std::numeric_limits<double>::lowest());
+      }
+
+      for(int i = 0; i < 11; ++i) {
+         deprecisioned[0] = sweep;
+         double test = FloatTickIncrementInternal(deprecisioned);
+         sweep = nextafter(sweep, std::numeric_limits<double>::max());
+         CHECK(sweep == test);
+      }
+
+      for(int i = 0; i < 11; ++i) {
+         deprecisioned[0] = sweep;
+         double test = FloatTickDecrementInternal(deprecisioned);
+         sweep = nextafter(sweep, std::numeric_limits<double>::lowest());
+         CHECK(sweep == test);
+      }
+
+      base *= 2.0;
+   } while(!std::isinf(base));
+}
+
+#endif // UNDEFINED_TEST_TICK_HIGHER
+
+EBM_API_BODY void EBM_CALLING_CONVENTION CleanFloats(IntEbmType count, double * valsInOut) {
+   // this function converts extended precision values, if they are present, into non-extended precision values by 
+   // virtue of passing them in via arrays stored in memory, and it also converts subnormal values into zero, 
+   // per EBM spec requirements.  It also converts negative zeros into zeros.
+
+   if(IsConvertError<size_t>(count)) {
+      LOG_0(TraceLevelError, "ERROR CleanFloats count is not a valid index into an array");
+      return;
+   }
+   size_t c = static_cast<size_t>(count);
+   if(IsMultiplyError(sizeof(*valsInOut), c)) {
+      LOG_0(TraceLevelError, "ERROR CleanFloats count value too large to index into memory");
+      return;
+   }
+   while(0 != c) {
+      --c;
+      const double val = valsInOut[c];
+      if(-k_minNonSubnormal < val && val < k_minNonSubnormal) {
+         // val is in the subnormal range, so force it to zero.  
+         // DO NOT COMPARE WITH ZERO SINCE SOME CPUs INDICATE TRUE WHEN COMPARING 0.0 TO A SUBNORMAL
+         // if the environment violates IEEE-754 with "denormals-are-zero" ("subnormals-are-zero")
+         valsInOut[c] = 0.0;
+      }
+   }
+}
+
+EBM_API_BODY IntEbmType EBM_CALLING_CONVENTION CutUniform(
    IntEbmType countSamples,
-   const FloatEbmType * featureValues,
+   const double * featureValues,
    IntEbmType countDesiredCuts,
-   FloatEbmType * cutsLowerBoundInclusiveOut
+   double * cutsLowerBoundInclusiveOut
 ) {
    // DO NOT CHANGE THIS FUNCTION'S ALGORITHM.  IT IS PART OF THE EBM HISTOGRAM SPEC
    //
-   // This function is used when choosing histograms cuts. Since we don't store the histogram 
-   // cuts in our JSON, this function must always return the same results in all implementations.
+   // This function is also used when choosing histograms cuts. Since we don't store the histogram 
+   // cuts in our JSON/model, this function must always return the same results in all implementations.
    //
    // This function guarantees that it will return countDesiredCuts unless it is impossible to put enough cuts between
    // the min and max values, and in that case it will put a cut into every possible location allowed by floats.
    // This functionality is required because if we have a given number of histogram counts, then we need
-   // to return the corresponding number of expected cuts, so returning the maximum number of cuts allowed avoids
+   // to return the same number of expected cuts, so returning the maximum number of cuts allowed avoids
    // issues because our caller would have to throw an exception if they got back less cuts than expected.
    // 
-   // When later discretizing, we include numbers equal to the cut in the bin because we want
-   // a cut of 1.0 to include 1.0 in the same bin as 1.999999... (if the next cut is at 2.0)
+   // When discretizing, we include numbers equal to the cut in the bin because we want
+   // a cut value of 1.0 to include 1.0 in the same bin as 1.1, and 1.999999... (if the next cut is at 2.0)
    //
-   // This means we never return the min value in our cuts since that will be 
-   // separated from the min value by the next highest floating point number.
+   // This means we never return the min value in our cuts since the min value will be separated away by the next 
+   // highest floating point number.
    //
    // This also means that we can return a cut at the max value since a cut there will keep
-   // the max value in the highest bin, so we do have an asymmetry that we fundamentally can't 
-   // avoid since we need to make a choice whether exact matches fall into the lower or upper bin.
+   // the max value in the highest bin, so we do have an asymmetry that we fundamentally cannot  
+   // avoid since we need to make a choice whether exact matches fall into the lower or upper bins.
    //
    // Since our cuts can include the max value, this means that we cannot separate +highest from +inf values without 
-   // allowing a +inf cut value, which we don't want to do. So, +inf values get converted to +highest
-   // before choosing the cuts.  It would be hard to do anything else anyways since +inf is hard to use.
+   // allowing an +inf cut value, which we do not allow in the EBM spec. So, +inf and +highest are indistinguishable
+   // numbers for an EBM.
    //
-   // For symmetry, we set -inf to lowest before generating uniform cuts.
+   // For symmetry with the +inf case, we do not allow EBMs to separate -inf from the lowest float.  The lowest 
+   // legal cut is therefore one float tick higher than the lowest float.
    //
-   // For histograms edges, our caller will add the min and max values to the returned cuts. We do include
-   // -inf and +inf values there, so we still preserve the best information when graphing and serializing.
+   // For histograms edges, which includes the min and max value, our caller will add the min and max values 
+   // to the returned cuts. We do allow -inf and +inf values there, so we still preserve the best information 
+   // when graphing and serializing.
    //
-   // We do not allow cut points to be subnormal floats. Even if we can handle subnormals ourselves here, other 
-   // callers might not be able to handle them.  They might not serialize to JSON or work in JavaScript, etc.
+   // We do not allow cut points to be subnormal floats. Some environments still have issues dealing 
+   // with them reproducibly, whereas setting them to zero should work in all environments and be reproducible.
+   // They might also not serialize/deserialize to JSON in all languages/environments.  Since we
+   // set subnormals to zero we cannot separate subnormals from each other, but having data that should 
+   // predict different outcomes in the subnormal range should be really rare, and any caller can rectify this
+   // anyways by shifting the subnormals into the normal space themselves.
+   // 
+   // This function should be able to return correct and reproducible results in all environments that I am 
+   // aware of. In order for us to return reproducible results we require:
+   //   - That the numbers are stored in IEEE-754 format, which has been the case for all common CPUs since the 1980s.
+   //   - The numbers in this file are converted into their exact IEEE-754 representation, which is a requirement 
+   //     of the original IEEE-754 spec for numbers given with 17 digits of precision. We always provide 17 digits 
+   //     here, unless a number has an exact float representation (eg: 2.0 or 0.5).
+   //   - We require that we can eliminate any extended precision digits. Generally, this can be done by storing
+   //     the values in memory, which we do, since then they need to have defined sizes.  The only processor I am 
+   //     aware of that uses extended precision is the original x87 floating point unit, but you can now specify 
+   //     for most compilers, which we have done, to use the SSE2 registers, which do not use extended precision. SSE2 
+   //     registers are always available in 64 bit mode, and have been available since the year 2000 in 32 bit mode.
+   //   - We require correct rounding for addition, subtraction, division and multiplication.  The original IEEE-754
+   //     required correct rounding for these operations, and I'm not aware of an implementation that violates this.
+   //   - We require that the IEEE-754 rounding mode is set to "Round to nearest, ties to even".  This is the default
+   //     IEEE-754 rounding mode, and I'm not aware of a programming language environment that sets it to anything 
+   //     other than that by default.  Mostly you would need to set a flag on the CPU to get anything else.
+   //     If another IEEE-754 rounding mode is selected, then we can be off by 1 float tick on cuts.
+   //     We still guarantee the same number of cuts will be returned.
+   //   - we can handle environments where "flush-to-zero" or "denormals-are-zero" ("subnormals-are-zero")
+   //     is enabled on the CPU.  We do this by flushing intermediate and final results to zero ourselves.
+   //   - we treat negative zero as a zero
+   //   - we use NaN values to indicate missing values, but we don't use NaN for computation.  If the environment
+   //     noes not support NaN values, then there cannot be missing values, but everything else will work properly
+   //     If the language does not support NaN, but floats can still have NaN values internally, then we
+   //     handle that case correctly PROVIDED NaN comparison rules are observed.
+   //   - some CPUs have fused multiply and add instructions which also use correct rounding on the final
+   //     result, which can differ from CPUs that do these operations independently and round the intermediate 
+   //     result. We force conformance by breaking the multiplication from the add with a function that 
+   //     also writes the results to memory
+   // If these are violated, then the results cannot be guaranteed to be reproducible, but even then they should
+   // almost always be reproducible except in outlier cases. We do guarantee that we return the same 
+   // number of cuts in all cases, and that we will fill all legal cuts when the difference between the min and 
+   // max value is insufficient to have enough cuts.
+   //
+   // If the distance between cuts is a subnormal number, then we can get bunching if some of the cuts fall into
+   // the subnormal gap around 0. The underlying issue is that fundamentally floats are approximate things and we 
+   // cannot have true uniform cuts. We could make this algorithm a little better, but IMHO it isn't worth the added
+   // complexity since we want this code to be cross-language portable, and this only affects extremely tiny numbers 
+   // in the range of 10^-308.  Numbers that small are really skirting close to being zero anyways.
 
-   LOG_COUNTED_N(
-      &g_cLogEnterCutUniformParametersMessages,
-      TraceLevelInfo,
-      TraceLevelVerbose,
-      "Entered CutUniform: "
-      "countSamples=%" IntEbmTypePrintf ", "
-      "featureValues=%p, "
-      "countDesiredCuts=%" IntEbmTypePrintf ", "
-      "cutsLowerBoundInclusiveOut=%p"
-      ,
-      countSamples,
-      static_cast<const void *>(featureValues),
-      countDesiredCuts,
-      static_cast<void *>(cutsLowerBoundInclusiveOut)
-   );
 
-   if(UNLIKELY(countDesiredCuts <= IntEbmType { 0 })) {
-      if(UNLIKELY(countDesiredCuts < IntEbmType { 0 })) {
-         LOG_0(TraceLevelError, "ERROR CutUniform countDesiredCuts can't be negative.");
-      } else {
-         LOG_COUNTED_0(
-            &g_cLogExitCutUniformParametersMessages,
-            TraceLevelInfo,
-            TraceLevelVerbose,
-            "Exited CutUniform: countCuts=0 due to zero countDesiredCuts"
-         );
-      }
-      return IntEbmType { 0 };
+   double minValue;
+   double maxValue;
+   size_t iSample;
+   double val;
+   double walkValue;
+   size_t iCut;
+   double multiple;
+   double halfDiff;
+   double cBinsFloat;
+   size_t cHalfCuts;
+   double cutPrev;
+
+   double numerator;
+   double fraction;
+   double shift;
+   double cutExpanded;
+   double cut;
+
+   if(0 == countDesiredCuts) {
+      // we need this check because otherwise we could overflow to +inf when we calculate halfDiff below
+      // if both minValue and maxValue are both very big (close to infinity) and opposite in sign
+      return 0;
    }
-   if(UNLIKELY(IsConvertError<size_t>(countDesiredCuts))) {
-      LOG_0(TraceLevelError, "ERROR CutUniform IsConvertError<size_t>(countDesiredCuts)");
-      return IntEbmType { 0 };
+   if(IsConvertError<size_t>(countDesiredCuts)) {
+      LOG_0(TraceLevelError, "ERROR CutUniform countDesiredCuts is not a valid index into an array");
+      return 0;
    }
    const size_t cCuts = static_cast<size_t>(countDesiredCuts);
-   if(UNLIKELY(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts))) {
-      LOG_0(TraceLevelError, "ERROR CutUniform countDesiredCuts was too large to fit into cutsLowerBoundInclusiveOut");
-      return IntEbmType { 0 };
+   if(IsMultiplyError(sizeof(*cutsLowerBoundInclusiveOut), cCuts)) {
+      LOG_0(TraceLevelError, "ERROR CutUniform countDesiredCuts value too large to index into memory");
+      return 0;
    }
 
-   if(UNLIKELY(countSamples <= IntEbmType { 1 })) {
-      if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-         LOG_0(TraceLevelError, "ERROR CutUniform countSamples < IntEbmType { 0 }");
-      } else {
-         LOG_COUNTED_0(
-            &g_cLogExitCutUniformParametersMessages,
-            TraceLevelInfo,
-            TraceLevelVerbose,
-            "Exited CutUniform: countCuts=0 because we can't cut 1 sample"
-         );
-      }
-      return IntEbmType { 0 };
-   }
-   if(UNLIKELY(IsConvertError<size_t>(countSamples))) {
-      LOG_0(TraceLevelError, "ERROR CutUniform IsConvertError<size_t>(countSamples)");
-      return IntEbmType { 0 };
+   if(IsConvertError<size_t>(countSamples)) {
+      LOG_0(TraceLevelError, "ERROR CutUniform countSamples is not a valid index into an array");
+      return 0;
    }
    const size_t cSamples = static_cast<size_t>(countSamples);
-   if(UNLIKELY(IsMultiplyError(sizeof(*featureValues), cSamples))) {
-      LOG_0(TraceLevelError, "ERROR CutUniform countSamples was too large to fit into featureValues");
-      return IntEbmType { 0 };
+   if(IsMultiplyError(sizeof(*featureValues), cSamples)) {
+      LOG_0(TraceLevelError, "ERROR CutUniform countSamples value too large to index into memory");
+      return 0;
    }
 
-   if(UNLIKELY(nullptr == featureValues)) {
-      LOG_0(TraceLevelError, "ERROR CutUniform nullptr == featureValues");
-      return IntEbmType { 0 };
+   if(nullptr == featureValues) {
+      LOG_0(TraceLevelError, "ERROR CutUniform featureValues cannot be NULL");
+      return 0;
    }
 
-   FloatEbmType minValue = std::numeric_limits<FloatEbmType>::infinity();
-   FloatEbmType maxValue = -std::numeric_limits<FloatEbmType>::infinity();
+   minValue = k_maxNonInf;
+   maxValue = -k_maxNonInf;
 
-   const FloatEbmType * pValue = featureValues;
-   const FloatEbmType * const pValuesEnd = featureValues + cSamples;
-   do {
-      const FloatEbmType val = *pValue;
-      maxValue = UNPREDICTABLE(maxValue < val) ? val : maxValue; // this works for NaN values which evals to false
-      minValue = UNPREDICTABLE(val < minValue) ? val : minValue; // this works for NaN values which evals to false
-      ++pValue;
-   } while(LIKELY(pValuesEnd != pValue));
+   for(iSample = 0; iSample < cSamples; ++iSample) {
+      val = featureValues[iSample];
+      // Use this check for NaN for cross-language portability.  It is not technically needed 
+      // if IEEE-754 is followed, since "NaN < anything" and "anything < NaN" are false
+      if(!std::isnan(val)) {
+         if(maxValue < val) {
+            // this works for NaN values which evals to false
+            maxValue = val;
+         }
+         if(val < minValue) {
+            // this works for NaN values which evals to false
+            minValue = val;
+         }
+      }
+   }
 
    EBM_ASSERT(!std::isnan(minValue));
    EBM_ASSERT(!std::isnan(maxValue));
 
-   if(UNLIKELY(std::numeric_limits<FloatEbmType>::infinity() == minValue)) {
-      if(PREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == maxValue)) {
-         LOG_COUNTED_0(
-            &g_cLogExitCutUniformParametersMessages,
-            TraceLevelInfo,
-            TraceLevelVerbose,
-            "Exited CutUniform: countCuts=0 due to all feature values being missing"
-         );
-      } else {
-         EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() == maxValue);
-         LOG_COUNTED_0(
-            &g_cLogExitCutUniformParametersMessages,
-            TraceLevelInfo,
-            TraceLevelVerbose,
-            "Exited CutUniform: countCuts=0 due to all feature values being +infinity"
-         );
-      }
-      return IntEbmType { 0 };
+   EBM_ASSERT(-std::numeric_limits<double>::infinity() != maxValue);
+   EBM_ASSERT(std::numeric_limits<double>::infinity() != minValue);
+
+   if(k_maxNonInf == minValue && -k_maxNonInf == maxValue) {
+      // all features are the missing value
+      return 0;
    }
 
-   if(UNLIKELY(-std::numeric_limits<FloatEbmType>::infinity() == maxValue)) {
-      EBM_ASSERT(-std::numeric_limits<FloatEbmType>::infinity() == minValue);
-
-      LOG_COUNTED_0(
-         &g_cLogExitCutUniformParametersMessages,
-         TraceLevelInfo,
-         TraceLevelVerbose,
-         "Exited CutUniform: countCuts=0 due to all feature values being -infinity"
-      );
-      return IntEbmType { 0 };
+   if(minValue <= -k_maxNonInf) {
+      // this is a way to check for -inf without using an -inf value which might be less portable
+      minValue = -k_maxNonInf;
    }
 
-   if(PREDICTABLE(-std::numeric_limits<FloatEbmType>::infinity() == minValue)) {
-      minValue = std::numeric_limits<FloatEbmType>::lowest();
-   }
-
-   if(PREDICTABLE(std::numeric_limits<FloatEbmType>::infinity() == maxValue)) {
-      maxValue = std::numeric_limits<FloatEbmType>::max();
+   if(k_maxNonInf <= maxValue) {
+      // this is a way to check for +inf without using an +inf value which might be less portable
+      maxValue = k_maxNonInf;
    }
 
    // make it zero if our caller gave us a subnormal
-   minValue = Denormalize(minValue);
-   maxValue = Denormalize(maxValue);
+   minValue = CleanFloat(minValue);
+   maxValue = CleanFloat(maxValue);
 
-   if(UNLIKELY(minValue == maxValue)) {
-      LOG_COUNTED_0(
-         &g_cLogExitCutUniformParametersMessages,
-         TraceLevelInfo,
-         TraceLevelVerbose,
-         "Exited CutUniform: countCuts=0 due to there being only 1 unique value"
-      );
-      return IntEbmType { 0 };
+   if(minValue == maxValue) {
+      return 0;
    }
    EBM_ASSERT(minValue < maxValue);
 
-   if(UNLIKELY(nullptr == cutsLowerBoundInclusiveOut)) {
-      // if we have a potential bin cut, then cutsLowerBoundInclusiveOut shouldn't be nullptr
-      LOG_0(TraceLevelError, "ERROR CutUniform nullptr == cutsLowerBoundInclusiveOut");
-      return IntEbmType { 0 };
+   if(nullptr == cutsLowerBoundInclusiveOut) {
+      LOG_0(TraceLevelError, "ERROR CutUniform cutsLowerBoundInclusiveOut cannot be NULL");
+      return 0;
    }
 
-   FloatEbmType walkValue = minValue;
-   size_t iCut = 0;
-   do {
+   walkValue = minValue;
+   for(iCut = 0; cCuts != iCut; ++iCut) {
       EBM_ASSERT(walkValue < maxValue);
-      walkValue = TickHigher(walkValue);
+      walkValue = FloatTickIncrement(walkValue);
       cutsLowerBoundInclusiveOut[iCut] = walkValue;
-      ++iCut; // increment here so that we return the right # of items in the if statement below
-      if(UNLIKELY(walkValue == maxValue)) {
-         const IntEbmType countCutsRet = static_cast<IntEbmType>(iCut);
-         EBM_ASSERT(countCutsRet <= countDesiredCuts);
-
-         LOG_COUNTED_N(
-            &g_cLogExitCutUniformParametersMessages,
-            TraceLevelInfo,
-            TraceLevelVerbose,
-            "Exited CutUniform: "
-            "countCuts=%" IntEbmTypePrintf
-            ,
-            countCutsRet
-         );
-
-         return countCutsRet;
+      if(walkValue == maxValue) {
+         return static_cast<IntEbmType>(iCut + 1);
       }
-   } while(LIKELY(cCuts != iCut));
-
+   }
    EBM_ASSERT(walkValue < maxValue);
 
    // at this point we can guarantee that we can return countDesiredCuts items since we were able to 
    // fill that many cuts into the buffer.  We could return at any time now with a legal representation
    // if we found ourselves in a situation where we needed to
 
-   // we checked that cCuts can be multiplied with sizeof(*cutsLowerBoundInclusiveOut), and since
-   // there is no way an element of cutsLowerBoundInclusiveOut is as small as 1 byte, we should
-   // be able to add one to cCuts
-   EBM_ASSERT(!IsAddError(size_t { 1 }, cCuts));
-   // don't take the reciprocal here because dividing below will be more accurate when rounding
-   const size_t cBins = cCuts + size_t { 1 };
-   const FloatEbmType cBinsFloat = static_cast<FloatEbmType>(cBins);
+   // if the halfDiff value below is in the subnormal range, then we can no longer reliably calculate fractions
+   // of that value to place cuts that we could otherwise place in the normal range. We can solve these issues by 
+   // shifting upwards.  A simple way to do this is to keep shifting until right before the numbers will overflow
 
-   FloatEbmType diff = maxValue - minValue;
-   if(UNLIKELY(std::numeric_limits<FloatEbmType>::infinity() == diff)) {
-      EBM_ASSERT(2.0 <= cBinsFloat);
-      FloatEbmType stepValue = maxValue / cBinsFloat - minValue / cBinsFloat;
+   multiple = 1.0;
+   while(maxValue < k_nonDoubleable && -k_nonDoubleable < minValue && multiple < k_nonDoubleable) {
+      // doubling the maxValue and minValue just shifts the exponent without changing the mantissa, which
+      // is a lossless float operation that we can do and undo. The difference of maxValue - minValue doubles
+      // each time we double the operands too, so this is also a lossless operation that only changes the mantissa.
+      // The only thing we're affecting by shifting exponents this way would be subnormal numbers which are spaced 
+      // differently than normal numbers. This effect on subnormals is desired, and in fact is why we are 
+      // performing this loop to achieve more resolution.
 
-      // if maxValue is max_float and minValue is min_float those values are represented with mantissas of all
-      // 1s and exponents one shy of all 1s.  Dividing by 2.0 reduces the exponent, but keeps all the mantissa bits.
-      // Then subtracting the two equally negated results is identical to multiplying by 2.0, which gives back the 
-      // original values.  No rounding was required, so it doesn't matter which IEEE-754 rounding mode is enabled
-      // We never overflow to +inf.
-      EBM_ASSERT(!std::isinf(stepValue));
-      // stepValue cannot be a subnormal since the range of a float64 is larger than an int64
-      EBM_ASSERT(std::numeric_limits<FloatEbmType>::min() <= stepValue);
-
-      // the first cut should always succeed, since we subtract from maxValue, so even if 
-      // the subtraction is zero we succeed in having a cut at maxValue, which is legal for us
-      FloatEbmType cutPrev = std::numeric_limits<FloatEbmType>::infinity();
-      EBM_ASSERT(cCuts == iCut);
-      do {
-         FloatEbmType cut;
-         const size_t iReversed = cBins - iCut;
-
-         // the stepValue multiple cannot be subnormal since stepValue cannot be subnormal, 
-         // but call Denormalize anyways to guarantee that fused multiply add instructions are not used
-
-         // if we go beyond the mid-point index, then (i * stepValue) can overflow, so we need to swap our anchor
-         if(PREDICTABLE(iCut < iReversed)) {
-            // always subtract from maxValue on the first iteration so that
-            // cutPrev has a guarantee that it's maxValue or lower
-            EBM_ASSERT(2 <= iReversed);
-
-            FloatEbmType shift = static_cast<FloatEbmType>(iCut) * stepValue;
-            shift = Denormalize(shift);
-            cut = minValue + shift;
-         } else {
-            FloatEbmType shift = static_cast<FloatEbmType>(iReversed) * stepValue;
-            shift = Denormalize(shift);
-            cut = maxValue - shift;
-         }
-         if(std::isinf(cut)) {
-            // this can occur very rarely if min is lowest float, max is maximum float, at the mid-point when 
-            // iReversed is half the value of cBins, we're multiplying the step value by just enough to reach
-            // the max float, but then we round upwards.  In that case we overflow to +inf, although it was just
-            // by one float tick.  In this case adjust down one tick to the max float value
-            cut = std::numeric_limits<FloatEbmType>::max();
-         }
-
-         cut = Denormalize(cut);
-
-         if(UNLIKELY(cutPrev <= cut)) {
-            EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != cutPrev);
-
-            // if we didn't advance, then don't put the same cut into the result, advance by one tick
-            cut = TickLower(cutPrev);
-         }
-
-         if(UNLIKELY(cut <= cutsLowerBoundInclusiveOut[iCut - 1])) {
-            // if this happens, the rest of our cuts will be at tick increments, which we've already filled in
-            break;
-         }
-         cutsLowerBoundInclusiveOut[iCut - 1] = cut;
-
-         cutPrev = cut;
-         --iCut;
-      } while(LIKELY(size_t { 0 } != iCut));
-   } else {
-      // This algorithm has some not as nice properties around subnormal numbers.  Specifically, when a cut
-      // lands in the large subnormal space we flush it to zero, and our ticks are limited to non-subnormal numbers
-      // too.  This can lead to bunching on float tick increment boundaries where we have more ability to preserve
-      // float resolution.  We might be able to make this situation better through difficult manipulation, but this
-      // "spec" algorithm is already complicated enough, and we want it to be portable accross implementations without
-      // being even more complicated, so our solution here is simply to accept the undesirable bunching around
-      // subnormal numbers. We cannot fundamentally have good uniform cuts near subnormals anyways since the big
-      // subnormal gap does exists and we can't avoid that while disallowing subnormals as cuts.  The real solution
-      // is for the user to avoid spans in the range of 10e-308.  These should be quite rare in any case.
-      // This algorithm as constructed has the benefit of being reproducible in any environment that is IEEE-754
-      // compliant, minus subnormal compliance.
-
-
-      // our shift value below can enter the subnormal range which can cause problems in some environments
-      // we can solve these issues by shifting upwards to the highest numbers that do not overflow
-
-      double multipleCur;
-      double maxValueCur;
-      double minValueCur;
-      double diffCur;
-
-      double multipleNext = 1.0;
-      double maxValueNext = maxValue;
-      double minValueNext = minValue;
-      double diffNext = Denormalize(diff);
-
-      do {
-         multipleCur = multipleNext;
-         maxValueCur = maxValueNext;
-         minValueCur = minValueNext;
-         diffCur = diffNext;
-
-         multipleNext = multipleCur * 2.0;
-
-         maxValueNext = maxValue * multipleNext;
-         if(std::isinf(maxValueNext)) {
-            break;
-         }
-         minValueNext = minValue * multipleNext;
-         if(std::isinf(minValueNext)) {
-            break;
-         }
-         diffNext = maxValueNext - minValueNext;
-      } while(!std::isinf(diffNext));
-      
-      if(PREDICTABLE(std::abs(minValue) < std::abs(maxValue))) {
-         // minValue has more precision, so anchor to that point
-
-         // We're going to fill the cut buffer upwards from the minValue to the maxValue.  If we find that 
-         // we hit the boundary where the rest of the cuts need to be in tick increments then we want 
-         // it to be in the less precise range near the maxValue, so let's re-fill our buffer again starting 
-         // from the maxValue and work downwards by ticks so that we can bail with valid results if needed
-
-         EBM_ASSERT(cCuts == iCut);
-         walkValue = maxValue;
-         do {
-            EBM_ASSERT(minValue < walkValue);
-            cutsLowerBoundInclusiveOut[iCut - 1] = walkValue;
-            walkValue = TickLower(walkValue);
-            --iCut;
-         } while(LIKELY(size_t { 0 } != iCut));
-
-         // if they are equal then we should have exited above when filling the buffer initially
-         EBM_ASSERT(minValue < walkValue);
-
-         FloatEbmType cutPrev = minValue;
-         EBM_ASSERT(0 == iCut);
-
-         do {
-            ++iCut;
-
-            // we need to de-subnormalize the shift to get cross machine compatibility since some machines
-            // flush subnormals to zero, although this introduces bunching around the start point if
-            // that's a very small number close to the denormals, but I'm not sure there is a solution there
-            FloatEbmType shift = static_cast<FloatEbmType>(iCut) / cBinsFloat * diffCur;
-            shift = Denormalize(shift);
-            FloatEbmType cut = minValueCur + shift;
-            cut /= multipleCur;
-            cut = Denormalize(cut);
-
-            // TODO: do the algorithm below
-            //if(0.0 == cut) {
-            //   if(0.0 == Denormalize(diffCur / multipleCur / cBinsFloat)) {
-            //      // if our individual steps are less than float_min then we know that -min, 0, and +min are all
-            //      // going to be cut points provided we're crossing the 0 band gap.  If the steps are greater than
-            //      // float_min then we can trust float rounding to decide which of the -min, 0, or +min values
-            //      // will be included.  The underflow condition is harder though because we originally spaced
-            //      // our ticks believing there wouldn't be a big gap (in the subnormal space), so we need
-            //      // to reconsider this.  We can no longer really provide a uniform set of cuts, so the best
-            //      // we can do now is put cuts at -min, 0, and +min and then fill in the cuts on each side of the gap.
-            //      return HandleSubnormalGap(...);
-            //   }
-            //}
-
-            if(UNLIKELY(cut <= cutPrev)) {
-               // if we didn't advance, then don't put the same cut into the result, advance by one tick
-               cut = TickHigher(cutPrev);
-            }
-
-            if(UNLIKELY(cutsLowerBoundInclusiveOut[iCut - 1] <= cut)) {
-               // if this happens, the rest of our cuts will be at tick increments, which we've already filled in
-               break;
-            }
-            cutsLowerBoundInclusiveOut[iCut - 1] = cut;
-
-            cutPrev = cut;
-         } while(LIKELY(cCuts != iCut));
-      } else {
-         // maxValue has more precision, so anchor to that point
-
-         // the first cut should always succeed, since we subtract from maxValue, so even if 
-         // the subtraction is zero we succeed in having a cut at maxValue, which is legal for us
-         FloatEbmType cutPrev = std::numeric_limits<FloatEbmType>::infinity();
-         EBM_ASSERT(cCuts == iCut);
-
-         do {
-            const size_t iReversed = cBins - iCut;
-
-            // we need to de-subnormalize the shift to get cross machine compatibility since some machines
-            // flush subnormals to zero, although this introduces bunching around the start point if
-            // that's a very small number close to the denormals, but I'm not sure there is a solution there
-            FloatEbmType shift = static_cast<FloatEbmType>(iReversed) / cBinsFloat * diffCur;
-            shift = Denormalize(shift);
-            FloatEbmType cut = maxValueCur - shift;
-            cut /= multipleCur;
-            cut = Denormalize(cut);
-
-            // TODO: do the algorithm below
-            //if(0.0 == cut) {
-            //   if(0.0 == Denormalize(diffCur / multipleCur / cBinsFloat)) {
-            //      // if our individual steps are less than float_min then we know that -min, 0, and +min are all
-            //      // going to be cut points provided we're crossing the 0 band gap.  If the steps are greater than
-            //      // float_min then we can trust float rounding to decide which of the -min, 0, or +min values
-            //      // will be included.  The underflow condition is harder though because we originally spaced
-            //      // our ticks believing there wouldn't be a big gap (in the subnormal space), so we need
-            //      // to reconsider this.  We can no longer really provide a uniform set of cuts, so the best
-            //      // we can do now is put cuts at -min, 0, and +min and then fill in the cuts on each side of the gap.
-            //      return HandleSubnormalGap(...);
-            //   }
-            //}
-
-            if(UNLIKELY(cutPrev <= cut)) {
-               EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != cutPrev);
-
-               // if we didn't advance, then don't put the same cut into the result, advance by one tick
-               cut = TickLower(cutPrev);
-            }
-
-            if(UNLIKELY(cut <= cutsLowerBoundInclusiveOut[iCut - 1])) {
-               // if this happens, the rest of our cuts will be at tick increments, which we've already filled in
-               break;
-            }
-            cutsLowerBoundInclusiveOut[iCut - 1] = cut;
-
-            cutPrev = cut;
-            --iCut;
-         } while(LIKELY(size_t { 0 } != iCut));
-      }
+      maxValue *= 2.0;
+      EBM_ASSERT(!std::isinf(maxValue));
+      minValue *= 2.0;
+      EBM_ASSERT(!std::isinf(minValue));
+      multiple *= 2.0;
+      EBM_ASSERT(!std::isinf(multiple));
    }
 
-   LOG_COUNTED_N(
-      &g_cLogExitCutUniformParametersMessages,
-      TraceLevelInfo,
-      TraceLevelVerbose,
-      "Exited CutUniform: "
-      "countCuts=%" IntEbmTypePrintf
-      ,
-      countDesiredCuts
-   );
+   // If maxValue had the highest value possible and minValue had the lowest (big negative) value possible,
+   // dividing by 2.0 would change the exponent but not change the mantissa of an IEEE-754 value.  Then subtracting 
+   // these two negatively identical values would be equivalent to multiplying by 2.0, yielding the highest 
+   // possible value again. Since the mantissas will not be changed in these operations, there will be no rounding, 
+   // so this result is expected under all possible IEEE-754 rounding modes. If the values were less than their 
+   // extreme ends, then there could be rounding, but under correct rounding rules the end result could not be 
+   // bigger than our result with larger numbers.  Therefore, this operation cannot overflow to +infinity.
 
+   halfDiff = CleanFloat(maxValue / 2.0 - minValue / 2.0);
+   EBM_ASSERT(!std::isinf(halfDiff));
+
+   // Don't take the reciprocal here because dividing below will be more accurate when rounding
+   // 
+   // If cBinsFloat is very very big number (larger than 2^53), then it can reach into the region where individual 
+   // integers cannot be identified since the float tick is larger than an integer.  We would want to eliminate
+   // any extended precision bits, if there were any. We'd also get float bunching, but meh, it's hard to fix,
+   // so avoid having 2^53 cuts.
+   cBinsFloat = CleanFloat(static_cast<double>(cCuts + 1));
+
+   // make the first cut subtract from maxValue so that we do not need to check for forward progress on the first loop
+   cHalfCuts = cCuts / 2;
+   cutPrev = 0.0;
+
+   iCut = cCuts;
+   while(cHalfCuts < iCut) {
+      --iCut;
+      numerator = CleanFloat(static_cast<double>((cCuts - iCut) * 2)); // clear for > 2^53 cuts
+      fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
+      EBM_ASSERT(fraction <= 1.0);
+      shift = CleanFloat(fraction * halfDiff); // clear extended precision bits
+      cutExpanded = CleanFloat(maxValue - shift); // stop from using fused CPU instructions
+      cut = CleanFloat(cutExpanded / multiple); // zero subnormals
+
+      if(cutPrev <= cut && cCuts != iCut + 1) {
+         // Do not tick down from our first cut value. We subtract from maxValue, so even if 
+         // the subtraction is zero we succeed in having a cut at maxValue, which is legal.
+
+         // if we didn't advance, then don't put the same cut into the result, advance by one tick
+         cut = FloatTickDecrement(cutPrev);
+      }
+      if(cut <= cutsLowerBoundInclusiveOut[iCut]) {
+         // if this happens, the rest of our cuts will be at tick increments, which we've already filled in
+         return countDesiredCuts;
+      }
+      cutsLowerBoundInclusiveOut[iCut] = cut;
+      cutPrev = cut;
+   }
+   while(0 != iCut) {
+      numerator = CleanFloat(static_cast<double>(iCut * 2)); // clear for > 2^53 cuts
+      fraction = CleanFloat(numerator / cBinsFloat); // clear extended precision bits
+      EBM_ASSERT(fraction <= 1.0);
+      shift = CleanFloat(fraction * halfDiff); // clear extended precision bits
+      cutExpanded = CleanFloat(minValue + shift); // stop from using fused CPU instructions
+      cut = CleanFloat(cutExpanded / multiple); // zero subnormals
+
+      --iCut;
+
+      if(cutPrev <= cut) {
+         // if we didn't advance, then don't put the same cut into the result, advance by one tick
+         cut = FloatTickDecrement(cutPrev);
+      }
+      if(cut <= cutsLowerBoundInclusiveOut[iCut]) {
+         // if this happens, the rest of our cuts will be at tick increments, which we've already filled in
+         return countDesiredCuts;
+      }
+      cutsLowerBoundInclusiveOut[iCut] = cut;
+      cutPrev = cut;
+   }
    return countDesiredCuts;
 }
 

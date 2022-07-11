@@ -1511,7 +1511,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self, feature_names=None, feature_types=None, max_bins=256, binning="quantile", min_samples_bin=1, 
-        min_unique_continuous=3, epsilon=None, delta=None, composition=None, privacy_schema=None
+        min_unique_continuous=3, epsilon=None, delta=None, composition=None, privacy_schema=None, random_state=None,
     ):
         """ Initializes EBM preprocessor.
 
@@ -1525,6 +1525,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             epsilon: Privacy budget parameter. Only applicable when binning is "private".
             delta: Privacy budget parameter. Only applicable when binning is "private".
             privacy_schema: User specified min/max values for numeric features as dictionary. Only applicable when binning is "private".
+            random_state: Random state.
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -1536,6 +1537,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.delta = delta
         self.composition = composition
         self.privacy_schema = privacy_schema
+        self.random_state = random_state
 
     def fit(self, X, y=None, sample_weight=None):
         """ Fits transformer to provided samples.
@@ -1601,6 +1603,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         zero_val_counts = np.full(n_features, 0, dtype=np.int64)
 
         native = Native.get_native_singleton()
+        seed = self.random_state
         is_privacy_warning = False
         for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(unify_columns(X, zip(range(n_features), repeat(None)), feature_names_in, self.feature_types, self.min_unique_continuous, False)):
             if n_samples != len(X_col):
@@ -1623,6 +1626,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
 
 
+            seed = native.generate_deterministic_seed(seed, 1786913576)
             feature_types_in[feature_idx] = feature_type_in
             if categories is None:
                 # continuous feature
@@ -1645,7 +1649,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     else:
                         min_val = bounds[0]
                         max_val = bounds[1]
-                    cuts, feature_bin_weights = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_val, max_val)
+                    cuts, feature_bin_weights = DPUtils.private_numeric_binning(X_col, sample_weight, noise_scale, max_bins - 1, min_val, max_val, seed)
                     feature_bin_weights.append(0)
                     feature_bin_weights = np.array(feature_bin_weights, dtype=np.float64)
                 else:
@@ -1686,7 +1690,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         raise ValueError(msg)
 
                     # TODO: clean up this hack that uses strings of the indexes
-                    keep_bins, old_feature_bin_weights = DPUtils.private_categorical_binning(X_col, sample_weight, noise_scale, max_bins - 1)
+                    keep_bins, old_feature_bin_weights = DPUtils.private_categorical_binning(X_col, sample_weight, noise_scale, max_bins - 1, seed)
                     unknown_weight = 0
                     if keep_bins[-1] == 'DPOther':
                         unknown_weight = old_feature_bin_weights[-1]
@@ -1820,9 +1824,12 @@ def construct_bins(
     delta=None, 
     composition=None, 
     privacy_schema=None,
+    random_state=None,
 ):
     is_mains = True
+    native = Native.get_native_singleton()
     for max_bins in max_bins_leveled:
+        random_state = native.generate_deterministic_seed(random_state, 559276972)
         preprocessor = EBMPreprocessor(
             feature_names_given, 
             feature_types_given, 
@@ -1833,7 +1840,8 @@ def construct_bins(
             epsilon, 
             delta, 
             composition, 
-            privacy_schema
+            privacy_schema,
+            random_state,
         )
         preprocessor.fit(X, None, sample_weight)
         if is_mains:
@@ -2121,19 +2129,19 @@ def ebm_decision_function(
     feature_types_in, 
     bins, 
     intercept, 
-    additive_terms, 
+    term_scores, 
     term_features
 ):
     if type(intercept) is float or len(intercept) == 1:
-        scores = np.full(n_samples, intercept, dtype=np.float64)
+        sample_scores = np.full(n_samples, intercept, dtype=np.float64)
     else:
-        scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
+        sample_scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
 
     if 0 < n_samples:
         for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-            scores += additive_terms[term_idx][tuple(binned_data)]
+            sample_scores += term_scores[term_idx][tuple(binned_data)]
 
-    return scores
+    return sample_scores
 
 def ebm_decision_function_and_explain(
     X, 
@@ -2142,24 +2150,24 @@ def ebm_decision_function_and_explain(
     feature_types_in, 
     bins, 
     intercept, 
-    additive_terms, 
+    term_scores, 
     term_features
 ):
     if type(intercept) is float or len(intercept) == 1:
-        scores = np.full(n_samples, intercept, dtype=np.float64)
+        sample_scores = np.full(n_samples, intercept, dtype=np.float64)
         explanations = np.empty((n_samples, len(term_features)), dtype=np.float64)
     else:
         # TODO: add a test for multiclass calls to ebm_decision_function_and_explain
-        scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
+        sample_scores = np.full((n_samples, len(intercept)), intercept, dtype=np.float64)
         explanations = np.empty((n_samples, len(term_features), len(intercept)), dtype=np.float64)
 
     if 0 < n_samples:
         for term_idx, binned_data in eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-            term_scores = additive_terms[term_idx][tuple(binned_data)]
-            scores += term_scores
-            explanations[:, term_idx] = term_scores
+            scores = term_scores[term_idx][tuple(binned_data)]
+            sample_scores += scores
+            explanations[:, term_idx] = scores
 
-    return scores, explanations
+    return sample_scores, explanations
 
 def get_counts_and_weights(X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features):
     bin_counts = _none_list * len(term_features)

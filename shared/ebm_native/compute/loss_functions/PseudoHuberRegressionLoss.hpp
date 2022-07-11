@@ -9,7 +9,7 @@
 // TFloat could be double, float, or some SIMD intrinsic type
 template<typename TFloat>
 struct PseudoHuberRegressionLoss : public RegressionLoss {
-   LOSS_CLASS_BOILERPLATE(PseudoHuberRegressionLoss, true, 1)
+   LOSS_CLASS_BOILERPLATE(PseudoHuberRegressionLoss, true)
 
    TFloat m_deltaInverted;
 
@@ -31,6 +31,10 @@ struct PseudoHuberRegressionLoss : public RegressionLoss {
       }
 
       m_deltaInverted = deltaInverted;
+   }
+
+   INLINE_ALWAYS double GetFinalMultiplier() const noexcept {
+      return 1.0;
    }
 
    GPU_DEVICE INLINE_ALWAYS TFloat InverseLinkFunction(TFloat score) const {

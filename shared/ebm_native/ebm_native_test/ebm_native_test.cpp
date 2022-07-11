@@ -18,12 +18,12 @@
 //   (stops the current test, but we could just terminate), INFO (print to log file)
 // Don't implement this since it would be harder to do: SUBCASE
 
-// TODO : add test for the condition where we overflow the small model update to NaN or +-infinity for regression by using exteme regression values and in 
+// TODO : add test for the condition where we overflow the term update to NaN or +-infinity for regression by using exteme regression values and in 
 //   classification by using certainty situations with big learning rates
-// TODO : add test for the condition where we overflow the result of adding the small model update to the existing model NaN or +-infinity for regression 
+// TODO : add test for the condition where we overflow the result of adding the term update to the existing term NaN or +-infinity for regression 
 //   by using exteme regression values and in classification by using certainty situations with big learning rates
-// TODO : add test for the condition where we overflow the validation regression or classification scores without overflowing the model update or the 
-//   model tensors.  We can do this by having two extreme features that will overflow together
+// TODO : add test for the condition where we overflow the validation regression or classification scores without overflowing the term update or the 
+//   term tensors.  We can do this by having two extreme features that will overflow together
 
 // TODO: write a test to compare gain from single vs multi-dimensional splitting (they use the same underlying function, so if we make a pair where one 
 //    feature has duplicates for all 0 and 1 values, then the split if we control it should give us the same gain
@@ -56,7 +56,7 @@ extern void FAILED(const double val, TestCaseHidden * const pTestCaseHidden, con
 #pragma optimize("", on)
 #endif // _MSC_VER
 
-void EBM_NATIVE_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
+void EBM_CALLING_CONVENTION LogMessage(TraceEbmType traceLevel, const char * message) {
    const size_t cChars = strlen(message); // test that the string memory is accessible
    UNUSED(cChars);
    if(traceLevel <= TraceLevelOff) {
@@ -130,9 +130,9 @@ extern bool IsApproxEqual(const double value, const double expected, const doubl
    return isEqual;
 }
 
-const FloatEbmType * TestApi::GetPredictorScores(
-   const size_t iFeatureGroup,
-   const FloatEbmType * const pModelFeatureGroup,
+const double * TestApi::GetTermScores(
+   const size_t iTerm,
+   const double * const aTermScores,
    const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures
 ) const {
    if(Stage::InitializedBoosting != m_stage) {
@@ -140,10 +140,10 @@ const FloatEbmType * TestApi::GetPredictorScores(
    }
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
 
-   if(m_countBinsByFeatureGroup.size() <= iFeatureGroup) {
+   if(m_termBinCounts.size() <= iTerm) {
       exit(1);
    }
-   const std::vector<size_t> countBins = m_countBinsByFeatureGroup[iFeatureGroup];
+   const std::vector<size_t> countBins = m_termBinCounts[iTerm];
 
    const size_t cDimensions = perDimensionIndexArrayForBinnedFeatures.size();
    if(cDimensions != countBins.size()) {
@@ -158,18 +158,18 @@ const FloatEbmType * TestApi::GetPredictorScores(
       iValue += perDimensionIndexArrayForBinnedFeatures[iDimension] * multiple;
       multiple *= countBins[iDimension];
    }
-   return &pModelFeatureGroup[iValue];
+   return &aTermScores[iValue];
 }
 
-FloatEbmType TestApi::GetPredictorScore(
-   const size_t iFeatureGroup,
-   const FloatEbmType * const pModelFeatureGroup,
+double TestApi::GetTermScore(
+   const size_t iTerm,
+   const double * const aTermScores,
    const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures,
    const size_t iTargetClassOrZero
 ) const {
-   const FloatEbmType * const aScores = GetPredictorScores(
-      iFeatureGroup, 
-      pModelFeatureGroup, 
+   const double * const aScores = GetTermScores(
+      iTerm, 
+      aTermScores,
       perDimensionIndexArrayForBinnedFeatures
    );
    if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
@@ -188,7 +188,7 @@ FloatEbmType TestApi::GetPredictorScore(
          return aScores[iTargetClassOrZero];
       } else {
          if(static_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
-            return FloatEbmType { 0 };
+            return double { 0 };
          } else {
             return aScores[iTargetClassOrZero] - aScores[m_iZeroClassificationLogit];
          }
@@ -196,13 +196,13 @@ FloatEbmType TestApi::GetPredictorScore(
 #else // EXPAND_BINARY_LOGITS
       if(m_iZeroClassificationLogit < 0) {
          if(0 == iTargetClassOrZero) {
-            return FloatEbmType { 0 };
+            return double { 0 };
          } else {
             return aScores[0];
          }
       } else {
          if(static_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
-            return FloatEbmType { 0 };
+            return double { 0 };
          } else {
             return aScores[0];
          }
@@ -213,13 +213,13 @@ FloatEbmType TestApi::GetPredictorScore(
 #ifdef REDUCE_MULTICLASS_LOGITS
       if(m_iZeroClassificationLogit < 0) {
          if(0 == iTargetClassOrZero) {
-            return FloatEbmType { 0 };
+            return double { 0 };
          } else {
             return aScores[iTargetClassOrZero - 1];
          }
       } else {
          if(staitc_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
-            return FloatEbmType { 0 };
+            return double { 0 };
          } else if(staitc_cast<size_t>(m_iZeroClassificationLogit) < iTargetClassOrZero) {
             return aScores[iTargetClassOrZero - 1];
          } else {
@@ -241,12 +241,12 @@ TestApi::TestApi(const ptrdiff_t learningTypeOrCountTargetClasses, const ptrdiff
    m_learningTypeOrCountTargetClasses(learningTypeOrCountTargetClasses),
    m_iZeroClassificationLogit(iZeroClassificationLogit),
    m_bNullTrainingWeights(true),
-   m_bNullTrainingPredictionScores(true),
+   m_bNullTrainingInitScores(true),
    m_bNullValidationWeights(true),
-   m_bNullValidationPredictionScores(true),
+   m_bNullValidationInitScores(true),
    m_boosterHandle(nullptr),
    m_bNullInteractionWeights(true),
-   m_bNullInteractionPredictionScores(true),
+   m_bNullInteractionInitScores(true),
    m_interactionHandle(nullptr) 
 {
    if(IsClassification(learningTypeOrCountTargetClasses)) {
@@ -275,44 +275,44 @@ void TestApi::AddFeatures(const std::vector<FeatureTest> features) {
    }
 
    for(const FeatureTest & oneFeature : features) {
-      m_featuresNominal.push_back(oneFeature.m_bNominal ? EBM_TRUE : EBM_FALSE);
-      m_featuresBinCount.push_back(oneFeature.m_countBins);
+      m_featureNominals.push_back(oneFeature.m_bNominal ? EBM_TRUE : EBM_FALSE);
+      m_featureBinCounts.push_back(oneFeature.m_countBins);
    }
 
    m_stage = Stage::FeaturesAdded;
 }
 
-void TestApi::AddFeatureGroups(const std::vector<std::vector<size_t>> featureGroups) {
+void TestApi::AddTerms(const std::vector<std::vector<size_t>> termFeatures) {
    if(Stage::FeaturesAdded != m_stage) {
       exit(1);
    }
 
-   for(const std::vector<size_t> & oneFeatureGroup : featureGroups) {
-      m_featureGroupsDimensionCount.push_back(oneFeatureGroup.size());
+   for(const std::vector<size_t> & termFeatureIndexes : termFeatures) {
+      m_dimensionCounts.push_back(termFeatureIndexes.size());
       std::vector<size_t> countBins;
-      for(const size_t oneIndex : oneFeatureGroup) {
-         if(m_featuresBinCount.size() <= oneIndex) {
+      for(const size_t indexFeature : termFeatureIndexes) {
+         if(m_featureBinCounts.size() <= indexFeature) {
             exit(1);
          }
-         m_featureGroupsFeatureIndexes.push_back(oneIndex);
-         countBins.push_back(static_cast<size_t>(m_featuresBinCount[oneIndex]));
+         m_featureIndexes.push_back(indexFeature);
+         countBins.push_back(static_cast<size_t>(m_featureBinCounts[indexFeature]));
       }
-      m_countBinsByFeatureGroup.push_back(countBins);
+      m_termBinCounts.push_back(countBins);
    }
 
-   m_stage = Stage::FeatureGroupsAdded;
+   m_stage = Stage::TermsAdded;
 }
 
 void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
-   if(Stage::FeatureGroupsAdded != m_stage) {
+   if(Stage::TermsAdded != m_stage) {
       exit(1);
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
+      const size_t cFeatures = m_featureBinCounts.size();
 
-      const bool bNullPredictionScores = 0 == samples[0].m_priorScore.size();
-      m_bNullTrainingPredictionScores = bNullPredictionScores;
+      const bool bNullInitScores = 0 == samples[0].m_initScores.size();
+      m_bNullTrainingInitScores = bNullInitScores;
 
       const bool bNullWeights = samples[0].m_bNullWeight;
       m_bNullTrainingWeights = bNullWeights;
@@ -321,13 +321,13 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != (0 == oneSample.m_priorScore.size())) {
+         if(bNullInitScores != (0 == oneSample.m_initScores.size())) {
             exit(1);
          }
          if(bNullWeights != oneSample.m_bNullWeight) {
             exit(1);
          }
-         const FloatEbmType target = oneSample.m_target;
+         const double target = oneSample.m_target;
          if(std::isnan(target)) {
             exit(1);
          }
@@ -343,12 +343,12 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
                exit(1);
             }
             m_trainingClassificationTargets.push_back(targetInt);
-            if(!bNullPredictionScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_priorScore.size()) {
+            if(!bNullInitScores) {
+               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_initScores.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const FloatEbmType oneLogit : oneSample.m_priorScore) {
+               for(const double oneLogit : oneSample.m_initScores) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -359,20 +359,20 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_trainingPredictionScores.push_back(oneLogit);
+                        m_trainingInitScores.push_back(oneLogit);
                      } else {
-                        m_trainingPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_trainingInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_trainingPredictionScores.push_back(oneLogit - oneSample.m_priorScore[0]);
+                           m_trainingInitScores.push_back(oneLogit - oneSample.m_initScores[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_trainingPredictionScores.push_back(
-                              oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                           m_trainingInitScores.push_back(
+                              oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
@@ -381,20 +381,20 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
 #ifdef REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_trainingPredictionScores.push_back(oneLogit - oneSample.m_logits[0]);
+                           m_trainingInitScores.push_back(oneLogit - oneSample.m_logits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_trainingPredictionScores.push_back(
+                           m_trainingInitScores.push_back(
                               oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
                         }
                      }
 #else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_trainingPredictionScores.push_back(oneLogit);
+                        m_trainingInitScores.push_back(oneLogit);
                      } else {
-                        m_trainingPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_trainingInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #endif // REDUCE_MULTICLASS_LOGITS
                   }
@@ -403,19 +403,19 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
             }
          } else {
             m_trainingRegressionTargets.push_back(target);
-            if(!bNullPredictionScores) {
-               const FloatEbmType score = oneSample.m_priorScore[0];
+            if(!bNullInitScores) {
+               const double score = oneSample.m_initScores[0];
                if(std::isnan(score)) {
                   exit(1);
                }
                if(std::isinf(score)) {
                   exit(1);
                }
-               m_trainingPredictionScores.push_back(score);
+               m_trainingInitScores.push_back(score);
             }
          }
          if(!bNullWeights) {
-            const FloatEbmType weight = oneSample.m_weight;
+            const double weight = oneSample.m_weight;
             if(std::isnan(weight)) {
                exit(1);
             }
@@ -426,7 +426,7 @@ void TestApi::AddTrainingSamples(const std::vector<TestSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -448,9 +448,9 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
-      const bool bNullPredictionScores = 0 == samples[0].m_priorScore.size();
-      m_bNullValidationPredictionScores = bNullPredictionScores;
+      const size_t cFeatures = m_featureBinCounts.size();
+      const bool bNullInitScores = 0 == samples[0].m_initScores.size();
+      m_bNullValidationInitScores = bNullInitScores;
 
       const bool bNullWeights = samples[0].m_bNullWeight;
       m_bNullValidationWeights = bNullWeights;
@@ -459,13 +459,13 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != (0 == oneSample.m_priorScore.size())) {
+         if(bNullInitScores != (0 == oneSample.m_initScores.size())) {
             exit(1);
          }
          if(bNullWeights != oneSample.m_bNullWeight) {
             exit(1);
          }
-         const FloatEbmType target = oneSample.m_target;
+         const double target = oneSample.m_target;
          if(std::isnan(target)) {
             exit(1);
          }
@@ -481,12 +481,12 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
                exit(1);
             }
             m_validationClassificationTargets.push_back(targetInt);
-            if(!bNullPredictionScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_priorScore.size()) {
+            if(!bNullInitScores) {
+               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_initScores.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const FloatEbmType oneLogit : oneSample.m_priorScore) {
+               for(const double oneLogit : oneSample.m_initScores) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -497,20 +497,20 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_validationPredictionScores.push_back(oneLogit);
+                        m_validationInitScores.push_back(oneLogit);
                      } else {
-                        m_validationPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_validationInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_validationPredictionScores.push_back(oneLogit - oneSample.m_priorScore[0]);
+                           m_validationInitScores.push_back(oneLogit - oneSample.m_initScores[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_validationPredictionScores.push_back(
-                              oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                           m_validationInitScores.push_back(
+                              oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
@@ -519,20 +519,20 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
 #ifdef REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_validationPredictionScores.push_back(oneLogit - oneSample.m_logits[0]);
+                           m_validationInitScores.push_back(oneLogit - oneSample.m_logits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_validationPredictionScores.push_back(
+                           m_validationInitScores.push_back(
                               oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
                         }
                      }
 #else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_validationPredictionScores.push_back(oneLogit);
+                        m_validationInitScores.push_back(oneLogit);
                      } else {
-                        m_validationPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_validationInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #endif // REDUCE_MULTICLASS_LOGITS
                   }
@@ -541,19 +541,19 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
             }
          } else {
             m_validationRegressionTargets.push_back(target);
-            if(!bNullPredictionScores) {
-               const FloatEbmType score = oneSample.m_priorScore[0];
+            if(!bNullInitScores) {
+               const double score = oneSample.m_initScores[0];
                if(std::isnan(score)) {
                   exit(1);
                }
                if(std::isinf(score)) {
                   exit(1);
                }
-               m_validationPredictionScores.push_back(score);
+               m_validationInitScores.push_back(score);
             }
          }
          if(!bNullWeights) {
-            const FloatEbmType weight = oneSample.m_weight;
+            const double weight = oneSample.m_weight;
             if(std::isnan(weight)) {
                exit(1);
             }
@@ -564,7 +564,7 @@ void TestApi::AddValidationSamples(const std::vector<TestSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -591,15 +591,15 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    }
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
-   const size_t cFeatures = m_featuresBinCount.size();
+   const size_t cFeatures = m_featureBinCounts.size();
    const size_t cTrainingSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_trainingClassificationTargets.size() : m_trainingRegressionTargets.size();
    const size_t cValidationSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_validationClassificationTargets.size() : m_validationRegressionTargets.size();
 
-   if(m_bNullTrainingPredictionScores) {
-      m_trainingPredictionScores.resize(cVectorLength * cTrainingSamples);
+   if(m_bNullTrainingInitScores) {
+      m_trainingInitScores.resize(cVectorLength * cTrainingSamples);
    }
-   if(m_bNullValidationPredictionScores) {
-      m_validationPredictionScores.resize(cVectorLength * cValidationSamples);
+   if(m_bNullValidationInitScores) {
+      m_validationInitScores.resize(cVectorLength * cValidationSamples);
    }
    if(m_bNullTrainingWeights) {
       m_trainingWeights.resize(cTrainingSamples);
@@ -616,10 +616,10 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       std::vector<IntEbmType> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
 
-      size += SizeFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      size += SizeFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
-   std::vector<FloatEbmType> allWeights(m_trainingWeights);
+   std::vector<double> allWeights(m_trainingWeights);
    allWeights.insert(allWeights.end(), m_validationWeights.begin(), m_validationWeights.end());
    size += SizeWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0]);
 
@@ -628,7 +628,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       allTargets.insert(allTargets.end(), m_validationClassificationTargets.begin(), m_validationClassificationTargets.end());
       size += SizeClassificationTarget(m_learningTypeOrCountTargetClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
    } else {
-      std::vector<FloatEbmType> allTargets(m_trainingRegressionTargets);
+      std::vector<double> allTargets(m_trainingRegressionTargets);
       allTargets.insert(allTargets.end(), m_validationRegressionTargets.begin(), m_validationRegressionTargets.end());
       size += SizeRegressionTarget(allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0]);
    }
@@ -644,7 +644,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       std::vector<IntEbmType> allFeatures(trainingFeatures);
       allFeatures.insert(allFeatures.end(), validationFeatures.begin(), validationFeatures.end());
 
-      error = FillFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      error = FillFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
    }
 
    error = FillWeight(allWeights.size(), 0 == allWeights.size() ? nullptr : &allWeights[0], size, pDataSet);
@@ -654,7 +654,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       allTargets.insert(allTargets.end(), m_validationClassificationTargets.begin(), m_validationClassificationTargets.end());
       error = FillClassificationTarget(m_learningTypeOrCountTargetClasses, allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0], size, pDataSet);
    } else {
-      std::vector<FloatEbmType> allTargets(m_trainingRegressionTargets);
+      std::vector<double> allTargets(m_trainingRegressionTargets);
       allTargets.insert(allTargets.end(), m_validationRegressionTargets.begin(), m_validationRegressionTargets.end());
       error = FillRegressionTarget(allTargets.size(), 0 == allTargets.size() ? nullptr : &allTargets[0], size, pDataSet);
    }
@@ -663,17 +663,17 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
    bag.insert(bag.end(), cTrainingSamples, 1);
    bag.insert(bag.end(), cValidationSamples, -1);
 
-   std::vector<FloatEbmType> allScores(m_trainingPredictionScores);
-   allScores.insert(allScores.end(), m_validationPredictionScores.begin(), m_validationPredictionScores.end());
+   std::vector<double> allScores(m_trainingInitScores);
+   allScores.insert(allScores.end(), m_validationInitScores.begin(), m_validationInitScores.end());
 
    error = CreateBooster(
       k_randomSeed,
       pDataSet,
       0 == bag.size() ? nullptr : &bag[0],
       0 == allScores.size() ? nullptr : &allScores[0],
-      m_featureGroupsDimensionCount.size(),
-      0 == m_featureGroupsDimensionCount.size() ? nullptr : &m_featureGroupsDimensionCount[0],
-      0 == m_featureGroupsFeatureIndexes.size() ? nullptr : &m_featureGroupsFeatureIndexes[0],
+      m_dimensionCounts.size(),
+      0 == m_dimensionCounts.size() ? nullptr : &m_dimensionCounts[0],
+      0 == m_featureIndexes.size() ? nullptr : &m_featureIndexes[0],
       countInnerBags,
       nullptr,
       &m_boosterHandle
@@ -693,9 +693,9 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
 }
 
 BoostRet TestApi::Boost(
-   const IntEbmType indexFeatureGroup,
+   const IntEbmType indexTerm,
    const GenerateUpdateOptionsType options,
-   const FloatEbmType learningRate,
+   const double learningRate,
    const IntEbmType countSamplesRequiredForChildSplitMin,
    const std::vector<IntEbmType> leavesMax
 ) {
@@ -704,10 +704,10 @@ BoostRet TestApi::Boost(
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(indexFeatureGroup < IntEbmType { 0 }) {
+   if(indexTerm < IntEbmType { 0 }) {
       exit(1);
    }
-   if(m_featureGroupsDimensionCount.size() <= static_cast<size_t>(indexFeatureGroup)) {
+   if(m_dimensionCounts.size() <= static_cast<size_t>(indexTerm)) {
       exit(1);
    }
    if(std::isnan(learningRate)) {
@@ -716,16 +716,16 @@ BoostRet TestApi::Boost(
    if(std::isinf(learningRate)) {
       exit(1);
    }
-   if(countSamplesRequiredForChildSplitMin < FloatEbmType { 0 }) {
+   if(countSamplesRequiredForChildSplitMin < double { 0 }) {
       exit(1);
    }
 
-   FloatEbmType gainAvg = std::numeric_limits<FloatEbmType>::quiet_NaN();
-   FloatEbmType validationMetric = std::numeric_limits<FloatEbmType>::quiet_NaN();
+   double gainAvg = std::numeric_limits<double>::quiet_NaN();
+   double validationMetric = std::numeric_limits<double>::quiet_NaN();
 
-   error = GenerateModelUpdate(
+   error = GenerateTermUpdate(
       m_boosterHandle,
-      indexFeatureGroup,
+      indexTerm,
       options,
       learningRate,
       countSamplesRequiredForChildSplitMin,
@@ -736,32 +736,32 @@ BoostRet TestApi::Boost(
       exit(1);
    }
    if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-      // if sums are on, then we MUST change the model update
+      // if sums are on, then we MUST change the term update
 
-      size_t cValues = GetVectorLength(m_learningTypeOrCountTargetClasses);
-      std::vector<size_t> & countBinsByFeatureGroup = m_countBinsByFeatureGroup[static_cast<size_t>(indexFeatureGroup)];
+      size_t cUpdateScores = GetVectorLength(m_learningTypeOrCountTargetClasses);
+      std::vector<size_t> & dimensionBinCounts = m_termBinCounts[static_cast<size_t>(indexTerm)];
 
-      for(size_t iDimension = 0; iDimension < countBinsByFeatureGroup.size(); ++iDimension) {
-         size_t cBins = countBinsByFeatureGroup[iDimension];
-         cValues *= cBins;
+      for(size_t iDimension = 0; iDimension < dimensionBinCounts.size(); ++iDimension) {
+         size_t cBins = dimensionBinCounts[iDimension];
+         cUpdateScores *= cBins;
       }
 
-      FloatEbmType * aMem = new FloatEbmType[cValues];
-      memset(aMem, 0, sizeof(*aMem) * cValues);
+      double * aUpdateScores = new double[cUpdateScores];
+      memset(aUpdateScores, 0, sizeof(*aUpdateScores) * cUpdateScores);
 
-      error = SetModelUpdateExpanded(
+      error = SetTermUpdateExpanded(
          m_boosterHandle,
-         indexFeatureGroup,
-         aMem
+         indexTerm,
+         aUpdateScores
       );
 
-      delete[] aMem;
+      delete[] aUpdateScores;
 
       if(Error_None != error) {
          exit(1);
       }
    }
-   error = ApplyModelUpdate(
+   error = ApplyTermUpdate(
       m_boosterHandle,
       &validationMetric
    );
@@ -772,8 +772,8 @@ BoostRet TestApi::Boost(
    return BoostRet { gainAvg, validationMetric };
 }
 
-FloatEbmType TestApi::GetBestModelPredictorScore(
-   const size_t iFeatureGroup, 
+double TestApi::GetBestTermScore(
+   const size_t iTerm, 
    const std::vector<size_t> indexes, 
    const size_t iScore
 ) const {
@@ -783,46 +783,46 @@ FloatEbmType TestApi::GetBestModelPredictorScore(
       exit(1);
    }
 
-   if(m_countBinsByFeatureGroup.size() <= iFeatureGroup) {
+   if(m_termBinCounts.size() <= iTerm) {
       exit(1);
    }
-   const std::vector<size_t> countBins = m_countBinsByFeatureGroup[iFeatureGroup];
+   const std::vector<size_t> dimensionBinCounts = m_termBinCounts[iTerm];
 
-   const size_t cDimensions = countBins.size();
+   const size_t cDimensions = dimensionBinCounts.size();
    size_t multiple = GetVectorLength(m_learningTypeOrCountTargetClasses);
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      multiple *= countBins[iDimension];
+      multiple *= dimensionBinCounts[iDimension];
    }
 
-   std::vector<FloatEbmType> model;
-   model.resize(multiple);
+   std::vector<double> termScores;
+   termScores.resize(multiple);
 
-   error = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   error = GetBestTermScores(m_boosterHandle, iTerm, &termScores[0]);
    if(Error_None != error) {
       exit(1);
    }
 
-   const FloatEbmType predictorScore = GetPredictorScore(iFeatureGroup, &model[0], indexes, iScore);
-   return predictorScore;
+   const double termScore = GetTermScore(iTerm, &termScores[0], indexes, iScore);
+   return termScore;
 }
 
-void TestApi::GetBestModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
+void TestApi::GetBestTermScoresRaw(const size_t iTerm, double * const aTermScores) const {
    ErrorEbmType error;
 
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
+   if(m_dimensionCounts.size() <= iTerm) {
       exit(1);
    }
-   error = GetBestModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   error = GetBestTermScores(m_boosterHandle, iTerm, aTermScores);
    if(Error_None != error) {
       exit(1);
    }
 }
 
-FloatEbmType TestApi::GetCurrentModelPredictorScore(
-   const size_t iFeatureGroup,
+double TestApi::GetCurrentTermScore(
+   const size_t iTerm,
    const std::vector<size_t> indexes,
    const size_t iScore
 ) const {
@@ -832,39 +832,39 @@ FloatEbmType TestApi::GetCurrentModelPredictorScore(
       exit(1);
    }
 
-   if(m_countBinsByFeatureGroup.size() <= iFeatureGroup) {
+   if(m_termBinCounts.size() <= iTerm) {
       exit(1);
    }
-   const std::vector<size_t> countBins = m_countBinsByFeatureGroup[iFeatureGroup];
+   const std::vector<size_t> dimensionBinCounts = m_termBinCounts[iTerm];
 
-   const size_t cDimensions = countBins.size();
+   const size_t cDimensions = dimensionBinCounts.size();
    size_t multiple = GetVectorLength(m_learningTypeOrCountTargetClasses);
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      multiple *= countBins[iDimension];
+      multiple *= dimensionBinCounts[iDimension];
    }
 
-   std::vector<FloatEbmType> model;
-   model.resize(multiple);
+   std::vector<double> termScores;
+   termScores.resize(multiple);
 
-   error = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, &model[0]);
+   error = GetCurrentTermScores(m_boosterHandle, iTerm, &termScores[0]);
    if(Error_None != error) {
       exit(1);
    }
 
-   const FloatEbmType predictorScore = GetPredictorScore(iFeatureGroup, &model[0], indexes, iScore);
-   return predictorScore;
+   const double termScore = GetTermScore(iTerm, &termScores[0], indexes, iScore);
+   return termScore;
 }
 
-void TestApi::GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup, FloatEbmType * const aModelValues) const {
+void TestApi::GetCurrentTermScoresRaw(const size_t iTerm, double * const aTermScores) const {
    ErrorEbmType error;
 
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   if(m_featureGroupsDimensionCount.size() <= iFeatureGroup) {
+   if(m_dimensionCounts.size() <= iTerm) {
       exit(1);
    }
-   error = GetCurrentModelFeatureGroup(m_boosterHandle, iFeatureGroup, aModelValues);
+   error = GetCurrentTermScores(m_boosterHandle, iTerm, aTermScores);
    if(Error_None != error) {
       exit(1);
    }
@@ -876,9 +876,9 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
    }
    const size_t cSamples = samples.size();
    if(0 != cSamples) {
-      const size_t cFeatures = m_featuresBinCount.size();
-      const bool bNullPredictionScores = 0 == samples[0].m_priorScore.size();
-      m_bNullInteractionPredictionScores = bNullPredictionScores;
+      const size_t cFeatures = m_featureBinCounts.size();
+      const bool bNullInitScores = 0 == samples[0].m_initScores.size();
+      m_bNullInteractionInitScores = bNullInitScores;
 
       const bool bNullWeights = samples[0].m_bNullWeight;
       m_bNullInteractionWeights = bNullWeights;
@@ -887,13 +887,13 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
          if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
             exit(1);
          }
-         if(bNullPredictionScores != (0 == oneSample.m_priorScore.size())) {
+         if(bNullInitScores != (0 == oneSample.m_initScores.size())) {
             exit(1);
          }
          if(bNullWeights != oneSample.m_bNullWeight) {
             exit(1);
          }
-         const FloatEbmType target = oneSample.m_target;
+         const double target = oneSample.m_target;
          if(std::isnan(target)) {
             exit(1);
          }
@@ -909,13 +909,13 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
                exit(1);
             }
             m_interactionClassificationTargets.push_back(targetInt);
-            if(!bNullPredictionScores) {
+            if(!bNullInitScores) {
                if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) !=
-                  oneSample.m_priorScore.size()) {
+                  oneSample.m_initScores.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const FloatEbmType oneLogit : oneSample.m_priorScore) {
+               for(const double oneLogit : oneSample.m_initScores) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -926,21 +926,21 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
                      // binary classification
 #ifdef EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_interactionPredictionScores.push_back(oneLogit);
+                        m_interactionInitScores.push_back(oneLogit);
                      } else {
-                        m_interactionPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_interactionInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_interactionPredictionScores.push_back(
-                              oneLogit - oneSample.m_priorScore[0]);
+                           m_interactionInitScores.push_back(
+                              oneLogit - oneSample.m_initScores[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_interactionPredictionScores.push_back(
-                              oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                           m_interactionInitScores.push_back(
+                              oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
@@ -949,20 +949,20 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
 #ifdef REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_interactionPredictionScores.push_back(oneLogit - oneSample.m_logits[0]);
+                           m_interactionInitScores.push_back(oneLogit - oneSample.m_logits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_interactionPredictionScores.push_back(
+                           m_interactionInitScores.push_back(
                               oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
                         }
                      }
 #else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
-                        m_interactionPredictionScores.push_back(oneLogit);
+                        m_interactionInitScores.push_back(oneLogit);
                      } else {
-                        m_interactionPredictionScores.push_back(
-                           oneLogit - oneSample.m_priorScore[m_iZeroClassificationLogit]);
+                        m_interactionInitScores.push_back(
+                           oneLogit - oneSample.m_initScores[m_iZeroClassificationLogit]);
                      }
 #endif // REDUCE_MULTICLASS_LOGITS
                   }
@@ -971,19 +971,19 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
             }
          } else {
             m_interactionRegressionTargets.push_back(target);
-            if(!bNullPredictionScores) {
-               const FloatEbmType score = oneSample.m_priorScore[0];
+            if(!bNullInitScores) {
+               const double score = oneSample.m_initScores[0];
                if(std::isnan(score)) {
                   exit(1);
                }
                if(std::isinf(score)) {
                   exit(1);
                }
-               m_interactionPredictionScores.push_back(score);
+               m_interactionInitScores.push_back(score);
             }
          }
          if(!bNullWeights) {
-            const FloatEbmType weight = oneSample.m_weight;
+            const double weight = oneSample.m_weight;
             if(std::isnan(weight)) {
                exit(1);
             }
@@ -994,7 +994,7 @@ void TestApi::AddInteractionSamples(const std::vector<TestSample> samples) {
          }
       }
       for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-         const IntEbmType countBins = m_featuresBinCount[iFeature];
+         const IntEbmType countBins = m_featureBinCounts[iFeature];
          for(size_t iSample = 0; iSample < cSamples; ++iSample) {
             const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
             if(data < 0) {
@@ -1018,11 +1018,11 @@ void TestApi::InitializeInteraction() {
    }
 
    const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
-   const size_t cFeatures = m_featuresBinCount.size();
+   const size_t cFeatures = m_featureBinCounts.size();
    const size_t cSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_interactionClassificationTargets.size() : m_interactionRegressionTargets.size();
 
-   if(m_bNullInteractionPredictionScores) {
-      m_interactionPredictionScores.resize(cVectorLength * cSamples);
+   if(m_bNullInteractionInitScores) {
+      m_interactionInitScores.resize(cVectorLength * cSamples);
    }
    if(m_bNullInteractionWeights) {
       m_interactionWeights.resize(cSamples);
@@ -1031,7 +1031,7 @@ void TestApi::InitializeInteraction() {
    IntEbmType size = SizeDataSetHeader(cFeatures, 1, 1);
    for(size_t i = 0; i < cFeatures; ++i) {
       std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
-      size += SizeFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
+      size += SizeFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0]);
    }
 
    size += SizeWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0]);
@@ -1048,7 +1048,7 @@ void TestApi::InitializeInteraction() {
 
    for(size_t i = 0; i < cFeatures; ++i) {
       std::vector<IntEbmType> allFeatures(m_interactionBinnedData.begin() + i * cSamples, m_interactionBinnedData.begin() + i * cSamples + cSamples);
-      error = FillFeature(m_featuresBinCount[i], EBM_TRUE, EBM_TRUE, m_featuresNominal[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
+      error = FillFeature(m_featureBinCounts[i], EBM_TRUE, EBM_TRUE, m_featureNominals[i], allFeatures.size(), 0 == allFeatures.size() ? nullptr : &allFeatures[0], size, pDataSet);
    }
 
    error = FillWeight(m_interactionWeights.size(), 0 == m_interactionWeights.size() ? nullptr : &m_interactionWeights[0], size, pDataSet);
@@ -1065,7 +1065,7 @@ void TestApi::InitializeInteraction() {
    error = CreateInteractionDetector(
       pDataSet,
       0 == bag.size() ? nullptr : &bag[0],
-      0 == m_interactionPredictionScores.size() ? nullptr : &m_interactionPredictionScores[0],
+      0 == m_interactionInitScores.size() ? nullptr : &m_interactionInitScores[0],
       nullptr,
       &m_interactionHandle
    );
@@ -1083,8 +1083,8 @@ void TestApi::InitializeInteraction() {
    m_stage = Stage::InitializedInteraction;
 }
 
-FloatEbmType TestApi::TestCalcInteractionStrength(
-   const std::vector<IntEbmType> featuresInGroup, 
+double TestApi::TestCalcInteractionStrength(
+   const std::vector<IntEbmType> features, 
    const InteractionOptionsType options,
    const IntEbmType countSamplesRequiredForChildSplitMin
 ) const {
@@ -1093,20 +1093,20 @@ FloatEbmType TestApi::TestCalcInteractionStrength(
    if(Stage::InitializedInteraction != m_stage) {
       exit(1);
    }
-   for(const IntEbmType oneFeatureIndex : featuresInGroup) {
+   for(const IntEbmType oneFeatureIndex : features) {
       if(oneFeatureIndex < IntEbmType { 0 }) {
          exit(1);
       }
-      if(m_featuresBinCount.size() <= static_cast<size_t>(oneFeatureIndex)) {
+      if(m_featureBinCounts.size() <= static_cast<size_t>(oneFeatureIndex)) {
          exit(1);
       }
    }
 
-   FloatEbmType avgInteractionStrength = FloatEbmType { 0 };
+   double avgInteractionStrength = double { 0 };
    error = CalcInteractionStrength(
       m_interactionHandle,
-      featuresInGroup.size(),
-      0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
+      features.size(),
+      0 == features.size() ? nullptr : &features[0],
       options,
       countSamplesRequiredForChildSplitMin,
       &avgInteractionStrength
@@ -1119,14 +1119,14 @@ FloatEbmType TestApi::TestCalcInteractionStrength(
 
 extern void DisplayCuts(
    IntEbmType countSamples,
-   FloatEbmType * featureValues,
+   double * featureValues,
    IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
    IntEbmType countCuts,
-   FloatEbmType * cutsLowerBoundInclusive,
+   double * cutsLowerBoundInclusive,
    IntEbmType isMissingPresent,
-   FloatEbmType minValue,
-   FloatEbmType maxValue
+   double minValue,
+   double maxValue
 ) {
    UNUSED(isMissingPresent);
    UNUSED(minValue);
@@ -1135,15 +1135,15 @@ extern void DisplayCuts(
    size_t cBinsMax = static_cast<size_t>(countBinsMax);
    size_t cCuts = static_cast<size_t>(countCuts);
 
-   std::vector<FloatEbmType> samples(featureValues, featureValues + countSamples);
+   std::vector<double> samples(featureValues, featureValues + countSamples);
    samples.erase(std::remove_if(samples.begin(), samples.end(),
-      [](const FloatEbmType & value) { return std::isnan(value); }), samples.end());
+      [](const double & value) { return std::isnan(value); }), samples.end());
    std::sort(samples.begin(), samples.end());
 
    std::cout << std::endl << std::endl;
    std::cout << "missing=" << (countSamples - samples.size()) << ", countBinsMax=" << countBinsMax << 
       ", countSamplesPerBinMin=" << countSamplesPerBinMin << ", avgBin=" << 
-      static_cast<FloatEbmType>(samples.size()) / static_cast<FloatEbmType>(countBinsMax) << std::endl;
+      static_cast<double>(samples.size()) / static_cast<double>(countBinsMax) << std::endl;
 
    size_t iCut = 0;
    size_t cInBin = 0;

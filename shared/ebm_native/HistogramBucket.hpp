@@ -31,246 +31,237 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<bool bClassification>
-struct HistogramBucket;
+template<typename TFloat, bool bClassification>
+struct Bin;
 
-struct HistogramBucketBase {
-   HistogramBucketBase() = default; // preserve our POD status
-   ~HistogramBucketBase() = default; // preserve our POD status
+struct BinBase {
+   BinBase() = default; // preserve our POD status
+   ~BinBase() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   template<bool bClassification>
-   INLINE_ALWAYS HistogramBucket<bClassification> * GetHistogramBucket() {
-      return static_cast<HistogramBucket<bClassification> *>(this);
+   template<typename TFloat, bool bClassification>
+   INLINE_ALWAYS Bin<TFloat, bClassification> * Specialize() {
+      return static_cast<Bin<TFloat, bClassification> *>(this);
    }
-   template<bool bClassification>
-   INLINE_ALWAYS const HistogramBucket<bClassification> * GetHistogramBucket() const {
-      return static_cast<const HistogramBucket<bClassification> *>(this);
-   }
-};
-static_assert(std::is_standard_layout<HistogramBucketBase>::value,
-   "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<HistogramBucketBase>::value,
-   "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<HistogramBucketBase>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
-
-template<bool bClassification>
-struct HistogramBucket final : HistogramBucketBase {
-private:
-
-   size_t m_cSamplesInBucket;
-   FloatEbmType m_weightInBucket;
-
-   // use the "struct hack" since Flexible array member method is not available in C++
-   // aHistogramTargetEntry must be the last item in this struct
-   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
-   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
-   // (either the parent or child) if the class is derrived
-   HistogramTargetEntry<bClassification> m_aHistogramTargetEntry[1];
-
-public:
-
-   HistogramBucket() = default; // preserve our POD status
-   ~HistogramBucket() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
-
-   INLINE_ALWAYS size_t GetCountSamplesInBucket() const {
-      return m_cSamplesInBucket;
-   }
-   INLINE_ALWAYS void SetCountSamplesInBucket(const size_t cSamplesInBucket) {
-      m_cSamplesInBucket = cSamplesInBucket;
+   template<typename TFloat, bool bClassification>
+   INLINE_ALWAYS const Bin<TFloat, bClassification> * Specialize() const {
+      return static_cast<const Bin<TFloat, bClassification> *>(this);
    }
 
-   INLINE_ALWAYS FloatEbmType GetWeightInBucket() const {
-      return m_weightInBucket;
-   }
-   INLINE_ALWAYS void SetWeightInBucket(const FloatEbmType weightInBucket) {
-      m_weightInBucket = weightInBucket;
-   }
-
-   INLINE_ALWAYS const HistogramTargetEntry<bClassification> * GetHistogramTargetEntry() const {
-      return ArrayToPointer(m_aHistogramTargetEntry);
-   }
-   INLINE_ALWAYS HistogramTargetEntry<bClassification> * GetHistogramTargetEntry() {
-      return ArrayToPointer(m_aHistogramTargetEntry);
-   }
-
-   INLINE_ALWAYS void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
-      m_cSamplesInBucket += other.m_cSamplesInBucket;
-      m_weightInBucket += other.m_weightInBucket;
-
-      HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
-
-      const HistogramTargetEntry<bClassification> * pHistogramBucketVectorOther = 
-         other.GetHistogramTargetEntry();
-
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         pHistogramBucketVectorThis[iVector].Add(pHistogramBucketVectorOther[iVector]);
-      }
-   }
-
-   INLINE_ALWAYS void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
-      m_cSamplesInBucket -= other.m_cSamplesInBucket;
-      m_weightInBucket -= other.m_weightInBucket;
-
-      HistogramTargetEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramTargetEntry();
-
-      const HistogramTargetEntry<bClassification> * pHistogramBucketVectorOther =
-         other.GetHistogramTargetEntry();
-
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         pHistogramBucketVectorThis[iVector].Subtract(pHistogramBucketVectorOther[iVector]);
-      }
-   }
-
-   INLINE_ALWAYS void Copy(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
-      const size_t cBytesPerHistogramBucket = 
-         sizeof(HistogramBucket<bClassification>) - sizeof(HistogramTargetEntry<bClassification>) +
-         sizeof(HistogramTargetEntry<bClassification>) * cVectorLength;
-
-      memcpy(this, &other, cBytesPerHistogramBucket);
-   }
-
-   INLINE_ALWAYS void Zero(const size_t cVectorLength) {
-      // TODO: make this a function that can operate on an array of HistogramBucket objects with given total size 
-      //
-      // probably we should get rid of this function, and any others that zero via non-memset ways.  We should use memset instead.  Traditionally
-      // C/C++ only guaranteed that memset would lead to zeroed integers, but I think size_t would also quality
-      // (check this), and if we have IEEE 754 floats (which we can check), then zeroed memory is a zeroed float
-
-      // C standard guarantees that zeroing integer types (size_t) is a zero, and IEEE 754 guarantees 
-      // that zeroing a floating point is zero.  Our HistogramBucket objects are POD and also only contain
-      // floating point types and size_t
+   INLINE_ALWAYS void Zero(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
+      // The C standard guarantees that zeroing integer types is a zero, and IEEE-754 guarantees 
+      // that zeroing a floating point is zero.  Our Bin objects are POD and also only contain
+      // floating point and unsigned integer types
       //
       // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
       // object representation of a signed integer type where the sign bit is zero is a valid object 
       // representation of the corresponding unsigned type, and shall represent the same value.For any 
       // integer type, the object representation where all the bits are zero shall be a representation 
       // of the value zero in that type.
-      //
-      // static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
-      // memset(some_pointer, 0, my_size);
 
+      static_assert(std::numeric_limits<float>::is_iec559, "memset of floats requires IEEE 754 to guarantee zeros");
+      memset(reinterpret_cast<char *>(this) + iBin * cBytesPerBin, 0, cBins * cBytesPerBin);
+   }
+};
+static_assert(std::is_standard_layout<BinBase>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<BinBase>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<BinBase>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
-      m_cSamplesInBucket = size_t { 0 };
-      m_weightInBucket = size_t { 0 };
-      HistogramTargetEntry<bClassification> * pHistogramTargetEntry = GetHistogramTargetEntry();
-      const HistogramTargetEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
-      EBM_ASSERT(1 <= cVectorLength);
-      do {
-         pHistogramTargetEntry->Zero();
-         ++pHistogramTargetEntry;
-      } while(pHistogramTargetEntryEnd != pHistogramTargetEntry);
+template<typename TFloat, bool bClassification>
+struct Bin final : BinBase {
+private:
 
-      AssertZero(cVectorLength);
+   size_t m_cSamples;
+   TFloat m_weight;
+
+   // use the "struct hack" since Flexible array member method is not available in C++
+   // aHistogramTargetEntry must be the last item in this struct
+   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
+   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
+   // (either the parent or child) if the class is derrived
+   HistogramTargetEntry<TFloat, bClassification> m_aHistogramTargetEntry[1];
+
+public:
+
+   Bin() = default; // preserve our POD status
+   ~Bin() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
+   INLINE_ALWAYS size_t GetCountSamples() const {
+      return m_cSamples;
+   }
+   INLINE_ALWAYS void SetCountSamples(const size_t cSamples) {
+      m_cSamples = cSamples;
+   }
+
+   INLINE_ALWAYS TFloat GetWeight() const {
+      return m_weight;
+   }
+   INLINE_ALWAYS void SetWeight(const TFloat weight) {
+      m_weight = weight;
+   }
+
+   INLINE_ALWAYS const HistogramTargetEntry<TFloat, bClassification> * GetHistogramTargetEntry() const {
+      return ArrayToPointer(m_aHistogramTargetEntry);
+   }
+   INLINE_ALWAYS HistogramTargetEntry<TFloat, bClassification> * GetHistogramTargetEntry() {
+      return ArrayToPointer(m_aHistogramTargetEntry);
+   }
+
+   INLINE_ALWAYS void Add(const Bin<TFloat, bClassification> & other, const size_t cVectorLength) {
+      m_cSamples += other.m_cSamples;
+      m_weight += other.m_weight;
+
+      auto * pBinVectorThis = GetHistogramTargetEntry();
+
+      const auto * pBinVectorOther = other.GetHistogramTargetEntry();
+
+      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+         pBinVectorThis[iVector].Add(pBinVectorOther[iVector]);
+      }
+   }
+
+   INLINE_ALWAYS void Subtract(const Bin<TFloat, bClassification> & other, const size_t cVectorLength) {
+      m_cSamples -= other.m_cSamples;
+      m_weight -= other.m_weight;
+
+      auto * pBinVectorThis = GetHistogramTargetEntry();
+
+      const auto * pBinVectorOther = other.GetHistogramTargetEntry();
+
+      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+         pBinVectorThis[iVector].Subtract(pBinVectorOther[iVector]);
+      }
+   }
+
+   INLINE_ALWAYS void Copy(const Bin<TFloat, bClassification> & other, const size_t cVectorLength) {
+      const size_t cBytesPerBin = sizeof(Bin) - sizeof(m_aHistogramTargetEntry) +
+         sizeof(m_aHistogramTargetEntry[0]) * cVectorLength;
+
+      memcpy(this, &other, cBytesPerBin);
    }
 
    INLINE_ALWAYS void AssertZero(const size_t cVectorLength) const {
       UNUSED(cVectorLength);
 #ifndef NDEBUG
-      EBM_ASSERT(0 == m_cSamplesInBucket);
-      EBM_ASSERT(0 == m_weightInBucket);
+      EBM_ASSERT(0 == m_cSamples);
+      EBM_ASSERT(0 == m_weight);
 
-      const HistogramTargetEntry<bClassification> * pHistogramBucketVector = GetHistogramTargetEntry();
+      const auto * pBinVector = GetHistogramTargetEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         pHistogramBucketVector[iVector].AssertZero();
+         pBinVector[iVector].AssertZero();
       }
 #endif // NDEBUG
    }
 };
-static_assert(std::is_standard_layout<HistogramBucket<true>>::value && std::is_standard_layout<HistogramBucket<false>>::value,
+static_assert(std::is_standard_layout<Bin<double, true>>::value && std::is_standard_layout<Bin<double, false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<HistogramBucket<true>>::value && std::is_trivial<HistogramBucket<false>>::value,
+static_assert(std::is_trivial<Bin<double, true>>::value && std::is_trivial<Bin<double, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<HistogramBucket<true>>::value && std::is_pod<HistogramBucket<false>>::value,
+static_assert(std::is_pod<Bin<double, true>>::value && std::is_pod<Bin<double, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-INLINE_ALWAYS bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
-   const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<true>) :
-      sizeof(HistogramTargetEntry<false>);
+static_assert(std::is_standard_layout<Bin<float, true>>::value && std::is_standard_layout<Bin<float, false>>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<Bin<float, true>>::value && std::is_trivial<Bin<float, false>>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<Bin<float, true>>::value && std::is_pod<Bin<float, false>>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
+
+template<typename TFloat>
+INLINE_ALWAYS bool IsOverflowBinSize(const bool bClassification, const size_t cVectorLength) {
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<TFloat>(bClassification);
 
    if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
       return true;
    }
 
-   const size_t cBytesHistogramBucketComponent = bClassification ?
-      (sizeof(HistogramBucket<true>) - sizeof(HistogramTargetEntry<true>)) :
-      (sizeof(HistogramBucket<false>) - sizeof(HistogramTargetEntry<false>));
+   size_t cBytesBinComponent;
+   if(bClassification) {
+      cBytesBinComponent = sizeof(Bin<TFloat, true>);
+   } else {
+      cBytesBinComponent = sizeof(Bin<TFloat, false>);
+   }
+   cBytesBinComponent -= cBytesHistogramTargetEntry;
 
-   if(UNLIKELY(IsAddError(cBytesHistogramBucketComponent, cBytesHistogramTargetEntry * cVectorLength))) {
+   if(UNLIKELY(IsAddError(cBytesBinComponent, cBytesHistogramTargetEntry * cVectorLength))) {
       return true;
    }
 
    return false;
 }
 
-INLINE_ALWAYS size_t GetHistogramBucketSize(const bool bClassification, const size_t cVectorLength) {
-   // TODO: someday try out bucket sizes that are a power of two.  This would allow us to use a shift when bucketing into histograms
+template<typename TFloat>
+INLINE_ALWAYS size_t GetBinSize(const bool bClassification, const size_t cVectorLength) {
+   // TODO: someday try out bin sizes that are a power of two.  This would allow us to use a shift when using bins
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
 
-   const size_t cBytesHistogramBucketComponent = bClassification ?
-      sizeof(HistogramBucket<true>) - sizeof(HistogramTargetEntry<true>) :
-      sizeof(HistogramBucket<false>) - sizeof(HistogramTargetEntry<false>);
+   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<TFloat>(bClassification);
 
-   const size_t cBytesHistogramTargetEntry = bClassification ?
-      sizeof(HistogramTargetEntry<true>) :
-      sizeof(HistogramTargetEntry<false>);
+   size_t cBytesBinComponent;
+   if(bClassification) {
+      cBytesBinComponent = sizeof(Bin<TFloat, true>);
+   } else {
+      cBytesBinComponent = sizeof(Bin<TFloat, false>);
+   }
+   cBytesBinComponent -= cBytesHistogramTargetEntry;
 
-   return cBytesHistogramBucketComponent + cBytesHistogramTargetEntry * cVectorLength;
+   return cBytesBinComponent + cBytesHistogramTargetEntry * cVectorLength;
 }
 
-template<bool bClassification>
-INLINE_ALWAYS HistogramBucket<bClassification> * GetHistogramBucketByIndex(
-   const size_t cBytesPerHistogramBucket,
-   HistogramBucket<bClassification> * const aHistogramBuckets,
+template<typename TFloat, bool bClassification>
+INLINE_ALWAYS Bin<TFloat, bClassification> * IndexBin(
+   const size_t cBytesPerBin,
+   Bin<TFloat, bClassification> * const aBins,
    const size_t iBin
 ) {
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per bin, 
    // therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<HistogramBucket<bClassification> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+   return reinterpret_cast<Bin<TFloat, bClassification> *>(reinterpret_cast<char *>(aBins) + iBin * cBytesPerBin);
 }
 
-template<bool bClassification>
-INLINE_ALWAYS const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
-   const size_t cBytesPerHistogramBucket,
-   const HistogramBucket<bClassification> * const aHistogramBuckets,
+template<typename TFloat, bool bClassification>
+INLINE_ALWAYS const Bin<TFloat, bClassification> * IndexBin(
+   const size_t cBytesPerBin,
+   const Bin<TFloat, bClassification> * const aBins,
    const size_t iBin
 ) {
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per bin, 
    //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<const HistogramBucket<bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+   return reinterpret_cast<const Bin<TFloat, bClassification> *>(reinterpret_cast<const char *>(aBins) + iBin * cBytesPerBin);
 }
 
-INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketByIndex(
-   const size_t cBytesPerHistogramBucket,
-   HistogramBucketBase * const aHistogramBuckets,
+INLINE_ALWAYS BinBase * IndexBin(
+   const size_t cBytesPerBin,
+   BinBase * const aBins,
    const size_t iBin
 ) {
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per bin, 
    //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<HistogramBucketBase *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+   return reinterpret_cast<BinBase *>(reinterpret_cast<char *>(aBins) + iBin * cBytesPerBin);
 }
 
-INLINE_ALWAYS const HistogramBucketBase * GetHistogramBucketByIndex(
-   const size_t cBytesPerHistogramBucket,
-   const HistogramBucketBase * const aHistogramBuckets,
+INLINE_ALWAYS const BinBase * IndexBin(
+   const size_t cBytesPerBin,
+   const BinBase * const aBins,
    const size_t iBin
 ) {
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per bin, 
    //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<const HistogramBucketBase *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+   return reinterpret_cast<const BinBase *>(reinterpret_cast<const char *>(aBins) + iBin * cBytesPerBin);
 }
 
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
-#define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerHistogramBucket, MACRO_pHistogramBucket, MACRO_aHistogramBucketsEnd) \
-   (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pHistogramBucket) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= \
-      reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
+#define ASSERT_BIN_OK(MACRO_cBytesPerBin, MACRO_pBin, MACRO_pBinsEnd) \
+   (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pBin) + static_cast<size_t>(MACRO_cBytesPerBin) <= \
+      reinterpret_cast<const char *>(MACRO_pBinsEnd)))
 
 } // DEFINED_ZONE_NAME
 

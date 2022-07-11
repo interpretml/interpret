@@ -48,6 +48,7 @@
     <ClCompile Include="common_c\logging.c">
       <Filter>common_c</Filter>
     </ClCompile>
+    <ClCompile Include="GaussianDistribution.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="approximate_math.hpp" />
@@ -93,6 +94,8 @@
     </ClInclude>
     <ClInclude Include="compute_accessors.hpp" />
     <ClInclude Include="data_set_shared.hpp" />
+    <ClInclude Include="GaussianDistribution.hpp" />
+    <ClInclude Include="RandomNondeterministic.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />

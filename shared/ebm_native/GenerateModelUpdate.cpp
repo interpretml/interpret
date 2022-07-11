@@ -7,6 +7,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
+#include <string.h> // memcpy
 
 #include "ebm_native.h"
 #include "logging.h"
@@ -18,7 +19,7 @@
 #include "ebm_stats.hpp"
 // feature includes
 #include "Feature.hpp"
-// FeatureGroup.h depends on FeatureInternal.h
+// FeatureGroup.hpp depends on FeatureInternal.h
 #include "FeatureGroup.hpp"
 // dataset depends on features
 #include "DataSetBoosting.hpp"
@@ -37,58 +38,58 @@ namespace DEFINED_ZONE_NAME {
 
 extern void BinBoosting(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const SamplingSet * const pTrainingSet
 );
 
-extern void SumHistogramBuckets(
+extern void SumBins(
    BoosterShell * const pBoosterShell,
-   const size_t cHistogramBuckets
+   const size_t cBins
 #ifndef NDEBUG
    , const size_t cSamplesTotal
-   , const FloatEbmType weightTotal
+   , const FloatBig weightTotal
 #endif // NDEBUG
 );
 
 extern void TensorTotalsBuild(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureGroup * const pFeatureGroup,
-   HistogramBucketBase * pBucketAuxiliaryBuildZone,
-   HistogramBucketBase * const aHistogramBuckets
+   const Term * const pTerm,
+   BinBase * aAuxiliaryBinsBase,
+   BinBase * const aBinsBase
 #ifndef NDEBUG
-   , HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
+   , BinBase * const aBinsBaseDebugCopy
+   , const unsigned char * const pBinsEndDebug
 #endif // NDEBUG
 );
 
 extern ErrorEbmType PartitionOneDimensionalBoosting(
    BoosterShell * const pBoosterShell,
-   const size_t cHistogramBuckets,
+   const size_t cBins,
    const size_t cSamplesTotal,
-   const FloatEbmType weightTotal,
+   const FloatBig weightTotal,
    const size_t iDimension,
    const size_t cSamplesRequiredForChildSplitMin,
    const size_t cLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 );
 
 extern ErrorEbmType PartitionTwoDimensionalBoosting(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const size_t cSamplesRequiredForChildSplitMin,
-   HistogramBucketBase * pAuxiliaryBucketZone,
-   FloatEbmType * const pTotalGain
+   BinBase * aAuxiliaryBinsBase,
+   double * const pTotalGain
 #ifndef NDEBUG
-   , const HistogramBucketBase * const aHistogramBucketsDebugCopy
+   , const BinBase * const aBinsBaseDebugCopy
 #endif // NDEBUG
 );
 
 extern ErrorEbmType PartitionRandomBoosting(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 );
 
 static ErrorEbmType BoostZeroDimensional(
@@ -103,27 +104,25 @@ static ErrorEbmType BoostZeroDimensional(
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+
+   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || 
+      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)) 
+   {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING BoostZeroDimensional IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
 
-   HistogramBucketBase * const pHistogramBucket = pBoosterShell->GetHistogramBucketBase(cBytesPerHistogramBucket);
-   if(UNLIKELY(nullptr == pHistogramBucket)) {
+   BinBase * const pBinFast = pBoosterShell->GetBinBaseFast(cBytesPerBinFast);
+   if(UNLIKELY(nullptr == pBinFast)) {
       // already logged
       return Error_OutOfMemory;
    }
-
-   if(bClassification) {
-      pHistogramBucket->GetHistogramBucket<true>()->Zero(cVectorLength);
-   } else {
-      pHistogramBucket->GetHistogramBucket<false>()->Zero(cVectorLength);
-   }
+   pBinFast->Zero(cBytesPerBinFast);
 
 #ifndef NDEBUG
-   pBoosterShell->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(pHistogramBucket) + cBytesPerHistogramBucket);
+   pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(pBinFast) + cBytesPerBinFast);
 #endif // NDEBUG
 
    BinBoosting(
@@ -132,32 +131,52 @@ static ErrorEbmType BoostZeroDimensional(
       pTrainingSet
    );
 
-   CompressibleTensor * const pSmallChangeToModelOverwriteSingleSamplingSet = 
-      pBoosterShell->GetOverwritableModelUpdate();
-   FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+
+   BinBase * const pBinBig = pBoosterShell->GetBinBaseBig(cBytesPerBinBig);
+   if(UNLIKELY(nullptr == pBinBig)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+
+#ifndef NDEBUG
+   pBoosterShell->SetBinsBigEndDebug(reinterpret_cast<unsigned char *>(pBinBig) + cBytesPerBinBig);
+#endif // NDEBUG
+
+   // TODO: put this into it's own function that converts our fast floats to big floats
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
+   EBM_ASSERT(cBytesPerBinFast == cBytesPerBinBig); // until we switch fast to float datatypes
+   memcpy(pBinBig, pBinFast, cBytesPerBinFast);
+
+
+   // TODO: we can exit here back to python to allow caller modification to our histograms
+
+
+   Tensor * const pInnerTermUpdate = 
+      pBoosterShell->GetInnerTermUpdate();
+   FloatFast * aUpdateScores = pInnerTermUpdate->GetScoresPointer();
    if(bClassification) {
-      const HistogramBucket<true> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<true>();
-      const HistogramTargetEntry<true> * const aSumHistogramTargetEntry =
-         pHistogramBucketLocal->GetHistogramTargetEntry();
+      const auto * const pBin = pBinBig->Specialize<FloatBig, true>();
+      const auto * const aSumHistogramTargetEntry = pBin->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatEbmType update = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iVector].m_sumGradients);
+            const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iVector].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             // Hmmm.. for DP we need the sum, which means that we can't zero one of the class numbers as we
             // could with one of the logits in multiclass.
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            aValues[iVector] = update;
+            aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore);
          }
       } else {
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-         FloatEbmType zeroLogit = FloatEbmType { 0 };
+         FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            FloatEbmType update = EbmStats::ComputeSinglePartitionUpdate(
+            FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
                aSumHistogramTargetEntry[iVector].m_sumGradients,
                aSumHistogramTargetEntry[iVector].GetSumHessians()
             );
@@ -165,29 +184,28 @@ static ErrorEbmType BoostZeroDimensional(
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(IsMulticlass(runtimeLearningTypeOrCountTargetClasses)) {
                if(size_t { 0 } == iVector) {
-                  zeroLogit = update;
+                  zeroLogit = updateScore;
                }
-               update -= zeroLogit;
+               updateScore -= zeroLogit;
             }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            aValues[iVector] = update;
+            aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore);
          }
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      const HistogramBucket<false> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<false>();
-      const HistogramTargetEntry<false> * const aSumHistogramTargetEntry =
-         pHistogramBucketLocal->GetHistogramTargetEntry();
+      const auto * const pBin = pBinBig->Specialize<FloatBig, false>();
+      const auto * const aSumHistogramTargetEntry = pBin->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-         const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
-         aValues[0] = smallChangeToModel;
+         const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
+         aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
       } else {
-         const FloatEbmType smallChangeToModel = EbmStats::ComputeSinglePartitionUpdate(
+         const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
             aSumHistogramTargetEntry[0].m_sumGradients,
-            pHistogramBucketLocal->GetWeightInBucket()
+            pBin->GetWeight()
          );
-         aValues[0] = smallChangeToModel;
+         aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
       }
    }
 
@@ -197,19 +215,19 @@ static ErrorEbmType BoostZeroDimensional(
 
 static ErrorEbmType BoostSingleDimensional(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup,
-   const size_t cHistogramBuckets,
+   const Term * const pTerm,
+   const size_t cBins,
    const SamplingSet * const pTrainingSet,
    const size_t iDimension,
    const size_t cSamplesRequiredForChildSplitMin,
    const IntEbmType countLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 ) {
    ErrorEbmType error;
 
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
-   EBM_ASSERT(1 == pFeatureGroup->GetCountSignificantDimensions());
+   EBM_ASSERT(1 == pTerm->GetCountSignificantDimensions());
 
    EBM_ASSERT(IntEbmType { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
    size_t cLeavesMax = static_cast<size_t>(countLeavesMax);
@@ -223,67 +241,74 @@ static ErrorEbmType BoostSingleDimensional(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
-      // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
-      return Error_OutOfMemory;
-   }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cBytesPerHistogramBucket, cHistogramBuckets)) {
-      // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cBytesPerHistogramBucket, cHistogramBuckets)");
-      return Error_OutOfMemory;
-   }
-   const size_t cBytesBuffer = cBytesPerHistogramBucket * cHistogramBuckets;
 
-   HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
-   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) ||
+      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)) 
+   {
+      // TODO : move this to initialization where we execute it only once
+      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)");
+      return Error_OutOfMemory;
+   }
+
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinFast, cBins)) {
+      // TODO : move this to initialization where we execute it only once
+      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinFast, cBins)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesBufferFast = cBytesPerBinFast * cBins;
+
+   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast(cBytesBufferFast);
+   if(UNLIKELY(nullptr == aBinsFast)) {
       // already logged
       return Error_OutOfMemory;
    }
-
-   HistogramTargetEntryBase * const aSumHistogramTargetEntry =
-      pBoosterShell->GetSumHistogramTargetEntryArray();
-
-   if(bClassification) {
-      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
-      for(size_t i = 0; i < cHistogramBuckets; ++i) {
-         HistogramBucket<true> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-
-      HistogramTargetEntry<true> * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<true>();
-      for(size_t i = 0; i < cVectorLength; ++i) {
-         aSumHistogramTargetEntryLocal[i].Zero();
-      }
-   } else {
-      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
-      for(size_t i = 0; i < cHistogramBuckets; ++i) {
-         HistogramBucket<false> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-
-      HistogramTargetEntry<false> * const aSumHistogramTargetEntryLocal = aSumHistogramTargetEntry->GetHistogramTargetEntry<false>();
-      for(size_t i = 0; i < cVectorLength; ++i) {
-         aSumHistogramTargetEntryLocal[i].Zero();
-      }
-   }
+   aBinsFast->Zero(cBytesPerBinFast, cBins);
 
 #ifndef NDEBUG
-   pBoosterShell->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer);
+   pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
    BinBoosting(
       pBoosterShell,
-      pFeatureGroup,
+      pTerm,
       pTrainingSet
    );
 
-   SumHistogramBuckets(
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinBig, cBins)) {
+      // TODO : move this to initialization where we execute it only once
+      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinBig, cBins)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesBufferBig = cBytesPerBinBig * cBins;
+
+   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig(cBytesBufferBig);
+   if(UNLIKELY(nullptr == aBinsBig)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+
+#ifndef NDEBUG
+   pBoosterShell->SetBinsBigEndDebug(reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig);
+#endif // NDEBUG
+
+   // TODO: put this into it's own function that converts our fast floats to big floats
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
+   EBM_ASSERT(cBytesBufferFast == cBytesBufferBig); // until we switch fast to float datatypes
+   memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
+
+
+   // TODO: we can exit here back to python to allow caller modification to our histograms
+
+
+   HistogramTargetEntryBase * const aSumHistogramTargetEntry = pBoosterShell->GetSumHistogramTargetEntryArray();
+   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
+   aSumHistogramTargetEntry->Zero(cBytesPerHistogramTargetEntry, cVectorLength);
+
+   SumBins(
       pBoosterShell,
-      cHistogramBuckets
+      cBins
 #ifndef NDEBUG
       , pTrainingSet->GetTotalCountSampleOccurrences()
       , pTrainingSet->GetWeightTotal()
@@ -292,11 +317,11 @@ static ErrorEbmType BoostSingleDimensional(
 
    const size_t cSamplesTotal = pTrainingSet->GetTotalCountSampleOccurrences();
    EBM_ASSERT(1 <= cSamplesTotal);
-   const FloatEbmType weightTotal = pTrainingSet->GetWeightTotal();
+   const FloatBig weightTotal = pTrainingSet->GetWeightTotal();
 
    error = PartitionOneDimensionalBoosting(
       pBoosterShell,
-      cHistogramBuckets,
+      cBins,
       cSamplesTotal,
       weightTotal,
       iDimension,
@@ -314,129 +339,148 @@ static ErrorEbmType BoostSingleDimensional(
 //    go back to our original tensor after splits to determine the hessian
 static ErrorEbmType BoostMultiDimensional(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const SamplingSet * const pTrainingSet,
    const size_t cSamplesRequiredForChildSplitMin,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
-   EBM_ASSERT(2 <= pFeatureGroup->GetCountDimensions());
-   EBM_ASSERT(2 <= pFeatureGroup->GetCountSignificantDimensions());
+   EBM_ASSERT(2 <= pTerm->GetCountDimensions());
+   EBM_ASSERT(2 <= pTerm->GetCountSignificantDimensions());
 
    ErrorEbmType error;
 
-   size_t cAuxillaryBucketsForBuildFastTotals = 0;
-   size_t cTotalBucketsMainSpace = 1;
+   size_t cAuxillaryBinsForBuildFastTotals = 0;
+   size_t cTotalBinsMainSpace = 1;
 
-   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
-   const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + pFeatureGroup->GetCountDimensions();
+   const TermEntry * pTermEntry = pTerm->GetTermEntries();
+   const TermEntry * const pTermEntriesEnd = pTermEntry + pTerm->GetCountDimensions();
    do {
-      const size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
+      const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
       EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
       if(size_t { 1 } < cBins) {
-         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-         EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-         // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at 
-         // allocation that cTotalBucketsMainSpace would not overflow
-         EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
-         cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-         // we check for simple multiplication overflow from m_cBins in pBoosterCore->Initialize when we unpack featureGroupsFeatureIndexes
-         EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins));
-         cTotalBucketsMainSpace *= cBins;
-         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-         EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
+         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
+         EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
+         // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than cTotalBinsMainSpace, and we checked at 
+         // allocation that cTotalBinsMainSpace would not overflow
+         EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace));
+         cAuxillaryBinsForBuildFastTotals += cTotalBinsMainSpace;
+         // we check for simple multiplication overflow from m_cBins in pBoosterCore->Initialize when we unpack featureIndexes
+         EBM_ASSERT(!IsMultiplyError(cTotalBinsMainSpace, cBins));
+         cTotalBinsMainSpace *= cBins;
+         // if this wasn't true then we'd have to check IsAddError(cAuxillaryBinsForBuildFastTotals, cTotalBinsMainSpace) at runtime
+         EBM_ASSERT(cAuxillaryBinsForBuildFastTotals < cTotalBinsMainSpace);
       }
-      ++pFeatureGroupEntry;
-   } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
-   // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
-   const size_t cAuxillaryBucketsForSplitting = 24;
-   const size_t cAuxillaryBuckets =
-      cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
-   if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
-      return Error_OutOfMemory;
-   }
-   const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
+      ++pTermEntry;
+   } while(pTermEntriesEnd != pTermEntry);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+
+   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || 
+      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)) 
+   {
       LOG_0(
          TraceLevelWarning,
-         "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
+         "WARNING BoostMultiDimensional IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
+   const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBinsMainSpace;
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
-   HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
-   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast(cBytesBufferFast);
+   if(UNLIKELY(nullptr == aBinsFast)) {
       // already logged
       return Error_OutOfMemory;
    }
-
-   if(bClassification) {
-      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<true> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   } else {
-      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<false> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   }
-
-   HistogramBucketBase * pAuxiliaryBucketZone = GetHistogramBucketByIndex(
-      cBytesPerHistogramBucket,
-      aHistogramBuckets,
-      cTotalBucketsMainSpace
-   );
+   aBinsFast->Zero(cBytesPerBinFast, cTotalBinsMainSpace);
 
 #ifndef NDEBUG
-   const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
-   pBoosterShell->SetHistogramBucketsEndDebug(aHistogramBucketsEndDebug);
+   pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
    BinBoosting(
       pBoosterShell,
-      pFeatureGroup,
+      pTerm,
       pTrainingSet
    );
 
-#ifndef NDEBUG
-   // make a copy of the original binned buckets for debugging purposes
+   // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
+   const size_t cAuxillaryBinsForSplitting = 24;
+   const size_t cAuxillaryBins =
+      cAuxillaryBinsForBuildFastTotals < cAuxillaryBinsForSplitting ? cAuxillaryBinsForSplitting : cAuxillaryBinsForBuildFastTotals;
+   if(IsAddError(cTotalBinsMainSpace, cAuxillaryBins)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsAddError(cTotalBinsMainSpace, cAuxillaryBins)");
+      return Error_OutOfMemory;
+   }
+   const size_t cTotalBinsBig = cTotalBinsMainSpace + cAuxillaryBins;
 
-   HistogramBucketBase * const aHistogramBucketsDebugCopy =
-      EbmMalloc<HistogramBucketBase>(cTotalBucketsMainSpace, cBytesPerHistogramBucket);
-   if(nullptr != aHistogramBucketsDebugCopy) {
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBinsBig;
+
+   // we don't need to free this!  It's tracked and reused by pBoosterShell
+   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig(cBytesBufferBig);
+   if(UNLIKELY(nullptr == aBinsBig)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+
+#ifndef NDEBUG
+   const unsigned char * const pBinsBigEndDebug = reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig;
+   pBoosterShell->SetBinsBigEndDebug(pBinsBigEndDebug);
+#endif // NDEBUG
+
+   // TODO: put this into it's own function that converts our fast floats to big floats
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
+   memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
+
+
+   // we also need to zero the auxillary bins
+   aBinsBig->Zero(cBytesPerBinBig, cAuxillaryBins, cTotalBinsMainSpace);
+
+
+   // TODO: we can exit here back to python to allow caller modification to our histograms
+
+
+#ifndef NDEBUG
+   // make a copy of the original bins for debugging purposes
+
+   BinBase * const aBinsDebugCopy =
+      EbmMalloc<BinBase>(cTotalBinsMainSpace, cBytesPerBinBig);
+   if(nullptr != aBinsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTotalBucketsMainSpace * cBytesPerHistogramBucket;
-      memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
+      const size_t cBytesBufferDebug = cTotalBinsMainSpace * cBytesPerBinBig;
+      memcpy(aBinsDebugCopy, aBinsBig, cBytesBufferDebug);
    }
 #endif // NDEBUG
 
+   BinBase * aAuxiliaryBins = IndexBin(
+      cBytesPerBinBig,
+      aBinsBig,
+      cTotalBinsMainSpace
+   );
+
    TensorTotalsBuild(
       runtimeLearningTypeOrCountTargetClasses,
-      pFeatureGroup,
-      pAuxiliaryBucketZone,
-      aHistogramBuckets
+      pTerm,
+      aAuxiliaryBins,
+      aBinsBig
 #ifndef NDEBUG
-      , aHistogramBucketsDebugCopy
-      , aHistogramBucketsEndDebug
+      , aBinsDebugCopy
+      , pBinsBigEndDebug
 #endif // NDEBUG
    );
 
@@ -523,7 +567,7 @@ static ErrorEbmType BoostMultiDimensional(
    //      while(true) {
    //         ++aiDimension[iDimension];
    //         if(aiDimension[iDimension] != 
-   //               pFeatureGroups->GetFeatureGroupEntries()[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
+   //               pTerms->GetTermEntries()[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
    //            break;
    //         }
    //         aiDimension[iDimension] = 0;
@@ -536,20 +580,20 @@ static ErrorEbmType BoostMultiDimensional(
    //   move_next_permutation:
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
-   if(2 == pFeatureGroup->GetCountSignificantDimensions()) {
+   if(2 == pTerm->GetCountSignificantDimensions()) {
       error = PartitionTwoDimensionalBoosting(
          pBoosterShell,
-         pFeatureGroup,
+         pTerm,
          cSamplesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
+         aAuxiliaryBins,
          pTotalGain
 #ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
+         , aBinsDebugCopy
 #endif // NDEBUG
       );
       if(Error_None != error) {
 #ifndef NDEBUG
-         free(aHistogramBucketsDebugCopy);
+         free(aBinsDebugCopy);
 #endif // NDEBUG
 
          LOG_0(TraceLevelVerbose, "Exited BoostMultiDimensional with Error code");
@@ -558,21 +602,21 @@ static ErrorEbmType BoostMultiDimensional(
       }
 
       EBM_ASSERT(!std::isnan(*pTotalGain));
-      EBM_ASSERT(FloatEbmType { 0 } <= *pTotalGain);
+      EBM_ASSERT(0 <= *pTotalGain);
    } else {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional 2 != pFeatureGroup->GetCountSignificantFeatures()");
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional 2 != pTerm->GetCountSignificantFeatures()");
 
       // TODO: eventually handle this in our caller and this function can specialize in handling just 2 dimensional
       //       then we can replace this branch with an assert
 #ifndef NDEBUG
       EBM_ASSERT(false);
-      free(aHistogramBucketsDebugCopy);
+      free(aBinsDebugCopy);
 #endif // NDEBUG
       return Error_UnexpectedInternal;
    }
 
 #ifndef NDEBUG
-   free(aHistogramBucketsDebugCopy);
+   free(aBinsDebugCopy);
 #endif // NDEBUG
 
    LOG_0(TraceLevelVerbose, "Exited BoostMultiDimensional");
@@ -581,11 +625,11 @@ static ErrorEbmType BoostMultiDimensional(
 
 static ErrorEbmType BoostRandom(
    BoosterShell * const pBoosterShell,
-   const FeatureGroup * const pFeatureGroup,
+   const Term * const pTerm,
    const SamplingSet * const pTrainingSet,
    const GenerateUpdateOptionsType options,
    const IntEbmType * const aLeavesMax,
-   FloatEbmType * const pTotalGain
+   double * const pTotalGain
 ) {
    // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
@@ -593,72 +637,87 @@ static ErrorEbmType BoostRandom(
 
    ErrorEbmType error;
 
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   const size_t cDimensions = pTerm->GetCountDimensions();
    EBM_ASSERT(1 <= cDimensions);
 
-   size_t cTotalBuckets = 1;
+   size_t cTotalBins = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
+      const size_t cBins = pTerm->GetTermEntries()[iDimension].m_pFeature->GetCountBins();
       EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
-      // we check for simple multiplication overflow from m_cBins in BoosterCore::Initialize when we unpack featureGroupsFeatureIndexes
-      EBM_ASSERT(!IsMultiplyError(cTotalBuckets, cBins));
-      cTotalBuckets *= cBins;
+      // we check for simple multiplication overflow from m_cBins in BoosterCore::Initialize when we unpack featureIndexes
+      EBM_ASSERT(!IsMultiplyError(cTotalBins, cBins));
+      cTotalBins *= cBins;
    }
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
+
+   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) ||
+      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength))
+   {
       LOG_0(
          TraceLevelWarning,
-         "WARNING BoostRandom GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
+         "WARNING BoostRandom IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerHistogramBucket, cTotalBuckets)");
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinFast, cTotalBins)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinFast, cTotalBins)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesBuffer = cBytesPerHistogramBucket * cTotalBuckets;
+   const size_t cBytesBufferFast = cBytesPerBinFast * cTotalBins;
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
-   HistogramBucketBase * const aHistogramBuckets = pBoosterShell->GetHistogramBucketBase(cBytesBuffer);
-   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+   BinBase * const aBinsFast = pBoosterShell->GetBinBaseFast(cBytesBufferFast);
+   if(UNLIKELY(nullptr == aBinsFast)) {
       // already logged
       return Error_OutOfMemory;
    }
-
-   if(bClassification) {
-      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<true> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   } else {
-      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<false> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   }
+   aBinsFast->Zero(cBytesPerBinFast, cTotalBins);
 
 #ifndef NDEBUG
-   pBoosterShell->SetHistogramBucketsEndDebug(reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer);
+   pBoosterShell->SetBinsFastEndDebug(reinterpret_cast<unsigned char *>(aBinsFast) + cBytesBufferFast);
 #endif // NDEBUG
 
    BinBoosting(
       pBoosterShell,
-      pFeatureGroup,
+      pTerm,
       pTrainingSet
    );
 
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   if(IsMultiplyError(cBytesPerBinBig, cTotalBins)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinBig, cTotalBins)");
+      return Error_OutOfMemory;
+   }
+   const size_t cBytesBufferBig = cBytesPerBinBig * cTotalBins;
+
+   // we don't need to free this!  It's tracked and reused by pBoosterShell
+   BinBase * const aBinsBig = pBoosterShell->GetBinBaseBig(cBytesBufferBig);
+   if(UNLIKELY(nullptr == aBinsBig)) {
+      // already logged
+      return Error_OutOfMemory;
+   }
+
+#ifndef NDEBUG
+   pBoosterShell->SetBinsBigEndDebug(reinterpret_cast<unsigned char *>(aBinsBig) + cBytesBufferBig);
+#endif // NDEBUG
+
+   // TODO: put this into it's own function that converts our fast floats to big floats
+   static_assert(sizeof(FloatBig) == sizeof(FloatFast), "float mismatch");
+   EBM_ASSERT(cBytesBufferFast == cBytesBufferBig); // until we switch fast to float datatypes
+   memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
+
+
+   // TODO: we can exit here back to python to allow caller modification to our histograms
+
+
    error = PartitionRandomBoosting(
       pBoosterShell,
-      pFeatureGroup,
+      pTerm,
       options,
       aLeavesMax,
       pTotalGain
@@ -669,23 +728,20 @@ static ErrorEbmType BoostRandom(
    }
 
    EBM_ASSERT(!std::isnan(*pTotalGain));
-   EBM_ASSERT(FloatEbmType { 0 } <= *pTotalGain);
+   EBM_ASSERT(0 <= *pTotalGain);
 
    LOG_0(TraceLevelVerbose, "Exited BoostRandom");
    return Error_None;
 }
 
-// a*PredictorScores = logOdds for binary classification
-// a*PredictorScores = logWeights for multiclass classification
-// a*PredictorScores = predictedValue for regression
-static ErrorEbmType GenerateModelUpdateInternal(
+static ErrorEbmType GenerateTermUpdateInternal(
    BoosterShell * const pBoosterShell,
-   const size_t iFeatureGroup,
+   const size_t iTerm,
    const GenerateUpdateOptionsType options,
-   const FloatEbmType learningRate,
+   const double learningRate,
    const size_t cSamplesRequiredForChildSplitMin,
    const IntEbmType * const aLeavesMax, 
-   FloatEbmType * const pGainAvgOut
+   double * const pGainAvgOut
 ) {
    ErrorEbmType error;
 
@@ -693,12 +749,12 @@ static ErrorEbmType GenerateModelUpdateInternal(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
-   LOG_0(TraceLevelVerbose, "Entered GenerateModelUpdateInternal");
+   LOG_0(TraceLevelVerbose, "Entered GenerateTermUpdateInternal");
 
    const size_t cSamplingSetsAfterZero = (0 == pBoosterCore->GetCountSamplingSets()) ? 1 : pBoosterCore->GetCountSamplingSets();
-   const FeatureGroup * const pFeatureGroup = pBoosterCore->GetFeatureGroups()[iFeatureGroup];
-   const size_t cSignificantDimensions = pFeatureGroup->GetCountSignificantDimensions();
-   const size_t cDimensions = pFeatureGroup->GetCountDimensions();
+   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const size_t cSignificantDimensions = pTerm->GetCountSignificantDimensions();
+   const size_t cDimensions = pTerm->GetCountDimensions();
 
    // TODO: we can probably eliminate lastDimensionLeavesMax and cSignificantBinCount and just fetch them from iDimensionImportant afterwards
    IntEbmType lastDimensionLeavesMax = IntEbmType { 0 };
@@ -707,16 +763,16 @@ static ErrorEbmType GenerateModelUpdateInternal(
    size_t cSignificantBinCount = size_t { 0 };
    size_t iDimensionImportant = 0;
    if(nullptr == aLeavesMax) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal aLeavesMax was null, so there won't be any splits");
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdateInternal aLeavesMax was null, so there won't be any splits");
    } else {
       if(0 != cSignificantDimensions) {
          size_t iDimensionInit = 0;
          const IntEbmType * pLeavesMax = aLeavesMax;
-         const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+         const TermEntry * pTermEntry = pTerm->GetTermEntries();
          EBM_ASSERT(1 <= cDimensions);
-         const FeatureGroupEntry * const pFeatureGroupEntryEnd = pFeatureGroupEntry + cDimensions;
+         const TermEntry * const pTermEntriesEnd = pTermEntry + cDimensions;
          do {
-            const Feature * pFeature = pFeatureGroupEntry->m_pFeature;
+            const Feature * pFeature = pTermEntry->m_pFeature;
             const size_t cBins = pFeature->GetCountBins();
             if(size_t { 1 } < cBins) {
                EBM_ASSERT(size_t { 2 } <= cSignificantDimensions || IntEbmType { 0 } == lastDimensionLeavesMax);
@@ -726,7 +782,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                EBM_ASSERT(nullptr != pLeavesMax);
                const IntEbmType countLeavesMax = *pLeavesMax;
                if(countLeavesMax <= IntEbmType { 1 }) {
-                  LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal countLeavesMax is 1 or less.");
+                  LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdateInternal countLeavesMax is 1 or less.");
                } else {
                   // keep iteration even once we find this so that we output logs for any bins of 1
                   lastDimensionLeavesMax = countLeavesMax;
@@ -734,55 +790,56 @@ static ErrorEbmType GenerateModelUpdateInternal(
             }
             ++iDimensionInit;
             ++pLeavesMax;
-            ++pFeatureGroupEntry;
-         } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
+            ++pTermEntry;
+         } while(pTermEntriesEnd != pTermEntry);
          
          EBM_ASSERT(size_t { 2 } <= cSignificantBinCount);
       }
    }
 
-   pBoosterShell->GetAccumulatedModelUpdate()->SetCountDimensions(cDimensions);
-   pBoosterShell->GetAccumulatedModelUpdate()->Reset();
+   pBoosterShell->GetTermUpdate()->SetCountDimensions(cDimensions);
+   pBoosterShell->GetTermUpdate()->Reset();
 
    // if pBoosterCore->m_apSamplingSets is nullptr, then we should have zero training samples
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
-   FloatEbmType gainAvg = FloatEbmType { 0 };
+   double gainAvgOut = 0.0;
    const SamplingSet * const * ppSamplingSet = pBoosterCore->GetSamplingSets();
    if(nullptr != ppSamplingSet) {
-      pBoosterShell->GetOverwritableModelUpdate()->SetCountDimensions(cDimensions);
+      pBoosterShell->GetInnerTermUpdate()->SetCountDimensions(cDimensions);
       // if we have ignored dimensions, set the splits count to zero!
       // we only need to do this once instead of per-loop since any dimensions with 1 bin 
       // are going to remain having 0 splits.
-      pBoosterShell->GetOverwritableModelUpdate()->Reset();
+      pBoosterShell->GetInnerTermUpdate()->Reset();
 
       EBM_ASSERT(1 <= cSamplingSetsAfterZero);
       const SamplingSet * const * const ppSamplingSetEnd = &ppSamplingSet[cSamplingSetsAfterZero];
-      const FloatEbmType invertedSampleCount = FloatEbmType { 1 } / cSamplingSetsAfterZero;
+      const double invertedSampleCount = 1.0 / cSamplingSetsAfterZero;
+      double gainAvg = 0;
       do {
          const SamplingSet * const pSamplingSet = *ppSamplingSet;
          if(UNLIKELY(IntEbmType { 0 } == lastDimensionLeavesMax)) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdateInternal boosting zero dimensional");
+            LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdateInternal boosting zero dimensional");
             error = BoostZeroDimensional(pBoosterShell, pSamplingSet, options);
             if(Error_None != error) {
                if(LIKELY(nullptr != pGainAvgOut)) {
-                  *pGainAvgOut = FloatEbmType { 0 };
+                  *pGainAvgOut = double { 0 };
                }
                return error;
             }
          } else {
-            FloatEbmType gain;
+            double gain;
             if(0 != (GenerateUpdateOptions_RandomSplits & options) || 2 < cSignificantDimensions) {
                if(size_t { 1 } != cSamplesRequiredForChildSplitMin) {
                   LOG_0(TraceLevelWarning,
-                     "WARNING GenerateModelUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"
+                     "WARNING GenerateTermUpdateInternal cSamplesRequiredForChildSplitMin is ignored when doing random splitting"
                   );
                }
                // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
                error = BoostRandom(
                   pBoosterShell,
-                  pFeatureGroup,
+                  pTerm,
                   pSamplingSet,
                   options,
                   aLeavesMax,
@@ -790,7 +847,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
                );
                if(Error_None != error) {
                   if(LIKELY(nullptr != pGainAvgOut)) {
-                     *pGainAvgOut = FloatEbmType { 0 };
+                     *pGainAvgOut = double { 0 };
                   }
                   return error;
                }
@@ -801,7 +858,7 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
                error = BoostSingleDimensional(
                   pBoosterShell,
-                  pFeatureGroup,
+                  pTerm,
                   cSignificantBinCount,
                   pSamplingSet,
                   iDimensionImportant,
@@ -811,21 +868,21 @@ static ErrorEbmType GenerateModelUpdateInternal(
                );
                if(Error_None != error) {
                   if(LIKELY(nullptr != pGainAvgOut)) {
-                     *pGainAvgOut = FloatEbmType { 0 };
+                     *pGainAvgOut = double { 0 };
                   }
                   return error;
                }
             } else {
                error = BoostMultiDimensional(
                   pBoosterShell,
-                  pFeatureGroup,
+                  pTerm,
                   pSamplingSet,
                   cSamplesRequiredForChildSplitMin,
                   &gain
                );
                if(Error_None != error) {
                   if(LIKELY(nullptr != pGainAvgOut)) {
-                     *pGainAvgOut = FloatEbmType { 0 };
+                     *pGainAvgOut = double { 0 };
                   }
                   return error;
                }
@@ -833,26 +890,26 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
             // gain should be +inf if there was an overflow in our callees
             EBM_ASSERT(!std::isnan(gain));
-            EBM_ASSERT(FloatEbmType { 0 } <= gain);
+            EBM_ASSERT(0 <= gain);
 
-            const FloatEbmType weightTotal = pSamplingSet->GetWeightTotal();
-            EBM_ASSERT(FloatEbmType { 0 } < weightTotal); // if all are zeros we assume there are no weights and use the count
+            const double weightTotal = static_cast<double>(pSamplingSet->GetWeightTotal());
+            EBM_ASSERT(0 < weightTotal); // if all are zeros we assume there are no weights and use the count
 
             // this could re-promote gain to be +inf again if weightTotal < 1.0
             // do the sample count inversion here in case adding all the avgeraged gains pushes us into +inf
-            EBM_ASSERT(invertedSampleCount <= FloatEbmType { 1 });
+            EBM_ASSERT(invertedSampleCount <= 1);
             gain = gain * invertedSampleCount / weightTotal;
             gainAvg += gain;
             EBM_ASSERT(!std::isnan(gainAvg));
-            EBM_ASSERT(FloatEbmType { 0 } <= gainAvg);
+            EBM_ASSERT(0 <= gainAvg);
          }
 
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
          // others are working, so there should be no blocking and our final result won't require adding by the main thread
-         error = pBoosterShell->GetAccumulatedModelUpdate()->Add(*pBoosterShell->GetOverwritableModelUpdate());
+         error = pBoosterShell->GetTermUpdate()->Add(*pBoosterShell->GetInnerTermUpdate());
          if(Error_None != error) {
             if(LIKELY(nullptr != pGainAvgOut)) {
-               *pGainAvgOut = FloatEbmType { 0 };
+               *pGainAvgOut = double { 0 };
             }
             return error;
          }
@@ -861,9 +918,10 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
       // gainAvg is +inf on overflow. It cannot be NaN, but check for that anyways since it's free
       EBM_ASSERT(!std::isnan(gainAvg));
-      EBM_ASSERT(FloatEbmType { 0 } <= gainAvg);
+      EBM_ASSERT(0 <= gainAvg);
 
-      if(UNLIKELY(/* NaN */ !LIKELY(gainAvg <= std::numeric_limits<FloatEbmType>::max()))) {
+      gainAvgOut = static_cast<double>(gainAvg);
+      if(UNLIKELY(/* NaN */ !LIKELY(gainAvg <= std::numeric_limits<double>::max()))) {
          // this also checks for NaN since NaN < anything is FALSE
 
          // indicate an error/overflow with -inf similar to interaction strength.
@@ -875,14 +933,18 @@ static ErrorEbmType GenerateModelUpdateInternal(
          // decide if they want to stop boosting at that point or continue.
          // So, if there is an update do not reset it here
 
-         gainAvg = k_illegalGain;
+         gainAvgOut = k_illegalGainDouble;
       } else {
          EBM_ASSERT(!std::isnan(gainAvg));
          EBM_ASSERT(!std::isinf(gainAvg));
-         EBM_ASSERT(FloatEbmType { 0 } <= gainAvg);
+         EBM_ASSERT(0 <= gainAvg);
       }
 
-      LOG_0(TraceLevelVerbose, "GenerateModelUpdatePerTargetClasses done sampling set loop");
+      LOG_0(TraceLevelVerbose, "GenerateTermUpdateInternal done sampling set loop");
+
+      double multiple = 1.0; // TODO: get this from the loss function
+      multiple /= cSamplingSetsAfterZero;
+      multiple *= learningRate;
 
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
@@ -900,15 +962,15 @@ static ErrorEbmType GenerateModelUpdateInternal(
          //       pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses goes up?  If so, maybe we should divide by 
          //       pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses here to keep learning rates as equivalent as possible..  
          //       Actually, I think the real solution here is that 
-         //   pBoosterCore->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(
-         //      learningRate * invertedSampleCount * (pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses - 1) / 
+         //   pBoosterCore->m_pTermUpdate->Multiply(
+         //      learningRateFloat * invertedSampleCount * (pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses - 1) / 
          //      pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses
          //   );
          //} else {
          //   // TODO : for classification, is our learning rate essentially being inflated as 
          //        pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses goes up?  If so, maybe we should divide by 
          //        pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses here to keep learning rates equivalent as possible
-         //   pBoosterCore->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate * invertedSampleCount);
+         //   pBoosterCore->m_pTermUpdate->Multiply(learningRateFloat * invertedSampleCount);
          //}
 
          // TODO: When NewtonBoosting is enabled, we need to multiply our rate by (K - 1)/K (see above), per:
@@ -918,88 +980,69 @@ static ErrorEbmType GenerateModelUpdateInternal(
 
          const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
          if(bDividing) {
-            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount * 0.5);
+            bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple * 0.5);
          } else {
-            bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount);
+            bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple);
          }
       } else {
-         bBad = pBoosterShell->GetAccumulatedModelUpdate()->MultiplyAndCheckForIssues(learningRate * invertedSampleCount);
+         bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple);
       }
 
       if(UNLIKELY(bBad)) {
          // our update contains a NaN or -inf or +inf and we cannot tollerate a model that does this, so destroy it
 
-         pBoosterShell->GetAccumulatedModelUpdate()->SetCountDimensions(cDimensions);
-         pBoosterShell->GetAccumulatedModelUpdate()->Reset();
+         pBoosterShell->GetTermUpdate()->SetCountDimensions(cDimensions);
+         pBoosterShell->GetTermUpdate()->Reset();
 
          // also, signal to our caller that an overflow occured with a negative gain
-         gainAvg = k_illegalGain;
+         gainAvgOut = k_illegalGainDouble;
       }
    }
 
-   pBoosterShell->SetFeatureGroupIndex(iFeatureGroup);
+   pBoosterShell->SetTermIndex(iTerm);
 
-   EBM_ASSERT(!std::isnan(gainAvg));
-   EBM_ASSERT(std::numeric_limits<FloatEbmType>::infinity() != gainAvg);
-   EBM_ASSERT(k_illegalGain == gainAvg || FloatEbmType { 0 } <= gainAvg);
+   EBM_ASSERT(!std::isnan(gainAvgOut));
+   EBM_ASSERT(std::numeric_limits<double>::infinity() != gainAvgOut);
+   EBM_ASSERT(k_illegalGainDouble == gainAvgOut || double { 0 } <= gainAvgOut);
 
    if(nullptr != pGainAvgOut) {
-      *pGainAvgOut = gainAvg;
+      *pGainAvgOut = gainAvgOut;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited GenerateModelUpdatePerTargetClasses");
+   LOG_0(TraceLevelVerbose, "Exited GenerateTermUpdateInternal");
    return Error_None;
 }
 
 // we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before getting 
 // the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us we only decrease the count if the 
 // count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
-static int g_cLogGenerateModelUpdateParametersMessages = 10;
+static int g_cLogGenerateTermUpdateParametersMessages = 10;
 
-// TODO : change this so that our caller allocates the memory that contains the update, but this is complicated in various ways
-//        we don't want to just copy the internal tensor into the memory region that our caller provides, and we want to work with
-//        compressed representations of the CompressibleTensor object while we're building it, so we'll work within the memory the caller
-//        provides, but that means we'll potentially need more memory than the full tensor, and we'll need to put some header info
-//        at the start, so the caller can't treat this memory as a pure tensor.
-//        So:
-//          1) provide a function that returns the maximum memory needed.  A smart caller will call this once on each feature_group, 
-//             choose the max and allocate it once
-//          2) return a compressed complete CompressibleTensor to the caller inside an opaque memory region 
-//             (return the exact size that we require to the caller for copying)
-//          3) if caller wants a simplified tensor, then they call a separate function that expands the tensor 
-//             and returns a pointer to the memory inside the opaque object
-//          4) ApplyModelUpdate will take an opaque CompressibleTensor, and expand it if needed
-//        The benefit of returning a compressed object is that we don't have to do the work of expanding it if the caller decides not to use it 
-//        (which might happen in greedy algorithms)
-//        The other benefit of returning a compressed object is that our caller can store/copy it faster
-//        The other benefit of returning a compressed object is that it can be copied from process to process faster
-//        Lastly, with the memory allocated by our caller, we can call GenerateModelUpdate in parallel on multiple feature_groups.  
-//        Right now you can't call it in parallel since we're updating our internal single tensor
 
-EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION GenerateModelUpdate(
+EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GenerateTermUpdate(
    BoosterHandle boosterHandle,
-   IntEbmType indexFeatureGroup,
+   IntEbmType indexTerm,
    GenerateUpdateOptionsType options,
-   FloatEbmType learningRate,
+   double learningRate,
    IntEbmType countSamplesRequiredForChildSplitMin,
    const IntEbmType * leavesMax,
-   FloatEbmType * avgGainOut
+   double * avgGainOut
 ) {
    LOG_COUNTED_N(
-      &g_cLogGenerateModelUpdateParametersMessages,
+      &g_cLogGenerateTermUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "GenerateModelUpdate: "
+      "GenerateTermUpdate: "
       "boosterHandle=%p, "
-      "indexFeatureGroup=%" IntEbmTypePrintf ", "
+      "indexTerm=%" IntEbmTypePrintf ", "
       "options=0x%" UGenerateUpdateOptionsTypePrintf ", "
-      "learningRate=%" FloatEbmTypePrintf ", "
+      "learningRate=%le, "
       "countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", "
       "leavesMax=%p, "
       "avgGainOut=%p"
       ,
       static_cast<void *>(boosterHandle),
-      indexFeatureGroup,
+      indexTerm,
       static_cast<UGenerateUpdateOptionsType>(options), // signed to unsigned conversion is defined behavior in C++
       learningRate,
       countSamplesRequiredForChildSplitMin,
@@ -1012,61 +1055,61 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
    BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
       // already logged
       return Error_IllegalParamValue;
    }
 
    // set this to illegal so if we exit with an error we have an invalid index
-   pBoosterShell->SetFeatureGroupIndex(BoosterShell::k_illegalFeatureGroupIndex);
+   pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
 
-   if(indexFeatureGroup < 0) {
+   if(indexTerm < 0) {
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup must be positive");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexTerm must be positive");
       return Error_IllegalParamValue;
    }
-   if(IsConvertError<size_t>(indexFeatureGroup)) {
+   if(IsConvertError<size_t>(indexTerm)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup is too high to index");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexTerm is too high to index");
       return Error_IllegalParamValue;
    }
-   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
-   if(pBoosterCore->GetCountFeatureGroups() <= iFeatureGroup) {
+   size_t iTerm = static_cast<size_t>(indexTerm);
+   if(pBoosterCore->GetCountTerms() <= iTerm) {
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelUpdate indexFeatureGroup above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR GenerateTermUpdate indexTerm above the number of feature groups that we have");
       return Error_IllegalParamValue;
    }
-   // this is true because 0 < pBoosterCore->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
-   EBM_ASSERT(nullptr != pBoosterCore->GetFeatureGroups());
+   // this is true because 0 < pBoosterCore->m_cTerms since our caller needs to pass in a valid indexTerm to this function
+   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
    LOG_COUNTED_0(
-      pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterGenerateModelUpdateMessages(),
+      pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogEnterGenerateTermUpdateMessages(),
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered GenerateModelUpdate"
+      "Entered GenerateTermUpdate"
    );
 
    // TODO : test if our GenerateUpdateOptionsType options flags only include flags that we use
 
    if(std::isnan(learningRate)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is NaN");
-   } else if(std::isinf(learningRate)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is infinity");
-   } else if(0 == learningRate) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is zero");
-   } else if(learningRate < FloatEbmType { 0 }) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate learningRate is negative");
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is NaN");
+   } else if(std::numeric_limits<double>::infinity() == learningRate) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is +infinity");
+   } else if(0.0 == learningRate) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is zero");
+   } else if(learningRate < double { 0 }) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate learningRate is negative");
    }
 
    size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
@@ -1078,32 +1121,32 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
          cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
+      LOG_0(TraceLevelWarning, "WARNING GenerateTermUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
-   // leavesMax is handled in GenerateModelUpdateInternal
+   // leavesMax is handled in GenerateTermUpdateInternal
 
    // avgGainOut can be nullptr
 
    if(ptrdiff_t { 0 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()) {
-      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
+      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The term scores are a tensor with zero 
       // length array logits, which means for our representation that we have zero items in the array total.
       // since we can predit the output with 100% accuracy, our gain will be 0.
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
-      pBoosterShell->SetFeatureGroupIndex(iFeatureGroup);
+      pBoosterShell->SetTermIndex(iTerm);
 
       LOG_0(
          TraceLevelWarning,
-         "WARNING GenerateModelUpdate pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
+         "WARNING GenerateTermUpdate pBoosterCore->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
       );
       return Error_None;
    }
 
-   error = GenerateModelUpdateInternal(
+   error = GenerateTermUpdateInternal(
       pBoosterShell,
-      iFeatureGroup,
+      iTerm,
       options,
       learningRate,
       cSamplesRequiredForChildSplitMin,
@@ -1111,9 +1154,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       avgGainOut
    );
    if(Error_None != error) {
-      LOG_N(TraceLevelWarning, "WARNING GenerateModelUpdate: return=%" ErrorEbmTypePrintf, error);
+      LOG_N(TraceLevelWarning, "WARNING GenerateTermUpdate: return=%" ErrorEbmTypePrintf, error);
       if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = FloatEbmType { 0 };
+         *avgGainOut = double { 0 };
       }
       return error;
    }
@@ -1122,22 +1165,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY ErrorEbmType EBM_NATIVE_CALLING_CONVENTION Generat
       EBM_ASSERT(!std::isnan(*avgGainOut)); // NaNs can happen, but we should have edited those before here
       EBM_ASSERT(!std::isinf(*avgGainOut)); // infinities can happen, but we should have edited those before here
       // no epsilon required.  We make it zero if the value is less than zero for floating point instability reasons
-      EBM_ASSERT(FloatEbmType { 0 } <= *avgGainOut);
+      EBM_ASSERT(double { 0 } <= *avgGainOut);
       LOG_COUNTED_N(
-         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelUpdateMessages(),
+         pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitGenerateTermUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited GenerateModelUpdate: "
-         "*avgGainOut=%" FloatEbmTypePrintf
+         "Exited GenerateTermUpdate: "
+         "*avgGainOut=%le"
          ,
          *avgGainOut
       );
    } else {
       LOG_COUNTED_0(
-         pBoosterCore->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelUpdateMessages(),
+         pBoosterCore->GetTerms()[iTerm]->GetPointerCountLogExitGenerateTermUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited GenerateModelUpdate"
+         "Exited GenerateTermUpdate"
       );
    }
    return Error_None;
