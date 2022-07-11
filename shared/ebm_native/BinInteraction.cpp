@@ -50,13 +50,13 @@ public:
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cVectorLength);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
 
       const DataSetInteraction * const pDataSet = pInteractionCore->GetDataSetInteraction();
       const FloatFast * pGradientAndHessian = pDataSet->GetGradientsAndHessiansPointer();
-      const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * pDataSet->GetCountSamples();
+      const FloatFast * const pGradientsAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * pDataSet->GetCountSamples();
 
       const FloatFast * pWeight = pDataSet->GetWeights();
 
@@ -120,12 +120,12 @@ public:
 
          auto * const pHistogramTargetEntry = pBin->GetHistogramTargetEntry();
 
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatFast gradient = *pGradientAndHessian;
             // gradient could be NaN
             // for classification, gradient can be anything from -1 to +1 (it cannot be infinity!)
             // for regression, gradient can be anything from +infinity or -infinity
-            pHistogramTargetEntry[iVector].m_sumGradients += gradient * weight;
+            pHistogramTargetEntry[iScore].m_sumGradients += gradient * weight;
             // m_sumGradients could be NaN, or anything from +infinity or -infinity in the case of regression
             if(bClassification) {
                EBM_ASSERT(
@@ -145,14 +145,14 @@ public:
                   !std::isinf(hessian) && -k_epsilonGradient <= hessian && hessian <= FloatFast { 0.25 }
                ); // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
 
-               const FloatFast oldHessian = pHistogramTargetEntry[iVector].GetSumHessians();
+               const FloatFast oldHessian = pHistogramTargetEntry[iScore].GetSumHessians();
                // since any one hessian is limited to 0 <= gradient <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(oldHessian) || !std::isinf(oldHessian) && -k_epsilonGradient <= oldHessian);
                const FloatFast newHessian = oldHessian + hessian * weight;
                // since any one hessian is limited to 0 <= hessian <= 0.25, the sum must be representable by a 64 bit number, 
                EBM_ASSERT(std::isnan(newHessian) || !std::isinf(newHessian) && -k_epsilonGradient <= newHessian);
                // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
-               pHistogramTargetEntry[iVector].SetSumHessians(newHessian);
+               pHistogramTargetEntry[iScore].SetSumHessians(newHessian);
             }
             pGradientAndHessian += bClassification ? 2 : 1;
          }

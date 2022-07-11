@@ -72,35 +72,35 @@ ErrorEbmType BoosterShell::FillAllocations() {
    LOG_0(TraceLevelInfo, "Entered BoosterShell::FillAllocations");
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = m_pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
    const size_t cBytesPerItem = GetHistogramTargetEntrySize<FloatBig>(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       
-   m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cVectorLength);
+   m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
    if(nullptr == m_pTermUpdate) {
       goto failed_allocation;
    }
 
-   m_pInnerTermUpdate = Tensor::Allocate(k_cDimensionsMax, cVectorLength);
+   m_pInnerTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
    if(nullptr == m_pInnerTermUpdate) {
       goto failed_allocation;
    }
 
-   m_aSumHistogramTargetEntry = EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
+   m_aSumHistogramTargetEntry = EbmMalloc<HistogramTargetEntryBase>(cScores, cBytesPerItem);
    if(nullptr == m_aSumHistogramTargetEntry) {
       goto failed_allocation;
    }
 
-   m_aSumHistogramTargetEntryLeft = EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
+   m_aSumHistogramTargetEntryLeft = EbmMalloc<HistogramTargetEntryBase>(cScores, cBytesPerItem);
    if(nullptr == m_aSumHistogramTargetEntryLeft) {
       goto failed_allocation;
    }
 
-   m_aSumHistogramTargetEntryRight = EbmMalloc<HistogramTargetEntryBase>(cVectorLength, cBytesPerItem);
+   m_aSumHistogramTargetEntryRight = EbmMalloc<HistogramTargetEntryBase>(cScores, cBytesPerItem);
    if(nullptr == m_aSumHistogramTargetEntryRight) {
       goto failed_allocation;
    }
 
-   m_aTempFloatVector = EbmMalloc<FloatFast>(cVectorLength);
+   m_aTempFloatVector = EbmMalloc<FloatFast>(cScores);
    if(nullptr == m_aTempFloatVector) {
       goto failed_allocation;
    }
@@ -410,15 +410,15 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
 
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    const size_t cDimensions = pTerm->GetCountDimensions();
-   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const TermEntry * pTermEntry = pTerm->GetTermEntries();
       const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
          const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
-         cScores *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
+         cTensorScores *= cBins;
          ++pTermEntry;
       } while(pTermEntriesEnd != pTermEntry);
    }
@@ -434,10 +434,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
    FloatFast * const aTermScores = pBestTermTensor->GetScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cScores));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cTensorScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cTensorScores));
    static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
-   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
+   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cTensorScores);
 
    LOG_0(TraceLevelInfo, "Exited GetBestTermScores");
    return Error_None;
@@ -503,15 +503,15 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
 
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    const size_t cDimensions = pTerm->GetCountDimensions();
-   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const TermEntry * pTermEntry = pTerm->GetTermEntries();
       const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
          const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
-         cScores *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
+         cTensorScores *= cBins;
          ++pTermEntry;
       } while(pTermEntriesEnd != pTermEntry);
    }
@@ -527,10 +527,10 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
    FloatFast * const aTermScores = pCurrentTermTensor->GetScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
-   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cScores));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cTensorScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aTermScores), cTensorScores));
    static_assert(sizeof(*termScoresTensorOut) == sizeof(*aTermScores), "float mismatch");
-   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cScores);
+   memcpy(termScoresTensorOut, aTermScores, sizeof(*aTermScores) * cTensorScores);
 
    LOG_0(TraceLevelInfo, "Exited GetCurrentTermScores");
    return Error_None;

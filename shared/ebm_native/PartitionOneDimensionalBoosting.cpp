@@ -41,23 +41,23 @@ static void Flatten(
    const TreeNode<bClassification> * const pTreeNode,
    ActiveDataType ** const ppSplits, 
    FloatFast ** const ppUpdateScore, 
-   const size_t cVectorLength
+   const size_t cScores
 ) {
    // don't log this since we call it recursively.  Log where the root is called
    if(UNPREDICTABLE(pTreeNode->WAS_THIS_NODE_SPLIT())) {
-      EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
+      EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cScores)); // we're accessing allocated memory
+      const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
       const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
-      Flatten<bClassification>(pLeftChild, ppSplits, ppUpdateScore, cVectorLength);
+      Flatten<bClassification>(pLeftChild, ppSplits, ppUpdateScore, cScores);
       **ppSplits = pTreeNode->AFTER_GetSplitValue();
       ++(*ppSplits);
       const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
          pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
-      Flatten<bClassification>(pRightChild, ppSplits, ppUpdateScore, cVectorLength);
+      Flatten<bClassification>(pRightChild, ppSplits, ppUpdateScore, cScores);
    } else {
       FloatFast * pUpdateScoreCur = *ppUpdateScore;
-      FloatFast * const pUpdateScoreNext = pUpdateScoreCur + cVectorLength;
+      FloatFast * const pUpdateScoreNext = pUpdateScoreCur + cScores;
       *ppUpdateScore = pUpdateScoreNext;
 
       const auto * pHistogramTargetEntry = pTreeNode->GetHistogramTargetEntry();
@@ -73,7 +73,7 @@ static void Flatten(
                pHistogramTargetEntry->m_sumGradients, pHistogramTargetEntry->GetSumHessians());
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
-            if(2 <= cVectorLength) {
+            if(2 <= cScores) {
                if(pTreeNode->GetHistogramTargetEntry() == pHistogramTargetEntry) {
                   zeroLogit = updateScore;
                }
@@ -124,7 +124,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
 
    // it's tempting to want to use GetSumHistogramTargetEntryArray here instead of 
    // GetSumHistogramTargetEntryLeft, but the problem with that is that we sometimes re-do our work
@@ -135,20 +135,20 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    //   GetHistogramTargetEntry<bClassification>();
    auto * const aSumHistogramTargetEntryLeft = pBoosterShell->GetSumHistogramTargetEntryLeft<bClassification>();
    const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
-   aSumHistogramTargetEntryLeft->Zero(cBytesPerHistogramTargetEntry, cVectorLength);
+   aSumHistogramTargetEntryLeft->Zero(cBytesPerHistogramTargetEntry, cScores);
 
    auto * const aSumHistogramTargetEntryRight = pBoosterShell->GetSumHistogramTargetEntryRight<bClassification>();
    const auto * pHistogramTargetEntryInit = pTreeNode->GetHistogramTargetEntry();
-   for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+   for(size_t iScore = 0; iScore < cScores; ++iScore) {
       // TODO : memcpy this instead
-      aSumHistogramTargetEntryRight[iVector] = pHistogramTargetEntryInit[iVector];
+      aSumHistogramTargetEntryRight[iScore] = pHistogramTargetEntryInit[iScore];
    }
 
    auto * pBinCur = pTreeNode->BEFORE_GetBinFirst();
    const auto * const pBinLast = pTreeNode->BEFORE_GetBinLast();
 
-   EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
+   EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
 
    TreeNode<bClassification> * const pLeftChildInit =
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
@@ -163,10 +163,10 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pLeftChildInit->BEFORE_SetBinFirst(pBinCur);
    pRightChildInit->BEFORE_SetBinLast(pBinLast);
 
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
-   EBM_ASSERT(!GetTreeSweepSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cVectorLength);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
+   EBM_ASSERT(!GetTreeSweepSizeOverflow(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
 
    TreeSweep<bClassification> * pTreeSweepStart =
       static_cast<TreeSweep<bClassification> *>(pBoosterShell->GetEquivalentSplits());
@@ -207,21 +207,21 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          FloatBig sumHessiansLeft = weightLeft;
          FloatBig gain = 0;
 
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatBig CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
-            const FloatBig sumGradientsRight = aSumHistogramTargetEntryRight[iVector].m_sumGradients - CHANGE_sumGradients;
-            aSumHistogramTargetEntryRight[iVector].m_sumGradients = sumGradientsRight;
-            const FloatBig sumGradientsLeft = aSumHistogramTargetEntryLeft[iVector].m_sumGradients + CHANGE_sumGradients;
-            aSumHistogramTargetEntryLeft[iVector].m_sumGradients = sumGradientsLeft;
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
+            const FloatBig CHANGE_sumGradients = pHistogramTargetEntry[iScore].m_sumGradients;
+            const FloatBig sumGradientsRight = aSumHistogramTargetEntryRight[iScore].m_sumGradients - CHANGE_sumGradients;
+            aSumHistogramTargetEntryRight[iScore].m_sumGradients = sumGradientsRight;
+            const FloatBig sumGradientsLeft = aSumHistogramTargetEntryLeft[iScore].m_sumGradients + CHANGE_sumGradients;
+            aSumHistogramTargetEntryLeft[iScore].m_sumGradients = sumGradientsLeft;
 
             if(bClassification) {
-               const FloatBig CHANGE_sumHessians = pHistogramTargetEntry[iVector].GetSumHessians();
-               const FloatBig newSumHessiansLeft = aSumHistogramTargetEntryLeft[iVector].GetSumHessians() + CHANGE_sumHessians;
-               aSumHistogramTargetEntryLeft[iVector].SetSumHessians(newSumHessiansLeft);
+               const FloatBig CHANGE_sumHessians = pHistogramTargetEntry[iScore].GetSumHessians();
+               const FloatBig newSumHessiansLeft = aSumHistogramTargetEntryLeft[iScore].GetSumHessians() + CHANGE_sumHessians;
+               aSumHistogramTargetEntryLeft[iScore].SetSumHessians(newSumHessiansLeft);
                if(bUseLogitBoost) {
                   sumHessiansLeft = newSumHessiansLeft;
-                  sumHessiansRight = aSumHistogramTargetEntryRight[iVector].GetSumHessians() - CHANGE_sumHessians;
-                  aSumHistogramTargetEntryRight[iVector].SetSumHessians(sumHessiansRight);
+                  sumHessiansRight = aSumHistogramTargetEntryRight[iScore].GetSumHessians() - CHANGE_sumHessians;
+                  aSumHistogramTargetEntryRight[iScore].SetSumHessians(sumHessiansRight);
                }
             }
 
@@ -274,7 +274,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             pTreeSweepCur->SetBestWeightLeft(weightLeft);
             memcpy(
                pTreeSweepCur->GetBestHistogramTargetEntry(), aSumHistogramTargetEntryLeft,
-               sizeof(*aSumHistogramTargetEntryLeft) * cVectorLength
+               sizeof(*aSumHistogramTargetEntryLeft) * cScores
             );
 
             pTreeSweepCur = AddBytesTreeSweep(pTreeSweepCur, cBytesPerTreeSweep);
@@ -282,15 +282,15 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             EBM_ASSERT(!std::isnan(gain));
          }
       } else {
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatBig CHANGE_sumGradients = pHistogramTargetEntry[iVector].m_sumGradients;
-            aSumHistogramTargetEntryRight[iVector].m_sumGradients -= CHANGE_sumGradients;
-            aSumHistogramTargetEntryLeft[iVector].m_sumGradients += CHANGE_sumGradients;
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
+            const FloatBig CHANGE_sumGradients = pHistogramTargetEntry[iScore].m_sumGradients;
+            aSumHistogramTargetEntryRight[iScore].m_sumGradients -= CHANGE_sumGradients;
+            aSumHistogramTargetEntryLeft[iScore].m_sumGradients += CHANGE_sumGradients;
             if(bClassification) {
-               const FloatBig CHANGE_sumHessians = pHistogramTargetEntry[iVector].GetSumHessians();
-               aSumHistogramTargetEntryLeft[iVector].SetSumHessians(aSumHistogramTargetEntryLeft[iVector].GetSumHessians() + CHANGE_sumHessians);
+               const FloatBig CHANGE_sumHessians = pHistogramTargetEntry[iScore].GetSumHessians();
+               aSumHistogramTargetEntryLeft[iScore].SetSumHessians(aSumHistogramTargetEntryLeft[iScore].GetSumHessians() + CHANGE_sumHessians);
                if(bUseLogitBoost) {
-                  aSumHistogramTargetEntryRight[iVector].SetSumHessians(aSumHistogramTargetEntryRight[iVector].GetSumHessians() - CHANGE_sumHessians);
+                  aSumHistogramTargetEntryRight[iScore].SetSumHessians(aSumHistogramTargetEntryRight[iScore].GetSumHessians() - CHANGE_sumHessians);
                }
             }
          }
@@ -317,11 +317,11 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    FloatBig sumHessiansOverwrite = pTreeNode->GetWeight();
    const auto * pHistEntryParent = pTreeNode->GetHistogramTargetEntry();
 
-   for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      const FloatBig sumGradientsParent = pHistEntryParent[iVector].m_sumGradients;
+   for(size_t iScore = 0; iScore < cScores; ++iScore) {
+      const FloatBig sumGradientsParent = pHistEntryParent[iScore].m_sumGradients;
       if(bClassification) {
          if(bUseLogitBoost) {
-            sumHessiansOverwrite = pHistEntryParent[iVector].GetSumHessians();
+            sumHessiansOverwrite = pHistEntryParent[iScore].GetSumHessians();
          }
       }
       const FloatBig gain1 = EbmStats::CalcPartialGain(sumGradientsParent, sumHessiansOverwrite);
@@ -389,17 +389,17 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    const auto * pHistogramTargetEntrySweep = pTreeSweepStart->GetBestHistogramTargetEntry();
 
-   for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      const FloatBig BEST_sumGradientsLeft = pHistogramTargetEntrySweep[iVector].m_sumGradients;
-      pHistogramTargetEntryLeftChild[iVector].m_sumGradients = BEST_sumGradientsLeft;
-      const FloatBig sumGradientsParent = pHistogramTargetEntryTreeNode[iVector].m_sumGradients;
-      pHistogramTargetEntryRightChild[iVector].m_sumGradients = sumGradientsParent - BEST_sumGradientsLeft;
+   for(size_t iScore = 0; iScore < cScores; ++iScore) {
+      const FloatBig BEST_sumGradientsLeft = pHistogramTargetEntrySweep[iScore].m_sumGradients;
+      pHistogramTargetEntryLeftChild[iScore].m_sumGradients = BEST_sumGradientsLeft;
+      const FloatBig sumGradientsParent = pHistogramTargetEntryTreeNode[iScore].m_sumGradients;
+      pHistogramTargetEntryRightChild[iScore].m_sumGradients = sumGradientsParent - BEST_sumGradientsLeft;
 
       if(bClassification) {
-         const FloatBig BEST_sumHessiansLeft = pHistogramTargetEntrySweep[iVector].GetSumHessians();
-         pHistogramTargetEntryLeftChild[iVector].SetSumHessians(BEST_sumHessiansLeft);
-         const FloatBig sumHessiansParent = pHistogramTargetEntryTreeNode[iVector].GetSumHessians();
-         pHistogramTargetEntryRightChild[iVector].SetSumHessians(sumHessiansParent - BEST_sumHessiansLeft);
+         const FloatBig BEST_sumHessiansLeft = pHistogramTargetEntrySweep[iScore].GetSumHessians();
+         pHistogramTargetEntryLeftChild[iScore].SetSumHessians(BEST_sumHessiansLeft);
+         const FloatBig sumHessiansParent = pHistogramTargetEntryTreeNode[iScore].GetSumHessians();
+         pHistogramTargetEntryRightChild[iScore].SetSumHessians(sumHessiansParent - BEST_sumHessiansLeft);
       }
    }
 
@@ -478,7 +478,7 @@ public:
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
 
       EBM_ASSERT(nullptr != pTotalGain);
       EBM_ASSERT(1 <= cSamplesTotal); // filter these out at the start where we can handle this case easily
@@ -487,13 +487,13 @@ public:
 
       // there will be at least one split
 
-      if(GetTreeNodeSizeOverflow(bClassification, cVectorLength)) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting GetTreeNodeSizeOverflow<bClassification>(cVectorLength)");
+      if(GetTreeNodeSizeOverflow(bClassification, cScores)) {
+         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting GetTreeNodeSizeOverflow<bClassification>(cScores)");
          return Error_OutOfMemory; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
       }
-      const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
-      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+      const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cScores);
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    retry_with_bigger_tree_node_children_array:
 
@@ -535,7 +535,7 @@ public:
       memcpy(
          pRootTreeNode->GetHistogramTargetEntry(),
          aSumHistogramTargetEntry,
-         cVectorLength * sizeof(*aSumHistogramTargetEntry)
+         cScores * sizeof(*aSumHistogramTargetEntry)
       );
 
       Tensor * const pInnerTermUpdate =
@@ -560,7 +560,7 @@ public:
             return error;
          }
 
-         // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cVectorLength
+         // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cScores
          if(bClassification) {
             FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
 
@@ -568,21 +568,21 @@ public:
             FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            for(size_t iScore = 0; iScore < cScores; ++iScore) {
                FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                  pRootTreeNode->GetHistogramTargetEntry()[iVector].m_sumGradients, pRootTreeNode->GetHistogramTargetEntry()[iVector].GetSumHessians()
+                  pRootTreeNode->GetHistogramTargetEntry()[iScore].m_sumGradients, pRootTreeNode->GetHistogramTargetEntry()[iScore].GetSumHessians()
                );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-                  if(size_t { 0 } == iVector) {
+                  if(size_t { 0 } == iScore) {
                      zeroLogit = updateScore;
                   }
                   updateScore -= zeroLogit;
                }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore);
+               aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
@@ -621,7 +621,7 @@ public:
          ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
          pSplits[0] = pRootTreeNode->AFTER_GetSplitValue();
 
-         // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cVectorLength
+         // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cScores
 
          // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
          const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
@@ -645,19 +645,19 @@ public:
             FloatBig zeroLogit1 = FloatBig { 0 };
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            for(size_t iScore = 0; iScore < cScores; ++iScore) {
                FloatBig updateScore0 = EbmStats::ComputeSinglePartitionUpdate(
-                  pHistogramTargetEntryLeftChild[iVector].m_sumGradients,
-                  pHistogramTargetEntryLeftChild[iVector].GetSumHessians()
+                  pHistogramTargetEntryLeftChild[iScore].m_sumGradients,
+                  pHistogramTargetEntryLeftChild[iScore].GetSumHessians()
                );
                FloatBig updateScore1 = EbmStats::ComputeSinglePartitionUpdate(
-                  pHistogramTargetEntryRightChild[iVector].m_sumGradients,
-                  pHistogramTargetEntryRightChild[iVector].GetSumHessians()
+                  pHistogramTargetEntryRightChild[iScore].m_sumGradients,
+                  pHistogramTargetEntryRightChild[iScore].GetSumHessians()
                );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-                  if(size_t { 0 } == iVector) {
+                  if(size_t { 0 } == iScore) {
                      zeroLogit0 = updateScore0;
                      zeroLogit1 = updateScore1;
                   }
@@ -666,8 +666,8 @@ public:
                }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore0);
-               aUpdateScores[cVectorLength + iVector] = SafeConvertFloat<FloatFast>(updateScore1);
+               aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore0);
+               aUpdateScores[cScores + iScore] = SafeConvertFloat<FloatFast>(updateScore1);
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
@@ -885,11 +885,11 @@ public:
          // already logged
          return error;
       }
-      if(IsMultiplyError(cVectorLength, cLeaves)) {
-         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cVectorLength, cLeaves)");
+      if(IsMultiplyError(cScores, cLeaves)) {
+         LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cScores, cLeaves)");
          return Error_OutOfMemory;
       }
-      error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * cLeaves);
+      error = pInnerTermUpdate->EnsureScoreCapacity(cScores * cLeaves);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
@@ -898,13 +898,13 @@ public:
       FloatFast * pUpdateScore = pInnerTermUpdate->GetScoresPointer();
 
       LOG_0(TraceLevelVerbose, "Entered Flatten");
-      Flatten<bClassification>(pRootTreeNode, &pSplits, &pUpdateScore, cVectorLength);
+      Flatten<bClassification>(pRootTreeNode, &pSplits, &pUpdateScore, cScores);
       LOG_0(TraceLevelVerbose, "Exited Flatten");
 
       EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension) <= pSplits);
       EBM_ASSERT(static_cast<size_t>(pSplits - pInnerTermUpdate->GetSplitPointer(iDimension)) == cLeaves - 1);
       EBM_ASSERT(pInnerTermUpdate->GetScoresPointer() < pUpdateScore);
-      EBM_ASSERT(static_cast<size_t>(pUpdateScore - pInnerTermUpdate->GetScoresPointer()) == cVectorLength * cLeaves);
+      EBM_ASSERT(static_cast<size_t>(pUpdateScore - pInnerTermUpdate->GetScoresPointer()) == cScores * cLeaves);
 
       return Error_None;
    }

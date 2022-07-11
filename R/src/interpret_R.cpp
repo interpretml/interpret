@@ -575,7 +575,7 @@ SEXP CreateClassificationBooster_R(
       LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsConvertError<ptrdiff_t>(cTargetClasses)");
       return R_NilValue;
    }
-   const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
+   const size_t cScores = GetCountScores(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
    const BoolEbmType * aFeaturesCategorical;
@@ -652,12 +652,12 @@ SEXP CreateClassificationBooster_R(
       return R_NilValue;
    }
    const size_t cTrainingInitScores = static_cast<size_t>(countTrainingInitScores);
-   if(IsMultiplyError(cVectorLength, cTrainingSamples)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cVectorLength, cTrainingSamples)");
+   if(IsMultiplyError(cScores, cTrainingSamples)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cScores, cTrainingSamples)");
       return R_NilValue;
    }
-   if(cVectorLength * cTrainingSamples != cTrainingInitScores) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cVectorLength * cTrainingSamples != cTrainingInitScores");
+   if(cScores * cTrainingSamples != cTrainingInitScores) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cScores * cTrainingSamples != cTrainingInitScores");
       return R_NilValue;
    }
    const double * const aTrainingInitScores = REAL(trainingInitScores);
@@ -692,12 +692,12 @@ SEXP CreateClassificationBooster_R(
       return R_NilValue;
    }
    const size_t cValidationInitScores = static_cast<size_t>(countValidationInitScores);
-   if(IsMultiplyError(cVectorLength, cValidationSamples)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cVectorLength, cValidationSamples)");
+   if(IsMultiplyError(cScores, cValidationSamples)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R IsMultiplyError(cScores, cValidationSamples)");
       return R_NilValue;
    }
-   if(cVectorLength * cValidationSamples != cValidationInitScores) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cVectorLength * cValidationSamples != cValidationInitScores");
+   if(cScores * cValidationSamples != cValidationInitScores) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationBooster_R cScores * cValidationSamples != cValidationInitScores");
       return R_NilValue;
    }
    const double * const aValidationInitScores = REAL(validationInitScores);
@@ -1188,7 +1188,7 @@ SEXP GetBestTermScores_R(
       return R_NilValue;
    }
 
-   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
@@ -1196,16 +1196,16 @@ SEXP GetBestTermScores_R(
       const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
          const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
-         EBM_ASSERT(!IsMultiplyError(cScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         cScores *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         cTensorScores *= cBins;
          ++pTermEntry;
       } while(pTermEntriesEnd != pTermEntry);
    }
-   if(IsConvertError<R_xlen_t>(cScores)) {
+   if(IsConvertError<R_xlen_t>(cTensorScores)) {
       return R_NilValue;
    }
-   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cScores)));
-   EBM_ASSERT(!IsMultiplyError(sizeof(double), cScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
+   EBM_ASSERT(!IsMultiplyError(sizeof(double), cTensorScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
    error = GetBestTermScores(boosterHandle, static_cast<IntEbmType>(iTerm), REAL(ret));
 
@@ -1255,7 +1255,7 @@ SEXP GetCurrentTermScores_R(
       return R_NilValue;
    }
 
-   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
    const size_t cDimensions = pTerm->GetCountDimensions();
    if(0 != cDimensions) {
@@ -1263,16 +1263,16 @@ SEXP GetCurrentTermScores_R(
       const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
          const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
-         EBM_ASSERT(!IsMultiplyError(cScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         cScores *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         cTensorScores *= cBins;
          ++pTermEntry;
       } while(pTermEntriesEnd != pTermEntry);
    }
-   if(IsConvertError<R_xlen_t>(cScores)) {
+   if(IsConvertError<R_xlen_t>(cTensorScores)) {
       return R_NilValue;
    }
-   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cScores)));
-   EBM_ASSERT(!IsMultiplyError(sizeof(double), cScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
+   EBM_ASSERT(!IsMultiplyError(sizeof(double), cTensorScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
    error = GetCurrentTermScores(boosterHandle, static_cast<IntEbmType>(iTerm), REAL(ret));
 
@@ -1326,7 +1326,7 @@ SEXP CreateClassificationInteractionDetector_R(
       LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsConvertError<ptrdiff_t>(cTargetClasses)");
       return R_NilValue;
    }
-   const size_t cVectorLength = GetVectorLength(static_cast<ptrdiff_t>(cTargetClasses));
+   const size_t cScores = GetCountScores(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
    const BoolEbmType * aFeaturesCategorical;
@@ -1378,12 +1378,12 @@ SEXP CreateClassificationInteractionDetector_R(
       return R_NilValue;
    }
    size_t cInitScores = static_cast<size_t>(countInitScores);
-   if(IsMultiplyError(cVectorLength, cSamples)) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cVectorLength, cSamples)");
+   if(IsMultiplyError(cScores, cSamples)) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R IsMultiplyError(cScores, cSamples)");
       return R_NilValue;
    }
-   if(cVectorLength * cSamples != cInitScores) {
-      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cVectorLength * cSamples != cInitScores");
+   if(cScores * cSamples != cInitScores) {
+      LOG_0(TraceLevelError, "ERROR CreateClassificationInteractionDetector_R cScores * cSamples != cInitScores");
       return R_NilValue;
    }
    const double * const aInitScores = REAL(initScores);

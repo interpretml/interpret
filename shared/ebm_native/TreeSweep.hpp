@@ -80,10 +80,10 @@ static_assert(std::is_trivial<TreeSweep<true>>::value && std::is_trivial<TreeSwe
 static_assert(std::is_pod<TreeSweep<true>>::value && std::is_pod<TreeSweep<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-INLINE_ALWAYS bool GetTreeSweepSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS bool GetTreeSweepSizeOverflow(const bool bClassification, const size_t cScores) {
    const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
 
-   if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
+   if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cScores))) {
       return true;
    }
 
@@ -95,14 +95,14 @@ INLINE_ALWAYS bool GetTreeSweepSizeOverflow(const bool bClassification, const si
    }
    cBytesTreeSweepComponent -= cBytesHistogramTargetEntry;
 
-   if(UNLIKELY(IsAddError(cBytesTreeSweepComponent, cBytesHistogramTargetEntry * cVectorLength))) {
+   if(UNLIKELY(IsAddError(cBytesTreeSweepComponent, cBytesHistogramTargetEntry * cScores))) {
       return true;
    }
 
    return false;
 }
 
-INLINE_ALWAYS size_t GetTreeSweepSize(bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS size_t GetTreeSweepSize(bool bClassification, const size_t cScores) {
    const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
 
    size_t cBytesTreeSweepComponent;
@@ -113,7 +113,7 @@ INLINE_ALWAYS size_t GetTreeSweepSize(bool bClassification, const size_t cVector
    }
    cBytesTreeSweepComponent -= cBytesHistogramTargetEntry;
 
-   return cBytesTreeSweepComponent + cBytesHistogramTargetEntry * cVectorLength;
+   return cBytesTreeSweepComponent + cBytesHistogramTargetEntry * cScores;
 }
 
 template<bool bClassification>

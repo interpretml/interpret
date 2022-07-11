@@ -24,18 +24,18 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cSamples, const size_t cVectorLength) {
+INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(const bool bAllocateHessians, const size_t cSamples, const size_t cScores) {
    LOG_0(TraceLevelInfo, "Entered ConstructGradientsAndHessians");
 
    EBM_ASSERT(1 <= cSamples);
-   EBM_ASSERT(1 <= cVectorLength);
+   EBM_ASSERT(1 <= cScores);
 
    const size_t cStorageItems = bAllocateHessians ? 2 : 1;
-   if(IsMultiplyError(cVectorLength, cStorageItems, cSamples)) {
-      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cVectorLength, cStorageItems, cSamples)");
+   if(IsMultiplyError(cScores, cStorageItems, cSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING ConstructGradientsAndHessians IsMultiplyError(cScores, cStorageItems, cSamples)");
       return nullptr;
    }
-   const size_t cElements = cVectorLength * cStorageItems * cSamples;
+   const size_t cElements = cScores * cStorageItems * cSamples;
 
    FloatFast * aGradientsAndHessians = EbmMalloc<FloatFast>(cElements);
 
@@ -44,7 +44,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructGradientsAndHessians(cons
 }
 
 INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
-   const size_t cVectorLength,
+   const size_t cScores,
    const BagEbmType direction,
    const BagEbmType * const aBag,
    const double * const aInitScores,
@@ -52,27 +52,27 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::ConstructSampleScores");
 
-   EBM_ASSERT(0 < cVectorLength);
+   EBM_ASSERT(0 < cScores);
    EBM_ASSERT(BagEbmType { -1 } == direction || BagEbmType { 1 } == direction);
    EBM_ASSERT(0 < cSetSamples);
 
-   if(IsMultiplyError(cVectorLength, cSetSamples)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cVectorLength, cSetSamples)");
+   if(IsMultiplyError(cScores, cSetSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructSampleScores IsMultiplyError(cScores, cSetSamples)");
       return nullptr;
    }
 
-   const size_t cElements = cVectorLength * cSetSamples;
+   const size_t cElements = cScores * cSetSamples;
    FloatFast * const aSampleScores = EbmMalloc<FloatFast>(cElements);
    if(nullptr == aSampleScores) {
       LOG_0(TraceLevelWarning, "WARNING DataSetBoosting::ConstructSampleScores nullptr == aSampleScores");
       return nullptr;
    }
 
-   const size_t cBytesPerItem = sizeof(*aSampleScores) * cVectorLength;
+   const size_t cBytesPerItem = sizeof(*aSampleScores) * cScores;
 
    const BagEbmType * pBag = aBag;
    FloatFast * pSampleScore = aSampleScores;
-   const FloatFast * const pSampleScoresEnd = aSampleScores + cVectorLength * cSetSamples;
+   const FloatFast * const pSampleScoresEnd = aSampleScores + cScores * cSetSamples;
    const double * pInitScore = aInitScores;
    const bool isLoopTraining = BagEbmType { 0 } < direction;
    do {
@@ -85,7 +85,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
          const bool isItemTraining = BagEbmType { 0 } < countBagged;
          if(isLoopTraining == isItemTraining) {
             do {
-               EBM_ASSERT(pSampleScore < aSampleScores + cVectorLength * cSetSamples);
+               EBM_ASSERT(pSampleScore < aSampleScores + cScores * cSetSamples);
                if(nullptr == pInitScore) {
                   static_assert(std::numeric_limits<FloatFast>::is_iec559, "IEEE 754 guarantees zeros means a zero float");
                   memset(pSampleScore, 0, cBytesPerItem);
@@ -93,12 +93,12 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
                   static_assert(sizeof(*pSampleScore) == sizeof(*pInitScore), "float mismatch");
                   memcpy(pSampleScore, pInitScore, cBytesPerItem);
                }
-               pSampleScore += cVectorLength;
+               pSampleScore += cScores;
                countBagged -= direction;
             } while(BagEbmType { 0 } != countBagged);
          }
          if(nullptr != pInitScore) {
-            pInitScore += cVectorLength;
+            pInitScore += cScores;
          }
       }
    } while(pSampleScoresEnd != pSampleScore);
@@ -106,12 +106,12 @@ INLINE_RELEASE_UNTEMPLATED static FloatFast * ConstructSampleScores(
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
 
    // TODO: move this into the loop above
-   if(2 <= cVectorLength) {
+   if(2 <= cScores) {
       FloatFast * pShiftScore = aSampleScores;
-      const FloatFast * const pExteriorEnd = pShiftScore + cVectorLength * cSetSamples;
+      const FloatFast * const pExteriorEnd = pShiftScore + cScores * cSetSamples;
       do {
          FloatFast shiftScore = pShiftScore[0];
-         const FloatFast * const pInteriorEnd = pShiftScore + cVectorLength;
+         const FloatFast * const pInteriorEnd = pShiftScore + cScores;
          do {
             *pShiftScore -= shiftScore;
             ++pShiftScore;
@@ -425,11 +425,11 @@ ErrorEbmType DataSetBoosting::Initialize(
    EBM_ASSERT(nullptr == m_aaInputData);
 
    LOG_0(TraceLevelInfo, "Entered DataSetBoosting::Initialize");
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
 
    if(0 != cSetSamples) {
       if(bAllocateGradients) {
-         FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cVectorLength);
+         FloatFast * aGradientsAndHessians = ConstructGradientsAndHessians(bAllocateHessians, cSetSamples, cScores);
          if(nullptr == aGradientsAndHessians) {
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetBoosting::Initialize nullptr == aGradientsAndHessians");
             return Error_OutOfMemory;
@@ -440,7 +440,7 @@ ErrorEbmType DataSetBoosting::Initialize(
       }
       if(bAllocateSampleScores) {
          FloatFast * const aSampleScores = ConstructSampleScores(
-            cVectorLength, 
+            cScores, 
             direction, 
             aBag, 
             aInitScores,

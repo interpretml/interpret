@@ -63,9 +63,9 @@ public:
          pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()
       );
 
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
       auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
@@ -138,7 +138,7 @@ public:
       }
       const size_t cBytesSlicesPlusRandom = sizeof(size_t) * cSlicesPlusRandomMax;
 
-      error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * cCollapsedTensorCells);
+      error = pInnerTermUpdate->EnsureScoreCapacity(cScores * cCollapsedTensorCells);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
@@ -389,7 +389,7 @@ public:
 
             do {
                ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetBinsBigEndDebug());
-               pCollapsedBin1->Add(*pBin, cVectorLength);
+               pCollapsedBin1->Add(*pBin, cScores);
 
                // we're walking through all bins, so just move to the next one in the flat array, 
                // with the knowledge that we'll figure out it's multi-dimenional index below
@@ -530,8 +530,8 @@ public:
          do {
             auto * const pHistogramTargetEntry = pCollapsedBin2->GetHistogramTargetEntry();
 
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iVector].m_sumGradients);
+            for(size_t iScore = 0; iScore < cScores; ++iScore) {
+               FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iScore].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                // for DP-EBMs, we can't zero one of the class scores as we can for logits since we're returning a sum
@@ -552,7 +552,7 @@ public:
 
                // normally, we'd eliminate regions where the number of items was zero before putting down a split
                // but for random splits we can't know beforehand if there will be zero splits, so we need to check
-               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+               for(size_t iScore = 0; iScore < cScores; ++iScore) {
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                   // if we eliminated the space for the logit, we'd need to eliminate one assignment here
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
@@ -567,16 +567,16 @@ public:
                FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+               for(size_t iScore = 0; iScore < cScores; ++iScore) {
                   FloatBig updateScore;
                   if(bClassification) {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        pHistogramTargetEntry[iVector].m_sumGradients,
-                        pHistogramTargetEntry[iVector].GetSumHessians()
+                        pHistogramTargetEntry[iScore].m_sumGradients,
+                        pHistogramTargetEntry[iScore].GetSumHessians()
                      );
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                      if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-                        if(size_t { 0 } == iVector) {
+                        if(size_t { 0 } == iScore) {
                            zeroLogit = updateScore;
                         }
                         updateScore -= zeroLogit;
@@ -585,7 +585,7 @@ public:
                   } else {
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        pHistogramTargetEntry[iVector].m_sumGradients,
+                        pHistogramTargetEntry[iScore].m_sumGradients,
                         pCollapsedBin2->GetWeight()
                      );
                   }

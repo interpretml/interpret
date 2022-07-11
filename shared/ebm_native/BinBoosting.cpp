@@ -53,8 +53,8 @@ public:
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
 
       const size_t cSamples = pTrainingSet->GetDataSetBoosting()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
@@ -68,7 +68,7 @@ public:
 
       const FloatFast * pGradientAndHessian = pTrainingSet->GetDataSetBoosting()->GetGradientsAndHessiansPointer();
       // this shouldn't overflow since we're accessing existing memory
-      const FloatFast * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
+      const FloatFast * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
 
       auto * const pHistogramTargetEntry = pBin->GetHistogramTargetEntry();
       do {
@@ -96,7 +96,7 @@ public:
          pBin->SetCountSamples(pBin->GetCountSamples() + cOccurences);
          pBin->SetWeight(pBin->GetWeight() + weight);
 
-         size_t iVector = 0;
+         size_t iScore = 0;
 
 #ifndef NDEBUG
 #ifdef EXPAND_BINARY_LOGITS
@@ -111,7 +111,7 @@ public:
 #ifndef NDEBUG
             sumGradientsDebug += gradient;
 #endif // NDEBUG
-            pHistogramTargetEntry[iVector].m_sumGradients += gradient * weight;
+            pHistogramTargetEntry[iScore].m_sumGradients += gradient * weight;
             if(bClassification) {
                // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the 
                //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might make 
@@ -119,14 +119,14 @@ public:
                //   MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the computation if 
                //   not necssary and access it through an accessor so that we can make the change entirely via macro
                const FloatFast hessian = *(pGradientAndHessian + 1);
-               pHistogramTargetEntry[iVector].SetSumHessians(pHistogramTargetEntry[iVector].GetSumHessians() + hessian * weight);
+               pHistogramTargetEntry[iScore].SetSumHessians(pHistogramTargetEntry[iScore].GetSumHessians() + hessian * weight);
             }
             pGradientAndHessian += bClassification ? 2 : 1;
-            ++iVector;
-            // if we use this specific format where (iVector < cVectorLength) then the compiler collapses alway the loop for small cVectorLength values
-            // if we make this (iVector != cVectorLength) then the loop is not collapsed
+            ++iScore;
+            // if we use this specific format where (iScore < cScores) then the compiler collapses alway the loop for small cScores values
+            // if we make this (iScore != cScores) then the loop is not collapsed
             // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
-         } while(iVector < cVectorLength);
+         } while(iScore < cScores);
 
          EBM_ASSERT(
             !bClassification ||
@@ -223,7 +223,7 @@ public:
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
 
       const size_t cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(compilerBitPack, pTerm->GetBitPack());
       EBM_ASSERT(size_t { 1 } <= cItemsPerBitPack);
@@ -232,8 +232,8 @@ public:
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cVectorLength);
+      EBM_ASSERT(!IsOverflowBinSize<FloatFast>(bClassification, cScores)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatFast>(bClassification, cScores);
 
       const size_t cSamples = pTrainingSet->GetDataSetBoosting()->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
@@ -249,13 +249,13 @@ public:
       const FloatFast * pGradientAndHessian = pTrainingSet->GetDataSetBoosting()->GetGradientsAndHessiansPointer();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatFast * const pGradientAndHessiansTrueEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cVectorLength * cSamples;
+      const FloatFast * const pGradientAndHessiansTrueEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
       const FloatFast * pGradientAndHessiansExit = pGradientAndHessiansTrueEnd;
       size_t cItemsRemaining = cSamples;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pGradientAndHessiansExit = pGradientAndHessiansTrueEnd - (bClassification ? 2 : 1) * cVectorLength * ((cSamples - 1) % cItemsPerBitPack + 1);
+      pGradientAndHessiansExit = pGradientAndHessiansTrueEnd - (bClassification ? 2 : 1) * cScores * ((cSamples - 1) % cItemsPerBitPack + 1);
       EBM_ASSERT(pGradientAndHessian < pGradientAndHessiansExit);
       EBM_ASSERT(pGradientAndHessiansExit < pGradientAndHessiansTrueEnd);
 
@@ -302,7 +302,7 @@ public:
 
             auto * pHistogramTargetEntry = pBin->GetHistogramTargetEntry();
 
-            size_t iVector = 0;
+            size_t iScore = 0;
 
 #ifndef NDEBUG
 #ifdef EXPAND_BINARY_LOGITS
@@ -317,7 +317,7 @@ public:
 #ifndef NDEBUG
                gradientTotalDebug += gradient;
 #endif // NDEBUG
-               pHistogramTargetEntry[iVector].m_sumGradients += gradient * weight;
+               pHistogramTargetEntry[iScore].m_sumGradients += gradient * weight;
                if(bClassification) {
                   // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the
                   //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might 
@@ -325,16 +325,16 @@ public:
                   //   done in a MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the 
                   //   computation if not necssary and access it through an accessor so that we can make the change entirely via macro
                   const FloatFast hessian = *(pGradientAndHessian + 1);
-                  pHistogramTargetEntry[iVector].SetSumHessians(
-                     pHistogramTargetEntry[iVector].GetSumHessians() + hessian * weight
+                  pHistogramTargetEntry[iScore].SetSumHessians(
+                     pHistogramTargetEntry[iScore].GetSumHessians() + hessian * weight
                   );
                }
                pGradientAndHessian += bClassification ? 2 : 1;
-               ++iVector;
-               // if we use this specific format where (iVector < cVectorLength) then the compiler collapses alway the loop for small cVectorLength values
-               // if we make this (iVector != cVectorLength) then the loop is not collapsed
+               ++iScore;
+               // if we use this specific format where (iScore < cScores) then the compiler collapses alway the loop for small cScores values
+               // if we make this (iScore != cScores) then the loop is not collapsed
                // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
-            } while(iVector < cVectorLength);
+            } while(iScore < cScores);
 
             EBM_ASSERT(
                !bClassification ||
@@ -353,8 +353,8 @@ public:
       if(pGradientAndHessiansTrueEnd != pGradientAndHessian) {
          LOG_0(TraceLevelVerbose, "Handling last BinBoostingInternal loop");
 
-         EBM_ASSERT(0 == (pGradientAndHessiansTrueEnd - pGradientAndHessian) % (cVectorLength * (bClassification ? 2 : 1)));
-         cItemsRemaining = (pGradientAndHessiansTrueEnd - pGradientAndHessian) / (cVectorLength * (bClassification ? 2 : 1));
+         EBM_ASSERT(0 == (pGradientAndHessiansTrueEnd - pGradientAndHessian) % (cScores * (bClassification ? 2 : 1)));
+         cItemsRemaining = (pGradientAndHessiansTrueEnd - pGradientAndHessian) / (cScores * (bClassification ? 2 : 1));
          EBM_ASSERT(0 < cItemsRemaining);
          EBM_ASSERT(cItemsRemaining <= cItemsPerBitPack);
 

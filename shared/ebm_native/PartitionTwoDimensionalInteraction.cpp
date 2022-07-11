@@ -62,8 +62,8 @@ public:
          pInteractionCore->GetRuntimeLearningTypeOrCountTargetClasses()
       );
 
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
       auto * const pTotals00 = IndexBin(cBytesPerBin, aAuxiliaryBins, 0);
       auto * const pTotals01 = IndexBin(cBytesPerBin, aAuxiliaryBins, 1);
@@ -174,7 +174,7 @@ public:
                         auto * const pHistogramEntry10 = pTotals10->GetHistogramTargetEntry();
                         auto * const pHistogramEntry11 = pTotals11->GetHistogramTargetEntry();
 
-                        for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+                        for(size_t iScore = 0; iScore < cScores; ++iScore) {
                            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
@@ -182,21 +182,21 @@ public:
 
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
-                           const FloatBig n00 = pHistogramEntry00[iVector].m_sumGradients;
+                           const FloatBig n00 = pHistogramEntry00[iScore].m_sumGradients;
                            const FloatBig d00 = bUseLogitBoost ?
-                              pHistogramEntry00[iVector].GetSumHessians() : weight00;
+                              pHistogramEntry00[iScore].GetSumHessians() : weight00;
 
-                           const FloatBig n01 = pHistogramEntry01[iVector].m_sumGradients;
+                           const FloatBig n01 = pHistogramEntry01[iScore].m_sumGradients;
                            const FloatBig d01 = bUseLogitBoost ?
-                              pHistogramEntry01[iVector].GetSumHessians() : weight01;
+                              pHistogramEntry01[iScore].GetSumHessians() : weight01;
 
-                           const FloatBig n10 = pHistogramEntry10[iVector].m_sumGradients;
+                           const FloatBig n10 = pHistogramEntry10[iScore].m_sumGradients;
                            const FloatBig d10 = bUseLogitBoost ?
-                              pHistogramEntry10[iVector].GetSumHessians() : weight10;
+                              pHistogramEntry10[iScore].GetSumHessians() : weight10;
 
-                           const FloatBig n11 = pHistogramEntry11[iVector].m_sumGradients;
+                           const FloatBig n11 = pHistogramEntry11[iScore].m_sumGradients;
                            const FloatBig d11 = bUseLogitBoost ?
-                              pHistogramEntry11[iVector].GetSumHessians() : weight11;
+                              pHistogramEntry11[iScore].GetSumHessians() : weight11;
 
                            if(0 != (InteractionOptions_Pure & options)) {
                               // purified gain
@@ -355,14 +355,14 @@ public:
 
          const auto * const pHistogramEntryTotal = pTotal->GetHistogramTargetEntry();
 
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
             constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
             bestGain -= EbmStats::CalcPartialGain(
-               pHistogramEntryTotal[iVector].m_sumGradients,
-               bUseLogitBoost ? pHistogramEntryTotal[iVector].GetSumHessians() : weightAll
+               pHistogramEntryTotal[iScore].m_sumGradients,
+               bUseLogitBoost ? pHistogramEntryTotal[iScore].GetSumHessians() : weightAll
             );
          }
 

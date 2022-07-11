@@ -70,7 +70,7 @@ class BoosterCore final {
    static ErrorEbmType InitializeTensors(
       const size_t cTerms,
       const Term * const * const apTerms,
-      const size_t cVectorLength,
+      const size_t cScores,
       Tensor *** papTensorsOut
    );
 

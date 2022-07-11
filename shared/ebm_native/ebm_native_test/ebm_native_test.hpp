@@ -128,11 +128,11 @@ bool IsApproxEqual(const double value, const double expected, const double perce
 // EBM/interpret specific stuff below here!!
 
 constexpr ptrdiff_t k_learningTypeRegression = ptrdiff_t { -1 };
-constexpr bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
+inline constexpr static bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
    return 0 <= learningTypeOrCountTargetClasses;
 }
 
-constexpr size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) {
+inline constexpr static size_t GetCountScores(const ptrdiff_t learningTypeOrCountTargetClasses) {
 #ifdef EXPAND_BINARY_LOGITS
 #ifdef REDUCE_MULTICLASS_LOGITS
 

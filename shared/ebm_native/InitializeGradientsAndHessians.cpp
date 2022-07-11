@@ -50,12 +50,12 @@ public:
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
 
       // TODO: we could eliminate this memory by doing the calculation twice below and then this code could return on error value (or would that work with the loss function stuff?)
-      FloatFast * const aExpVector = EbmMalloc<FloatFast>(cVectorLength);
-      if(UNLIKELY(nullptr == aExpVector)) {
-         LOG_0(TraceLevelWarning, "WARNING InitializeGradientsAndHessians nullptr == aExpVector");
+      FloatFast * const aExps = EbmMalloc<FloatFast>(cScores);
+      if(UNLIKELY(nullptr == aExps)) {
+         LOG_0(TraceLevelWarning, "WARNING InitializeGradientsAndHessians nullptr == aExps");
          return Error_OutOfMemory;
       }
 
@@ -63,7 +63,7 @@ public:
       const SharedStorageDataType * pTargetData = static_cast<const SharedStorageDataType *>(aTargets);
       const double * pInitScore = aInitScores;
       FloatFast * pGradientAndHessian = aGradientAndHessian;
-      const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cVectorLength * cSetSamples * 2;
+      const FloatFast * const pGradientAndHessianEnd = aGradientAndHessian + cScores * cSetSamples * 2;
       const bool isLoopTraining = BagEbmType { 0 } < direction;
       do {
          BagEbmType countBagged = 1;
@@ -79,7 +79,7 @@ public:
                EBM_ASSERT(!IsConvertError<size_t>(targetOriginal));
                const size_t target = static_cast<size_t>(targetOriginal);
                EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
-               FloatFast * pExpVector = aExpVector;
+               FloatFast * pExp = aExps;
 
                FloatFast sumExp = 0;
 
@@ -87,7 +87,7 @@ public:
                FloatFast zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-               size_t iVector = 0;
+               size_t iScore = 0;
                do {
                   FloatFast initScore = 0;
                   if(nullptr != pInitScore) {
@@ -96,7 +96,7 @@ public:
                   }
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                   if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-                     if(size_t { 0 } == iVector) {
+                     if(size_t { 0 } == iScore) {
                         zeroLogit = initScore;
                      }
                      initScore -= zeroLogit;
@@ -104,43 +104,43 @@ public:
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
                   const FloatFast oneExp = ExpForMulticlass<false>(initScore);
-                  *pExpVector = oneExp;
-                  ++pExpVector;
+                  *pExp = oneExp;
+                  ++pExp;
                   sumExp += oneExp;
-                  ++iVector;
-               } while(iVector < cVectorLength);
+                  ++iScore;
+               } while(iScore < cScores);
 
                do {
                   // go back to the start so that we can iterate again
-                  pExpVector -= cVectorLength;
+                  pExp -= cScores;
 
-                  iVector = 0;
+                  iScore = 0;
                   do {
                      FloatFast gradient;
                      FloatFast hessian;
-                     EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(sumExp, *pExpVector, target, iVector, gradient, hessian);
-                     ++pExpVector;
+                     EbmStats::InverseLinkFunctionThenCalculateGradientAndHessianMulticlass(sumExp, *pExp, target, iScore, gradient, hessian);
+                     ++pExp;
 
                      EBM_ASSERT(pGradientAndHessian < pGradientAndHessianEnd - 1);
 
                      *pGradientAndHessian = gradient;
                      *(pGradientAndHessian + 1) = hessian;
                      pGradientAndHessian += 2;
-                     ++iVector;
-                  } while(iVector < cVectorLength);
+                     ++iScore;
+                  } while(iScore < cScores);
 
                   countBagged -= direction;
                } while(BagEbmType { 0 } != countBagged);
             } else {
                if(nullptr != pInitScore) {
-                  pInitScore += cVectorLength;
+                  pInitScore += cScores;
                }
             }
          }
          ++pTargetData;
       } while(pGradientAndHessianEnd != pGradientAndHessian);
 
-      free(aExpVector);
+      free(aExps);
 
       LOG_0(TraceLevelInfo, "Exited InitializeGradientsAndHessians");
       return Error_None;
@@ -167,7 +167,7 @@ public:
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
       // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pInitScore (I assume so), 
-      //   and does it affect any calculations below like sumExp += std::exp(initScore) and the equivalent.  Should we use cVectorLength or 
+      //   and does it affect any calculations below like sumExp += std::exp(initScore) and the equivalent.  Should we use cScores or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
 
@@ -243,7 +243,7 @@ public:
       LOG_0(TraceLevelInfo, "Entered InitializeGradientsAndHessians");
 
       // TODO : review this function to see if iZeroLogit was set to a valid index, does that affect the number of items in pInitScore (I assume so), 
-      //   and does it affect any calculations below like sumExp += std::exp(initScore) and the equivalent.  Should we use cVectorLength or 
+      //   and does it affect any calculations below like sumExp += std::exp(initScore) and the equivalent.  Should we use cScores or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the logits with iZeroLogit after we have the ability to test large numbers of datasets
 

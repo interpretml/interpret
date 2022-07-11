@@ -78,7 +78,7 @@ extern "C" {
 
 #define ANALYZER_NORETURN
 
-// disable constexpr warning, since GetVectorLength is meant to be ambiguous and it's used everywhere
+// disable constexpr warning, since GetCountScores is meant to be ambiguous and it's used everywhere
 #pragma warning(disable : 26498)
 // disable dereferencing NULL pointer, since the static analysis seems to think any access of a pointer is 
 // dereferencing a NULL pointer potentially.

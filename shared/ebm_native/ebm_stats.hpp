@@ -716,7 +716,7 @@ public:
       const FloatFast sumExp, 
       const FloatFast itemExp, 
       const size_t target, 
-      const size_t iVector,
+      const size_t iScore,
       FloatFast & gradientOut,
       FloatFast & hessianOut
    ) {
@@ -782,7 +782,7 @@ public:
          !std::isinf(probability) && 0 <= probability && probability <= 1 + k_epsilonGradient);
 
 
-      const FloatFast yi = UNPREDICTABLE(iVector == target) ? FloatFast { 1 } : FloatFast { 0 };
+      const FloatFast yi = UNPREDICTABLE(iScore == target) ? FloatFast { 1 } : FloatFast { 0 };
 
       // if probability cannot be +infinity, and needs to be between 0 and 1 + small_value, or NaN, then gradient can't be inifinity either
 

@@ -392,24 +392,24 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateExpanded(
    }
 
    const size_t cDimensions = pTerm->GetCountDimensions();
-   size_t cScores = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
    if(0 != cDimensions) {
       const TermEntry * pTermEntry = pTerm->GetTermEntries();
       const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
          const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
-         cScores *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
+         cTensorScores *= cBins;
          ++pTermEntry;
       } while(pTermEntriesEnd != pTermEntry);
    }
    const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
-   EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensorOut), cScores));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensorOut), cTensorScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cTensorScores));
    static_assert(sizeof(*updateScoresTensorOut) == sizeof(*aUpdateScores), "float mismatch");
-   memcpy(updateScoresTensorOut, aUpdateScores, sizeof(*aUpdateScores) * cScores);
+   memcpy(updateScoresTensorOut, aUpdateScores, sizeof(*aUpdateScores) * cTensorScores);
    return Error_None;
 }
 
@@ -483,33 +483,33 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdateExpanded(
    }
 
    const size_t cDimensions = pTerm->GetCountDimensions();
-   const size_t cVectorLength = GetVectorLength(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
-   size_t cScores = cVectorLength;
+   const size_t cScores = GetCountScores(pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses());
+   size_t cTensorScores = cScores;
    if(0 != cDimensions) {
       const TermEntry * pTermEntry = pTerm->GetTermEntries();
       const TermEntry * const pTermEntriesEnd = &pTermEntry[cDimensions];
       do {
          const size_t cBins = pTermEntry->m_pFeature->GetCountBins();
          // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         EBM_ASSERT(!IsMultiplyError(cScores, cBins));
-         cScores *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cTensorScores, cBins));
+         cTensorScores *= cBins;
          ++pTermEntry;
       } while(pTermEntriesEnd != pTermEntry);
    }
    FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
-   EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cScores));
-   EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensor), cScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cTensorScores));
+   EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensor), cTensorScores));
    static_assert(sizeof(*updateScoresTensor) == sizeof(*aUpdateScores), "float mismatch");
-   memcpy(aUpdateScores, updateScoresTensor, sizeof(*aUpdateScores) * cScores);
+   memcpy(aUpdateScores, updateScoresTensor, sizeof(*aUpdateScores) * cTensorScores);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
 
-   if(2 <= cVectorLength) {
+   if(2 <= cScores) {
       FloatFast * pUpdateScore = aUpdateScores;
-      const FloatFast * const pExteriorEnd = pUpdateScore + cScores;
+      const FloatFast * const pExteriorEnd = pUpdateScore + cTensorScores;
       do {
          FloatFast shiftScore = pUpdateScore[0];
-         const FloatFast * const pInteriorEnd = pUpdateScore + cVectorLength;
+         const FloatFast * const pInteriorEnd = pUpdateScore + cScores;
          do {
             *pUpdateScore -= shiftScore;
             ++pUpdateScore;

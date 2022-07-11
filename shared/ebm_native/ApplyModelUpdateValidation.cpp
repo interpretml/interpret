@@ -54,14 +54,14 @@ public:
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(0 < cSamples);
 
       FloatFast sumLogLoss = 0;
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
       FloatFast * pSampleScore = pValidationSet->GetSampleScores();
-      const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cVectorLength;
+      const FloatFast * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
@@ -69,7 +69,7 @@ public:
          const FloatFast * pUpdateScore = aUpdateScores;
          FloatFast itemExp = 0;
          FloatFast sumExp = 0;
-         size_t iVector = 0;
+         size_t iScore = 0;
          do {
             // TODO : because there is only one bin for a zero feature feature group, we could move these values to the stack where the
             // compiler could reason about their visibility and optimize small arrays into registers
@@ -80,7 +80,7 @@ public:
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-               if(size_t { 0 } == iVector) {
+               if(size_t { 0 } == iScore) {
                   EBM_ASSERT(0 == updateScore);
                   EBM_ASSERT(0 == sampleScore);
                }
@@ -90,10 +90,10 @@ public:
             *pSampleScore = sampleScore;
             ++pSampleScore;
             const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
-            itemExp = iVector == targetData ? oneExp : itemExp;
+            itemExp = iScore == targetData ? oneExp : itemExp;
             sumExp += oneExp;
-            ++iVector;
-         } while(iVector < cVectorLength);
+            ++iScore;
+         } while(iScore < cScores);
          const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(
             sumExp,
             itemExp
@@ -311,7 +311,7 @@ public:
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
       const size_t cSamples = pValidationSet->GetCountSamples();
       EBM_ASSERT(1 <= cSamples);
       EBM_ASSERT(1 <= pTerm->GetCountSignificantDimensions());
@@ -330,18 +330,18 @@ public:
       FloatFast * pSampleScore = pValidationSet->GetSampleScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples * cVectorLength;
+      const FloatFast * const pSampleScoresTrueEnd = pSampleScore + cSamples * cScores;
       const FloatFast * pSampleScoresExit = pSampleScoresTrueEnd;
       const FloatFast * pSampleScoresInnerEnd = pSampleScoresTrueEnd;
       if(cSamples <= cItemsPerBitPack) {
          goto one_last_loop;
       }
-      pSampleScoresExit = pSampleScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1) * cVectorLength;
+      pSampleScoresExit = pSampleScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPack + 1) * cScores;
       EBM_ASSERT(pSampleScore < pSampleScoresExit);
       EBM_ASSERT(pSampleScoresExit < pSampleScoresTrueEnd);
 
       do {
-         pSampleScoresInnerEnd = pSampleScore + cItemsPerBitPack * cVectorLength;
+         pSampleScoresInnerEnd = pSampleScore + cItemsPerBitPack * cScores;
          // jumping back into this loop and changing pSampleScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
          // function to NOT be optimized for templated cItemsPerBitPack, but that's ok since avoiding one unpredictable branch here is negligible
       one_last_loop:;
@@ -353,10 +353,10 @@ public:
             ++pTargetData;
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
-            const FloatFast * pUpdateScore = &aUpdateScores[iTensorBin * cVectorLength];
+            const FloatFast * pUpdateScore = &aUpdateScores[iTensorBin * cScores];
             FloatFast itemExp = 0;
             FloatFast sumExp = 0;
-            size_t iVector = 0;
+            size_t iScore = 0;
             do {
                const FloatFast updateScore = *pUpdateScore;
                ++pUpdateScore;
@@ -365,7 +365,7 @@ public:
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-                  if(size_t { 0 } == iVector) {
+                  if(size_t { 0 } == iScore) {
                      EBM_ASSERT(0 == updateScore);
                      EBM_ASSERT(0 == sampleScore);
                   }
@@ -375,10 +375,10 @@ public:
                *pSampleScore = sampleScore;
                ++pSampleScore;
                const FloatFast oneExp = ExpForLogLossMulticlass<false>(sampleScore);
-               itemExp = iVector == targetData ? oneExp : itemExp;
+               itemExp = iScore == targetData ? oneExp : itemExp;
                sumExp += oneExp;
-               ++iVector;
-            } while(iVector < cVectorLength);
+               ++iScore;
+            } while(iScore < cScores);
             const FloatFast sampleLogLoss = EbmStats::ComputeSingleSampleLogLossMulticlass(
                sumExp,
                itemExp

@@ -103,16 +103,16 @@ static ErrorEbmType BoostZeroDimensional(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
 
-   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || 
-      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)) 
+   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
+      IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
    {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING BoostZeroDimensional IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING BoostZeroDimensional IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)");
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
 
    BinBase * const pBinFast = pBoosterShell->GetBinBaseFast(cBytesPerBinFast);
    if(UNLIKELY(nullptr == pBinFast)) {
@@ -131,7 +131,7 @@ static ErrorEbmType BoostZeroDimensional(
       pTrainingSet
    );
 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
 
    BinBase * const pBinBig = pBoosterShell->GetBinBaseBig(cBytesPerBinBig);
    if(UNLIKELY(nullptr == pBinBig)) {
@@ -159,15 +159,15 @@ static ErrorEbmType BoostZeroDimensional(
       const auto * const pBin = pBinBig->Specialize<FloatBig, true>();
       const auto * const aSumHistogramTargetEntry = pBin->GetHistogramTargetEntry();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iVector].m_sumGradients);
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
+            const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iScore].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             // Hmmm.. for DP we need the sum, which means that we can't zero one of the class numbers as we
             // could with one of the logits in multiclass.
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore);
+            aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
          }
       } else {
 
@@ -175,22 +175,22 @@ static ErrorEbmType BoostZeroDimensional(
          FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
             FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               aSumHistogramTargetEntry[iVector].m_sumGradients,
-               aSumHistogramTargetEntry[iVector].GetSumHessians()
+               aSumHistogramTargetEntry[iScore].m_sumGradients,
+               aSumHistogramTargetEntry[iScore].GetSumHessians()
             );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(IsMulticlass(runtimeLearningTypeOrCountTargetClasses)) {
-               if(size_t { 0 } == iVector) {
+               if(size_t { 0 } == iScore) {
                   zeroLogit = updateScore;
                }
                updateScore -= zeroLogit;
             }
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-            aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(updateScore);
+            aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(updateScore);
          }
       }
    } else {
@@ -240,17 +240,17 @@ static ErrorEbmType BoostSingleDimensional(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
 
-   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) ||
-      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)) 
+   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) ||
+      IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
    {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)");
       return Error_OutOfMemory;
    }
 
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinFast, cBins)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinFast, cBins)");
@@ -275,7 +275,7 @@ static ErrorEbmType BoostSingleDimensional(
       pTrainingSet
    );
 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cBins)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional IsMultiplyError(cBytesPerBinBig, cBins)");
@@ -304,7 +304,7 @@ static ErrorEbmType BoostSingleDimensional(
 
    HistogramTargetEntryBase * const aSumHistogramTargetEntry = pBoosterShell->GetSumHistogramTargetEntryArray();
    const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
-   aSumHistogramTargetEntry->Zero(cBytesPerHistogramTargetEntry, cVectorLength);
+   aSumHistogramTargetEntry->Zero(cBytesPerHistogramTargetEntry, cScores);
 
    SumBins(
       pBoosterShell,
@@ -378,18 +378,18 @@ static ErrorEbmType BoostMultiDimensional(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
 
-   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || 
-      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)) 
+   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
+      IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
    {
       LOG_0(
          TraceLevelWarning,
-         "WARNING BoostMultiDimensional IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)"
+         "WARNING BoostMultiDimensional IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)");
       return Error_OutOfMemory;
@@ -424,7 +424,7 @@ static ErrorEbmType BoostMultiDimensional(
    }
    const size_t cTotalBinsBig = cTotalBinsMainSpace + cAuxillaryBins;
 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)");
       return Error_OutOfMemory;
@@ -652,18 +652,18 @@ static ErrorEbmType BoostRandom(
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
 
-   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) ||
-      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength))
+   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) ||
+      IsOverflowBinSize<FloatBig>(bClassification, cScores))
    {
       LOG_0(
          TraceLevelWarning,
-         "WARNING BoostRandom IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)"
+         "WARNING BoostRandom IsOverflowBinSize<FloatFast>(bClassification, cScores) || IsOverflowBinSize<FloatBig>(bClassification, cScores)"
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinFast, cTotalBins)) {
       LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinFast, cTotalBins)");
       return Error_OutOfMemory;
@@ -688,7 +688,7 @@ static ErrorEbmType BoostRandom(
       pTrainingSet
    );
 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cTotalBins)) {
       LOG_0(TraceLevelWarning, "WARNING BoostRandom IsMultiplyError(cBytesPerBinBig, cTotalBins)");
       return Error_OutOfMemory;

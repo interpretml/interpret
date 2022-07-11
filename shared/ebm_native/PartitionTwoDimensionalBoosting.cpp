@@ -63,9 +63,9 @@ static FloatBig SweepMultiDimensional(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
    EBM_ASSERT(!IsMultiplyError(size_t { 2 }, cBytesPerBin)); // we're accessing allocated memory
    const size_t cBytesPerTwoBins = cBytesPerBin << 1;
 
@@ -129,17 +129,17 @@ static FloatBig SweepMultiDimensional(
 
             auto * const pHistogramTargetEntryHigh = pTotalsHigh->GetHistogramTargetEntry();
 
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            for(size_t iScore = 0; iScore < cScores; ++iScore) {
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                const FloatBig gain1 = EbmStats::CalcPartialGain(
-                  pHistogramTargetEntryLow[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryLow[iVector].GetSumHessians() : cLowWeightInBin);
+                  pHistogramTargetEntryLow[iScore].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryLow[iScore].GetSumHessians() : cLowWeightInBin);
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                gain += gain1;
                const FloatBig gain2 = EbmStats::CalcPartialGain(
-                  pHistogramTargetEntryHigh[iVector].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryHigh[iVector].GetSumHessians() : cHighWeightInBin);
+                  pHistogramTargetEntryHigh[iScore].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryHigh[iScore].GetSumHessians() : cHighWeightInBin);
                EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
                gain += gain2;
             }
@@ -210,8 +210,8 @@ public:
          pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses()
       );
 
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
       auto * aAuxiliaryBins = aAuxiliaryBinsBase->Specialize<FloatBig, bClassification>();
       auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
@@ -324,10 +324,10 @@ public:
                   splitFirst1LowBest = splitSecond1LowBest;
                   splitFirst1HighBest = splitSecond1HighBest;
 
-                  pTotals1LowLowBest->Copy(*pTotals2LowLowBest, cVectorLength);
-                  pTotals1LowHighBest->Copy(*pTotals2LowHighBest, cVectorLength);
-                  pTotals1HighLowBest->Copy(*pTotals2HighLowBest, cVectorLength);
-                  pTotals1HighHighBest->Copy(*pTotals2HighHighBest, cVectorLength);
+                  pTotals1LowLowBest->Copy(*pTotals2LowLowBest, cScores);
+                  pTotals1LowHighBest->Copy(*pTotals2LowHighBest, cScores);
+                  pTotals1HighLowBest->Copy(*pTotals2HighLowBest, cScores);
+                  pTotals1HighHighBest->Copy(*pTotals2HighHighBest, cScores);
                } else {
                   EBM_ASSERT(!std::isnan(gain));
                }
@@ -415,10 +415,10 @@ public:
                   splitFirst2LowBest = splitSecond2LowBest;
                   splitFirst2HighBest = splitSecond2HighBest;
 
-                  pTotals2LowLowBest->Copy(*pTotals1LowLowBestInner, cVectorLength);
-                  pTotals2LowHighBest->Copy(*pTotals1LowHighBestInner, cVectorLength);
-                  pTotals2HighLowBest->Copy(*pTotals1HighLowBestInner, cVectorLength);
-                  pTotals2HighHighBest->Copy(*pTotals1HighHighBestInner, cVectorLength);
+                  pTotals2LowLowBest->Copy(*pTotals1LowLowBestInner, cScores);
+                  pTotals2LowHighBest->Copy(*pTotals1LowHighBestInner, cScores);
+                  pTotals2HighLowBest->Copy(*pTotals1HighLowBestInner, cScores);
+                  pTotals2HighHighBest->Copy(*pTotals1HighHighBestInner, cScores);
 
                   bSplitFirst2 = true;
                } else {
@@ -464,14 +464,14 @@ public:
             EBM_ASSERT(std::numeric_limits<FloatBig>::infinity() != bestGain);
 
             // now subtract the parent partial gain
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            for(size_t iScore = 0; iScore < cScores; ++iScore) {
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                const FloatBig gain1 = EbmStats::CalcPartialGain(
-                  pHistogramTargetEntryTotal[iVector].m_sumGradients,
-                  bUseLogitBoost ? pHistogramTargetEntryTotal[iVector].GetSumHessians() : weightAll
+                  pHistogramTargetEntryTotal[iScore].m_sumGradients,
+                  bUseLogitBoost ? pHistogramTargetEntryTotal[iScore].GetSumHessians() : weightAll
                );
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                bestGain -= gain1;
@@ -499,7 +499,7 @@ public:
                      pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst2Best;
 
                      if(splitFirst2LowBest < splitFirst2HighBest) {
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * 6);
+                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -512,7 +512,7 @@ public:
                         pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
                         pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = splitFirst2HighBest;
                      } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * 6);
+                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -531,7 +531,7 @@ public:
                            return error;
                         }
 
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * 4);
+                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 4);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -551,7 +551,7 @@ public:
                      FloatBig zeroLogit3 = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-                     for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+                     for(size_t iScore = 0; iScore < cScores; ++iScore) {
                         FloatBig predictionLowLow;
                         FloatBig predictionLowHigh;
                         FloatBig predictionHighLow;
@@ -559,25 +559,25 @@ public:
 
                         if(bClassification) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2LowLowBest[iVector].m_sumGradients,
-                              pHistogramTargetEntryTotals2LowLowBest[iVector].GetSumHessians()
+                              pHistogramTargetEntryTotals2LowLowBest[iScore].m_sumGradients,
+                              pHistogramTargetEntryTotals2LowLowBest[iScore].GetSumHessians()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2LowHighBest[iVector].m_sumGradients,
-                              pHistogramTargetEntryTotals2LowHighBest[iVector].GetSumHessians()
+                              pHistogramTargetEntryTotals2LowHighBest[iScore].m_sumGradients,
+                              pHistogramTargetEntryTotals2LowHighBest[iScore].GetSumHessians()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2HighLowBest[iVector].m_sumGradients,
-                              pHistogramTargetEntryTotals2HighLowBest[iVector].GetSumHessians()
+                              pHistogramTargetEntryTotals2HighLowBest[iScore].m_sumGradients,
+                              pHistogramTargetEntryTotals2HighLowBest[iScore].GetSumHessians()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumGradients,
-                              pHistogramTargetEntryTotals2HighHighBest[iVector].GetSumHessians()
+                              pHistogramTargetEntryTotals2HighHighBest[iScore].m_sumGradients,
+                              pHistogramTargetEntryTotals2HighHighBest[iScore].GetSumHessians()
                            );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                            if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-                              if(size_t { 0 } == iVector) {
+                              if(size_t { 0 } == iScore) {
                                  zeroLogit0 = predictionLowLow;
                                  zeroLogit1 = predictionLowHigh;
                                  zeroLogit2 = predictionHighLow;
@@ -593,43 +593,43 @@ public:
                         } else {
                            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2LowLowBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals2LowLowBest[iScore].m_sumGradients,
                               pTotals2LowLowBest->GetWeight()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2LowHighBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals2LowHighBest[iScore].m_sumGradients,
                               pTotals2LowHighBest->GetWeight()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2HighLowBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals2HighLowBest[iScore].m_sumGradients,
                               pTotals2HighLowBest->GetWeight()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2HighHighBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals2HighHighBest[iScore].m_sumGradients,
                               pTotals2HighHighBest->GetWeight()
                            );
                         }
 
                         FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
                         if(splitFirst2LowBest < splitFirst2HighBest) {
-                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aUpdateScores[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aUpdateScores[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[4 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[5 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aUpdateScores[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
-                           aUpdateScores[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[4 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[5 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else {
-                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         }
                      }
                   } else {
@@ -641,7 +641,7 @@ public:
                      pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst1Best;
 
                      if(splitFirst1LowBest < splitFirst1HighBest) {
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * 6);
+                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -655,7 +655,7 @@ public:
                         pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
                         pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = splitFirst1HighBest;
                      } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * 6);
+                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -674,7 +674,7 @@ public:
                            // already logged
                            return error;
                         }
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * 4);
+                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 4);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -694,7 +694,7 @@ public:
                      FloatBig zeroLogit3 = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-                     for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+                     for(size_t iScore = 0; iScore < cScores; ++iScore) {
                         FloatBig predictionLowLow;
                         FloatBig predictionLowHigh;
                         FloatBig predictionHighLow;
@@ -702,25 +702,25 @@ public:
 
                         if(bClassification) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1LowLowBest[iVector].m_sumGradients,
-                              pHistogramTargetEntryTotals1LowLowBest[iVector].GetSumHessians()
+                              pHistogramTargetEntryTotals1LowLowBest[iScore].m_sumGradients,
+                              pHistogramTargetEntryTotals1LowLowBest[iScore].GetSumHessians()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1LowHighBest[iVector].m_sumGradients,
-                              pHistogramTargetEntryTotals1LowHighBest[iVector].GetSumHessians()
+                              pHistogramTargetEntryTotals1LowHighBest[iScore].m_sumGradients,
+                              pHistogramTargetEntryTotals1LowHighBest[iScore].GetSumHessians()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1HighLowBest[iVector].m_sumGradients,
-                              pHistogramTargetEntryTotals1HighLowBest[iVector].GetSumHessians()
+                              pHistogramTargetEntryTotals1HighLowBest[iScore].m_sumGradients,
+                              pHistogramTargetEntryTotals1HighLowBest[iScore].GetSumHessians()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumGradients,
-                              pHistogramTargetEntryTotals1HighHighBest[iVector].GetSumHessians()
+                              pHistogramTargetEntryTotals1HighHighBest[iScore].m_sumGradients,
+                              pHistogramTargetEntryTotals1HighHighBest[iScore].GetSumHessians()
                            );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                            if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-                              if(size_t { 0 } == iVector) {
+                              if(size_t { 0 } == iScore) {
                                  zeroLogit0 = predictionLowLow;
                                  zeroLogit1 = predictionLowHigh;
                                  zeroLogit2 = predictionHighLow;
@@ -735,42 +735,42 @@ public:
                         } else {
                            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1LowLowBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals1LowLowBest[iScore].m_sumGradients,
                               pTotals1LowLowBest->GetWeight()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1LowHighBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals1LowHighBest[iScore].m_sumGradients,
                               pTotals1LowHighBest->GetWeight()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1HighLowBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals1HighLowBest[iScore].m_sumGradients,
                               pTotals1HighLowBest->GetWeight()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1HighHighBest[iVector].m_sumGradients,
+                              pHistogramTargetEntryTotals1HighHighBest[iScore].m_sumGradients,
                               pTotals1HighHighBest->GetWeight()
                            );
                         }
                         FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
                         if(splitFirst1LowBest < splitFirst1HighBest) {
-                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aUpdateScores[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aUpdateScores[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[4 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[5 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
-                           aUpdateScores[4 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aUpdateScores[5 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[4 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[5 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         } else {
-                           aUpdateScores[0 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowLow);
-                           aUpdateScores[1 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighLow);
-                           aUpdateScores[2 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionLowHigh);
-                           aUpdateScores[3 * cVectorLength + iVector] = SafeConvertFloat<FloatFast>(predictionHighHigh);
+                           aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
+                           aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighLow);
+                           aUpdateScores[2 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowHigh);
+                           aUpdateScores[3 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighHigh);
                         }
                      }
                   }
@@ -808,17 +808,17 @@ public:
       FloatBig zeroLogit = 0;
 #endif // ZERO_FIRST_MULTICLASS_LOGIT
 
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+      for(size_t iScore = 0; iScore < cScores; ++iScore) {
          FloatBig update;
          if(bClassification) {
             update = EbmStats::ComputeSinglePartitionUpdate(
-               pHistogramTargetEntryTotal[iVector].m_sumGradients,
-               pHistogramTargetEntryTotal[iVector].GetSumHessians()
+               pHistogramTargetEntryTotal[iScore].m_sumGradients,
+               pHistogramTargetEntryTotal[iScore].GetSumHessians()
             );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
-               if(size_t { 0 } == iVector) {
+               if(size_t { 0 } == iScore) {
                   zeroLogit = update;
                }
                update -= zeroLogit;
@@ -828,13 +828,13 @@ public:
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             update = EbmStats::ComputeSinglePartitionUpdate(
-               pHistogramTargetEntryTotal[iVector].m_sumGradients,
+               pHistogramTargetEntryTotal[iScore].m_sumGradients,
                weightAll
             );
          }
 
          FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
-         aUpdateScores[iVector] = SafeConvertFloat<FloatFast>(update);
+         aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(update);
       }
       return Error_None;
    }

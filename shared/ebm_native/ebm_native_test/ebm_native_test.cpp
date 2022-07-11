@@ -138,7 +138,7 @@ const double * TestApi::GetTermScores(
    if(Stage::InitializedBoosting != m_stage) {
       exit(1);
    }
-   const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(m_learningTypeOrCountTargetClasses);
 
    if(m_termBinCounts.size() <= iTerm) {
       exit(1);
@@ -150,7 +150,7 @@ const double * TestApi::GetTermScores(
       exit(1);
    }
    size_t iValue = 0;
-   size_t multiple = cVectorLength;
+   size_t multiple = cScores;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       if(countBins[iDimension] <= perDimensionIndexArrayForBinnedFeatures[iDimension]) {
          exit(1);
@@ -590,16 +590,16 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
       exit(1);
    }
 
-   const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(m_learningTypeOrCountTargetClasses);
    const size_t cFeatures = m_featureBinCounts.size();
    const size_t cTrainingSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_trainingClassificationTargets.size() : m_trainingRegressionTargets.size();
    const size_t cValidationSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_validationClassificationTargets.size() : m_validationRegressionTargets.size();
 
    if(m_bNullTrainingInitScores) {
-      m_trainingInitScores.resize(cVectorLength * cTrainingSamples);
+      m_trainingInitScores.resize(cScores * cTrainingSamples);
    }
    if(m_bNullValidationInitScores) {
-      m_validationInitScores.resize(cVectorLength * cValidationSamples);
+      m_validationInitScores.resize(cScores * cValidationSamples);
    }
    if(m_bNullTrainingWeights) {
       m_trainingWeights.resize(cTrainingSamples);
@@ -738,7 +738,7 @@ BoostRet TestApi::Boost(
    if(0 != (GenerateUpdateOptions_GradientSums & options)) {
       // if sums are on, then we MUST change the term update
 
-      size_t cUpdateScores = GetVectorLength(m_learningTypeOrCountTargetClasses);
+      size_t cUpdateScores = GetCountScores(m_learningTypeOrCountTargetClasses);
       std::vector<size_t> & dimensionBinCounts = m_termBinCounts[static_cast<size_t>(indexTerm)];
 
       for(size_t iDimension = 0; iDimension < dimensionBinCounts.size(); ++iDimension) {
@@ -789,7 +789,7 @@ double TestApi::GetBestTermScore(
    const std::vector<size_t> dimensionBinCounts = m_termBinCounts[iTerm];
 
    const size_t cDimensions = dimensionBinCounts.size();
-   size_t multiple = GetVectorLength(m_learningTypeOrCountTargetClasses);
+   size_t multiple = GetCountScores(m_learningTypeOrCountTargetClasses);
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       multiple *= dimensionBinCounts[iDimension];
    }
@@ -838,7 +838,7 @@ double TestApi::GetCurrentTermScore(
    const std::vector<size_t> dimensionBinCounts = m_termBinCounts[iTerm];
 
    const size_t cDimensions = dimensionBinCounts.size();
-   size_t multiple = GetVectorLength(m_learningTypeOrCountTargetClasses);
+   size_t multiple = GetCountScores(m_learningTypeOrCountTargetClasses);
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       multiple *= dimensionBinCounts[iDimension];
    }
@@ -1017,12 +1017,12 @@ void TestApi::InitializeInteraction() {
       exit(1);
    }
 
-   const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(m_learningTypeOrCountTargetClasses);
    const size_t cFeatures = m_featureBinCounts.size();
    const size_t cSamples = IsClassification(m_learningTypeOrCountTargetClasses) ? m_interactionClassificationTargets.size() : m_interactionRegressionTargets.size();
 
    if(m_bNullInteractionInitScores) {
-      m_interactionInitScores.resize(cVectorLength * cSamples);
+      m_interactionInitScores.resize(cScores * cSamples);
    }
    if(m_bNullInteractionWeights) {
       m_interactionWeights.resize(cSamples);

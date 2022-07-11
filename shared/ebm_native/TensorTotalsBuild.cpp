@@ -192,9 +192,9 @@ public:
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
       FastTotalState fastTotalState[k_cDimensionsMax];
       FastTotalState * pFastTotalStateInitialize = fastTotalState;
@@ -237,7 +237,7 @@ public:
                   pAuxiliaryBin != pDimensionalCur;
                   pDimensionalCur = IndexBin(cBytesPerBin, pDimensionalCur, 1)) 
                {
-                  pDimensionalCur->AssertZero(cVectorLength);
+                  pDimensionalCur->AssertZero(cScores);
                }
 #endif // NDEBUG
 
@@ -273,7 +273,7 @@ public:
          do {
             --iDimension;
             auto * pAddTo = fastTotalState[iDimension].m_pDimensionalCur;
-            pAddTo->Add(*pAddPrev, cVectorLength);
+            pAddTo->Add(*pAddPrev, cScores);
             pAddPrev = pAddTo;
             pAddTo = IndexBin(cBytesPerBin, pAddTo, 1);
             if(pAddTo == fastTotalState[iDimension].m_pDimensionalWrap) {
@@ -281,7 +281,7 @@ public:
             }
             fastTotalState[iDimension].m_pDimensionalCur = pAddTo;
          } while(0 != iDimension);
-         pBin->Copy(*pAddPrev, cVectorLength);
+         pBin->Copy(*pAddPrev, cScores);
 
 #ifndef NDEBUG
          if(nullptr != aBinsDebugCopy && nullptr != pDebugBin) {
@@ -547,7 +547,7 @@ extern void TensorTotalsBuild(
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores)); // we're accessing allocated memory
 //   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
 //
 //#ifndef NDEBUG
@@ -676,7 +676,7 @@ extern void TensorTotalsBuild(
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional groups at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores)); // we're accessing allocated memory
 //   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
 //
 //#ifndef NDEBUG
@@ -820,9 +820,9 @@ extern void TensorTotalsBuild(
 //   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
 //   EBM_ASSERT(1 <= cDimensions);
 //
-//   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-//   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+//   const size_t cScores = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores)); // we're accessing allocated memory
+//   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores);
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
@@ -841,7 +841,7 @@ extern void TensorTotalsBuild(
 //      } while(LIKELY(pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize));
 //   }
 //
-//   // TODO: If we have a compiler cVectorLength, we could put the pPrevious object into our stack since it would have a defined size.  We could then eliminate having to access it through a pointer and we'd just access through the stack pointer
+//   // TODO: If we have a compiler cScores, we could put the pPrevious object into our stack since it would have a defined size.  We could then eliminate having to access it through a pointer and we'd just access through the stack pointer
 //   // TODO: can we put Bin object onto the stack in other places too?
 //   // we reserved 1 extra space for these when we binned our data
 //   Bin<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pPrevious = IndexBin(cBytesPerBin, aBins, -multipleTotalInitialize);
@@ -881,15 +881,15 @@ extern void TensorTotalsBuild(
 //      const size_t cSamplesInBin = pBin->GetCountSamples() + pPrevious->GetCountSamples();
 //      pBin->m_cSamples = cSamplesInBin;
 //      pPrevious->m_cSamples = cSamplesInBin;
-//      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//         const FloatBig sumGradients = pBin->GetHistogramTargetEntry()[iVector].m_sumGradients + pPrevious->GetHistogramTargetEntry()[iVector].m_sumGradients;
-//         pBin->GetHistogramTargetEntry()[iVector].m_sumGradients = sumGradients;
-//         pPrevious->GetHistogramTargetEntry()[iVector].m_sumGradients = sumGradients;
+//      for(size_t iScore = 0; iScore < cScores; ++iScore) {
+//         const FloatBig sumGradients = pBin->GetHistogramTargetEntry()[iScore].m_sumGradients + pPrevious->GetHistogramTargetEntry()[iScore].m_sumGradients;
+//         pBin->GetHistogramTargetEntry()[iScore].m_sumGradients = sumGradients;
+//         pPrevious->GetHistogramTargetEntry()[iScore].m_sumGradients = sumGradients;
 //
 //         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-//            const FloatBig sumHessians = pBin->GetHistogramTargetEntry()[iVector].GetSumHessians() + pPrevious->GetHistogramTargetEntry()[iVector].GetSumHessians();
-//            pBin->GetHistogramTargetEntry()[iVector].SetSumHessians(sumHessians);
-//            pPrevious->GetHistogramTargetEntry()[iVector].SetSumHessians(sumHessians);
+//            const FloatBig sumHessians = pBin->GetHistogramTargetEntry()[iScore].GetSumHessians() + pPrevious->GetHistogramTargetEntry()[iScore].GetSumHessians();
+//            pBin->GetHistogramTargetEntry()[iScore].SetSumHessians(sumHessians);
+//            pPrevious->GetHistogramTargetEntry()[iScore].SetSumHessians(sumHessians);
 //         }
 //      }
 //
@@ -987,9 +987,9 @@ extern void TensorTotalsBuild(
 //   BuildFastTotals(pTargetFeature, pTerm, aBins);
 //
 //   const size_t cDimensions = GET_DIMENSIONS(cCompilerDimensions, pTerm->GetCountDimensions());
-//   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-//   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+//   const size_t cScores = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+//   EBM_ASSERT(!IsOverflowBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores)); // we're accessing allocated memory
+//   const size_t cBytesPerBin = GetBinSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cScores);
 //
 //   size_t aiStart[k_cDimensionsMax];
 //   size_t aiLast[k_cDimensionsMax];
@@ -1017,7 +1017,7 @@ extern void TensorTotalsBuild(
 //#endif // NDEBUG
 //         return true;
 //      }
-//      if(pInnerTermUpdate->EnsureScoreCapacity(cVectorLength * 4)) {
+//      if(pInnerTermUpdate->EnsureScoreCapacity(cScores * 4)) {
 //         free(aDynamicBins);
 //#ifndef NDEBUG
 //         free(aBinsDebugCopy);
@@ -1078,26 +1078,26 @@ extern void TensorTotalsBuild(
 //               pInnerTermUpdate->GetSplitPointer(0)[0] = iBin1;
 //               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
-//               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+//               for(size_t iScore = 0; iScore < cScores; ++iScore) {
 //                  FloatBig predictionTarget;
 //                  FloatBig predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsTarget->GetCountSamples());
-//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsOther->GetCountSamples());
+//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsTarget->GetCountSamples());
+//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsOther->GetCountSamples());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsTarget->GetHistogramTargetEntry()[iVector].GetSumHessians());
-//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsOther->GetHistogramTargetEntry()[iVector].GetSumHessians());
+//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsTarget->GetHistogramTargetEntry()[iScore].GetSumHessians());
+//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsOther->GetHistogramTargetEntry()[iScore].GetSumHessians());
 //                  }
 //
 //                  // MODIFY HERE
-//                  pInnerTermUpdate->GetScoresPointer()[0 * cVectorLength + iVector] = predictionTarget;
-//                  pInnerTermUpdate->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[0 * cScores + iScore] = predictionTarget;
+//                  pInnerTermUpdate->GetScoresPointer()[1 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[2 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[3 * cScores + iScore] = predictionOther;
 //               }
 //            }
 //
@@ -1121,26 +1121,26 @@ extern void TensorTotalsBuild(
 //               pInnerTermUpdate->GetSplitPointer(0)[0] = iBin1;
 //               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
-//               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+//               for(size_t iScore = 0; iScore < cScores; ++iScore) {
 //                  FloatBig predictionTarget;
 //                  FloatBig predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsTarget->GetCountSamples());
-//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsOther->GetCountSamples());
+//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsTarget->GetCountSamples());
+//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsOther->GetCountSamples());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsTarget->GetHistogramTargetEntry()[iVector].GetSumHessians());
-//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsOther->GetHistogramTargetEntry()[iVector].GetSumHessians());
+//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsTarget->GetHistogramTargetEntry()[iScore].GetSumHessians());
+//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsOther->GetHistogramTargetEntry()[iScore].GetSumHessians());
 //                  }
 //
 //                  // MODIFY HERE
-//                  pInnerTermUpdate->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[1 * cVectorLength + iVector] = predictionTarget;
-//                  pInnerTermUpdate->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[0 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[1 * cScores + iScore] = predictionTarget;
+//                  pInnerTermUpdate->GetScoresPointer()[2 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[3 * cScores + iScore] = predictionOther;
 //               }
 //            }
 //
@@ -1164,26 +1164,26 @@ extern void TensorTotalsBuild(
 //               pInnerTermUpdate->GetSplitPointer(0)[0] = iBin1;
 //               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
-//               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+//               for(size_t iScore = 0; iScore < cScores; ++iScore) {
 //                  FloatBig predictionTarget;
 //                  FloatBig predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsTarget->GetCountSamples());
-//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsOther->GetCountSamples());
+//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsTarget->GetCountSamples());
+//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsOther->GetCountSamples());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsTarget->GetHistogramTargetEntry()[iVector].GetSumHessians());
-//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsOther->GetHistogramTargetEntry()[iVector].GetSumHessians());
+//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsTarget->GetHistogramTargetEntry()[iScore].GetSumHessians());
+//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsOther->GetHistogramTargetEntry()[iScore].GetSumHessians());
 //                  }
 //
 //                  // MODIFY HERE
-//                  pInnerTermUpdate->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[2 * cVectorLength + iVector] = predictionTarget;
-//                  pInnerTermUpdate->GetScoresPointer()[3 * cVectorLength + iVector] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[0 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[1 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[2 * cScores + iScore] = predictionTarget;
+//                  pInnerTermUpdate->GetScoresPointer()[3 * cScores + iScore] = predictionOther;
 //               }
 //            }
 //
@@ -1206,26 +1206,26 @@ extern void TensorTotalsBuild(
 //               pInnerTermUpdate->GetSplitPointer(0)[0] = iBin1;
 //               pInnerTermUpdate->GetSplitPointer(1)[0] = iBin2;
 //
-//               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+//               for(size_t iScore = 0; iScore < cScores; ++iScore) {
 //                  FloatBig predictionTarget;
 //                  FloatBig predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsTarget->GetCountSamples());
-//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsOther->GetCountSamples());
+//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsTarget->GetCountSamples());
+//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsOther->GetCountSamples());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsTarget->GetHistogramTargetEntry()[iVector].GetSumHessians());
-//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iVector].m_sumGradients, pTotalsOther->GetHistogramTargetEntry()[iVector].GetSumHessians());
+//                     predictionTarget = ComputeSinglePartitionUpdate(pTotalsTarget->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsTarget->GetHistogramTargetEntry()[iScore].GetSumHessians());
+//                     predictionOther = ComputeSinglePartitionUpdate(pTotalsOther->GetHistogramTargetEntry()[iScore].m_sumGradients, pTotalsOther->GetHistogramTargetEntry()[iScore].GetSumHessians());
 //                  }
 //
 //                  // MODIFY HERE
-//                  pInnerTermUpdate->GetScoresPointer()[0 * cVectorLength + iVector] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[1 * cVectorLength + iVector] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[2 * cVectorLength + iVector] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[3 * cVectorLength + iVector] = predictionTarget;
+//                  pInnerTermUpdate->GetScoresPointer()[0 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[1 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[2 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetScoresPointer()[3 * cScores + iScore] = predictionTarget;
 //               }
 //            }
 //

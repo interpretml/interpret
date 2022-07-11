@@ -113,7 +113,7 @@ public:
       return ArrayToPointer(m_aHistogramTargetEntry);
    }
 
-   INLINE_ALWAYS void Add(const Bin<TFloat, bClassification> & other, const size_t cVectorLength) {
+   INLINE_ALWAYS void Add(const Bin<TFloat, bClassification> & other, const size_t cScores) {
       m_cSamples += other.m_cSamples;
       m_weight += other.m_weight;
 
@@ -121,12 +121,12 @@ public:
 
       const auto * pBinVectorOther = other.GetHistogramTargetEntry();
 
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         pBinVectorThis[iVector].Add(pBinVectorOther[iVector]);
+      for(size_t iScore = 0; iScore < cScores; ++iScore) {
+         pBinVectorThis[iScore].Add(pBinVectorOther[iScore]);
       }
    }
 
-   INLINE_ALWAYS void Subtract(const Bin<TFloat, bClassification> & other, const size_t cVectorLength) {
+   INLINE_ALWAYS void Subtract(const Bin<TFloat, bClassification> & other, const size_t cScores) {
       m_cSamples -= other.m_cSamples;
       m_weight -= other.m_weight;
 
@@ -134,28 +134,28 @@ public:
 
       const auto * pBinVectorOther = other.GetHistogramTargetEntry();
 
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         pBinVectorThis[iVector].Subtract(pBinVectorOther[iVector]);
+      for(size_t iScore = 0; iScore < cScores; ++iScore) {
+         pBinVectorThis[iScore].Subtract(pBinVectorOther[iScore]);
       }
    }
 
-   INLINE_ALWAYS void Copy(const Bin<TFloat, bClassification> & other, const size_t cVectorLength) {
+   INLINE_ALWAYS void Copy(const Bin<TFloat, bClassification> & other, const size_t cScores) {
       const size_t cBytesPerBin = sizeof(Bin) - sizeof(m_aHistogramTargetEntry) +
-         sizeof(m_aHistogramTargetEntry[0]) * cVectorLength;
+         sizeof(m_aHistogramTargetEntry[0]) * cScores;
 
       memcpy(this, &other, cBytesPerBin);
    }
 
-   INLINE_ALWAYS void AssertZero(const size_t cVectorLength) const {
-      UNUSED(cVectorLength);
+   INLINE_ALWAYS void AssertZero(const size_t cScores) const {
+      UNUSED(cScores);
 #ifndef NDEBUG
       EBM_ASSERT(0 == m_cSamples);
       EBM_ASSERT(0 == m_weight);
 
       const auto * pBinVector = GetHistogramTargetEntry();
 
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         pBinVector[iVector].AssertZero();
+      for(size_t iScore = 0; iScore < cScores; ++iScore) {
+         pBinVector[iScore].AssertZero();
       }
 #endif // NDEBUG
    }
@@ -175,10 +175,10 @@ static_assert(std::is_pod<Bin<float, true>>::value && std::is_pod<Bin<float, fal
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat>
-INLINE_ALWAYS bool IsOverflowBinSize(const bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS bool IsOverflowBinSize(const bool bClassification, const size_t cScores) {
    const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<TFloat>(bClassification);
 
-   if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
+   if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cScores))) {
       return true;
    }
 
@@ -190,7 +190,7 @@ INLINE_ALWAYS bool IsOverflowBinSize(const bool bClassification, const size_t cV
    }
    cBytesBinComponent -= cBytesHistogramTargetEntry;
 
-   if(UNLIKELY(IsAddError(cBytesBinComponent, cBytesHistogramTargetEntry * cVectorLength))) {
+   if(UNLIKELY(IsAddError(cBytesBinComponent, cBytesHistogramTargetEntry * cScores))) {
       return true;
    }
 
@@ -198,7 +198,7 @@ INLINE_ALWAYS bool IsOverflowBinSize(const bool bClassification, const size_t cV
 }
 
 template<typename TFloat>
-INLINE_ALWAYS size_t GetBinSize(const bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS size_t GetBinSize(const bool bClassification, const size_t cScores) {
    // TODO: someday try out bin sizes that are a power of two.  This would allow us to use a shift when using bins
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
@@ -213,7 +213,7 @@ INLINE_ALWAYS size_t GetBinSize(const bool bClassification, const size_t cVector
    }
    cBytesBinComponent -= cBytesHistogramTargetEntry;
 
-   return cBytesBinComponent + cBytesHistogramTargetEntry * cVectorLength;
+   return cBytesBinComponent + cBytesHistogramTargetEntry * cScores;
 }
 
 template<typename TFloat, bool bClassification>

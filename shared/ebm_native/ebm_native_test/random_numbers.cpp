@@ -253,7 +253,7 @@ TEST_CASE("test random number generator equivalency") {
 }
 
 TEST_CASE("GenerateGaussianRandom") {
-   constexpr size_t cIterations = 1000;
+   constexpr int cIterations = 1000;
    constexpr int offset = 0;
 
    for(int iBool = 0; iBool < 2; ++iBool) {

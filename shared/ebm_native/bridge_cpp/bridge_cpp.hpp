@@ -38,7 +38,7 @@ INLINE_ALWAYS constexpr static bool IsMulticlass(const ptrdiff_t learningTypeOrC
    return IsClassification(learningTypeOrCountTargetClasses) && !IsBinaryClassification(learningTypeOrCountTargetClasses);
 }
 
-INLINE_ALWAYS constexpr static size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
+INLINE_ALWAYS constexpr static size_t GetCountScores(const ptrdiff_t learningTypeOrCountTargetClasses) noexcept {
    // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
    // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS

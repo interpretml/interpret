@@ -89,14 +89,14 @@ void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) 
 ErrorEbmType BoosterCore::InitializeTensors(
    const size_t cTerms, 
    const Term * const * const apTerms, 
-   const size_t cVectorLength,
+   const size_t cScores,
    Tensor *** papTensorsOut)
 {
    LOG_0(TraceLevelInfo, "Entered InitializeTensors");
 
    EBM_ASSERT(0 < cTerms);
    EBM_ASSERT(nullptr != apTerms);
-   EBM_ASSERT(1 <= cVectorLength);
+   EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(nullptr != papTensorsOut);
    EBM_ASSERT(nullptr == *papTensorsOut);
 
@@ -116,7 +116,7 @@ ErrorEbmType BoosterCore::InitializeTensors(
    for(size_t iTerm = 0; iTerm < cTerms; ++iTerm) {
       const Term * const pTerm = apTerms[iTerm];
       Tensor * const pTensors = 
-         Tensor::Allocate(pTerm->GetCountDimensions(), cVectorLength);
+         Tensor::Allocate(pTerm->GetCountDimensions(), cScores);
       if(UNLIKELY(nullptr == pTensors)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeTensors nullptr == pTensors");
          return Error_OutOfMemory;
@@ -252,7 +252,7 @@ ErrorEbmType BoosterCore::Create(
       return error;
    }
 
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelInfo, "BoosterCore::Create starting feature processing");
    if(0 != cFeatures) {
@@ -319,11 +319,11 @@ ErrorEbmType BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      if(GetTreeSweepSizeOverflow(bClassification, cVectorLength)) {
-         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create GetTreeSweepSizeOverflow(bClassification, cVectorLength)");
+      if(GetTreeSweepSizeOverflow(bClassification, cScores)) {
+         LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create GetTreeSweepSizeOverflow(bClassification, cScores)");
          return Error_OutOfMemory;
       }
-      const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cVectorLength);
+      const size_t cBytesPerTreeSweep = GetTreeSweepSize(bClassification, cScores);
 
       const IntEbmType * piTermFeature = aiTermFeatures;
       size_t iTerm = 0;
@@ -434,12 +434,12 @@ ErrorEbmType BoosterCore::Create(
       } while(iTerm < cTerms);
 
       if(!bClassification || ptrdiff_t { 2 } <= runtimeLearningTypeOrCountTargetClasses) {
-         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cVectorLength, &pBoosterCore->m_apCurrentTermTensors);
+         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apCurrentTermTensors);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apCurrentTermTensors");
             return error;
          }
-         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cVectorLength, &pBoosterCore->m_apBestTermTensors);
+         error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apBestTermTensors);
          if(Error_None != error) {
             LOG_0(TraceLevelWarning, "WARNING BoosterCore::Create nullptr == m_apBestTermTensors");
             return error;

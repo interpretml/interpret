@@ -64,10 +64,10 @@ void TensorTotalsSumDebugSlow(
       ++pTermEntryInit;
    } while(pTermEntriesEnd != pTermEntryInit);
 
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
    // we've allocated this, so it should fit
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength));
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores));
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
    pRet->Zero(cBytesPerBin);
 
    const size_t cSignficantDimensions = pTerm->GetCountSignificantDimensions();
@@ -76,7 +76,7 @@ void TensorTotalsSumDebugSlow(
       const auto * const pBin =
          IndexBin(cBytesPerBin, aBins, iTensorBin);
 
-      pRet->Add(*pBin, cVectorLength);
+      pRet->Add(*pBin, cScores);
 
       size_t iDimension = 0;
       size_t valueMultipleLoop = 1;
@@ -119,9 +119,9 @@ void TensorTotalsCompareDebug(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const Bin<FloatBig, bClassification> * const pComparison
 ) {
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    size_t aiStart[k_cDimensionsMax];
    size_t aiLast[k_cDimensionsMax];
@@ -201,9 +201,9 @@ void TensorTotalsSum(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+   EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+   const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
@@ -235,7 +235,7 @@ void TensorTotalsSum(
          IndexBin(cBytesPerBin, aBins, startingOffset);
       ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-      pRet->Copy(*pBin, cVectorLength);
+      pRet->Copy(*pBin, cScores);
       return;
    }
 
@@ -312,11 +312,11 @@ void TensorTotalsSum(
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
          ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-         pRet->Subtract(*pBin, cVectorLength);
+         pRet->Subtract(*pBin, cScores);
       } else {
          ASSERT_BIN_OK(cBytesPerBin, pRet, pBinsEndDebug);
          ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
-         pRet->Add(*pBin, cVectorLength);
+         pRet->Add(*pBin, cScores);
       }
       ++permuteVector;
    } while(LIKELY(0 == (permuteVector >> cAllBits)));

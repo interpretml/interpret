@@ -66,9 +66,9 @@ public:
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
-      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cVectorLength);
+      const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
+      EBM_ASSERT(!IsOverflowBinSize<FloatBig>(bClassification, cScores)); // we're accessing allocated memory
+      const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
       const auto * pCopyFrom = aBins;
       const auto * pCopyFromEnd = 
@@ -87,7 +87,7 @@ public:
 
          const auto * pHistogramTargetEntry = pCopyFrom->GetHistogramTargetEntry();
 
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
             // when building a tree, we start from one end and sweep to the other.  In order to caluculate
             // gain on both sides, we need the sum on both sides, which means when starting from one end
             // we need to know the sum of everything on the other side, so we need to calculate this sum
@@ -98,7 +98,7 @@ public:
             // and that is if almost all bins have either 0 or 1 samples, which would happen if we didn't bin at all
             // beforehand.  We'll still want this per-bin sumation though since it's unlikley that all data
             // will be continuous in an ML problem.
-            aSumHistogramTargetEntry[iVector].Add(pHistogramTargetEntry[iVector]);
+            aSumHistogramTargetEntry[iScore].Add(pHistogramTargetEntry[iScore]);
          }
 
          pCopyFrom = IndexBin(cBytesPerBin, pCopyFrom, 1);

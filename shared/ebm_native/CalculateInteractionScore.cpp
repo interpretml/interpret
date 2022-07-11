@@ -109,10 +109,10 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       ++pTermEntry;
    } while(pTermEntriesEnd != pTermEntry);
 
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
 
-   if(IsOverflowBinSize<FloatFast>(bClassification, cVectorLength) || 
-      IsOverflowBinSize<FloatBig>(bClassification, cVectorLength)) 
+   if(IsOverflowBinSize<FloatFast>(bClassification, cScores) || 
+      IsOverflowBinSize<FloatBig>(bClassification, cScores)) 
    {
       LOG_0(
          TraceLevelWarning,
@@ -120,7 +120,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
       );
       return Error_OutOfMemory;
    }
-   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cVectorLength);
+   const size_t cBytesPerBinFast = GetBinSize<FloatFast>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinFast, cTotalBinsMainSpace)) {
       LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsMainSpace)");
       return Error_OutOfMemory;
@@ -152,7 +152,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
 
    const size_t cTotalBinsBig = cTotalBinsMainSpace + cAuxillaryBins;
 
-   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cVectorLength);
+   const size_t cBytesPerBinBig = GetBinSize<FloatBig>(bClassification, cScores);
    if(IsMultiplyError(cBytesPerBinBig, cTotalBinsBig)) {
       LOG_0(TraceLevelWarning, "WARNING CalcInteractionStrengthInternal IsMultiplyError(cBytesPerBin, cTotalBinsBig)");
       return Error_OutOfMemory;

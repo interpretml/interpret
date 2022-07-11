@@ -22,15 +22,15 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
+Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
-   EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless
+   EBM_ASSERT(1 <= cScores); // having 0 classes makes no sense, and having 1 class is useless
 
-   if(IsMultiplyError(k_initialScoreCapacity, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(k_initialScoreCapacity, cVectorLength)");
+   if(IsMultiplyError(k_initialTensorCapacity, cScores)) {
+      LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(k_initialTensorCapacity, cScores)");
       return nullptr;
    }
-   const size_t cScoreCapacity = k_initialScoreCapacity * cVectorLength;
+   const size_t cScoreCapacity = k_initialTensorCapacity * cScores;
 
    // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
    const size_t cBytesTensor = sizeof(Tensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
@@ -40,7 +40,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLengt
       return nullptr;
    }
 
-   pTensor->m_cVectorLength = cVectorLength;
+   pTensor->m_cScores = cScores;
    pTensor->m_cDimensionsMax = cDimensionsMax;
    pTensor->m_cDimensions = cDimensionsMax;
    pTensor->m_cScoreCapacity = cScoreCapacity;
@@ -54,9 +54,9 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cVectorLengt
    }
    pTensor->m_aScores = aScores;
    // we only need to set the base case to zero, not our entire initial allocation
-   // we checked for cVectorLength * k_initialScoreCapacity * sizeof(FloatFast), and 1 <= k_initialScoreCapacity, 
-   // so sizeof(FloatFast) * cVectorLength can't overflow
-   for(size_t i = 0; i < cVectorLength; ++i) {
+   // we checked for cScores * k_initialTensorCapacity * sizeof(FloatFast), and 1 <= k_initialTensorCapacity, 
+   // so sizeof(FloatFast) * cScores can't overflow
+   for(size_t i = 0; i < cScores; ++i) {
       aScores[i] = 0;
    }
 
@@ -110,7 +110,7 @@ void Tensor::Reset() {
    }
    // we only need to set the base case to zero
    // this can't overflow since we previously allocated this memory
-   for(size_t i = 0; i < m_cVectorLength; ++i) {
+   for(size_t i = 0; i < m_cScores; ++i) {
       m_aScores[i] = 0;
    }
    m_bExpanded = false;
@@ -190,12 +190,12 @@ ErrorEbmType Tensor::Copy(const Tensor & rhs) {
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
    const DimensionInfo * pRhsDimensionInfo = rhs.GetDimensions();
 
-   size_t cScores = m_cVectorLength;
+   size_t cTensorScores = m_cScores;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       const DimensionInfo * const pDimension = &pRhsDimensionInfo[iDimension];
       size_t cSplits = pDimension->m_cSplits;
-      EBM_ASSERT(!IsMultiplyError(cScores, cSplits + 1)); // we're copying this memory, so multiplication can't overflow
-      cScores *= (cSplits + 1);
+      EBM_ASSERT(!IsMultiplyError(cTensorScores, cSplits + 1)); // we're copying this memory, so multiplication can't overflow
+      cTensorScores *= (cSplits + 1);
       error = SetCountSplits(iDimension, cSplits);
       if(UNLIKELY(Error_None != error)) {
          LOG_0(TraceLevelWarning, "WARNING Copy SetCountSplits(iDimension, cSplits)");
@@ -204,13 +204,13 @@ ErrorEbmType Tensor::Copy(const Tensor & rhs) {
       EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cSplits)); // we're copying this memory, so multiplication can't overflow
       memcpy(pThisDimensionInfo[iDimension].m_aSplits, pDimension->m_aSplits, sizeof(ActiveDataType) * cSplits);
    }
-   error = EnsureScoreCapacity(cScores);
+   error = EnsureScoreCapacity(cTensorScores);
    if(UNLIKELY(Error_None != error)) {
       // already logged
       return error;
    }
-   EBM_ASSERT(!IsMultiplyError(sizeof(FloatFast), cScores)); // we're copying this memory, so multiplication can't overflow
-   memcpy(m_aScores, rhs.m_aScores, sizeof(FloatFast) * cScores);
+   EBM_ASSERT(!IsMultiplyError(sizeof(FloatFast), cTensorScores)); // we're copying this memory, so multiplication can't overflow
+   memcpy(m_aScores, rhs.m_aScores, sizeof(FloatFast) * cTensorScores);
    m_bExpanded = rhs.m_bExpanded;
    return Error_None;
 }
@@ -219,15 +219,15 @@ bool Tensor::MultiplyAndCheckForIssues(const double v) {
    const FloatFast vFloat = SafeConvertFloat<FloatFast>(v);
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
 
-   size_t cScores = m_cVectorLength;
+   size_t cTensorScores = m_cScores;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       // we're accessing existing memory, so it can't overflow
-      EBM_ASSERT(!IsMultiplyError(cScores, pThisDimensionInfo[iDimension].m_cSplits + 1));
-      cScores *= pThisDimensionInfo[iDimension].m_cSplits + 1;
+      EBM_ASSERT(!IsMultiplyError(cTensorScores, pThisDimensionInfo[iDimension].m_cSplits + 1));
+      cTensorScores *= pThisDimensionInfo[iDimension].m_cSplits + 1;
    }
 
    FloatFast * pCur = &m_aScores[0];
-   FloatFast * pEnd = &m_aScores[cScores];
+   FloatFast * pEnd = &m_aScores[cTensorScores];
    int bBad = 0;
    // we always have 1 score, even if we have zero splits
    do {
@@ -266,8 +266,8 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
       const DimensionInfo * pDimensionFirst1 = GetDimensions();
-      size_t cScores1 = m_cVectorLength;
-      size_t cNewScores = m_cVectorLength;
+      size_t cScores1 = m_cScores;
+      size_t cNewScores = m_cScores;
 
       // first, get basic counts of how many splits and scores we'll have in our final result
       do {
@@ -319,7 +319,7 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
          // where to move next
          while(true) {
             const FloatFast * pScore1Move = pScore1;
-            const FloatFast * const pScoreTopEnd = pScoreTop - m_cVectorLength;
+            const FloatFast * const pScoreTopEnd = pScoreTop - m_cScores;
             do {
                --pScore1Move;
                --pScoreTop;
@@ -341,7 +341,7 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
             DimensionInfoStackExpand * pDimensionInfoStackSecond = aDimensionInfoStackExpand;
             const DimensionInfo * pDimensionSecond1 = aDimension1;
 
-            size_t multiplication1 = m_cVectorLength;
+            size_t multiplication1 = m_cScores;
 
             while(true) {
                const ActiveDataType * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
@@ -393,7 +393,7 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
          }
 
          EBM_ASSERT(pScoreTop == m_aScores);
-         EBM_ASSERT(pScore1 == m_aScores + m_cVectorLength);
+         EBM_ASSERT(pScore1 == m_aScores + m_cScores);
 
          const TermEntry * pTermEntry2 = pTerm->GetTermEntries();
          size_t iDimension = 0;
@@ -432,7 +432,7 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
 
 void Tensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScores) {
    EBM_ASSERT(m_bExpanded);
-   size_t cItems = m_cVectorLength;
+   size_t cItems = m_cScores;
 
    const DimensionInfo * const aDimension = GetDimensions();
 
@@ -482,7 +482,7 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
 
       FloatFast * pTo = &m_aScores[0];
       const FloatFast * pFrom = &rhs.m_aScores[0];
-      const FloatFast * const pToEnd = &pTo[m_cVectorLength];
+      const FloatFast * const pToEnd = &pTo[m_cScores];
       do {
          *pTo += *pFrom;
          ++pTo;
@@ -506,9 +506,9 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
    DimensionInfoStack * pDimensionInfoStackFirst = dimensionStack;
    const DimensionInfoStack * const pDimensionInfoStackEnd = &dimensionStack[m_cDimensions];
 
-   size_t cScores1 = m_cVectorLength;
-   size_t cScores2 = m_cVectorLength;
-   size_t cNewScores = m_cVectorLength;
+   size_t cScores1 = m_cScores;
+   size_t cScores2 = m_cScores;
+   size_t cNewScores = m_cScores;
 
    EBM_ASSERT(0 < m_cDimensions);
    // first, get basic counts of how many splits and values we'll have in our final result
@@ -585,7 +585,7 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
    while(true) {
       const FloatFast * pScore1Move = pScore1;
       const FloatFast * pScore2Move = pScore2;
-      const FloatFast * const pScoreTopEnd = pScoreTop - m_cVectorLength;
+      const FloatFast * const pScoreTopEnd = pScoreTop - m_cScores;
       do {
          --pScore1Move;
          --pScore2Move;
@@ -607,8 +607,8 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
       const DimensionInfo * pDimensionSecond1 = aDimension1;
       const DimensionInfo * pDimensionSecond2 = aDimension2;
 
-      size_t multiplication1 = m_cVectorLength;
-      size_t multiplication2 = m_cVectorLength;
+      size_t multiplication1 = m_cScores;
+      size_t multiplication2 = m_cScores;
 
       while(true) {
          const ActiveDataType * const pSplit1 = pDimensionInfoStackSecond->m_pSplit1;
@@ -672,8 +672,8 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
    }
 
    EBM_ASSERT(pScoreTop == m_aScores);
-   EBM_ASSERT(pScore1 == m_aScores + m_cVectorLength);
-   EBM_ASSERT(pScore2 == rhs.m_aScores + m_cVectorLength);
+   EBM_ASSERT(pScore1 == m_aScores + m_cScores);
+   EBM_ASSERT(pScore2 == rhs.m_aScores + m_cScores);
 
    // now finally do the splits
 
@@ -756,7 +756,7 @@ bool Tensor::IsEqual(const Tensor & rhs) const {
    const DimensionInfo * pThisDimensionInfo = GetDimensions();
    const DimensionInfo * pRhsDimensionInfo = rhs.GetDimensions();
 
-   size_t cScores = m_cVectorLength;
+   size_t cTensorScores = m_cScores;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       const DimensionInfo * const pDimension1 = &pThisDimensionInfo[iDimension];
       const DimensionInfo * const pDimension2 = &pRhsDimensionInfo[iDimension];
@@ -767,8 +767,8 @@ bool Tensor::IsEqual(const Tensor & rhs) const {
       }
 
       if(0 != cSplits) {
-         EBM_ASSERT(!IsMultiplyError(cScores, cSplits + 1)); // we're accessing allocated memory, so it can't overflow
-         cScores *= cSplits + 1;
+         EBM_ASSERT(!IsMultiplyError(cTensorScores, cSplits + 1)); // we're accessing allocated memory, so it can't overflow
+         cTensorScores *= cSplits + 1;
 
          const ActiveDataType * pD1Cur = pDimension1->m_aSplits;
          const ActiveDataType * pD2Cur = pDimension2->m_aSplits;
@@ -785,7 +785,7 @@ bool Tensor::IsEqual(const Tensor & rhs) const {
 
    const FloatFast * pV1Cur = &m_aScores[0];
    const FloatFast * pV2Cur = &rhs.m_aScores[0];
-   const FloatFast * const pV1End = pV1Cur + cScores;
+   const FloatFast * const pV1End = pV1Cur + cTensorScores;
    do {
       if(UNLIKELY(*pV1Cur != *pV2Cur)) {
          return false;
