@@ -84,11 +84,11 @@ extern "C" {
 #endif // compiler type
 
 typedef struct _BoosterHandle {
-   size_t handleVerification; // should be 25077 if ok
+   uint32_t handleVerification; // should be 25077 if ok
 } * BoosterHandle;
 
 typedef struct _InteractionHandle {
-   size_t handleVerification; // should be 27917 if ok
+   uint32_t handleVerification; // should be 27917 if ok
 } * InteractionHandle;
 
 #ifndef PRId32
