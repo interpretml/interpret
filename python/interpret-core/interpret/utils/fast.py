@@ -1,13 +1,15 @@
-""" Exposing FAST
-TODO - Add description
+""" FAST - Interaction Detection
+
+This module exposes a method called FAST [1] to measure and rank the strengths
+of the interaction of all pairs of features in a dataset.
+
+[1] http://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf
 """
 import numpy as np
 from itertools import combinations
 
-from sklearn.utils.estimator_checks import check_estimator
 from sklearn.base import is_classifier
 
-from ..glassbox.ebm.utils import EBMUtils
 from ..glassbox.ebm.bin import clean_X, clean_vector, construct_bins, bin_native_by_dimension
 from ..glassbox.ebm.internal import Native, InteractionDetector
 
@@ -37,8 +39,6 @@ def _prepare_sample_weight(sample_weight, num_samples):
 
 def _get_scores(X, init_scores, init_model):
     if init_model is not None:
-        # TODO EBMs are failing this check
-        #check_estimator(init_model)
         if is_classifier(init_model):
             scores = init_model.decision_function(X)
         else:
@@ -56,7 +56,7 @@ def _get_ranked_interactions(
         bag,
         scores,
         iter_term_features,
-        interaction_options, 
+        interaction_options,
         min_samples_leaf,
         optional_temp_params=None,
         num_output_interactions=0
@@ -77,7 +77,6 @@ def _get_ranked_interactions(
 
     return interaction_strengths[:num_interactions]
 
-# TODO Enhance docstring
 def fast(X,
          y,
          is_classification,
@@ -90,28 +89,28 @@ def fast(X,
          min_samples_leaf=2,
          **kwargs
     ):
-    """Run the FAST algorithm and return the ranked interactions
+    """Run the FAST algorithm and return the ranked interactions and their strengths as a dictionary.
 
     Args:
         X (numpy array): Array for training samples
         y (numpy array): Array as training labels
         is_classification: True if the task is a classification task, False otherwise
-        sample_weight (numpy array): Optional array of weights per sample. Should be same length as X and y
+        sample_weight (numpy array): Optional array of weights per sample. Should be the same length as X and y
         feature_names: List of feature names
         feature_types: List of feature types, for example "continuous" or "nominal"
-        num_output_interactions: Number of ranked interactions returned by the function. 0 for all pairs.
-        max_interaction_bins: Max number of bins per feature for interaction terms
-        binning: Method to bin values for pre-processing - "uniform", "quantile", or "rounded_quantile". 
+        num_output_interactions: Number of ranked interactions returned by the function. Set 0 for all interactions.
+        max_interaction_bins: Max number of bins per interaction terms
+        binning: Method to bin values for pre-processing - "uniform", "quantile", or "rounded_quantile".
            'rounded_quantile' will round to as few decimals as possible while preserving the same bins as 'quantile'.
         min_samples_leaf: Minimum number of cases for tree splits used in boosting
     Returns:
-        Dictionary with pair tuples as keys and strengths as values such as: dict[(1, 2)] = strength
+        Dictionary with a pair of indices as keys and strengths as values, e.g. { (1, 2) : 0.134 }
     """
     if is_classification is None:
         raise ValueError("is_classification should be provided.")
 
-    init_scores = kwargs.get("init_scores", None) 
-    init_model = kwargs.get("init_model", None) 
+    init_scores = kwargs.get("init_scores", None)
+    init_model = kwargs.get("init_model", None)
     if init_model is not None:
         if is_classification != is_classifier(init_model):
             raise ValueError(f"is_classification is {is_classification} bu init_model's task type is {is_classifier(init_model)}.")
@@ -127,9 +126,9 @@ def fast(X,
     binning_result = construct_bins(
         X=X,
         sample_weight=sample_weight,
-        feature_names_given=feature_names, 
+        feature_names_given=feature_names,
         feature_types_given=feature_types,
-        max_bins_leveled=[max_interaction_bins], 
+        max_bins_leveled=[max_interaction_bins],
         binning=binning
     )
 
@@ -163,11 +162,5 @@ def fast(X,
     ranked_interactions_dict = {}
     for strength, indices in ranked_interactions:
         ranked_interactions_dict[indices] = strength
-    
-    # TODO check if we should do this
-    ranked_interactions_dict = {}
-    for strength, indices in ranked_interactions:
-        key = (feature_names_in[indices[0]], feature_names_in[indices[1]])
-        ranked_interactions_dict[key] = strength
 
     return ranked_interactions_dict

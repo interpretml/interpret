@@ -1,6 +1,4 @@
-from more_itertools import pairwise
 import pytest
-import pandas as pd
 import numpy as np
 
 from sklearn.linear_model import LinearRegression
@@ -89,7 +87,7 @@ def test_sample_weigth(regression_data):
 
 def test_feature_names_and_types(regression_data):
     X, y = regression_data
-    
+
     # Original feature names "A", "B", "C", "D"
     feature_names = ["FtA", "FtB", "FtC", "FtD"]
     feature_types = ["continuous", "continuous", "continuous", "continuous"]
@@ -99,7 +97,7 @@ def test_feature_names_and_types(regression_data):
 
 def test_max_bins_and_binning_options(regression_data):
     X, y = regression_data
-    
+
     max_interaction_bins = 64
     binning = "uniform"
 
@@ -172,211 +170,3 @@ def test_nulticlass_task():
     ranked_strengths = fast(X, y, is_classification=True)
 
     assert 45 == len(ranked_strengths)
-
-#
-# Manual tests
-#
-
-@pytest.fixture(scope="module")
-def manual_test_regression_data():
-    from sklearn.datasets import load_diabetes
-    diabetes_data = load_diabetes(return_X_y=True)
-    return diabetes_data[0], diabetes_data[1]
-
-@pytest.fixture(scope="module")
-def manual_test_classification_data():
-    df = pd.read_csv(
-        "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data",
-        header=None)
-    df.columns = [
-        "Age", "WorkClass", "fnlwgt", "Education", "EducationNum",
-        "MaritalStatus", "Occupation", "Relationship", "Race", "Gender",
-        "CapitalGain", "CapitalLoss", "HoursPerWeek", "NativeCountry", "Income"
-    ]
-    train_cols = df.columns[0:-1]
-    label = df.columns[-1]
-    X_df = df[train_cols]
-    y_df = df[label]
-
-    return X_df, y_df
-
-def test_case_1(manual_test_regression_data):
-    X, y = manual_test_regression_data
-
-    from ...glassbox import ExplainableBoostingRegressor
-    ebm = ExplainableBoostingRegressor(random_state=2022)
-    #ebm = ExplainableBoostingRegressor(outer_bags=1, random_state=2022)
-    # Take notes on interactions found
-    ebm.fit(X, y)
-
-    ranked_strengths = fast(X, y, is_classification=False)
-
-    # 10 features
-    assert 45 == len(ranked_strengths)
-
-def test_case_1_classification(manual_test_classification_data):
-    X, y = manual_test_classification_data
-
-    from ...glassbox import ExplainableBoostingClassifier
-    ebm = ExplainableBoostingClassifier(random_state=2022)
-    #ebm = ExplainableBoostingRegressor(outer_bags=1, random_state=2022)
-    # Take notes on interactions found
-    ebm.fit(X, y)
-
-    ranked_strengths = fast(X, y, is_classification=True)
-
-    # 14 features
-    assert 91 == len(ranked_strengths)
-
-def test_case_2(manual_test_regression_data):
-    X, y = manual_test_regression_data
-
-    from ...glassbox import ExplainableBoostingRegressor
-    ebm = ExplainableBoostingRegressor(random_state=2022, interactions=0)
-    ebm.fit(X, y)
-
-    ranked_strengths = fast(X, y, is_classification=False, init_model=ebm)
-    # 10 features
-    assert 45 == len(ranked_strengths)
-
-    ranked_strengths = fast(X, y, is_classification=False)
-
-def test_case_3(manual_test_regression_data):
-    X, y = manual_test_regression_data
-
-    from ...glassbox import ExplainableBoostingRegressor
-    ebm = ExplainableBoostingRegressor(random_state=2022)
-    # Take notes on interactions found
-    ebm.fit(X, y)
-
-    ebm_2 = ExplainableBoostingRegressor(random_state=2022, interactions=0)
-    ebm_2.fit(X, y)
-
-    ranked_strengths = fast(X, y, is_classification=False, init_model=ebm_2)
-    # 10 features
-    assert 45 == len(ranked_strengths)
-
-def test_case_4(manual_test_regression_data):
-    X, y = manual_test_regression_data
-
-    from ...glassbox import ExplainableBoostingRegressor
-    ebm = ExplainableBoostingRegressor(random_state=2022, learning_rate=0.0000001, max_rounds=1)
-    # Take notes on interactions found
-    ebm.fit(X, y)
-
-    ranked_strengths = fast(X, y, is_classification=False)
-    # 10 features
-    assert 45 == len(ranked_strengths)
-
-@pytest.fixture(scope="module")
-def modified_diabetes_dataset():
-    """
-    Fit an EBM with 10 interactions for the diabetes dataset
-    Multiply intereactions' additive terms by a scalar to make them stronger
-    Return the original X and the ebm predictions as a new y
-    """
-    from sklearn.datasets import load_diabetes
-    diabetes_data = load_diabetes(return_X_y=True)
-    X = diabetes_data[0]
-    y = diabetes_data[1]
-
-    from ...glassbox import ExplainableBoostingRegressor
-    ebm = ExplainableBoostingRegressor(random_state=2022)
-    ebm.fit(X, y)
-
-    for additive_term in ebm.additive_terms_[-10:]:
-        additive_term *= 100.0
-
-    return X, ebm.predict(X)
-
-def test_case_5(modified_diabetes_dataset):
-    X, y = modified_diabetes_dataset
-
-    ranked_strengths = fast(X, y, is_classification=False)
-    # 10 features
-    assert 45 == len(ranked_strengths)
-
-
-# TODO Not all x's are used in the function, should we remove it from X?
-# TODO How's x generated? Which distribution?
-def synthetic_data_function(values):
-    """
-    values[0] - x1
-    values[1] - x2
-    ...
-    """
-    y = np.pi**(values[0]*values[1]) * np.sqrt(2*values[2]) \
-        - np.arcsin(values[3]) \
-        + np.log10(values[2] + values[4]) \
-        - (values[8]/values[9] * np.sqrt(values[6]/values[7])) \
-        - values[1]*values[6]
-    
-    return y
-
-@pytest.fixture(scope="module")
-def synthetic_regression_data():
-    num_variables = 10
-    num_samples = 10000
-
-    X_list = []
-    y_list = []
-    for sample in range(num_samples):
-        features = np.random.rand(num_variables)
-        X_list.append(features)
-        y_list.append( synthetic_data_function(features) )
-
-    X = np.array(X_list)
-    y = np.array(y_list)
-
-    return X, y
-
-def test_case_6(synthetic_regression_data):
-    X, y = synthetic_regression_data
-
-    from ...glassbox import ExplainableBoostingRegressor
-    ebm = ExplainableBoostingRegressor(random_state=2022)
-    # Take notes on interactions found
-    ebm.fit(X, y)
-
-    ranked_strengths = fast(X, y, is_classification=False)
-    # 10 features
-    assert 45 == len(ranked_strengths)
-
-
-# Set the internal EBM flag to pure when runnign FAST internally
-# Run FAST with the original data
-# Compare
-def test_case_7(manual_test_regression_data):
-    X, y = manual_test_regression_data
-
-    from ...glassbox import ExplainableBoostingRegressor
-    ebm = ExplainableBoostingRegressor(random_state=2022)
-    # Take notes on interactions found
-    ebm.fit(X, y)
-
-    ranked_strengths = fast(X, y, is_classification=False)
-
-    # 10 features
-    assert 45 == len(ranked_strengths)
-
-# Don't boos mains (low learning rate and only 1 round)
-# Set the internal EBM flag to pure when runnign FAST internally
-# Run FAST with the original data
-# Compare
-def test_case_8(manual_test_regression_data):
-    X, y = manual_test_regression_data
-
-    from ...glassbox import ExplainableBoostingRegressor
-    ebm = ExplainableBoostingRegressor(random_state=2022, learning_rate=0.0000001, max_rounds=1)
-    # Take notes on interactions found
-    ebm.fit(X, y)
-
-    ranked_strengths = fast(X, y, is_classification=False)
-
-    # 10 features
-    assert 45 == len(ranked_strengths)
-
-
-'''
-How to replicate C++ tests?
-'''
