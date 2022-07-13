@@ -39,11 +39,6 @@ class AutoVisualizeProvider(VisualizeProvider):
         # NOTE: This is tested manually per release. Ignoring for coverage.
         if self.in_cloud_env:  # pragma: no cover
             log.info("Detected cloud environment.")
-            warn(
-                "Cloud environment detected ({}): viz integration is still experimental.".format(
-                    detected_envs
-                )
-            )
             self.provider = InlineProvider(detected_envs=detected_envs, js_url=JS_URL)
         elif "docker-dev-mode" in detected_envs:
             log.info("Operating in docker development mode.")
