@@ -568,6 +568,7 @@ We also build on top of many great packages. Please check them out!
 
 # Papers that use or compare EBMs
 
+- [Pest Presence Prediction Using Interpretable Machine Learning](https://ieeexplore.ieee.org/document/9816284) - [preprint](https://arxiv.org/pdf/2205.07723.pdf)
 - [GAM(E) CHANGER OR NOT? AN EVALUATION OF INTERPRETABLE MACHINE LEARNING MODELS](https://arxiv.org/pdf/2204.09123.pdf)
 - [Revealing the Galaxy-Halo Connection Through Machine Learning](https://arxiv.org/pdf/2204.10332.pdf)
 - [Explainable Artificial Intelligence for COVID-19 Diagnosis Through Blood Test Variables](https://link.springer.com/content/pdf/10.1007/s40313-021-00858-y.pdf)
