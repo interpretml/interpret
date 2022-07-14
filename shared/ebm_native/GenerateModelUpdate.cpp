@@ -154,7 +154,7 @@ static ErrorEbmType BoostZeroDimensional(
 
    Tensor * const pInnerTermUpdate = 
       pBoosterShell->GetInnerTermUpdate();
-   FloatFast * aUpdateScores = pInnerTermUpdate->GetScoresPointer();
+   FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
    if(bClassification) {
       const auto * const pBin = pBinBig->Specialize<FloatBig, true>();
       const auto * const aSumHistogramTargetEntry = pBin->GetHistogramTargetEntry();

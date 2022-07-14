@@ -1017,7 +1017,7 @@ extern void TensorTotalsBuild(
 //#endif // NDEBUG
 //         return true;
 //      }
-//      if(pInnerTermUpdate->EnsureScoreCapacity(cScores * 4)) {
+//      if(pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 4)) {
 //         free(aDynamicBins);
 //#ifndef NDEBUG
 //         free(aBinsDebugCopy);
@@ -1094,10 +1094,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pInnerTermUpdate->GetScoresPointer()[0 * cScores + iScore] = predictionTarget;
-//                  pInnerTermUpdate->GetScoresPointer()[1 * cScores + iScore] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[2 * cScores + iScore] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[3 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[0 * cScores + iScore] = predictionTarget;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[1 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[2 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[3 * cScores + iScore] = predictionOther;
 //               }
 //            }
 //
@@ -1137,10 +1137,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pInnerTermUpdate->GetScoresPointer()[0 * cScores + iScore] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[1 * cScores + iScore] = predictionTarget;
-//                  pInnerTermUpdate->GetScoresPointer()[2 * cScores + iScore] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[3 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[0 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[1 * cScores + iScore] = predictionTarget;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[2 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[3 * cScores + iScore] = predictionOther;
 //               }
 //            }
 //
@@ -1180,10 +1180,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pInnerTermUpdate->GetScoresPointer()[0 * cScores + iScore] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[1 * cScores + iScore] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[2 * cScores + iScore] = predictionTarget;
-//                  pInnerTermUpdate->GetScoresPointer()[3 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[0 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[1 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[2 * cScores + iScore] = predictionTarget;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[3 * cScores + iScore] = predictionOther;
 //               }
 //            }
 //
@@ -1222,10 +1222,10 @@ extern void TensorTotalsBuild(
 //                  }
 //
 //                  // MODIFY HERE
-//                  pInnerTermUpdate->GetScoresPointer()[0 * cScores + iScore] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[1 * cScores + iScore] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[2 * cScores + iScore] = predictionOther;
-//                  pInnerTermUpdate->GetScoresPointer()[3 * cScores + iScore] = predictionTarget;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[0 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[1 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[2 * cScores + iScore] = predictionOther;
+//                  pInnerTermUpdate->GetTensorScoresPointer()[3 * cScores + iScore] = predictionTarget;
 //               }
 //            }
 //

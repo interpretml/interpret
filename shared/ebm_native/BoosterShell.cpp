@@ -431,7 +431,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetBestTermScores(
    Tensor * const pBestTermTensor = pBoosterCore->GetBestModel()[iTerm];
    EBM_ASSERT(nullptr != pBestTermTensor);
    EBM_ASSERT(pBestTermTensor->GetExpanded()); // the tensor should have been expanded at startup
-   FloatFast * const aTermScores = pBestTermTensor->GetScoresPointer();
+   FloatFast * const aTermScores = pBestTermTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
    EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cTensorScores));
@@ -524,7 +524,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetCurrentTermScores(
    Tensor * const pCurrentTermTensor = pBoosterCore->GetCurrentModel()[iTerm];
    EBM_ASSERT(nullptr != pCurrentTermTensor);
    EBM_ASSERT(pCurrentTermTensor->GetExpanded()); // the tensor should have been expanded at startup
-   FloatFast * const aTermScores = pCurrentTermTensor->GetScoresPointer();
+   FloatFast * const aTermScores = pCurrentTermTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
    EBM_ASSERT(!IsMultiplyError(sizeof(*termScoresTensorOut), cTensorScores));

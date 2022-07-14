@@ -61,7 +61,7 @@ static ErrorEbmType ApplyTermUpdateInternal(
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
 
-   const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
+   const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
 
    // our caller can give us one of these bad types of inputs:
    //  1) NaN values
@@ -404,7 +404,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION GetTermUpdateExpanded(
          ++pTermEntry;
       } while(pTermEntriesEnd != pTermEntry);
    }
-   const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
+   const FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
    EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensorOut), cTensorScores));
    EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cTensorScores));
@@ -496,7 +496,7 @@ EBM_API_BODY ErrorEbmType EBM_CALLING_CONVENTION SetTermUpdateExpanded(
          ++pTermEntry;
       } while(pTermEntriesEnd != pTermEntry);
    }
-   FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetScoresPointer();
+   FloatFast * const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    EBM_ASSERT(!IsMultiplyError(sizeof(*aUpdateScores), cTensorScores));
    EBM_ASSERT(!IsMultiplyError(sizeof(*updateScoresTensor), cTensorScores));
    static_assert(sizeof(*updateScoresTensor) == sizeof(*aUpdateScores), "float mismatch");

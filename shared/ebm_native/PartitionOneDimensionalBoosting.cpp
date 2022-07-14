@@ -560,9 +560,9 @@ public:
             return error;
          }
 
-         // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cScores
+         // we don't need to call EnsureTensorScoreCapacity because by default we start with a value capacity of 2 * cScores
          if(bClassification) {
-            FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
+            FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             FloatBig zeroLogit = 0;
@@ -589,7 +589,7 @@ public:
             const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
                pRootTreeNode->GetHistogramTargetEntry()[0].m_sumGradients, weightTotal
             );
-            FloatFast * aUpdateScores = pInnerTermUpdate->GetScoresPointer();
+            FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
             aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
          }
 
@@ -621,7 +621,7 @@ public:
          ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
          pSplits[0] = pRootTreeNode->AFTER_GetSplitValue();
 
-         // we don't need to call EnsureScoreCapacity because by default we start with a value capacity of 2 * cScores
+         // we don't need to call EnsureTensorScoreCapacity because by default we start with a value capacity of 2 * cScores
 
          // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
          const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
@@ -637,7 +637,7 @@ public:
 
          const auto * pHistogramTargetEntryRightChild = pRightChild->GetHistogramTargetEntry();
 
-         FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
+         FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
          if(bClassification) {
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -889,13 +889,13 @@ public:
          LOG_0(TraceLevelWarning, "WARNING PartitionOneDimensionalBoosting IsMultiplyError(cScores, cLeaves)");
          return Error_OutOfMemory;
       }
-      error = pInnerTermUpdate->EnsureScoreCapacity(cScores * cLeaves);
+      error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * cLeaves);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
       }
       ActiveDataType * pSplits = pInnerTermUpdate->GetSplitPointer(iDimension);
-      FloatFast * pUpdateScore = pInnerTermUpdate->GetScoresPointer();
+      FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
       LOG_0(TraceLevelVerbose, "Entered Flatten");
       Flatten<bClassification>(pRootTreeNode, &pSplits, &pUpdateScore, cScores);
@@ -903,8 +903,8 @@ public:
 
       EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension) <= pSplits);
       EBM_ASSERT(static_cast<size_t>(pSplits - pInnerTermUpdate->GetSplitPointer(iDimension)) == cLeaves - 1);
-      EBM_ASSERT(pInnerTermUpdate->GetScoresPointer() < pUpdateScore);
-      EBM_ASSERT(static_cast<size_t>(pUpdateScore - pInnerTermUpdate->GetScoresPointer()) == cScores * cLeaves);
+      EBM_ASSERT(pInnerTermUpdate->GetTensorScoresPointer() < pUpdateScore);
+      EBM_ASSERT(static_cast<size_t>(pUpdateScore - pInnerTermUpdate->GetTensorScoresPointer()) == cScores * cLeaves);
 
       return Error_None;
    }

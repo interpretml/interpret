@@ -30,7 +30,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
       LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(k_initialTensorCapacity, cScores)");
       return nullptr;
    }
-   const size_t cScoreCapacity = k_initialTensorCapacity * cScores;
+   const size_t cTensorScoreCapacity = k_initialTensorCapacity * cScores;
 
    // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
    const size_t cBytesTensor = sizeof(Tensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
@@ -43,21 +43,21 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    pTensor->m_cScores = cScores;
    pTensor->m_cDimensionsMax = cDimensionsMax;
    pTensor->m_cDimensions = cDimensionsMax;
-   pTensor->m_cScoreCapacity = cScoreCapacity;
+   pTensor->m_cTensorScoreCapacity = cTensorScoreCapacity;
    pTensor->m_bExpanded = false;
 
-   FloatFast * const aScores = EbmMalloc<FloatFast>(cScoreCapacity);
-   if(UNLIKELY(nullptr == aScores)) {
-      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aScores");
+   FloatFast * const aTensorScores = EbmMalloc<FloatFast>(cTensorScoreCapacity);
+   if(UNLIKELY(nullptr == aTensorScores)) {
+      LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aTensorScores");
       free(pTensor); // don't need to call the full Free(*) yet
       return nullptr;
    }
-   pTensor->m_aScores = aScores;
+   pTensor->m_aTensorScores = aTensorScores;
    // we only need to set the base case to zero, not our entire initial allocation
    // we checked for cScores * k_initialTensorCapacity * sizeof(FloatFast), and 1 <= k_initialTensorCapacity, 
    // so sizeof(FloatFast) * cScores can't overflow
    for(size_t i = 0; i < cScores; ++i) {
-      aScores[i] = 0;
+      aTensorScores[i] = 0;
    }
 
    if(0 != cDimensionsMax) {
@@ -90,7 +90,7 @@ Tensor * Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
 
 void Tensor::Free(Tensor * const pTensor) {
    if(LIKELY(nullptr != pTensor)) {
-      free(pTensor->m_aScores);
+      free(pTensor->m_aTensorScores);
       if(LIKELY(0 != pTensor->m_cDimensionsMax)) {
          const DimensionInfo * pDimensionInfo = pTensor->GetDimensions();
          const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pTensor->m_cDimensionsMax];
@@ -111,7 +111,7 @@ void Tensor::Reset() {
    // we only need to set the base case to zero
    // this can't overflow since we previously allocated this memory
    for(size_t i = 0; i < m_cScores; ++i) {
-      m_aScores[i] = 0;
+      m_aTensorScores[i] = 0;
    }
    m_bExpanded = false;
 }
@@ -152,32 +152,32 @@ ErrorEbmType Tensor::SetCountSplits(const size_t iDimension, const size_t cSplit
    return Error_None;
 }
 
-ErrorEbmType Tensor::EnsureScoreCapacity(const size_t cScores) {
-   if(UNLIKELY(m_cScoreCapacity < cScores)) {
+ErrorEbmType Tensor::EnsureTensorScoreCapacity(const size_t cTensorScores) {
+   if(UNLIKELY(m_cTensorScoreCapacity < cTensorScores)) {
       EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
-      if(IsAddError(cScores, cScores >> 1)) {
-         LOG_0(TraceLevelWarning, "WARNING EnsureScoreCapacity IsAddError(cScores, cScores >> 1)");
+      if(IsAddError(cTensorScores, cTensorScores >> 1)) {
+         LOG_0(TraceLevelWarning, "WARNING EnsureTensorScoreCapacity IsAddError(cTensorScores, cTensorScores >> 1)");
          return Error_OutOfMemory;
       }
       // just increase it by 50% since we don't expect to grow our scores often after an initial period, and realloc takes some of the cost of growing away
-      size_t cNewScoreCapacity = cScores + (cScores >> 1);
-      LOG_N(TraceLevelInfo, "EnsureScoreCapacity Growing to size %zu", cNewScoreCapacity);
+      size_t cNewTensorScoreCapacity = cTensorScores + (cTensorScores >> 1);
+      LOG_N(TraceLevelInfo, "EnsureTensorScoreCapacity Growing to size %zu", cNewTensorScoreCapacity);
 
-      if(IsMultiplyError(sizeof(FloatFast), cNewScoreCapacity)) {
-         LOG_0(TraceLevelWarning, "WARNING EnsureScoreCapacity IsMultiplyError(sizeof(FloatFast), cNewScoreCapacity)");
+      if(IsMultiplyError(sizeof(FloatFast), cNewTensorScoreCapacity)) {
+         LOG_0(TraceLevelWarning, "WARNING EnsureTensorScoreCapacity IsMultiplyError(sizeof(FloatFast), cNewTensorScoreCapacity)");
          return Error_OutOfMemory;
       }
-      size_t cBytes = sizeof(FloatFast) * cNewScoreCapacity;
-      FloatFast * const aNewScores = static_cast<FloatFast *>(realloc(m_aScores, cBytes));
-      if(UNLIKELY(nullptr == aNewScores)) {
+      size_t cBytes = sizeof(FloatFast) * cNewTensorScoreCapacity;
+      FloatFast * const aNewTensorScores = static_cast<FloatFast *>(realloc(m_aTensorScores, cBytes));
+      if(UNLIKELY(nullptr == aNewTensorScores)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
          // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
-         LOG_0(TraceLevelWarning, "WARNING EnsureScoreCapacity nullptr == aNewScores");
+         LOG_0(TraceLevelWarning, "WARNING EnsureTensorScoreCapacity nullptr == aNewTensorScores");
          return Error_OutOfMemory;
       }
-      m_aScores = aNewScores;
-      m_cScoreCapacity = cNewScoreCapacity;
+      m_aTensorScores = aNewTensorScores;
+      m_cTensorScoreCapacity = cNewTensorScoreCapacity;
    } // never shrink our array unless the user chooses to Trim()
    return Error_None;
 }
@@ -204,13 +204,13 @@ ErrorEbmType Tensor::Copy(const Tensor & rhs) {
       EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cSplits)); // we're copying this memory, so multiplication can't overflow
       memcpy(pThisDimensionInfo[iDimension].m_aSplits, pDimension->m_aSplits, sizeof(ActiveDataType) * cSplits);
    }
-   error = EnsureScoreCapacity(cTensorScores);
+   error = EnsureTensorScoreCapacity(cTensorScores);
    if(UNLIKELY(Error_None != error)) {
       // already logged
       return error;
    }
    EBM_ASSERT(!IsMultiplyError(sizeof(FloatFast), cTensorScores)); // we're copying this memory, so multiplication can't overflow
-   memcpy(m_aScores, rhs.m_aScores, sizeof(FloatFast) * cTensorScores);
+   memcpy(m_aTensorScores, rhs.m_aTensorScores, sizeof(FloatFast) * cTensorScores);
    m_bExpanded = rhs.m_bExpanded;
    return Error_None;
 }
@@ -226,8 +226,8 @@ bool Tensor::MultiplyAndCheckForIssues(const double v) {
       cTensorScores *= pThisDimensionInfo[iDimension].m_cSplits + 1;
    }
 
-   FloatFast * pCur = &m_aScores[0];
-   FloatFast * pEnd = &m_aScores[cTensorScores];
+   FloatFast * pCur = &m_aTensorScores[0];
+   FloatFast * pEnd = &m_aTensorScores[cTensorScores];
    int bBad = 0;
    // we always have 1 score, even if we have zero splits
    do {
@@ -266,8 +266,8 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
       const DimensionInfo * pDimensionFirst1 = GetDimensions();
-      size_t cScores1 = m_cScores;
-      size_t cNewScores = m_cScores;
+      size_t cTensorScores1 = m_cScores;
+      size_t cNewTensorScores = m_cScores;
 
       // first, get basic counts of how many splits and scores we'll have in our final result
       do {
@@ -275,13 +275,13 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
 
          // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack 
          // featureIndexes and in CalcInteractionStrength for interactions
-         EBM_ASSERT(!IsMultiplyError(cNewScores, cBins));
-         cNewScores *= cBins;
+         EBM_ASSERT(!IsMultiplyError(cNewTensorScores, cBins));
+         cNewTensorScores *= cBins;
 
          const size_t cSplits1 = pDimensionFirst1->m_cSplits;
 
-         EBM_ASSERT(!IsMultiplyError(cScores1, cSplits1 + 1)); // this is accessing existing memory, so it can't overflow
-         cScores1 *= cSplits1 + 1;
+         EBM_ASSERT(!IsMultiplyError(cTensorScores1, cSplits1 + 1)); // this is accessing existing memory, so it can't overflow
+         cTensorScores1 *= cSplits1 + 1;
 
          pDimensionInfoStackFirst->m_pSplit1 = &pDimensionFirst1->m_aSplits[cSplits1];
 
@@ -294,46 +294,46 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
          ++pTermEntry1;
       } while(pTermEntriesEnd != pTermEntry1);
       
-      if(size_t { 0 } == cNewScores) {
+      if(size_t { 0 } == cNewTensorScores) {
          // there's a really degenerate case where we have zero training and zero validation samples, and the user 
          // specifies zero bins which is legal since there are no bins in the training or validation, in this case
          // the tensor has zero bins in one dimension, so there are zero bins in the entire tensor.
          LOG_0(TraceLevelWarning, "WARNING Expand Zero sized tensor");
       } else {
-         // call EnsureScoreCapacity before using the m_aScores pointer since m_aScores might change inside EnsureScoreCapacity
-         error = EnsureScoreCapacity(cNewScores);
+         // call EnsureTensorScoreCapacity before using the m_aTensorScores pointer since m_aTensorScores might change inside EnsureTensorScoreCapacity
+         error = EnsureTensorScoreCapacity(cNewTensorScores);
          if(UNLIKELY(Error_None != error)) {
             // already logged
             return error;
          }
 
-         FloatFast * const aScores = m_aScores;
+         FloatFast * const aTensorScores = m_aTensorScores;
          const DimensionInfo * const aDimension1 = GetDimensions();
 
-         EBM_ASSERT(cScores1 <= cNewScores);
-         const FloatFast * pScore1 = &aScores[cScores1];
-         FloatFast * pScoreTop = &aScores[cNewScores];
+         EBM_ASSERT(cTensorScores1 <= cNewTensorScores);
+         const FloatFast * pTensorScore1 = &aTensorScores[cTensorScores1];
+         FloatFast * pTensorScoreTop = &aTensorScores[cNewTensorScores];
 
          // traverse the scores in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
          // existing scores which we still need to copy first do the scores because we need to refer to the old splits when making decisions about 
          // where to move next
          while(true) {
-            const FloatFast * pScore1Move = pScore1;
-            const FloatFast * const pScoreTopEnd = pScoreTop - m_cScores;
+            const FloatFast * pTensorScore1Move = pTensorScore1;
+            const FloatFast * const pTensorScoreTopEnd = pTensorScoreTop - m_cScores;
             do {
-               --pScore1Move;
-               --pScoreTop;
-               EBM_ASSERT(aScores <= pScore1Move);
-               EBM_ASSERT(aScores <= pScoreTop);
-               *pScoreTop = *pScore1Move;
-            } while(pScoreTopEnd != pScoreTop);
+               --pTensorScore1Move;
+               --pTensorScoreTop;
+               EBM_ASSERT(aTensorScores <= pTensorScore1Move);
+               EBM_ASSERT(aTensorScores <= pTensorScoreTop);
+               *pTensorScoreTop = *pTensorScore1Move;
+            } while(pTensorScoreTopEnd != pTensorScoreTop);
 
             // For a single dimensional Tensor checking here is best.  
             // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
             // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
             // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
             // multi-dimensioncal Tensors
-            if(UNLIKELY(aScores == pScoreTop)) {
+            if(UNLIKELY(aTensorScores == pTensorScoreTop)) {
                // we've written our final tensor cell, so we're done
                break;
             }
@@ -361,7 +361,7 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
 
                   const bool bMove = UNPREDICTABLE(iSplit2 <= d1);
                   pDimensionInfoStackSecond->m_pSplit1 = bMove ? pSplit1MinusOne : pSplit1;
-                  pScore1 = bMove ? pScore1 - multiplication1 : pScore1;
+                  pTensorScore1 = bMove ? pTensorScore1 - multiplication1 : pTensorScore1;
 
                   pDimensionInfoStackSecond->m_iSplit2 = iSplit2;
                   break;
@@ -370,7 +370,7 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
                      pDimensionInfoStackSecond->m_iSplit2 = iSplit2 - 1;
                      break;
                   } else {
-                     pScore1 -= multiplication1; // put us before the beginning.  We'll add the full row first
+                     pTensorScore1 -= multiplication1; // put us before the beginning.  We'll add the full row first
 
                      const size_t cSplits1 = pDimensionSecond1->m_cSplits;
 
@@ -379,7 +379,7 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
                      multiplication1 *= 1 + cSplits1;
 
                      // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
-                     pScore1 += multiplication1;
+                     pTensorScore1 += multiplication1;
 
                      pDimensionInfoStackSecond->m_pSplit1 = &aSplits1[cSplits1];
                      pDimensionInfoStackSecond->m_iSplit2 = pDimensionInfoStackSecond->m_cNewSplits;
@@ -392,8 +392,8 @@ ErrorEbmType Tensor::Expand(const Term * const pTerm) {
             }
          }
 
-         EBM_ASSERT(pScoreTop == m_aScores);
-         EBM_ASSERT(pScore1 == m_aScores + m_cScores);
+         EBM_ASSERT(pTensorScoreTop == m_aTensorScores);
+         EBM_ASSERT(pTensorScore1 == m_aTensorScores + m_cScores);
 
          const TermEntry * pTermEntry2 = pTerm->GetTermEntries();
          size_t iDimension = 0;
@@ -442,8 +442,8 @@ void Tensor::AddExpandedWithBadValueProtection(const FloatFast * const aFromScor
    }
 
    const FloatFast * pFromScore = aFromScores;
-   FloatFast * pToScore = m_aScores;
-   const FloatFast * const pToScoresEnd = m_aScores + cItems;
+   FloatFast * pToScore = m_aTensorScores;
+   const FloatFast * const pToScoresEnd = m_aTensorScores + cItems;
    do {
       // if we get a NaN value, then just consider it a no-op zero
       // if we get a +infinity, then just make our value the maximum
@@ -477,11 +477,11 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
    if(0 == m_cDimensions) {
-      EBM_ASSERT(1 <= m_cScoreCapacity);
-      EBM_ASSERT(nullptr != m_aScores);
+      EBM_ASSERT(1 <= m_cTensorScoreCapacity);
+      EBM_ASSERT(nullptr != m_aTensorScores);
 
-      FloatFast * pTo = &m_aScores[0];
-      const FloatFast * pFrom = &rhs.m_aScores[0];
+      FloatFast * pTo = &m_aTensorScores[0];
+      const FloatFast * pFrom = &rhs.m_aTensorScores[0];
       const FloatFast * const pToEnd = &pTo[m_cScores];
       do {
          *pTo += *pFrom;
@@ -506,9 +506,9 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
    DimensionInfoStack * pDimensionInfoStackFirst = dimensionStack;
    const DimensionInfoStack * const pDimensionInfoStackEnd = &dimensionStack[m_cDimensions];
 
-   size_t cScores1 = m_cScores;
-   size_t cScores2 = m_cScores;
-   size_t cNewScores = m_cScores;
+   size_t cTensorScores1 = m_cScores;
+   size_t cTensorScores2 = m_cScores;
+   size_t cNewTensorScores = m_cScores;
 
    EBM_ASSERT(0 < m_cDimensions);
    // first, get basic counts of how many splits and values we'll have in our final result
@@ -518,8 +518,8 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
       const size_t cSplits2 = pDimensionFirst2->m_cSplits;
       ActiveDataType * p2Cur = pDimensionFirst2->m_aSplits;
 
-      cScores1 *= cSplits1 + 1; // this can't overflow since we're counting existing allocated memory
-      cScores2 *= cSplits2 + 1; // this can't overflow since we're counting existing allocated memory
+      cTensorScores1 *= cSplits1 + 1; // this can't overflow since we're counting existing allocated memory
+      cTensorScores2 *= cSplits2 + 1; // this can't overflow since we're counting existing allocated memory
 
       ActiveDataType * const p1End = &p1Cur[cSplits1];
       ActiveDataType * const p2End = &p2Cur[cSplits2];
@@ -554,8 +554,8 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
       pDimensionInfoStackFirst->m_cNewSplits = cNewSingleDimensionSplits;
       // we check for simple multiplication overflow from m_cBins in Booster::Initialize when we unpack featureIndexes and in 
       // CalcInteractionStrength for interactions
-      EBM_ASSERT(!IsMultiplyError(cNewScores, cNewSingleDimensionSplits + 1));
-      cNewScores *= cNewSingleDimensionSplits + 1;
+      EBM_ASSERT(!IsMultiplyError(cNewTensorScores, cNewSingleDimensionSplits + 1));
+      cNewTensorScores *= cNewSingleDimensionSplits + 1;
 
       ++pDimensionFirst1;
       ++pDimensionFirst2;
@@ -563,42 +563,42 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
       ++pDimensionInfoStackFirst;
    } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
-   // call EnsureScoreCapacity before using the m_aScores pointer since m_aScores might change inside EnsureScoreCapacity
-   error = EnsureScoreCapacity(cNewScores);
+   // call EnsureTensorScoreCapacity before using the m_aTensorScores pointer since m_aTensorScores might change inside EnsureTensorScoreCapacity
+   error = EnsureTensorScoreCapacity(cNewTensorScores);
    if(UNLIKELY(Error_None != error)) {
       // already logged
       return error;
    }
 
-   const FloatFast * pScore2 = &rhs.m_aScores[cScores2];  // we're accessing allocated memory, so it can't overflow
+   const FloatFast * pTensorScore2 = &rhs.m_aTensorScores[cTensorScores2];  // we're accessing allocated memory, so it can't overflow
    const DimensionInfo * const aDimension2 = rhs.GetDimensions();
 
-   FloatFast * const aScores = m_aScores;
+   FloatFast * const aTensorScores = m_aTensorScores;
    const DimensionInfo * const aDimension1 = GetDimensions();
 
-   const FloatFast * pScore1 = &aScores[cScores1]; // we're accessing allocated memory, so it can't overflow
-   FloatFast * pScoreTop = &aScores[cNewScores]; // we're accessing allocated memory, so it can't overflow
+   const FloatFast * pTensorScore1 = &aTensorScores[cTensorScores1]; // we're accessing allocated memory, so it can't overflow
+   FloatFast * pTensorScoreTop = &aTensorScores[cNewTensorScores]; // we're accessing allocated memory, so it can't overflow
 
    // traverse the scores in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our
    // existing scores which we still need to copy first do the scores because we need to refer to the old splits when making decisions about where 
    // to move next
    while(true) {
-      const FloatFast * pScore1Move = pScore1;
-      const FloatFast * pScore2Move = pScore2;
-      const FloatFast * const pScoreTopEnd = pScoreTop - m_cScores;
+      const FloatFast * pTensorScore1Move = pTensorScore1;
+      const FloatFast * pTensorScore2Move = pTensorScore2;
+      const FloatFast * const pTensorScoreTopEnd = pTensorScoreTop - m_cScores;
       do {
-         --pScore1Move;
-         --pScore2Move;
-         --pScoreTop;
-         *pScoreTop = *pScore1Move + *pScore2Move;
-      } while(pScoreTopEnd != pScoreTop);
+         --pTensorScore1Move;
+         --pTensorScore2Move;
+         --pTensorScoreTop;
+         *pTensorScoreTop = *pTensorScore1Move + *pTensorScore2Move;
+      } while(pTensorScoreTopEnd != pTensorScoreTop);
 
       // For a single dimensional Tensor checking here is best.  
       // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack,
       // thus eliminating the check on most loops.  We'll spend most of our time working on single features though, so we optimize for that case, 
       // but if we special cased the single dimensional case, then we would want to move this check into the loop below in the case 
       // of multi-dimensioncal Tensors
-      if(UNLIKELY(aScores == pScoreTop)) {
+      if(UNLIKELY(aTensorScores == pTensorScoreTop)) {
          // we've written our final tensor cell, so we're done
          break;
       }
@@ -627,25 +627,25 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
 
                const bool bMove1 = UNPREDICTABLE(d2 <= d1);
                pDimensionInfoStackSecond->m_pSplit1 = bMove1 ? pSplit1MinusOne : pSplit1;
-               pScore1 = bMove1 ? pScore1 - multiplication1 : pScore1;
+               pTensorScore1 = bMove1 ? pTensorScore1 - multiplication1 : pTensorScore1;
 
                const bool bMove2 = UNPREDICTABLE(d1 <= d2);
                pDimensionInfoStackSecond->m_pSplit2 = bMove2 ? pSplit2MinusOne : pSplit2;
-               pScore2 = bMove2 ? pScore2 - multiplication2 : pScore2;
+               pTensorScore2 = bMove2 ? pTensorScore2 - multiplication2 : pTensorScore2;
                break;
             } else {
-               pScore1 -= multiplication1;
+               pTensorScore1 -= multiplication1;
                pDimensionInfoStackSecond->m_pSplit1 = pSplit1 - 1;
                break;
             }
          } else {
             if(UNPREDICTABLE(aSplits2 < pSplit2)) {
-               pScore2 -= multiplication2;
+               pTensorScore2 -= multiplication2;
                pDimensionInfoStackSecond->m_pSplit2 = pSplit2 - 1;
                break;
             } else {
-               pScore1 -= multiplication1; // put us before the beginning.  We'll add the full row first
-               pScore2 -= multiplication2; // put us before the beginning.  We'll add the full row first
+               pTensorScore1 -= multiplication1; // put us before the beginning.  We'll add the full row first
+               pTensorScore2 -= multiplication2; // put us before the beginning.  We'll add the full row first
 
                const size_t cSplits1 = pDimensionSecond1->m_cSplits;
                const size_t cSplits2 = pDimensionSecond2->m_cSplits;
@@ -656,9 +656,9 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
                multiplication2 *= 1 + cSplits2;
 
                // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
-               pScore1 += multiplication1;
+               pTensorScore1 += multiplication1;
                // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
-               pScore2 += multiplication2;
+               pTensorScore2 += multiplication2;
 
                pDimensionInfoStackSecond->m_pSplit1 = &aSplits1[cSplits1];
                pDimensionInfoStackSecond->m_pSplit2 = &aSplits2[cSplits2];
@@ -671,9 +671,9 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
       }
    }
 
-   EBM_ASSERT(pScoreTop == m_aScores);
-   EBM_ASSERT(pScore1 == m_aScores + m_cScores);
-   EBM_ASSERT(pScore2 == rhs.m_aScores + m_cScores);
+   EBM_ASSERT(pTensorScoreTop == m_aTensorScores);
+   EBM_ASSERT(pTensorScore1 == m_aTensorScores + m_cScores);
+   EBM_ASSERT(pTensorScore2 == rhs.m_aTensorScores + m_cScores);
 
    // now finally do the splits
 
@@ -686,7 +686,7 @@ ErrorEbmType Tensor::Add(const Tensor & rhs) {
       const size_t cOriginalSplitsBeforeSetting = pDimension1Cur->m_cSplits;
 
       // this will increase our capacity, if required.  It will also change m_cSplits, so we get that before calling it.  
-      // SetCountSplits might change m_aScoresAndSplits, so we need to actually keep it here after getting m_cSplits but 
+      // SetCountSplits might change m_aTensorScoresAndSplits, so we need to actually keep it here after getting m_cSplits but 
       // before set set all our pointers
       error = SetCountSplits(iDimension, cNewSplits);
       if(UNLIKELY(Error_None != error)) {
@@ -783,8 +783,8 @@ bool Tensor::IsEqual(const Tensor & rhs) const {
       }
    }
 
-   const FloatFast * pV1Cur = &m_aScores[0];
-   const FloatFast * pV2Cur = &rhs.m_aScores[0];
+   const FloatFast * pV1Cur = &m_aTensorScores[0];
+   const FloatFast * pV2Cur = &rhs.m_aTensorScores[0];
    const FloatFast * const pV1End = pV1Cur + cTensorScores;
    do {
       if(UNLIKELY(*pV1Cur != *pV2Cur)) {

@@ -499,7 +499,7 @@ public:
                      pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst2Best;
 
                      if(splitFirst2LowBest < splitFirst2HighBest) {
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 6);
+                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -512,7 +512,7 @@ public:
                         pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
                         pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = splitFirst2HighBest;
                      } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 6);
+                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -531,7 +531,7 @@ public:
                            return error;
                         }
 
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 4);
+                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 4);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -610,7 +610,7 @@ public:
                            );
                         }
 
-                        FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
+                        FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst2LowBest < splitFirst2HighBest) {
                            aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
                            aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowHigh);
@@ -641,7 +641,7 @@ public:
                      pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst1Best;
 
                      if(splitFirst1LowBest < splitFirst1HighBest) {
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 6);
+                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -655,7 +655,7 @@ public:
                         pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
                         pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = splitFirst1HighBest;
                      } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 6);
+                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -674,7 +674,7 @@ public:
                            // already logged
                            return error;
                         }
-                        error = pInnerTermUpdate->EnsureScoreCapacity(cScores * 4);
+                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 4);
                         if(Error_None != error) {
                            // already logged
                            return error;
@@ -751,7 +751,7 @@ public:
                               pTotals1HighHighBest->GetWeight()
                            );
                         }
-                        FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
+                        FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst1LowBest < splitFirst1HighBest) {
                            aUpdateScores[0 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionLowLow);
                            aUpdateScores[1 * cScores + iScore] = SafeConvertFloat<FloatFast>(predictionHighLow);
@@ -801,7 +801,7 @@ public:
       // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at all
       EBM_ASSERT(Error_None == errorDebug2);
 
-      // we don't need to call pInnerTermUpdate->EnsureScoreCapacity, 
+      // we don't need to call pInnerTermUpdate->EnsureTensorScoreCapacity, 
       // since our value capacity would be 1, which is pre-allocated
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -833,7 +833,7 @@ public:
             );
          }
 
-         FloatFast * const aUpdateScores = pInnerTermUpdate->GetScoresPointer();
+         FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
          aUpdateScores[iScore] = SafeConvertFloat<FloatFast>(update);
       }
       return Error_None;

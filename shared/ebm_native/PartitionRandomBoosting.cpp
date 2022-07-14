@@ -138,7 +138,7 @@ public:
       }
       const size_t cBytesSlicesPlusRandom = sizeof(size_t) * cSlicesPlusRandomMax;
 
-      error = pInnerTermUpdate->EnsureScoreCapacity(cScores * cCollapsedTensorCells);
+      error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * cCollapsedTensorCells);
       if(UNLIKELY(Error_None != error)) {
          // already logged
          return error;
@@ -523,7 +523,7 @@ public:
          } while(PREDICTABLE(pStateInit != pState));
       }
 
-      FloatFast * pUpdateScore = pInnerTermUpdate->GetScoresPointer();
+      FloatFast * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
       auto * pCollapsedBin2 = aCollapsedBins;
 
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
