@@ -170,3 +170,58 @@ def test_nulticlass_task():
     ranked_strengths = fast(X, y, is_classification=True)
 
     assert 45 == len(ranked_strengths)
+
+def test_impure_interaction_is_zero():
+    X = [
+        ["A", "A"],
+        ["A", "B"],
+        ["B", "A"],
+        ["B", "B"],
+    ]
+    y = [
+        3.0 + 11.0,
+        3.0 + 7.0,
+        5.0 + 11.0,
+        5.0 + 7.0
+    ]
+    sample_weight = [
+        24.25,
+        21.5,
+        8.125,
+        11.625
+    ]
+
+    ranked_strengths = fast(X, y, is_classification=False, min_samples_leaf=1, sample_weight=sample_weight)
+    assert ranked_strengths[(0, 1)] == 0.0
+
+def test_added_impure_contribution_is_zero():
+    X = [
+        ["A", "A"],
+        ["A", "B"],
+        ["B", "A"],
+        ["B", "B"],
+    ]
+    y = [
+        -16.0,
+        2.0,
+        32.0,
+        -8.0
+    ]
+    sample_weight = [
+        2.5,
+        20,
+        1.25,
+        5
+    ]
+
+    ranked_strengths_pure_int = fast(X, y, is_classification=False, min_samples_leaf=1, sample_weight=sample_weight)
+
+    y = [
+        -16.0 + 3.0 + 11.0,
+        2.0 + 3.0 + 7.0,
+        32.0 +5.0 + 11.0,
+        -8.0 + 5.0 + 7.0
+    ]
+
+    ranked_strengths_impure = fast(X, y, is_classification=False, min_samples_leaf=1, sample_weight=sample_weight)
+    assert ranked_strengths_pure_int[(0, 1)] == ranked_strengths_impure[(0, 1)]
