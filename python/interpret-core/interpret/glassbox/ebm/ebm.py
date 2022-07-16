@@ -142,7 +142,7 @@ def is_private(estimator):
 
     return isinstance(estimator, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor))
 
-class BaseEBM(BaseEstimator):
+class EBMModel(BaseEstimator):
     """Base class for all EBMs"""
 
     # Interface modeled after:
@@ -1429,7 +1429,7 @@ class BaseEBM(BaseEstimator):
         else:
             raise ValueError(f"Unrecognized importance_type: {importance_type}")
 
-class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
+class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
@@ -1623,7 +1623,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         return result, explanations
 
-class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
+class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog. """
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
@@ -1761,7 +1761,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         )
 
 
-class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
+class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """ Differentially Private Explainable Boosting Classifier."""
 
     available_explanations = ["global", "local"]
@@ -1916,7 +1916,7 @@ class DPExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         return self.classes_[np.argmax(log_odds_vector, axis=1)]
 
 
-class DPExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
+class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     """ Differentially Private Explainable Boosting Regressor."""
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
