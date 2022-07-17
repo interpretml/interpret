@@ -110,14 +110,14 @@ public:
    BinBase * GetBinBaseFast(size_t cBytesRequired);
 
    INLINE_ALWAYS BinBase * GetBinBaseFast() {
-      // call this if the histograms were already allocated and we just need the pointer
+      // call this if the bins were already allocated and we just need the pointer
       return m_aThreadByteBuffer1Fast;
    }
 
    BinBase * GetBinBaseBig(size_t cBytesRequired);
 
    INLINE_ALWAYS BinBase * GetBinBaseBig() {
-      // call this if the histograms were already allocated and we just need the pointer
+      // call this if the bins were already allocated and we just need the pointer
       return m_aThreadByteBuffer1Big;
    }
 

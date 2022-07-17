@@ -52,9 +52,9 @@ class BoosterShell final {
    FloatFast * m_aTempFloatVector;
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
-   HistogramTargetEntryBase * m_aSumHistogramTargetEntry;
-   HistogramTargetEntryBase * m_aSumHistogramTargetEntryLeft;
-   HistogramTargetEntryBase * m_aSumHistogramTargetEntryRight;
+   GradientPairBase * m_aSumAllGradientPairs;
+   GradientPairBase * m_aLeftGradientPairs;
+   GradientPairBase * m_aRightGradientPairs;
 
 #ifndef NDEBUG
    const unsigned char * m_pBinsFastEndDebug;
@@ -84,9 +84,9 @@ public:
       m_cThreadByteBufferCapacity2 = 0;
       m_aTempFloatVector = nullptr;
       m_aEquivalentSplits = nullptr;
-      m_aSumHistogramTargetEntry = nullptr;
-      m_aSumHistogramTargetEntryLeft = nullptr;
-      m_aSumHistogramTargetEntryRight = nullptr;
+      m_aSumAllGradientPairs = nullptr;
+      m_aLeftGradientPairs = nullptr;
+      m_aRightGradientPairs = nullptr;
    }
 
    static void Free(BoosterShell * const pBoosterShell);
@@ -147,14 +147,14 @@ public:
    BinBase * GetBinBaseFast(size_t cBytesRequired);
 
    INLINE_ALWAYS BinBase * GetBinBaseFast() {
-      // call this if the histograms were already allocated and we just need the pointer
+      // call this if the bins were already allocated and we just need the pointer
       return m_aThreadByteBuffer1Fast;
    }
 
    BinBase * GetBinBaseBig(size_t cBytesRequired);
 
    INLINE_ALWAYS BinBase * GetBinBaseBig() {
-      // call this if the histograms were already allocated and we just need the pointer
+      // call this if the bins were already allocated and we just need the pointer
       return m_aThreadByteBuffer1Big;
    }
 
@@ -176,18 +176,18 @@ public:
       return m_aEquivalentSplits;
    }
 
-   INLINE_ALWAYS HistogramTargetEntryBase * GetSumHistogramTargetEntryArray() {
-      return m_aSumHistogramTargetEntry;
+   INLINE_ALWAYS GradientPairBase * GetSumAllGradientPairs() {
+      return m_aSumAllGradientPairs;
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<FloatBig, bClassification> * GetSumHistogramTargetEntryLeft() {
-      return static_cast<HistogramTargetEntry<FloatBig, bClassification> *>(m_aSumHistogramTargetEntryLeft);
+   INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetLeftGradientPairs() {
+      return static_cast<GradientPair<FloatBig, bClassification> *>(m_aLeftGradientPairs);
    }
 
    template<bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<FloatBig, bClassification> * GetSumHistogramTargetEntryRight() {
-      return static_cast<HistogramTargetEntry<FloatBig, bClassification> *>(m_aSumHistogramTargetEntryRight);
+   INLINE_ALWAYS GradientPair<FloatBig, bClassification> * GetRightGradientPairs() {
+      return static_cast<GradientPair<FloatBig, bClassification> *>(m_aRightGradientPairs);
    }
 
 #ifndef NDEBUG

@@ -528,10 +528,10 @@ public:
 
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          do {
-            auto * const pHistogramTargetEntry = pCollapsedBin2->GetHistogramTargetEntry();
+            auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
 
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
-               FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(pHistogramTargetEntry[iScore].m_sumGradients);
+               FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(pGradientPair[iScore].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                // for DP-EBMs, we can't zero one of the class scores as we can for logits since we're returning a sum
@@ -561,7 +561,7 @@ public:
                   ++pUpdateScore;
                }
             } else {
-               auto * const pHistogramTargetEntry = pCollapsedBin2->GetHistogramTargetEntry();
+               auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                FloatBig zeroLogit = 0;
@@ -571,8 +571,8 @@ public:
                   FloatBig updateScore;
                   if(bClassification) {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        pHistogramTargetEntry[iScore].m_sumGradients,
-                        pHistogramTargetEntry[iScore].GetSumHessians()
+                        pGradientPair[iScore].m_sumGradients,
+                        pGradientPair[iScore].GetSumHessians()
                      );
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                      if(IsMulticlass(compilerLearningTypeOrCountTargetClasses)) {
@@ -585,7 +585,7 @@ public:
                   } else {
                      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        pHistogramTargetEntry[iScore].m_sumGradients,
+                        pGradientPair[iScore].m_sumGradients,
                         pCollapsedBin2->GetWeight()
                      );
                   }

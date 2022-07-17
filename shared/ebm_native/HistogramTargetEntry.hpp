@@ -41,26 +41,26 @@ static_assert(sizeof(FloatAndInt<float>) == sizeof(float), "FloatAndInt<float> a
 static_assert(sizeof(FloatAndInt<double>) == sizeof(double), "FloatAndInt<double> and double must be the same size");
 
 template<typename TFloat, bool bClassification>
-struct HistogramTargetEntry;
+struct GradientPair;
 
-struct HistogramTargetEntryBase {
-   HistogramTargetEntryBase() = default; // preserve our POD status
-   ~HistogramTargetEntryBase() = default; // preserve our POD status
+struct GradientPairBase {
+   GradientPairBase() = default; // preserve our POD status
+   ~GradientPairBase() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    template<typename TFloat, bool bClassification>
-   INLINE_ALWAYS HistogramTargetEntry<TFloat, bClassification> * GetHistogramTargetEntry() {
-      return static_cast<HistogramTargetEntry<TFloat, bClassification> *>(this);
+   INLINE_ALWAYS GradientPair<TFloat, bClassification> * Specialize() {
+      return static_cast<GradientPair<TFloat, bClassification> *>(this);
    }
    template<typename TFloat, bool bClassification>
-   INLINE_ALWAYS const HistogramTargetEntry<TFloat, bClassification> * GetHistogramTargetEntry() const {
-      return static_cast<const HistogramTargetEntry<TFloat, bClassification> *>(this);
+   INLINE_ALWAYS const GradientPair<TFloat, bClassification> * Specialize() const {
+      return static_cast<const GradientPair<TFloat, bClassification> *>(this);
    }
 
    INLINE_ALWAYS void Zero(const size_t cBytesPerItem, const size_t cItems = 1) {
       // The C standard guarantees that zeroing integer types is a zero, and IEEE-754 guarantees 
-      // that zeroing a floating point is zero.  Our HistogramTargetEntry objects are POD and also only contain
+      // that zeroing a floating point is zero.  Our GradientPair objects are POD and also only contain
       // floating point and unsigned integer types
       //
       // 6.2.6.2 Integer types -> 5. The values of any padding bits are unspecified.A valid (non - trap) 
@@ -73,25 +73,25 @@ struct HistogramTargetEntryBase {
       memset(this, 0, cItems * cBytesPerItem);
    }
 };
-static_assert(std::is_standard_layout<HistogramTargetEntryBase>::value,
+static_assert(std::is_standard_layout<GradientPairBase>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<HistogramTargetEntryBase>::value,
+static_assert(std::is_trivial<GradientPairBase>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<HistogramTargetEntryBase>::value,
+static_assert(std::is_pod<GradientPairBase>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat>
-struct HistogramTargetEntry<TFloat, true> final : HistogramTargetEntryBase {
-   // classification version of the HistogramTargetEntry class
+struct GradientPair<TFloat, true> final : GradientPairBase {
+   // classification version of the GradientPair class
 
 #ifndef __SUNPRO_CC
 
    // the Oracle Developer Studio compiler has what I think is a bug by making any class that includes 
-   // HistogramTargetEntry fields turn into non-trivial classes, so exclude the Oracle compiler
+   // GradientPair fields turn into non-trivial classes, so exclude the Oracle compiler
    // from these protections
 
-   HistogramTargetEntry() = default; // preserve our POD status
-   ~HistogramTargetEntry() = default; // preserve our POD status
+   GradientPair() = default; // preserve our POD status
+   ~GradientPair() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -115,15 +115,15 @@ struct HistogramTargetEntry<TFloat, true> final : HistogramTargetEntryBase {
    INLINE_ALWAYS void SetSumHessians(const TFloat sumHessians) {
       m_sumHessians = sumHessians;
    }
-   INLINE_ALWAYS void Add(const HistogramTargetEntry<TFloat, true> & other) {
+   INLINE_ALWAYS void Add(const GradientPair<TFloat, true> & other) {
       m_sumGradients += other.m_sumGradients;
       m_sumHessians += other.m_sumHessians;
    }
-   INLINE_ALWAYS void Subtract(const HistogramTargetEntry<TFloat, true> & other) {
+   INLINE_ALWAYS void Subtract(const GradientPair<TFloat, true> & other) {
       m_sumGradients -= other.m_sumGradients;
       m_sumHessians -= other.m_sumHessians;
    }
-   INLINE_ALWAYS void Copy(const HistogramTargetEntry<TFloat, true> & other) {
+   INLINE_ALWAYS void Copy(const GradientPair<TFloat, true> & other) {
       m_sumGradients = other.m_sumGradients;
       m_sumHessians = other.m_sumHessians;
    }
@@ -132,32 +132,32 @@ struct HistogramTargetEntry<TFloat, true> final : HistogramTargetEntryBase {
       EBM_ASSERT(0 == m_sumHessians);
    }
 };
-static_assert(std::is_standard_layout<HistogramTargetEntry<double, true>>::value,
+static_assert(std::is_standard_layout<GradientPair<double, true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<HistogramTargetEntry<double, true>>::value,
+static_assert(std::is_trivial<GradientPair<double, true>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<HistogramTargetEntry<double, true>>::value,
+static_assert(std::is_pod<GradientPair<double, true>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-static_assert(std::is_standard_layout<HistogramTargetEntry<float, true>>::value,
+static_assert(std::is_standard_layout<GradientPair<float, true>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<HistogramTargetEntry<float, true>>::value,
+static_assert(std::is_trivial<GradientPair<float, true>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<HistogramTargetEntry<float, true>>::value,
+static_assert(std::is_pod<GradientPair<float, true>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat>
-struct HistogramTargetEntry<TFloat, false> final : HistogramTargetEntryBase {
-   // regression version of the HistogramTargetEntry class
+struct GradientPair<TFloat, false> final : GradientPairBase {
+   // regression version of the GradientPair class
 
 #ifndef __SUNPRO_CC
 
    // the Oracle Developer Studio compiler has what I think is a bug by making any class that includes 
-   // HistogramTargetEntry fields turn into non-trivial classes, so exclude the Oracle compiler
+   // GradientPair fields turn into non-trivial classes, so exclude the Oracle compiler
    // from these protections
 
-   HistogramTargetEntry() = default; // preserve our POD status
-   ~HistogramTargetEntry() = default; // preserve our POD status
+   GradientPair() = default; // preserve our POD status
+   ~GradientPair() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -173,39 +173,39 @@ struct HistogramTargetEntry<TFloat, false> final : HistogramTargetEntryBase {
       UNUSED(sumHessians);
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
-   INLINE_ALWAYS void Add(const HistogramTargetEntry<TFloat, false> & other) {
+   INLINE_ALWAYS void Add(const GradientPair<TFloat, false> & other) {
       m_sumGradients += other.m_sumGradients;
    }
-   INLINE_ALWAYS void Subtract(const HistogramTargetEntry<TFloat, false> & other) {
+   INLINE_ALWAYS void Subtract(const GradientPair<TFloat, false> & other) {
       m_sumGradients -= other.m_sumGradients;
    }
-   INLINE_ALWAYS void Copy(const HistogramTargetEntry<TFloat, false> & other) {
+   INLINE_ALWAYS void Copy(const GradientPair<TFloat, false> & other) {
       m_sumGradients = other.m_sumGradients;
    }
    INLINE_ALWAYS void AssertZero() const {
       EBM_ASSERT(0 == m_sumGradients);
    }
 };
-static_assert(std::is_standard_layout<HistogramTargetEntry<double, false>>::value,
+static_assert(std::is_standard_layout<GradientPair<double, false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<HistogramTargetEntry<double, false>>::value,
+static_assert(std::is_trivial<GradientPair<double, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<HistogramTargetEntry<double, false>>::value,
+static_assert(std::is_pod<GradientPair<double, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-static_assert(std::is_standard_layout<HistogramTargetEntry<float, false>>::value,
+static_assert(std::is_standard_layout<GradientPair<float, false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<HistogramTargetEntry<float, false>>::value,
+static_assert(std::is_trivial<GradientPair<float, false>>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<HistogramTargetEntry<float, false>>::value,
+static_assert(std::is_pod<GradientPair<float, false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<typename TFloat>
-INLINE_ALWAYS size_t GetHistogramTargetEntrySize(const bool bClassification) {
+INLINE_ALWAYS size_t GetGradientPairSize(const bool bClassification) {
    if(bClassification) {
-      return sizeof(HistogramTargetEntry<TFloat, true>);
+      return sizeof(GradientPair<TFloat, true>);
    } else {
-      return sizeof(HistogramTargetEntry<TFloat, false>);
+      return sizeof(GradientPair<TFloat, false>);
    }
 }
 

@@ -60,7 +60,7 @@ static void Flatten(
       FloatFast * const pUpdateScoreNext = pUpdateScoreCur + cScores;
       *ppUpdateScore = pUpdateScoreNext;
 
-      const auto * pHistogramTargetEntry = pTreeNode->GetHistogramTargetEntry();
+      const auto * pGradientPair = pTreeNode->GetGradientPairs();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
       FloatBig zeroLogit = 0;
@@ -70,11 +70,11 @@ static void Flatten(
          FloatBig updateScore;
          if(bClassification) {
             updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               pHistogramTargetEntry->m_sumGradients, pHistogramTargetEntry->GetSumHessians());
+               pGradientPair->m_sumGradients, pGradientPair->GetSumHessians());
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             if(2 <= cScores) {
-               if(pTreeNode->GetHistogramTargetEntry() == pHistogramTargetEntry) {
+               if(pTreeNode->GetGradientPairs() == pGradientPair) {
                   zeroLogit = updateScore;
                }
                updateScore -= zeroLogit;
@@ -83,11 +83,11 @@ static void Flatten(
 
          } else {
             updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               pHistogramTargetEntry->m_sumGradients, pTreeNode->GetWeight());
+               pGradientPair->m_sumGradients, pTreeNode->GetWeight());
          }
          *pUpdateScoreCur = SafeConvertFloat<FloatFast>(updateScore);
 
-         ++pHistogramTargetEntry;
+         ++pGradientPair;
          ++pUpdateScoreCur;
       } while(pUpdateScoreNext != pUpdateScoreCur);
    }
@@ -126,22 +126,22 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    );
    const size_t cScores = GetCountScores(learningTypeOrCountTargetClasses);
 
-   // it's tempting to want to use GetSumHistogramTargetEntryArray here instead of 
-   // GetSumHistogramTargetEntryLeft, but the problem with that is that we sometimes re-do our work
+   // it's tempting to want to use GetSumAllGradientPairs here instead of 
+   // GetLeftGradientPairs, but the problem with that is that we sometimes re-do our work
    // when we exceed our memory size by goto retry_with_bigger_tree_node_children_array.  When that happens
-   // we need to retrieve the original sum which resides at GetSumHistogramTargetEntryArray
+   // we need to retrieve the original sum which resides at GetSumAllGradientPairs
    // since the memory pointed to at pRootTreeNode is freed and re-allocated.
-   // So, DO NOT DO: pBoosterShell->GetSumHistogramTargetEntryArray()->
-   //   GetHistogramTargetEntry<bClassification>();
-   auto * const aSumHistogramTargetEntryLeft = pBoosterShell->GetSumHistogramTargetEntryLeft<bClassification>();
-   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
-   aSumHistogramTargetEntryLeft->Zero(cBytesPerHistogramTargetEntry, cScores);
+   // So, DO NOT DO: pBoosterShell->GetSumAllGradientPairs()->
+   //   GetGradientPairs<bClassification>();
+   auto * const aLeftSweepGradientPairs = pBoosterShell->GetLeftGradientPairs<bClassification>();
+   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(bClassification);
+   aLeftSweepGradientPairs->Zero(cBytesPerGradientPair, cScores);
 
-   auto * const aSumHistogramTargetEntryRight = pBoosterShell->GetSumHistogramTargetEntryRight<bClassification>();
-   const auto * pHistogramTargetEntryInit = pTreeNode->GetHistogramTargetEntry();
+   auto * const aRightSweepGradientPairs = pBoosterShell->GetRightGradientPairs<bClassification>();
+   const auto * pInitGradientPair = pTreeNode->GetGradientPairs();
    for(size_t iScore = 0; iScore < cScores; ++iScore) {
       // TODO : memcpy this instead
-      aSumHistogramTargetEntryRight[iScore] = pHistogramTargetEntryInit[iScore];
+      aRightSweepGradientPairs[iScore] = pInitGradientPair[iScore];
    }
 
    auto * pBinCur = pTreeNode->BEFORE_GetBinFirst();
@@ -197,7 +197,7 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       weightRight -= CHANGE_weight;
       weightLeft += CHANGE_weight;
 
-      const auto * pHistogramTargetEntry = pBinCur->GetHistogramTargetEntry();
+      const auto * pGradientPair = pBinCur->GetGradientPairs();
 
       if(LIKELY(cSamplesRequiredForChildSplitMin <= cSamplesLeft)) {
          EBM_ASSERT(0 < cSamplesRight);
@@ -208,20 +208,23 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          FloatBig gain = 0;
 
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatBig CHANGE_sumGradients = pHistogramTargetEntry[iScore].m_sumGradients;
-            const FloatBig sumGradientsRight = aSumHistogramTargetEntryRight[iScore].m_sumGradients - CHANGE_sumGradients;
-            aSumHistogramTargetEntryRight[iScore].m_sumGradients = sumGradientsRight;
-            const FloatBig sumGradientsLeft = aSumHistogramTargetEntryLeft[iScore].m_sumGradients + CHANGE_sumGradients;
-            aSumHistogramTargetEntryLeft[iScore].m_sumGradients = sumGradientsLeft;
+            // TODO: instead of adding and subtracing the changes, we should instead subtract the change that
+            // we've added from the totals, which would be more accurate in terms of summing to be the total.
+
+            const FloatBig CHANGE_sumGradients = pGradientPair[iScore].m_sumGradients;
+            const FloatBig sumGradientsRight = aRightSweepGradientPairs[iScore].m_sumGradients - CHANGE_sumGradients;
+            aRightSweepGradientPairs[iScore].m_sumGradients = sumGradientsRight;
+            const FloatBig sumGradientsLeft = aLeftSweepGradientPairs[iScore].m_sumGradients + CHANGE_sumGradients;
+            aLeftSweepGradientPairs[iScore].m_sumGradients = sumGradientsLeft;
 
             if(bClassification) {
-               const FloatBig CHANGE_sumHessians = pHistogramTargetEntry[iScore].GetSumHessians();
-               const FloatBig newSumHessiansLeft = aSumHistogramTargetEntryLeft[iScore].GetSumHessians() + CHANGE_sumHessians;
-               aSumHistogramTargetEntryLeft[iScore].SetSumHessians(newSumHessiansLeft);
+               const FloatBig CHANGE_sumHessians = pGradientPair[iScore].GetSumHessians();
+               const FloatBig newSumHessiansLeft = aLeftSweepGradientPairs[iScore].GetSumHessians() + CHANGE_sumHessians;
+               aLeftSweepGradientPairs[iScore].SetSumHessians(newSumHessiansLeft);
                if(bUseLogitBoost) {
                   sumHessiansLeft = newSumHessiansLeft;
-                  sumHessiansRight = aSumHistogramTargetEntryRight[iScore].GetSumHessians() - CHANGE_sumHessians;
-                  aSumHistogramTargetEntryRight[iScore].SetSumHessians(sumHessiansRight);
+                  sumHessiansRight = aRightSweepGradientPairs[iScore].GetSumHessians() - CHANGE_sumHessians;
+                  aRightSweepGradientPairs[iScore].SetSumHessians(sumHessiansRight);
                }
             }
 
@@ -273,8 +276,8 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             pTreeSweepCur->SetCountBestSamplesLeft(cSamplesLeft);
             pTreeSweepCur->SetBestWeightLeft(weightLeft);
             memcpy(
-               pTreeSweepCur->GetBestHistogramTargetEntry(), aSumHistogramTargetEntryLeft,
-               sizeof(*aSumHistogramTargetEntryLeft) * cScores
+               pTreeSweepCur->GetBestGradientPairs(), aLeftSweepGradientPairs,
+               sizeof(*aLeftSweepGradientPairs) * cScores
             );
 
             pTreeSweepCur = AddBytesTreeSweep(pTreeSweepCur, cBytesPerTreeSweep);
@@ -283,14 +286,14 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          }
       } else {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatBig CHANGE_sumGradients = pHistogramTargetEntry[iScore].m_sumGradients;
-            aSumHistogramTargetEntryRight[iScore].m_sumGradients -= CHANGE_sumGradients;
-            aSumHistogramTargetEntryLeft[iScore].m_sumGradients += CHANGE_sumGradients;
+            const FloatBig CHANGE_sumGradients = pGradientPair[iScore].m_sumGradients;
+            aRightSweepGradientPairs[iScore].m_sumGradients -= CHANGE_sumGradients;
+            aLeftSweepGradientPairs[iScore].m_sumGradients += CHANGE_sumGradients;
             if(bClassification) {
-               const FloatBig CHANGE_sumHessians = pHistogramTargetEntry[iScore].GetSumHessians();
-               aSumHistogramTargetEntryLeft[iScore].SetSumHessians(aSumHistogramTargetEntryLeft[iScore].GetSumHessians() + CHANGE_sumHessians);
+               const FloatBig CHANGE_sumHessians = pGradientPair[iScore].GetSumHessians();
+               aLeftSweepGradientPairs[iScore].SetSumHessians(aLeftSweepGradientPairs[iScore].GetSumHessians() + CHANGE_sumHessians);
                if(bUseLogitBoost) {
-                  aSumHistogramTargetEntryRight[iScore].SetSumHessians(aSumHistogramTargetEntryRight[iScore].GetSumHessians() - CHANGE_sumHessians);
+                  aRightSweepGradientPairs[iScore].SetSumHessians(aRightSweepGradientPairs[iScore].GetSumHessians() - CHANGE_sumHessians);
                }
             }
          }
@@ -315,13 +318,13 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    }
 
    FloatBig sumHessiansOverwrite = pTreeNode->GetWeight();
-   const auto * pHistEntryParent = pTreeNode->GetHistogramTargetEntry();
+   const auto * pGainGradientPair = pTreeNode->GetGradientPairs();
 
    for(size_t iScore = 0; iScore < cScores; ++iScore) {
-      const FloatBig sumGradientsParent = pHistEntryParent[iScore].m_sumGradients;
+      const FloatBig sumGradientsParent = pGainGradientPair[iScore].m_sumGradients;
       if(bClassification) {
          if(bUseLogitBoost) {
-            sumHessiansOverwrite = pHistEntryParent[iScore].GetSumHessians();
+            sumHessiansOverwrite = pGainGradientPair[iScore].GetSumHessians();
          }
       }
       const FloatBig gain1 = EbmStats::CalcPartialGain(sumGradientsParent, sumHessiansOverwrite);
@@ -381,25 +384,25 @@ static int ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const FloatBig weightParent = pTreeNode->GetWeight();
    pRightChild->SetWeight(weightParent - BEST_weightLeft);
 
-   auto * pHistogramTargetEntryLeftChild = pLeftChild->GetHistogramTargetEntry();
+   auto * pLeftChildGradientPair = pLeftChild->GetGradientPairs();
 
-   auto * pHistogramTargetEntryRightChild = pRightChild->GetHistogramTargetEntry();
+   auto * pRightChildGradientPair = pRightChild->GetGradientPairs();
 
-   const auto * pHistogramTargetEntryTreeNode = pTreeNode->GetHistogramTargetEntry();
+   const auto * pParentGradientPair = pTreeNode->GetGradientPairs();
 
-   const auto * pHistogramTargetEntrySweep = pTreeSweepStart->GetBestHistogramTargetEntry();
+   const auto * pBestGradientPair = pTreeSweepStart->GetBestGradientPairs();
 
    for(size_t iScore = 0; iScore < cScores; ++iScore) {
-      const FloatBig BEST_sumGradientsLeft = pHistogramTargetEntrySweep[iScore].m_sumGradients;
-      pHistogramTargetEntryLeftChild[iScore].m_sumGradients = BEST_sumGradientsLeft;
-      const FloatBig sumGradientsParent = pHistogramTargetEntryTreeNode[iScore].m_sumGradients;
-      pHistogramTargetEntryRightChild[iScore].m_sumGradients = sumGradientsParent - BEST_sumGradientsLeft;
+      const FloatBig BEST_sumGradientsLeft = pBestGradientPair[iScore].m_sumGradients;
+      pLeftChildGradientPair[iScore].m_sumGradients = BEST_sumGradientsLeft;
+      const FloatBig sumGradientsParent = pParentGradientPair[iScore].m_sumGradients;
+      pRightChildGradientPair[iScore].m_sumGradients = sumGradientsParent - BEST_sumGradientsLeft;
 
       if(bClassification) {
-         const FloatBig BEST_sumHessiansLeft = pHistogramTargetEntrySweep[iScore].GetSumHessians();
-         pHistogramTargetEntryLeftChild[iScore].SetSumHessians(BEST_sumHessiansLeft);
-         const FloatBig sumHessiansParent = pHistogramTargetEntryTreeNode[iScore].GetSumHessians();
-         pHistogramTargetEntryRightChild[iScore].SetSumHessians(sumHessiansParent - BEST_sumHessiansLeft);
+         const FloatBig BEST_sumHessiansLeft = pBestGradientPair[iScore].GetSumHessians();
+         pLeftChildGradientPair[iScore].SetSumHessians(BEST_sumHessiansLeft);
+         const FloatBig sumHessiansParent = pParentGradientPair[iScore].GetSumHessians();
+         pRightChildGradientPair[iScore].SetSumHessians(sumHessiansParent - BEST_sumHessiansLeft);
       }
    }
 
@@ -466,10 +469,8 @@ public:
       const auto * const aBins = 
          aBinsBase->Specialize<FloatBig, bClassification>();
 
-      HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
-         pBoosterShell->GetSumHistogramTargetEntryArray();
-      const auto * const aSumHistogramTargetEntry =
-         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<FloatBig, bClassification>();
+      GradientPairBase * const aSumAllGradientPairsBase = pBoosterShell->GetSumAllGradientPairs();
+      const auto * const aSumAllGradientPairs = aSumAllGradientPairsBase->Specialize<FloatBig, bClassification>();
 
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -532,11 +533,7 @@ public:
       pRootTreeNode->SetWeight(weightTotal);
 
       // copying existing mem
-      memcpy(
-         pRootTreeNode->GetHistogramTargetEntry(),
-         aSumHistogramTargetEntry,
-         cScores * sizeof(*aSumHistogramTargetEntry)
-      );
+      memcpy(pRootTreeNode->GetGradientPairs(), aSumAllGradientPairs, cScores * sizeof(*aSumAllGradientPairs));
 
       Tensor * const pInnerTermUpdate =
          pBoosterShell->GetInnerTermUpdate();
@@ -570,7 +567,7 @@ public:
 
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
                FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                  pRootTreeNode->GetHistogramTargetEntry()[iScore].m_sumGradients, pRootTreeNode->GetHistogramTargetEntry()[iScore].GetSumHessians()
+                  pRootTreeNode->GetGradientPairs()[iScore].m_sumGradients, pRootTreeNode->GetGradientPairs()[iScore].GetSumHessians()
                );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -587,7 +584,7 @@ public:
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               pRootTreeNode->GetHistogramTargetEntry()[0].m_sumGradients, weightTotal
+               pRootTreeNode->GetGradientPairs()[0].m_sumGradients, weightTotal
             );
             FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
             aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
@@ -633,9 +630,9 @@ public:
             cBytesPerTreeNode
          );
 
-         const auto * pHistogramTargetEntryLeftChild = pLeftChild->GetHistogramTargetEntry();
+         const auto * pLeftChildGradientPair = pLeftChild->GetGradientPairs();
 
-         const auto * pHistogramTargetEntryRightChild = pRightChild->GetHistogramTargetEntry();
+         const auto * pRightChildGradientPair = pRightChild->GetGradientPairs();
 
          FloatFast * const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
          if(bClassification) {
@@ -647,12 +644,12 @@ public:
 
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
                FloatBig updateScore0 = EbmStats::ComputeSinglePartitionUpdate(
-                  pHistogramTargetEntryLeftChild[iScore].m_sumGradients,
-                  pHistogramTargetEntryLeftChild[iScore].GetSumHessians()
+                  pLeftChildGradientPair[iScore].m_sumGradients,
+                  pLeftChildGradientPair[iScore].GetSumHessians()
                );
                FloatBig updateScore1 = EbmStats::ComputeSinglePartitionUpdate(
-                  pHistogramTargetEntryRightChild[iScore].m_sumGradients,
-                  pHistogramTargetEntryRightChild[iScore].GetSumHessians()
+                  pRightChildGradientPair[iScore].m_sumGradients,
+                  pRightChildGradientPair[iScore].GetSumHessians()
                );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -672,11 +669,11 @@ public:
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             FloatBig updateScore0 = EbmStats::ComputeSinglePartitionUpdate(
-               pHistogramTargetEntryLeftChild[0].m_sumGradients,
+               pLeftChildGradientPair[0].m_sumGradients,
                pLeftChild->GetWeight()
             );
             FloatBig updateScore1 = EbmStats::ComputeSinglePartitionUpdate(
-               pHistogramTargetEntryRightChild[0].m_sumGradients,
+               pRightChildGradientPair[0].m_sumGradients,
                pRightChild->GetWeight()
             );
 

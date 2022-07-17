@@ -37,9 +37,9 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       free(pBoosterShell->m_aThreadByteBuffer1Fast);
       free(pBoosterShell->m_aThreadByteBuffer1Big);
       free(pBoosterShell->m_aThreadByteBuffer2);
-      free(pBoosterShell->m_aSumHistogramTargetEntry);
-      free(pBoosterShell->m_aSumHistogramTargetEntryLeft);
-      free(pBoosterShell->m_aSumHistogramTargetEntryRight);
+      free(pBoosterShell->m_aSumAllGradientPairs);
+      free(pBoosterShell->m_aLeftGradientPairs);
+      free(pBoosterShell->m_aRightGradientPairs);
       free(pBoosterShell->m_aTempFloatVector);
       free(pBoosterShell->m_aEquivalentSplits);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
@@ -73,7 +73,7 @@ ErrorEbmType BoosterShell::FillAllocations() {
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = m_pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
    const size_t cScores = GetCountScores(runtimeLearningTypeOrCountTargetClasses);
-   const size_t cBytesPerItem = GetHistogramTargetEntrySize<FloatBig>(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(IsClassification(runtimeLearningTypeOrCountTargetClasses));
       
    m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
    if(nullptr == m_pTermUpdate) {
@@ -85,18 +85,18 @@ ErrorEbmType BoosterShell::FillAllocations() {
       goto failed_allocation;
    }
 
-   m_aSumHistogramTargetEntry = EbmMalloc<HistogramTargetEntryBase>(cScores, cBytesPerItem);
-   if(nullptr == m_aSumHistogramTargetEntry) {
+   m_aSumAllGradientPairs = EbmMalloc<GradientPairBase>(cScores, cBytesPerGradientPair);
+   if(nullptr == m_aSumAllGradientPairs) {
       goto failed_allocation;
    }
 
-   m_aSumHistogramTargetEntryLeft = EbmMalloc<HistogramTargetEntryBase>(cScores, cBytesPerItem);
-   if(nullptr == m_aSumHistogramTargetEntryLeft) {
+   m_aLeftGradientPairs = EbmMalloc<GradientPairBase>(cScores, cBytesPerGradientPair);
+   if(nullptr == m_aLeftGradientPairs) {
       goto failed_allocation;
    }
 
-   m_aSumHistogramTargetEntryRight = EbmMalloc<HistogramTargetEntryBase>(cScores, cBytesPerItem);
-   if(nullptr == m_aSumHistogramTargetEntryRight) {
+   m_aRightGradientPairs = EbmMalloc<GradientPairBase>(cScores, cBytesPerGradientPair);
+   if(nullptr == m_aRightGradientPairs) {
       goto failed_allocation;
    }
 

@@ -27,10 +27,10 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class SumBinsInternal final {
+class SumAllBinsInternal final {
 public:
 
-   SumBinsInternal() = delete; // this is a static class.  Do not construct
+   SumAllBinsInternal() = delete; // this is a static class.  Do not construct
 
    static void Func(
       BoosterShell * const pBoosterShell,
@@ -45,15 +45,11 @@ public:
       BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
-      HistogramTargetEntryBase * const aSumHistogramTargetEntryBase =
-         pBoosterShell->GetSumHistogramTargetEntryArray();
-
+      GradientPairBase * const aSumAllGradientPairsBase = pBoosterShell->GetSumAllGradientPairs();
       BinBase * const aBinsBase = pBoosterShell->GetBinBaseBig();
 
-      const auto * const aBins = 
-         aBinsBase->Specialize<FloatBig, bClassification>();
-      auto * const aSumHistogramTargetEntry =
-         aSumHistogramTargetEntryBase->GetHistogramTargetEntry<FloatBig, bClassification>();
+      const auto * const aBins = aBinsBase->Specialize<FloatBig, bClassification>();
+      auto * const aSumAllGradientPairs = aSumAllGradientPairsBase->Specialize<FloatBig, bClassification>();
 
       EBM_ASSERT(2 <= cBins); // we pre-filter out features with only one bin
 
@@ -71,8 +67,7 @@ public:
       const size_t cBytesPerBin = GetBinSize<FloatBig>(bClassification, cScores);
 
       const auto * pCopyFrom = aBins;
-      const auto * pCopyFromEnd = 
-         IndexBin(cBytesPerBin, aBins, cBins);
+      const auto * pCopyFromEnd = IndexBin(cBytesPerBin, aBins, cBins);
 
       // we do a lot more work in the PartitionOneDimensionalBoosting function per target entry, so if we can compress it by any amount, then it will probably be a win
       // for bin arrays that have a small set of labels, this loop will be fast and result in no movements.  For bin arrays that are long 
@@ -85,7 +80,7 @@ public:
          weightTotalDebug += pCopyFrom->GetWeight();
 #endif // NDEBUG
 
-         const auto * pHistogramTargetEntry = pCopyFrom->GetHistogramTargetEntry();
+         const auto * pGradientPair = pCopyFrom->GetGradientPairs();
 
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             // when building a tree, we start from one end and sweep to the other.  In order to caluculate
@@ -98,7 +93,7 @@ public:
             // and that is if almost all bins have either 0 or 1 samples, which would happen if we didn't bin at all
             // beforehand.  We'll still want this per-bin sumation though since it's unlikley that all data
             // will be continuous in an ML problem.
-            aSumHistogramTargetEntry[iScore].Add(pHistogramTargetEntry[iScore]);
+            aSumAllGradientPairs[iScore].Add(pGradientPair[iScore]);
          }
 
          pCopyFrom = IndexBin(cBytesPerBin, pCopyFrom, 1);
@@ -110,7 +105,7 @@ public:
    }
 };
 
-extern void SumBins(
+extern void SumAllBins(
    BoosterShell * const pBoosterShell,
    const size_t cBins
 #ifndef NDEBUG
@@ -118,14 +113,14 @@ extern void SumBins(
    , const FloatBig weightTotal
 #endif // NDEBUG
 ) {
-   LOG_0(TraceLevelVerbose, "Entered SumBins");
+   LOG_0(TraceLevelVerbose, "Entered SumAllBins");
 
    BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pBoosterCore->GetRuntimeLearningTypeOrCountTargetClasses();
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         SumBinsInternal<2>::Func(
+         SumAllBinsInternal<2>::Func(
             pBoosterShell,
             cBins
 #ifndef NDEBUG
@@ -134,7 +129,7 @@ extern void SumBins(
 #endif // NDEBUG
          );
       } else {
-         SumBinsInternal<k_dynamicClassification>::Func(
+         SumAllBinsInternal<k_dynamicClassification>::Func(
             pBoosterShell,
             cBins
 #ifndef NDEBUG
@@ -145,7 +140,7 @@ extern void SumBins(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      SumBinsInternal<k_regression>::Func(
+      SumAllBinsInternal<k_regression>::Func(
          pBoosterShell,
          cBins
 #ifndef NDEBUG
@@ -155,7 +150,7 @@ extern void SumBins(
       );
    }
 
-   LOG_0(TraceLevelVerbose, "Exited SumBins");
+   LOG_0(TraceLevelVerbose, "Exited SumAllBins");
 }
 
 } // DEFINED_ZONE_NAME

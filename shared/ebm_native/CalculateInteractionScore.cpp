@@ -64,7 +64,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    const size_t cSamplesRequiredForChildSplitMin,
    double * const pInteractionStrengthAvgOut
 ) {
-   // TODO : we NEVER use the hessian term (currently) in HistogramTargetEntry when calculating interaction scores, but we're spending time calculating 
+   // TODO : we NEVER use the hessian term (currently) in GradientPair when calculating interaction scores, but we're spending time calculating 
    // it, and it's taking up precious memory.  We should eliminate the hessian term HERE in our datastructures OR we should think whether we can 
    // use the hessian as part of the gain function!!!
 
@@ -175,7 +175,7 @@ static ErrorEbmType CalcInteractionStrengthInternal(
    memcpy(aBinsBig, aBinsFast, cBytesBufferFast);
 
 
-   // TODO: we can exit here back to python to allow caller modification to our histograms
+   // TODO: we can exit here back to python to allow caller modification to our bins
 
 
 #ifndef NDEBUG

@@ -70,7 +70,7 @@ public:
       // this shouldn't overflow since we're accessing existing memory
       const FloatFast * const pGradientAndHessiansEnd = pGradientAndHessian + (bClassification ? 2 : 1) * cScores * cSamples;
 
-      auto * const pHistogramTargetEntry = pBin->GetHistogramTargetEntry();
+      auto * const pGradientPair = pBin->GetGradientPairs();
       do {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          //   in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
@@ -111,7 +111,7 @@ public:
 #ifndef NDEBUG
             sumGradientsDebug += gradient;
 #endif // NDEBUG
-            pHistogramTargetEntry[iScore].m_sumGradients += gradient * weight;
+            pGradientPair[iScore].m_sumGradients += gradient * weight;
             if(bClassification) {
                // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the 
                //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might make 
@@ -119,7 +119,7 @@ public:
                //   MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the computation if 
                //   not necssary and access it through an accessor so that we can make the change entirely via macro
                const FloatFast hessian = *(pGradientAndHessian + 1);
-               pHistogramTargetEntry[iScore].SetSumHessians(pHistogramTargetEntry[iScore].GetSumHessians() + hessian * weight);
+               pGradientPair[iScore].SetSumHessians(pGradientPair[iScore].GetSumHessians() + hessian * weight);
             }
             pGradientAndHessian += bClassification ? 2 : 1;
             ++iScore;
@@ -300,7 +300,7 @@ public:
             pBin->SetCountSamples(pBin->GetCountSamples() + cOccurences);
             pBin->SetWeight(pBin->GetWeight() + weight);
 
-            auto * pHistogramTargetEntry = pBin->GetHistogramTargetEntry();
+            auto * pGradientPair = pBin->GetGradientPairs();
 
             size_t iScore = 0;
 
@@ -317,7 +317,7 @@ public:
 #ifndef NDEBUG
                gradientTotalDebug += gradient;
 #endif // NDEBUG
-               pHistogramTargetEntry[iScore].m_sumGradients += gradient * weight;
+               pGradientPair[iScore].m_sumGradients += gradient * weight;
                if(bClassification) {
                   // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the
                   //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might 
@@ -325,9 +325,7 @@ public:
                   //   done in a MACRO and we should use a class to hold the gradient and this computation from that value and then comment out the 
                   //   computation if not necssary and access it through an accessor so that we can make the change entirely via macro
                   const FloatFast hessian = *(pGradientAndHessian + 1);
-                  pHistogramTargetEntry[iScore].SetSumHessians(
-                     pHistogramTargetEntry[iScore].GetSumHessians() + hessian * weight
-                  );
+                  pGradientPair[iScore].SetSumHessians(pGradientPair[iScore].GetSumHessians() + hessian * weight);
                }
                pGradientAndHessian += bClassification ? 2 : 1;
                ++iScore;

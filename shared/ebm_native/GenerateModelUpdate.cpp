@@ -42,7 +42,7 @@ extern void BinBoosting(
    const SamplingSet * const pTrainingSet
 );
 
-extern void SumBins(
+extern void SumAllBins(
    BoosterShell * const pBoosterShell,
    const size_t cBins
 #ifndef NDEBUG
@@ -152,15 +152,14 @@ static ErrorEbmType BoostZeroDimensional(
    // TODO: we can exit here back to python to allow caller modification to our histograms
 
 
-   Tensor * const pInnerTermUpdate = 
-      pBoosterShell->GetInnerTermUpdate();
+   Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
    FloatFast * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
    if(bClassification) {
       const auto * const pBin = pBinBig->Specialize<FloatBig, true>();
-      const auto * const aSumHistogramTargetEntry = pBin->GetHistogramTargetEntry();
+      const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[iScore].m_sumGradients);
+            const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[iScore].m_sumGradients);
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
             // Hmmm.. for DP we need the sum, which means that we can't zero one of the class numbers as we
@@ -177,8 +176,8 @@ static ErrorEbmType BoostZeroDimensional(
 
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               aSumHistogramTargetEntry[iScore].m_sumGradients,
-               aSumHistogramTargetEntry[iScore].GetSumHessians()
+               aGradientPairs[iScore].m_sumGradients,
+               aGradientPairs[iScore].GetSumHessians()
             );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -196,13 +195,13 @@ static ErrorEbmType BoostZeroDimensional(
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       const auto * const pBin = pBinBig->Specialize<FloatBig, false>();
-      const auto * const aSumHistogramTargetEntry = pBin->GetHistogramTargetEntry();
+      const auto * const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (GenerateUpdateOptions_GradientSums & options)) {
-         const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aSumHistogramTargetEntry[0].m_sumGradients);
+         const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(aGradientPairs[0].m_sumGradients);
          aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
       } else {
          const FloatBig updateScore = EbmStats::ComputeSinglePartitionUpdate(
-            aSumHistogramTargetEntry[0].m_sumGradients,
+            aGradientPairs[0].m_sumGradients,
             pBin->GetWeight()
          );
          aUpdateScores[0] = SafeConvertFloat<FloatFast>(updateScore);
@@ -302,11 +301,11 @@ static ErrorEbmType BoostSingleDimensional(
    // TODO: we can exit here back to python to allow caller modification to our histograms
 
 
-   HistogramTargetEntryBase * const aSumHistogramTargetEntry = pBoosterShell->GetSumHistogramTargetEntryArray();
-   const size_t cBytesPerHistogramTargetEntry = GetHistogramTargetEntrySize<FloatBig>(bClassification);
-   aSumHistogramTargetEntry->Zero(cBytesPerHistogramTargetEntry, cScores);
+   GradientPairBase * const aSumAllGradientPairs = pBoosterShell->GetSumAllGradientPairs();
+   const size_t cBytesPerGradientPair = GetGradientPairSize<FloatBig>(bClassification);
+   aSumAllGradientPairs->Zero(cBytesPerGradientPair, cScores);
 
-   SumBins(
+   SumAllBins(
       pBoosterShell,
       cBins
 #ifndef NDEBUG

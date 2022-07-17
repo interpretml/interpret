@@ -276,7 +276,7 @@ TEST_CASE("GenerateGaussianRandom") {
       avgAbs /= cIterations;
 
       // use better tests and improve these bounds
-      CHECK(std::abs(avg) <= 1.0);
+      CHECK(std::abs(avg) <= 1.5);
       CHECK(6.5 <= avgAbs && avgAbs <= 9.5);
       CHECK(300 <= cNegative && cNegative <= 700);
    }

@@ -79,11 +79,11 @@ private:
    TFloat m_weight;
 
    // use the "struct hack" since Flexible array member method is not available in C++
-   // aHistogramTargetEntry must be the last item in this struct
+   // m_aGradientPairs must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   HistogramTargetEntry<TFloat, bClassification> m_aHistogramTargetEntry[1];
+   GradientPair<TFloat, bClassification> m_aGradientPairs[1];
 
 public:
 
@@ -106,23 +106,23 @@ public:
       m_weight = weight;
    }
 
-   INLINE_ALWAYS const HistogramTargetEntry<TFloat, bClassification> * GetHistogramTargetEntry() const {
-      return ArrayToPointer(m_aHistogramTargetEntry);
+   INLINE_ALWAYS const GradientPair<TFloat, bClassification> * GetGradientPairs() const {
+      return ArrayToPointer(m_aGradientPairs);
    }
-   INLINE_ALWAYS HistogramTargetEntry<TFloat, bClassification> * GetHistogramTargetEntry() {
-      return ArrayToPointer(m_aHistogramTargetEntry);
+   INLINE_ALWAYS GradientPair<TFloat, bClassification> * GetGradientPairs() {
+      return ArrayToPointer(m_aGradientPairs);
    }
 
    INLINE_ALWAYS void Add(const Bin<TFloat, bClassification> & other, const size_t cScores) {
       m_cSamples += other.m_cSamples;
       m_weight += other.m_weight;
 
-      auto * pBinVectorThis = GetHistogramTargetEntry();
+      auto * aGradientPairs = GetGradientPairs();
 
-      const auto * pBinVectorOther = other.GetHistogramTargetEntry();
+      const auto * aOtherGradientPairs = other.GetGradientPairs();
 
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
-         pBinVectorThis[iScore].Add(pBinVectorOther[iScore]);
+         aGradientPairs[iScore].Add(aOtherGradientPairs[iScore]);
       }
    }
 
@@ -130,18 +130,16 @@ public:
       m_cSamples -= other.m_cSamples;
       m_weight -= other.m_weight;
 
-      auto * pBinVectorThis = GetHistogramTargetEntry();
-
-      const auto * pBinVectorOther = other.GetHistogramTargetEntry();
+      auto * aGradientPairs = GetGradientPairs();
+      const auto * aOtherGradientPairs = other.GetGradientPairs();
 
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
-         pBinVectorThis[iScore].Subtract(pBinVectorOther[iScore]);
+         aGradientPairs[iScore].Subtract(aOtherGradientPairs[iScore]);
       }
    }
 
    INLINE_ALWAYS void Copy(const Bin<TFloat, bClassification> & other, const size_t cScores) {
-      const size_t cBytesPerBin = sizeof(Bin) - sizeof(m_aHistogramTargetEntry) +
-         sizeof(m_aHistogramTargetEntry[0]) * cScores;
+      const size_t cBytesPerBin = sizeof(Bin) - sizeof(m_aGradientPairs) + sizeof(m_aGradientPairs[0]) * cScores;
 
       memcpy(this, &other, cBytesPerBin);
    }
@@ -152,10 +150,9 @@ public:
       EBM_ASSERT(0 == m_cSamples);
       EBM_ASSERT(0 == m_weight);
 
-      const auto * pBinVector = GetHistogramTargetEntry();
-
+      const auto * aGradientPairs = GetGradientPairs();
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
-         pBinVector[iScore].AssertZero();
+         aGradientPairs[iScore].AssertZero();
       }
 #endif // NDEBUG
    }
@@ -176,9 +173,9 @@ static_assert(std::is_pod<Bin<float, true>>::value && std::is_pod<Bin<float, fal
 
 template<typename TFloat>
 INLINE_ALWAYS bool IsOverflowBinSize(const bool bClassification, const size_t cScores) {
-   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<TFloat>(bClassification);
+   const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bClassification);
 
-   if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cScores))) {
+   if(UNLIKELY(IsMultiplyError(cBytesPerGradientPair, cScores))) {
       return true;
    }
 
@@ -188,9 +185,9 @@ INLINE_ALWAYS bool IsOverflowBinSize(const bool bClassification, const size_t cS
    } else {
       cBytesBinComponent = sizeof(Bin<TFloat, false>);
    }
-   cBytesBinComponent -= cBytesHistogramTargetEntry;
+   cBytesBinComponent -= cBytesPerGradientPair;
 
-   if(UNLIKELY(IsAddError(cBytesBinComponent, cBytesHistogramTargetEntry * cScores))) {
+   if(UNLIKELY(IsAddError(cBytesBinComponent, cBytesPerGradientPair * cScores))) {
       return true;
    }
 
@@ -203,7 +200,7 @@ INLINE_ALWAYS size_t GetBinSize(const bool bClassification, const size_t cScores
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
 
-   const size_t cBytesHistogramTargetEntry = GetHistogramTargetEntrySize<TFloat>(bClassification);
+   const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bClassification);
 
    size_t cBytesBinComponent;
    if(bClassification) {
@@ -211,9 +208,9 @@ INLINE_ALWAYS size_t GetBinSize(const bool bClassification, const size_t cScores
    } else {
       cBytesBinComponent = sizeof(Bin<TFloat, false>);
    }
-   cBytesBinComponent -= cBytesHistogramTargetEntry;
+   cBytesBinComponent -= cBytesPerGradientPair;
 
-   return cBytesBinComponent + cBytesHistogramTargetEntry * cScores;
+   return cBytesBinComponent + cBytesPerGradientPair * cScores;
 }
 
 template<typename TFloat, bool bClassification>

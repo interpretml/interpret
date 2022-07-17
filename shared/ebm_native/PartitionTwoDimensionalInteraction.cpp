@@ -169,10 +169,10 @@ public:
                         FloatBig weight10 = pTotals10->GetWeight();
                         FloatBig weight11 = pTotals11->GetWeight();
 
-                        auto * const pHistogramEntry00 = pTotals00->GetHistogramTargetEntry();
-                        auto * const pHistogramEntry01 = pTotals01->GetHistogramTargetEntry();
-                        auto * const pHistogramEntry10 = pTotals10->GetHistogramTargetEntry();
-                        auto * const pHistogramEntry11 = pTotals11->GetHistogramTargetEntry();
+                        auto * const aGradientPairs00 = pTotals00->GetGradientPairs();
+                        auto * const aGradientPairs01 = pTotals01->GetGradientPairs();
+                        auto * const aGradientPairs10 = pTotals10->GetGradientPairs();
+                        auto * const aGradientPairs11 = pTotals11->GetGradientPairs();
 
                         for(size_t iScore = 0; iScore < cScores; ++iScore) {
                            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -182,21 +182,17 @@ public:
 
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
-                           const FloatBig n00 = pHistogramEntry00[iScore].m_sumGradients;
-                           const FloatBig d00 = bUseLogitBoost ?
-                              pHistogramEntry00[iScore].GetSumHessians() : weight00;
+                           const FloatBig n00 = aGradientPairs00[iScore].m_sumGradients;
+                           const FloatBig d00 = bUseLogitBoost ? aGradientPairs00[iScore].GetSumHessians() : weight00;
 
-                           const FloatBig n01 = pHistogramEntry01[iScore].m_sumGradients;
-                           const FloatBig d01 = bUseLogitBoost ?
-                              pHistogramEntry01[iScore].GetSumHessians() : weight01;
+                           const FloatBig n01 = aGradientPairs01[iScore].m_sumGradients;
+                           const FloatBig d01 = bUseLogitBoost ? aGradientPairs01[iScore].GetSumHessians() : weight01;
 
-                           const FloatBig n10 = pHistogramEntry10[iScore].m_sumGradients;
-                           const FloatBig d10 = bUseLogitBoost ?
-                              pHistogramEntry10[iScore].GetSumHessians() : weight10;
+                           const FloatBig n10 = aGradientPairs10[iScore].m_sumGradients;
+                           const FloatBig d10 = bUseLogitBoost ? aGradientPairs10[iScore].GetSumHessians() : weight10;
 
-                           const FloatBig n11 = pHistogramEntry11[iScore].m_sumGradients;
-                           const FloatBig d11 = bUseLogitBoost ?
-                              pHistogramEntry11[iScore].GetSumHessians() : weight11;
+                           const FloatBig n11 = aGradientPairs11[iScore].m_sumGradients;
+                           const FloatBig d11 = bUseLogitBoost ? aGradientPairs11[iScore].GetSumHessians() : weight11;
 
                            if(0 != (InteractionOptions_Pure & options)) {
                               // purified gain
@@ -353,7 +349,7 @@ public:
 
          const FloatBig weightAll = pTotal->GetWeight();
 
-         const auto * const pHistogramEntryTotal = pTotal->GetHistogramTargetEntry();
+         const auto * const aGradientPairs = pTotal->GetGradientPairs();
 
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -361,8 +357,8 @@ public:
 
             constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
             bestGain -= EbmStats::CalcPartialGain(
-               pHistogramEntryTotal[iScore].m_sumGradients,
-               bUseLogitBoost ? pHistogramEntryTotal[iScore].GetSumHessians() : weightAll
+               aGradientPairs[iScore].m_sumGradients,
+               bUseLogitBoost ? aGradientPairs[iScore].GetSumHessians() : weightAll
             );
          }
 

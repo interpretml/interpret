@@ -122,12 +122,12 @@ static FloatBig SweepMultiDimensional(
             EBM_ASSERT(0 < pTotalsLow->GetCountSamples());
             EBM_ASSERT(0 < pTotalsHigh->GetCountSamples());
 
-            const FloatBig cLowWeightInBin = pTotalsLow->GetWeight();
-            const FloatBig cHighWeightInBin = pTotalsHigh->GetWeight();
+            const FloatBig cLowWeight = pTotalsLow->GetWeight();
+            const FloatBig cHighWeight = pTotalsHigh->GetWeight();
 
-            auto * const pHistogramTargetEntryLow = pTotalsLow->GetHistogramTargetEntry();
+            auto * const pGradientPairLow = pTotalsLow->GetGradientPairs();
 
-            auto * const pHistogramTargetEntryHigh = pTotalsHigh->GetHistogramTargetEntry();
+            auto * const pGradientPairHigh = pTotalsHigh->GetGradientPairs();
 
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators 
@@ -135,11 +135,11 @@ static FloatBig SweepMultiDimensional(
 
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                const FloatBig gain1 = EbmStats::CalcPartialGain(
-                  pHistogramTargetEntryLow[iScore].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryLow[iScore].GetSumHessians() : cLowWeightInBin);
+                  pGradientPairLow[iScore].m_sumGradients, bUseLogitBoost ? pGradientPairLow[iScore].GetSumHessians() : cLowWeight);
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                gain += gain1;
                const FloatBig gain2 = EbmStats::CalcPartialGain(
-                  pHistogramTargetEntryHigh[iScore].m_sumGradients, bUseLogitBoost ? pHistogramTargetEntryHigh[iScore].GetSumHessians() : cHighWeightInBin);
+                  pGradientPairHigh[iScore].m_sumGradients, bUseLogitBoost ? pGradientPairHigh[iScore].GetSumHessians() : cHighWeight);
                EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
                gain += gain2;
             }
@@ -446,7 +446,7 @@ public:
 
       ASSERT_BIN_OK(cBytesPerBin, pTotal, pBoosterShell->GetBinsBigEndDebug());
 
-      const auto * const pHistogramTargetEntryTotal = pTotal->GetHistogramTargetEntry();
+      const auto * const pGradientPairTotal = pTotal->GetGradientPairs();
 
       const FloatBig weightAll = pTotal->GetWeight();
       EBM_ASSERT(0 < weightAll);
@@ -470,8 +470,8 @@ public:
 
                constexpr bool bUseLogitBoost = k_bUseLogitboost && bClassification;
                const FloatBig gain1 = EbmStats::CalcPartialGain(
-                  pHistogramTargetEntryTotal[iScore].m_sumGradients,
-                  bUseLogitBoost ? pHistogramTargetEntryTotal[iScore].GetSumHessians() : weightAll
+                  pGradientPairTotal[iScore].m_sumGradients,
+                  bUseLogitBoost ? pGradientPairTotal[iScore].GetSumHessians() : weightAll
                );
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                bestGain -= gain1;
@@ -539,10 +539,10 @@ public:
                         pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = splitFirst2LowBest;
                      }
 
-                     auto * const pHistogramTargetEntryTotals2LowLowBest = pTotals2LowLowBest->GetHistogramTargetEntry();
-                     auto * const pHistogramTargetEntryTotals2LowHighBest = pTotals2LowHighBest->GetHistogramTargetEntry();
-                     auto * const pHistogramTargetEntryTotals2HighLowBest = pTotals2HighLowBest->GetHistogramTargetEntry();
-                     auto * const pHistogramTargetEntryTotals2HighHighBest = pTotals2HighHighBest->GetHistogramTargetEntry();
+                     auto * const pGradientPairTotals2LowLowBest = pTotals2LowLowBest->GetGradientPairs();
+                     auto * const pGradientPairTotals2LowHighBest = pTotals2LowHighBest->GetGradientPairs();
+                     auto * const pGradientPairTotals2HighLowBest = pTotals2HighLowBest->GetGradientPairs();
+                     auto * const pGradientPairTotals2HighHighBest = pTotals2HighHighBest->GetGradientPairs();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                      FloatBig zeroLogit0 = 0;
@@ -559,20 +559,20 @@ public:
 
                         if(bClassification) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2LowLowBest[iScore].m_sumGradients,
-                              pHistogramTargetEntryTotals2LowLowBest[iScore].GetSumHessians()
+                              pGradientPairTotals2LowLowBest[iScore].m_sumGradients,
+                              pGradientPairTotals2LowLowBest[iScore].GetSumHessians()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2LowHighBest[iScore].m_sumGradients,
-                              pHistogramTargetEntryTotals2LowHighBest[iScore].GetSumHessians()
+                              pGradientPairTotals2LowHighBest[iScore].m_sumGradients,
+                              pGradientPairTotals2LowHighBest[iScore].GetSumHessians()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2HighLowBest[iScore].m_sumGradients,
-                              pHistogramTargetEntryTotals2HighLowBest[iScore].GetSumHessians()
+                              pGradientPairTotals2HighLowBest[iScore].m_sumGradients,
+                              pGradientPairTotals2HighLowBest[iScore].GetSumHessians()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2HighHighBest[iScore].m_sumGradients,
-                              pHistogramTargetEntryTotals2HighHighBest[iScore].GetSumHessians()
+                              pGradientPairTotals2HighHighBest[iScore].m_sumGradients,
+                              pGradientPairTotals2HighHighBest[iScore].GetSumHessians()
                            );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -593,19 +593,19 @@ public:
                         } else {
                            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2LowLowBest[iScore].m_sumGradients,
+                              pGradientPairTotals2LowLowBest[iScore].m_sumGradients,
                               pTotals2LowLowBest->GetWeight()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2LowHighBest[iScore].m_sumGradients,
+                              pGradientPairTotals2LowHighBest[iScore].m_sumGradients,
                               pTotals2LowHighBest->GetWeight()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2HighLowBest[iScore].m_sumGradients,
+                              pGradientPairTotals2HighLowBest[iScore].m_sumGradients,
                               pTotals2HighLowBest->GetWeight()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals2HighHighBest[iScore].m_sumGradients,
+                              pGradientPairTotals2HighHighBest[iScore].m_sumGradients,
                               pTotals2HighHighBest->GetWeight()
                            );
                         }
@@ -682,10 +682,10 @@ public:
                         pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = splitFirst1LowBest;
                      }
 
-                     auto * const pHistogramTargetEntryTotals1LowLowBest = pTotals1LowLowBest->GetHistogramTargetEntry();
-                     auto * const pHistogramTargetEntryTotals1LowHighBest = pTotals1LowHighBest->GetHistogramTargetEntry();
-                     auto * const pHistogramTargetEntryTotals1HighLowBest = pTotals1HighLowBest->GetHistogramTargetEntry();
-                     auto * const pHistogramTargetEntryTotals1HighHighBest = pTotals1HighHighBest->GetHistogramTargetEntry();
+                     auto * const pGradientPairTotals1LowLowBest = pTotals1LowLowBest->GetGradientPairs();
+                     auto * const pGradientPairTotals1LowHighBest = pTotals1LowHighBest->GetGradientPairs();
+                     auto * const pGradientPairTotals1HighLowBest = pTotals1HighLowBest->GetGradientPairs();
+                     auto * const pGradientPairTotals1HighHighBest = pTotals1HighHighBest->GetGradientPairs();
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
                      FloatBig zeroLogit0 = 0;
@@ -702,20 +702,20 @@ public:
 
                         if(bClassification) {
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1LowLowBest[iScore].m_sumGradients,
-                              pHistogramTargetEntryTotals1LowLowBest[iScore].GetSumHessians()
+                              pGradientPairTotals1LowLowBest[iScore].m_sumGradients,
+                              pGradientPairTotals1LowLowBest[iScore].GetSumHessians()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1LowHighBest[iScore].m_sumGradients,
-                              pHistogramTargetEntryTotals1LowHighBest[iScore].GetSumHessians()
+                              pGradientPairTotals1LowHighBest[iScore].m_sumGradients,
+                              pGradientPairTotals1LowHighBest[iScore].GetSumHessians()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1HighLowBest[iScore].m_sumGradients,
-                              pHistogramTargetEntryTotals1HighLowBest[iScore].GetSumHessians()
+                              pGradientPairTotals1HighLowBest[iScore].m_sumGradients,
+                              pGradientPairTotals1HighLowBest[iScore].GetSumHessians()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1HighHighBest[iScore].m_sumGradients,
-                              pHistogramTargetEntryTotals1HighHighBest[iScore].GetSumHessians()
+                              pGradientPairTotals1HighHighBest[iScore].m_sumGradients,
+                              pGradientPairTotals1HighHighBest[iScore].GetSumHessians()
                            );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -735,19 +735,19 @@ public:
                         } else {
                            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                            predictionLowLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1LowLowBest[iScore].m_sumGradients,
+                              pGradientPairTotals1LowLowBest[iScore].m_sumGradients,
                               pTotals1LowLowBest->GetWeight()
                            );
                            predictionLowHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1LowHighBest[iScore].m_sumGradients,
+                              pGradientPairTotals1LowHighBest[iScore].m_sumGradients,
                               pTotals1LowHighBest->GetWeight()
                            );
                            predictionHighLow = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1HighLowBest[iScore].m_sumGradients,
+                              pGradientPairTotals1HighLowBest[iScore].m_sumGradients,
                               pTotals1HighLowBest->GetWeight()
                            );
                            predictionHighHigh = EbmStats::ComputeSinglePartitionUpdate(
-                              pHistogramTargetEntryTotals1HighHighBest[iScore].m_sumGradients,
+                              pGradientPairTotals1HighHighBest[iScore].m_sumGradients,
                               pTotals1HighHighBest->GetWeight()
                            );
                         }
@@ -812,8 +812,8 @@ public:
          FloatBig update;
          if(bClassification) {
             update = EbmStats::ComputeSinglePartitionUpdate(
-               pHistogramTargetEntryTotal[iScore].m_sumGradients,
-               pHistogramTargetEntryTotal[iScore].GetSumHessians()
+               pGradientPairTotal[iScore].m_sumGradients,
+               pGradientPairTotal[iScore].GetSumHessians()
             );
 
 #ifdef ZERO_FIRST_MULTICLASS_LOGIT
@@ -828,7 +828,7 @@ public:
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             update = EbmStats::ComputeSinglePartitionUpdate(
-               pHistogramTargetEntryTotal[iScore].m_sumGradients,
+               pGradientPairTotal[iScore].m_sumGradients,
                weightAll
             );
          }
